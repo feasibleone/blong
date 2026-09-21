@@ -11,7 +11,7 @@ open (1)
 
 - `F-175` · core/blong-browser — Dropping PrimeReact's filter row changes more than the filter UI
 
-resolved (7)
+resolved (9)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -21,6 +21,10 @@ resolved (7)
   MIME
 - `F-152` · core/blong-browser — A menubar height change that looked like a global 1px shift
 - `F-157` · core/blong-browser — `?direct` returns raw CSS where the default module request does not
+- `F-212` · core/blong-browser — A hook's result object in a dependency list loops an effect that
+  writes state
+- `F-213` · core/blong-browser — Mermaid leaves its working element on document.body on every
+  failure path
 
 <!-- /memory:index -->
 
@@ -111,3 +115,39 @@ be injected into a `<style>` tag, so the obvious URL yields a harness with no st
 Fetch the CSS with `?direct`, inject it, then magnify the harness to inspect 1-2 pixel bevel and
 recess detail. Magnify with `transform: scale`, not `zoom` (which misbehaves on PrimeReact flex
 panels), and clear any inline `zoom` before reading `getBoundingClientRect()`.
+
+### F-212 — A hook's result object in a dependency list loops an effect that writes state
+
+> _2026-09-21 · core/blong-browser · resolved_
+
+useDarkMode() built {isDark, toggle, setDark} as a fresh object literal per render, and
+MermaidRenderer put the whole object in its effect dependency list. With a setState inside the
+effect, every render produced a new dependency, so the effect re-ran forever and drew a new mermaid
+diagram each pass - in Chromatic that is a page that never settles. A bounded React probe proved it
+(mount, cap the state writes at 8, count runs): 8 with the object as the dependency, 1 with the
+isDark primitive. The regression test now reads the same thing off the effect: on the pre-fix code
+mermaid was asked 10 times for one diagram and the id counter had reached 5,606. Lesson: when a hook
+returns an object, its identity is part of the contract - hand out one object (this hook does now) -
+and a dependency list holds the primitive the effect actually reads.
+
+useDarkMode returns one object, and MermaidRenderer depends on isDark; the regression test fails on
+the pre-fix code (mermaid asked 10 times for one diagram) and the real story makes one attempt in
+three seconds.
+
+### F-213 — Mermaid leaves its working element on document.body on every failure path
+
+> _2026-09-21 · core/blong-browser · resolved_
+
+mermaid.render(id, text) with no container argument creates a temporary element named `d${id}` (with
+its error drawing inside) on document.body and removes it only when the render succeeds. Both
+failure stories fail - this is not a diagram is an UnknownDiagramError, and an empty string is a
+parse failure too, not an empty diagram - so each attempt left one wrapper behind, and with the
+effect loop alongside it there were thousands: Chromatic refused the capture at 1,172x73,509px, over
+its 25,000,000px limit. Fix: suppressErrorRendering: true, so mermaid removes its own working
+element before throwing, plus a finally that sweeps that wrapper and its sandbox twin whatever
+happened (the returned svg is a string copy, so removing the wrapper cannot delete the drawing).
+Proven with a jsdom probe: after a failed render the body held one wrapper before, and none after.
+
+suppressErrorRendering: true plus a finally that removes the temporary wrapper and its sandbox twin;
+NotADiagram, Empty and ObservedFlow all render in Storybook with no leftover elements and a 739px
+page.

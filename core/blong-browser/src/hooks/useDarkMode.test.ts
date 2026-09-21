@@ -38,6 +38,25 @@ describe('useDarkMode', () => {
         act(() => result.current.setDark(false));
         expect(result.current.isDark).toBe(false);
     });
+
+    // The identity of the returned object is what a dependency list compares, so a
+    // fresh literal per render made every consumer's effect re-run after every render
+    // — and one that also wrote state re-ran forever (F-212). This is the assertion
+    // that keeps the loop from coming back through a later refactor.
+    it('hands out one result object while the theme does not change', () => {
+        const {result, rerender} = renderHook(() => useDarkMode());
+        const first = result.current;
+        rerender();
+        expect(result.current).toBe(first);
+    });
+
+    it('hands out a new result object when the theme does change', () => {
+        const {result} = renderHook(() => useDarkMode());
+        const first = result.current;
+        act(() => result.current.toggle());
+        expect(result.current).not.toBe(first);
+        expect(result.current.isDark).toBe(true);
+    });
 });
 
 describe('useText', () => {

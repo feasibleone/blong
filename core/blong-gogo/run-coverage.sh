@@ -111,6 +111,16 @@ mkdir -p "$SERVER_MAP"
     --include "test/blong-int-adapter/**/*.ts" \
     --include "suite/blong-suite/**/*.ts" \
     --include "demo/blong-marine/**/*.ts" \
+    --include "demo/blong-cli/**/*.ts" \
+    --include "core/blong-kukum/**/*.ts" \
+    --include "core/blong-kopi/**/*.ts" \
+    --include "core/semantic-log/**/*.ts" \
+    --include "core/blong-realm/**/*.ts" \
+    --include "realm/blong-party/**/*.ts" \
+    --include "realm/blong-access/**/*.ts" \
+    --include "realm/blong-gateway/**/*.ts" \
+    --include "realm/blong-commander/**/*.ts" \
+    --include "core/blong-core/**/*.ts" \
     --exclude "**/*.test.*" "**/*.d.ts" \
     --reporter json \
     -o "$SERVER_MAP"

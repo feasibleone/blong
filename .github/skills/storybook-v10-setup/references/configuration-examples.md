@@ -130,7 +130,7 @@ on: [push, pull_request]
 
 jobs:
     storybook-tests:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         steps:
             - uses: actions/checkout@v4
 
