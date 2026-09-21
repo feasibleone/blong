@@ -11,7 +11,7 @@ open (1)
 
 - `F-175` · core/blong-browser — Dropping PrimeReact's filter row changes more than the filter UI
 
-resolved (13)
+resolved (14)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -31,6 +31,7 @@ resolved (13)
 - `F-223` · core/blong-browser — A login fill was racing the app's boot, not a missing element
 - `F-224` · core/blong-browser — A diagram screenshot was 358px tall on one machine and 359px on the
   next
+- `F-226` · core/blong-browser — A diagram capture followed the element position, not its size
 
 <!-- /memory:index -->
 
@@ -196,7 +197,7 @@ was reverted, and the realm and gateway suites pass twice each.
 
 > _2026-09-21 · core/blong-browser · resolved_
 
-Four CI Playwright failures were all page.fill: Timeout 5000ms exceeded on input[name=username],
+Four CI Playwright failures were all page.fill: Timeout 5000ms exceeded on `input[name=username]`,
 reported as 'the login form never appeared'. The traces said otherwise: in every one the app's first
 boot log lands 3.3-4.5s after page.goto() resolved with load, and the input does not exist at all
 when the fill starts, because the dev server serves the module graph one file per request. The
@@ -223,7 +224,7 @@ baseline, and those pixels are fractional. Which of 358/359 the clip snapped to 
 where the element sat on the pixel grid, which is why the same CI run rendered the realm's diagram
 at 358 (passing against a 358 baseline) and the gateway's at 359 (failing). Fix: display:block on
 the injected SVG, after which the wrapper is exactly the drawing's 355px. Lesson: a screenshot of an
-element whose height is a *sum* of an integer and a font's descender is a coin flip, and
+element whose height is a _sum_ of an integer and a font's descender is a coin flip, and
 toHaveScreenshot refuses to compare images of different sizes at all - look for the fractional
 addend before accepting a new baseline.
 
@@ -231,3 +232,33 @@ Fixed by MermaidRenderer.css (display:block on the injected SVG) and the two reg
 (observed-flow-gateway, observed-flow-realm), both now exactly the drawing height of 355px rather
 than a font-dependent 358/359. Eight consecutive green runs of the gateway spec, and the realm suite
 is 7/7.
+
+### F-226 — A diagram capture followed the element position, not its size
+
+> _2026-09-21 · core/blong-browser · resolved_
+
+CI build #574 failed on `realm/blong-gateway`'s diagram spec with
+`Expected an image 1600px by 355px, received 1600px by 356px` — one pixel again, after #573's height
+fix. Two independent causes, both measured rather than reasoned about:
+
+**The screenshot's size followed the element's position, not its size.** A locator screenshot snaps
+the element's box *outward* to whole pixels. Probe (Playwright 1.63): an element 100px tall at
+`y=50.5` photographs as 101 rows whose first row is the page behind it; the same element at an
+integral offset gives its own 100 rows. So the same drawing is 355 tall in a run where the layout
+lands on a pixel boundary and 356 where it does not — and the element's offset comes from a flex
+split (`348.64px` of box in the CI geometry), which is the page's arithmetic, not the code's.
+
+**Rows below the diagram were whatever was painted behind the panel.** The diagram box takes the
+height the executions list leaves, so a long enough list makes it shorter than the drawing; the rows
+of the element below it are then the page's own colours, and how many there are depends on how many
+executions the run happened to record. Reproduced locally by pinning the list to 700px: element
+`top=551.359375`, `bottom=906.36` against a box ending at 900.
+
+Lesson: for an element capture, `height` is not the only thing that has to be an integer — the
+position has to be too, and everything the capture shows has to belong to the element. Both are
+invisible until a second machine lands on the other side of the rounding.
+
+Fixed by D-248: captureDiagram frames the whole drawing (growing the viewport until the element is
+inside its scrolling box and the window) and clips on rounded coordinates. Verified by reproducing
+the CI geometry locally by hand and matching the committed baseline; realm/blong-gateway 17/17 and
+core/blong-realm 7/7 are green with no baseline change.

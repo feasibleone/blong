@@ -16,7 +16,7 @@
  * `BLONG_REGENERATE_DIAGRAMS=1` is set, and byte-compared otherwise. A test that
  * silently rewrote it would report a change nobody reviewed as a pass.
  */
-import type {Expect} from '@playwright/test';
+import type {Expect, Locator} from '@playwright/test';
 import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname} from 'node:path';
 import {BLONG_ELEMENT_TIMEOUT, type Portal} from '../playwright.js';
@@ -102,6 +102,64 @@ export interface ICaptureDiagramOptions {
     timeout?: number;
 }
 
+/** The height (px) a window is grown to before the capture stops trying to frame one. */
+const MAX_DIAGRAM_FRAME = 2_000;
+
+/** How many pixels the element's box spends outside a frame that can show it. */
+async function pixelsOutsideTheFrame(target: Locator): Promise<number> {
+    return target.evaluate(node => {
+        const child = node.getBoundingClientRect();
+        // Below the window, and below the nearest box that clips its scrolling — the
+        // diagram's box is given the height the executions list leaves, so a long enough
+        // list makes it shorter than the drawing.
+        let outside = child.bottom - window.innerHeight;
+        for (let parent = node.parentElement; parent !== null; parent = parent.parentElement) {
+            const {overflowY} = getComputedStyle(parent);
+            if (overflowY !== 'auto' && overflowY !== 'scroll') continue;
+            outside = Math.max(outside, child.bottom - parent.getBoundingClientRect().bottom);
+            break;
+        }
+        return Math.max(0, Math.ceil(outside));
+    });
+}
+
+/**
+ * Give the drawing a frame in which it is wholly on screen.
+ *
+ * Both halves of an element screenshot go wrong when part of the element is outside the
+ * box that shows it. The rows that are left are whatever is painted behind that box, so
+ * the artifact ends in the page's own colours and how many rows there are depends on how
+ * many executions the run happened to record — a picture that changes with the run
+ * rather than with the code (F-221, F-226). And a screenshot clip is clamped to the
+ * viewport: measured, a clip 6px past the bottom came back 6px shorter.
+ *
+ * The panel grows with the window and the executions list may take at most half of it,
+ * so a taller window always leaves the diagram more room — the loop is there because how
+ * much more is the page's arithmetic, not this helper's. Not growing past
+ * `MAX_DIAGRAM_FRAME` is the guard against a diagram that can never fit: the capture
+ * then fails saying so, instead of committing a picture of the page behind the panel.
+ */
+async function frameTheWholeDiagram(portal: Portal, target: Locator): Promise<void> {
+    const viewport = portal.page.viewportSize() ?? {width: 1600, height: 900};
+    let height = viewport.height;
+    for (;;) {
+        await target.scrollIntoViewIfNeeded();
+        const outside = await pixelsOutsideTheFrame(target);
+        if (outside === 0) return;
+        // More than the missing rows, because the room comes back a fraction of the
+        // growth at a time: an execution row has to be paid for out of the panel too.
+        const grown = Math.min(height + outside + 40, MAX_DIAGRAM_FRAME);
+        if (grown === height) break;
+        height = grown;
+        await portal.page.setViewportSize({width: viewport.width, height});
+    }
+    throw new Error(
+        `the diagram does not fit the box that shows it, even in a ${viewport.width}x${height} ` +
+            'window, so a capture of it would end in whatever is painted behind that box. ' +
+            'The drawing cannot be photographed whole here.',
+    );
+}
+
 /**
  * Capture a diagram the page is showing: wait for it, screenshot it, and write
  * its text to the markdown artifact.
@@ -147,17 +205,33 @@ export async function captureDiagram(
     // The element, not the page: a diagram capture that included the rest of the
     // portal would fail for reasons that have nothing to do with drawing.
     //
-    // Specifically the element, and not "the page with a clip": `boundingBox()` is
-    // relative to the *viewport* while a page screenshot's `clip` is relative to the
-    // *document*, so on a scrolled page the clip photographed the background beside the
-    // diagram — a 1.6 KB PNG of flat colour that a snapshot comparison accepted as
-    // expected, which is F-191. A locator screenshot scrolls the element into view and
-    // needs no coordinates at all.
-    //
     // And the *drawn*, *visible* element, not the first match of the selector: that
     // selector includes the pending and fallback states on purpose, and a portal that
     // keeps every opened page mounted holds an inactive page's diagram too.
-    await expect(portal.page.locator(VISIBLE_DIAGRAM).first()).toHaveScreenshot(`${name}.png`, {
+    const target = portal.page.locator(VISIBLE_DIAGRAM).first();
+    await frameTheWholeDiagram(portal, target);
+    const box = await target.boundingBox();
+    if (box === null) {
+        throw new Error(`the drawn diagram (${VISIBLE_DIAGRAM}) has no box to capture.`);
+    }
+    // The clip is computed here, and rounded, rather than left to a locator screenshot —
+    // which snaps the element's box *outward* to whole pixels. Measured: an element 100px
+    // tall at y=50.5 is photographed as 101 rows whose first row is the page behind it;
+    // rounded, the same element photographs as its own 100 rows starting on its own first
+    // pixel. The size a run compares is then the element's size, not the element's
+    // position on the pixel grid, which is what made this capture 355px in one run and
+    // 356px in the next with nothing about the drawing changed (F-226).
+    //
+    // Viewport-relative, which is what `boundingBox()` and a screenshot `clip` both use:
+    // measured on a page scrolled by 200px, a clip at the element's *viewport* coordinates
+    // framed the element while the same clip at its document coordinates did not.
+    await expect(portal.page).toHaveScreenshot(`${name}.png`, {
+        clip: {
+            x: Math.round(box.x),
+            y: Math.round(box.y),
+            width: Math.round(box.width),
+            height: Math.round(box.height),
+        },
         // A diagram is a taller, heavier capture than an element assertion, and the
         // default five-second expect timeout is spent before a first (uncached)
         // render is photographed — reported as a bare screenshot timeout, which

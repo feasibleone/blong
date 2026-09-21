@@ -42,38 +42,46 @@ test.use({blongPermissions: true});
 const REALM_KIND = 'gateway.bundle.find';
 
 test('a flow this realm served is drawn as a diagram', async ({portal}) => {
-    // Produce the flow: this read is answered by the realm below, so opening the
-    // page writes the execution the diagram is drawn from.
-    await portal.menuClick('gateway.bundle.browse');
-    await portal.waitForTableData();
-
-    // Observe it: the framework realm's flow page lists executions by kind.
-    await portal.menuClick('blong.flow.browse');
-    await portal.waitForTableData();
-    // Pinning the kind is what makes the row stable — every request this process
-    // serves becomes an execution, and this realm serves its own pages.
-    //
-    // Addressed by its own label, not by `browse-search`: the portal keeps every
-    // opened page mounted (`renderActiveOnly={false}`), so the management page's
-    // search box carries the same test id and a test id alone matches two inputs.
-    await portal.page.getByRole('textbox', {name: 'Filter'}).fill(REALM_KIND);
-
-    // A DataTable renders its empty state as a row of its own, so a bare
-    // `tbody tr` also matches "Nothing observed yet". A data row is the one with
-    // an execution cell.
+    // A DataTable renders its empty state as a row of its own, so a bare `tbody tr` also
+    // matches "Nothing observed yet". A data row is the one with an execution cell.
     const rows = portal.page
         .locator('.p-datatable-tbody tr')
         .filter({has: portal.page.locator('[data-testid="flow-execution"]')});
-    await expect(rows.first()).toBeVisible();
-    // The page applies the filter asynchronously, so clicking the first row straight
-    // after typing picked a row of the *unfiltered* list — the newest execution, which
-    // in a run of this deployment is whatever page load happened last, and whose
-    // diagram is a different flow or none at all. Waiting for the row to name the kind
-    // is what makes the capture the flow this spec produced.
-    await expect(rows.first()).toContainText(REALM_KIND);
+    const pinned = rows.filter({hasText: REALM_KIND}).first();
+
+    // Producing the flow and reading it back is retried as a pair, because the two halves
+    // are a race on the *service* rather than on the page: the list is built from the
+    // ledger of what has been served, and a read taken moments after a call can come back
+    // without it. Measured under the suite's own parallelism: the table still showed
+    // "Nothing observed yet" 7s after `gateway.bundle.find` had been served, with no error
+    // anywhere — the page had read once, the answer did not contain the row, and nothing
+    // in the page reads again. Hence the reload: it is what asks for a second answer.
+    //
+    // Asking again rather than waiting longer is the point. The row is picked by the kind
+    // it names, not by position — the page applies its filter asynchronously *and* the list
+    // is live, so the first row is often another spec's execution (measured:
+    // `gateway.subscription.find`, from the subscription spec in the same run).
+    await expect(async () => {
+        await portal.page.reload();
+        // Produce the flow: opening the Bundle page is a read this realm answers, so the
+        // execution the diagram is drawn from is written by this line.
+        await portal.menuClick('gateway.bundle.browse');
+        await portal.waitForTableData();
+        // Observe it: the framework realm's flow page lists executions by kind.
+        await portal.menuClick('blong.flow.browse');
+        await portal.waitForTableData();
+        // Pinning the kind is what makes the row stable — every request this process
+        // serves becomes an execution, and this realm serves its own pages.
+        //
+        // Addressed by its own label, not by `browse-search`: the portal keeps every
+        // opened page mounted (`renderActiveOnly={false}`), so the management page's
+        // search box carries the same test id and a test id alone matches two inputs.
+        await portal.page.getByRole('textbox', {name: 'Filter'}).fill(REALM_KIND);
+        await expect(pinned).toBeVisible({timeout: 5_000});
+    }).toPass({timeout: 40_000});
 
     // Selecting the row is what asks the service for the diagram.
-    await rows.first().click();
+    await pinned.click();
     await expect(portal.page.locator('[data-diagram-rendered]')).toBeVisible();
 
     // What the service should draw: the hop this realm's answer declared. The
