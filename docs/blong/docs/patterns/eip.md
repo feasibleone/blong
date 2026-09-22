@@ -1,13 +1,13 @@
 # EIP patterns
 
 [Enterprise Integration Patterns (EIP)](https://www.enterpriseintegrationpatterns.com/) are a
-catalogue of well-known solutions for message-based integration problems.  Blong handlers are a
+catalogue of well-known solutions for message-based integration problems. Blong handlers are a
 natural fit for these patterns because each handler is a pure function that receives a message
 (params + $meta) and returns a transformed or routed result.
 
-The `@feasibleone/blong-eip` package provides a reference implementation. Each pattern is a
-single file in `orchestrator/eip/` and calls downstream handlers via the `handler` proxy, which
-means the concrete implementation can be replaced by a mock during testing.
+The `@feasibleone/blong-eip` package provides a reference implementation. Each pattern is a single
+file in `orchestrator/eip/` and calls downstream handlers via the `handler` proxy, which means the
+concrete implementation can be replaced by a mock during testing.
 
 ## Pattern catalogue
 
@@ -75,7 +75,9 @@ export default handler(
             {destination, ...rest}: {destination: string; [key: string]: unknown},
             $meta: IMeta,
         ): Promise<unknown> {
-            const target = (handler as Record<string, (...args: unknown[]) => unknown>)[destination];
+            const target = (handler as Record<string, (...args: unknown[]) => unknown>)[
+                destination
+            ];
             return target(rest, $meta);
         },
 );
@@ -101,8 +103,8 @@ export default handler(
 
 ### Recipient List
 
-Broadcast a message to a fixed set of handlers and collect all results.
-Supports both parallel (default) and sequential execution via the `sequential` flag.
+Broadcast a message to a fixed set of handlers and collect all results. Supports both parallel
+(default) and sequential execution via the `sequential` flag.
 
 ```ts
 // eip/orchestrator/eip/eipMessageRecipient.ts
@@ -124,8 +126,8 @@ export default handler(
 
 ### Splitter
 
-Break a compound message into individual items and process each one.
-Supports parallel (default) and sequential processing.
+Break a compound message into individual items and process each one. Supports parallel (default) and
+sequential processing.
 
 ```ts
 // eip/orchestrator/eip/eipMessageSplit.ts
@@ -153,22 +155,17 @@ Collect individual messages until a batch size is reached, then process the batc
 // eip/orchestrator/eip/eipMessageAggregate.ts
 const BATCH_SIZE = 3;
 
-export default handler(
-    ({handler: {mockDataSave}}) => {
-        const list: unknown[] = [];
-        return async function eipMessageAggregate(
-            message: unknown,
-            $meta: IMeta,
-        ): Promise<unknown> {
-            list.push(message);
-            if (list.length >= BATCH_SIZE) {
-                const batch = list.splice(0, list.length);
-                return mockDataSave({items: batch}, $meta);
-            }
-            return undefined;
-        };
-    },
-);
+export default handler(({handler: {mockDataSave}}) => {
+    const list: unknown[] = [];
+    return async function eipMessageAggregate(message: unknown, $meta: IMeta): Promise<unknown> {
+        list.push(message);
+        if (list.length >= BATCH_SIZE) {
+            const batch = list.splice(0, list.length);
+            return mockDataSave({items: batch}, $meta);
+        }
+        return undefined;
+    };
+});
 ```
 
 ### Resequencer
@@ -179,31 +176,29 @@ Buffer out-of-order messages until a batch is complete, then sort and process in
 // eip/orchestrator/eip/eipMessageSort.ts
 const BATCH_SIZE = 3;
 
-export default handler(
-    ({handler: {mockItemProcess}}) => {
-        const list: Array<{order: number; [key: string]: unknown}> = [];
-        return async function eipMessageSort(
-            params: {order: number; [key: string]: unknown},
-            $meta: IMeta,
-        ): Promise<unknown[] | undefined> {
-            list.push(params);
-            if (list.length >= BATCH_SIZE) {
-                const batch = list.splice(0, list.length);
-                const sorted = batch.sort((a, b) => a.order - b.order);
-                const results: unknown[] = [];
-                for (const item of sorted) results.push(await mockItemProcess(item, $meta));
-                return results;
-            }
-            return undefined;
-        };
-    },
-);
+export default handler(({handler: {mockItemProcess}}) => {
+    const list: Array<{order: number; [key: string]: unknown}> = [];
+    return async function eipMessageSort(
+        params: {order: number; [key: string]: unknown},
+        $meta: IMeta,
+    ): Promise<unknown[] | undefined> {
+        list.push(params);
+        if (list.length >= BATCH_SIZE) {
+            const batch = list.splice(0, list.length);
+            const sorted = batch.sort((a, b) => a.order - b.order);
+            const results: unknown[] = [];
+            for (const item of sorted) results.push(await mockItemProcess(item, $meta));
+            return results;
+        }
+        return undefined;
+    };
+});
 ```
 
 ### Composed Message Processor
 
-Split a complex message into parts, process each part with a specialised handler,
-then merge the results into a single response.
+Split a complex message into parts, process each part with a specialised handler, then merge the
+results into a single response.
 
 ```ts
 // eip/orchestrator/eip/eipMessageCompose.ts
@@ -289,8 +284,8 @@ export default handler(
 
 ### Claim Check
 
-Store a large or sensitive payload, replace it with a lightweight reference (claim),
-then retrieve the original data when needed.
+Store a large or sensitive payload, replace it with a lightweight reference (claim), then retrieve
+the original data when needed.
 
 ```ts
 // eip/orchestrator/eip/eipMessageClaim.ts
@@ -330,7 +325,7 @@ export default handler(
 
 ## Folder structure
 
-```
+```text
 realmname/
 └── orchestrator/
     ├── eipDispatch.ts           # Dispatch orchestrator for the "eip" namespace
@@ -360,6 +355,7 @@ export default orchestrator(blong => ({
 
 ## See also
 
-- [Server-side testing with mocks](./mock-test) – how the EIP handlers are tested using mock handlers
+- [Server-side testing with mocks](./mock-test) – how the EIP handlers are tested using mock
+  handlers
 - [Handler pattern](./handler) – general handler documentation
 - [Orchestrator pattern](./orchestrator) – dispatch orchestrator documentation

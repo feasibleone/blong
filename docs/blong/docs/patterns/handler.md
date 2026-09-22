@@ -1,96 +1,88 @@
 # Handler
 
-Handlers are functions that are called by adapters and orchestrators to
-implement certain functionality. Handlers can be based on user-defined
-APIs or be related to internal logic, for example the
-[adapter loop](../concepts/adapter#adapter-loop).
+Handlers are functions that are called by adapters and orchestrators to implement certain
+functionality. Handlers can be based on user-defined APIs or be related to internal logic, for
+example the [adapter loop](../concepts/adapter#adapter-loop).
 
 ## Internal handlers
 
-The internal handlers have predefined meaning and names and are often related
-to some common integration tasks. They have the following purpose:
+The internal handlers have predefined meaning and names and are often related to some common
+integration tasks. They have the following purpose:
 
-- `send`: prepare the data for sending, adapting it for the underlying protocol.
-  The input data is assumed to be protocol/API independent as much as possible.
-- `receive`: transform the received data to be protocol/API independent and remove
-  any data not needed by the rest of the system.
-- `encode`: JavaScript objects passed to these handlers are converted to Buffer,
-  which is then passed to the network.
-- `decode`: data frames coming from the network as Buffers are passed to this
-  handler and it converts them to JavaScript objects
+- `send`: prepare the data for sending, adapting it for the underlying protocol. The input data is
+  assumed to be protocol/API independent as much as possible.
+- `receive`: transform the received data to be protocol/API independent and remove any data not
+  needed by the rest of the system.
+- `encode`: JavaScript objects passed to these handlers are converted to Buffer, which is then
+  passed to the network.
+- `decode`: data frames coming from the network as Buffers are passed to this handler and it
+  converts them to JavaScript objects
 - `exec`: this handler is called by default if no handler is defined for the [$meta](./meta).method
-- `ready`: this handler is called when the adapter is ready to process calls,
-  which for some adapters means that connection has been established or
-  a TCP port was opened for listening.
-- `idleSend`: this handler is called when there has been an idle period
-  (longer than the configured) of no outgoing messages. It usually
-  sends some kind of echo/keep alive message available in the protocol.
-- `idleReceive`: this handler is called when there has been an idle period
-  (longer than the configured) of no incoming messages. It usually disconnects
-  the adapter, as the expectation is that the other side is sending some
-  keep-alive messages.
-- `drainSend`: this handler is called when the send queue is emptied or has been
-  empty for a pre-configured period. It can be used to trigger processing of
-  some pending operations that happen during the idle time of the adapter.
+- `ready`: this handler is called when the adapter is ready to process calls, which for some
+  adapters means that connection has been established or a TCP port was opened for listening.
+- `idleSend`: this handler is called when there has been an idle period (longer than the configured)
+  of no outgoing messages. It usually sends some kind of echo/keep alive message available in the
+  protocol.
+- `idleReceive`: this handler is called when there has been an idle period (longer than the
+  configured) of no incoming messages. It usually disconnects the adapter, as the expectation is
+  that the other side is sending some keep-alive messages.
+- `drainSend`: this handler is called when the send queue is emptied or has been empty for a
+  pre-configured period. It can be used to trigger processing of some pending operations that happen
+  during the idle time of the adapter.
 
 ## Internal API handlers
 
-The internal API handlers usually implement some business functionality.
-They use namespaces to prefix the names of the API methods. The framework
-works best when the naming convention for the methods uses a
-[semantic triple](https://en.wikipedia.org/wiki/Semantic_triple)
-in the format `subjectObjectPredicate`, where:
+The internal API handlers usually implement some business functionality. They use namespaces to
+prefix the names of the API methods. The framework works best when the naming convention for the
+methods uses a [semantic triple](https://en.wikipedia.org/wiki/Semantic_triple) in the format
+`subjectObjectPredicate`, where:
 
-- `subject` is the namespace and often is same as the name of the
-  [realm](../concepts/realm) if the realm defines only one namespace.
+- `subject` is the namespace and often is same as the name of the [realm](../concepts/realm) if the
+  realm defines only one namespace.
 - `object` is often some entity within the realm
 - `predicate` is the action being executed on the entity
 
 Here are some examples:
 
-If we have a realm named `user` that has the goal to implement role-based
-access control, we can imagine it has the following namespaces:
+If we have a realm named `user` that has the goal to implement role-based access control, we can
+imagine it has the following namespaces:
 
 - `identity`: for implementing the authentication
 - `permission`: for implementing the authorization
-- `user`: for managing the users and roles. It could
-  have methods for objects named `user` and `role`, for example:
-  - `userUserAdd` - for creating users
-  - `userRoleEdit` - for editing roles
+- `user`: for managing the users and roles. It could have methods for objects named `user` and
+  `role`, for example:
+    - `userUserAdd` - for creating users
+    - `userRoleEdit` - for editing roles
 
-:::note
-All handlers are converted to async functions
-:::
+:::note All handlers are converted to async functions :::
 
 ## Library functions
 
-The library functions implement some reusable functionality that
-is repeated across some of the handlers within the same realm.
-Any handler, that has a name that does not match the internal handlers
-or the API namespaces is considered to be a library function and is not
-exposed anywhere else, except to the sibling handlers.
+The library functions implement some reusable functionality that is repeated across some of the
+handlers within the same realm. Any handler, that has a name that does not match the internal
+handlers or the API namespaces is considered to be a library function and is not exposed anywhere
+else, except to the sibling handlers.
 
 ## Folder structure
 
-The handlers and library functions are grouped together and given a name.
-This happens by defining them in a subfolder within the realm folder.
-This folder is usually in another one, which is used for defining a layer.
-The most common approach is to create a separate file for each handler and
-use the handler name as file name. This serves multiple reasons:
+The handlers and library functions are grouped together and given a name. This happens by defining
+them in a subfolder within the realm folder. This folder is usually in another one, which is used
+for defining a layer. The most common approach is to create a separate file for each handler and use
+the handler name as file name. This serves multiple reasons:
 
-- allow fast finding of handlers within code editors. For example,
-  in VSCode ctrl+p and then typing the first letters of the semantic
-  triple will bring the desired handler (i.e. `ctrl+p uua` is likely to find `userUserAdd.ts`)
+- allow fast finding of handlers within code editors. For example, in VSCode ctrl+p and then typing
+  the first letters of the semantic triple will bring the desired handler (i.e. `ctrl+p uua` is
+  likely to find `userUserAdd.ts`)
 - easier code review by avoiding files with thousands of rows and a lot of nesting
 - better isolation between the handlers
 
-The group name is in the format `realmname.foldername`.
-This name is then used in the `imports` property in the adapters and orchestrators.
+The group name is in the format `realmname.foldername`. This name is then used in the `imports`
+property in the adapters and orchestrators.
 
-Let's imagine a realm named `example` which implements a namespace `math` with
-several methods for calculating the sum and the average of an array of integer numbers.
-To do so, it defines a library function `sum` and handlers `mathNumberSum` and
-`mathNumberAverage`. It attaches the handlers to an orchestrator `mathDispatch`.
+Let's imagine a realm named `example` which implements a namespace `math` with several methods for
+calculating the sum and the average of an array of integer numbers. To do so, it defines a library
+function `sum` and handlers `mathNumberSum` and `mathNumberAverage`. It attaches the handlers to an
+orchestrator `mathDispatch`.
 
 The following structure is used:
 
@@ -111,164 +103,170 @@ The following structure is used:
 
 ## Defining handlers and library functions
 
-To enable interoperability between the handlers, library functions,
-orchestrators, adapters and the framework, a specific pattern is used
-to define them.
+To enable interoperability between the handlers, library functions, orchestrators, adapters and the
+framework, a specific pattern is used to define them.
 
-To define a library function, use the `library` function from the framework and
-pass a function that returns the desired library function with the appropriate name:
+To define a library function, use the `library` function from the framework and pass a function that
+returns the desired library function with the appropriate name:
 
 ```ts
 // example/orchestrator/math/sum.ts
 import {library} from '@feasibleone/blong';
 
-export default library(api =>
-    function sum(...params: number[]) {
-        // implementation
-    }
+export default library(
+    api =>
+        function sum(...params: number[]) {
+            // implementation
+        },
 );
 ```
 
-To define a handler, use the `handler` function from the framework and
-pass a function that returns the desired handler with the appropriate name:
+To define a handler, use the `handler` function from the framework and pass a function that returns
+the desired handler with the appropriate name:
 
 ```ts
 // example/orchestrator/math/mathNumberSum.ts
 import {handler} from '@feasibleone/blong';
 
-export default handler(api =>
-    function mathNumberSum(...params: number[]) {
-        // implementation
-    }
+export default handler(
+    api =>
+        function mathNumberSum(...params: number[]) {
+            // implementation
+        },
 );
 ```
 
 ## Interoperability
 
-Handlers and functions can call each other by referring through
-the `api` parameter. It also allows to access other functions of
-the framework.
+Handlers and functions can call each other by referring through the `api` parameter. It also allows
+to access other functions of the framework.
 
-The `api` parameter has the properties, which are often
-used through destructuring. Check the following example,
-that explain their usage:
+The `api` parameter has the properties, which are often used through destructuring. Check the
+following example, that explain their usage:
 
 - `example/orchestrator/math/error.ts` - defines the errors.
 
-  ```ts
-  import {library} from '@feasibleone/blong';
+    ```ts
+    import {library} from '@feasibleone/blong';
 
-  export default library(({
-    lib: {
-          error          // framework function for defining typed errors
-    }
-  }) => {
-      error({
-          numberInteger: 'Numbers must be integer'
-      })
-  });
-  ```
+    export default library(
+        ({
+            lib: {
+                error, // framework function for defining typed errors
+            },
+        }) => {
+            error({
+                numberInteger: 'Numbers must be integer',
+            });
+        },
+    );
+    ```
 
 - `example/orchestrator/math/sum.ts` - defines the reusable library function `sum`.
 
-  ```ts
-  import { library } from '@feasibleone/blong';
+    ```ts
+    import {library} from '@feasibleone/blong';
 
-  export default library(({
-      errors             // access the defined errors
-  }) =>
-      function sum(params: number[]) {
-          if (!params.every(Number.isInteger)) throw errors.numberInteger();
-          return params.reduce((prev, cur) => prev + cur, 0);
-      }
-  );
-  ```
+    export default library(
+        ({
+            errors, // access the defined errors
+        }) =>
+            function sum(params: number[]) {
+                if (!params.every(Number.isInteger)) throw errors.numberInteger();
+                return params.reduce((prev, cur) => prev + cur, 0);
+            },
+    );
+    ```
 
-- `example/orchestrator/math/mathNumberSum.ts` - defines the handler for
-  calculating the sum.
+- `example/orchestrator/math/mathNumberSum.ts` - defines the handler for calculating the sum.
 
-  ```ts
-  import {handler} from '@feasibleone/blong';
+    ```ts
+    import {handler} from '@feasibleone/blong';
 
-  export default handler(({
-      lib: {
-          sum            // user defined library function
-      }
-  }) =>
-      function mathNumberSum(params) {
-          return sum(params);
-      }
-  );
-  ```
+    export default handler(
+        ({
+            lib: {
+                sum, // user defined library function
+            },
+        }) =>
+            function mathNumberSum(params) {
+                return sum(params);
+            },
+    );
+    ```
 
-- `example/orchestrator/math/mathNumberAverage.ts` - defines the handler for
-  calculating the average.
+- `example/orchestrator/math/mathNumberAverage.ts` - defines the handler for calculating the
+  average.
 
-  ```ts
-  import {handler} from '@feasibleone/blong';
+    ```ts
+    import {handler} from '@feasibleone/blong';
 
-  export default handler(({
-      config: {
-          precision      // access configuration
-      },
-      handler: {
-          mathNumberSum  // local or remote handler
-      }
-  }) => async function mathNumberAverage(numbers: number[], $meta){
-      if (!numbers?.length) return;
-      return ((await mathNumberSum(numbers, $meta)) / numbers.length).toPrecision(precision)
-  })
-  ```
+    export default handler(
+        ({
+            config: {
+                precision, // access configuration
+            },
+            handler: {
+                mathNumberSum, // local or remote handler
+            },
+        }) =>
+            async function mathNumberAverage(numbers: number[], $meta) {
+                if (!numbers?.length) return;
+                return ((await mathNumberSum(numbers, $meta)) / numbers.length).toPrecision(
+                    precision,
+                );
+            },
+    );
+    ```
 
 - `example/orchestrator/mathDispatch.ts` - defines a
   [dispatch orchestrator](./orchestrator#dispatch).
 
-  ```ts
-  import {orchestrator} from '@feasibleone/blong';
+    ```ts
+    import {orchestrator} from '@feasibleone/blong';
 
-  export default orchestrator(() => ({
-      extends: 'orchestrator.dispatch',
-  }));
-  ```
+    export default orchestrator(() => ({
+        extends: 'orchestrator.dispatch',
+    }));
+    ```
 
-- `example/server.ts` - defines the `example` [realm](./realm) and
-  the default configuration for the orchestrator.
+- `example/server.ts` - defines the `example` [realm](./realm) and the default configuration for the
+  orchestrator.
 
-  ```ts
-  import {realm} from '@feasibleone/blong';
+    ```ts
+    import {realm} from '@feasibleone/blong';
 
-  export default realm(() => ({
-      config: {
-          default: {
-              mathDispatch: {
-                  namespace: 'number',
-                  imports: 'example.number',
-              },
-          },
-      },
-      ...rest
-  }));
-  ```
+    export default realm(() => ({
+        config: {
+            default: {
+                mathDispatch: {
+                    namespace: 'number',
+                    imports: 'example.number',
+                },
+            },
+        },
+        ...rest,
+    }));
+    ```
 
 ## Overriding the default handling
 
-Handlers and adapter/orchestrator ports can override a method that the framework
-(or another handler group) already provides and delegate back to the default
-implementation. This is how custom persistence reuses the automatic CRUD, how
-codecs transform requests, and how adapters hook the lifecycle.
+Handlers and adapter/orchestrator ports can override a method that the framework (or another handler
+group) already provides and delegate back to the default implementation. This is how custom
+persistence reuses the automatic CRUD, how codecs transform requests, and how adapters hook the
+lifecycle.
 
 ### The `super` object — prototype-chain delegation
 
-`super` is plain JavaScript prototype-chain inheritance, not a framework
-abstraction. The runtime wires handler groups into a chain with
-`Object.setPrototypeOf()` (see the
-[wiring-pipeline rationale](../rationale/wiring-pipeline#prototype-chain-wiring))
-so `super.<method>` resolves the "parent" implementation: an earlier-attached
-handler group, a synthetic handler bound to the port (procedures, CRUD
-bindings), the port instance, or the `AdapterBase` lifecycle defaults.
+`super` is plain JavaScript prototype-chain inheritance, not a framework abstraction. The runtime
+wires handler groups into a chain with `Object.setPrototypeOf()` (see the
+[wiring-pipeline rationale](../rationale/wiring-pipeline#prototype-chain-wiring)) so
+`super.<method>` resolves the "parent" implementation: an earlier-attached handler group, a
+synthetic handler bound to the port (procedures, CRUD bindings), the port instance, or the
+`AdapterBase` lifecycle defaults.
 
-To use `super`, a handler must return an **object literal with method
-shorthand**. A plain `function` expression cannot reference `super`.
+To use `super`, a handler must return an **object literal with method shorthand**. A plain
+`function` expression cannot reference `super`.
 
 ```ts
 // example/orchestrator/math/mathNumberAverage.ts
@@ -286,44 +284,40 @@ export default handler(({lib: {precision}}) => ({
 
 The generic knex adapter implements `find`/`get`/`add`/`edit`/`remove`/
 `merge`/`insert`/`update`/`delete` for every declared table (see
-[`adapter.knex`](../concepts/adapter#database)). A custom persistence handler
-that must run business logic before or after the standard operation is named
-after the method (e.g. `accessUserEdit` → `access.user.edit`) and delegates the
-generic part with `super.exec`:
+[`adapter.knex`](../concepts/adapter#database)). A custom persistence handler that must run business
+logic before or after the standard operation is named after the method (e.g. `accessUserEdit` →
+`access.user.edit`) and delegates the generic part with `super.exec`:
 
 ```ts
 // realmname/adapter/db/accessUserEdit.ts
 import {handler} from '@feasibleone/blong';
 
-export default handler(
-    ({handler: {'db/coreTripleMerge': coreTripleMerge}}) => ({
-        async accessUserEdit(params, $meta) {
-            const result = await super.exec(params, $meta); // standard update
-            // … custom handling (e.g. graph-edge sync) …
-            await coreTripleMerge({triples, refreshPath: true}, $meta);
-            return result;
-        },
-    }),
-);
+export default handler(({handler: {'db/coreTripleMerge': coreTripleMerge}}) => ({
+    async accessUserEdit(params, $meta) {
+        const result = await super.exec(params, $meta); // standard update
+        // … custom handling (e.g. graph-edge sync) …
+        await coreTripleMerge({triples, refreshPath: true}, $meta);
+        return result;
+    },
+}));
 ```
 
-For `get`/`find` this is the idiomatic way to enrich results (e.g. joining
-`core_resource` names onto resource-backed rows); for `edit`/`remove` it lets
-the standard row operation run while custom code handles related graph edges.
+For `get`/`find` this is the idiomatic way to enrich results (e.g. joining `core_resource` names
+onto resource-backed rows); for `edit`/`remove` it lets the standard row operation run while custom
+code handles related graph edges.
 
 ### `send` / `receive` — transform parameters and results
 
 The adapter loop applies two conversion handlers around every method call:
 
-- **`send`** — transforms the **outgoing parameters** before the API method
-  executes at the target port.
+- **`send`** — transforms the **outgoing parameters** before the API method executes at the target
+  port.
 - **`receive`** — transforms the **incoming result** after the method returns.
 
-Both are looked up by `getConversion` in priority order: a per-method
-conversion (`<subject>.<object>.<predicate>.request.send`), an opcode or mtid
-level conversion (`request.send`), then the generic `send`/`receive`. They can
-be stacked — a handler group higher in the chain overrides `send`/`receive` and
-delegates to the one beneath via `super`:
+Both are looked up by `getConversion` in priority order: a per-method conversion
+(`<subject>.<object>.<predicate>.request.send`), an opcode or mtid level conversion
+(`request.send`), then the generic `send`/`receive`. They can be stacked — a handler group higher in
+the chain overrides `send`/`receive` and delegates to the one beneath via `super`:
 
 ```ts
 // adapter codec stack (e.g. MLE on top of JSON-RPC)
@@ -341,8 +335,8 @@ export default handler(() => ({
 
 ### Adapter lifecycle overrides
 
-Adapters hook the lifecycle (`start`/`stop`/`connect`/`init`/`ready`) and
-delegate with `super` so the base behaviour still runs:
+Adapters hook the lifecycle (`start`/`stop`/`connect`/`init`/`ready`) and delegate with `super` so
+the base behaviour still runs:
 
 ```ts
 // realmname/adapter/http/sim/echo.ts
@@ -360,9 +354,8 @@ async stop(...params) {
 },
 ```
 
-See also [schema-sync](./schema-sync#overriding-a-synthetic-handler) for the
-`super.sqlItem*` delegation pattern used to override synthetic procedure
-handlers.
+See also [schema-sync](./schema-sync#overriding-a-synthetic-handler) for the `super.sqlItem*`
+delegation pattern used to override synthetic procedure handlers.
 
 ## Folder-Level Configuration (config.ts)
 
@@ -393,8 +386,8 @@ export default {
 
 Handlers in the folder receive this config automatically via their `config` parameter.
 
-To override values from outside the folder (e.g. for deployment-specific secrets or URLs that
-cannot live in source code), use the `namespace` property in the realm's `server.ts`:
+To override values from outside the folder (e.g. for deployment-specific secrets or URLs that cannot
+live in source code), use the `namespace` property in the realm's `server.ts`:
 
 ```ts
 // example/server.ts — override math handler config
@@ -414,72 +407,72 @@ export default realm(() => ({
 }));
 ```
 
-**Priority:** Realm `namespace` override > `config.ts` active environment activation > `config.ts` `default`
+**Priority:** Realm `namespace` override > `config.ts` active environment activation > `config.ts`
+`default`
 
 ## Handler-Test Continuum
 
-Handlers and tests share deep structural similarities — both orchestrate
-sequences of calls, validate results, and produce outputs. The framework
-embraces this by providing mechanisms that work identically in both contexts.
+Handlers and tests share deep structural similarities — both orchestrate sequences of calls,
+validate results, and produce outputs. The framework embraces this by providing mechanisms that work
+identically in both contexts.
 
 ### Checkpoints
 
-The `checkpoint` function records progress through multi-step
-operations. It is available via `$meta.checkpoint` and should always be called
-with optional chaining to ensure zero overhead in production:
+The `checkpoint` function records progress through multi-step operations. It is available via
+`$meta.checkpoint` and should always be called with optional chaining to ensure zero overhead in
+production:
 
 ```ts
-export default handler(({handler: {validate, persist}}) =>
-    async function orderProcess(params, $meta) {
-        const validated = await validate(params, $meta);
-        $meta.checkpoint?.('validated', {orderId: validated.id});
+export default handler(
+    ({handler: {validate, persist}}) =>
+        async function orderProcess(params, $meta) {
+            const validated = await validate(params, $meta);
+            $meta.checkpoint?.('validated', {orderId: validated.id});
 
-        const saved = await persist(validated, $meta);
-        $meta.checkpoint?.('persisted', {orderId: saved.id, version: saved.version});
+            const saved = await persist(validated, $meta);
+            $meta.checkpoint?.('persisted', {orderId: saved.id, version: saved.version});
 
-        return saved;
-    }
+            return saved;
+        },
 );
 ```
 
-In test mode, checkpoints are recorded in `$meta.checkpoints` and can be
-asserted on. In debug mode, they emit structured log entries. In production,
-the `?.` operator ensures they are no-ops. See the
+In test mode, checkpoints are recorded in `$meta.checkpoints` and can be asserted on. In debug mode,
+they emit structured log entries. In production, the `?.` operator ensures they are no-ops. See the
 [checkpoint concept](../concepts/checkpoint) for details.
 
 ### Optional Assertions
 
-Handlers destructure `assert` from `lib`, following the same pattern as
-`checkpoint`: `undefined` in production, active in test/debug mode. Both
-use optional chaining for zero-cost in production:
+Handlers destructure `assert` from `lib`, following the same pattern as `checkpoint`: `undefined` in
+production, active in test/debug mode. Both use optional chaining for zero-cost in production:
 
 ```ts
-export default handler(({lib: {assert}, handler: {accountGet, accountUpdate}}) =>
-    async function accountDebit({accountId, amount}, $meta) {
-        const account = await accountGet({accountId}, $meta);
-        assert?.ok(account.balance >= amount, 'Sufficient funds');
-        $meta.checkpoint?.('balance-checked', {balance: account.balance});
+export default handler(
+    ({lib: {assert}, handler: {accountGet, accountUpdate}}) =>
+        async function accountDebit({accountId, amount}, $meta) {
+            const account = await accountGet({accountId}, $meta);
+            assert?.ok(account.balance >= amount, 'Sufficient funds');
+            $meta.checkpoint?.('balance-checked', {balance: account.balance});
 
-        const result = await accountUpdate(
-            {accountId, balance: account.balance - amount},
-            $meta,
-        );
-        assert?.equal(result.balance, account.balance - amount, 'Balance updated correctly');
-        $meta.checkpoint?.('debit-applied', {newBalance: result.balance});
+            const result = await accountUpdate(
+                {accountId, balance: account.balance - amount},
+                $meta,
+            );
+            assert?.equal(result.balance, account.balance - amount, 'Balance updated correctly');
+            $meta.checkpoint?.('debit-applied', {newBalance: result.balance});
 
-        return result;
-    }
+            return result;
+        },
 );
 ```
 
-In production (`checkpointMode: 'production'`), both `assert` and `checkpoint`
-are `undefined` — all `assert?.` and `checkpoint?.` calls are no-ops. In
-test/debug mode, `assert` is `node:assert` and failures are reported normally.
+In production (`checkpointMode: 'production'`), both `assert` and `checkpoint` are `undefined` — all
+`assert?.` and `checkpoint?.` calls are no-ops. In test/debug mode, `assert` is `node:assert` and
+failures are reported normally.
 
 ### Graduating Tests to Handlers
 
-A test handler that proves a workflow works can be promoted to a production
-handler by moving it from the `test` layer to the `orchestrator` layer,
-changing assertions from mandatory to optional, and adding checkpoints.
-See the [unified handler-test rationale](../rationale/unified-handler-test)
+A test handler that proves a workflow works can be promoted to a production handler by moving it
+from the `test` layer to the `orchestrator` layer, changing assertions from mandatory to optional,
+and adding checkpoints. See the [unified handler-test rationale](../rationale/unified-handler-test)
 for the full design.

@@ -151,10 +151,10 @@ sequenceDiagram
 | ---- | ----------------- | ----- | -------- | -------- | -------- | ----------- |
 | `discovery.parties` | `payer` → `hub` | discovery | 1 | 1 | 1 | `flow/payer.ts:67` |
 | `discovery.payee` | `hub` → `payee` | discovery | 1.1 | 1 | 1 | `flow/hub.ts:56` |
-| `quote.rates` | `payer` → `hub` | quote | 2 | 1 | 1 | `flow/payer.ts:84` |
+| `quote.rates` | `payer` → `hub` | quote | 2 | 1 | 1 | `flow/payer.ts:85` |
 | `quote.fx` | `hub` → `fxp` | quote | 2.1 | 1 | 1 | `flow/hub.ts:57` |
 | `quote.payee` | `hub` → `payee` | quote | 2.2 | 1 | 1 | `flow/hub.ts:58` |
-| `transfer.submit` | `payer` → `hub` | transfer | 3 | 1 | 1 | `flow/payer.ts:123` |
+| `transfer.submit` | `payer` → `hub` | transfer | 3 | 1 | 1 | `flow/payer.ts:124` |
 | `transfer.deliver` | `hub` → `payee` | transfer | 3.1 | 1 | 1 | `flow/hub.ts:59` |
 <!-- END OBSERVED FLOWS: transfer.single -->
 
@@ -214,12 +214,12 @@ sequenceDiagram
 | `discovery.proxy` | `hubA` → `proxy` | discovery | 1.1 | 1 | 1 | `flow/hubA.ts:53` |
 | `proxy.discovery.corridor` | `proxy` → `hubB` | discovery | 1.1.1 | 1 | 1 | `flow/proxy.ts:45` |
 | `discovery.payee` | `hubB` → `payee` | discovery | 1.1.1.1 | 1 | 1 | `flow/hub.ts:56` |
-| `quote.rates` | `payer` → `hubA` | quote | 2 | 1 | 1 | `flow/payer.ts:84` |
+| `quote.rates` | `payer` → `hubA` | quote | 2 | 1 | 1 | `flow/payer.ts:85` |
 | `quote.proxy` | `hubA` → `proxy` | quote | 2.1 | 1 | 1 | `flow/hubA.ts:88` |
 | `proxy.quote.corridor` | `proxy` → `hubB` | quote | 2.1.1 | 1 | 1 | `flow/proxy.ts:46` |
 | `quote.fx` | `hubB` → `fxp` | quote | 2.1.1.1 | 1 | 1 | `flow/hub.ts:57` |
 | `quote.payee` | `hubB` → `payee` | quote | 2.1.1.2 | 1 | 1 | `flow/hub.ts:58` |
-| `transfer.submit` | `payer` → `hubA` | transfer | 3 | 1 | 1 | `flow/payer.ts:123` |
+| `transfer.submit` | `payer` → `hubA` | transfer | 3 | 1 | 1 | `flow/payer.ts:124` |
 | `transfer.proxy` | `hubA` → `proxy` | transfer | 3.1 | 1 | 1 | `flow/hubA.ts:122` |
 | `proxy.transfer.corridor` | `proxy` → `hubB` | transfer | 3.1.1 | 1 | 1 | `flow/proxy.ts:47` |
 | `transfer.deliver` | `hubB` → `payee` | transfer | 3.1.1.1 | 1 | 1 | `flow/hub.ts:59` |

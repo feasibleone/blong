@@ -2,36 +2,33 @@
 
 ## Problem
 
-Referencing typed errors inside handlers required verbose string-keyed
-destructuring that clashed with normal JavaScript patterns. The dot-notation
-key format — necessary to encode the `realm.errorName` ownership — forced
-developers to use the explicit rename syntax:
+Referencing typed errors inside handlers required verbose string-keyed destructuring that clashed
+with normal JavaScript patterns. The dot-notation key format — necessary to encode the
+`realm.errorName` ownership — forced developers to use the explicit rename syntax:
 
 ```typescript
 export default handler(
     ({errors: {'release.jobTrigger': errorReleaseJobTrigger}}) =>
         async function releaseJobTrigger(params, $meta) {
             throw errorReleaseJobTrigger({params: {jobName: 'test'}}, $meta);
-        }
+        },
 );
 ```
 
 This had three compounding issues:
 
-1. **IDE friction** — string-keyed destructuring provides no autocomplete and
-   the rename requirement is unfamiliar to most JavaScript developers.
-2. **Typo risk deferred to runtime** — a misspelled key in a string literal
-   (`'release.jobTriger'`) would not be caught until the error was actually
-   thrown, potentially in production.
-3. **Verbosity** — every error reference required two tokens (the string key
-   and the local variable name) even when both encode the same information.
+1. **IDE friction** — string-keyed destructuring provides no autocomplete and the rename requirement
+   is unfamiliar to most JavaScript developers.
+2. **Typo risk deferred to runtime** — a misspelled key in a string literal (`'release.jobTriger'`)
+   would not be caught until the error was actually thrown, potentially in production.
+3. **Verbosity** — every error reference required two tokens (the string key and the local variable
+   name) even when both encode the same information.
 
 ## Solution
 
-A JavaScript `Proxy` wraps the errors map at handler registration time, enabling
-a simplified camelCase destructuring syntax while preserving full backwards
-compatibility. The proxy converts property access from
-`errorReleaseJobTrigger` → `release.jobTrigger` via a case-insensitive lookup,
+A JavaScript `Proxy` wraps the errors map at handler registration time, enabling a simplified
+camelCase destructuring syntax while preserving full backwards compatibility. The proxy converts
+property access from `errorReleaseJobTrigger` → `release.jobTrigger` via a case-insensitive lookup,
 performing the transformation at definition time (once, not per call).
 
 ```typescript
@@ -39,15 +36,14 @@ export default handler(
     ({errors: {errorReleaseJobTrigger}}) =>
         async function releaseJobTrigger(params, $meta) {
             throw errorReleaseJobTrigger({params: {jobName: 'test'}}, $meta);
-        }
+        },
 );
 ```
 
 ## Overview
 
-The Blong framework supports a simplified syntax for referencing errors in
-handlers, making error handling more ergonomic while maintaining full backwards
-compatibility.
+The Blong framework supports a simplified syntax for referencing errors in handlers, making error
+handling more ergonomic while maintaining full backwards compatibility.
 
 ## What Changed
 
@@ -58,7 +54,7 @@ export default handler(
     ({errors: {'release.jobTrigger': errorReleaseJobTrigger}}) =>
         async function releaseJobTrigger(params, $meta) {
             throw errorReleaseJobTrigger({params: {jobName: 'test'}}, $meta);
-        }
+        },
 );
 ```
 
@@ -69,7 +65,7 @@ export default handler(
     ({errors: {errorReleaseJobTrigger}}) =>
         async function releaseJobTrigger(params, $meta) {
             throw errorReleaseJobTrigger({params: {jobName: 'test'}}, $meta);
-        }
+        },
 );
 ```
 
@@ -77,34 +73,38 @@ export default handler(
 
 1. **Simpler Syntax**: No more string quotes and explicit renaming
 2. **Better IDE Support**: Improved autocomplete with direct property access
-3. **Case-Insensitive**: `errorReleaseJobTrigger`, `errorreleasjobtrigger`, and `ERRORRELEASEJOBTRIGGER` all work
+3. **Case-Insensitive**: `errorReleaseJobTrigger`, `errorreleasjobtrigger`, and
+   `ERRORRELEASEJOBTRIGGER` all work
 4. **Backwards Compatible**: Old dot notation syntax continues to work
 5. **Less Typing**: Cleaner, more concise code
-6. **Early Error Detection**: Typos in error names throw immediately during destructuring, catching bugs early
+6. **Early Error Detection**: Typos in error names throw immediately during destructuring, catching
+   bugs early
 
 ## How It Works
 
 The error system now uses a JavaScript Proxy that:
 
-1. **Maintains Original Keys**: Errors are still stored with their dot notation (e.g., `'release.jobTrigger'`)
+1. **Maintains Original Keys**: Errors are still stored with their dot notation (e.g.,
+   `'release.jobTrigger'`)
 2. **Provides Multiple Access Patterns**:
-   - Direct dot notation: `errors['release.jobTrigger']` (backwards compatible)
-   - Simplified camelCase: `errors.errorReleaseJobTrigger` (new)
-   - Destructuring: `{errorReleaseJobTrigger}` from `errors` (new)
+    - Direct dot notation: `errors['release.jobTrigger']` (backwards compatible)
+    - Simplified camelCase: `errors.errorReleaseJobTrigger` (new)
+    - Destructuring: `{errorReleaseJobTrigger}` from `errors` (new)
 3. **Case-Insensitive Lookup**: Converts property names to lowercase for matching
 4. **Optional Error Prefix**: Works with or without the "error" prefix
-5. **Immediate Error on Typos**: Throws immediately when accessing non-existent errors to catch typos during destructuring
+5. **Immediate Error on Typos**: Throws immediately when accessing non-existent errors to catch
+   typos during destructuring
 
 ## Naming Convention
 
 Error keys are automatically mapped to camelCase variables:
 
-| Error Key (Definition) | Variable Name (Usage) |
-|------------------------|----------------------|
-| `'release.jobTrigger'` | `errorReleaseJobTrigger` |
-| `'user.notFound'` | `errorUserNotFound` |
+| Error Key (Definition)        | Variable Name (Usage)           |
+| ----------------------------- | ------------------------------- |
+| `'release.jobTrigger'`        | `errorReleaseJobTrigger`        |
+| `'user.notFound'`             | `errorUserNotFound`             |
 | `'payment.insufficientFunds'` | `errorPaymentInsufficientFunds` |
-| `'hsm.connection.timeout'` | `errorHsmConnectionTimeout` |
+| `'hsm.connection.timeout'`    | `errorHsmConnectionTimeout`     |
 
 ## Implementation Details
 
@@ -116,7 +116,8 @@ Error keys are automatically mapped to camelCase variables:
 
 ### Proxy Logic
 
-The error proxy is created once upfront and cached for performance. When accessing `errors.errorReleaseJobTrigger`:
+The error proxy is created once upfront and cached for performance. When accessing
+`errors.errorReleaseJobTrigger`:
 
 1. Check if property exists directly (for backwards compatibility)
 2. If not, convert to lowercase: `'errorReleaseJobTrigger'` → `'errorreleasjobtrigger'`
@@ -124,7 +125,8 @@ The error proxy is created once upfront and cached for performance. When accessi
 4. Look up in the error lookup map: `'releasejobtrigger'` → `'release.jobTrigger'`
 5. Return the error handler for `'release.jobTrigger'`
 
-**Performance:** The proxy is instantiated once and reused on all subsequent `get()` calls, avoiding repeated proxy creation overhead.
+**Performance:** The proxy is instantiated once and reused on all subsequent `get()` calls, avoiding
+repeated proxy creation overhead.
 
 ### Real Implementation
 
@@ -148,7 +150,9 @@ const errorsProxy = new Proxy(errors, {
             `Error '${String(prop)}' not found. Available errors: ${Object.keys(target).join(', ')}`,
         );
     },
-    has(target, prop) { /* ... */ }
+    has(target, prop) {
+        /* ... */
+    },
 });
 ```
 
@@ -177,7 +181,8 @@ const {errorReleaseJobTrigger, errorWrongName} = errors;
 // Error: Error 'errorWrongName' not found. Available errors: ...
 ```
 
-This behaviour ensures that typos and incorrect error names are caught immediately during development, rather than failing silently or at runtime.
+This behaviour ensures that typos and incorrect error names are caught immediately during
+development, rather than failing silently or at runtime.
 
 ## Migration Guide
 
@@ -200,25 +205,17 @@ export default handler(
         errors: {
             'user.notFound': errorUserNotFound,
             'user.invalidEmail': errorUserInvalidEmail,
-            'user.exists': errorUserExists
-        }
+            'user.exists': errorUserExists,
+        },
     }) => {
         // handler implementation
-    }
+    },
 );
 
 // After
-export default handler(
-    ({
-        errors: {
-            errorUserNotFound,
-            errorUserInvalidEmail,
-            errorUserExists
-        }
-    }) => {
-        // handler implementation
-    }
-);
+export default handler(({errors: {errorUserNotFound, errorUserInvalidEmail, errorUserExists}}) => {
+    // handler implementation
+});
 ```
 
 ## Testing
@@ -245,28 +242,25 @@ node --test src/error.proxy.test.ts
 
 ## Future Ideas
 
-1. **Type-safe proxy via TypeScript template literals** — derive the camelCase
-   property type from the dot-notation key at compile time using
+1. **Type-safe proxy via TypeScript template literals** — derive the camelCase property type from
+   the dot-notation key at compile time using
 
-   ```typescript
-   type ErrorKey<T extends string> =`error${Capitalize<CamelCase<T>>}`
-   ```
+    ```typescript
+    type ErrorKey<T extends string> = `error${Capitalize<CamelCase<T>>}`;
+    ```
 
-   so that `errors.errorReleaseJobTrigger` is type-checked against the defined
-   error registry without runtime cost.
+    so that `errors.errorReleaseJobTrigger` is type-checked against the defined error registry
+    without runtime cost.
 
-2. **Namespace sub-setting** — allow `errors.subset('release')` to return a
-   proxy that only exposes `release.*` errors. This reduces the surface area
-   visible in a handler and makes it easier to understand which errors a given
-   handler can throw.
+2. **Namespace sub-setting** — allow `errors.subset('release')` to return a proxy that only exposes
+   `release.*` errors. This reduces the surface area visible in a handler and makes it easier to
+   understand which errors a given handler can throw.
 
-3. **Auto-generated error documentation** — expose an `errors.all()` method
-   returning the full list of error types, messages, and HTTP status codes.
-   The framework can call this at startup to populate the OpenAPI `responses`
-   section automatically, ensuring API documentation stays in sync with the
-   error registry.
+3. **Auto-generated error documentation** — expose an `errors.all()` method returning the full list
+   of error types, messages, and HTTP status codes. The framework can call this at startup to
+   populate the OpenAPI `responses` section automatically, ensuring API documentation stays in sync
+   with the error registry.
 
-4. **Coverage for error handling in tests** — extend the test framework to track
-   which errors are thrown during test execution and report on error coverage,
-   similar to code coverage. This encourages testing of edge cases and ensures that
-   all defined errors are exercised by tests.
+4. **Coverage for error handling in tests** — extend the test framework to track which errors are
+   thrown during test execution and report on error coverage, similar to code coverage. This
+   encourages testing of edge cases and ensures that all defined errors are exercised by tests.

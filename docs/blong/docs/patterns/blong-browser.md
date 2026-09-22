@@ -8,8 +8,8 @@ See [Browser UI](../concepts/browser-ui.md) for the concept overview.
 
 ## Adding blong-browser to a Suite
 
-Include the blong-browser realm in the suite's `browser.ts` entry point
-alongside the application realms:
+Include the blong-browser realm in the suite's `browser.ts` entry point alongside the application
+realms:
 
 ```typescript
 // browser.ts
@@ -36,17 +36,16 @@ export default browser(blong => ({
 }));
 ```
 
-The blong-browser realm automatically registers the portal shell, auth
-handling, backend adapter, storage adapter, and (in storybook/integration
-environments) the mock adapter. No explicit initialisation is needed.
+The blong-browser realm automatically registers the portal shell, auth handling, backend adapter,
+storage adapter, and (in storybook/integration environments) the mock adapter. No explicit
+initialisation is needed.
 
 ---
 
 ## Contributing Pages from a Realm
 
-A realm contributes pages by placing handler files that end with
-`.component` in its layer. The portal orchestrator discovers them automatically
-by file-name pattern.
+A realm contributes pages by placing handler files that end with `.component` in its layer. The
+portal orchestrator discovers them automatically by file-name pattern.
 
 ### Minimal component handler
 
@@ -66,13 +65,13 @@ export default handler(() => ({
 }));
 ```
 
-For the common case of CRUD pages, use the **Model System** instead —
-see [Schema based UI](blong-model.md).
+For the common case of CRUD pages, use the **Model System** instead — see
+[Schema based UI](blong-model.md).
 
 ### Adding menu items
 
-Place a `.portal` file in the component layer. The portal orchestrator
-imports all `*.portal` files to build the navigation menu.
+Place a `.portal` file in the component layer. The portal orchestrator imports all `*.portal` files
+to build the navigation menu.
 
 ```typescript
 // marine/component/marine.portal.ts
@@ -81,13 +80,15 @@ import {handler} from '@feasibleone/blong';
 export default handler(({handler: {portalMenuItem}}) => ({
     async 'marine.portal.params'() {
         return {
-            menu: [{
-                title: 'Marine',
-                items: [
-                    await portalMenuItem('marine.coral.browse'),
-                    await portalMenuItem('marine.family.browse'),
-                ],
-            }],
+            menu: [
+                {
+                    title: 'Marine',
+                    items: [
+                        await portalMenuItem('marine.coral.browse'),
+                        await portalMenuItem('marine.family.browse'),
+                    ],
+                },
+            ],
         };
     },
 }));
@@ -97,8 +98,8 @@ export default handler(({handler: {portalMenuItem}}) => ({
 
 ## Using Editor Directly
 
-For pages that need custom logic beyond what the model system provides,
-use the `Editor` component directly in a React component:
+For pages that need custom logic beyond what the model system provides, use the `Editor` component
+directly in a React component:
 
 ```tsx
 import {Editor} from '@feasibleone/blong-browser';
@@ -143,12 +144,14 @@ export function CoralList({schema}: {schema: IEnrichedSchema}) {
             schema={schema}
             listAction="marine.coral.find"
             selectionMode="single"
-            toolbar={[{
-                label: 'Create',
-                icon: 'pi pi-plus',
-                action: 'marine.coral.new',
-                permission: 'marine.coral.new',
-            }]}
+            toolbar={[
+                {
+                    label: 'Create',
+                    icon: 'pi pi-plus',
+                    action: 'marine.coral.new',
+                    permission: 'marine.coral.new',
+                },
+            ]}
         />
     );
 }
@@ -233,8 +236,8 @@ Two Storybook patterns exist:
 
 ### Component-level stories (blong-browser internal)
 
-Stories mock the dispatch function to develop and test individual components in isolation.
-Use the `withDispatch` decorator from `.storybook/dispatch.js`:
+Stories mock the dispatch function to develop and test individual components in isolation. Use the
+`withDispatch` decorator from `.storybook/dispatch.js`:
 
 ```tsx
 // CoralOpen.stories.tsx
@@ -243,15 +246,24 @@ import {coralEditorFixture, coralStoryValue} from '@feasibleone/blong-marine/met
 
 export default {
     title: 'marine/CoralOpen',
-    decorators: [withDispatch({
-        coralCoralGet: () => Promise.resolve(coralStoryValue),
-        coralCoralEdit: params => Promise.resolve(params),
-    })],
+    decorators: [
+        withDispatch({
+            coralCoralGet: () => Promise.resolve(coralStoryValue),
+            coralCoralEdit: params => Promise.resolve(params),
+        }),
+    ],
 };
 
 export const Default = {
-    render: () => <Editor schema={coralEditorFixture.schema} cards={coralEditorFixture.cards}
-                          loadAction="coralCoralGet" saveAction="coralCoralEdit" editable />,
+    render: () => (
+        <Editor
+            schema={coralEditorFixture.schema}
+            cards={coralEditorFixture.cards}
+            loadAction="coralCoralGet"
+            saveAction="coralCoralEdit"
+            editable
+        />
+    ),
 };
 ```
 
@@ -278,10 +290,10 @@ Then stories use the `page()` helper:
 // coral/Coral.stories.tsx
 import {page} from '../../storyHelper.js';
 
-export const CoralBrowse     = page('marine.coral.browse');
-export const CoralOpen       = page('marine.coral.open', 1);
-export const CoralNew        = page('marine.coral.new');
-export const CoralOpenSplit  = page('marine.coral.open', 1, {layout: 'editSplit'});
+export const CoralBrowse = page('marine.coral.browse');
+export const CoralOpen = page('marine.coral.open', 1);
+export const CoralNew = page('marine.coral.new');
+export const CoralOpenSplit = page('marine.coral.open', 1, {layout: 'editSplit'});
 ```
 
 ---
@@ -292,8 +304,8 @@ blong-browser has a lightweight translation system built on `appStore`.
 
 ### Text component
 
-`<Text>` is the universal translation primitive. Its string children act as both the
-translation key and the English fallback:
+`<Text>` is the universal translation primitive. Its string children act as both the translation key
+and the English fallback:
 
 ```tsx
 import {Text} from '@feasibleone/blong-browser';
@@ -306,12 +318,15 @@ import {Text} from '@feasibleone/blong-browser';
 
 ### Button auto-translation
 
-The blong `Button` wrapper auto-translates its string `label` via `<Text>`. Always import
-`Button` from blong-browser rather than primereact to get automatic translation:
+The blong `Button` wrapper auto-translates its string `label` via `<Text>`. Always import `Button`
+from blong-browser rather than primereact to get automatic translation:
 
 ```tsx
-import {Button} from '@feasibleone/blong-browser';  // ✅ translates label
-<Button label="Save" icon="pi pi-check" />
+import {Button} from '@feasibleone/blong-browser'; // ✅ translates label
+<Button
+    label="Save"
+    icon="pi pi-check"
+/>;
 ```
 
 ### Activating a language
@@ -328,8 +343,8 @@ useAppStore.getState().setLanguage('bg');
 
 ### PrimeReact widget locale via `Theme.languages`
 
-Register custom PrimeReact locale data through `IThemeConfig.languages`, which `Theme`
-passes to `addLocale` automatically. Fetch locale data from
+Register custom PrimeReact locale data through `IThemeConfig.languages`, which `Theme` passes to
+`addLocale` automatically. Fetch locale data from
 [primefaces/primelocale](https://github.com/primefaces/primelocale):
 
 ```tsx
@@ -339,9 +354,11 @@ passes to `addLocale` automatically. Fetch locale data from
         name: 'lara-light-blue',
         languages: {
             bg: {
-                accept: 'Да', cancel: 'Отказ',
+                accept: 'Да',
+                cancel: 'Отказ',
                 emptyMessage: 'Не са открити резултати',
-                dateFormat: 'dd/mm/yy', firstDayOfWeek: 1,
+                dateFormat: 'dd/mm/yy',
+                firstDayOfWeek: 1,
                 // … full locale object
             },
         },
@@ -353,8 +370,8 @@ Calling `setLanguage('bg')` activates the PrimeReact locale via `locale('bg')` i
 
 ### Storybook language stories
 
-Set `lang: '<locale>'` as a story arg to activate a language for that story — `withDispatch`
-picks it up from `context.args.lang`:
+Set `lang: '<locale>'` as a story arg to activate a language for that story — `withDispatch` picks
+it up from `context.args.lang`:
 
 ```ts
 export const ToolbarBG: Story = {...Toolbar};

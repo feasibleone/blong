@@ -22,7 +22,7 @@ and resolves through the in-process local registry – no network or RPC transpo
 
 ## Folder structure
 
-```
+```text
 realmname/
 ├── orchestrator/
 │   ├── eipDispatch.ts           # Business namespace

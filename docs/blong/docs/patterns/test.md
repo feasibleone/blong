@@ -2,14 +2,12 @@
 
 ## Test handlers
 
-Writing tests is very similar to writing handlers and library functions.
-The main difference is that the files are in the `server/test/test` folder
-(server-side) or `browser/test/test` (browser-side), the first `test` being
-part of the layer name and the second `test` being part
-of the name of the handlers, which becomes `xxx.test`.
-The layer name is useful to activate tests only when needed,
-while the `xxx.test` is convenient way to find all test handlers
-and attach them to the orchestrator where they can run.
+Writing tests is very similar to writing handlers and library functions. The main difference is that
+the files are in the `server/test/test` folder (server-side) or `browser/test/test` (browser-side),
+the first `test` being part of the layer name and the second `test` being part of the name of the
+handlers, which becomes `xxx.test`. The layer name is useful to activate tests only when needed,
+while the `xxx.test` is convenient way to find all test handlers and attach them to the orchestrator
+where they can run.
 
 **Key Features:**
 
@@ -18,26 +16,23 @@ and attach them to the orchestrator where they can run.
 - **Thenable Proxies:** Context properties act as promises, enabling flexible access patterns
 - **Configurable Concurrency:** Control parallel execution with concurrency limits
 
-Each test must return an array of steps. Each step is a function
-or another array of steps. Test handlers receive two arguments:
-the first one is parameters for the test, the second one is `$meta`.
-The first parameter can optionally include the property `name`,
-to give a name to the test. This is useful when reusing test handlers
-and passing different parameters, so the test is reported in the
-output as different test names. The test name must be set as a property
-of the returned array. This is done by the `group` function provided
-by the framework, which returns the passed array with the `name` property
-set.
+Each test must return an array of steps. Each step is a function or another array of steps. Test
+handlers receive two arguments: the first one is parameters for the test, the second one is `$meta`.
+The first parameter can optionally include the property `name`, to give a name to the test. This is
+useful when reusing test handlers and passing different parameters, so the test is reported in the
+output as different test names. The test name must be set as a property of the returned array. This
+is done by the `group` function provided by the framework, which returns the passed array with the
+`name` property set.
 
 ### Parallel Execution & Context
 
-When steps are executed, they **run in parallel by default** unless they have
-dependencies. The result of each step is set in an object called `context`.
-The function name determines the context property name.
+When steps are executed, they **run in parallel by default** unless they have dependencies. The
+result of each step is set in an object called `context`. The function name determines the context
+property name.
 
-All context properties are **thenable proxies** - they act as promises and
-must be awaited. When a step accesses a context property (e.g., `await context.stepName`
-or `const {stepName} = context; await stepName`), the framework automatically:
+All context properties are **thenable proxies** - they act as promises and must be awaited. When a
+step accesses a context property (e.g., `await context.stepName` or
+`const {stepName} = context; await stepName`), the framework automatically:
 
 1. Detects the dependency between steps
 2. Ensures the dependent step waits for the dependency to complete
@@ -45,16 +40,15 @@ or `const {stepName} = context; await stepName`), the framework automatically:
 
 This enables automatic dependency detection without manual configuration.
 
-Tests start with a context containing only `$meta`. Subsequent steps can
-access the context to receive values from previous steps. Independent steps
-(those not accessing other step results) run in parallel automatically.
+Tests start with a context containing only `$meta`. Subsequent steps can access the context to
+receive values from previous steps. Independent steps (those not accessing other step results) run
+in parallel automatically.
 
-Test steps are called with two parameters: `assert` and `context`. By default
-the assert function is the one coming from `node:assert`, but it can be changed
-to other ones, like the ones coming from [tap](https://node-tap.org/), which are mainly
-useful for [snapshot testing](https://www.npmjs.com/package/@tapjs/snapshot)
-with the `matchSnapshot` assertion function, which is not available in
-`node:assert`.
+Test steps are called with two parameters: `assert` and `context`. By default the assert function is
+the one coming from `node:assert`, but it can be changed to other ones, like the ones coming from
+[tap](https://node-tap.org/), which are mainly useful for
+[snapshot testing](https://www.npmjs.com/package/@tapjs/snapshot) with the `matchSnapshot` assertion
+function, which is not available in `node:assert`.
 
 Example:
 
@@ -62,28 +56,18 @@ Example:
 // realmname/server/test/test/testSomething.ts
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
-export default handler(({
-    lib: {group},
-    handler: {
-        testLoginTokenCreate,
-        subjectObjectPredicate
-    }
-}) => ({
-    testSomething: ({name = 'something'}, $meta) =>
-        group(name)([
-            testLoginTokenCreate({}, $meta), // reuse another test
-            async function testCase(
-                assert: IAssert,
-                {$meta}: {$meta: IMeta}
-            ) {
-                const result = await subjectObjectPredicate<{data: string}>(
-                    {},
-                    $meta
-                );
-                assert.equal(result.data, 'expected data', 'Return expected data');
-            }
-        ])
-}));
+export default handler(
+    ({lib: {group}, handler: {testLoginTokenCreate, subjectObjectPredicate}}) => ({
+        testSomething: ({name = 'something'}, $meta) =>
+            group(name)([
+                testLoginTokenCreate({}, $meta), // reuse another test
+                async function testCase(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                    const result = await subjectObjectPredicate<{data: string}>({}, $meta);
+                    assert.equal(result.data, 'expected data', 'Return expected data');
+                },
+            ]),
+    }),
+);
 ```
 
 ## Thenable Proxy Patterns
@@ -141,8 +125,8 @@ group(name)([
     },
     async function fetchPayment(assert, {$meta}) {
         return await paymentGet({paymentId: 1}, $meta);
-    }
-])
+    },
+]);
 ```
 
 ### Dependent Steps (Automatic Sequencing)
@@ -165,13 +149,16 @@ group(name)([
     async function createPayment(assert, {createUser, createAccount}) {
         const user = await createUser;
         const account = await createAccount;
-        const payment = await paymentAdd({
-            userId: user.userId,
-            accountId: account.accountId
-        }, $meta);
+        const payment = await paymentAdd(
+            {
+                userId: user.userId,
+                accountId: account.accountId,
+            },
+            $meta,
+        );
         assert.ok(payment.id);
-    }
-])
+    },
+]);
 ```
 
 ### Sequential Groups
@@ -182,22 +169,30 @@ Use nested arrays to force sequential execution:
 group(name)(
     // Group 1 completes first
     [
-        async function setup1(assert, {$meta}) { /* ... */ },
-        async function setup2(assert, {$meta}) { /* ... */ }
+        async function setup1(assert, {$meta}) {
+            /* ... */
+        },
+        async function setup2(assert, {$meta}) {
+            /* ... */
+        },
     ],
 
     // Group 2 runs after Group 1 completes
     [
-        async function test1(assert, context) { /* ... */ },
-        async function test2(assert, context) { /* ... */ }
-    ]
-)
+        async function test1(assert, context) {
+            /* ... */
+        },
+        async function test2(assert, context) {
+            /* ... */
+        },
+    ],
+);
 ```
 
 ## Reusing Test Handlers with Parameters
 
-Test handlers accept arbitrary parameters beyond `name`, enabling powerful reuse
-patterns. A reusable test handler defines custom parameters with default values:
+Test handlers accept arbitrary parameters beyond `name`, enabling powerful reuse patterns. A
+reusable test handler defines custom parameters with default values:
 
 ```ts
 // realmname/server/test/test/testTransfer.ts
@@ -210,7 +205,7 @@ export default handler(({lib: {group}, handler: {transferTransferCreate}}) => ({
                 assert.equal(result.amount, amount, 'Amount matches');
                 return {transferId: result.transferId};
             },
-        ])
+        ]),
 }));
 ```
 
@@ -221,15 +216,15 @@ Another handler can reuse it with different parameter combinations:
 export default handler(({lib: {group}, handler: {testTransfer}}) => ({
     testTransferScenarios: ({name = 'transfer scenarios'}, $meta) =>
         group(name)([
-            testTransfer({name: 'small USD',  amount: 10,    currency: 'USD'}, $meta),
-            testTransfer({name: 'large EUR',  amount: 50000, currency: 'EUR'}, $meta),
-            testTransfer({name: 'zero USD',   amount: 0,     currency: 'USD'}, $meta),
-        ])
+            testTransfer({name: 'small USD', amount: 10, currency: 'USD'}, $meta),
+            testTransfer({name: 'large EUR', amount: 50000, currency: 'EUR'}, $meta),
+            testTransfer({name: 'zero USD', amount: 0, currency: 'USD'}, $meta),
+        ]),
 }));
 ```
 
-Each call to `testTransfer(...)` returns a named step array (`group(name)([...])`).
-Those named arrays are treated as sequential sub-tests within the outer group.
+Each call to `testTransfer(...)` returns a named step array (`group(name)([...])`). Those named
+arrays are treated as sequential sub-tests within the outer group.
 
 ### Parameter Flow
 
@@ -239,8 +234,8 @@ Parameters flow through the `group(name)(steps)` pattern:
 2. It returns a **named step array** containing closures that capture those parameters.
 3. The step array name (set by `group()`) is how it appears in test output.
 
-This means all parameterization happens before execution — the test framework
-simply receives a tree of named step arrays and functions.
+This means all parameterization happens before execution — the test framework simply receives a tree
+of named step arrays and functions.
 
 ### Convention
 
@@ -261,22 +256,21 @@ export default handler(({lib: {group}}) => ({
             async function step2(assert, {step1}) {
                 const result = await step1;
                 assert.equal(result.data, 'test');
-            }
-        ])
+            },
+        ]),
 }));
 ```
 
 ## Handler-Test Convergence
 
-Tests and handlers share deep structural similarities. The framework provides
-mechanisms that work identically in both contexts, enabling a smooth transition
-from test code to production code.
+Tests and handlers share deep structural similarities. The framework provides mechanisms that work
+identically in both contexts, enabling a smooth transition from test code to production code.
 
 ### Checkpoints in Tests
 
-The [checkpoint](../concepts/checkpoint) function records progress through
-multi-step operations. In test mode, checkpoints are recorded in
-`$meta.checkpoints`, enabling assertions on intermediate handler states:
+The [checkpoint](../concepts/checkpoint) function records progress through multi-step operations. In
+test mode, checkpoints are recorded in `$meta.checkpoints`, enabling assertions on intermediate
+handler states:
 
 ```ts
 export default handler(({lib: {group}, handler: {orderProcess}}) => ({
@@ -304,8 +298,8 @@ Test handlers can be promoted to production handlers. The process:
 3. Add checkpoints at key progress points
 4. Adjust the orchestrator dispatch configuration
 
-The same code that validated a workflow in testing becomes the production
-orchestration, with assertions silenced via optional chaining.
+The same code that validated a workflow in testing becomes the production orchestration, with
+assertions silenced via optional chaining.
 
 ```ts
 // Before (test handler): assert is mandatory, passed by chain executor
@@ -325,6 +319,5 @@ async function accountProvisionAndTransfer({balance}, $meta) {
 }
 ```
 
-See the [unified handler-test rationale](../rationale/unified-handler-test)
-for the full design and additional ideas like invariant guards, canary
-assertions, and progressive verification levels.
+See the [unified handler-test rationale](../rationale/unified-handler-test) for the full design and
+additional ideas like invariant guards, canary assertions, and progressive verification levels.

@@ -1,21 +1,21 @@
 # Full-Stack Testing with Playwright
 
-Full-stack testing verifies the entire application stack — from the browser UI through the
-React component layer, JSON-RPC transport, server-side handlers, and back — in a single test
-run. Blong integrates Playwright for this purpose, providing reusable fixtures and test helpers
-that work with any blong suite.
+Full-stack testing verifies the entire application stack — from the browser UI through the React
+component layer, JSON-RPC transport, server-side handlers, and back — in a single test run. Blong
+integrates Playwright for this purpose, providing reusable fixtures and test helpers that work with
+any blong suite.
 
 ## Why Full-Stack Tests?
 
 Unit tests (vitest) verify components in isolation. Storybook interaction tests verify component
 behaviour with mocked data. Full-stack Playwright tests fill the remaining gap:
 
-| Test type        | Scope                    | Speed   | Confidence |
-| ---------------- | ------------------------ | ------- | ---------- |
-| Unit (vitest)    | Single component/hook    | Fast    | Low        |
-| Storybook        | Component + mock data    | Medium  | Medium     |
-| **Playwright**   | **Browser → Server → DB mock** | Slower  | **High**   |
-| Integration (tap)| Server API only          | Medium  | Medium     |
+| Test type         | Scope                          | Speed  | Confidence |
+| ----------------- | ------------------------------ | ------ | ---------- |
+| Unit (vitest)     | Single component/hook          | Fast   | Low        |
+| Storybook         | Component + mock data          | Medium | Medium     |
+| **Playwright**    | **Browser → Server → DB mock** | Slower | **High**   |
+| Integration (tap) | Server API only                | Medium | Medium     |
 
 Playwright tests catch issues that other test types cannot:
 
@@ -27,7 +27,7 @@ Playwright tests catch issues that other test types cannot:
 
 ## How It Works
 
-```
+```text
 Playwright                 Vite Dev Server              Blong Server
 ┌──────────┐   HTTP/WS    ┌──────────────┐   /rpc →   ┌────────────┐
 │ Test code │ ──────────→  │ React app    │ ─────────→ │ Gateway    │
@@ -57,13 +57,13 @@ translations). The strategy, in priority order:
 3. **Semantic HTML roles** — `button[type="submit"]`, `form`, `a[href]`.
 
 4. **`data-testid`** — used only where no semantic identifier exists:
-   - Toolbar buttons: `editor-save`, `editor-edit`, `editor-cancel`, `editor-refresh`
-   - Portal menu items: `portal-menu-{method}` (semantic triple with dots→dashes)
-   - Portal menu groups: `portal-menu-{subject}`
-   - Login submit: `login-submit`
-   - Table cells: `{fieldName}-{rowIndex}`
-   - Dropdown widgets: `data-testid` on wrapper div (e.g. `coral-familyId`, uses hyphens)
-   - Table search input: `browse-search`
+    - Toolbar buttons: `editor-save`, `editor-edit`, `editor-cancel`, `editor-refresh`
+    - Portal menu items: `portal-menu-{method}` (semantic triple with dots→dashes)
+    - Portal menu groups: `portal-menu-{subject}`
+    - Login submit: `login-submit`
+    - Table cells: `{fieldName}-{rowIndex}`
+    - Dropdown widgets: `data-testid` on wrapper div (e.g. `coral-familyId`, uses hyphens)
+    - Table search input: `browse-search`
 
 ### Dots vs Hyphens
 
@@ -72,27 +72,27 @@ The form system uses two naming conventions:
 - **`name` attribute**: dots for hierarchy (`coral.coralName`, `coral.familyId`)
 - **`id` and `data-testid`**: hyphens (`coral-coralName`, `coral-familyId`)
 
-This split exists because dots are problematic in CSS ID selectors (`#coral.familyId` is parsed
-as `#coral` with class `.familyId`). The model form system converts dots to hyphens when generating
+This split exists because dots are problematic in CSS ID selectors (`#coral.familyId` is parsed as
+`#coral` with class `.familyId`). The model form system converts dots to hyphens when generating
 widget IDs. The `fillFields()` helper in `blong-browser/playwright/model` handles this conversion
 automatically.
 
 ## Widget Type Auto-Detection
 
-The `fillFields()` helper auto-detects widget types from `blong-*` CSS classes in the DOM.
-This means test code only needs to provide field names and plain values — no explicit
-`{widget: 'select', value: '...'}` objects required. The helper walks up from the element
-with the matching `id` or `data-testid` until it finds a `blong-*` class:
+The `fillFields()` helper auto-detects widget types from `blong-*` CSS classes in the DOM. This
+means test code only needs to provide field names and plain values — no explicit
+`{widget: 'select', value: '...'}` objects required. The helper walks up from the element with the
+matching `id` or `data-testid` until it finds a `blong-*` class:
 
-| CSS class             | Widget type |
-| --------------------- | ----------- |
-| `blong-input`         | text        |
-| `blong-textarea`      | textarea    |
-| `blong-number`        | number      |
-| `blong-dropdown`      | dropdown    |
-| `blong-select-wrapper`| select      |
-| `blong-boolean`       | checkbox    |
-| `blong-date`          | date        |
+| CSS class              | Widget type |
+| ---------------------- | ----------- |
+| `blong-input`          | text        |
+| `blong-textarea`       | textarea    |
+| `blong-number`         | number      |
+| `blong-dropdown`       | dropdown    |
+| `blong-select-wrapper` | select      |
+| `blong-boolean`        | checkbox    |
+| `blong-date`           | date        |
 
 Explicit `{widget: ..., value: ...}` objects are still supported as an override.
 
@@ -113,36 +113,36 @@ import {defineBlongConfig} from '@feasibleone/blong-browser/playwright/config';
 export default defineBlongConfig();
 ```
 
-The `webServer` entries auto-start both the blong server (port 8080) and Vite dev server (port
-5173) when `process.env.CI` is set, enabling headless CI runs with `node --run ci-test`.
+The `webServer` entries auto-start both the blong server (port 8080) and Vite dev server (port 5173)
+when `process.env.CI` is set, enabling headless CI runs with `node --run ci-test`.
 
 ## Handling Stateful Mock Data
 
-Mock adapters keep fixture data in memory. When a create test adds a record, it persists across
-test runs (as long as the server stays running). This creates a challenge for edit tests: if the
-record already contains the same values from a previous run, react-hook-form doesn't mark the
-form as dirty and the Save button stays disabled.
+Mock adapters keep fixture data in memory. When a create test adds a record, it persists across test
+runs (as long as the server stays running). This creates a challenge for edit tests: if the record
+already contains the same values from a previous run, react-hook-form doesn't mark the form as dirty
+and the Save button stays disabled.
 
-The `createAndEditModel()` helper solves this with a **dirty cycle**: text/textarea fields first
-get a random suffix and are saved (forcing a dirty state); other widgets (date/select/dropdown/
-number) keep their value because the `editFields` values already differ from the loaded record, so
-a single save suffices. It then fills the actual edit values (which differ from the suffixed
-values, so the form is dirty again). This ensures the edit test works regardless of prior server
-state. A `search` option lets the edit test filter the browse table to a specific (e.g.
-test-created) row before opening it, so it never edits seeded data.
+The `createAndEditModel()` helper solves this with a **dirty cycle**: text/textarea fields first get
+a random suffix and are saved (forcing a dirty state); other widgets (date/select/dropdown/ number)
+keep their value because the `editFields` values already differ from the loaded record, so a single
+save suffices. It then fills the actual edit values (which differ from the suffixed values, so the
+form is dirty again). This ensures the edit test works regardless of prior server state. A `search`
+option lets the edit test filter the browse table to a specific (e.g. test-created) row before
+opening it, so it never edits seeded data.
 
 Similarly, the `waitForFormData()` method on the Portal helper waits for API data to populate form
 inputs before filling fields, preventing race conditions.
 
 ## Static Keys for Hot Reload Survival
 
-The blong server generates random JWT signing and encryption keys by default (in `dev` intent).
-When the server hot-reloads after a code change, the keys change and all existing browser sessions
-become invalid.
+The blong server generates random JWT signing and encryption keys by default (in `dev` intent). When
+the server hot-reloads after a code change, the keys change and all existing browser sessions become
+invalid.
 
-For the `integration` intent (which is active during Playwright test development), static JWK
-keys are configured in the suite's `server.ts`. This means browser sessions survive server
-restarts, so developers can iterate on tests without re-logging in manually.
+For the `integration` intent (which is active during Playwright test development), static JWK keys
+are configured in the suite's `server.ts`. This means browser sessions survive server restarts, so
+developers can iterate on tests without re-logging in manually.
 
 ## Screenshot-First Assertions
 
@@ -157,16 +157,16 @@ Tests prefer `toHaveScreenshot()` over targeted assertions:
 
 The test infrastructure is split into layers:
 
-- **`@feasibleone/blong-browser/playwright`** — the `portal` fixture handles login automatically
-  and provides a `Portal` helper class with methods for menu navigation, form interaction, save,
-  and table operations.
+- **`@feasibleone/blong-browser/playwright`** — the `portal` fixture handles login automatically and
+  provides a `Portal` helper class with methods for menu navigation, form interaction, save, and
+  table operations.
 
 - **`@feasibleone/blong-browser/playwright/config`** — `defineBlongConfig()` provides shared
   Playwright configuration with sensible defaults, including `webServer` entries for CI.
 
-- **`@feasibleone/blong-browser/playwright/model`** — generic CRUD test generators
-  (`browseModel`, `createAndEditModel`) that work with any model spec. Pass the subject, object,
-  and field map — the helper generates complete browse/create/edit test scenarios.
+- **`@feasibleone/blong-browser/playwright/model`** — generic CRUD test generators (`browseModel`,
+  `createAndEditModel`) that work with any model spec. Pass the subject, object, and field map — the
+  helper generates complete browse/create/edit test scenarios.
 
 - **`blong-dev playwright`** — CLI wrapper that resolves the Playwright binary and forwards
   arguments.
@@ -179,5 +179,5 @@ Full-stack Playwright tests complement, not replace, other testing approaches:
 - **tap/vitest** remain the primary tool for logic and API testing
 - **Playwright** tests verify the integration of all layers working together
 
-Use Playwright for critical user journeys (login, CRUD, navigation). Use Storybook for
-component variations and edge cases. Use tap for server-side business logic.
+Use Playwright for critical user journeys (login, CRUD, navigation). Use Storybook for component
+variations and edge cases. Use tap for server-side business logic.

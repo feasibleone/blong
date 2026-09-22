@@ -5,10 +5,10 @@ are, see the [concept overview](../concepts/memory).
 
 ## Where the files live
 
-| Scope | Path |
-| --- | --- |
-| Root (cross-cutting, `ci`, `docs`, `skills`) | `<repo>/.github/memory/<kind>.md` |
-| Package | `<repo>/<projectFolder>/.github/memory/<kind>.md` |
+| Scope                                        | Path                                              |
+| -------------------------------------------- | ------------------------------------------------- |
+| Root (cross-cutting, `ci`, `docs`, `skills`) | `<repo>/.github/memory/<kind>.md`                 |
+| Package                                      | `<repo>/<projectFolder>/.github/memory/<kind>.md` |
 
 `<kind>` is `friction`, `todo` or `decision`. A package file starts with the entries that belong to
 that package; anything cross-cutting belongs in the root file, and `memory check` warns when a root
@@ -21,19 +21,19 @@ file holds a package entry.
 
 > _2026-09-15 · ci · resolved_
 
-The nested tap inherited `TAP_CHILD_ID`, concluded it was a child job and reported zero tests.
-Unset the `TAP_*` variables before spawning the inner run.
+The nested tap inherited `TAP_CHILD_ID`, concluded it was a child job and reported zero tests. Unset
+the `TAP_*` variables before spawning the inner run.
 ```
 
 - `F-`/`T-`/`D-` plus a number, allocated workspace-wide and never reused.
 - The title is one line, at most 80 characters, and reads on its own.
-- The line under it — a blockquote, so markdownlint does not read it as a heading — carries the date,
-  the area and the status, and is what `list --area` and `list --status` filter on.
+- The line under it — a blockquote, so markdownlint does not read it as a heading — carries the
+  date, the area and the status, and is what `list --area` and `list --status` filter on.
 - The body is wrapped at 100 columns by the CLI; paragraphs are separated by a blank line. A fenced
-  code block is passed through untouched and needs a language (```` ```bash ````).
+  code block is passed through untouched and needs a language (` ```bash `).
 
-The generated index sits between `<!-- memory:index -->` and `<!-- /memory:index -->`. It is derived:
-the CLI writes it, and `check` fails when it drifts from the entries.
+The generated index sits between `<!-- memory:index -->` and `<!-- /memory:index -->`. It is
+derived: the CLI writes it, and `check` fails when it drifts from the entries.
 
 ## Adding and correcting entries
 
@@ -70,16 +70,16 @@ A batch is JSON, authored outside the CLI and written by it:
 
 ```json
 {
-  "kind": "friction",
-  "entries": [
-    {
-      "title": "A stale line range spliced items into the index block",
-      "body": "Sections are line ranges; a refresh moves them. Re-read the structure after any refresh.",
-      "area": "tools/blong-dev",
-      "status": "resolved",
-      "date": "2026-09-15"
-    }
-  ]
+    "kind": "friction",
+    "entries": [
+        {
+            "title": "A stale line range spliced items into the index block",
+            "body": "Sections are line ranges; a refresh moves them. Re-read the structure after any refresh.",
+            "area": "tools/blong-dev",
+            "status": "resolved",
+            "date": "2026-09-15"
+        }
+    ]
 }
 ```
 
@@ -90,8 +90,8 @@ blong-dev memory import batch.json --apply    # write it
 
 Import validates the whole batch before writing anything: a bad title, an unknown area, a status the
 kind does not have, an entry that is already in the tree (same title and body) or one that repeats
-earlier in the batch are all reported and nothing is written. `--force` overrides the duplicate check,
-and is almost never what you want — importing a batch twice duplicates every entry it holds.
+earlier in the batch are all reported and nothing is written. `--force` overrides the duplicate
+check, and is almost never what you want — importing a batch twice duplicates every entry it holds.
 
 ## The user's own list
 

@@ -141,12 +141,12 @@ by assumption is how a contract gets a rule nobody chose.
 - **Multi-tenancy.** Is intent or tenant a partition key for the registry and its centroids (R7)?
 - **Privacy posture.** Masked values are never transmitted — confirm that no raw value may ever be
   hashed or retained (R1, R10).
-- **Identity on every path.** A record written for an in-process test group, and one written
-  before a request reaches its route, carries no flow yet (T-104/T-105). A diagram is drawn from
+- **Identity on every path.** A record written for an in-process test group, and one written before
+  a request reaches its route, carries no flow yet (T-104/T-105). A diagram is drawn from
   executions, so until that is closed the renderer, the route and the realm's pages can only be
-  shown to be individually correct — nothing observed ever reaches them, and the honest
-  assertion is that they are empty. Closing it means the entry points the runtime knows become
-  the entry points the emitter is told about.
+  shown to be individually correct — nothing observed ever reaches them, and the honest assertion is
+  that they are empty. Closing it means the entry points the runtime knows become the entry points
+  the emitter is told about.
 
 ## Requirements
 
@@ -182,8 +182,8 @@ demonstration fails there rather than going unnoticed.
 A caveat on R20's "at minimum": the service name and the version are on every record, but they reach
 the human line — and the base fields (`pid`, `hostname`) are collected at all — only when `details`
 is asked for. The reader of a pod's log already knows which pod it came from, so repeating it on
-every line costs width and buys nothing; the inspector asks for them, because printing one record
-on demand is the case where they are the point.
+every line costs width and buys nothing; the inspector asks for them, because printing one record on
+demand is the case where they are the point.
 
 ## Requirements added by the leg-identity task
 

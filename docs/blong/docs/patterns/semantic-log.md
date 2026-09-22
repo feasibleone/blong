@@ -269,5 +269,5 @@ BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/blong.play.ts --update
 It holds the mermaid the service drew for one real execution of the realm's own read. Both ends of
 its arrow are read off the call: the caller is the **logical unit the leg id names** — the
 namespace, in blong, never the process that happened to write the record — and the receiver is the
-namespace the leg id was aimed at. A monolith therefore draws the units a request travelled
-through rather than one participant per process.
+namespace the leg id was aimed at. A monolith therefore draws the units a request travelled through
+rather than one participant per process.
