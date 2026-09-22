@@ -57,13 +57,13 @@ export interface IngestEvent {
      * flow is simply not observed for drift (D3: an unexpected identity arriving
      * on the wire is reported, never thrown).
      *
-     * `leg`, `legTo` and `legSeq` are the call the record belongs to (PRD R22):
-     * its stable id, the participant the caller expected to answer, and its
-     * position in the execution. `legTo` is present on the caller's own records
-     * only, and it is what keeps an **attempt** on the record when nothing answers —
-     * the receiver may be missing, failing or wired to the wrong address, and the
-     * edge is then a fact about the deployment rather than a line that cannot be
-     * drawn.
+     * `leg`, `legFrom`, `legTo` and `legSeq` are the call the record belongs to (PRD R22):
+     * the method it was addressed by, the logical unit that declared the call, the
+     * participant the caller expected to answer, and its position in the execution. `legTo`
+     * is present on the caller's own records only, and it is what keeps an **attempt** on the
+     * record when nothing answers — the receiver may be missing, failing or wired to the
+     * wrong address, and the edge is then a fact about the deployment rather than a line that
+     * cannot be drawn.
      */
     flow?: {
         id: string;
@@ -72,6 +72,7 @@ export interface IngestEvent {
         index?: number;
         status?: string;
         leg?: string;
+        legFrom?: string;
         legTo?: string;
         legSeq?: string;
     };
@@ -98,10 +99,12 @@ export function legOf(event: IngestEvent): LegIdentity | undefined {
     if (typeof leg !== 'string' || !isLegId(leg)) {
         return undefined;
     }
+    const from = event.flow?.legFrom;
     const to = event.flow?.legTo;
     const seq = event.flow?.legSeq;
     return {
         id: leg,
+        from: typeof from === 'string' && isServiceName(from) ? from : undefined,
         to: typeof to === 'string' && isServiceName(to) ? to : undefined,
         seq: typeof seq === 'string' && isLegSeq(seq) ? seq : undefined,
     };

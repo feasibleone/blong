@@ -1,5 +1,5 @@
 import t from 'tap';
-import type { AmbientContext } from '../index.ts';
+import type {AmbientContext} from '../index.ts';
 import {
     bindInboundLeg,
     bindLeg,
@@ -66,11 +66,7 @@ t.test('enterInboundLeg answers under the leg a call was received with', async t
 });
 
 t.test('entering what is not lawful is caller misuse', async t => {
-    t.throws(
-        () => enterFlow({id: 'flow-1', kind: FLOW_KIND}),
-        /flow id/,
-        'a flow id is a ULID',
-    );
+    t.throws(() => enterFlow({id: 'flow-1', kind: FLOW_KIND}), /flow id/, 'a flow id is a ULID');
     t.throws(() => enterFlow({id: FLOW_ID, kind: ''}), /flow kind/, 'a flow kind is non-empty');
     t.throws(
         () => enterInboundLeg({id: 'not a leg'}),
@@ -324,10 +320,10 @@ t.test('the last emitted record id is ambient and scoped', async t => {
 t.test('a declared leg is visible for the whole call, and only there', async t => {
     await withFlow({id: FLOW_ID, kind: FLOW_KIND}, async () => {
         t.equal(currentLeg(), undefined, 'a record emitted outside any call has no leg');
-        await bindLeg({id: LEG, to: 'hub'}, async () => {
+        await bindLeg({id: LEG, from: 'payer', to: 'hub'}, async () => {
             t.same(
                 currentLeg(),
-                {id: LEG, to: 'hub', seq: '1'},
+                {id: LEG, from: 'payer', to: 'hub', seq: '1'},
                 'the declaration is the ambient leg',
             );
             t.equal(currentContext().flow?.id, FLOW_ID, 'the flow stays bound inside the call');
@@ -348,20 +344,20 @@ t.test('calls are numbered by a counter in the enclosing scope (PRD R22)', async
     // position it was handed, so two services that each made a first call cannot
     // claim the same slot and the order needs no coordinator and no clock.
     await withFlow({id: FLOW_ID, kind: FLOW_KIND}, async () => {
-        await bindLeg({id: 'payer.discovery.parties', to: 'hub'}, async () => {
+        await bindLeg({id: 'payer.discovery.parties', from: 'payer', to: 'hub'}, async () => {
             t.equal(currentLeg()?.seq, '1', 'the first call in the execution');
-            await bindLeg({id: 'hub.discovery.payee', to: 'payee'}, async () => {
+            await bindLeg({id: 'hub.discovery.payee', from: 'hub', to: 'payee'}, async () => {
                 t.equal(
                     currentLeg()?.seq,
                     '1.1',
                     'a call made while answering one belongs under it',
                 );
-                await bindLeg({id: 'payee.quote.sign', to: 'hub'}, async () => {
+                await bindLeg({id: 'payee.quote.sign', from: 'payee', to: 'hub'}, async () => {
                     t.equal(currentLeg()?.seq, '1.1.1', 'and nesting keeps going deeper');
                 });
                 t.equal(currentLeg()?.seq, '1.1', 'without disturbing the enclosing position');
             });
-            await bindLeg({id: 'hub.quote.fx', to: 'fxp'}, async () => {
+            await bindLeg({id: 'hub.quote.fx', from: 'hub', to: 'fxp'}, async () => {
                 t.equal(
                     currentLeg()?.seq,
                     '1.2',
@@ -369,20 +365,25 @@ t.test('calls are numbered by a counter in the enclosing scope (PRD R22)', async
                 );
             });
         });
-        await bindLeg({id: 'payer.quote.rates', to: 'hub'}, async () => {
+        await bindLeg({id: 'payer.quote.rates', from: 'payer', to: 'hub'}, async () => {
             t.equal(currentLeg()?.seq, '2', 'and the enclosing counter starts a new branch');
         });
     });
 });
 
 t.test('adopting an inbound leg names the same call, without claiming the declaration', async t => {
-    // The receiving end adopts the id and the position so its records pair with the
-    // caller's and are ordered with them — but not `to`, which is the caller's
+    // The receiving end adopts the id, the caller and the position so its records pair
+    // with the caller's and are ordered with them — but not `to`, which is the caller's
     // statement about where the call was aimed. It declares its *own* calls instead.
     await withFlow({id: FLOW_ID, kind: FLOW_KIND}, async () => {
-        await bindInboundLeg({id: 'payer.quote.rates', seq: '2'}, async () => {
-            t.same(currentLeg(), {id: 'payer.quote.rates', to: undefined, seq: '2'});
-            await bindLeg({id: 'hub.quote.fx', to: 'fxp'}, async () => {
+        await bindInboundLeg({id: 'payer.quote.rates', from: 'payer', seq: '2'}, async () => {
+            t.same(currentLeg(), {
+                id: 'payer.quote.rates',
+                from: 'payer',
+                to: undefined,
+                seq: '2',
+            });
+            await bindLeg({id: 'hub.quote.fx', from: 'hub', to: 'fxp'}, async () => {
                 t.equal(
                     currentLeg()?.seq,
                     '2.1',
@@ -396,6 +397,11 @@ t.test('adopting an inbound leg names the same call, without claiming the declar
                 undefined,
                 'an emitter that sent no position still names its call',
             );
+            t.equal(
+                currentLeg()?.from,
+                undefined,
+                'and one that sent no caller leaves the edge it belongs to unnamed',
+            );
         });
     });
 });
@@ -406,7 +412,7 @@ t.test('a leg is scoped, not positional: it does not disturb the flow position',
     // the same: it replaces the *store*, not the flow object, so binding one
     // neither moves the position nor hides a step taken inside it.
     await withFlow({id: FLOW_ID, kind: FLOW_KIND}, async () => {
-        await bindLeg({id: LEG, to: 'hub'}, async () => {
+        await bindLeg({id: LEG, from: 'payer', to: 'hub'}, async () => {
             await step('quote', async () => undefined);
             t.equal(currentLeg()?.id, LEG, 'still inside the call after a step');
         });
@@ -423,22 +429,21 @@ t.test('a leg is scoped, not positional: it does not disturb the flow position',
     });
 });
 
-t.test('a declaration is refused unless it names a call and a receiver', t => {
+t.test('a declaration is refused unless it names a call, a caller and a receiver', t => {
     // A leg belongs to a flow's call, so one bound outside a flow has nothing to be
     // attributed to — inventing a flow to hold it would put a lie in the data, the
-    // same reason `step` throws. The id and the receiver are validated for the same
-    // class of reason: a malformed one would otherwise reach an HTTP header, a source
-    // grep and a generated diagram before anyone noticed, and a call whose receiver
-    // was guessed would misreport every leg it labelled.
+    // same reason `step` throws. The id, the caller and the receiver are validated for
+    // the same class of reason: a malformed one would otherwise reach an HTTP header, a
+    // source grep and a generated diagram before anyone noticed, and a call whose
+    // receiver was guessed would misreport every leg it labelled.
     t.throws(
-        () => bindLeg({id: LEG, to: 'hub'}, () => undefined),
+        () => bindLeg({id: LEG, from: 'payer', to: 'hub'}, () => undefined),
         /was bound outside a flow/,
         'a leg outside a flow throws',
     );
     const rejected: Array<[string, unknown]> = [
         ['absent', undefined],
         ['empty', ''],
-        ['a slash', 'payer/hop'],
         ['a space', 'payer discovery'],
         ['a leading separator', '.payer'],
         ['a semicolon, which would break a generated diagram', 'payer;hop'],
@@ -446,27 +451,52 @@ t.test('a declaration is refused unless it names a call and a receiver', t => {
     ];
     for (const [label, id] of rejected) {
         try {
-            bindLeg({id: id as string, to: 'hub'}, () => undefined);
+            bindLeg({id: id as string, from: 'payer', to: 'hub'}, () => undefined);
             t.fail(`${label} was not rejected`);
         } catch (error) {
             t.type(error, TypeError, `${label} throws a TypeError`);
             t.match((error as TypeError).message, /leg id must be/, `${label} says what was wrong`);
         }
     }
+    // A slash is lawful, and it has to be: the id is the method the call reaches its
+    // callee with, and a hop blong forwards carries the namespace it forwards to
+    // (`db/gateway.bundle.find`), which the receiver strips. What the caller is, is a
+    // field of its own — which is also what keeps the label short.
+    t.equal(isLegId('db/gateway.bundle.find'), true, 'a forwarded hop is a lawful leg id');
+    t.equal(isLegId('payer/hop'), true, 'and so is any other slashed path');
+    t.equal(isServiceName('db/gateway'), false, 'a participant name still may not carry one');
     // The failure names the offending value, so the caller is not left guessing.
     t.throws(
-        () => bindLeg({id: 'payer/hop', to: 'hub'}, () => undefined),
-        /"payer\/hop"/,
+        () => bindLeg({id: 'payer hop', from: 'payer', to: 'hub'}, () => undefined),
+        /"payer hop"/,
         'the id is quoted back',
     );
     t.throws(
-        () => bindLeg({id: LEG, to: 'hub bus'}, () => undefined),
+        () => bindLeg({id: LEG, from: 'payer/hop', to: 'hub'}, () => undefined),
+        /must name the unit that declares it/,
+        'a caller that is not a name is caller misuse too',
+    );
+    t.throws(
+        () => bindLeg({id: LEG, from: 'payer', to: 'hub bus'}, () => undefined),
         /must name the participant it calls/,
         'a receiver that is not a name is caller misuse too',
     );
-    // Case is not folded: a leg is usually named after the participant that makes
-    // the call, and participant names are written in code (`hubA`, not `huba`).
-    t.equal(isLegId('hubA.quote.proxy'), true, 'an uppercase participant name is a lawful leg id');
+    t.throws(
+        // The caller is required, like the receiver: an arrow drawn from nowhere is not
+        // a picture of anything. Stated in the type, and enforced here.
+        () =>
+            withFlow({id: FLOW_ID, kind: FLOW_KIND}, () =>
+                bindLeg(
+                    {id: LEG, from: undefined as unknown as string, to: 'hub'},
+                    () => undefined,
+                ),
+            ),
+        /must name the unit that declares it/,
+        'a declaration that names no caller is refused',
+    );
+    // Case is not folded: participant names are written in code (`hubA`, not `huba`),
+    // and a call named after the thing it reaches keeps its capitals with them.
+    t.equal(isLegId('hubA.quote.proxy'), true, 'an uppercase name is a lawful leg id');
     t.equal(isServiceName('hubA'), true, 'and a lawful receiver');
     t.equal(isServiceName(42), false, 'a receiver that is not a string is not a name');
     t.equal(isLegSeq('1.2.10'), true, 'a path of counters is a position');
@@ -482,10 +512,18 @@ t.test('a declaration is refused unless it names a call and a receiver', t => {
     t.throws(
         () =>
             withFlow({id: FLOW_ID, kind: FLOW_KIND}, () =>
-                bindInboundLeg({id: 'payer/hop'}, () => undefined),
+                bindInboundLeg({id: '.payer'}, () => undefined),
             ),
         /leg id must be/,
         'and so is an adopted id',
+    );
+    t.throws(
+        () =>
+            withFlow({id: FLOW_ID, kind: FLOW_KIND}, () =>
+                bindInboundLeg({id: LEG, from: 'payer/hop'}, () => undefined),
+            ),
+        /must name the unit that declares it/,
+        'and an adopted caller',
     );
     t.end();
 });

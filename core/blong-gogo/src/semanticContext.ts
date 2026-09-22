@@ -18,15 +18,15 @@
  * - **A participant is an RPC namespace** — `party`, `db`, `subject`. It is what
  *   a call targets, what becomes a Kubernetes service, and what the emitter
  *   derives for a record from the method name, so the two agree by construction.
- * - **A leg is one call site**, named `<caller>.<called method>`, where the caller
- *   is the logical unit that made the call — the namespace it answers for, not the
- *   process it runs in. The emitter's own grammar allows letters, digits and `.`,
- *   `-`, `_` only, so the plan's `a -> b` arrow is written as a dot path and anything
- *   else in a caller or method name is flattened to `-`. The id is declared by the
- *   caller, against the namespace it **aimed at** — which is the namespace the callee
- *   will derive for itself, because blong's destination rewrite (`party.subject.find`
- *   becomes `db/party.subject.find`) happens *inside* the receiving port, as a call of
- *   its own.
+ * - **A leg is one call site**, named by the method the call reaches its callee with —
+ *   `party.subject.find`, or `db/party.subject.find` once blong's destination rewrite has
+ *   prefixed the namespace it forwards to. The unit that made the call travels beside it as
+ *   its own identity (`legFrom`, with `legTo` naming the receiver it aimed at), because a
+ *   diagram draws the ends from the identity and the label from the method: repeating the
+ *   caller in the label said what the arrow already said, and made every label longer than
+ *   the arrow it sat on (D-249). The caller is the logical unit the port answers for — never
+ *   the process it runs in — and the grammar's charset is why a `/` is lawful in a method
+ *   and not in a participant name.
  *
  * ## Propagation, and where it rides
  *
@@ -155,12 +155,6 @@ export function isFlowId(value: string | undefined): value is string {
 /** The identities an inbound call carries. `$meta.forward` is where they travel. */
 export function inboundIdentities(meta: IMeta | undefined): Identities {
     return readIdentities((meta?.forward ?? {}) as Record<string, unknown>);
-}
-
-/** A leg id as the emitter's grammar allows it: `<caller>.<method>`, flattened. */
-export function legIdFor(caller: string, method: string): string {
-    const flatten = (text: string): string => text.replace(/[^A-Za-z0-9._-]/g, '-');
-    return `${flatten(caller)}.${flatten(method)}`;
 }
 
 /** The participant a call targets: the first segment of its method. */
@@ -317,22 +311,25 @@ export function adoptInbound<T>(meta: IMeta, kind: string, fn: () => T): T {
  * emitter refuses to invent an execution to hold a leg (D3) and inventing one here
  * would put a lie in the data.
  *
- * `caller` is the port making the call and `method` the wire name it is calling —
- * including any destination the caller has already applied, so the declaration
- * matches the receiver the call will actually reach.
+ * `caller` is the **logical unit** that makes the call — the namespace a port serves, not its
+ * port id and not the process it runs in — and `method` is the wire name the call is being made
+ * by, including any destination the caller has already applied, so the declaration matches the
+ * receiver the call will actually reach. The two travel as separate identities: the method is
+ * the label a diagram draws on the arrow, the caller is the arrow's source, and repeating the
+ * caller in the label said what the arrow already said (D-249).
  */
 export function declareCall<T>(caller: string, method: string, fn: () => T, meta?: IMeta): T {
     if (currentContext().flow === undefined) {
         return fn();
     }
-    const id = legIdFor(caller, method);
+    const id = method;
     const to = namespaceOf(method);
-    if (!isLegId(id) || !isServiceName(to)) {
-        // A port id or method the grammar cannot hold: the call still runs, it is
+    if (!isLegId(id) || !isServiceName(caller) || !isServiceName(to)) {
+        // A caller or a method the grammar cannot hold: the call still runs, it is
         // simply not named. Throwing here would fail a request over its telemetry.
         return fn();
     }
-    return bindLeg({id, to}, () => {
+    return bindLeg({id, from: caller, to}, () => {
         if (meta !== undefined) {
             meta.forward = {...meta.forward, ...identityHeaders()};
         }

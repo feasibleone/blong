@@ -56,7 +56,7 @@ const TRACE_ID = 'tr-fixed';
  * answer. `hop` refuses a call with no declaration, so a test that wants to exercise
  * one declares it — exactly as a participant file does.
  */
-const DECLARATION = {id: 'upstream.quote.request', to: 'downstream'};
+const DECLARATION = {id: 'upstream.quote.request', from: 'payer', to: 'downstream'};
 
 /** A signature a fastify handler receives, narrowed to what the runtime reads. */
 type HeadersOnly = {headers: Record<string, unknown>};
@@ -171,8 +171,15 @@ t.test('a hop carries every identity, in one header (PRD R22)', async t => {
             );
             t.same(
                 result.body,
-                {trace: TRACE_ID, flow: FLOW_ID, leg: DECLARATION.id, to: 'downstream', seq: '1'},
-                'all five fields reach the other end in one header, verbatim',
+                {
+                    trace: TRACE_ID,
+                    flow: FLOW_ID,
+                    leg: DECLARATION.id,
+                    from: DECLARATION.from,
+                    to: 'downstream',
+                    seq: '1',
+                },
+                'every field of the declaration reaches the other end in one header, verbatim',
             );
         });
     });
@@ -395,7 +402,11 @@ t.test('an inbound leg a peer malformed is read as no leg, never thrown', async 
     await withParticipant('payer', async participant => {
         const legFrom = (value: string): LegIdentity | undefined =>
             participant.legFrom(requestWith({[TRACE_HEADER]: value}));
-        t.equal(legFrom('leg=payer/hop'), undefined, 'a slash');
+        t.equal(
+            legFrom('leg=db/gateway.bundle.find')?.id,
+            'db/gateway.bundle.find',
+            'a slash: the wire method of a forwarded hop, and lawful',
+        );
         t.equal(legFrom('leg=payer discovery'), undefined, 'a space');
         t.equal(legFrom('leg=payer;hop'), undefined, 'a separator that would break a diagram');
         t.same(
@@ -484,7 +495,11 @@ t.test('a call that reaches the wrong participant is recorded as such (PRD R22)'
             () => undefined,
         );
         await participant.logger.flush();
-        const cache = await openCache({dir: cacheDir, limit: Number.MAX_SAFE_INTEGER, readOnly: true});
+        const cache = await openCache({
+            dir: cacheDir,
+            limit: Number.MAX_SAFE_INTEGER,
+            readOnly: true,
+        });
         const records: Array<{msg?: string}> = [];
         for (const id of await cacheRecordIds(cacheDir)) {
             const record = await cache.get(id);

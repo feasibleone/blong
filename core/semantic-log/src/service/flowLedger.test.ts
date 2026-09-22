@@ -12,6 +12,8 @@ interface Call {
     time: number;
     service?: string;
     leg?: string;
+    /** The unit that declared the call; derived from the leg id when a case omits it. */
+    from?: string;
     /** The receiver the caller declared. Absent on a receiver's own records. */
     to?: string;
     seq?: string;
@@ -24,9 +26,23 @@ interface Call {
     noFlow?: boolean;
 }
 
+/**
+ * The unit a fixture's leg id names first.
+ *
+ * The legs in this file are written the way they were before the caller became a field of
+ * its own (`payer.quote.rates`), and the helper reads the caller off them so the cases keep
+ * asserting what they always did. A case that is *about* the caller states it instead, with
+ * `from` on the call.
+ */
+function callerOf(leg: string | undefined): string | undefined {
+    if (leg === undefined) return undefined;
+    const at = leg.search(/[./]/);
+    return at < 0 ? leg : leg.slice(0, at);
+}
+
 /** One event, shaped like the wire an emitter sends (PRD R22/R9). */
 function event(call: Call): IngestEvent {
-    const {leg, to, seq, step, status, flowId, kind, noFlow, ...rest} = call;
+    const {leg, from, to, seq, step, status, flowId, kind, noFlow, ...rest} = call;
     return {
         ...rest,
         fingerprint: `fp-${call.id}`,
@@ -39,7 +55,9 @@ function event(call: Call): IngestEvent {
                       ...(kind === null ? {} : {kind: kind ?? KIND}),
                       ...(step === undefined ? {} : {step}),
                       ...(status === undefined ? {} : {status}),
-                      ...(leg === undefined ? {} : {leg, legTo: to, legSeq: seq}),
+                      ...(leg === undefined
+                          ? {}
+                          : {leg, legFrom: from ?? callerOf(leg), legTo: to, legSeq: seq}),
                   },
               }),
     } as IngestEvent;
@@ -126,17 +144,24 @@ t.test('a receipt for a leg declared toward two receivers credits neither', t =>
     t.end();
 });
 
-t.test('a leg id that names no caller falls back to the service that wrote it', t => {
-    // The id is `<caller>.<method>`, so an id with no dot in it names no caller at all -
-    // and the one honest answer left is the service the record came from. That is the
-    // fallback, not the rule: every id the framework mints begins with the caller's own
-    // name.
+t.test('a leg whose identity names no caller has no end, and the writer is not consulted', t => {
+    // The caller is a field of the identity, declared together with the method. It is never
+    // read out of the method's shape (the id is a label) and never taken from whoever wrote
+    // the record: one process hosts many namespaces — every realm of a suite, in development
+    // — so the writer names the deployment, not the call (D-210, D-249). An identity that
+    // carries no caller therefore contributes no end at all: the source of an arrow is not
+    // something to infer, and a leg with an unnamed source is what the records say happened.
     const ledger = new FlowLedger();
-    ledger.observe(event({id: 'a', time: 1, leg: 'single', to: 'hub', seq: '1'}));
+    ledger.observe(event({id: 'a', time: 1, leg: 'single', from: '', to: 'hub', seq: '1'}));
     t.same(
         ledger.unionOf(KIND)?.legs[0]?.ends,
-        [{caller: 'payer', callee: 'hub', count: 1, observed: 0}],
-        'the emitting service names the edge instead',
+        [],
+        'nothing is named for the edge, not even the service that wrote it',
+    );
+    t.equal(
+        ledger.unionOf(KIND)?.legs[0]?.count,
+        0,
+        'and the call is not counted as an attempt either — there is no attempt to place',
     );
     t.end();
 });

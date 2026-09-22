@@ -16,11 +16,11 @@ t.test('only the identities that are bound are propagated, in one header', async
                 `trace=tr-1,flow=${FLOW_ID}`,
                 'the execution id joins it — the ULID, never the kind, which is a deployment property',
             );
-            await bindLeg({id: LEG, to: 'hub'}, async () => {
+            await bindLeg({id: LEG, from: 'payer', to: 'hub'}, async () => {
                 t.equal(
                     identityHeaders()[TRACE_HEADER],
-                    `trace=tr-1,flow=${FLOW_ID},leg=${LEG},to=hub,seq=1`,
-                    'a declared call adds its id, the receiver it expects and its position',
+                    `trace=tr-1,flow=${FLOW_ID},leg=${LEG},from=payer,to=hub,seq=1`,
+                    'a declared call adds its id, the unit that declares it, the receiver it expects and its position',
                 );
             });
             t.notMatch(
@@ -36,10 +36,15 @@ t.test(
     'an adopted leg propagates what it was handed, without a declaration of its own',
     async t => {
         await withFlow({id: FLOW_ID, kind: FLOW_KIND}, async () => {
-            await bindInboundLeg({id: LEG, seq: '2'}, async () => {
+            await bindInboundLeg({id: LEG, from: 'payer', seq: '2'}, async () => {
                 // No `to`: the receiver is the one that was aimed at, and restating it
-                // would read as a declaration made here.
-                t.equal(identityHeaders()[TRACE_HEADER], `flow=${FLOW_ID},leg=${LEG},seq=2`);
+                // would read as a declaration made here. The caller is adopted, because
+                // it is part of what the declaration carried and a receiver's records are
+                // the other half of the same call.
+                t.equal(
+                    identityHeaders()[TRACE_HEADER],
+                    `flow=${FLOW_ID},leg=${LEG},from=payer,seq=2`,
+                );
             });
         });
     },
@@ -71,8 +76,10 @@ t.test('readIdentities reads the fields it knows and ignores the rest', t => {
         'a bare trace id: the form this header had before the leg existed',
     );
     t.same(
-        readIdentities({[TRACE_HEADER]: `trace=tr-1,flow=${FLOW_ID},leg=${LEG},to=hub,seq=1`}),
-        {trace: 'tr-1', flow: FLOW_ID, leg: LEG, to: 'hub', seq: '1'},
+        readIdentities({
+            [TRACE_HEADER]: `trace=tr-1,flow=${FLOW_ID},leg=${LEG},from=payer,to=hub,seq=1`,
+        }),
+        {trace: 'tr-1', flow: FLOW_ID, leg: LEG, from: 'payer', to: 'hub', seq: '1'},
         'the whole group',
     );
     t.same(

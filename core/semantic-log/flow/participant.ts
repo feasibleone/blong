@@ -153,7 +153,7 @@ function identitiesOf(request: {headers: Record<string, unknown>}): {
     leg?: LegIdentity;
 } {
     const identities = readIdentities(request.headers);
-    const {leg, to, seq} = identities;
+    const {leg, from, to, seq} = identities;
     return {
         trace: identities.trace,
         flow:
@@ -162,6 +162,7 @@ function identitiesOf(request: {headers: Record<string, unknown>}): {
             leg !== undefined && isLegId(leg)
                 ? {
                       id: leg,
+                      from: from !== undefined && isServiceName(from) ? from : undefined,
                       to: to !== undefined && isServiceName(to) ? to : undefined,
                       seq: seq !== undefined && isLegSeq(seq) ? seq : undefined,
                   }
@@ -252,7 +253,9 @@ export async function createParticipant(options: ParticipantOptions): Promise<Pa
             const body = (): T =>
                 bindTrace(traceId, () =>
                     withFlow({id: flowId, kind: options.kind}, () =>
-                        leg === undefined ? fn() : bindInboundLeg({id: leg.id, seq: leg.seq}, fn),
+                        leg === undefined
+                            ? fn()
+                            : bindInboundLeg({id: leg.id, from: leg.from, seq: leg.seq}, fn),
                     ),
                 );
             return options.intent ? withIntent(options.intent, body) : body();

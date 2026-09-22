@@ -18,13 +18,21 @@
  *
  * ## A call is a declaration, not a deduction
  *
- * The caller names both ends: the leg id it mints begins with its own name
- * (`legIdFor`), and the receiver it expects is the `to` it declared (`legTo` on the
- * record). So an edge is known from **one** observation — the caller's — and a
- * receiver that never answers (missing, failing, or wired to the wrong address)
- * still appears in the observed shape. What its silence costs is the `observed`
- * count on the edge, which is a fact about the deployment instead of a line that
- * cannot be drawn.
+ * The caller names both ends, and states both: the leg id it mints is the method the call
+ * reaches its callee with (`gateway.bundle.find`, `db/gateway.bundle.find`), and the unit
+ * that made the call and the receiver it expects are the `legFrom` and `legTo` it declared
+ * with it. So an edge is known from **one** observation — the caller's — and a receiver that
+ * never answers (missing, failing, or wired to the wrong address) still appears in the
+ * observed shape. What its silence costs is the `observed` count on the edge, which is a
+ * fact about the deployment instead of a line that cannot be drawn.
+ *
+ * The caller used to be read out of the id, which began with it. It is a field now because
+ * the id is what a diagram draws on the arrow: repeating the caller there made every label
+ * say what its own arrow already said (`public.gateway.bundle.find` between `public` and
+ * `gateway`), and the longer it got the less of the diagram could be read. Nothing is derived
+ * from the id today — an observation whose identity carries no caller contributes no edge,
+ * because the source of an arrow is not something to infer from whichever process happened
+ * to write a record (D-210, D-249).
  *
  * Whether that edge was *answered* is a separate question, answered by the
  * **declaration** rather than by the record that carries the receipt. A leg a caller
@@ -64,9 +72,12 @@ const DEFAULT_STEP_LIMIT = 256;
 
 /** One observed traversal of one call, as one event reported it. */
 export interface LegObservation {
+    /** The method the call reached its callee with — what a diagram labels the arrow. */
     leg: string;
     /** The process that emitted the record — information, never the caller. */
     service: string;
+    /** The logical unit that declared the call; absent when the identity named none. */
+    from?: string;
     /** The receiver the **caller** declared; absent on a receiver's own records. */
     to?: string;
     /** The call's position in the execution, as the caller assigned it. */
@@ -177,26 +188,8 @@ export function attributable(declaredTargets: number, receipts: number): boolean
 }
 
 /**
- * The unit that declared a call: the first half of its leg id.
- *
- * A leg id is `<caller>.<called method>`, so its head names the **logical unit** that made
- * the call — the namespace, in blong — and the arrow a diagram draws starts there. The
- * process that wrote the record is *information* and never the condition: one process hosts
- * many namespaces (in development, a whole suite), so an identity taken from the writer
- * collapses every participant of a monolith into one, which is a property of how the
- * deployment is split rather than of what happened (D-210).
- *
- * A leg id with no dot carries no caller to read — it names a call site and nothing about
- * who holds it — so the writer is the only name left and is used. Exported because the
- * ledger and the diagram must reach the same verdict about an arrow's source, and a second
- * copy of the rule is how the two views drifted once already.
+ * Per-execution state.
  */
-export function callerOfLeg(leg: string, writer: string): string {
-    const at = leg.indexOf('.');
-    return at === -1 ? writer : leg.slice(0, at);
-}
-
-/** Per-execution state. */
 interface ExecutionState {
     kind?: string;
     /**
@@ -370,6 +363,7 @@ export class FlowLedger {
             const observation: LegObservation = {
                 leg: leg.id,
                 service: event.service,
+                from: leg.from,
                 to: leg.to,
                 seq: leg.seq,
                 step: flow.step,
@@ -381,9 +375,11 @@ export class FlowLedger {
             // idempotent, and a repetition's own timestamps are the honest ones — while
             // the *detail* is retained once per call and end: a leg is one call however
             // many records were logged about it, which is the unit the cap is meant to
-            // bound.
+            // bound. The key carries the caller as well as the method, because two units
+            // may call the same method in one execution — two calls, two arrows, and the
+            // second is not a repeat of the first.
             this.aggregate(state, observation);
-            const call = `${leg.id}\u0000${leg.to === undefined ? 'receipt' : 'declaration'}`;
+            const call = `${leg.id}\u0000${leg.from ?? ''}\u0000${leg.to === undefined ? 'receipt' : 'declaration'}`;
             if (!state.retained.has(call)) {
                 state.retained.add(call);
                 if (state.observations.length < this.stepLimit) {
@@ -622,24 +618,32 @@ export class FlowLedger {
             // than of what happened.
             seen.answered.add(observation.service);
         } else {
-            // Created **once** per pair: a call site that logs several records about the
-            // one call it made (a request and its answer, a preparation and its commit)
-            // is one attempt, and re-creating the entry would reset the flags below and
-            // count the same attempt again — which is how the payer's discovery, logged
-            // twice inside one leg, came to be reported as two calls.
-            // The caller is the leg id's own head — the logical unit that declared the call —
-            // so an arrow starts at a namespace and reads the same in a monolith and in
-            // microservices. The writer is a fallback for an id that names no caller, never
-            // the identity of the edge.
-            const caller = callerOfLeg(observation.leg, observation.service);
-            const key = pairKey(caller, observation.to);
-            if (!seen.declared.has(key)) {
-                seen.declared.set(key, {
-                    caller,
-                    callee: observation.to,
-                    counted: false,
-                    credited: false,
-                });
+            // The caller is the unit the identity declares — the logical unit that made the
+            // call, which in blong is the namespace that served it — so an arrow starts at a
+            // namespace and reads the same in a monolith and in microservices. It is *not*
+            // derived from the id any more, and the process that wrote the record is never
+            // consulted: one process hosts many namespaces, so an identity taken from the
+            // writer collapses every participant of a monolith into one, which is a property
+            // of how the deployment is split rather than of what happened (D-210). An
+            // identity that named no caller contributes no end at all: the source of an arrow
+            // is not something to invent, and the counters below already treat silence as
+            // silence.
+            const caller = observation.from;
+            if (caller !== undefined) {
+                // Created **once** per pair: a call site that logs several records about the
+                // one call it made (a request and its answer, a preparation and its commit)
+                // is one attempt, and re-creating the entry would reset the flags below and
+                // count the same attempt again — which is how the payer's discovery, logged
+                // twice inside one leg, came to be reported as two calls.
+                const key = pairKey(caller, observation.to);
+                if (!seen.declared.has(key)) {
+                    seen.declared.set(key, {
+                        caller,
+                        callee: observation.to,
+                        counted: false,
+                        credited: false,
+                    });
+                }
             }
         }
         for (const [key, declared] of seen.declared) {

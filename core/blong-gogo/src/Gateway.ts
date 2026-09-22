@@ -592,17 +592,17 @@ export default class Gateway extends Internal implements IGateway {
                                     // Declare the hop this route is making. The caller is
                                     // **`public`** - the surface that answered the request,
                                     // named apart from the namespace it calls. The gateway realm
-                                    // is a namespace called `gateway`, so a leg whose caller was
-                                    // also called `gateway` drew the public surface and that
-                                    // namespace as one participant, and a realm answering a call
-                                    // to its own namespace read as a self-call. A leg id names a
-                                    // unit, and the API surface is a unit of its own - not the
-                                    // process either: one process hosts a whole suite, so naming
-                                    // the process here would draw every flow of a monolith as the
-                                    // same participant.
-                                    // `methodName` is already the dotted wire name the leg
-                                    // grammar wants, so the leg names the method the request
-                                    // asked for. The callee's receipt then carries the same leg,
+                                    // is a namespace called `gateway`, so a caller that was also
+                                    // called `gateway` drew the public surface and that namespace
+                                    // as one participant, and a realm answering a call to its own
+                                    // namespace read as a self-call. The API surface is a unit of
+                                    // its own - not the process either: one process hosts a whole
+                                    // suite, so naming the process here would draw every flow of a
+                                    // monolith as the same participant.
+                                    // `methodName` is the wire name the request asked for, and it
+                                    // is the leg: the caller is declared beside it, so a diagram
+                                    // labels the arrow with the method and draws its source from
+                                    // the unit. The callee's receipt then carries the same leg,
                                     // which is what makes the drawing a call rather than a
                                     // participation.
                                     declareCall(

@@ -329,13 +329,14 @@ t.test('a record made inside a flow names the flow, the call and the position', 
     );
     const [id] = await cacheRecordIds(dir);
     const record = (await log.store.get(id ?? '')) as unknown as {
-        flow?: {id?: string; leg?: string; legTo?: string; legSeq?: string};
+        flow?: {id?: string; leg?: string; legFrom?: string; legTo?: string; legSeq?: string};
     };
     t.equal(
         record.flow?.leg,
-        'access.db.party.subject.find',
-        'the record names the call it was made in',
+        'party.subject.find',
+        'the record names the call it was made in, by the method it was made by',
     );
+    t.equal(record.flow?.legFrom, 'access.db', 'and the unit that made it, beside the method');
     t.equal(record.flow?.legTo, 'party', 'and the participant the caller aimed at');
     t.match(String(record.flow?.legSeq), /^[0-9]+$/, 'and its position in the execution');
     t.equal(isFlowId(record.flow?.id), true, 'and the execution it is part of');
@@ -382,8 +383,8 @@ t.test('the records of a flow reach the cluster service and come back as a diagr
     t.equal(diagram?.statusCode, 200, 'the execution can be drawn from the records alone');
     t.match(
         diagram?.body ?? '',
-        /access\.db\.party\.subject\.find/,
-        'and the drawing names the call the caller declared',
+        /party\.subject\.find/,
+        'and the drawing names the call the caller declared, by its method',
     );
 });
 

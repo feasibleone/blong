@@ -129,33 +129,33 @@ sequenceDiagram
     participant payee
     participant fxp
     Note over payer, fxp: PHASE 1: discovery
-    payer->>hub: payer.discovery.parties
-    hub->>payee: hub.discovery.payee
-    payee-->>hub: hub.discovery.payee
-    hub-->>payer: payer.discovery.parties
+    payer->>hub: discovery.parties
+    hub->>payee: discovery.payee
+    payee-->>hub: discovery.payee
+    hub-->>payer: discovery.parties
     Note over payer, fxp: PHASE 2: quote
-    payer->>hub: payer.quote.rates
-    hub->>fxp: hub.quote.fx
-    fxp-->>hub: hub.quote.fx
-    hub->>payee: hub.quote.payee
-    payee-->>hub: hub.quote.payee
-    hub-->>payer: payer.quote.rates
+    payer->>hub: quote.rates
+    hub->>fxp: quote.fx
+    fxp-->>hub: quote.fx
+    hub->>payee: quote.payee
+    payee-->>hub: quote.payee
+    hub-->>payer: quote.rates
     Note over payer, fxp: PHASE 3: transfer
-    payer->>hub: payer.transfer.submit
-    hub->>payee: hub.transfer.deliver
-    payee-->>hub: hub.transfer.deliver
-    hub-->>payer: payer.transfer.submit
+    payer->>hub: transfer.submit
+    hub->>payee: transfer.deliver
+    payee-->>hub: transfer.deliver
+    hub-->>payer: transfer.submit
 ```
 
 | call | caller → receiver | phase | position | declared | answered | declared in |
 | ---- | ----------------- | ----- | -------- | -------- | -------- | ----------- |
-| `payer.discovery.parties` | `payer` → `hub` | discovery | 1 | 1 | 1 | `flow/payer.ts:66` |
-| `hub.discovery.payee` | `hub` → `payee` | discovery | 1.1 | 1 | 1 | `flow/hub.ts:57` |
-| `payer.quote.rates` | `payer` → `hub` | quote | 2 | 1 | 1 | `flow/payer.ts:82` |
-| `hub.quote.fx` | `hub` → `fxp` | quote | 2.1 | 1 | 1 | `flow/hub.ts:58` |
-| `hub.quote.payee` | `hub` → `payee` | quote | 2.2 | 1 | 1 | `flow/hub.ts:59` |
-| `payer.transfer.submit` | `payer` → `hub` | transfer | 3 | 1 | 1 | `flow/payer.ts:121` |
-| `hub.transfer.deliver` | `hub` → `payee` | transfer | 3.1 | 1 | 1 | `flow/hub.ts:60` |
+| `discovery.parties` | `payer` → `hub` | discovery | 1 | 1 | 1 | `flow/payer.ts:67` |
+| `discovery.payee` | `hub` → `payee` | discovery | 1.1 | 1 | 1 | `flow/hub.ts:56` |
+| `quote.rates` | `payer` → `hub` | quote | 2 | 1 | 1 | `flow/payer.ts:84` |
+| `quote.fx` | `hub` → `fxp` | quote | 2.1 | 1 | 1 | `flow/hub.ts:57` |
+| `quote.payee` | `hub` → `payee` | quote | 2.2 | 1 | 1 | `flow/hub.ts:58` |
+| `transfer.submit` | `payer` → `hub` | transfer | 3 | 1 | 1 | `flow/payer.ts:123` |
+| `transfer.deliver` | `hub` → `payee` | transfer | 3.1 | 1 | 1 | `flow/hub.ts:59` |
 <!-- END OBSERVED FLOWS: transfer.single -->
 
 ## Inter-scheme cross-currency
@@ -178,51 +178,51 @@ sequenceDiagram
     participant payee
     participant fxp
     Note over payer, fxp: PHASE 1: discovery
-    payer->>hubA: payer.discovery.parties
-    hubA->>proxy: hubA.discovery.proxy
+    payer->>hubA: discovery.parties
+    hubA->>proxy: discovery.proxy
     proxy->>hubB: proxy.discovery.corridor
-    hubB->>payee: hubB.discovery.payee
-    payee-->>hubB: hubB.discovery.payee
+    hubB->>payee: discovery.payee
+    payee-->>hubB: discovery.payee
     hubB-->>proxy: proxy.discovery.corridor
-    proxy-->>hubA: hubA.discovery.proxy
-    hubA-->>payer: payer.discovery.parties
+    proxy-->>hubA: discovery.proxy
+    hubA-->>payer: discovery.parties
     Note over payer, fxp: PHASE 2: quote
-    payer->>hubA: payer.quote.rates
-    hubA->>proxy: hubA.quote.proxy
+    payer->>hubA: quote.rates
+    hubA->>proxy: quote.proxy
     proxy->>hubB: proxy.quote.corridor
-    hubB->>fxp: hubB.quote.fx
-    fxp-->>hubB: hubB.quote.fx
-    hubB->>payee: hubB.quote.payee
-    payee-->>hubB: hubB.quote.payee
+    hubB->>fxp: quote.fx
+    fxp-->>hubB: quote.fx
+    hubB->>payee: quote.payee
+    payee-->>hubB: quote.payee
     hubB-->>proxy: proxy.quote.corridor
-    proxy-->>hubA: hubA.quote.proxy
-    hubA-->>payer: payer.quote.rates
+    proxy-->>hubA: quote.proxy
+    hubA-->>payer: quote.rates
     Note over payer, fxp: PHASE 3: transfer
-    payer->>hubA: payer.transfer.submit
-    hubA->>proxy: hubA.transfer.proxy
+    payer->>hubA: transfer.submit
+    hubA->>proxy: transfer.proxy
     proxy->>hubB: proxy.transfer.corridor
-    hubB->>payee: hubB.transfer.deliver
-    payee-->>hubB: hubB.transfer.deliver
+    hubB->>payee: transfer.deliver
+    payee-->>hubB: transfer.deliver
     hubB-->>proxy: proxy.transfer.corridor
-    proxy-->>hubA: hubA.transfer.proxy
-    hubA-->>payer: payer.transfer.submit
+    proxy-->>hubA: transfer.proxy
+    hubA-->>payer: transfer.submit
 ```
 
 | call | caller → receiver | phase | position | declared | answered | declared in |
 | ---- | ----------------- | ----- | -------- | -------- | -------- | ----------- |
-| `payer.discovery.parties` | `payer` → `hubA` | discovery | 1 | 1 | 1 | `flow/payer.ts:66` |
-| `hubA.discovery.proxy` | `hubA` → `proxy` | discovery | 1.1 | 1 | 1 | `flow/hubA.ts:53` |
+| `discovery.parties` | `payer` → `hubA` | discovery | 1 | 1 | 1 | `flow/payer.ts:67` |
+| `discovery.proxy` | `hubA` → `proxy` | discovery | 1.1 | 1 | 1 | `flow/hubA.ts:53` |
 | `proxy.discovery.corridor` | `proxy` → `hubB` | discovery | 1.1.1 | 1 | 1 | `flow/proxy.ts:45` |
-| `hubB.discovery.payee` | `hubB` → `payee` | discovery | 1.1.1.1 | 1 | 1 | `flow/hub.ts:63` |
-| `payer.quote.rates` | `payer` → `hubA` | quote | 2 | 1 | 1 | `flow/payer.ts:82` |
-| `hubA.quote.proxy` | `hubA` → `proxy` | quote | 2.1 | 1 | 1 | `flow/hubA.ts:87` |
+| `discovery.payee` | `hubB` → `payee` | discovery | 1.1.1.1 | 1 | 1 | `flow/hub.ts:56` |
+| `quote.rates` | `payer` → `hubA` | quote | 2 | 1 | 1 | `flow/payer.ts:84` |
+| `quote.proxy` | `hubA` → `proxy` | quote | 2.1 | 1 | 1 | `flow/hubA.ts:88` |
 | `proxy.quote.corridor` | `proxy` → `hubB` | quote | 2.1.1 | 1 | 1 | `flow/proxy.ts:46` |
-| `hubB.quote.fx` | `hubB` → `fxp` | quote | 2.1.1.1 | 1 | 1 | `flow/hub.ts:64` |
-| `hubB.quote.payee` | `hubB` → `payee` | quote | 2.1.1.2 | 1 | 1 | `flow/hub.ts:65` |
-| `payer.transfer.submit` | `payer` → `hubA` | transfer | 3 | 1 | 1 | `flow/payer.ts:121` |
-| `hubA.transfer.proxy` | `hubA` → `proxy` | transfer | 3.1 | 1 | 1 | `flow/hubA.ts:119` |
+| `quote.fx` | `hubB` → `fxp` | quote | 2.1.1.1 | 1 | 1 | `flow/hub.ts:57` |
+| `quote.payee` | `hubB` → `payee` | quote | 2.1.1.2 | 1 | 1 | `flow/hub.ts:58` |
+| `transfer.submit` | `payer` → `hubA` | transfer | 3 | 1 | 1 | `flow/payer.ts:123` |
+| `transfer.proxy` | `hubA` → `proxy` | transfer | 3.1 | 1 | 1 | `flow/hubA.ts:122` |
 | `proxy.transfer.corridor` | `proxy` → `hubB` | transfer | 3.1.1 | 1 | 1 | `flow/proxy.ts:47` |
-| `hubB.transfer.deliver` | `hubB` → `payee` | transfer | 3.1.1.1 | 1 | 1 | `flow/hub.ts:66` |
+| `transfer.deliver` | `hubB` → `payee` | transfer | 3.1.1.1 | 1 | 1 | `flow/hub.ts:59` |
 <!-- END OBSERVED FLOWS: transfer.inter -->
 
 Relative to the published exchange, this fixture:

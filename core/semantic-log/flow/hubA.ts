@@ -50,7 +50,7 @@ export function installHubA(participant: Participant, options: HubAOptions): voi
                     req: {operation: 'POST', target: '/parties'},
                 });
                 const forwarded = await bindLeg(
-                    {id: 'hubA.discovery.proxy', to: 'proxy'},
+                    {id: 'discovery.proxy', from: 'hubA', to: 'proxy'},
                     async () => {
                         // No party directory of its own for the far scheme: everything
                         // crosses. It is the difference from the single-scheme hub that
@@ -84,10 +84,13 @@ export function installHubA(participant: Participant, options: HubAOptions): voi
                 // One call, because there is one quote: the corridor's. The originating
                 // scheme keeps no provider of its own, so there is no local indication to
                 // record beside it — the price the payer settles on is this one.
-                const crossed = await bindLeg({id: 'hubA.quote.proxy', to: 'proxy'}, async () => {
-                    logger.info('corridor quote requested', {amount: body.amount});
-                    return hop(participant, options.proxyUrl, '/quotes', body);
-                });
+                const crossed = await bindLeg(
+                    {id: 'quote.proxy', from: 'hubA', to: 'proxy'},
+                    async () => {
+                        logger.info('corridor quote requested', {amount: body.amount});
+                        return hop(participant, options.proxyUrl, '/quotes', body);
+                    },
+                );
                 logger.info('cross-scheme quote assembled', {
                     res: {status: crossed.status},
                     rate: (crossed.body as {rate?: number} | undefined)?.rate,
@@ -116,7 +119,7 @@ export function installHubA(participant: Participant, options: HubAOptions): voi
                 });
                 const started = Date.now();
                 const settled = await bindLeg(
-                    {id: 'hubA.transfer.proxy', to: 'proxy'},
+                    {id: 'transfer.proxy', from: 'hubA', to: 'proxy'},
                     async () => {
                         logger.info('corridor settlement requested', {
                             amount: body.amount,

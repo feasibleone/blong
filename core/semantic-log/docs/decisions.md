@@ -227,11 +227,28 @@ top-level dimension, and `refs` — a ref is locally minted and CLI-resolvable, 
 neither.
 
 **The id's grammar is enforced, its taxonomy is not.** `[A-Za-z0-9]`-led, with `.`, `-`, `_` inside
-(case preserved: `hubA.quote.proxy` names the participant the source names). A violation **throws**
-where the caller declares it — caller misuse fails fast — while a value arriving on the wire is read
-as _absent_, because a peer must not be able to 500 a batch (D3's split). The naming convention
-(`<participant>.<phase>.<object>`) is documented and not enforced: a taxonomy rule would reject ids
-that are fine and cannot check the thing that matters, which the honesty checks do instead.
+and `/` for a forwarded hop (case preserved: `hubA.quote.proxy` names the participant the source
+names, and `db/gateway.bundle.find` names the wire method the receiver strips back to). A violation
+**throws** where the caller declares it — caller misuse fails fast — while a value arriving on the
+wire is read as _absent_, because a peer must not be able to 500 a batch (D3's split). The naming
+convention (`<participant>.<phase>.<object>`, or `<namespace>/<participant>.<phase>.<object>` when a
+hop is forwarded) is documented and not enforced: a taxonomy rule would reject ids that are fine and
+cannot check the thing that matters, which the honesty checks do instead.
+
+**The caller is an identity, not a prefix of the id.** Ruled 2026-09-22, on the owner's reading of a
+diagram drawn of the gateway realm: the id is what a diagram **labels the arrow with**, and a label
+that began with the caller repeated what the arrow's own ends already said —
+`public.gateway.bundle.find` between `public` and `gateway` — while making every label longer than
+the arrow it sat on. So the leg is the **method** the call reaches its callee with, and the unit
+that made it travels beside the method in its own field of the identity (`from`, with `to` naming
+the receiver it aimed at and `seq` its position). Nothing is derived from the id any more:
+`callerOfLeg` is gone, an observation whose identity carries no caller contributes **no edge** (the
+source of an arrow is not something to infer, and the process that wrote the record names the
+deployment), and the pairing of a call with its answer is keyed by `(method, caller)` rather than by
+the method alone — two units may call the same method in one execution, and those are two calls.
+Rejected: keeping the caller in the id and hiding it in the diagram (the data would still be wrong
+for every other reader), and reading the caller off the id as a fallback (that is the derivation
+this ruling removed, and D-210 already says the writer is never consulted).
 
 **The caller declares the receiver.** `legTo` is on the caller's records and nowhere else. That is
 what keeps an **attempt** on the record when nothing answers: a receiver that is missing, failing or

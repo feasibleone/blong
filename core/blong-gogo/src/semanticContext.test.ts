@@ -8,12 +8,11 @@ import {
     callsFor,
     capabilityOf,
     currentIdentity,
-    enterCapability,
     declareCall,
+    enterCapability,
     enterRequestFlow,
     inboundIdentities,
     isFlowId,
-    legIdFor,
     namespaceOf,
     runInFlow,
 } from './semanticContext.ts';
@@ -40,7 +39,11 @@ t.test('a request enters its flow before the hooks that may reject it', async t 
     await (async () => {
         const published = enterRequestFlow({}, 'access.role.find');
         t.equal(isFlowId(currentContext().flow?.id), true, 'a flow is minted and entered');
-        t.equal(currentContext().flow?.kind, 'access.role.find', 'named for the path it arrived on');
+        t.equal(
+            currentContext().flow?.kind,
+            'access.role.find',
+            'named for the path it arrived on',
+        );
         t.equal(
             published['x-semantic-trace']?.includes(`flow=${currentContext().flow?.id ?? ''}`),
             true,
@@ -84,31 +87,61 @@ t.test('a flow id is a ULID and nothing else', t => {
 
 t.test('identity is read off the forwarded header bag', t => {
     t.same(inboundIdentities(undefined), {}, 'a call with no meta carries nothing');
-    t.same(inboundIdentities({mtid: 'request', method: 'm'}), {}, 'and so does one with no forward block');
     t.same(
-        inboundIdentities(inbound(`trace=tr-1,flow=${FLOW},leg=access.db.party.subject.find,to=party,seq=1.2`)),
-        {trace: 'tr-1', flow: FLOW, leg: 'access.db.party.subject.find', to: 'party', seq: '1.2'},
+        inboundIdentities({mtid: 'request', method: 'm'}),
+        {},
+        'and so does one with no forward block',
+    );
+    t.same(
+        inboundIdentities(
+            inbound(
+                `trace=tr-1,flow=${FLOW},leg=party.subject.find,from=access.db,to=party,seq=1.2`,
+            ),
+        ),
+        {
+            trace: 'tr-1',
+            flow: FLOW,
+            leg: 'party.subject.find',
+            from: 'access.db',
+            to: 'party',
+            seq: '1.2',
+        },
         'a full set is read back out',
     );
     t.end();
 });
 
-t.test('a leg is named by dotting the caller and the method', t => {
+t.test('a leg is the method, and the caller travels beside it', t => {
+    // The method is what a diagram labels the arrow with, so it is the leg id verbatim -
+    // including a forwarded hop's slash (`db/party.subject.find`), which is the name the
+    // callee strips back to. The caller is its own identity: repeating it in the label said
+    // what the arrow already said, and the two are read for different things (D-249).
+    t.equal(namespaceOf('party.subject.find'), 'party', 'the method names the unit it reaches');
     t.equal(
-        legIdFor('access.db', 'party.subject.find'),
-        'access.db.party.subject.find',
-        'a port id and a method join with a dot',
+        namespaceOf('db/party.subject.find'),
+        'db',
+        'and a forwarded hop names the one it forwards to',
     );
     t.equal(
-        legIdFor('srv/subject', 'party:subject'),
-        'srv-subject.party-subject',
-        'characters the grammar forbids are flattened rather than rejected',
+        vocabulary.isLegId('db/party.subject.find'),
+        true,
+        'a forwarded hop is a lawful leg id',
     );
+    t.equal(
+        vocabulary.isServiceName('access.db'),
+        true,
+        'and a caller is named by the same grammar',
+    );
+    t.equal(vocabulary.isServiceName('access/db'), false, 'without the slash a method may carry');
     t.end();
 });
 
 t.test('a participant is the first segment of the method', t => {
-    t.equal(namespaceOf('party.subject.find'), 'party', 'a dotted method names its namespace first');
+    t.equal(
+        namespaceOf('party.subject.find'),
+        'party',
+        'a dotted method names its namespace first',
+    );
     t.equal(namespaceOf('db/party.subject.find'), 'db', 'and so does a rewritten destination');
     t.equal(namespaceOf('party'), 'party', 'a method in the root namespace is its own');
     t.end();
@@ -121,13 +154,13 @@ t.test('an outermost entry mints a flow and publishes it for the calls inside it
         identity: currentIdentity(),
     }));
     t.equal(isFlowId(seen.identity.flow), true, 'the entry has an execution id');
-    t.equal(seen.context.flow?.kind, 'access.user.find', 'whose kind is the method it was addressed to');
-    t.equal(typeof seen.context.trace, 'string', 'and it is correlated by a trace');
     t.equal(
-        seen.identity.leg,
-        undefined,
-        'the entry itself is not a call, so it declares no leg',
+        seen.context.flow?.kind,
+        'access.user.find',
+        'whose kind is the method it was addressed to',
     );
+    t.equal(typeof seen.context.trace, 'string', 'and it is correlated by a trace');
+    t.equal(seen.identity.leg, undefined, 'the entry itself is not a call, so it declares no leg');
     t.match(
         meta.forward?.['x-semantic-trace'] ?? '',
         new RegExp(`flow=${seen.identity.flow}`),
@@ -155,8 +188,16 @@ t.test('a B3 trace that cannot be used is minted instead', t => {
         method: 'm',
         forward: {'x-b3-traceid': 42},
     } as unknown as IMeta;
-    t.not(runInFlow(empty, 'm', () => currentContext().trace), '', 'an empty trace is not a trace');
-    t.not(runInFlow(wrongType, 'm', () => currentContext().trace), 42, 'nor is one that is not a string');
+    t.not(
+        runInFlow(empty, 'm', () => currentContext().trace),
+        '',
+        'an empty trace is not a trace',
+    );
+    t.not(
+        runInFlow(wrongType, 'm', () => currentContext().trace),
+        42,
+        'nor is one that is not a string',
+    );
     t.end();
 });
 
@@ -199,13 +240,15 @@ t.test('an inbound call carrying no identity is an outermost entry', t => {
 });
 
 t.test('an inbound identity the grammar refuses is dropped, never repaired', t => {
-    const badSeq = adoptInbound(
-        inbound(`flow=${FLOW},leg=payer.quote.rates,seq=1.`),
-        'm',
-        () => currentIdentity(),
+    const badSeq = adoptInbound(inbound(`flow=${FLOW},leg=payer.quote.rates,seq=1.`), 'm', () =>
+        currentIdentity(),
     );
     t.equal(badSeq.leg, 'payer.quote.rates', 'a lawful leg is adopted');
-    t.equal(badSeq.seq, undefined, 'but a position that is not one is left out rather than guessed');
+    t.equal(
+        badSeq.seq,
+        undefined,
+        'but a position that is not one is left out rather than guessed',
+    );
 
     const badLeg = adoptInbound(inbound(`flow=${FLOW},leg=!`), 'm', () => currentIdentity());
     t.equal(badLeg.flow, FLOW, 'the execution is still adopted');
@@ -218,12 +261,16 @@ t.test('an inbound identity the grammar refuses is dropped, never repaired', t =
 
 t.test('a call made outside any flow is not declared', t => {
     const meta: IMeta = {mtid: 'request', method: 'm'};
-    t.equal(declareCall('access.db', 'party.subject.find', () => 'ran', meta), 'ran', 'the call still runs');
+    t.equal(
+        declareCall('access.db', 'party.subject.find', () => 'ran', meta),
+        'ran',
+        'the call still runs',
+    );
     t.equal(meta.forward, undefined, 'and nothing is published onto a meta no flow holds');
     t.end();
 });
 
-t.test('a call inside a flow is named for the caller that makes it', t => {
+t.test('a call inside a flow is named by its method, with the caller beside it', t => {
     const meta: IMeta = {mtid: 'request', method: 'access.user.find'};
     // Read the scope from inside the declaration: the leg only exists while the
     // call it names is being made.
@@ -237,8 +284,13 @@ t.test('a call inside a flow is named for the caller that makes it', t => {
     );
     t.equal(
         seen.identity.leg,
-        'access.db.party.subject.find',
-        'the leg names the caller and the method it called',
+        'party.subject.find',
+        'the leg is the method the call is made by — what a diagram labels the arrow with',
+    );
+    t.equal(
+        seen.context.legFrom,
+        'access.db',
+        'and the unit that made it is its own identity, not part of the label',
     );
     t.match(String(seen.identity.seq), /^[0-9]+$/, 'and takes the first position in the caller');
     t.equal(
@@ -248,8 +300,8 @@ t.test('a call inside a flow is named for the caller that makes it', t => {
     );
     t.match(
         meta.forward?.['x-semantic-trace'] ?? '',
-        /leg=access\.db\.party\.subject\.find/,
-        'and the callee is handed the call it is part of',
+        /leg=party\.subject\.find,from=access\.db,to=party/,
+        'and the callee is handed the call it is part of, both ends stated',
     );
     t.end();
 });
@@ -259,7 +311,11 @@ t.test('a call declared without a meta still binds the caller scope', t => {
     const leg = runInFlow(meta, 'm', () =>
         declareCall('access.db', 'party.subject.find', () => currentIdentity().leg),
     );
-    t.equal(leg, 'access.db.party.subject.find', 'the leg is bound whether or not there is a meta to publish on');
+    t.equal(
+        leg,
+        'party.subject.find',
+        'the leg is bound whether or not there is a meta to publish on',
+    );
     t.end();
 });
 
@@ -281,9 +337,17 @@ t.test('the scope a caller is in can be asked about', t => {
 
 t.test('a flow records calls unless something decided otherwise', t => {
     configureCallTrace(undefined);
-    t.equal(callsFor(undefined, 'access.access.find'), true, 'nothing decided and nothing configured');
+    t.equal(
+        callsFor(undefined, 'access.access.find'),
+        true,
+        'nothing decided and nothing configured',
+    );
     configureCallTrace({enabled: false});
-    t.equal(callsFor(undefined, 'access.access.find'), false, 'the configuration can opt everything out');
+    t.equal(
+        callsFor(undefined, 'access.access.find'),
+        false,
+        'the configuration can opt everything out',
+    );
     configureCallTrace({off: ['payment']});
     t.equal(callsFor(undefined, 'payment.transfer.prepare'), false, 'or one entry');
     configureCallTrace(undefined);

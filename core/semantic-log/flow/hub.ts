@@ -34,51 +34,37 @@ export interface HubOptions {
     rewordLiquidity?: boolean;
 }
 
-/** One call this hub makes: the leg it declares, and the unit it expects to answer. */
+/** One call this hub makes: the method it calls, and the unit it expects to answer. */
 interface HubCall {
     readonly id: string;
     readonly to: string;
 }
 
 /**
- * The calls this hub makes, declared under the unit it runs as.
+ * The calls a hub makes, declared as literals.
  *
- * A leg id names the **unit** that made the call — `hub.transfer.deliver` is the hub's call,
- * not the process's — so a shared implementation cannot hardcode one set of ids: the
- * receiving scheme's hub runs as `hubB`, and `hub.*` there would label its arrows with a
- * participant the deployment does not have, beside the one it does. Each mount therefore
- * declares its own ids, and declares them as literals, so the label on a diagram stays
- * greppable in the file that declares it (the parity check in `test/flow/observedFlows.test.ts`
- * reads them from here). The `to` of each is the unit the caller expects to answer, which is
- * what makes an edge known from one observation.
+ * The label on an arrow is the **method** the call reaches its callee with, and the unit that
+ * made the call is stated beside it (`from`) rather than repeated inside the label — so one
+ * set of methods serves every mount: the receiving scheme's hub calls `discovery.payee`
+ * exactly as the first one does, and the two arrows differ by their source, which is what they
+ * always meant. Declared as literals in one place so the label on a diagram stays greppable in
+ * the file that declares it (the parity check in `test/flow/observedFlows.test.ts` reads them
+ * from here). The `to` of each is the unit the caller expects to answer, which is what makes
+ * an edge known from one observation.
  */
-const HUB_CALLS: Record<string, Record<string, HubCall>> = {
-    hub: {
-        discoveryPayee: {id: 'hub.discovery.payee', to: 'payee'},
-        quoteFx: {id: 'hub.quote.fx', to: 'fxp'},
-        quotePayee: {id: 'hub.quote.payee', to: 'payee'},
-        transferDeliver: {id: 'hub.transfer.deliver', to: 'payee'},
-    },
-    hubB: {
-        discoveryPayee: {id: 'hubB.discovery.payee', to: 'payee'},
-        quoteFx: {id: 'hubB.quote.fx', to: 'fxp'},
-        quotePayee: {id: 'hubB.quote.payee', to: 'payee'},
-        transferDeliver: {id: 'hubB.transfer.deliver', to: 'payee'},
-    },
+const HUB_CALLS: Record<string, HubCall> = {
+    discoveryPayee: {id: 'discovery.payee', to: 'payee'},
+    quoteFx: {id: 'quote.fx', to: 'fxp'},
+    quotePayee: {id: 'quote.payee', to: 'payee'},
+    transferDeliver: {id: 'transfer.deliver', to: 'payee'},
 };
 
 export function installHub(participant: Participant, options: HubOptions): void {
     const {app} = participant;
-    // The unit this hub runs as: a mount under a name nobody declared a set of ids for would
-    // otherwise have to borrow another unit's, and the diagram would name a participant that
-    // does not exist. Failing here is the only way to hear about it.
-    const calls = HUB_CALLS[participant.name];
-    if (!calls) {
-        throw new Error(
-            `installHub: no leg ids declared for the unit '${participant.name}'; ` +
-                'add its calls to HUB_CALLS so its arrows name the unit that made them',
-        );
-    }
+    // The unit this hub runs as: the caller every leg it declares is made by. Read once,
+    // because a mount's name is the source of its arrows — the labels no longer carry it, so
+    // this is the only place it is said.
+    const caller = participant.name;
     /**
      * A **request-scoped** logger for one protocol step.
      *
@@ -107,12 +93,15 @@ export function installHub(participant: Participant, options: HubOptions): void 
                 logger.info('party lookup received', {
                     req: {operation: 'POST', target: '/parties'},
                 });
-                const forwarded = await bindLeg(calls.discoveryPayee, async () => {
-                    logger.info('party lookup forwarded', {
-                        req: {operation: 'POST', target: '/parties'},
-                    });
-                    return hop(participant, options.payeeUrl, '/parties', request.body);
-                });
+                const forwarded = await bindLeg(
+                    {...HUB_CALLS.discoveryPayee, from: caller},
+                    async () => {
+                        logger.info('party lookup forwarded', {
+                            req: {operation: 'POST', target: '/parties'},
+                        });
+                        return hop(participant, options.payeeUrl, '/parties', request.body);
+                    },
+                );
                 return {status: forwarded.status, body: forwarded.body};
             }),
         );
@@ -136,7 +125,7 @@ export function installHub(participant: Participant, options: HubOptions): void 
                 // Each hop logs the request inside its own leg and the receipt outside it,
                 // which is the instrumentation rule the observed topology rests on: a call
                 // is an edge only when both ends name it (PRD R22).
-                const fx = await bindLeg(calls.quoteFx, async () => {
+                const fx = await bindLeg({...HUB_CALLS.quoteFx, from: caller}, async () => {
                     logger.info('fx rate requested', {from: body.from, to: body.to});
                     return hop(participant, options.fxpUrl, '/quotes', body);
                 });
@@ -147,7 +136,7 @@ export function installHub(participant: Participant, options: HubOptions): void 
                     });
                     return {status: fx.status, body: fx.body};
                 }
-                const payee = await bindLeg(calls.quotePayee, async () => {
+                const payee = await bindLeg({...HUB_CALLS.quotePayee, from: caller}, async () => {
                     logger.info('payee quote requested', {amount: body.amount});
                     return hop(participant, options.payeeUrl, '/quotes', fx.body);
                 });
@@ -178,13 +167,16 @@ export function installHub(participant: Participant, options: HubOptions): void 
                 logger.info(liquidityMessage(), {amount: body.amount, currency: body.currency});
 
                 const started = Date.now();
-                const payee = await bindLeg(calls.transferDeliver, async () => {
-                    logger.info('settlement delivery requested', {
-                        amount: body.amount,
-                        currency: body.currency,
-                    });
-                    return hop(participant, options.payeeUrl, '/transfers', body);
-                });
+                const payee = await bindLeg(
+                    {...HUB_CALLS.transferDeliver, from: caller},
+                    async () => {
+                        logger.info('settlement delivery requested', {
+                            amount: body.amount,
+                            currency: body.currency,
+                        });
+                        return hop(participant, options.payeeUrl, '/transfers', body);
+                    },
+                );
                 if (payee.status >= 400) {
                     const reason =
                         (payee.body as {reason?: string} | undefined)?.reason ?? 'unknown';

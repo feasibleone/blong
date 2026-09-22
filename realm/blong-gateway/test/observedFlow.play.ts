@@ -86,17 +86,19 @@ test('a flow this realm served is drawn as a diagram', async ({portal}) => {
 
     // What the service should draw: the hop this realm's answer declared. The
     // framework records a proxied call by itself — the gateway's dispatch declares
-    // `public.gateway.bundle.find` and the realm answers with a receipt for it — so
-    // the arrow exists without the application logging anything.
+    // the method `gateway.bundle.find` for the unit `public`, and the realm answers with a
+    // receipt for the same leg — so the arrow exists without the application logging anything.
     //
     // Both ends of the arrow are read off the call, not off the process: the caller is the
-    // **logical unit** the leg id names and the receiver is the namespace it was aimed at.
-    // The leg here is `public.gateway.bundle.find` — the public surface calling the management
+    // **logical unit** the declaration names and the receiver is the namespace the method was
+    // aimed at. The leg here is `gateway.bundle.find` — the public surface calling the management
     // namespace, which this realm answers as `gateway` — so the drawing has two participants
-    // before the realm's own read adds `db` behind the second. The caller is named `public`
-    // and not `gateway` for that reason: the surface and the realm's namespace are different
-    // units, and one name for both drew them as a single participant with the call as a
-    // self-hop. Naming the caller after the process that wrote the record would draw
+    // before the realm's own read adds `db` behind the second. The label carries the method
+    // alone: the arrow's ends are already on the arrow, and repeating the caller in the label
+    // read `public.gateway.bundle.find` between `public` and `gateway`. The caller is named
+    // `public` and not `gateway` for its own reason: the surface and the realm's namespace are
+    // different units, and one name for both drew them as a single participant with the call as
+    // a self-hop. Naming the caller after the process that wrote the record would draw
     // `blong->>gateway`, which is how a monolith collapses to one participant rather than a
     // property of what happened.
     const diagram = await diagramText(portal);

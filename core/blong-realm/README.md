@@ -75,8 +75,9 @@ BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/blong.play.ts --update
 ```
 
 Both ends of its arrow are read off the call, not off the deployment: the caller is the logical unit
-the leg id names — `public`, the surface that received the request — and the receiver is the
-namespace it was aimed at. Naming either end after the process that happened to write the record
-would draw a monolith as a single participant, which is a property of how a suite is split rather
-than of what happened. A crossed arrow (`--x`) is the other honest outcome: a call was declared and
-nothing answered it.
+the declaration names — `public`, the surface that received the request — and the receiver is the
+namespace the method was aimed at. The label on the arrow is the method alone, because its ends are
+already on the arrow. Naming either end after the process that happened to write the record would
+draw a monolith as a single participant, which is a property of how a suite is split rather than of
+what happened. A crossed arrow (`--x`) is the other honest outcome: a call was declared and nothing
+answered it.

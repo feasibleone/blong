@@ -398,6 +398,7 @@ function annotatedObservations(record: LogRecord): DiagramObservation[] {
         {
             leg,
             service: record.service,
+            from: record.flow?.legFrom,
             to: record.flow?.legTo,
             seq: record.flow?.legSeq,
             step: record.flow?.step,

@@ -43,6 +43,7 @@ open (30)
 
 ## Manual
 
+- todos must be written as instructions
 - gate the console calls in the browser
 - agents struggle with coverage, create a tool/skill for tap - add screenshots and diagrams to the
   docs - agents frequently cause bash error `event not found` when they run `grep` with a pattern

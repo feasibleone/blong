@@ -79,13 +79,19 @@ export function installProxy(participant: Participant, options: ProxyOptions): v
                         });
                         return {status: 503, body: {reason: 'no route to target ecosystem'}};
                     }
-                    const forwarded = await bindLeg({id: leg, to: TARGET}, async () => {
-                        logger.info('routing to target ecosystem', {
-                            req: {operation: 'POST', target: path},
-                            corridor: TARGET,
-                        });
-                        return hop(participant, route, path, request.body);
-                    });
+                    const forwarded = await bindLeg(
+                        // The id is the method the call was addressed by, carried on from
+                        // the inbound leg; the proxy answers for this ecosystem, so it is the
+                        // unit the next hop is declared by.
+                        {id: leg, from: participant.name, to: TARGET},
+                        async () => {
+                            logger.info('routing to target ecosystem', {
+                                req: {operation: 'POST', target: path},
+                                corridor: TARGET,
+                            });
+                            return hop(participant, route, path, request.body);
+                        },
+                    );
                     return {status: forwarded.status, body: forwarded.body};
                 }),
             );

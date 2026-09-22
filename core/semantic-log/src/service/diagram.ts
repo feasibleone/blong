@@ -67,7 +67,7 @@
 
 import {isLegSeq} from '../context.ts';
 import type {FlowExecution, FlowUnion, LegObservation} from './flowLedger.ts';
-import {attributable, callerOfLeg, comparePosition} from './flowLedger.ts';
+import {attributable, comparePosition} from './flowLedger.ts';
 
 /**
  * The name standing in for a service the union never saw.
@@ -261,18 +261,21 @@ export function modelOfObservations(observations: readonly DiagramObservation[])
         // the only evidence that the call reached anyone.
         const answered = new Set(group.filter(o => o.to === undefined).map(o => o.service));
         const notes = group.flatMap(o => o.notes ?? []);
-        // Keyed by the caller *and* the callee, both read off the call: the leg id names the
-        // logical unit that declared it and `to` names the receiver it aimed at, so an arrow
-        // is a fact about the call rather than about which process happened to write the
-        // record. The writer is information — one process hosts many namespaces, and in
-        // development a whole suite — so an identity taken from it would draw every call of a
-        // monolith from one participant.
+        // Keyed by the caller *and* the callee, both read off the call: the leg id is the
+        // method the call reached its callee with, and the identity declares the unit that
+        // made the call (`from`) and the receiver it aimed at (`to`), so an arrow is a fact
+        // about the call rather than about which process happened to write the record. The
+        // writer is information — one process hosts many namespaces, and in development a
+        // whole suite — so an identity taken from it would draw every call of a monolith from
+        // one participant. A declaration that named no caller draws nothing: the source of an
+        // arrow is not something to infer, and the receipt below still shows the call reached
+        // someone.
         const pairs = new Map<string, {caller: string; callee: string; step?: string}>();
         for (const observation of group) {
-            if (observation.to === undefined) {
+            if (observation.to === undefined || observation.from === undefined) {
                 continue;
             }
-            const caller = callerOfLeg(observation.leg, observation.service);
+            const caller = observation.from;
             const key = `${caller}\u0000${observation.to}`;
             if (!pairs.has(key)) {
                 pairs.set(key, {

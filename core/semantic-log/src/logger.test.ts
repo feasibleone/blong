@@ -198,7 +198,7 @@ t.test('a declared leg rides the record flow and renders with it', async t => {
     const {lines, writer} = capture();
     const logger = createLogger({service: 'payer', writer});
     await withFlow({id: '01ARZ3NDEKTSV4RRFFQ69G5FAV', kind: 'transfer.single'}, async () => {
-        await bindLeg({id: 'payer.discovery.parties', to: 'hub'}, async () =>
+        await bindLeg({id: 'payer.discovery.parties', from: 'payer', to: 'hub'}, async () =>
             logger.info('looking up payee'),
         );
     });
@@ -219,7 +219,7 @@ t.test('the record names the receiver the caller expected (PRD R22)', async t =>
         writer: {write: line => void lines.push(line)},
     });
     await withFlow({id: '01ARZ3NDEKTSV4RRFFQ69G5FAV', kind: 'transfer.single'}, async () => {
-        await bindLeg({id: 'hub.quote.fx', to: 'fxp'}, async () =>
+        await bindLeg({id: 'hub.quote.fx', from: 'hub', to: 'fxp'}, async () =>
             logger.info('fx rate requested'),
         );
     });
@@ -273,7 +273,9 @@ function stagedEntries(dir: string): Array<{id: string; time: number; kind: stri
         return readFileSync(cachePaths.sidecarFile(dir), 'utf8')
             .split('\n')
             .filter(line => line.trim().length > 0)
-            .map(line => JSON.parse(line) as {id: string; time: number; kind: string; json: string});
+            .map(
+                line => JSON.parse(line) as {id: string; time: number; kind: string; json: string},
+            );
     } catch {
         return [];
     }

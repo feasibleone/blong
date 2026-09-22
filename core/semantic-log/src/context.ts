@@ -7,9 +7,9 @@
  * spec's "propagates automatically across async boundaries" acceptance.
  */
 
-import { AsyncLocalStorage } from 'node:async_hooks';
-import type { Decision, FlowState, IntentState } from './record.ts';
-import { assertUlid } from './ulid.ts';
+import {AsyncLocalStorage} from 'node:async_hooks';
+import type {Decision, FlowState, IntentState} from './record.ts';
+import {assertUlid} from './ulid.ts';
 
 /**
  * Mutable box holding the rationale that is waiting for the next record.
@@ -77,6 +77,17 @@ export interface AmbientContext {
      * one object.
      */
     leg?: string;
+    /**
+     * The unit that declared that leg — the logical unit the call was made *by*.
+     *
+     * Its own field rather than a prefix of the leg id, which is what the id used to
+     * carry: the id is the label an arrow is drawn with, and a label that repeated the
+     * caller read as `gateway.db/gateway.bundle.find` where `db/gateway.bundle.find`
+     * says the same thing once. Declared by the **caller**, like {@link legTo}, and
+     * adopted from the wire by a callee: a receiver that reports a call without saying
+     * who made it leaves the edge it belongs to undrawn.
+     */
+    legFrom?: string;
     /**
      * The receiving participant the caller declared for that leg. Set only where a
      * call is **declared** — the callee adopting an inbound leg deliberately does
@@ -177,9 +188,10 @@ export function currentTrace(): string | undefined {
 }
 
 /**
- * The shape of a leg id (PRD R22, ruled 2026-09-14).
+ * The shape of a leg id (PRD R22, ruled 2026-09-14; the caller moved out of it
+ * 2026-09-22).
  *
- * Letters (either case), digits, and `.`, `-` or `_` as separators. One charset
+ * Letters (either case), digits, and `.`, `-`, `_` or `/` as separators. One charset
  * serves four consumers at once: the id is lawful as an HTTP header value, it is
  * greppable in source (which is what the id -> file cross-reference is built
  * from), it needs no escaping to be a mermaid label, and it cannot contain the
@@ -189,6 +201,22 @@ export function currentTrace(): string | undefined {
  * participant the source does). Enforced rather than recommended, because an id
  * that breaks one of those four fails somewhere other than the place that made
  * the mistake.
+ *
+ * The id is the **method the call reaches its callee with**, which is why `/` is
+ * allowed here and not in a participant name: blong's destination rewrite prefixes a
+ * hop with the namespace it forwards to (`db/gateway.bundle.find`), the receiver strips
+ * it, and a label that hid the prefix would not be the method that was called. Who
+ * made the call is a separate identity ({@link AmbientContext.legFrom}); repeating it
+ * in the id cost every arrow its readability and never added information the diagram
+ * did not already have at the arrow's other end.
+ */
+const LEG_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
+
+/**
+ * The shape of a participant name: the same, without the `/` (see above).
+ *
+ * Letters (either case), digits, and `.`, `-` or `_` as separators, for the four
+ * consumers above.
  */
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
@@ -204,7 +232,7 @@ const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
  * same treatment the ingest gives an unusable flow kind — rather than thrown.
  */
 export function isLegId(value: unknown): boolean {
-    return typeof value === 'string' && NAME.test(value);
+    return typeof value === 'string' && LEG_NAME.test(value);
 }
 
 /**
@@ -249,8 +277,10 @@ export interface LegCounter {
 
 /** The leg a scope is part of (PRD R22). */
 export interface LegIdentity {
-    /** The call site's stable name. */
+    /** The method the call reaches its callee with. */
     id: string;
+    /** The logical unit that declared the call. */
+    from?: string;
     /** The receiving participant, where this scope declared the call. */
     to?: string;
     /** The leg's position in the execution, where it has one. */
@@ -287,9 +317,16 @@ function assertInFlow(leg: string): void {
 /**
  * Run `fn` as the **caller** of one call (PRD R22).
  *
- * A call is declared, not inferred: the id names the call site, `to` names the
- * participant the caller expects to answer, and the position is taken from a
- * counter in this scope. All three travel with the request.
+ * A call is declared, not inferred: the id names the method the call reaches its callee
+ * with, `from` names the logical unit that declares it, `to` names the participant the
+ * caller expects to answer, and the position is taken from a counter in this scope. All
+ * four travel with the request.
+ *
+ * `from` is stated rather than derived, and it is no longer read out of the id (which
+ * used to be `<caller>.<method>`): a label wants the method, and who made the call is
+ * identity, not part of a name. It is required for the same reason `to` is — a call whose
+ * source is unnamed draws an arrow from nowhere — and it is what a receiver reports back
+ * when it answers.
  *
  * `to` is required because declaration is what makes an *attempt* observable: a
  * call whose receiver never answers — because it is missing, failing, or wired to
@@ -314,10 +351,15 @@ function assertInFlow(leg: string): void {
  * stopped — a leg is visible only inside `fn`. A record emitted after the call
  * returns is not part of the call.
  */
-export function bindLeg<T>(leg: {id: string; to: string}, fn: () => T): T {
+export function bindLeg<T>(leg: {id: string; from: string; to: string}, fn: () => T): T {
     if (!isLegId(leg.id)) {
         throw new TypeError(
-            `leg id must be letters, digits and '.', '-' or '_', got ${JSON.stringify(leg.id)}`,
+            `leg id must be letters, digits and '.', '-', '_' or '/', got ${JSON.stringify(leg.id)}`,
+        );
+    }
+    if (!isServiceName(leg.from)) {
+        throw new TypeError(
+            `leg ${JSON.stringify(leg.id)} must name the unit that declares it, got ${JSON.stringify(leg.from)}`,
         );
     }
     if (!isServiceName(leg.to)) {
@@ -328,24 +370,29 @@ export function bindLeg<T>(leg: {id: string; to: string}, fn: () => T): T {
     const parent = currentContext().legSeq;
     const counter = ensureLegCounter();
     const seq = parent === undefined ? String(++counter.next) : `${parent}.${++counter.next}`;
-    return enter({id: leg.id, to: leg.to, seq}, fn);
+    return enter({id: leg.id, from: leg.from, to: leg.to, seq}, fn);
 }
 
 /**
  * Run `fn` as the **receiver** of a call someone else declared (PRD R22).
  *
- * The receiving end adopts the id and the position, so its records name the same
- * call as the caller's and are ordered with it; it deliberately does **not** adopt
- * `to`, which is the caller's statement about where the call was aimed. Its own
- * calls are declared with {@link bindLeg} and numbered as children of `seq`.
+ * The receiving end adopts the id, the caller and the position, so its records name the
+ * same call as the caller's and are ordered with it; it deliberately does **not** adopt
+ * `to`, which is the caller's statement about where the call was aimed. Its own calls are
+ * declared with {@link bindLeg} and numbered as children of `seq`.
+ *
+ * `from` is adopted because it is part of the declaration that travelled: a receiver
+ * reporting a call without saying who made it leaves the edge undrawn for a reader, and
+ * the pairing of a call with its answer is by both ends, not by the method alone (two
+ * units may call the same method in one execution, and those are two calls).
  *
  * The value has already been validated where it was read off the wire
  * (`flow/participant.ts`), so anything reaching here was chosen in code — and a
  * malformed id or position from *here* is caller misuse and throws.
  */
-export function bindInboundLeg<T>(leg: {id: string; seq?: string}, fn: () => T): T {
+export function bindInboundLeg<T>(leg: {id: string; from?: string; seq?: string}, fn: () => T): T {
     assertInboundLeg(leg);
-    return enter({id: leg.id, seq: leg.seq}, fn);
+    return enter({id: leg.id, from: leg.from, seq: leg.seq}, fn);
 }
 
 /**
@@ -357,16 +404,21 @@ export function bindInboundLeg<T>(leg: {id: string; seq?: string}, fn: () => T):
  * cannot show. Validated the same way and for the same reason: what reaches either
  * of these was chosen in code, so a malformed value is caller misuse.
  */
-export function enterInboundLeg(leg: {id: string; seq?: string}): void {
+export function enterInboundLeg(leg: {id: string; from?: string; seq?: string}): void {
     assertInboundLeg(leg);
-    storage.enterWith(extend(legIdentity({id: leg.id, seq: leg.seq})));
+    storage.enterWith(extend(legIdentity({id: leg.id, from: leg.from, seq: leg.seq})));
 }
 
 /** Reject a leg that was chosen in code but is not lawful (PRD R22). */
-function assertInboundLeg(leg: {id: string; seq?: string}): void {
+function assertInboundLeg(leg: {id: string; from?: string; seq?: string}): void {
     if (!isLegId(leg.id)) {
         throw new TypeError(
-            `leg id must be letters, digits and '.', '-' or '_', got ${JSON.stringify(leg.id)}`,
+            `leg id must be letters, digits and '.', '-', '_' or '/', got ${JSON.stringify(leg.id)}`,
+        );
+    }
+    if (leg.from !== undefined && !isServiceName(leg.from)) {
+        throw new TypeError(
+            `leg ${JSON.stringify(leg.id)} must name the unit that declares it, got ${JSON.stringify(leg.from)}`,
         );
     }
     if (leg.seq !== undefined && !isLegSeq(leg.seq)) {
@@ -377,23 +429,24 @@ function assertInboundLeg(leg: {id: string; seq?: string}): void {
 }
 
 /** Install one leg for `fn`, from a local declaration or an adopted one. */
-function enter<T>(leg: {id: string; to?: string; seq?: string}, fn: () => T): T {
+function enter<T>(leg: {id: string; from?: string; to?: string; seq?: string}, fn: () => T): T {
     return storage.run(extend(legIdentity(leg)), fn);
 }
 
 /** The leg a scope is part of, as the ambient context holds it. */
 function legIdentity(leg: {
     id: string;
+    from?: string;
     to?: string;
     seq?: string;
-}): Pick<AmbientContext, 'leg' | 'legTo' | 'legSeq' | 'legCounter'> {
+}): Pick<AmbientContext, 'leg' | 'legFrom' | 'legTo' | 'legSeq' | 'legCounter'> {
     assertInFlow(leg.id);
     // The memory box has to exist *before* the leg scope is entered: entering spreads
     // the context, so a box first installed inside the leg would never reach the
     // scope that encloses the call, and the caller's next record would lose its
     // causal parent (PRD R7).
     ensureRecordMemory();
-    return {leg: leg.id, legTo: leg.to, legSeq: leg.seq, legCounter: {next: 0}};
+    return {leg: leg.id, legFrom: leg.from, legTo: leg.to, legSeq: leg.seq, legCounter: {next: 0}};
 }
 
 /** The ambient leg, or `undefined` when this scope is not part of a call. */
@@ -402,7 +455,7 @@ export function currentLeg(): LegIdentity | undefined {
     if (context.leg === undefined) {
         return undefined;
     }
-    return {id: context.leg, to: context.legTo, seq: context.legSeq};
+    return {id: context.leg, from: context.legFrom, to: context.legTo, seq: context.legSeq};
 }
 
 /**

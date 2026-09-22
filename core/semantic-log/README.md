@@ -49,9 +49,9 @@ One greppable header line, with indented detail beneath it:
     at Socket.handleTimeout (/app/src/net/pool.ts:42:12)
 ```
 
-That is the compact default. Pass `details: true` to print the service name, the version and the base
-fields (`pid`, `hostname`) on the header as well — the inspector asks for them, a pod's log does not,
-because whoever reads it already knows which pod it came from.
+That is the compact default. Pass `details: true` to print the service name, the version and the
+base fields (`pid`, `hostname`) on the header as well — the inspector asks for them, a pod's log
+does not, because whoever reads it already knows which pod it came from.
 
 Nothing needs configuring for this to work — no service, no transport, no schema.
 
@@ -163,17 +163,17 @@ invented.
 
 ## Naming a call: leg identity and propagation
 
-A **leg** is one call: an id the source declares, the receiver the caller expects, and the position
-the call holds in its execution. It is what turns a log line into an answer to "which call was
-this?", and it is a **library** concept — `bindLeg`, `bindInboundLeg`, `currentLeg` and
-`identityHeaders` are exported from the package, so an application uses them without adopting the
-demo fixture in `flow/`.
+A **leg** is one call: the method the call reaches its callee with, the unit that made it, the
+receiver that unit expects, and the position the call holds in its execution. It is what turns a log
+line into an answer to "which call was this?", and it is a **library** concept — `bindLeg`,
+`bindInboundLeg`, `currentLeg` and `identityHeaders` are exported from the package, so an
+application uses them without adopting the demo fixture in `flow/`.
 
 ```ts
 import {bindLeg, identityHeaders} from '@feasibleone/semantic-log';
 
-// The caller declares both ends before it calls: its own id, and the participant it expects.
-await bindLeg({id: 'payer.transfer.submit', to: 'hub'}, async () => {
+// The caller declares the method, itself and the receiver it expects, before it calls.
+await bindLeg({id: 'transfer.submit', from: 'payer', to: 'hub'}, async () => {
     logger.info('submitting transfer', {req: {operation: 'POST', target: '/transfers'}});
     // Every record logged inside this scope now carries the leg. `legSeq` is assigned for you:
     // the outermost call in an execution is `1`, and a call made while answering `2.2` is `2.2.1`.
@@ -186,19 +186,22 @@ The receiving side adopts what it was handed, so **both ends** of a call name th
 ```ts
 const leg = legFrom(request); // validated: a malformed wire value reads as no leg, never a throw
 await participant.run(traceId, flowId, leg, async () => {
-    logger.info('transfer prepare started'); // carries the caller's leg id
+    logger.info('transfer prepare started'); // carries the caller's leg, its method and its caller
 });
 ```
 
-Two rules make the ids worth trusting:
+Two rules make the legs worth trusting:
 
 - **Both ends log.** The caller logs the request inside the leg it declared, and the receiver logs a
   receipt under the leg it adopted. One end alone is still evidence — the caller's declaration is
   what puts the attempt on the diagram — but the pair is what makes an edge _fact_.
-- **An id is one call site.** It is declared where the call is made, never in a manifest, and it
-  names the call rather than the attempt: a call site that logs five records about one call is one
-  call. Reusing an id for two different calls in one execution is reported as the reuse it is (two
-  arrows with the same label), not silently resolved.
+- **A leg is the method, and it is one call.** The id is the method the callee is addressed by,
+  declared where the call is made — never in a manifest — and a call site that logs five records
+  about one call is one call. The unit that made the call is a field of its own (`from`), because a
+  diagram draws the two ends from the identity and labels the arrow with the method: repeating the
+  caller in the label said what its own arrow already said. Reusing a method for two different calls
+  in one execution is two calls from two units, and the ledger keys them apart by `(method, caller)`
+  rather than merging them into one arrow.
 
 ### The observed shape, published
 

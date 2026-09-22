@@ -17,10 +17,11 @@ import {openPages} from '@feasibleone/blong-browser/playwright/pages';
  * this realm's own flow and the hop that served it is its one arrow.
  *
  * Both ends of that arrow are read off the call, not off the deployment: the caller is the
- * **logical unit** the leg id names — `public`, the surface that received the request — and the
- * receiver is the namespace it was aimed at, `blong`. So this deployment draws two
- * participants, and the hop the artifact exists to show is visible. Naming either end after the
- * process that wrote the record would collapse a monolith to one participant, which is a
+ * **logical unit** the declaration names — `public`, the surface that received the request — and
+ * the receiver is the namespace the method was aimed at, `blong`. The label on the arrow is the
+ * method alone (`blong.flow.find`), because its ends are already on the arrow. So this deployment
+ * draws two participants, and the hop the artifact exists to show is visible. Naming either end
+ * after the process that wrote the record would collapse a monolith to one participant, which is a
  * property of how a suite is split rather than of what happened.
  */
 const REALM_KIND = 'blong.flow.find';

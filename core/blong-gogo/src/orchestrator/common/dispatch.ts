@@ -1,5 +1,5 @@
 import {orchestrator, type IMeta} from '@feasibleone/blong/types';
-import {legName, recordedCall} from '../../lib.ts';
+import {recordedCall} from '../../lib.ts';
 import {declareCall, namespaceOf} from '../../semanticContext.ts';
 
 export default orchestrator<{destination?: string; appendNamespace?: string}>(({remote}) => ({
@@ -35,10 +35,11 @@ export default orchestrator<{destination?: string; appendNamespace?: string}>(({
                 // name would credit the hop to whichever namespace happened to be served
                 // alongside it.
                 //
-                // The leg is spelled as every other leg is, `<caller>.<target>.<method>`:
-                // slash routing is the wire form only, and a `/` in an id is flattened to `-`
-                // by the leg grammar, which would hide the target the arrow names.
-                const declared = legName(forwarded);
+                // The leg is the method the forwarded call reaches its destination with — the
+                // wire name, slash and all (`db/gateway.bundle.find`): that is the method the
+                // callee strips back to, and a label that dotted it would no longer be the name
+                // the call was made by. Who made it is stated beside the method, not inside it.
+                const declared = forwarded;
                 const forward = async (): Promise<unknown[] | undefined> =>
                     (await recordedCall(this, declared, () =>
                         remote.dispatch(...params, {...$meta, method: forwarded}),

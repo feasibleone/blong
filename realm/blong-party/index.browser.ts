@@ -12,6 +12,9 @@ export default browser(blong => ({
         access: blong.type.Object({}),
     }),
     children: [
+        async function blong() {
+            return import('@feasibleone/blong-realm/browser.ts');
+        },
         async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
         },
@@ -61,6 +64,7 @@ export default browser(blong => ({
                     },
                 },
             },
+            blong: {},
             login: {},
             party: {},
             access: {},

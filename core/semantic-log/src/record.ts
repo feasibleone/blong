@@ -113,6 +113,17 @@ export interface FlowState {
      */
     leg?: string;
     /**
+     * The logical unit that **declared** that leg — the caller (PRD R22).
+     *
+     * A field of its own rather than a prefix of the leg id, which is what it used to be:
+     * the id is the label an arrow is drawn with, and a label that repeated the caller read
+     * as `gateway.db/gateway.bundle.find` where `db/gateway.bundle.find` says the same thing
+     * once. Written by the caller with the declaration, adopted from the wire by a callee —
+     * so both ends of a call report the same source — and never read out of the method's
+     * shape or taken from the process that wrote the record.
+     */
+    legFrom?: string;
+    /**
      * The participant the caller **expected** to answer that leg (PRD R22).
      *
      * Present only on the records of the caller: the receiving end does not restate

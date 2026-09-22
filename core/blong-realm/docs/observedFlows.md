@@ -6,8 +6,8 @@ sequenceDiagram
     participant public
     participant blong
     participant semlog
-    public->>blong: public.blong.flow.find
-    blong->>semlog: blong.semlog.blong.flow.find
-    semlog-->>blong: blong.semlog.blong.flow.find
-    blong-->>public: public.blong.flow.find
+    public->>blong: blong.flow.find
+    blong->>semlog: semlog/blong.flow.find
+    semlog-->>blong: semlog/blong.flow.find
+    blong-->>public: blong.flow.find
 ```

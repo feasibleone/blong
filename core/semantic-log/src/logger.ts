@@ -280,6 +280,7 @@ function toErrorDetail(value: unknown): ErrorDetail | undefined {
 function flowWithLeg(
     flow: FlowState | undefined,
     leg: string | undefined,
+    from: string | undefined,
     to: string | undefined,
     seq: string | undefined,
 ): FlowState | undefined {
@@ -289,6 +290,7 @@ function flowWithLeg(
     return {
         ...flow,
         leg,
+        ...(from === undefined ? {} : {legFrom: from}),
         ...(to === undefined ? {} : {legTo: to}),
         ...(seq === undefined ? {} : {legSeq: seq}),
     };
@@ -384,7 +386,13 @@ function create(
         const decision = takeDecision();
         // The bound leg (PRD R22) rides *inside* `flow`, so a record's flow state
         // is one object on the wire, in the cache and in the registry.
-        const flow = flowWithLeg(context.flow, context.leg, context.legTo, context.legSeq);
+        const flow = flowWithLeg(
+            context.flow,
+            context.leg,
+            context.legFrom,
+            context.legTo,
+            context.legSeq,
+        );
         const assembled: LogRecord = {
             id: mintRecordRef(),
             time: now(),

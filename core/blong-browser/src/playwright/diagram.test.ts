@@ -56,11 +56,9 @@ describe('shouldRegenerateDiagrams', () => {
 
 describe('drawsACall', () => {
     it('accepts an answered call and an unanswered one alike', () => {
-        expect(drawsACall('sequenceDiagram\n    public->>blong: public.blong.flow.find')).toBe(
-            true,
-        );
+        expect(drawsACall('sequenceDiagram\n    public->>blong: blong.flow.find')).toBe(true);
         expect(
-            drawsACall('sequenceDiagram\n    public--xblong: public.blong.flow.find (no receipt)'),
+            drawsACall('sequenceDiagram\n    public--xblong: blong.flow.find (no receipt)'),
         ).toBe(true);
     });
 

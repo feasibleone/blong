@@ -8,12 +8,24 @@ const FLOW = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 const KIND = 'transfer.single';
 
 /** One observation, with the fields a test cares about named explicitly. */
+/**
+ * The unit a fixture's leg id names first — the caller, read off the id.
+ *
+ * This file's legs are written the way they were before the caller became a field of its own
+ * (`payer.quote.rates`), and the helper states the caller from it so a case reads the same as
+ * it always did. A case that is *about* the caller passes `from` in `rest`.
+ */
+function callerOf(leg: string): string {
+    const at = leg.search(/[./]/);
+    return at < 0 ? leg : leg.slice(0, at);
+}
+
 function observed(
     leg: string,
     service: string,
     rest: Partial<DiagramObservation> = {},
 ): DiagramObservation {
-    return {leg, service, time: 1, ref: `ref-${leg}-${service}`, ...rest};
+    return {leg, service, from: callerOf(leg), time: 1, ref: `ref-${leg}-${service}`, ...rest};
 }
 
 /** The items of a model, flattened for comparison. */
@@ -247,6 +259,7 @@ t.test('the model of an execution is its observations, with its own participants
             id: FLOW,
             kind: KIND,
             leg: 'payer.quote.rates',
+            legFrom: 'payer',
             legTo: 'hub',
             legSeq: '1',
             step: 'quote',
@@ -528,29 +541,38 @@ t.test('a hostile name cannot become an arrow', t => {
     t.end();
 });
 
-t.test('a hostile writer name is folded where it is the only caller named', t => {
-    // The folding is what keeps a caller-controlled name from becoming syntax. Only a leg id
-    // that names no caller falls back to the writer, so this is the shape that reaches the
-    // arrow with the emitter's own name on it — folded rather than dropped.
+t.test('a hostile declared caller is folded, not drawn as syntax', t => {
+    // The folding is what keeps a caller-controlled name from becoming syntax. A caller
+    // arrives in an identity, and the ledger declines one the grammar rejects; the renderer
+    // folds whatever it is handed anyway, because a name that became a statement separator
+    // would corrupt the diagram it was drawn in rather than appear wrong in it.
     const model = modelOfObservations([
-        observed('single', 'evil;\npayer->>victim: forged', {to: 'hub', seq: '1'}),
+        observed('single', 'payer', {
+            from: 'evil;\npayer->>victim: forged',
+            to: 'hub',
+            seq: '1',
+        }),
     ]);
     const rendered = renderSequence(model);
     t.notMatch(rendered, /;/, 'no statement separator survives');
     t.match(rendered, /participant evil__payer-__victim__forged/, 'folded to underscores');
-    t.match(rendered, /evil__payer-__victim__forged--xhub: single/, 'and drawn on the arrow');
+    t.match(
+        rendered,
+        /evil__payer-__victim__forged--xhub: single/,
+        'and drawn on the arrow — unanswered, since nothing declared an answer',
+    );
     t.end();
 });
 
-t.test('two writer names that fold to the same name are numbered apart, not merged', t => {
+t.test('two caller names that fold to the same name are numbered apart, not merged', t => {
     // `a b` and `a_b` are two names, not one with a typo, so the second is numbered
     // rather than drawn as the first. The third collides with a name already numbered,
-    // so the suffix itself is tried again until it is free. The legs here name no caller
-    // (no dot in the id), which is the one case that falls back to the writer's name.
+    // so the suffix itself is tried again until it is free. The names are the callers the
+    // identities declare — the one thing an arrow's source is read from.
     const model = modelOfObservations([
-        observed('one', 'a b', {to: 'c d', seq: '1'}),
-        observed('two', 'a_b_2', {to: 'c d', seq: '2'}),
-        observed('three', 'a_b', {to: 'c_d', seq: '3'}),
+        observed('one', 'payer', {from: 'a b', to: 'c d', seq: '1'}),
+        observed('two', 'payer', {from: 'a_b_2', to: 'c d', seq: '2'}),
+        observed('three', 'payer', {from: 'a_b', to: 'c_d', seq: '3'}),
     ]);
     const names = renderSequence(model)
         .split('\n')
@@ -570,11 +592,18 @@ t.test('two writer names that fold to the same name are numbered apart, not merg
     t.end();
 });
 
-t.test('a service name with no characters at all is still a participant', t => {
-    // A nameless service is folded like any other caller text: the record's service is who
-    // called, and there is nothing else to read it from.
-    const model = modelOfObservations([observed('single', '', {to: 'hub'})]);
+t.test('a nameless record still takes part, as the receiver it reported itself to be', t => {
+    // A record's service is who wrote it, and a name empty enough to fold to nothing is
+    // drawn as `unobserved` rather than dropped: it is the only thing a receipt has to say
+    // about its end of the call. It is not what an arrow is drawn from — the caller is.
+    const model = modelOfObservations([observed('single', '', {seq: '1'})]);
     t.match(renderSequence(model), /participant unobserved\n/, 'a name cannot be empty either');
+    const declared = modelOfObservations([observed('single', '', {from: 'payer', to: 'hub'})]);
+    t.match(
+        renderSequence(declared),
+        /payer--xhub: single/,
+        'and a declaration is drawn from the caller it named, not from the writer',
+    );
     t.end();
 });
 

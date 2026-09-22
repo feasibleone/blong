@@ -61,25 +61,28 @@ export function installPayer(participant: Participant, options: PayerOptions): v
             participant.phase('discovery', async () => {
                 // The leg covers this call's own records too — the request it sends
                 // and the answer it reads back — not just the hop in the middle. A
-                // reader following `leg=payer.discovery.parties` therefore lands on
+                // reader following `leg=discovery.parties` therefore lands on
                 // the call, not on one arbitrary line of it (PRD R22).
-                await bindLeg({id: 'payer.discovery.parties', to: options.hubName}, async () => {
-                    logger.info('looking up payee', {
-                        req: {operation: 'POST', target: '/parties/msisdn'},
-                        amount,
-                        currency,
-                    });
-                    const lookup = await hop(participant, options.hubUrl, '/parties', {
-                        target: body.target ?? 'msisdn-1',
-                    });
-                    logger.info('payee found', {
-                        res: {status: lookup.status},
-                        payeeCurrency: 'EUR',
-                    });
-                });
+                await bindLeg(
+                    {id: 'discovery.parties', from: 'payer', to: options.hubName},
+                    async () => {
+                        logger.info('looking up payee', {
+                            req: {operation: 'POST', target: '/parties/msisdn'},
+                            amount,
+                            currency,
+                        });
+                        const lookup = await hop(participant, options.hubUrl, '/parties', {
+                            target: body.target ?? 'msisdn-1',
+                        });
+                        logger.info('payee found', {
+                            res: {status: lookup.status},
+                            payeeCurrency: 'EUR',
+                        });
+                    },
+                );
                 return participant.phase('quote', async () => {
                     const quote = await bindLeg(
-                        {id: 'payer.quote.rates', to: options.hubName},
+                        {id: 'quote.rates', from: 'payer', to: options.hubName},
                         async () => {
                             logger.info('requesting fx quote', {from: currency, to: 'EUR'});
                             return hop(participant, options.hubUrl, '/quotes', {
@@ -118,7 +121,7 @@ export function installPayer(participant: Participant, options: PayerOptions): v
                     return participant.phase('transfer', async () => {
                         const started = Date.now();
                         const settled = await bindLeg(
-                            {id: 'payer.transfer.submit', to: options.hubName},
+                            {id: 'transfer.submit', from: 'payer', to: options.hubName},
                             async () => {
                                 logger.info('submitting transfer', {
                                     req: {operation: 'POST', target: '/transfers'},

@@ -176,17 +176,16 @@ t.test('a cache that cannot be opened is a usage error, not a crash', async t =>
     // the store reporting a failure of its own. That is mocked rather than
     // provoked: provoking it would mean asserting an errno belonging to `cacache`
     // rather than to this program, which is not the property under test.
-    const {inspect: inspectFailing} = await t.mockImport<typeof import('../bin/semantic-log-inspect.ts')>(
-        '../bin/semantic-log-inspect.ts',
-        {
-            '../src/cache.ts': {
-                openCache: async () => {
-                    throw new Error('store unavailable');
-                },
-                cacheRecordIds: async () => [],
+    const {inspect: inspectFailing} = await t.mockImport<
+        typeof import('../bin/semantic-log-inspect.ts')
+    >('../bin/semantic-log-inspect.ts', {
+        '../src/cache.ts': {
+            openCache: async () => {
+                throw new Error('store unavailable');
             },
+            cacheRecordIds: async () => [],
         },
-    );
+    });
     const {err, io} = sink();
     t.equal(await inspectFailing(['--cache', dir, ID], io), 3);
     t.match(err.join(''), /cannot open cache/);
@@ -318,11 +317,32 @@ t.test('a scheme with no kind keeps the record kind', async t => {
 
 const FLOW = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 
+/**
+ * The unit a fixture's leg names first.
+ *
+ * The legs here are written the way they were before the caller became a field of its own
+ * (`payer.quote.rates`), and the fixture states the caller from one so the records stay
+ * shaped like the wire and the expectations read as they always did.
+ */
+function callerOf(leg: string | undefined): string | undefined {
+    if (leg === undefined) return undefined;
+    const at = leg.search(/[./]/);
+    return at < 0 ? leg : leg.slice(0, at);
+}
+
 /** A record that belongs to one call, with what only the local store knows. */
 function callRecord(
     id: string,
     leg: string | undefined,
-    flow: {id?: string; kind?: string; to?: string; seq?: string; step?: string; service?: string},
+    flow: {
+        id?: string;
+        kind?: string;
+        from?: string;
+        to?: string;
+        seq?: string;
+        step?: string;
+        service?: string;
+    },
     extra: Partial<LogRecord> = {},
 ): LogRecord {
     return {
@@ -332,7 +352,7 @@ function callRecord(
         flow: {
             id: flow.id ?? FLOW,
             kind: flow.kind ?? 'transfer.single',
-            ...(leg === undefined ? {} : {leg}),
+            ...(leg === undefined ? {} : {leg, legFrom: flow.from ?? callerOf(leg)}),
             ...(flow.to === undefined ? {} : {legTo: flow.to}),
             ...(flow.seq === undefined ? {} : {legSeq: flow.seq}),
             ...(flow.step === undefined ? {} : {step: flow.step}),

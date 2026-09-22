@@ -51,12 +51,12 @@ rendered, and writes docs/observedFlows.md only when the mermaid it received con
 otherwise it skips with the reason and the text the service sent. A participant-only diagram
 committed as the artifact would say a flow was observed as a sequence of calls when nothing called
 anything, and the screenshot baseline would freeze that as the expected state - the same failure
-mode as regenerating baselines over error panels. The moment it waited for has arrived: the artifact
-is no longer a skip, and it was regenerated again on 2026-09-21 when the caller rule was restored
-(D-210), and once more the same day when the public surface stopped being called `gateway` (D-244).
-It now reads `public->>gateway` labelled `public.gateway.bundle.find`, then that call's answer, then
-the hop this realm makes to `db` - three participants, where one name for the surface and the
-namespace had drawn them as one and the call as a self-hop.
+mode as regenerating baselines over error panels. The moment it waited for has arrived, and the
+artifact has been regenerated on each ruling since: the caller rule restored (D-210), the public
+surface named apart from the namespace (D-244), and the caller moved out of the arrow's label
+(D-249). It now reads `public->>gateway: gateway.bundle.find` - the method alone on the arrow, the
+two ends on its ends - then that call's answer, then the hop this realm makes to `db`, and its
+answer.
 
 ### D-210 — Legs, not services: the credit is keyed on the leg
 
@@ -66,30 +66,31 @@ Implemented on the user's instruction that a service must never be a logical con
 can host many realms, adapters and orchestrators, so the deployment split cannot decide whether a
 call was answered. Two edits in core/semantic-log's ledger: a record with no declared target is the
 receiving side of its leg and credits it whatever service wrote it (the service stays on the
-aggregate as information), and the caller of an edge is the first half of the leg id rather than the
-emitting service, with the service only as a fallback for a leg that carries no caller. Measured on
-a monolith dev server driven through blong-dev proxy, read over plain HTTP: access.role.find now
-reports ends `[{caller: gateway, callee: access, count 2, observed 2}]` and the diagram draws a
-solid arrow from gateway to access labelled gateway.access.role.find - the same code path in
-monolith and microservice, since nothing in it looks at a process name. Cost, recorded honestly: two
-ledger tests still asserted the removed rule ('the call that aimed at the answering receiver is the
-answered one', 'a receiver that logs three records about one call answered it once') and failed
-until they were updated to the new rule; and the committed docs/observed-flows.md was stale and
-needed regenerating with SEMANTIC_LOG_UPDATE_DIAGRAMS=1, then reading before it was accepted. One
-real narrowing to decide later: when one leg id is reused toward two receivers and only one answers,
-the receipt no longer says which namespace it was addressed to - the receiver's record could carry
-that as information (not as a condition), which is the honest way to keep the distinction.
+aggregate as information), and the caller of an edge is the unit the declaration names rather than
+the emitting service - with the service consulted nowhere, not even as a fallback. Measured on a
+monolith dev server driven through blong-dev proxy, read over plain HTTP: access.role.find reports
+ends `[{caller: gateway, callee: access, count 2, observed 2}]` and the diagram draws a solid arrow
+from gateway to access - the same code path in monolith and microservice, since nothing in it looks
+at a process name. Cost, recorded honestly: two ledger tests still asserted the removed rule ('the
+call that aimed at the answering receiver is the answered one', 'a receiver that logs three records
+about one call answered it once') and failed until they were updated to the new rule; and the
+committed docs/observed-flows.md was stale and needed regenerating with
+SEMANTIC_LOG_UPDATE_DIAGRAMS=1, then reading before it was accepted. One real narrowing to decide
+later: when one leg is reused toward two receivers and only one answers, the receipt no longer says
+which namespace it was addressed to - the receiver's record could carry that as information (not as
+a condition), which is the honest way to keep the distinction.
 
 Restored 2026-09-21 on the owner's ruling, after it had been reversed once by a decision that was
 never written down ('the caller is the emitting service again', pointing at a decision id that
 exists in no memory file - so the reversal itself was unrecoverable from the repo, and the entry
 that recorded it pointed at a dangling id). The rule is now implemented on both sides rather than in
-the ledger alone: the ledger and the diagram read the caller off the leg id, and core/blong-gogo
-declares legs the way the rule needs them - the calling port's _namespace_ (`login`, `db`) instead
-of its port id (`login.loginDispatch`, `srv.db`), and the call's _wire_ name
+the ledger alone: the ledger and the diagram take the caller from the identity the declaration
+carries - at first the head of the leg id, and since D-249 a field of its own beside the method -
+and core/blong-gogo declares legs the way the rule needs them - the calling port's _namespace_
+(`login`, `db`) instead of its port id (`login.loginDispatch`, `srv.db`), and the call's _wire_ name
 (`access.permission.list`) instead of the handler name it was written as (`accessPermissionList`),
-because a leg's second half is read as the namespace the call was aimed at. One identity was chosen
-rather than derived, and then renamed: the HTTP route declares the public surface as `public`
+because the method's first segment is read as the namespace the call was aimed at. One identity was
+chosen rather than derived, and then renamed: the HTTP route declares the public surface as `public`
 (D-244) - a logical unit of its own, not the process (`blong`) and not the namespace it happens to
 be serving - because `gateway`, the name it first carried, is the namespace the gateway realm
 answers as, and one name for both drew the surface and the realm as a single participant. The
@@ -97,6 +98,7 @@ framework realm's own read therefore draws `public->>blong` (the hop visible aga
 collapsing to `blong->>blong`. Verified on a live blong-gateway run: login.token.create draws the
 participants gateway, login, access and db, nested by position. The fixture's shared hub was
 parameterised at the same time, because it runs as `hub` in one scheme and `hubB` in the other and
-its ids have to name the unit that makes the call.
+its ids have to name the unit that makes the call - and, since D-249 moved the caller out of the
+label, the two mounts declare the same method ids and differ by the caller they state.
 
 ## Superseded

@@ -4,7 +4,7 @@
  *
  * Every identity that travels between processes rides **one** header:
  *
- *     x-semantic-trace: trace=tr-1,flow=01ARZ3NDEKTSV4RRFFQ69G5FAV,leg=payer.quote.rates,to=hub,seq=1.2
+ *     x-semantic-trace: trace=tr-1,flow=01ARZ3NDEKTSV4RRFFQ69G5FAV,leg=quote.rates,from=payer,to=hub,seq=1.2
  *
  * One header rather than five, because the fields are one thing — the context of
  * the call being made — and because a single value is what an application can set
@@ -52,8 +52,20 @@ export const TRACE_FIELD = 'trace';
 /** Flow **execution** id — a caller-minted ULID (PRD R9). */
 export const FLOW_FIELD = 'flow';
 
-/** The leg: the call site this record belongs to (PRD R22). */
+/** The leg: the method this call reaches its callee with (PRD R22). */
 export const LEG_FIELD = 'leg';
+
+/**
+ * The unit that declared the leg — the logical unit the call is made by.
+ *
+ * A field of its own rather than a prefix of the leg id, because the two answer
+different questions. The id is what the callee is addressed by, and it is read as a
+label: a reader of a diagram wants the method, and repeating the caller in it made
+the label longer than the arrow. Which unit made the call is an identity, and it is
+carried as one — read by the ledger to place an arrow's source, and by a receiver
+that wants to know who called it.
+ */
+export const FROM_FIELD = 'from';
 
 /** The receiving participant the caller declared for that leg. */
 export const TO_FIELD = 'to';
@@ -99,6 +111,8 @@ export interface Identities {
     trace?: string;
     flow?: string;
     leg?: string;
+    /** The unit that declared the call, where the declaring side stated one. */
+    from?: string;
     to?: string;
     seq?: string;
     /** The capabilities decided for the execution, as name → on/off. */
@@ -171,6 +185,7 @@ export function identityHeaders(extra?: Record<string, string>): Record<string, 
     if (context.trace !== undefined) fields.push(`${TRACE_FIELD}=${context.trace}`);
     if (context.flow !== undefined) fields.push(`${FLOW_FIELD}=${context.flow.id}`);
     if (context.leg !== undefined) fields.push(`${LEG_FIELD}=${context.leg}`);
+    if (context.legFrom !== undefined) fields.push(`${FROM_FIELD}=${context.legFrom}`);
     if (context.legTo !== undefined) fields.push(`${TO_FIELD}=${context.legTo}`);
     if (context.legSeq !== undefined) fields.push(`${SEQ_FIELD}=${context.legSeq}`);
     const capabilities = encodeCapabilities(context.capabilities ?? {});
@@ -220,6 +235,9 @@ export function readIdentities(headers: Record<string, unknown>): Identities {
                 break;
             case LEG_FIELD:
                 identities.leg = value;
+                break;
+            case FROM_FIELD:
+                identities.from = value;
                 break;
             case TO_FIELD:
                 identities.to = value;

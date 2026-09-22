@@ -48,7 +48,7 @@ t.test('unattached, every reader degrades and every scope still runs', async t =
         'and one scoped to an inbound leg',
     );
     t.equal(
-        vocabulary.bindLeg({id: LEG, to: 'party'}, () => {
+        vocabulary.bindLeg({id: LEG, from: 'gateway', to: 'party'}, () => {
             ran += 1;
             return 'done';
         }),
@@ -132,7 +132,7 @@ t.test('attached, the facade is the emitter vocabulary itself', async t => {
         'and a trace-scoped region with its own trace',
     );
     t.equal(
-        vocabulary.bindLeg({id: LEG, to: 'party'}, () =>
+        vocabulary.bindLeg({id: LEG, from: 'gateway', to: 'party'}, () =>
             /leg=/.test(vocabulary.identityHeaders()['x-semantic-trace'] ?? ''),
         ),
         true,
