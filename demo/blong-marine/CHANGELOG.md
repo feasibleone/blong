@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.4](https://github.com/feasibleone/blong/compare/blong-marine-v1.5.3...blong-marine-v1.5.4) (2026-09-21)
+
+
+### Bug Fixes
+
+* decouple sequence diagrams from services ([9bc672a](https://github.com/feasibleone/blong/commit/9bc672a184ed07582452ede3a556aaf3ed0726d9))
+
 ## [1.5.3](https://github.com/feasibleone/blong/compare/blong-marine-v1.5.2...blong-marine-v1.5.3) (2026-09-12)
 
 

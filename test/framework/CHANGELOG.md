@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.0](https://github.com/feasibleone/blong/compare/test-v1.14.2...test-v1.15.0) (2026-09-21)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
 ## [1.14.2](https://github.com/feasibleone/blong/compare/test-v1.14.1...test-v1.14.2) (2026-09-10)
 
 

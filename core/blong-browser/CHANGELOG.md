@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.19.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.18.0...blong-browser-v1.19.0) (2026-09-21)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
+
+### Bug Fixes
+
+* build ([18ea6c6](https://github.com/feasibleone/blong/commit/18ea6c6c737e70ebb8715eba8bd19c7f459c2c41))
+* CI test failures ([f13d3db](https://github.com/feasibleone/blong/commit/f13d3db0e5bed93ae633e2bfcead4e7acced5894))
+* CI test failures ([f1f4783](https://github.com/feasibleone/blong/commit/f1f4783828b0904f8addecec42c87dd7d406286f))
+* decouple sequence diagrams from services ([9bc672a](https://github.com/feasibleone/blong/commit/9bc672a184ed07582452ede3a556aaf3ed0726d9))
+* MermaidRenderer loop ([afd21eb](https://github.com/feasibleone/blong/commit/afd21ebe87aa3e90c14a2b676414c55a38415744))
+* sequence diagram leg capturing logic ([65f51cf](https://github.com/feasibleone/blong/commit/65f51cf98f4691caead56d9e4d22200fe40cc5bf))
+* test failures ([6aad7e4](https://github.com/feasibleone/blong/commit/6aad7e444238b7ad9801de4017eaedadb55f16cc))
+* test for unexpected modules in the browser bundle ([073f0d2](https://github.com/feasibleone/blong/commit/073f0d2a9baabdf1b746f77917f65ebf728e0ce0))
+* upgrade chromatic ([ba61c34](https://github.com/feasibleone/blong/commit/ba61c34a557ad14349e710e073e3d9e137593c75))
+
 ## [1.18.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.17.0...blong-browser-v1.18.0) (2026-09-16)
 
 

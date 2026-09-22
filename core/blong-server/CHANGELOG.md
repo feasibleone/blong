@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/feasibleone/blong/compare/blong-server-v1.4.0...blong-server-v1.5.0) (2026-09-21)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
 ## [1.4.0](https://github.com/feasibleone/blong/compare/blong-server-v1.3.0...blong-server-v1.4.0) (2026-09-16)
 
 

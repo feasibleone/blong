@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.35.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.34.0...blong-gogo-v1.35.0) (2026-09-21)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
+
+### Bug Fixes
+
+* build ([18ea6c6](https://github.com/feasibleone/blong/commit/18ea6c6c737e70ebb8715eba8bd19c7f459c2c41))
+* decouple sequence diagrams from services ([9bc672a](https://github.com/feasibleone/blong/commit/9bc672a184ed07582452ede3a556aaf3ed0726d9))
+* load ([492a0cf](https://github.com/feasibleone/blong/commit/492a0cf317e57cfea618337c8c2c572c220d8b30))
+* MermaidRenderer loop ([afd21eb](https://github.com/feasibleone/blong/commit/afd21ebe87aa3e90c14a2b676414c55a38415744))
+* sequence diagram leg capturing logic ([65f51cf](https://github.com/feasibleone/blong/commit/65f51cf98f4691caead56d9e4d22200fe40cc5bf))
+* test failures ([6aad7e4](https://github.com/feasibleone/blong/commit/6aad7e444238b7ad9801de4017eaedadb55f16cc))
+
 ## [1.34.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.33.0...blong-gogo-v1.34.0) (2026-09-16)
 
 

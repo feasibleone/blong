@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-mock-v1.2.0...blong-mock-v1.3.0) (2026-09-21)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/blong-mock-v1.1.1...blong-mock-v1.2.0) (2026-09-15)
 
 
