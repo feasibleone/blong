@@ -18,6 +18,11 @@ open (8)
 - `F-192` · core/blong-realm — A DataTable's empty state is a row, so tbody tr matches it
 - `F-189` · core/blong-realm — A realm's methods are routed only if its gateway layer declares them
 
+resolved (2)
+
+- `F-228` · core/blong-realm — A mask hides a value's pixels, never its width
+- `F-229` · core/blong-realm — One reading of a page that refreshes on a timer is a coin flip
+
 <!-- /memory:index -->
 
 ## Open
@@ -110,3 +115,35 @@ registers the RPC route. Verify routing with blong-dev proxy (plain JSON in fron
 than inferring it from an error message.
 
 ## Resolved
+
+### F-228 — A mask hides a value's pixels, never its width
+
+> _2026-09-22 · core/blong-realm · resolved_
+
+CI failed core/blong-realm's digest capture, and it failed deterministically: the committed baseline
+and a freshly regenerated one both mismatched, with every glyph in the row drawn a pixel or two off.
+The page masks its When cell, and masking paints over the value without touching its width - an ISO
+timestamp is as wide as its digits happen to be in a proportional font - so each run shifted every
+column after it, and the comparison failed on a value nobody could see. Fixed by giving the masked
+element a fixed box (D-250): the mask then covers a stable rectangle. Lesson: a masked region is
+only as stable as the box it is drawn over, and a variable-width masked cell is the same class of
+flake as a timestamp in a baseline. It also went unnoticed for a day because the failure is
+invisible in the two images a reviewer sees.
+
+Fixed: the masked cell renders in a fixed-width box on both pages (D-250); the digest capture then
+passed four consecutive full runs.
+
+### F-229 — One reading of a page that refreshes on a timer is a coin flip
+
+> _2026-09-22 · core/blong-realm · resolved_
+
+The realm diagram spec asserts the page layout, and it did so with a single page.evaluate reading
+the two scroll boxes and the panel. The list on that page refreshes on a timer, so one run in four
+caught the DOM while a re-render had the boxes unmounted, and the assertion failed reporting nothing
+about the layout it was written to defend. Fixed by asserting with retrying matchers (toHaveCSS and
+expect.poll), which wait for the page to settle instead of sampling it once: four consecutive full
+runs pass. Lesson: a spec that asserts a steady state has to ask repeatedly - a page with a timer is
+not a value to read once.
+
+Fixed: the layout assertions use toHaveCSS and expect.poll, which retry until the page settles; four
+consecutive full runs pass.

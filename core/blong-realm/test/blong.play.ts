@@ -151,23 +151,20 @@ test('an observed execution is drawn as a diagram', async ({portal}) => {
     // the fold of either the list or the diagram was simply unreachable). A page that fits
     // is also what keeps a capture of it comparable between runs, which is why the panel is
     // asserted *not* to scroll.
-    const layout = await portal.page.evaluate(() => {
-        const box = (testId: string): {overflow: string} => {
-            const element = document.querySelector(`[data-testid="${testId}"]`);
-            return {overflow: element === null ? 'absent' : getComputedStyle(element).overflowY};
-        };
-        const panel = document.querySelector('.p-tabview-panel');
-        return {
-            executions: box('flow-executions'),
-            diagram: box('flow-diagram'),
-            pageOverflows: panel !== null && panel.scrollHeight > panel.clientHeight,
-        };
-    });
-    expect(layout.executions.overflow, 'the list of executions scrolls in its own box').toBe(
-        'auto',
-    );
-    expect(layout.diagram.overflow, 'the diagram scrolls in its own box').toBe('auto');
-    expect(layout.pageOverflows, 'and the page fits the panel it was given').toBe(false);
+    //
+    // Retrying matchers rather than one reading of the DOM: the list refreshes on a timer, so
+    // a single `evaluate` can land while a re-render has the boxes unmounted — which is a
+    // failure that says nothing about the layout and happened on one run in four (F-229).
+    await expect(portal.page.getByTestId('flow-executions')).toHaveCSS('overflow-y', 'auto');
+    await expect(portal.page.getByTestId('flow-diagram')).toHaveCSS('overflow-y', 'auto');
+    await expect
+        .poll(async () =>
+            portal.page.evaluate(() => {
+                const panel = document.querySelector('.p-tabview-panel');
+                return panel === null ? 0 : panel.scrollHeight - panel.clientHeight;
+            }),
+        )
+        .toBe(0);
 
     // The same policy as `realm/blong-gateway/test/observedFlow.play.ts`, through the
     // same helper: capture the screenshot and the mermaid text when a call was

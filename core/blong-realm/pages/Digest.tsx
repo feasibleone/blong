@@ -1,9 +1,9 @@
+import {useText} from '@feasibleone/blong-browser';
 import {Button} from 'primereact/button';
 import {Column} from 'primereact/column';
 import {DataTable} from 'primereact/datatable';
 import {InputText} from 'primereact/inputtext';
 import {useState} from 'react';
-import {useText} from '@feasibleone/blong-browser';
 import {useRealmRead} from './useRealmData.js';
 
 /**
@@ -74,13 +74,25 @@ export function Digest() {
                         row.at === undefined ? (
                             ''
                         ) : (
-                            <span data-testid="digest-when">
+                            <span
+                                data-testid="digest-when"
+                                // A fixed box, because this cell is masked in captures: masking
+                                // hides a value's pixels and nothing else, and an ISO timestamp is
+                                // as wide as its digits happen to be — so every column after this
+                                // one started a pixel or two further along on each run, and the
+                                // capture of this page failed on a value nobody could see. The box
+                                // is what makes the mask a mask.
+                                style={{display: 'inline-block', width: '14rem'}}
+                            >
                                 {new Date(row.at).toISOString()}
                             </span>
                         )
                     }
                 />
-                <Column field="kind" header={useText('Change')} />
+                <Column
+                    field="kind"
+                    header={useText('Change')}
+                />
                 <Column
                     header={useText('Service')}
                     body={(row: IDigestEntry) => row.data?.service ?? row.service ?? ''}

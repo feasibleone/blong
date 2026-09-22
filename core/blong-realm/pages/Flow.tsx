@@ -105,9 +105,17 @@ export function Flow() {
                         field="id"
                         header={useText('Execution')}
                         // Masked in captures: an execution id is minted per execution, so
-                        // it can never be the same value twice.
+                        // it can never be the same value twice. Masking hides a value and not
+                        // its width, so the box is fixed: a ULID is as wide as its own digits
+                        // allow, and without this every column after it moved with the value
+                        // nobody can see.
                         body={(row: IFlowSummary) => (
-                            <span data-testid="flow-execution">{row.id ?? ''}</span>
+                            <span
+                                data-testid="flow-execution"
+                                style={{display: 'inline-block', width: '18rem'}}
+                            >
+                                {row.id ?? ''}
+                            </span>
                         )}
                     />
                     <Column

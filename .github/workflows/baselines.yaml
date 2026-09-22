@@ -1,0 +1,56 @@
+name: Playwright baselines
+
+# Capture screenshot baselines **where they are compared**.
+#
+# A baseline is a picture of a page as one machine renders it. Fonts differ between a
+# developer's machine and a CI runner, and with them the glyph metrics: `core/blong-realm`'s
+# template and digest baselines were captured locally and failed in CI with 2-3% of pixels
+# differing, while the masked cell matched exactly — every *text* cell differed, including
+# the ones whose content is a constant, which no content change can explain (T-123). A
+# capture taken on the machine that compares them is the only one that agrees with it, so
+# the capture runs here rather than being regenerated locally.
+#
+# The result is uploaded, **not committed**: `--update-snapshots` bakes in whatever the pages
+# showed, including an error dialog, so a human opens the images and commits them
+# deliberately (see the `blong-playwright` skill, "Never regenerate baselines to make a suite
+# green").
+on:
+    workflow_dispatch:
+        inputs:
+            package:
+                description: Package directory whose Playwright suite to capture
+                required: true
+                default: core/blong-realm
+            args:
+                description: Extra playwright arguments (a spec path, `--grep`, `--project`)
+                required: false
+                default: ""
+jobs:
+    capture:
+        runs-on: ubuntu-26.04
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+            - name: Install
+              run: node common/scripts/install-run-rush.js install
+            - name: Capture baselines
+              working-directory: ${{ inputs.package }}
+              # `CI` is what makes the runner the environment being captured: the suite derives its
+              # ports from `rush.json` and installs the browsers the runner will use, and both
+              # servers start rather than being reused.
+              env:
+                  CI: "1"
+              run: node --run playwright:update -- ${{ inputs.args }}
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: baselines
+                  # Every suite's snapshots, because a suite captures its realm projects' baselines
+                  # too — `blong-suite` writes `demo/blong-marine`'s.
+                  path: |
+                      **/*.play.ts-snapshots/**
+                      **/docs/observedFlows.md
+                  if-no-files-found: error

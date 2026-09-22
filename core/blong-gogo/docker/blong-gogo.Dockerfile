@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4-openssl-dev \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /opt/blong
-COPY --parents rush.json common core/**/package.json realm/**/package.json docs/**/package.json ext/**/package.json core/**/bin ./
+COPY --parents rush.json common core/**/package.json realm/**/package.json test/**/package.json suite/**/package.json demo/**/package.json tools/**/package.json docs/**/package.json ext/**/package.json core/**/bin ./
 RUN node common/scripts/install-run-rush.js install --to @feasibleone/blong-gogo
 COPY --parents core/**/* ./
 RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo && \
