@@ -1,4 +1,4 @@
-# Schema Management Patterns (knex adapter)
+# DB Schema Management
 
 This page provides implementation details for the declarative schema management feature of
 `adapter.knex`. See the [concept overview](../concepts/schema-sync.md) for a high-level description
@@ -186,12 +186,11 @@ type.Object(
 Constraints are applied in a **separate pass** after all tables have been created. This is necessary
 because foreign keys reference other tables that must already exist.
 
-```text
-Pass 1 — schemaTableSyncImpl:
-  Create/alter all tables in ascending `order`
-
-Pass 2 — schemaTableConstraintSyncImpl:
-  Apply composite PKs, unique constraints, indexes, foreign keys
+```mermaid
+flowchart TD
+    A["schema.sync on adapter startup"] --> B["Pass 1 — schemaTableSyncImpl<br/>create and alter every table, in ascending order"]
+    B --> C["Pass 2 — schemaTableConstraintSyncImpl<br/>apply composite PKs, unique constraints,\nindexes and foreign keys"]
+    C --> D["Both passes are idempotent:<br/>an unchanged schema produces zero SQL"]
 ```
 
 Both passes are **idempotent**. Already-present constraints (checked via
@@ -357,7 +356,16 @@ handler: {
 
 A handler file placed in the adapter layer whose name matches a synthetic handler takes precedence
 because registered realm handlers sit higher in the prototype chain than synthetic own-property
-handlers.
+handlers. Three things can answer a call, and the order between them is fixed:
+
+```mermaid
+flowchart TD
+    A["a call to a bound method arrives"] --> B{"is there a realm handler file<br/>for that name?"}
+    B -- "yes" --> C["the handler file runs —<br/>it sits higher in the prototype chain"]
+    B -- "no" --> D["the synthetic own-property handler,<br/>bound at startup"]
+    C -- "super with the camelCase name, or super.exec" --> D
+    D --> E["the stored procedure, or the generic CRUD<br/>of a declared table"]
+```
 
 To delegate back to the synthetic version, use `super` with the **camelCase name** stored on the
 adapter object:

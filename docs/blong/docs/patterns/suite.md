@@ -2,6 +2,19 @@
 
 To define a suite follow the patterns below.
 
+A suite is two entry points — one per platform — and each brings its own children. The `integration`
+config decides which test groups the runner picks up, per platform:
+
+```mermaid
+flowchart TD
+    S["server.ts — the server platform"] --> SR["children: reusable realms and<br/>local folders"]
+    B["browser.ts — the browser platform"] --> BR["children: the realms whose UI is needed"]
+    SR --> T{"which groups run?"}
+    BR --> T
+    T --> T1["the integration config lists them per platform"]
+    T1 --> T2["a group missing from that list<br/>silently never runs"]
+```
+
 ## Server
 
 ```ts
@@ -23,7 +36,7 @@ export default server(blong => ({
         './custom-realm-2',
     ],
     config: {
-        // suite configs per activation
+        // suite configs per intent
         default: {},
         microservice: {},
         dev: {},
@@ -57,7 +70,7 @@ export default browser(blong => ({
         './custom-realm-2',
     ],
     config: {
-        // suite configs per activation
+        // suite configs per intent
         default: {},
         microservice: {},
         dev: {},
@@ -135,7 +148,8 @@ type Load = (
     definition: object,
     suiteName: string,
     parentConfig: string | object,
-    activations: string[], // config activations to apply for the test
+    configNames: string[], // the intents to apply for this run
+    manifest?: Record<string, unknown>, // shared state, see below
 ) => Promise<{
     start: () => Promise<unknown>;
     test: () => Promise<unknown>;
@@ -154,9 +168,12 @@ The parameters are:
     - It determines the default k8s namespace where the suite is deployed.
 - `parentConfig`: Configuration overrides for the suite. This parameter is used to avoid the need of
   additional configuration files for the cases of running automated tests.
-- `activations`: Config activations to apply. This is used to activate the appropriate
-  configurations within the realms to avoid the need to do this via configuration files or command
-  line parameters.
+- `configNames`: The intents to apply. This activates the appropriate configurations within the
+  realms, avoiding the need to pass them through configuration files or command line parameters.
+- `manifest`: An optional shared object for exchanging runtime values between platforms — effective
+  ports, connection strings or other lifecycle state. Pass the **same reference** to both `load()`
+  calls so that what one platform writes the other can read. Omit it when the suite has nothing to
+  share.
 
 ## Tests
 
@@ -190,7 +207,8 @@ type Load = (
     definition: object,
     suiteName: string,
     parentConfig: string | object,
-    activations: string[],
+    configNames: string[],
+    manifest?: Record<string, unknown>,
 ) => Promise<{
     start: () => Promise<unknown>;
     test: () => Promise<unknown>;
@@ -266,7 +284,7 @@ back end can be provisioned automatically in a temporary Kubernetes cluster.
     - Waits for all deployments in the test namespace to become `Available`
     - Runs `blong-dev test`
 5. `*.test.ts` is the tap-wrapped entry point that loads only the server platform with the
-   `integration` activation and calls `platform.test(test)`.
+   `integration` intent and calls `platform.test(test)`.
 
 **`test/integration/` folder structure:**
 

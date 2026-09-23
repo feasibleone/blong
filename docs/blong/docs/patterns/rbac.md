@@ -1,4 +1,4 @@
-# RBAC pattern
+# RBAC
 
 Seeding, granting and verifying role-based access control. The `blong-access` README documents the
 tables, the handlers and the configuration defaults; this page shows how to use them. The
@@ -30,6 +30,30 @@ suite wiring (server, login, core and access realms as children).
 The edges are `hasAction`, `hasCapability`, `hasRole`, `belongsTo` (and `hasScope` for the implicit
 ACL grant). After changing them the materialized paths must be refreshed:
 `access.authorization.merge` does it for you, hand-written SQL calls `CALL access_pathRefresh()`.
+
+Granting is an occasional out-of-band write, while deciding happens on every request — which is why
+the two halves are shaped so differently:
+
+```mermaid
+flowchart LR
+    subgraph Write["granting — done once, out of band"]
+        W1["seed YAML in the owning realm"]
+        W2["access.authorization.merge,<br/>or the model's own add and edit pages"]
+        W3["graph edges — hasRole, hasCapability,<br/>hasAction, belongsTo, hasScope"]
+        W4["access_pathRefresh()<br/>rebuilds core.path"]
+    end
+    W1 --> W2 --> W3 --> W4
+    W4 --> P1["access.effectiveRole"]
+    W4 --> P2["access.effectiveAction"]
+    W4 --> P3["access.effectiveScope"]
+    P1 --> T["the login puts the role bits in the token"]
+    T --> L["access.authorization.list —<br/>bits to allowed methodIds, TTL cached"]
+    P2 --> L
+    L --> G{"in the gateway authorize hook,<br/>is the requested method in the list?"}
+    G -- "no" --> NO["refused before the handler runs"]
+    G -- "yes" --> YES["the handler runs, and may still ask<br/>access.session.verify or access.acl.assert"]
+    P3 --> YES
+```
 
 ## 3. Seed roles, capabilities and users
 
@@ -68,6 +92,23 @@ files are additive and idempotent.
 | Bit given and owned by another role      | refused                                                      | `role.bitTaken`     |
 | Bit that is not a number in 0–1023       | refused                                                      | `role.bitInvalid`   |
 | Edit that changes an existing role's bit | refused; the column is never written                         | `role.bitImmutable` |
+
+All five rows are one decision, taken in one place:
+
+```mermaid
+flowchart TD
+    A["a role is created or edited"] --> B{"was a bit submitted?"}
+    B -- "no" --> C["allocate MAX(roleBit) + 1 —<br/>a freed bit is never reused"]
+    B -- "yes" --> D{"is it a number in 0-1023?"}
+    D -- "no" --> E["role.bitInvalid"]
+    D -- "yes" --> F{"does another role own it?"}
+    F -- "yes" --> G["role.bitTaken"]
+    F -- "no" --> H{"would an edit change<br/>the bit the role already has?"}
+    H -- "yes" --> I["role.bitImmutable —<br/>the column is never written"]
+    H -- "no" --> J["use it"]
+    C --> K["access.role.ensure wrote the row, so the role<br/>either has a real bit or the call failed"]
+    J --> K
+```
 
 Every creation path — the model's add, registration, the authorization merge, the seed merge and the
 gateway's bundles — goes through `access.role.ensure`, so a role either exists with a real bit or

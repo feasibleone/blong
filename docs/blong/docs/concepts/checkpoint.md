@@ -10,6 +10,16 @@ Checkpoints serve different purposes depending on the execution context:
 - **In production:** Checkpoints are disabled via optional chaining (`?.`), resulting in zero
   runtime overhead.
 
+One call, three behaviours — the context decides which:
+
+```mermaid
+flowchart LR
+    call["a handler calls $meta.checkpoint<br/>with a name and a value"] --> ctx{"execution context"}
+    ctx -->|"tests"| t["drives assertions<br/>and test reporting"]
+    ctx -->|"debug / staging"| d["structured log entries<br/>→ distributed tracing"]
+    ctx -->|"production"| p["checkpoint is undefined,<br/>so optional chaining short-circuits —<br/>zero runtime overhead"]
+```
+
 ## Motivation
 
 Long-running handlers and test chains share a common need: visibility into what happened at each

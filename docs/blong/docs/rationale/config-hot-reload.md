@@ -12,7 +12,7 @@ Any configuration change — even a trivial one like updating a log level — fo
 restart because there was no mechanism to:
 
 - diff the new effective configuration against the old one,
-- decide which ports were affected,
+- decide which adapters were affected,
 - call an adapter-specific reconfiguration routine.
 
 Restarting dropped all in-flight requests and broke all established connections, which was
@@ -26,33 +26,34 @@ A unified `ConfigRuntime` class centralizes the full configuration lifecycle:
 1. **Centralize** load/merge logic into a single authoritative pipeline.
 2. **Expose config via a stable proxy**, so handlers always see the latest values without requiring
    a process restart.
-3. **Detect configuration changes** and notify adapters/ports so they can react (e.g., reconnect to
-   a database) rather than forcing a full restart.
+3. **Detect configuration changes** and notify the affected adapters so they can react (e.g.,
+   reconnect to a database) rather than forcing a full restart.
 4. **Preserve developer experience** — no mandatory new syntax in handlers, minimal new rules to
    learn.
 
 ## Design
 
-### Current flow (simplified)
+### Reload flow (simplified)
 
-```text
-blong-config (rc/env/argv)
-    ↓
-loadRealm — activeConfigs merge (load.ts)
-    ↓
-Watch._loadHandlers — folder config.ts merge
-    ↓
-Watch._watch — file-change detected
-    ↓
-  watch.log.ts touch → full process restart (for config changes)
+```mermaid
+flowchart TD
+    A["blong-config<br/>(rc / env / argv)"] --> B["loadRealm — activeConfigs merge<br/>(load.ts)"]
+    B --> C["Watch._loadHandlers<br/>folder config.ts merge"]
+    C --> D["Watch._watch<br/>file change detected"]
+    D --> E["Watch._reloadConfig<br/>(Watch.ts)"]
+    E --> F["ConfigRuntime.reload()<br/>→ ConfigDiff, old vs new"]
+    F --> G{"affected adapter has<br/>a configChanged hook?"}
+    G -->|yes| H["adapter.configChanged(diff, next, prev)<br/>zero-downtime update"]
+    G -->|no| I["adapter stop + start"]
 ```
 
-Config changes outside of handler files today result in a process restart because there is no
-mechanism to:
-
-- diff the new effective configuration against the old one,
-- decide which ports are affected,
-- call an adapter-specific reconfiguration routine.
+A configuration change therefore notifies the adapters it affects rather than restarting the
+process: `ConfigRuntime.reload()` produces a diff of the old and new effective configuration,
+`Watch._reloadConfig` works out which adapters that diff touches, and each of those either handles
+the change through its `configChanged` hook — a zero-downtime update, which is what an adapter needs
+in order to reconnect without dropping in-flight work — or, having no such hook, is stopped and
+started again. The capability this buys is the one the goals above asked for: a database connection
+can be re-pointed without a restart.
 
 ### Proxy-based config access
 
@@ -101,14 +102,14 @@ only at call time**.
 
 A `ConfigRuntime` class owns the full config lifecycle:
 
-| Responsibility | Detail                                                          |
-| -------------- | --------------------------------------------------------------- |
-| Load           | Combine rc files + env vars + argv + module-level defaults      |
-| Merge          | Apply activation-ordered merge (`default` + active activations) |
-| Proxy exposure | Return a live proxy object wrapping the merged snapshot         |
-| Diff           | Compute a structural diff between old and new snapshots         |
-| Subscribe      | Allow ports/adapters to register `onChange(diff)` callbacks     |
-| Reload         | Re-run load+merge, compute diff, notify subscribers             |
+| Responsibility | Detail                                                     |
+| -------------- | ---------------------------------------------------------- |
+| Load           | Combine rc files + env vars + argv + module-level defaults |
+| Merge          | Apply intent-ordered merge (`default` + active intents)    |
+| Proxy exposure | Return a live proxy object wrapping the merged snapshot    |
+| Diff           | Compute a structural diff between old and new snapshots    |
+| Subscribe      | Allow adapters to register `onChange(diff)` callbacks      |
+| Reload         | Re-run load+merge, compute diff, notify subscribers        |
 
 `ConfigRuntime` is instantiated once at suite startup and passed into the `Watch` instance,
 replacing the current ad hoc merge calls in `load.ts` and `Watch._loadHandlers`.
@@ -124,17 +125,20 @@ The proxy wraps the mutable snapshot object. When config reloads:
 
 ### Adapter config-change hook
 
-Each adapter can optionally implement a `configChanged` lifecycle hook:
+Each adapter can optionally implement a `configChanged` lifecycle hook, declared in
+`core/blong/types.ts`:
 
 ```typescript
-configChanged?(diff: ConfigDiff, next: object, prev: object): Promise<void>;
+// the declaration; `diff` is a flat map of dotted config paths to `{prev, next}` pairs
+configChanged?(this: Adapter<T, C>, diff: ConfigDiff, next: unknown, prev?: unknown): Promise<void>;
 ```
 
-When the reload pipeline finishes diffing, it calls `configChanged` on every port whose
+When the reload pipeline finishes diffing, it calls `configChanged` on every adapter whose
 configuration namespace was affected. The `diff` argument describes exactly which keys changed.
 
-**Default behaviour** (no hook): if a port's config changed and it has no hook, the registry falls
-back to a full port stop/start cycle.
+**Default behaviour** (no hook): if an adapter's config changed and it has no hook,
+`Watch._reloadConfig` falls back to stopping the adapter, creating it again through
+`registry.createPort()` and starting it — a full adapter stop/start cycle.
 
 **Example — real Knex adapter reconnection** (`core/blong-gogo/src/adapter/server/knex.ts`):
 
@@ -160,9 +164,10 @@ changes do not interrupt existing queries.
 
 1. **File change detected** (chokidar, existing Watch logic).
 2. **Determine change type**: config file vs handler file vs layer file.
-3. If a config file changed: a. Re-run `ConfigRuntime.reload()`. b. Compute diff per port namespace.
-   c. For each affected port: call `configChanged` if present; else restart port. d. Emit structured
-   log event `watch.config.reload`. e. Emit test re-run event (existing behaviour).
+3. If a config file changed: a. Re-run `ConfigRuntime.reload()`. b. Compute the diff per adapter
+   namespace. c. For each affected adapter: call `configChanged` if present; else stop it and create
+   it again. d. Emit structured log event `watch.config.reload`. e. Emit test re-run event (existing
+   behaviour).
 4. If a handler/layer file changed: existing hot-reload path, unchanged.
 
 ### Structured log events
@@ -185,7 +190,7 @@ Every reload emits a log entry with:
 | `blong-config`      | No breaking changes; `ConfigRuntime` wraps it                                        |
 | `load.ts`           | Merge orchestration delegates to `ConfigRuntime`                                     |
 | `Watch.ts`          | Config-file branch calls `ConfigRuntime.reload()` instead of touching `watch.log.ts` |
-| Adapters (existing) | No change required; fallback is full port restart                                    |
+| Adapters (existing) | No change required; fallback is a full adapter restart                               |
 | Adapters (opt-in)   | Can implement `configChanged` for zero-downtime reconfiguration                      |
 | Handler code        | No change required; leaf reads inside handlers are already call-time                 |
 
@@ -223,12 +228,12 @@ export default handler(({lib: {group}, handler: {configGet}}) => ({
    invalid configuration from being applied even transiently.
 
 2. **Config change history** — keep a bounded ring buffer of config diffs (name, timestamp, changed
-   keys, affected ports) accessible via the debug REST API. Developers can query what changed and
+   keys, affected adapters) accessible via the debug REST API. Developers can query what changed and
    when without reading logs or restarting.
 
-3. **Environment-scoped hot reload** — restrict hot reload to the `dev` activation layer so that
-   `prod`-only config keys require an explicit process restart. This prevents accidental production
-   config drift when developing against a shared environment.
+3. **Environment-scoped hot reload** — restrict hot reload to the `dev` intent so that `prod`-only
+   config keys require an explicit process restart. This prevents accidental production config drift
+   when developing against a shared environment.
 
 ## Config Access Patterns in Depth
 

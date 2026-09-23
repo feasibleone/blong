@@ -148,7 +148,6 @@ The framework provides a spectrum of snapshotting approaches, ordered from most 
 
 | Approach                                 | Where it lives     | Verbosity            | Granularity     |
 | ---------------------------------------- | ------------------ | -------------------- | --------------- |
-| ---                                      |
 | `autoSnapshot: true` in `group()` config | group config       | zero                 | per-step (auto) |
 | `checkpoint('name')`                     | end of steps array | one marker           | full context    |
 | `checkpoint('name', 's1', 's2')`         | phase boundaries   | one marker per phase | per-phase       |
@@ -300,7 +299,7 @@ async function getParty(assert: IAssert, {$meta, createParty}) {
 > variable. Inline single-use step dependencies with `(await prevStep).field`. Keep `const result`
 > only when the value appears more than once (both in an assertion and in `return`, or spread +
 > property access in the same expression).`
-
+>
 > **Sorting list results for snapshot stability:** `find` handlers may return results in
 > non-deterministic order. Sort the result inline in the `return` statement — no intermediate
 > variable needed:

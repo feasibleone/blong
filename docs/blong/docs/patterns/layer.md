@@ -8,7 +8,7 @@ conceptual overview and the list of well-known layer names, see
 
 Well-known layer folders are auto-discovered — no `layer.server.ts` is needed:
 
-```
+```text
 realmname/
 ├── server.ts            # Optional — only for realm-level shared config
 ├── error/               # Auto-activated (server, integration)

@@ -10,6 +10,7 @@
     ],
     "scripts": {
         "build": "docusaurus build",
+        "ci-docs": "npm run build && node ../../tools/blong-dev/bin/blong-dev.ts docs verify",
         "clear": "docusaurus clear",
         "deploy": "docusaurus deploy",
         "docusaurus": "docusaurus",

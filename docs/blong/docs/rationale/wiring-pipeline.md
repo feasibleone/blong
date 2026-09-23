@@ -1,7 +1,10 @@
 # Wiring Pipeline — How blong-gogo Loads and Wires the Framework
 
-Note: the word "port" comes from legacy terminology. In Blong, the preferred terms are "adapters"
-and "orchestrators".
+**Terminology.** The word "port" is legacy. The preferred terms are **adapter** and
+**orchestrator**, and this page uses them in prose. Runtime identifiers are kept verbatim, because
+they are what the code says: the `ports` map on the `Registry`, an entry's `.port` property,
+`port.imported`, `port.configChanged()`, the `GET /api/sys/ports` endpoint, and the `Port` class in
+`Port.ts`.
 
 ## Problem
 
@@ -105,8 +108,8 @@ flowchart LR
 | ------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Bootstrap** | `loadServer.ts` / `loadBrowser.ts` → `load.ts` | Platform API is bound, the root factory is invoked, and infrastructure objects (Log, Error, Registry, Gateway, Remote, Local, Watch, etc.) are instantiated in dependency order. |
 | **Load**      | `loadRealm()` in `load.ts`                     | The suite tree is walked recursively. Realms and layers are discovered, imported, and classified. Handler files are read and grouped.                                            |
-| **Wire**      | `layerProxy.ts` + `Realm.ts` → `Registry`      | Handlers are wrapped in closures and registered as methods/ports in the Registry. Adapters and orchestrators are wrapped in port factories. The handler proxy is assembled.      |
-| **Start**     | `Registry.start()`                             | Ports are created and started. Handler groups are attached to ports. Validations are collected. Gateway routes are built. Watch mode is initialized.                             |
+| **Wire**      | `layerProxy.ts` + `Realm.ts` → `Registry`      | Handlers are wrapped in closures and registered in the Registry as methods, and adapters and orchestrators as entries in its `ports` map. The handler proxy is assembled.        |
+| **Start**     | `Registry.start()`                             | Adapters are created and started. Handler groups are attached to them. Validations are collected. Gateway routes are built. Watch mode is initialized.                           |
 
 ---
 
@@ -254,38 +257,14 @@ its entries:
 
 ### Phase 4 — Start
 
-`Registry.start()` orchestrates the startup sequence:
-
-```text
-1.  for each port factory → registry.createPort(id)
-      │
-      ├── Calls the port factory with the API object
-      │   (error, gateway, remote, rpcServer, local, registry)
-      │
-      └── Returns the port instance (AdapterBase subclass or custom adapter)
-
-2.  for each created port → port.start()
-      │
-      ├── api.attachHandlers(this, this.config.imports)
-      │   │
-      │   └── Registry._attachHandlers() → _matchMethods()
-      │       Walks registry.methods, creates handler instances,
-      │       chains them via prototype chain into port.imported
-      │
-      ├── Registers request/publish endpoints in Local + RpcServer
-      │   (skipping RpcServer for localOnly methods)
-      │
-      └── Fires 'start' event on the port
-
-3.  for each created port → port.ready()
-
-4.  Collect validations from all '.validation' and '.api' method groups
-    → gateway.route(validations, pkg)
-
-5.  resolution.start(), rpcServer.start(), remote.start(), gateway.start()
-
-6.  watch.start() — begins file watching and test runner
-```
+`Registry.start()` orchestrates the startup sequence, which the Load Pipeline Diagram below draws
+step by step. Two details in it are worth naming here, because a diagram cannot carry them: the
+adapter's factory is called with the API object — `error`, `gateway`, `remote`, `rpcServer`,
+`local`, `registry` — and returns the adapter instance (an `AdapterBase` subclass or a custom
+adapter); and the request and publish endpoints are registered in `Local` **and** `RpcServer`,
+skipping `RpcServer` for `localOnly` methods. The handler attachment itself—`api.attachHandlers()` →
+`Registry._attachHandlers()` → `_matchMethods()`, which walks `registry.methods` and chains the
+instances into `port.imported`—is the next section.
 
 ---
 
@@ -416,41 +395,18 @@ flowchart TD
 
 ## Data Flow Diagram
 
-```text
-Suite factory
-  │
-  ├── invoke → mod = { url, pkg, children, config }
-  │
-  ├── merge configs via ConfigRuntime (module defaults + env + external files)
-  │
-  ├── instantiate infra objects in topological order
-  │   (Log, Error, Local, Registry, Remote, Gateway, Watch, ...)
-  │
-  ├── for each child:
-  │     │
-  │     ├── [Internal subclass] → instantiate, store in api[name]
-  │     │
-  │     ├── [solution/server/browser] → loadRealm() recursively
-  │     │     └── realm.addModule(name, subRegistry)
-  │     │
-  │     └── [layer function] → fn(layerProxy(...))
-  │           │
-  │           └── layerProxy classifies items:
-  │                 ├── adapter/orchestrator → port factory → realm.addLayer() → registry.ports
-  │                 └── handlers → method closures → realm.addLayer() → registry.methods
-  │
-  └── Registry.start()
-        │
-        ├── for each port: createPort() → port.init() → port.start()
-        │     └── attachHandlers: match methods → _createHandlers → prototype chain
-        │
-        ├── for each port: port.ready()
-        │
-        ├── collect validations → gateway.route()
-        │
-        ├── resolution.start(), rpcServer.start(), remote.start(), gateway.start()
-        │
-        └── watch.start()
+```mermaid
+flowchart TD
+    INV["invoke the suite factory<br/>→ mod = { url, pkg, children, config }"] --> MERGE["merge configs through ConfigRuntime —<br/>module defaults, environment, external files"]
+    MERGE --> INFRA["instantiate the infrastructure objects<br/>in topological order: Log, Error, Local, Registry,<br/>Remote, Gateway, Watch, …"]
+    INFRA --> CHILD{"for each child"}
+    CHILD -- "an internal subclass" --> C1["instantiate it, store in api[name]"]
+    CHILD -- "a solution, server or browser" --> C2["loadRealm() recursively →<br/>realm.addModule(name, subRegistry)"]
+    CHILD -- "a layer function" --> C3["fn(layerProxy(…)) → realm.addLayer(),<br/>into registry.ports or registry.methods"]
+    C1 --> START["Registry.start()"]
+    C2 --> START
+    C3 --> START
+    START -. "drawn step by step" .-> PHASE4["the Load Pipeline Diagram above"]
 ```
 
 ---
@@ -462,8 +418,10 @@ author. They are recorded here as rationale for the current design.
 
 1. **`layerProxy` dual-path for adapters:** Port subclasses follow one path (`new Port(portApi)`)
    while `kind === 'adapter'/'orchestrator'` follow another (`createPort(handlers, ...)`). The
-   `Port` class in `Port.ts` is a thin stub for legacy compatibility and may be removed in a future
-   cleanup.
+   `Port` class in `Port.ts` exists only for legacy compatibility — it wraps a stub whose entire
+   work is normalising the name handed to `findHandler()`. It is still on the loading path today:
+   the loader declares it as the `port` infrastructure item, and `layerProxy.ts` uses its `IPort`
+   type for the `new Port(portApi)` branch.
 
 2. **Dual registration (Local + RpcServer):** Every method is registered in both `Local` and
    `RpcServer`. The `localOnly` config map (added in the simplification refactoring) prepares for
@@ -496,9 +454,10 @@ author. They are recorded here as rationale for the current design.
    `@private`) that are processed at registration time to selectively expose methods in RpcServer vs
    Local only.
 
-2. **Remove `Port.ts`** — the `Port` class is a thin stub for legacy `ut-port` compatibility. Once
-   all remaining legacy adapters are migrated to `AdapterBase`, `Port.ts` can be deleted and the
-   dual port-factory path in `layerProxy.ts` simplified to a single path.
+2. **Remove `Port.ts`** — the `Port` class is a legacy `ut-port` compatibility shim. Once all
+   remaining legacy adapters are migrated to `AdapterBase`, `Port.ts` can be deleted, its entry
+   removed from the loader's infrastructure list, and the dual factory path in `layerProxy.ts`
+   simplified to a single one.
 
 3. **Type-safe config namespaces** — TypeScript template-literal types could derive the expected
    config shape for each namespace from the adapter's config type parameter, providing compile-time

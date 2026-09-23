@@ -237,6 +237,17 @@ environment, `mockDispatch` registers `mockDataSave` and `mockDataGet` under the
 and the `handler` proxy resolves those names through the local registry. No code in the business
 handler changes between environments.
 
+The proxy resolves one name, and which handler answers it is a property of the environment rather
+than of the call:
+
+```mermaid
+flowchart LR
+    BH["the business handler,<br/>destructuring mockDataSave"] --> HP["the handler proxy"]
+    HP --> R{"what is registered<br/>under that name?"}
+    R -- "production — imports point at a real adapter" --> REAL["the adapter handler"]
+    R -- "integration — mockDispatch ran" --> MOCK["the mock handler in test/mock/"]
+```
+
 ## Full example
 
 See `demo/blong-eip/` for a complete working implementation (modern layout: server-side mock/test

@@ -6,6 +6,24 @@ YAML configuration. There are no migration files, no separate tooling, and no ma
 
 The feature has three concerns that happen at different times:
 
+```mermaid
+flowchart LR
+    subgraph Deploy["the deployment job — a short-lived run"]
+        direction TB
+        D1["schema.sync — reconcile the structure:<br/>tables, then constraints, then procedures"]
+        D2["schema.seed — production seeds from meta/db"]
+        D3["schema.dbTest — test seeds from meta/dbTest"]
+        D1 --> D2 --> D3
+    end
+    subgraph Every["every application startup"]
+        direction TB
+        E1["bind a synthetic handler per procedure<br/>already present in the database"]
+        E2["auto-bind CRUD for every declared table<br/>when a namespace is configured"]
+        E1 --> E2
+    end
+    Deploy -. "so the structure exists before anyone binds to it" .-> Every
+```
+
 ## Schema sync (deployment time only)
 
 When `schema.sync` is enabled the adapter reconciles the database structure against the declared

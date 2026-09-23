@@ -97,6 +97,15 @@
         },
         {
             "commandKind": "bulk",
+            "name": "ci-docs",
+            "summary": "Verify the docs site generated artefacts are up to date",
+            "ignoreMissingScript": true,
+            "ignoreDependencyOrder": true,
+            "allowWarningsInSuccessfulBuild": false,
+            "enableParallelism": false
+        },
+        {
+            "commandKind": "bulk",
             "name": "lint-fix",
             "summary": "Auto-fix lint issues across the monorepo",
             "ignoreMissingScript": true,

@@ -5,8 +5,20 @@ combines a schema-driven form, a configurable toolbar, a rich layout system, and
 interaction patterns into a single composable component that covers the majority of entity editing
 use cases.
 
-This document is a **feature guide and placeholder**. Detailed sub-sections with code examples and
-Storybook screenshots will be added as each feature is stabilised.
+This document is a **feature guide**: one section per capability, each with the goal it serves, the
+props and schema keys that drive it, and — where one exists — the Storybook story that shows it
+running. The interactive examples live in the `Editor/…` story group under
+`core/blong-browser/src/components/Editor/stories/`. The pictures on this page come from the
+`demo/blong-marine` Coral entity and are captured by `demo/blong-marine/test/docs.play.ts`.
+
+The stories are runnable: `cd demo/blong-marine && npm run storybook` serves them on port 6007 (the
+conventions are in the [Storybook pattern](../patterns/blong-browser.md#storybook-pattern)).
+
+The Editor with a record loaded — a tabbed portal, the toolbar, and a form whose widgets are all
+derived from the model's schema: a text field, a select-button group, dropdowns, a number spinner, a
+checkbox, a date picker and a textarea, with the required fields marked from the schema's own rules.
+
+![The Editor with a Coral record loaded](./img/editor-open.png)
 
 For implementation reference see `core/blong-browser/src/components/Editor/`. For usage patterns see
 [Modular UI](../patterns/blong-browser.md).
@@ -29,7 +41,10 @@ Key props:
 - `value` — static initial value (skips `loadAction`)
 - `onSave` — callback fired after a successful save
 
-_[Code examples and screenshots to be added]_
+The same Editor in its New state, before anything has been loaded or typed. The toolbar's Save and
+Reset buttons are present but disabled, which is the dirty-state plumbing this section describes:
+
+![The Editor on a new, empty form](./img/editor-new-empty.png)
 
 ---
 
@@ -50,7 +65,9 @@ Key behaviours:
 - `designable` — adds a cog button that activates design mode
 - Save button shows a popover with server validation error summary
 
-_[Screenshots of each toolbar state to be added]_
+The `Editor` and `Editor/TableToolbar` stories cover the toolbar states: the Edit button in read
+mode, the Save / Reset pair in both enabled and untouched states, and the extra left and right
+button slots.
 
 ---
 
@@ -68,7 +85,9 @@ Sub-features:
 - **Server error summary** — `error.print` string shown in an OverlayPanel anchored to the Save
   button
 
-_[Validation story screenshots to be added]_
+The `Editor/Validation` story exercises both halves: submitting an empty required field shows the
+client-side rule, and a failing save shows a `{validation: [{field, message}]}` response pushed back
+under the offending field with `error.print` in the popover.
 
 ---
 
@@ -93,18 +112,22 @@ column. Cards are defined in `ICardConfig`:
 
 ### Layout Types
 
-| Type              | Description                                            |
-| ----------------- | ------------------------------------------------------ |
-| **Flat**          | Column array; stacked arrays place cards side by side  |
-| **Tabs**          | Horizontal tab bar; each tab shows a set of cards      |
-| **Steps**         | Wizard-style; last step's Next button submits the form |
-| **Left sidebar**  | vertical PanelMenu accordion on the left (ThumbIndex)  |
-| **Right sidebar** | Same as left but mirrored                              |
+| Type      | Config shape                     | Description                                            |
+| --------- | -------------------------------- | ------------------------------------------------------ |
+| **Flat**  | an array of rows                 | Column array; stacked arrays place cards side by side  |
+| **Tabs**  | `{items: [...]}`                 | Horizontal tab bar; each tab shows a set of cards      |
+| **Steps** | `{type: 'steps', items: [...]}`  | Wizard-style; last step's Next button submits the form |
+| **Split** | `{type: 'split', panels: [...]}` | A panel beside the content — the sidebar layouts       |
 
-Tabs and sidebars support component injection — a tab item can specify a full React component (e.g.
+The layout type is derived rather than declared twice: a bare array is flat, `type: 'split'` selects
+the split layout, and an object carrying `items` is a tab or step layout depending on its `type`.
+
+Tabs and split panels support component injection — an item can carry a full React component (e.g.
 an `Explorer`) instead of a list of cards.
 
-_[Layout diagrams and Storybook screenshots to be added]_
+Each layout has a story: `Editor/TabbedLayout`, `Editor/ThumbIndexLayout` (tab orientation),
+`Editor/Explorer` (the split layout, with an `Explorer` injected into a panel),
+`Editor/ResponsiveLayout` and `Editor/PortalComponent`.
 
 ---
 
@@ -113,21 +136,31 @@ _[Layout diagrams and Storybook screenshots to be added]_
 **Goal:** Automatically select the correct input widget for each field from the JSON Schema type,
 format, and `widget.type` property — so that no widget configuration is needed for standard fields.
 
-Widget categories:
+The built-in registry (`core/blong-browser/src/widgets/index.ts`) maps a widget type to a component,
+and a suite can add its own through `registry.register()`. The registered types are:
 
-1. **Scalar** — single primitive value: text, number, boolean, date, dropdown, select, mask,
-   textarea, password, currency, percent, integer, file, image, json, divider, label, link, code
-2. **Scalar-array** — array of scalar values: multiSelect, multiSelectTree, multiSelectPanel, chips,
-   selectTable, multiSelectTreeTable
-3. **Vector-array** — array of objects rendered as an editable DataTable
+- **Text and numbers** — `input`, `text` / `textArea`, `number`, `integer`, `bigint`, `currency`,
+  `percent`, `password`, `mask`
+- **Dates and times** — `date`, `time`, `dateTime`, `dateRange`
+- **Choice** — `boolean` / `checkbox`, `select`, `dropdown`, `dropdownTree`, `autocomplete`,
+  `chips`, `multiSelect`, `multiSelectPanel`, `multiSelectTree`, `selectTable`,
+  `multiSelectTreeTable`
+- **Structured** — `table` (an editable DataTable), `navigator`, `json`, `component`
+- **Files** — `file`, `image`, `imageUpload`
 
-Widget type is resolved from `format`, `type`, and explicit `widget.type` override, in that priority
-order.
+`resolveWidgetType()` in `Card.tsx` picks one. The order is narrower than "`format` first":
 
-Custom widgets (via `editors` prop) allow realm-specific input components that receive `Input`,
-`Label`, and `ErrorLabel` helper props.
+1. an explicit `widget.type`
+2. `format` — `date`, `date-time` / `dateTime`, `time`
+3. `type === 'boolean'` → `boolean`
+4. `widget.dropdown` → `dropdown`; otherwise `widget.options` → `select`
+5. a field name ending in `Description` → `textArea`
+6. `type` — `integer`, `number`, `bigint`
+7. `anyOf` — resolved from the first non-`null` branch
+8. otherwise `input`
 
-_[Widget gallery to be added]_
+Custom widgets (via the `editors` prop) allow realm-specific input components that receive `Input`,
+`Label`, and `ErrorLabel` helper props; the `Editor/CustomEditors` story shows one.
 
 ---
 
@@ -139,7 +172,8 @@ something is happening and does not interact with stale data.
 While the `loadAction` is pending, each field renders an animated `<Skeleton>` placeholder at the
 same size as the real input. The toolbar is disabled during loading.
 
-_[Skeleton screenshot to be added]_
+No picture of this state has been captured yet. The skeleton is rendered for as long as `loadAction`
+is pending, and the toolbar is disabled for the same period.
 
 ---
 
@@ -151,13 +185,19 @@ effort.
 
 Design mode is activated by the cog button in the toolbar (`designable={true}`). While active:
 
-- Cards and fields become draggable (dnd-kit)
-- A `PropertyEditor` side panel shows and edits properties of the selected element
-- An `DesignAddCardButton` and `DesignAddFieldButton` allow adding new elements
-- Saved customisations are persisted server-side, keyed by tenant and component
-- On next load, the saved customisation is merged on top of the code defaults
+- Cards and fields become draggable (dnd-kit, through `design/useDesignable.ts`)
+- A `PropertyEditor` side panel shows and edits the properties of the selected element
+- `DesignAddCardButton` and `DesignAddFieldButton` add new elements
+- `DesignToolbar` carries save, undo and redo — the provider keeps a history of config revisions
+- `saveConfig()` hands the edited config to an `onSave` callback supplied by the host
+- `Editor.stories.tsx` enters design mode through `initialDesignMode`
 
-_[Design mode screenshot and interaction walkthrough to be added]_
+The persistence is the host's job, and **nothing is persisted today**: `Editor` wraps its content in
+`DesignModeProvider` without an `onSave`, so `saveConfig()` returns immediately and the edits live
+only in the provider's state for the lifetime of the page.
+
+No walkthrough has been captured yet; `Editor/Explorer` is the story that runs design mode over a
+real layout.
 
 ---
 
@@ -173,7 +213,7 @@ form's Save button persists the whole structure.
 Polymorphic variant: multiple detail cards each with a `match` condition on the selected row — only
 the matching card is shown at a time.
 
-_[Master-detail Storybook example to be added]_
+See the `Editor/MasterDetail` story, and `Editor/MasterDetailPolymorphic` for the `match` variant.
 
 ---
 
@@ -186,7 +226,7 @@ A child dropdown widget declares `widget.parent: 'parentFieldName'`. When the pa
 the child dropdown filters its options to entries whose `parent` property matches the new parent
 value.
 
-_[Cascaded dropdown story to be added]_
+See the `Editor/CascadedDropdowns` story.
 
 ---
 
@@ -199,7 +239,7 @@ The child table widget declares `widget.parent: '$.selected.parentTable'` and
 `widget.master: {childKey: 'parentKey'}`. Rows in the child table are filtered to those matching the
 selected parent row.
 
-_[Cascaded tables story to be added]_
+See `Editor/CascadedTables`, and `Editor/CascadedTablesVariant` for the three-level case.
 
 ---
 
@@ -211,9 +251,10 @@ switching between `'personal'` and `'corporate'` layouts when the `customerType`
 The `typeField` prop on the Editor watches a specific field; when its value changes, the Editor
 selects the matching layout key (e.g. `editPersonal`, `editCorporate`).
 
-**Status:** Design is specified (see Storybook story stub). Full wiring is planned.
-
-_[Story stub exists; implementation to be completed]_
+**Status:** not implemented. `typeField` is not a prop of the Editor — the `Editor/TypeField` story
+is a stub that shows the target data shape (a static type field over a tabbed layout) and says so in
+its own header comment. What exists today is the mechanism the feature would build on: an explicit
+`layout` key, chosen by the caller, with `{mode}{Layout}` fallbacks.
 
 ---
 
@@ -229,20 +270,28 @@ Examples: a permissions matrix (one row per permission), a weekday schedule (one
 - **Dynamic pivot** — `pivot.dropdown` names a dropdown list whose entries seed the rows;
   `pivot.join` maps the seed key to the row key field
 
-_[Pivot story screenshots to be added]_
+See the `Editor/Pivot` story, which shows both halves — a weekday schedule built from
+`pivot.examples`, and a permissions matrix whose rows come from `pivot.dropdown`.
 
 ---
 
 ## 13. File Upload
 
-**Goal:** Allow users to upload files (images, documents) as part of the form submission, with the
-server receiving a `multipart/form-data` payload transparently.
+**Goal:** Let a user pick a file — an image, a document — inside the form, with a preview where a
+picture makes sense.
 
-When a `file` or `image` widget is present in the form, the submit handler switches from
-`application/json` to `multipart/form-data`. Regular fields are serialised as a single JSON blob
-(`$`); files are attached individually with path-based names.
+What exists is the widget half, in `core/blong-browser/src/widgets/`:
 
-_[File upload story to be added]_
+- `file` — `FileWidget`, a basic PrimeReact `FileUpload` with `customUpload`. `accept` and `maxSize`
+  (default 5 MB) come from `widget`, and the chosen `File` is handed to the form through `onChange`.
+- `image` / `imageUpload` — `ImageWidget` / `ImageUploadWidget`, `accept="image/*"`, `maxSize`
+  default 2 MB, a preview through PrimeReact `Image`, and `widget.basePath` to prefix a stored
+  relative path. The upload variant accepts either a URL string or an array of `File` objects.
+
+**Not implemented: the transport.** There is no `multipart/form-data` path anywhere in the
+repository, and no realm uses a `file` or `image` field yet, so a chosen `File` simply rides along
+in the form value — what the receiving action does with it is the realm's decision. A form-aware
+upload step is planned, not present.
 
 ---
 
@@ -251,8 +300,8 @@ _[File upload story to be added]_
 **Goal:** Allow external code (analytics, logging, toasts) to observe form interactions without
 prop-drilling.
 
-The `blongEvents` singleton emits `action:before`, `action:success`, and `action:error` events for
-every dispatch call. The Storybook `withDispatch` decorator uses this to show success toasts after
-mutations.
-
-_[See blong-browser SKILL.md for event bus API]_
+`blongEvents` (`core/blong-browser/src/lib/eventBus.ts`) is a typed singleton: `on(event, listener)`
+returns an unsubscribe function, and the dispatch wrapper emits `action:before`, `action:success`
+and `action:error` with `{method, params}` plus `{result}` or `{error}`. The Storybook
+`withDispatch` decorator uses this to show success toasts after mutations, and the `Editor/Events`
+story subscribes to all three.

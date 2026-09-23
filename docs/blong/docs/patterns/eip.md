@@ -9,6 +9,55 @@ The `@feasibleone/blong-eip` package provides a reference implementation. Each p
 file in `orchestrator/eip/` and calls downstream handlers via the `handler` proxy, which means the
 concrete implementation can be replaced by a mock during testing.
 
+Every one of them has the same shape, which is why the pattern is a single short file:
+
+```mermaid
+flowchart LR
+    M["a message — params plus $meta"] --> H["one EIP handler,<br/>a pure function of its input"]
+    H --> P["calls downstream work<br/>through the handler proxy"]
+    P --> D["the real handler, by name"]
+    P -. "the same name, in a test" .-> K["a mock handler"]
+    D --> R["a routed or transformed result"]
+    K --> R
+```
+
+The catalogue below is ordered by what each pattern does to the message — the shape, not the
+vocabulary, is what tells you which one you want:
+
+```mermaid
+flowchart LR
+    subgraph oneToOne["one in, one out"]
+        direction TB
+        A1["Request–Reply"]
+        A2["Pipes and Filters"]
+        A3["Envelope Wrapper"]
+        A4["Content Enricher"]
+        A5["Content Filter"]
+        A6["Normalizer"]
+    end
+    subgraph oneOfMany["one in, one of several out"]
+        direction TB
+        B1["Content-Based Router"]
+        B2["Dynamic Router"]
+        B3["Message Filter"]
+    end
+    subgraph fanOut["one in, many out"]
+        direction TB
+        C1["Recipient List"]
+        C2["Splitter"]
+        C3["Scatter-Gather"]
+    end
+    subgraph fanIn["many in, one or many out"]
+        direction TB
+        D1["Aggregator"]
+        D2["Composed Message Processor"]
+        D3["Resequencer"]
+    end
+    subgraph twoSteps["two steps through storage"]
+        E1["Claim Check"]
+    end
+```
+
 ## Pattern catalogue
 
 ### Request–Reply
@@ -61,6 +110,16 @@ export default handler(
             return mockPipeB(rest, $meta);
         },
 );
+```
+
+```mermaid
+flowchart TD
+    M["a message arrives"] --> D{"how is the destination decided?"}
+    D -- "content-based" --> C{"the field the handler branches on"}
+    C -- "A" --> H1["the handler the code names"]
+    C -- "otherwise" --> H2["the fallback the code names"]
+    D -- "dynamic" --> E["the message itself carries the handler name,<br/>resolved in the proxy at run time"]
+    E --> H3["whichever handler that name resolves to"]
 ```
 
 ### Dynamic Router
@@ -147,6 +206,15 @@ export default handler(
 );
 ```
 
+```mermaid
+flowchart LR
+    M["one message carrying a list"] --> S{"who receives each part?"}
+    S -- "Splitter" --> S1["every item goes to the one processor<br/>the handler names"]
+    S -- "Scatter-Gather" --> S2["every destination the message names<br/>receives the whole message"]
+    S1 --> R1["an array of per-item results"]
+    S2 --> R2["an array of per-destination results"]
+```
+
 ### Aggregator
 
 Collect individual messages until a batch size is reached, then process the batch.
@@ -166,6 +234,16 @@ export default handler(({handler: {mockDataSave}}) => {
         return undefined;
     };
 });
+```
+
+```mermaid
+flowchart TD
+    M1["message 1"] --> A["the handler's closure holds the list —<br/>the batch is state, not part of the message"]
+    M2["message 2"] --> A
+    A --> Q{"has the batch size been reached?"}
+    Q -- "no" --> U["return undefined — still accumulating"]
+    Q -- "yes" --> B["take the batch, empty the list,<br/>hand it to the downstream handler"]
+    B --> R["the batch result"]
 ```
 
 ### Resequencer
@@ -296,6 +374,15 @@ export default handler(
             return mockDataGet({id}, $meta);
         },
 );
+```
+
+```mermaid
+flowchart LR
+    P["a large or sensitive payload"] --> S["store it"]
+    S --> I["a lightweight reference — the claim"]
+    I --> T["the message carries the reference<br/>instead of the payload"]
+    T --> G["retrieve by the reference"]
+    G --> R["the original payload"]
 ```
 
 ### Normalizer

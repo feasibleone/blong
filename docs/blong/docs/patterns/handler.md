@@ -30,6 +30,39 @@ integration tasks. They have the following purpose:
   pre-configured period. It can be used to trigger processing of some pending operations that happen
   during the idle time of the adapter.
 
+:::note
+
+The last three names — `idleSend`, `idleReceive` and `drainSend` — are **planned rather than
+current**. They are listed here because they are the intended lifecycle hooks for keep-alive and
+idle handling, and because the `idleSend` / `idleReceive` configuration keys that already appear in
+adapter examples are written for them. Until they are implemented, no handler of those names is
+dispatched and those configuration keys are not read; the nearest hook that exists today is the
+empty `AdapterBase.drain`, which is subscribed to the `<id>.drain` event.
+
+:::
+
+The six that are implemented run in a fixed order, and that order is the whole reason for their
+names — an outbound call is adapted and encoded, an inbound frame is decoded and tidied:
+
+```mermaid
+flowchart TD
+    subgraph Start["when the adapter comes up"]
+        direction TB
+        I["init"] --> ST["start"] --> CN["connect"] --> RD["ready"]
+    end
+    Start --> CALL["a method is called on the adapter"]
+    CALL --> EXEC{"is there a handler<br/>for that method?"}
+    EXEC -- "no" --> EX["exec — the default answer"]
+    EXEC -- "yes" --> FN["the handler runs"]
+    EX --> SD["send — the parameters, adapted"]
+    FN --> SD
+    SD --> EN["encode — objects to a Buffer"]
+    EN --> WIRE["the wire"]
+    WIRE --> DE["decode — the Buffer to objects"]
+    DE --> RC["receive — the result, tidied"]
+    RC --> BACK["the caller's promise resolves"]
+```
+
 ## Internal API handlers
 
 The internal API handlers usually implement some business functionality. They use namespaces to
@@ -54,7 +87,9 @@ imagine it has the following namespaces:
     - `userUserAdd` - for creating users
     - `userRoleEdit` - for editing roles
 
-:::note All handlers are converted to async functions :::
+:::note All handlers are converted to async functions
+
+:::
 
 ## Library functions
 
@@ -251,8 +286,8 @@ following example, that explain their usage:
 
 ## Overriding the default handling
 
-Handlers and adapter/orchestrator ports can override a method that the framework (or another handler
-group) already provides and delegate back to the default implementation. This is how custom
+Handlers and adapter/orchestrator instances can override a method that the framework (or another
+handler group) already provides and delegate back to the default implementation. This is how custom
 persistence reuses the automatic CRUD, how codecs transform requests, and how adapters hook the
 lifecycle.
 
@@ -262,7 +297,7 @@ lifecycle.
 wires handler groups into a chain with `Object.setPrototypeOf()` (see the
 [wiring-pipeline rationale](../rationale/wiring-pipeline#prototype-chain-wiring)) so
 `super.<method>` resolves the "parent" implementation: an earlier-attached handler group, a
-synthetic handler bound to the port (procedures, CRUD bindings), the port instance, or the
+synthetic handler bound to the adapter (procedures, CRUD bindings), the adapter instance, or the
 `AdapterBase` lifecycle defaults.
 
 To use `super`, a handler must return an **object literal with method shorthand**. A plain
@@ -284,9 +319,9 @@ export default handler(({lib: {precision}}) => ({
 
 The generic knex adapter implements `find`/`get`/`add`/`edit`/`remove`/
 `merge`/`insert`/`update`/`delete` for every declared table (see
-[`adapter.knex`](../concepts/adapter#database)). A custom persistence handler that must run business
-logic before or after the standard operation is named after the method (e.g. `accessUserEdit` →
-`access.user.edit`) and delegates the generic part with `super.exec`:
+[`adapter.knex`](./schema-sync.md#auto-bound-crud-handlers)). A custom persistence handler that must
+run business logic before or after the standard operation is named after the method (e.g.
+`accessUserEdit` → `access.user.edit`) and delegates the generic part with `super.exec`:
 
 ```ts
 // realmname/adapter/db/accessUserEdit.ts
@@ -311,13 +346,49 @@ code handles related graph edges.
 The adapter loop applies two conversion handlers around every method call:
 
 - **`send`** — transforms the **outgoing parameters** before the API method executes at the target
-  port.
+  adapter.
 - **`receive`** — transforms the **incoming result** after the method returns.
 
-Both are looked up by `getConversion` in priority order: a per-method conversion
-(`<subject>.<object>.<predicate>.request.send`), an opcode or mtid level conversion
-(`request.send`), then the generic `send`/`receive`. They can be stacked — a handler group higher in
-the chain overrides `send`/`receive` and delegates to the one beneath via `super`:
+Both are looked up by `getConversion` in priority order — the first name that resolves wins, so the
+chain falls back from the most specific to the most general. A candidate is built by joining
+`$meta.method`, the `mtid` and the conversion being resolved (`send` or `receive`) with dots, and it
+is matched **after `methodId` has run over it**, which removes the dots and lower-cases the letters:
+`login.token.create.request.send` and a handler key spelled `loginTokenCreateRequestSend` are the
+same handler. So the lookup is a walk down five names, each a shorter piece of the one before it —
+here for a call to `login.token.create` with `mtid: request`:
+
+```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 620}}}%%
+flowchart TD
+    C1["1. &lt;subject&gt;.&lt;object&gt;.&lt;predicate&gt;.&lt;mtid&gt;.&lt;type&gt;<br/>login.token.create.request.send"]
+    C2["2. &lt;object&gt;.&lt;predicate&gt;.&lt;mtid&gt;.&lt;type&gt;<br/>token.create.request.send"]
+    C3["3. &lt;predicate&gt;.&lt;mtid&gt;.&lt;type&gt;<br/>create.request.send"]
+    C4["4. &lt;mtid&gt;.&lt;type&gt;<br/>request.send"]
+    C5["5. &lt;type&gt;<br/>send"]
+    NONE["none of them — nothing runs,<br/>the call goes through as it is"]
+
+    C1 -- "no handler with that name" --> C2
+    C2 -- "no handler" --> C3
+    C3 -- "no handler" --> C4
+    C4 -- "no handler" --> C5
+    C5 -- "no handler" --> NONE
+```
+
+What each name is made of, and when it can match:
+
+| #   | Candidate                                      | Where it comes from                                                                     | In the example                    |
+| --- | ---------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------- |
+| 1   | `<subject>.<object>.<predicate>.<mtid>.<type>` | `$meta.method`, with any suffix after `[`, `#` or `?` trimmed                           | `login.token.create.request.send` |
+| 2   | `<object>.<predicate>.<mtid>.<type>`           | the same path without the part before a `/`, or without the `stripNamespace` segments   | `token.create.request.send`       |
+| 3   | `<predicate>.<mtid>.<type>`                    | `$meta.opcode`, which is the method's last segment                                      | `create.request.send`             |
+| 4   | `<mtid>.<type>`                                | the message type on its own                                                             | `request.send`                    |
+| 5   | `<type>`                                       | nothing but the conversion — the generic hook; **not tried when the `mtid` is `event`** | `send`                            |
+
+The first name in that example is a real one: the MLE codec implements `loginTokenCreateRequestSend`
+(and the same shape for the other pre-auth calls) to encrypt them with the handshake keys, while
+every other call finds nothing at the first four candidates and lands on the codec's plain `send`
+and `receive` — the two hooks every call passes through. `$meta` may also be `false`; the first four
+candidates need it, so only the last one is tried in that case.
 
 ```ts
 // adapter codec stack (e.g. MLE on top of JSON-RPC)
@@ -342,8 +413,8 @@ the base behaviour still runs:
 // realmname/adapter/http/sim/echo.ts
 async start() {
     // custom startup (e.g. open a TCP server)
-    super.connect(); // bind handle() into the port loop
-    return super.start(); // default start: attach handlers + register ports
+    super.connect(); // bind handle() into the adapter loop
+    return super.start(); // default start: attach handlers + register adapters
 },
 async stop(...params) {
     try {
@@ -360,7 +431,7 @@ delegation pattern used to override synthetic procedure handlers.
 ## Folder-Level Configuration (config.ts)
 
 A `config.ts` file can be placed in any handler folder to define configuration for all handlers in
-that folder. The file supports activation-based config (`default`, `dev`, `prod`, etc.), keeping
+that folder. The file supports intent-keyed config (`default`, `dev`, `prod`, etc.), keeping
 environment-specific values co-located with the handlers that use them.
 
 ```text
@@ -407,8 +478,7 @@ export default realm(() => ({
 }));
 ```
 
-**Priority:** Realm `namespace` override > `config.ts` active environment activation > `config.ts`
-`default`
+**Priority:** Realm `namespace` override > `config.ts` active intent > `config.ts` `default`
 
 ## Handler-Test Continuum
 

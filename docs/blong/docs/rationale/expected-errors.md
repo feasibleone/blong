@@ -46,6 +46,23 @@ The feature is guarded by a `gateway.expectedErrors` flag that is `false` by def
 gates whether the **public API** (external callers) is allowed to supply an `expect` field. Test
 handlers that set `$meta.expect` programmatically are unaffected and work in any environment.
 
+Two places consult the declaration — the adapter that first sees the error and the gateway that
+returns it — and both ask the same question, so the answer cannot disagree:
+
+```mermaid
+flowchart TD
+    T["a call that set expect on $meta"] --> P["$meta travels with the call — same object in process,<br/>last element of the RPC params across services"]
+    P --> A{"which boundary logs it?"}
+    A -- "an adapter" --> AB["AdapterBase.error"]
+    A -- "the gateway" --> GW["the gateway catch block"]
+    AB --> M{"does the type match the expect rule?"}
+    GW --> M
+    M -- "exact name, a member of the array, or a prefix wildcard" --> DG["debug — the expected path is visible<br/>only to a verbose reader"]
+    M -- "no match, or expect was never set" --> ER["error"]
+    DG --> PROP["the error is still thrown,<br/>so the assertion still sees it"]
+    ER --> PROP
+```
+
 ### Why `$meta` and Not a Header
 
 The initial proposal suggested using the HTTP `baggage` header (W3C Trace Context) for propagation.

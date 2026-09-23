@@ -32,8 +32,9 @@ export default realm(blong => ({
 }));
 ```
 
-Config activations (`default`, `dev`, `prod`, `microservice`, `integration`) merge into the active
-config; they configure adapters/orchestrators, not which well-known layers load.
+Config blocks are keyed by intent name (`default`, `dev`, `prod`, `microservice`, `integration`) and
+merge into the active config; they configure adapters/orchestrators, not which well-known layers
+load.
 
 ## Reusing blong-server (recommended)
 
@@ -45,7 +46,7 @@ import regexes, plus `orchestrator/subject/init.ts` and `meta/`. Do not create a
 
 ## Folder layout (kopi-scaffolded realm)
 
-```
+```text
 realmname/
 ├── server.ts              # Optional — only for realm-level shared config
 ├── index.ts               # Suite entry point (server + browser platforms)

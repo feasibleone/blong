@@ -35,7 +35,7 @@ Common tasks are implemented once in a well-defined place and reused across real
 isolated business domain with its own handlers, adapters, and orchestrators. Realms compose into
 suites that define multi-platform entry points.
 
-```
+```text
 demo/handler-test-poc/order/
 ├── orchestrator/order/    ← business logic
 │   ├── orderOrderCreate.ts

@@ -241,6 +241,24 @@ browser: {
 }
 ```
 
+What the configuration above produces, captured from `demo/blong-marine`:
+
+![Coral browse page](./img/marine-coral-browse.png)
+
+![Species browse page](./img/marine-species-browse.png)
+
+![Habitat browse page](./img/marine-habitat-browse.png)
+
+All three are the same generated page: the portal menu and tab, the toolbar, a navigator pane, the
+table with its search box and paging, and the detail pane that fills in when a row is selected. The
+Coral picture is filtered to `Staghorn` by the spec used in the test, which is why it shows one row;
+Species and Habitat differ only in their `IModelSpec`. Nothing beyond the spec above draws any of
+it.
+
+The images are written by `demo/blong-marine/test/docs.play.ts`, which opens each page and captures
+it only under `BLONG_CAPTURE_DOCS=1`; the `blong-docs` skill documents the conventions for
+publishing one.
+
 ---
 
 ## Method Name Overrides
@@ -265,4 +283,11 @@ report: {
 }
 ```
 
-The report page is only registered when this is present.
+The report page is only registered when this is present. What that produces, beside the browse page
+it is reached from — a Run Report toolbar button, a params card, and a Results table:
+
+![Coral report page](./img/marine-coral-report.png)
+
+The rows in the picture are the demo database as the suite's own regression specs left it, which is
+also the honest illustration of one limitation: the params card is not editable, so a generated
+report cannot be narrowed from its own filter fields yet.

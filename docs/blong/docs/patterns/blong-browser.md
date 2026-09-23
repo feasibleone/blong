@@ -232,6 +232,21 @@ const schema = await schemaRegistry.resolve('marine.coral');
 
 ## Storybook Pattern
 
+Every package that renders components ships a Storybook, and it is the **live** half of these docs:
+a story is a running component with its fixture data, where a page here can only describe one. Run
+the one that belongs to the package you are reading about — `core/blong-browser` for components and
+widgets, `demo/blong-marine` or `suite/blong-suite` for whole realms, `tools/blong-log` for the log
+viewer:
+
+```bash
+cd core/blong-browser && npm run storybook   # port 6006
+cd demo/blong-marine  && npm run storybook   # port 6007
+```
+
+Storybook is not published as a site yet, so there is nothing here to link to;
+`npm run ci-storybook` in any of those packages builds the static output (`storybook-static/`,
+gitignored) that a published build would serve.
+
 Two Storybook patterns exist:
 
 ### Component-level stories (blong-browser internal)

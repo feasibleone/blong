@@ -21,6 +21,25 @@ Blong reuses the resource graph it already has instead of growing an RBAC schema
   compares the requested method against the expanded bitmask, so the enormous majority of requests
   never touch the database; the expansion is cached per bit set with a TTL.
 
+The shape that follows from that split is a hot path with no database access and a write path that
+rewrites the graph once:
+
+```mermaid
+flowchart TD
+    subgraph Hot["the hot path — every request"]
+        H1["the signed token"] --> H2["role bits"]
+        H2 --> H3["access.authorization.list —<br/>the expansion is cached per bit set, with a TTL"]
+        H3 --> H4{"is the requested method allowed?"}
+        H4 -- "yes" --> H5["served, with no database read at all"]
+        H4 -- "no" --> H6["refused"]
+    end
+    subgraph Write["the write path — a grant changes"]
+        W1["a grant"] --> W2["one stored procedure<br/>rebuilds core.path"]
+        W2 --> W3["access.effectiveAction"]
+    end
+    W3 -. "read only when the cache is cold" .-> H3
+```
+
 ## Decisions and trade-offs
 
 **Bits, not names.** A token listing action names would grow with the caller's permissions and would
@@ -34,6 +53,15 @@ different role. Role bits are therefore allocated (`MAX(roleBit) + 1`), never re
 deleted, and an edit that changes one is refused. Three consequences were accepted deliberately: the
 1024 ceiling (acceptable because allocation stays dense), gaps after a deletion (harmless), and the
 loss of the ability to renumber roles for tidiness.
+
+```mermaid
+flowchart TD
+    B["a bit is how an already-minted token names a role"] --> C["moving a bit would silently hand<br/>that token's permissions to another role"]
+    C --> D["so bits are allocated, never reused,<br/>and an edit that changes one is refused"]
+    D --> E["bits stay dense, which keeps the mask small"]
+    D --> F["gaps appear after a deletion — harmless"]
+    D --> G["roles cannot be renumbered for tidiness — accepted"]
+```
 
 **Roles are declared by name, not by number.** Picking a free bit by hand was the earlier design,
 and its failure mode was silence: the row insert ignored conflicts, so a clash produced a role

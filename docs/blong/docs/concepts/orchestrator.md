@@ -4,6 +4,16 @@ The role of the orchestrator is to provide an intermediate point in the architec
 business logic can be implemented in a way that is decoupled from the integration protocols and
 APIs.
 
+```mermaid
+flowchart TB
+    gw["gateway — public JSON-RPC"] --> oa["orchestrator: realm A<br/>namespace: a"]
+    oa --> aa1["adapter A1"]
+    oa --> aa2["adapter A2"]
+    oa --> ob["orchestrator: realm B<br/>namespace: b"]
+    ob --> ab1["adapter B1"]
+    oa -.->|"another realm's adapter —<br/>discouraged, isolated cases only"| ab1
+```
+
 Orchestrators are the place where the API namespaces are defined; usually there is one orchestrator
 per namespace. The orchestrators can call adapters within the same realm or orchestrators in another
 realm. Calling adapters from another realm is discouraged and is only feasible in isolated cases

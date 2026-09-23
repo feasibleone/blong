@@ -13,7 +13,23 @@ blong ./server.ts db     # load a specific file with the db intent
 The framework always merges the `default` configuration block first; every active intent then
 contributes its own block on top. A single code base can therefore behave as a development server,
 an integration-test runner, a microservice, or a database seeder — purely by changing the intents on
-the command line.
+The framework always merges the `default` configuration block first; every active intent then
+contributes its own block on top. A single code base can therefore behave as a development server,
+an integration-test runner, a microservice, or a database seeder — purely by changing the intents on
+the command line. An intent has two effects, and both follow from the same list:
+
+```mermaid
+flowchart TD
+    subgraph Active["the active intents"]
+        direction TB
+        A1["default — always, first"]
+        A2["every intent named on the command line"]
+        A3["server or browser — injected by the platform"]
+    end
+    Active --> C1["the configuration blocks merge in that order —<br/>a later block overrides an earlier one"]
+    Active --> L1["a layer loads when its activation file<br/>names an active intent"]
+    L1 --> L2["well-known layer folders are auto-discovered,<br/>so most layers need no file at all"]
+```
 
 ## Well-Known Intents
 
@@ -24,6 +40,7 @@ the command line.
 | `integration`  | Enables test layer and watch/test mode                                                                                                               | Long-running; reruns tests on change; exits when `CI` is set |
 | `microservice` | Activates the layers needed to run a realm as a standalone microservice                                                                              | Long-running                                                 |
 | `db`           | Database creation / seeding                                                                                                                          | **Short-lived** — exits when done                            |
+| `upgrade`      | Brings an existing database up to date: schema sync plus production seeds, without dropping columns or loading test seeds                            | **Short-lived** — exits when done                            |
 | `cli`          | Serves nothing: gateway, RPC server, API gateway, rest-fs, system debug and MCP are all off, watching is off, and every dispatch resolves in-process | **Short-lived** — exits after its work                       |
 | `playwright`   | Marker: the Playwright runner owns the process lifetime, so the platform must outlive the test command                                               | Long-running until the runner stops it                       |
 | `debug`        | Exposes `/api/sys/*` introspection endpoints and stack traces in errors                                                                              | No effect on lifetime                                        |

@@ -40,6 +40,23 @@ The concept of **intents** replaces "activations" with a clearer model:
 - When no intents are provided, the framework defaults to `dev + microservice + integration` — a set
   designed to give an immediate, full-featured development experience without any flags.
 
+The split between the target and the intents is decided by looking at the filesystem, which is what
+removed the ambiguity the parser used to have:
+
+```mermaid
+flowchart TD
+    A["the positional arguments to blong"] --> B{"does the first one exist<br/>as a file or a folder?"}
+    B -- "yes" --> C["it is the target — the file or folder to load"]
+    B -- "no" --> D["it is an intent"]
+    C --> E["the remaining arguments are intents"]
+    D --> E
+    E --> F{"was any intent named?"}
+    F -- "no" --> G["dev + microservice + integration"]
+    F -- "yes" --> H["the named intents, in the order they were given"]
+    G --> I["the default block merges first,<br/>then each active intent's block"]
+    H --> I
+```
+
 ### Well-Known Intents and Their Process Behaviour
 
 | Intent                 | Primary effect                                                                                                                                       | Process lifetime                                             |

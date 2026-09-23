@@ -22,3 +22,11 @@ in that package's own file; the root file keeps only what concerns the workspace
 - [Pattern guide](../patterns/memory) — the commands, the entry shape, the checks.
 - [Rationale](../rationale/memory) — why the notes are files with ids instead of prose and a
   tracker.
+
+```mermaid
+flowchart LR
+    cli["blong-dev memory"] --> kinds["three kinds of file,<br/>one per package and at the root"]
+    cli --> own["the command owns the id,<br/>the date/area/status line,<br/>the 100-column wrapping<br/>and the generated index"]
+    cli --> area["filed by area:<br/>a rush.json package folder,<br/>or cross-cutting / ci / docs / skills"]
+    kinds --> statuses["friction: open → resolved<br/>todo: open → done<br/>decision: active → superseded"]
+```

@@ -6,64 +6,30 @@ docs, the code, or both.
 
 ---
 
-## config-hot-reload.md
-
-**~~1. `configChanged` hook — real knex adapter exists but old conceptual example is still
-referenced in some contexts.~~ ✅ Resolved**
-
-- The real signature in `core/blong-gogo/src/adapter/server/knex.ts` matches the declared interface
-  in `core/blong/types.ts`. The rationale now reflects the correct call signature.
-
-**~~2. Hot reload for config files is not fully wired in `Watch.ts` today.~~ ✅ Resolved**
-
-- `Watch.ts` includes a `_reloadConfig()` method that wires config-file-change →
-  `ConfigRuntime.reload()` → `configChanged` on affected ports. The full pipeline is implemented and
-  matches the rationale description.
-
-**~~3. `createConfigProxy` partial-destructuring caveat is under-documented in code.~~ ✅ Resolved**
-
-- `ConfigRuntime.ts` contains comprehensive JSDoc explaining the mutation contract and proxy
-  semantics. The documentation is complete.
-
----
-
 ## snapshot-testing.md
 
-**4. `assert.snapshot(result, name, {mask})` API does not exist.**
-
-- Misalignment: the rationale describes a proposed `assert.snapshot` helper with masking support;
-  actual tests in the repo use TAP's `t.matchSnapshot()` with manual normalization (e.g., port
-  substitution in blong-log tests).
-- Status: **Implemented** — `snapshot(t, value, name, {mask?})` is exported from
-  `@feasibleone/blong-chain` (`core/blong-chain/snapshot.ts`). It wraps `t.matchSnapshot` and
-  applies flat dot-path masking before comparison.
-
-**5. Deep path masking syntax is not implemented.**
-
-- Misalignment: rationale describes `mask: ['*.completedTimestamp', 'createParty.partyId']` with
-  glob and step-scoped paths; no such implementation exists.
-- Status: **Partially implemented** — flat dot-path masking is available. Glob-style (`*.field`)
-  wildcard masking is a remaining future item.
-
-**6. Checkpoint auto-snapshot at barriers is not implemented.**
+**6. Automatic snapshots at `[]` checkpoint barriers are not implemented.**
 
 - Misalignment: Strategy 2 in the rationale describes automatic context snapshots at `[]` checkpoint
-  barriers; the `blong-chain` executor does not have this feature.
-- Status: **Documented as future direction** — the Strategy 2 section in `snapshot-testing.md` now
-  carries a clear "Not yet implemented" label.
+  barriers; the `blong-chain` executor does not have that feature.
+- Status: **Partially implemented** — the executor's `autoSnapshot` option snapshots each step's
+  result without an explicit `assert.snapshot()` call. Still missing is the _barrier_ form: a `[]`
+  entry in the steps array taking a snapshot of the whole accumulated context. The Strategy 2
+  section in `snapshot-testing.md` carries a "Not yet implemented" label for that part only.
 
 ---
 
 ## test-rerun-diagnostics.md
 
-**7. `TestExecutor` `rerun` configuration option is not implemented.**
+**~~7. `TestExecutor` `rerun` configuration option is not implemented.~~ ✅ Phase 1 implemented**
 
 - Misalignment: the rationale shows a `rerun: {enabled, maxRetries, logLevel, ...}` config block for
   `TestExecutor`. No such option exists in the current `blong-chain` executor.
 - Status: **Phase 1 implemented** — `rerun: {enabled, maxRetries}` is accepted by
-  `ITestExecutorConfig` and the `TestExecutor` retry loop is in place. When a step fails and
-  `rerun.enabled` is true, it is retried up to `maxRetries` times before being marked as failed. See
-  `core/blong-chain`.
+  `ITestExecutorConfig` and the retry loop is in place (`core/blong-chain/index.ts`,
+  `DEFAULT_MAX_RETRIES`). When a step fails and `rerun.enabled` is true, it is retried up to
+  `maxRetries` times before being marked as failed. `logLevel` is still not consumed, so the config
+  block in the rationale is not yet fully implemented.
 
 **8. Diagnostic attachment pipeline (logs/traces/payloads in report) is not implemented.**
 
@@ -103,20 +69,6 @@ executable demos.~~ ✅ Resolved**
 
 ---
 
-## real-time-log.md
-
-**~~12. Exact Storybook story count ("22 stories") may drift as stories evolve.~~ ✅ Fixed**
-
-- The hardcoded count "22 stories" has been replaced with a durable description ("stories
-  covering…") in `real-time-log.md`.
-
-**~~13. `POST /api/query` synchronous filter endpoint is not implemented.~~ ✅ Implemented**
-
-- `POST /api/query` now accepts a JSON filter body and returns matching log entries synchronously.
-  See `tools/blong-log/src/server.ts` and the corresponding tests.
-
----
-
 ## goals.md
 
 **14. Goals have no measurable acceptance criteria.**
@@ -126,28 +78,3 @@ executable demos.~~ ✅ Resolved**
 - Task: add a measurable target for each goal (e.g., handler hot-reload latency < 200 ms measured in
   a benchmark test, test cycle < 30 s for the `blong-chain` demo suite).
 - Recommendation: tie each goal to one CI-visible metric that fails the build when regressed.
-
----
-
-## prior.md
-
-**~~15. Paradigm references are not mapped to concrete framework features.~~ ✅ Resolved**
-
-- `prior.md` contains a complete decision matrix table mapping every paradigm cluster to a concrete
-  framework feature with a codebase example path.
-
----
-
-## unified-handler-test.md
-
-**~~16. The annotation syntax (`@name`, `@retry`, `@parallel`) is not implemented.~~ ✅ Resolved**
-
-- `@name`, `@cache`, `@timeout`, `@priority`, and `@tag` annotations are implemented and validated
-  in `blong-chain`'s `parseAnnotatedKey()` function. `@retry` and `@parallel` are intentionally
-  deferred by design (phased plan); the remaining annotations fully satisfy the original
-  requirement.
-
-**~~17. The `group(name)([...steps])` pattern is still the only naming mechanism.~~ ✅ Resolved**
-
-- `group()` continues to work in 48+ test files and coexists with the new annotation-based naming in
-  `blong-chain`. Backwards compatibility is fully maintained.

@@ -27,15 +27,28 @@ Playwright tests catch issues that other test types cannot:
 
 ## How It Works
 
-```text
-Playwright                 Vite Dev Server              Blong Server
-┌──────────┐   HTTP/WS    ┌──────────────┐   /rpc →   ┌────────────┐
-│ Test code │ ──────────→  │ React app    │ ─────────→ │ Gateway    │
-│ (Node.js) │              │ (port 5173)  │            │ Orchestrator│
-│           │              │              │            │ Mock adapter│
-│ Portal    │ ← screenshot │              │ ← JSON-RPC │            │
-│ helper    │              │              │            │ (port 8080)│
-└──────────┘               └──────────────┘            └────────────┘
+```mermaid
+flowchart LR
+    subgraph pw["Playwright (Node.js)"]
+        direction TB
+        t["test code"]
+        portal["Portal helper"]
+    end
+    subgraph vite["Vite dev server :5173"]
+        app["React app"]
+    end
+    subgraph srv["Blong server :8080"]
+        direction TB
+        gw["gateway"]
+        orc["orchestrator"]
+        mock["mock adapter"]
+    end
+
+    t -->|"HTTP / WS"| app
+    app -->|"/rpc"| gw
+    gw --> orc --> mock
+    mock -->|"JSON-RPC"| app
+    app -->|"screenshot"| portal
 ```
 
 The test runner controls a real browser. The Vite dev server serves the React application and

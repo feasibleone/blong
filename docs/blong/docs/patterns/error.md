@@ -1,7 +1,22 @@
 # Error
 
 The patterns below can be used to define and throw [typed errors](../concepts/errors.md) within the
-framework.
+framework. Defining an error and throwing it are separate moments, and the proxy that connects them
+is what makes the call sites short:
+
+```mermaid
+flowchart TD
+    subgraph Define["define — a key and its message"]
+        D1["realmname/error/error.ts,<br/>the error layer of a realm"]
+        D2["error written in place,<br/>also reachable as lib.error"]
+        D3["the error map of an adapter<br/>or of an orchestrator"]
+    end
+    Define --> R["register — each key is stored under its dotted name"]
+    R --> PX["the errors proxy also exposes it in camelCase,<br/>as errorParkingInvalidZone"]
+    PX --> T1["throw with no arguments,<br/>errors.parkingInvalidZone"]
+    PX --> T2["throw with params and cause —<br/>placeholders filled, original error wrapped"]
+    PX --> T3["throw at destructure time for a typo,<br/>before any work is done"]
+```
 
 ## Defining errors
 

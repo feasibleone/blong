@@ -80,7 +80,8 @@ still runs.
 
 ### Method resolution
 
-A method is only present if **its port's own handler table** says so:
+A method is only present if **the handler table of the adapter that owns it** says so — `port` in
+the snippet below is that adapter instance:
 
 ```ts
 port.handles(method) === true; // matches the namespace PREFIX — also true for methods that do not exist
@@ -115,12 +116,12 @@ export default server(() => ({
 Two points:
 
 - **A child needs a config key under an active intent** (`default: {myRealm: {}}`) or it loads but
-  contributes no ports, and there is nothing to dispatch to.
+  contributes no adapters, and there is nothing to dispatch to.
 - **`server.ts` and `index.ts` are not needed.** A command has nothing to serve, so `cli.ts` is the
   only suite. Not every package needs both modes.
 
 The realm itself needs no `adapter/db`, no `meta/` and no browser entry. Its `orchestrator/` group
-is what provides the port:
+is what provides the adapter:
 
 ```ts
 // myRealm/orchestrator/myRealm.ts

@@ -29,6 +29,15 @@ survives a redeploy of unchanged code — so alert rules and stored references o
 genuinely reworded message _is_ a new template, which is not a failure of the scheme but the point:
 it is what makes a deploy visible as one template added and one gone.
 
+```mermaid
+flowchart TD
+    ONE["settlement failed after 3 retries"] --> MASK
+    TWO["settlement failed after 4 retries"] --> MASK
+    MASK["mask every variable part —<br/>home paths, timestamps, ULIDs, UUIDs,<br/>IPs, hex, numbers"] --> ID["a deterministic string:<br/>level, service, context, operation,<br/>then the masked message"]
+    ID --> HASH["hash it"] --> TPL["one template identifier"]
+    TPL --> REG["the template registry —<br/>counts, identity and centroid"]
+```
+
 **Carry two identities, because they answer different questions.** A **trace** is causal correlation
 and one trace may span more than one flow; a **flow execution** id is a caller-minted ULID naming
 exactly one execution and is propagated unchanged. The flow **kind** is a deployment property — the

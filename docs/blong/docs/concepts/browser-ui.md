@@ -18,14 +18,14 @@ For implementation patterns see [Modular UI](../patterns/blong-browser.md).
 infrastructure for all browser-side suites. It is not a standalone UI library — it is a proper realm
 loaded into a suite's browser entry point as a peer alongside application realms.
 
-```
+```text
 Suite (browser.ts)
-  └── blong-browser realm          ← @feasibleone/blong-browser/browser.js
-        ├── adapter/backend   ← HTTP/JSON-RPC to Blong server gateway
-        ├── adapter/storage   ← Browser localStorage
-        ├── adapter/mock      ← Auto-generated CRUD mocks (storybook/integration only)
-        ├── orchestrator/auth ← Session management
-        └── orchestrator/portal ← Tab/menu navigation + model page discovery
+  ├── blong-browser realm          ← @feasibleone/blong-browser/browser.js
+  |     ├── adapter/backend   ← HTTP/JSON-RPC to Blong server gateway
+  |     ├── adapter/storage   ← Browser localStorage
+  |     ├── adapter/mock      ← Auto-generated CRUD mocks (storybook/integration only)
+  |     ├── orchestrator/auth ← Session management
+  |     └── orchestrator/portal ← Tab/menu navigation + model page discovery
   └── marine realm            ← realm-specific pages
         ├── meta/model/       ← IModelSpec handlers (.model kind)
         ├── meta/fixture/     ← Fixture data handlers (.fixture kind)
@@ -62,6 +62,11 @@ Each open tab is backed by a component handler identified by a semantic triple (
 `marine.coral.browse`). Opening a tab calls the handler to get `{title, permission, component}`,
 then renders the React component in a new tab. The browser state (open tabs, active tab) is held in
 Zustand and is local to the browser session.
+
+Two pages open at once, in the `demo/blong-marine` suite — the menubar a realm contributes a group
+to, the tab strip, and the page inside it with its own toolbar, navigator and detail pane:
+
+![The portal shell with two pages open](./img/portal-shell.png)
 
 ---
 

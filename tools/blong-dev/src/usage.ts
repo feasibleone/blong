@@ -18,6 +18,7 @@ export const USAGE_LINES: readonly string[] = [
     '  blong-dev log [ulid] [opts]  Fetch log entries from cacache (--output/--level/--search/...)',
     '  blong-dev sql [opts]         Run a SQL query via .blong_devrc (--output json|pretty)',
     '  blong-dev memory <verb>      Add, list, show, close, move, format or check agent memory entries',
+    '  blong-dev docs <verb>        List, generate, check or verify the docs site generated artefacts',
 ];
 
 /** Write the usage list (with a `Usage:` header) to the given stream. */

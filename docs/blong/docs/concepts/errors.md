@@ -20,5 +20,27 @@ the `type`, which is why we call these `typed errors`. Here is the list of prope
 - `stack`: The stack trace of the error, which is useful for troubleshooting
 - `cause`: Object describing a nested error, which can have the same properties as the parent error
 
+These properties exist because one error has several audiences, and each of them reads only the part
+that is useful to it:
+
+```mermaid
+flowchart LR
+    subgraph Err["one typed error"]
+        direction TB
+        T["type — the namespaced id, the only required part"]
+        M["message — the log line, placeholders filled from params"]
+        P["print — wording written for a person"]
+        V["validation — field-level messages"]
+        R["req and res — the HTTP context it crossed"]
+        C["cause — the error wrapped underneath"]
+    end
+    T --> LOG["logs, tests and telemetry"]
+    M --> LOG
+    P --> UI["Error dialog, printed receipts"]
+    V --> FORM["Editor and Form fields"]
+    R --> HTTP["HTTP troubleshooting"]
+    C --> ROOT["root-cause troubleshooting"]
+```
+
 To ensure all errors are typed, the framework provides some patterns to define and use such errors.
 For more info read about the [error pattern](../patterns/error.md).

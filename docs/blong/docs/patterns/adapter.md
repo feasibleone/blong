@@ -63,8 +63,10 @@ tls: # TLS config
     key: /some/path/tls.key
 ```
 
-:::note When using OpenAPI/Swagger definitions, make sure to include `'codec.openapi'` in the
-`imports` property. :::
+:::note When using OpenAPI/Swagger definitions, make sure to include `'codec.openapi'` in `imports`
+property.
+
+:::
 
 ## Configuration
 

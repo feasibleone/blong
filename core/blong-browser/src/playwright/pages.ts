@@ -23,6 +23,7 @@
  * fixture fails a test outright when the browser throws while the page loads.
  */
 import type {Expect} from '@playwright/test';
+import {captureDocs} from './docs.js';
 import type {ITestFn} from './model.js';
 
 /** One page: its method, or the method plus the parts that differ for it. */
@@ -56,6 +57,8 @@ export interface IOpenPage {
      * kind, and its content is what the page is for.
      */
     region?: string;
+    /** Documentation image for this page, relative to the docs tree. Overrides {@link IOpenPagesOptions.docs}. */
+    docs?: string;
 }
 
 export interface IOpenPagesOptions {
@@ -69,6 +72,25 @@ export interface IOpenPagesOptions {
     searchText?: string;
     /** Prefix every baseline, to keep two specs off the same screenshot files. */
     baselinePrefix?: string;
+    /**
+     * Also write a documentation image for a page, named relative to the docs tree —
+     * `patterns/img/access-role-browse.png`, say. The page is captured with the same
+     * `searchText`, `mask` and `region` the baseline uses, so the picture is pinned by the
+     * settings a reader can see rather than by a second set that could drift from them.
+     *
+     * The image is written only when `BLONG_CAPTURE_DOCS=1` (see
+     * {@link captureDocs}), so a CI run checks the page without overwriting a committed
+     * picture.
+     */
+    docs?: (method: string) => string | undefined;
+    /**
+     * Write only the documentation images: skip the baseline comparison entirely.
+     *
+     * For a spec whose pages exist to be photographed rather than to be guarded — a realm
+     * showing a feature the docs describe, where a new baseline would be a snapshot nobody
+     * asked to maintain. Requires {@link IOpenPagesOptions.docs}.
+     */
+    docsOnly?: boolean;
 }
 
 /**
@@ -87,13 +109,20 @@ export function openPages(
         waitForTableData = true,
         searchText: defaultSearchText,
         baselinePrefix,
+        docs,
+        docsOnly = false,
     }: IOpenPagesOptions,
 ): void {
+    if (docsOnly && docs === undefined) {
+        throw new Error('openPages: docsOnly needs a docs() name for the images it writes');
+    }
     for (const entry of methods) {
         const page: IOpenPage = typeof entry === 'string' ? {method: entry} : entry;
         const baseline =
-            page.screenshot ?? screenshot?.(page.method) ?? `${page.method.replace(/\./g, '-')}.png`;
-        test(`open ${page.method}`, async ({portal}) => {
+            page.screenshot ??
+            screenshot?.(page.method) ??
+            `${page.method.replace(/\./g, '-')}.png`;
+        test(`${docsOnly ? 'document' : 'open'} ${page.method}`, async ({portal}) => {
             await portal.menuClick(page.method);
             const searchText = page.searchText ?? defaultSearchText;
             if (searchText !== undefined) {
@@ -103,15 +132,23 @@ export function openPages(
             }
             if (page.waitForTableData ?? waitForTableData) await portal.waitForTableData();
             const target =
-                page.region === undefined
-                    ? portal.page
-                    : portal.page.locator(page.region).first();
-            await expect(target).toHaveScreenshot(
-                baselinePrefix === undefined ? baseline : `${baselinePrefix}-${baseline}`,
-                page.mask === undefined
-                    ? {}
-                    : {mask: page.mask.map(selector => portal.page.locator(selector))},
-            );
+                page.region === undefined ? portal.page : portal.page.locator(page.region).first();
+            if (!docsOnly) {
+                await expect(target).toHaveScreenshot(
+                    baselinePrefix === undefined ? baseline : `${baselinePrefix}-${baseline}`,
+                    page.mask === undefined
+                        ? {}
+                        : {mask: page.mask.map(selector => portal.page.locator(selector))},
+                );
+            }
+            const docsName = page.docs ?? docs?.(page.method);
+            if (docsName !== undefined) {
+                await captureDocs(portal, {
+                    name: docsName,
+                    ...(page.region === undefined ? {} : {region: page.region}),
+                    ...(page.mask === undefined ? {} : {mask: page.mask}),
+                });
+            }
         });
     }
 }

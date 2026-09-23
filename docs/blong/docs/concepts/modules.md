@@ -12,4 +12,4 @@ An example TypeScript configuration is available in the blong/test project:
 
 :::tip If you have trouble with ESM, check
 [Pure ESM package](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c) for some
-tips :::
+tips

@@ -1,4 +1,4 @@
-# Playwright Testing Patterns
+# Playwright Testing
 
 This page covers the practical patterns for writing full-stack Playwright tests in a Blong suite.
 
@@ -94,6 +94,40 @@ test.describe('Entity CRUD', () => {
 
 ## Element Selector Pattern
 
+Every element a test addresses is identified by the **framework**, not by the test: the model and
+component layers mint the ids as they render, which is what lets one spec address a page it has
+never seen. The shape of the id says who minted it — reach for the most specific one that exists,
+and let the generic helpers do the same:
+
+```mermaid
+flowchart TD
+    TEST["a test addresses an element"] --> KIND{"what rendered it?"}
+    KIND -->|toolbar action| ACT["action- then the method,<br/>with slashes and dots as dashes"]
+    KIND -->|editor button| EDT["editor- then the action name"]
+    KIND -->|menu entry| MEN["portal-menu- then the group,<br/>or the method"]
+    KIND -->|form field| FLD["the field name — dots in name,<br/>dashes in id and testid"]
+    KIND -->|table cell| CEL["the object, the row index<br/>and the field, dashed"]
+    ACT --> EX1["action-component-marine-coral-new"]
+    EDT --> EX2["editor-save"]
+    MEN --> EX3["portal-menu-marine-coral-browse"]
+    FLD --> EX4["name coral.coralName, id coral-coralName"]
+    CEL --> EX5["coral-0-coralName"]
+```
+
+### Toolbar actions — by data-testid
+
+An action button is identified by the method it dispatches, with `/` and `.` replaced by `-`
+(`ActionButton.tsx`). This is the convention the generic model helpers in
+`core/blong-browser/src/playwright/model.ts` are built on —
+`action-component-${subject}-${object}-new` for the Create button, `-open` for Edit — so a helper
+can drive a realm's page without knowing the realm:
+
+```typescript
+await page.getByTestId('action-component-marine-coral-new').click();
+await page.getByTestId('action-component-marine-coral-open').first().click();
+await page.getByTestId('action-marine-coral-remove').click();
+```
+
 ### Form inputs — by name attribute
 
 ```typescript
@@ -137,8 +171,11 @@ await page.locator('.p-selectbutton [role="button"]:has-text("Soft Coral")').fir
 await page.getByTestId('editor-save').click();
 await page.getByTestId('editor-edit').click();
 await page.getByTestId('editor-cancel').click();
-await page.getByTestId('editor-refresh').click();
 ```
+
+Those three are always present. A page that declares its own toolbar actions gets one more id per
+action, named after it with the underscores stripped — the model's browse pages add `__refresh__`,
+so `editor-refresh` exists there and nowhere else.
 
 ### Menu items — by data-testid
 
@@ -152,9 +189,12 @@ await page.getByTestId('portal-menu-marine-coral-browse').click();
 
 ### Table cells — by data-testid
 
+A cell is identified by the object, its row index and the field: `${object}-${rowIndex}-${field}`
+(`TableWidget.tsx`, and the same shape in the model helpers).
+
 ```typescript
-// Cell: {fieldName}-{rowIndex}
-await page.getByTestId('coral-0').click();
+// Cell: {object}-{rowIndex}-{field}
+await page.getByTestId('coral-0-coralName').click();
 
 // Table actions
 await page.getByTestId('coral-addButton').click();

@@ -5,6 +5,22 @@ a role grants capabilities, a capability groups actions — and each role is one
 token the caller presents. The gateway therefore authorizes every request from the token alone: no
 database round-trip on the hot path, and no realm needs to know another realm's method names.
 
+```mermaid
+flowchart TD
+    unit["unit"] -->|"belongsTo"| user["user"]
+    user -->|"hasRole"| role["role<br/>roleBit 0-1023"]
+    role -->|"grants"| cap["capability"]
+    cap -->|"groups"| action["action<br/>methodId"]
+
+    role -.->|"one bit per role"| per["JWT per claim<br/>base64 bitmask"]
+    action -.-> eal["access.effectiveAction<br/>materialized by access_pathRefresh()"]
+    per --> list["access.authorization.list<br/>bits to allowed methodIds, TTL-cached"]
+    eal --> list
+    list --> gate{"requested method in the list?"}
+    gate -->|"yes"| ok["proceed"]
+    gate -->|"no"| deny["403 with a token, 401 without one"]
+```
+
 ## Key behaviours
 
 - **Roles are bits.** A role carries a unique `roleBit` (0–1023) that is _allocated_ when the role

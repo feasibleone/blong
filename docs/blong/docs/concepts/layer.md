@@ -46,32 +46,58 @@ required:
 
 ## Auto-Discovery and Activation Defaults
 
-Well-known folder names are automatically detected and activated in the correct environment.
-`default` means the layer loads regardless of intents; `integration` means it loads when the
-`integration` intent is active (the default for dev/test). Custom folder names require a
-`layer.server.ts` or `layer.browser.ts` file.
+Well-known folder names are automatically detected and activated in the correct environment. Custom
+folder names require a `layer.server.ts` or `layer.browser.ts` file.
+
+<!-- BEGIN LAYER ACTIVATION -->
+
+**Which intent turns a layer on.** Rendered from `WELL_KNOWN_LAYERS` in `core/blong-lib/layers.ts` —
+the table the loader itself reads, so this block cannot tell a different story from the runtime.
+Read the diagram per intent, and the table per folder.
+
+```mermaid
+flowchart LR
+    subgraph SERVER["server platform"]
+        direction TB
+        server-default-intent["default"] --- server-default-layers["api · init · meta · server/init"]
+        server-integration-intent["integration"] --- server-integration-layers["error · sim · adapter · orchestrator · gateway · server/api · server/test"]
+        server-cli-intent["cli"] --- server-cli-layers["error · adapter · orchestrator · server/api"]
+    end
+    subgraph BROWSER["browser platform"]
+        direction TB
+        browser-default-intent["default"] --- browser-default-layers["api · init · meta · browser/init"]
+        browser-integration-intent["integration"] --- browser-integration-layers["backend · component · action · actions · test · browser/api · browser/test · browser/orchestrator"]
+    end
+```
+
+A layer missing for a platform is simply not auto-discovered there. `default` means the layer loads
+regardless of intents; every other name is an intent that must be active, and `cli` is the intent
+that makes a realm’s handlers exist without serving them.
 
 | Folder                 | Server active in | Browser active in |
 | ---------------------- | ---------------- | ----------------- |
 | `api`                  | default          | default           |
 | `init`                 | default          | default           |
 | `meta`                 | default          | default           |
-| `error`                | integration      | —                 |
+| `error`                | integration, cli | —                 |
 | `sim`                  | integration      | —                 |
-| `adapter`              | integration      | —                 |
-| `orchestrator`         | integration      | —                 |
+| `adapter`              | integration, cli | —                 |
+| `orchestrator`         | integration, cli | —                 |
 | `gateway`              | integration      | —                 |
-| `server/api`           | integration      | —                 |
-| `server/init`          | default          | —                 |
-| `server/test`          | integration      | —                 |
 | `backend`              | —                | integration       |
 | `component`            | —                | integration       |
-| `action` / `actions`   | —                | integration       |
+| `action`               | —                | integration       |
+| `actions`              | —                | integration       |
 | `test`                 | —                | integration       |
+| `server/api`           | integration, cli | —                 |
+| `server/init`          | default          | —                 |
+| `server/test`          | integration      | —                 |
 | `browser/api`          | —                | integration       |
 | `browser/init`         | —                | default           |
 | `browser/test`         | —                | integration       |
 | `browser/orchestrator` | —                | integration       |
+
+<!-- END LAYER ACTIVATION -->
 
 ## Dev-Only Handler Groups (`.dev` suffix)
 

@@ -52,7 +52,8 @@ type Load = (
     def: object,
     suiteName: string,
     parentConfig: string | object,
-    activations: string[],
+    configNames: string[],
+    manifest?: Record<string, unknown>,
 ) => Promise<{
     start: () => Promise<unknown>;
     test: () => Promise<unknown>;
@@ -103,6 +104,22 @@ export default async (load: Load): Promise<void> => {
 An example of this approach is in `demo/blong-eip/`.
 
 ## Choosing Between the Two
+
+The two entry points load different platforms, which is why they answer different questions:
+
+```mermaid
+flowchart LR
+    subgraph Public["public API — browser simulated"]
+        direction TB
+        P1["index.ts loads server and browser"] --> P2["the test calls through the browser client"]
+        P2 --> P3["the full request and response path is exercised"]
+    end
+    subgraph Internal["internal API — server only"]
+        direction TB
+        I1["internal.test.ts loads the server"] --> I2["tap drives the handlers directly"]
+        I2 --> I3["faster to run, and coverage is collected in process"]
+    end
+```
 
 | Situation                                                       | Approach                       |
 | --------------------------------------------------------------- | ------------------------------ |

@@ -1,4 +1,4 @@
-# ACL pattern
+# ACL
 
 Putting the record-level ACL on a table, writing rules and verifying them. The `blong-access` README
 documents the rule table and the ACL pages; the [ACL concept](../concepts/acl.md) describes the
@@ -33,11 +33,41 @@ A table declaring `acl` also needs the scope hierarchy to be in the graph — th
 | record → scope  | `scopes: ['belongsTo']` | the record belongs to a scope (a person to a unit, an invoice to an organization)                                      |
 | record is scope | `selfScope: true`       | the hierarchy points _at_ the record: a unit belongs to an organization, and the organization itself has no scope edge |
 
+The two shapes differ in where the hierarchy points, and that decides what a grant can cover:
+
+```mermaid
+flowchart TD
+    A{"where does the scope come from?"}
+    A -- "scopes" --> B["the record reaches a scope —<br/>a person belongsTo a unit"]
+    A -- "selfScope" --> C["the record is its own scope —<br/>scopes is ignored"]
+    B --> D["a grant on the unit covers the person"]
+    C --> E["a grant must name the record itself<br/>or a parent of it"]
+    E --> F["no RBAC fallback, so an unassigned<br/>record is invisible rather than open"]
+```
+
 `selfScope` has **no RBAC fallback**: an organization is visible only to a caller whose grant names
 it or a parent organization. That is what makes an unassigned organization invisible rather than
 open.
 
 ## 3. What gets enforced
+
+The verdict is one expression, evaluated in SQL as part of the query — so the answer and the row set
+can never disagree:
+
+```mermaid
+flowchart TD
+    A["a CRUD operation on a table"] --> B{"does the table declare an acl spec?"}
+    B -- "no" --> C["not guarded — the verdict is TRUE"]
+    B -- "yes" --> D{"is there a record key or a scope<br/>to evaluate against?"}
+    D -- "neither" --> E["denied — a caller that forgot the target<br/>fails here rather than being let through"]
+    D -- "at least one" --> F{"does the record participate<br/>in a declared scope?"}
+    F -- "no" --> G["RBAC alone decides —<br/>this is what makes opting a table in safe"]
+    F -- "yes" --> H{"does an active deny rule match<br/>the record or one of its scopes?"}
+    H -- "yes" --> I["refused — a deny always wins"]
+    H -- "no" --> J{"a hasScope grant to one of those scopes,<br/>or an active allow rule?"}
+    J -- "yes" --> K["allowed"]
+    J -- "no" --> I
+```
 
 | Operation                 | Behaviour                                                     | Error                    |
 | ------------------------- | ------------------------------------------------------------- | ------------------------ |
@@ -55,10 +85,20 @@ the above without writing a single check.
 ## 4. Write the rules
 
 **From the UI.** _ACL Rules_ (`access.acl`) is the explicit rule table: principal, action, target
-kind, target, effect and active, with the names joined for display. On a role or user, the
-**Access** tab lists the _effective_ rules with the source of each decision, and the **Record
-Access** matrix edits scope × verb as tri-state cells — clicking a cell cycles allow → deny → no
-rule, and a "no rule" cell removes the rule, which is how an implicit grant is narrowed back.
+kind, target, effect and active, with the names joined for display. The shared seed alone fills it —
+`Admin` is allowed every guarded action on every record, while `Manager` is denied
+`party.person.find` on one scope — so the wildcard and the deny are visible side by side:
+
+![The ACL Rules table with the seeded allow and deny rules](./img/access-acl-rules.png)
+
+On a role or user, the **Access** tab lists the _effective_ rules with the source of each decision —
+the same rules seen from the principal's side:
+
+![The Access tab of the Admin role, listing its effective rules](./img/access-role-effective.png)
+
+The **Record Access** matrix edits scope × verb as tri-state cells — clicking a cell cycles allow →
+deny → no rule, and a "no rule" cell removes the rule, which is how an implicit grant is narrowed
+back.
 
 **From seeds.** The authorization merge accepts both halves:
 

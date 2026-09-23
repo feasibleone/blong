@@ -1,4 +1,4 @@
-# Semantic Log Flows
+# Semantic Log Example
 
 The two transfer flows in `core/semantic-log/flow/` are the library's **end-to-end evidence**: real
 HTTP between real processes, with every assertion made against the records each participant actually

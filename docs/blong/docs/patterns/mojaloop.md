@@ -1,4 +1,6 @@
-# Mojaloop Payment Flow Patterns
+# Mojaloop Payment Flow
+
+This is included as reference for the [semantic log flows](./semantic-log-flows.md)
 
 ## Cross-currency (single scheme)
 

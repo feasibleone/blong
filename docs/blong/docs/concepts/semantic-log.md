@@ -4,6 +4,17 @@
 id**, so a human or an agent can reach the full detail on demand instead of grepping. It lives in
 `core/semantic-log/`.
 
+```mermaid
+flowchart TD
+    ENTRY["the entry participant mints the identity<br/>and attaches the business intent, once"] --> EXEC["a flow execution —<br/>a caller-minted ULID"]
+    EXEC --> LEG["a leg — one call, with<br/>from, to and its position"]
+    LEG --> PHASE["the caller writes start,<br/>then end or error;<br/>the receiver writes received"]
+    PHASE --> REC["a record, naming the record<br/>that caused it"]
+    REC --> HELD["retained in a local cache,<br/>and shipped to the service"]
+    REC --> HASHED["masked and hashed into<br/>the template registry"]
+    EXEC -.->|"x-semantic-trace"| NEXT["the next process adopts the same<br/>execution id and carries it onward"]
+```
+
 It goes beyond ordinary logging in five ways.
 
 - **Identity comes from structure, not text.** Timestamps, ids, IP addresses, numbers and home paths

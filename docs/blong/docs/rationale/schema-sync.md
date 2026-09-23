@@ -27,6 +27,17 @@ source of truth**. A dedicated deployment job (with `schema.sync: true`) compare
 (declared in config) against the actual database state and reconciles the difference. Normal
 application instances never run DDL — they only bind synthetic handlers at startup. The developer
 never writes `CREATE TABLE` or `ALTER TABLE` SQL — they only maintain a TypeBox object definition.
+The whole mechanism is a comparison that runs one way, with the declaration as the only thing a
+developer edits:
+
+```mermaid
+flowchart TD
+    T["the TypeBox declaration —<br/>the single source of truth"] --> CMP{"compared against<br/>information_schema"}
+    LIVE["the live database"] --> CMP
+    CMP -- "already the same" --> NOOP["no SQL at all — a repeat run is a no-op"]
+    CMP -- "different" --> DDL["CREATE, ALTER, or DROP and re-create —<br/>only what actually differs"]
+    DDL --> LIVE
+```
 
 This approach has several advantages:
 
@@ -120,3 +131,14 @@ But they are harder to test, version, and refactor than TypeScript code. The fra
 supports a **gradual spectrum**: start with auto-bound CRUD (no SQL at all), add `.sql` procedure
 files for complex queries, and override with TypeScript handlers when the logic outgrows a
 procedure. The calling code does not change — only the backing implementation.
+
+Three implementations, one caller:
+
+```mermaid
+flowchart LR
+    A["auto-bound CRUD —<br/>no SQL at all"] --> B["a .sql procedure<br/>for a query that needs the database"]
+    B --> C["a TypeScript handler<br/>when the logic outgrows the procedure"]
+    A --> D["the caller — the method name, the logs,<br/>the API docs and the tests do not change"]
+    B --> D
+    C --> D
+```

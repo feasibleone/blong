@@ -49,7 +49,8 @@ Unify the handler and test concepts along a **continuum** rather than a **bounda
 
 5. **Unified naming context** — The execution context name (used for test report nesting, structured
    logging, and tracing) is injected into `$meta` by the framework, not passed as a handler
-   parameter. This prevents `name` from conflicting with API parameters. Two mechanisms are planned:
+   parameter. This prevents `name` from conflicting with API parameters. Two mechanisms are
+   implemented:
     - **Proxy sub-property destructuring** — `{handler: {testPaymentFlow: {billPayment}}}` returns
       the same handler but with `$meta.name = 'bill payment'` pre-injected (camelCase converted to
       sentence form).
@@ -270,7 +271,7 @@ name for test reporting. This creates two problems in the unified handler-test c
    `$meta` for contextual metadata.
 
 The unified concept eliminates both issues by injecting the execution context name into `$meta` via
-the **handler proxy**, rather than passing it as a parameter. Two approaches are planned:
+the **handler proxy**, rather than passing it as a parameter. Two approaches are implemented:
 
 #### Approach 1: Proxy Sub-Property Destructuring
 
@@ -298,36 +299,175 @@ export default handler(
 
 The proxy converts camelCase property names to sentence form: `billPayment` → `'bill payment'`.
 Conversion rules: insert a space before each uppercase letter and lowercase the result (e.g.,
-`cardPaymentFlow` → `'card payment flow'`, `httpRequest` → `'http request'`). The same handler, the
-same API parameters, but with context carried in `$meta` where it belongs.
+`cardPaymentFlow` → `'card payment flow'`, `httpRequest` → `'http request'`). For fully uppercase
+segments (acronyms), the first letter of each word is preserved as-is in the lowercase result. The
+same handler, the same API parameters, but with context carried in `$meta` where it belongs.
+
+The alias is not test-only: accessing `{handler: {paymentExecute: {cardPayment}}}` in a production
+handler produces a `cardPayment` function that runs `paymentExecute` with
+`$meta.name = 'card payment'`. Most of the time the name is only informational — it reaches the logs
+and the traces — but a handler that needs it can read `$meta.name`.
 
 #### Approach 2: Annotation Syntax
 
 In [ut-port](https://github.com/softwaregroup-bg/ut-port/blob/master/README.md), `import` keys can
-be prefixed with one or more `@word` annotations. Blong extends this idea with **parameterised
-annotations**. The general format is:
+be prefixed with one or more `@word` annotations. Each annotation is a **single word** that refers
+to a config-object key — the proxy merges those config objects into the method's call options,
+effectively injecting properties into `$meta`. For example, `@shortCache namespace.entity.action`
+merges `config.handler.shortCache` (a config object with e.g. `{cache:{ttl:60000}}`) into the
+options.
 
-```
+Blong extends this idea with **parameterised annotations**. The general format for a key with
+annotations is:
+
+```text
 @annotationName param1 param2... @annotationName2 param1... handlerName
+│               │                 └─ second annotation      └─ handler to alias
+│               └─ params for @annotationName
+└─ first annotation name
 ```
 
-Each annotation operates in one of two modes:
+**Parsing rules:**
 
-**Mode A — `$meta` injection** (plain-word parameters):
+1. The **last whitespace-delimited token** is the handler name (must not start with `@`).
+2. Tokens starting with `@` open a new annotation; the annotation name is the word immediately after
+   `@`.
+3. Tokens between an annotation name and the next `@`-token (or the handler name) are the
+   **parameters** of that annotation.
+
+Each annotation operates in one of two modes depending on its parameter syntax:
+
+---
+
+**Mode A — `$meta` injection** (plain-word parameters, at least one parameter)
+
+When all parameters are plain words (no `=`), the annotation name is used as the `$meta` property
+key and the joined parameter words become its value:
+
+```text
+@name bill payment    →   $meta.name = 'bill payment'
+@timeout 5000         →   $meta.timeout = '5000'
+```
+
+This is the primary mode for contextual metadata such as the execution name used in test reports and
+traces.
+
+**Example — single `$meta` annotation:**
 
 ```typescript
-// @name injects $meta.name; @cache looks up config.handler.cache
+export default handler(
+    ({
+        handler: {
+            '@name bill payment testPaymentFlow': billPayment,
+            '@name loan payment testPaymentFlow': loanPayment,
+        },
+    }) => ({
+        testPaymentScenarios: (params, $meta) => [
+            billPayment({amount: 150}, $meta), // $meta.name = 'bill payment'
+            loanPayment({amount: 5000}, $meta), // $meta.name = 'loan payment'
+        ],
+    }),
+);
+```
+
+**Example — multiple `$meta` annotations:**
+
+```typescript
+export default handler(
+    ({handler: {'@name bill payment @timeout 5000 testPaymentFlow': billPayment}}) => ({
+        testPaymentScenarios: (params, $meta) => [
+            // $meta.name = 'bill payment', $meta.timeout = '5000'
+            billPayment({amount: 150}, $meta),
+        ],
+    }),
+);
+```
+
+---
+
+**Mode B — config-object reference** (`key=value` parameters or no parameters)
+
+When the annotation has no parameters, or when any parameter uses `key=value` syntax, the annotation
+name is treated as a **config key** — exactly as ut-port does. The proxy looks up
+`config.handler[annotationName]` and merges that config object into the call options (which flow
+into `$meta`). This allows the same shared config objects used in ut-port (e.g., cache policies,
+retry profiles) to be reused in blong without any changes.
+
+If parameters are present and use `key=value` syntax, each `key=value` token **overrides** the
+corresponding top-level property of the looked-up config object before the merge. This lets a single
+call site customise a shared config without defining a separate config entry:
+
+```text
+@cache                      →  merge config.handler.cache into call options
+@cache ttl=10               →  merge config.handler.cache, then override its ttl = 10
+@cache ttl=10 maxSize=500   →  merge config.handler.cache, override multiple properties
+```
+
+**Example — config-object annotation with override:**
+
+```typescript
+// Configuration (e.g. in realm config):
+// config.handler.cache = { ttl: 60000, maxSize: 1000 }
+
+export default handler(
+    ({
+        handler: {
+            // Use the 'cache' config, but shorten TTL for this specific call
+            '@cache ttl=10 namespace.entity.get': getCachedEntity,
+        },
+    }) => ({
+        testCachedLookup: (params, $meta) => [
+            // Resolved as: merge({ ttl: 60000, maxSize: 1000 }, { ttl: 10 })
+            // Effective call options: { ttl: 10, maxSize: 1000 }
+            getCachedEntity({id: '123'}, $meta),
+        ],
+    }),
+);
+```
+
+---
+
+**Disambiguation** — the proxy determines which mode to apply at parse time:
+
+- If all parameters are plain words (none contains `=`), Mode A (`$meta` injection) is used.
+- If any parameter contains `=`, Mode B (config-object reference with overrides) is used.
+- If there are no parameters at all, Mode B is used (pure config-object lookup, like ut-port).
+
+This allows both modes to coexist in the same annotation list:
+
+```typescript
+// @name is Mode A ($meta.name injection)
+// @cache is Mode B (config-object lookup with ttl override)
 '@name bill payment @cache ttl=10 namespace.entity.get': getCachedEntity
 ```
 
-**Mode B — config-object reference** (no params or `key=value` params):
+**Extensibility** — mode is selected purely by parameter syntax; any annotation name can be used in
+either mode:
 
-The proxy looks up `config.handler[annotationName]` and merges that config object into the call
-options, allowing shared config objects (e.g., cache policies, retry profiles) to be reused without
-changes.
+- `@name bill payment` → Mode A: `$meta.name = 'bill payment'`
+- `@timeout 5000` → Mode A: `$meta.timeout = '5000'`
+- `@cache` → Mode B: merges `config.handler.cache` into call options
+- `@cache ttl=10` → Mode B: merges `config.handler.cache` then overrides `cache.ttl`
+- `@retry maxAttempts=3 delay=100` → Mode B: merges `config.handler.retry` with two overrides
 
-> **Implementation note:** Both approaches require updating the handler proxy in `layerProxy.ts`.
-> Both are tracked as a side task within this plan.
+This approach allows arbitrary multi-word names without relying on camelCase conversion (which
+governs Approach 1), and it supports stacking multiple independent context annotations on a single
+handler alias.
+
+> **Implementation note:** Both approaches are implemented in `core/blong-gogo/src/handlerProxy.ts`,
+> driven by two helpers in `core/blong-gogo/src/lib.ts`:
+>
+> - **Approach 1** — the resolved handler is wrapped in a second `Proxy` whose `get` turns a
+>   sub-property access into an alias: the property name is converted with `camelToSentence` and
+>   pre-injected as `$meta.name`.
+> - **Approach 2** — a key starting with `@` is split by `parseAnnotatedKey` into the handler name
+>   and its annotations. Plain-word parameters become `$meta` properties (Mode A). `key=value`
+>   parameters, or no parameters at all, look up `config.handler[annotationName]`, apply the
+>   overrides, and deep-merge the result into the call options (Mode B).
+>
+> `core/blong-gogo/src/lib.test.ts` covers the parsing and the conversion, and
+> `demo/handler-test-poc/order/test/test/testOrderNaming.ts` exercises both modes and the
+> mixed-annotation case end to end.
 
 #### Checkpoint-Driven Test Assertions
 
@@ -499,233 +639,3 @@ export default handler(
 
 This makes the handler's internal flow visible, traceable, and testable at each step — exactly like
 a test chain.
-
-##### Approach 1: Proxy Sub-Property Destructuring
-
-When a handler is accessed via a nested destructuring from the proxy, the property name becomes the
-execution context injected into `$meta`:
-
-```typescript
-// Instead of: testPaymentFlow({name: 'bill payment', amount: 150}, $meta)
-// Destructure a named alias from the proxy:
-export default handler(
-    ({
-        handler: {
-            testPaymentFlow: {billPayment, loanPayment},
-        },
-    }) => ({
-        testPaymentScenarios: (params, $meta) => [
-            // billPayment is identical to testPaymentFlow but $meta.name = 'bill payment'
-            billPayment({amount: 150}, $meta),
-            // loanPayment is identical to testPaymentFlow but $meta.name = 'loan payment'
-            loanPayment({amount: 5000}, $meta),
-        ],
-    }),
-);
-```
-
-The proxy converts camelCase property names to sentence form: `billPayment` → `'bill payment'`.
-Conversion rules: insert a space before each uppercase letter and lowercase the result (e.g.,
-`cardPaymentFlow` → `'card payment flow'`, `httpRequest` → `'http request'`). For fully uppercase
-segments (acronyms), the first letter of each word is preserved as-is in the lowercase result. The
-same handler, the same API parameters, but with context carried in `$meta` where it belongs.
-
-This pattern works equally for production handlers — accessing
-`{handler: {paymentExecute: {cardPayment}}}` produces a `cardPayment` function that runs
-`paymentExecute` with `$meta.name = 'card payment'`. Most of the time the name is purely
-informational (for logging and tracing), but handlers that need it can read `$meta.name`.
-
-##### Approach 2: Annotation Syntax (Side Task — Proxy Update Required)
-
-In [ut-port](https://github.com/softwaregroup-bg/ut-port/blob/master/README.md), `import` keys can
-be prefixed with one or more `@word` annotations. Each annotation is a **single word** that refers
-to a config-object key — the proxy merges those config objects into the method's call options,
-effectively injecting properties into `$meta`. For example, `@shortCache namespace.entity.action`
-merges `config.handler.shortCache` (a config object with e.g. `{cache:{ttl:60000}}`) into the
-options.
-
-Blong extends this idea with **parameterised annotations**. The general format for a key with
-annotations is:
-
-```
-@annotationName param1 param2... @annotationName2 param1... handlerName
-│               │                 │                          │
-│               └─ params for @annotationName               │
-│                               └─ second annotation        │
-└─ first annotation name                                     └─ handler to alias
-```
-
-**Parsing rules:**
-
-1. The **last whitespace-delimited token** is the handler name (must not start with `@`).
-2. Tokens starting with `@` open a new annotation; the annotation name is the word immediately after
-   `@`.
-3. Tokens between an annotation name and the next `@`-token (or the handler name) are the
-   **parameters** of that annotation.
-
-Each annotation operates in one of two modes depending on its parameter syntax:
-
----
-
-**Mode A — `$meta` injection** (plain-word parameters, at least one parameter)
-
-When all parameters are plain words (no `=`), the annotation name is used as the `$meta` property
-key and the joined parameter words become its value:
-
-```
-@name bill payment    →   $meta.name = 'bill payment'
-@timeout 5000         →   $meta.timeout = '5000'
-```
-
-This is the primary mode for contextual metadata such as the execution name used in test reports and
-traces.
-
-**Example — single `$meta` annotation:**
-
-```typescript
-export default handler(
-    ({
-        handler: {
-            '@name bill payment testPaymentFlow': billPayment,
-            '@name loan payment testPaymentFlow': loanPayment,
-        },
-    }) => ({
-        testPaymentScenarios: (params, $meta) => [
-            billPayment({amount: 150}, $meta), // $meta.name = 'bill payment'
-            loanPayment({amount: 5000}, $meta), // $meta.name = 'loan payment'
-        ],
-    }),
-);
-```
-
-**Example — multiple `$meta` annotations:**
-
-```typescript
-export default handler(
-    ({handler: {'@name bill payment @timeout 5000 testPaymentFlow': billPayment}}) => ({
-        testPaymentScenarios: (params, $meta) => [
-            // $meta.name = 'bill payment', $meta.timeout = '5000'
-            billPayment({amount: 150}, $meta),
-        ],
-    }),
-);
-```
-
----
-
-**Mode B — config-object reference** (`key=value` parameters or no parameters)
-
-When the annotation has no parameters, or when any parameter uses `key=value` syntax, the annotation
-name is treated as a **config key** — exactly as ut-port does. The proxy looks up
-`config.handler[annotationName]` and merges that config object into the call options (which flow
-into `$meta`). This allows the same shared config objects used in ut-port (e.g., cache policies,
-retry profiles) to be reused in blong without any changes.
-
-If parameters are present and use `key=value` syntax, each `key=value` token **overrides** the
-corresponding top-level property of the looked-up config object before the merge. This lets a single
-call site customise a shared config without defining a separate config entry:
-
-```
-@cache                      →  merge config.handler.cache into call options
-@cache ttl=10               →  merge config.handler.cache, then override its ttl = 10
-@cache ttl=10 maxSize=500   →  merge config.handler.cache, override multiple properties
-```
-
-**Example — config-object annotation with override:**
-
-```typescript
-// Configuration (e.g. in realm config):
-// config.handler.cache = { ttl: 60000, maxSize: 1000 }
-
-export default handler(
-    ({
-        handler: {
-            // Use the 'cache' config, but shorten TTL for this specific call
-            '@cache ttl=10 namespace.entity.get': getCachedEntity,
-        },
-    }) => ({
-        testCachedLookup: (params, $meta) => [
-            // Resolved as: merge({ ttl: 60000, maxSize: 1000 }, { ttl: 10 })
-            // Effective call options: { ttl: 10, maxSize: 1000 }
-            getCachedEntity({id: '123'}, $meta),
-        ],
-    }),
-);
-```
-
----
-
-**Disambiguation** — the proxy determines which mode to apply at parse time:
-
-- If all parameters are plain words (none contains `=`), Mode A (`$meta` injection) is used.
-- If any parameter contains `=`, Mode B (config-object reference with overrides) is used.
-- If there are no parameters at all, Mode B is used (pure config-object lookup, like ut-port).
-
-This allows both modes to coexist in the same annotation list:
-
-```typescript
-// @name is Mode A ($meta.name injection)
-// @cache is Mode B (config-object lookup with ttl override)
-'@name bill payment @cache ttl=10 namespace.entity.get': getCachedEntity
-```
-
-**Extensibility** — mode is selected purely by parameter syntax; any annotation name can be used in
-either mode:
-
-- `@name bill payment` → Mode A: `$meta.name = 'bill payment'`
-- `@timeout 5000` → Mode A: `$meta.timeout = '5000'`
-- `@cache` → Mode B: merges `config.handler.cache` into call options
-- `@cache ttl=10` → Mode B: merges `config.handler.cache` then overrides `cache.ttl`
-- `@retry maxAttempts=3 delay=100` → Mode B: merges `config.handler.retry` with two overrides
-
-This approach allows arbitrary multi-word names without relying on camelCase conversion (which
-governs Approach 1), and it supports stacking multiple independent context annotations on a single
-handler alias.
-
-> **Implementation note:** Both approaches require updating the handler proxy in `layerProxy.ts`.
-> The proxy already intercepts `handler.get` at one level (returning a wrapped function). The
-> changes needed are:
->
-> - **Approach 1:** Add a second `get` level on the returned wrapper so that
->   `handler.testFn.billPayment` converts `billPayment` → `'bill payment'` (camelCase→sentence) and
->   pre-injects `$meta.name`.
-> - **Approach 2 / Mode A:** In the top-level `get`, detect keys starting with `@`, parse the
->   annotation tokens and handler name, look up the handler normally, then wrap it to inject the
->   parsed annotations into `$meta` before the call. Plain-word parameters are joined and set
->   directly on `$meta`.
-> - **Approach 2 / Mode B:** For annotations whose parameters all use `key=value` syntax (or have no
->   parameters), look up the config object at `config.handler[annotationName]`, apply `key=value`
->   overrides to a shallow copy, then deep-merge the result into the call options (which flow into
->   `$meta`). This is backward-compatible with ut-port's config-object pattern. Both are tracked as
->   a side task within this plan.
-
-**Context nesting** — when the proxy-based naming is in place, test report output automatically
-shows the handler invocation chain (e.g., "payment scenarios → bill payment → createTransfer"),
-making failure context immediately visible without any boilerplate.
-
-#### Checkpoint-Driven Test Assertions
-
-When a handler with checkpoints is called from a test, the framework can collect checkpoint data and
-make it available for assertions:
-
-```typescript
-export default handler(({handler: {paymentFlowExecute}}) => ({
-    testPaymentFlowCheckpoints: (params, $meta) => [
-        async function executeFlow(assert, {$meta}) {
-            const result = await paymentFlowExecute(
-                {currency: 'USD', balance: 1000, amount: 100},
-                $meta,
-            );
-            // Assert on the result
-            assert.ok(result.transferId);
-
-            // Assert on checkpoints captured during execution
-            const checkpoints = $meta.checkpoints;
-            assert.equal(checkpoints[0].name, 'account-ready');
-            assert.ok(checkpoints[0].data.accountId);
-            assert.equal(checkpoints[1].name, 'transfer-done');
-            assert.equal(checkpoints[1].data.transferId, result.transferId);
-        },
-    ],
-}));
-```

@@ -26,7 +26,15 @@ The metadata may contain the following properties:
     - `url`: request URL
     - `state`: request cookies
     - `headers`: request headers
+- `name`: the execution context name. The handler proxy injects it when a handler is reached through
+  a naming alias, which is how a test report, a log line or a trace says _which_ step ran rather
+  than only which method (see the
+  [unified handler-test rationale](../rationale/unified-handler-test.md))
 - `expect`: used during tests to suppress logging of expected error types
+- `checkpoint`: function that records a named checkpoint during execution, `(name, data?) => void`,
+  used to observe the intermediate state of a flow (see [checkpoints](../concepts/checkpoint.md))
+- `checkpoints`: what has been recorded so far — one `{name, data?, timestamp}` entry per call to
+  `checkpoint`
 - `forward`: contains [b3-propagation](https://github.com/openzipkin/b3-propagation) data used for
   tracing
 - `dispatch`: optional function to be called during the `dispatch` step of the

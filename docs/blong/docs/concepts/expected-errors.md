@@ -37,6 +37,22 @@ await handler.parkingTest({zone: 'red'}, {...$meta, expect: 'parking.*'});
 The `expect` field is defined as `string | string[]` on `IMeta`, where each entry is either an exact
 error `type` value or a `prefix.*` wildcard.
 
+What matters is that the declaration travels with the call rather than staying with the caller, so
+the decision is taken once, where the error is raised, and not once per boundary it crosses:
+
+```mermaid
+flowchart TD
+    A["the test sets expect on $meta"] --> B["$meta is the second argument of every handler call"]
+    B --> C["in process — the same object<br/>through the whole chain"]
+    B --> D["across microservices — serialised as<br/>the last element of the RPC params"]
+    B --> E["from the public API — accepted only when<br/>gateway.expectedErrors is true"]
+    C --> F{"does the error type match expect?"}
+    D --> F
+    E --> F
+    F -- "yes" --> G["logged at debug,<br/>still thrown and still asserted on"]
+    F -- "no" --> H["logged at error"]
+```
+
 ## Propagation
 
 `$meta` is the second parameter of every handler call and flows through the entire dispatch chain

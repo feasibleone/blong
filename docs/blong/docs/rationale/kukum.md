@@ -35,6 +35,20 @@ The **engine** is pure and host-injected: it plans and applies file changes agai
 that the running realm satisfies with `this.platform` and the CLI satisfies with `node:fs`. One
 implementation, three entry points, and the planning logic unit-testable without a filesystem.
 
+The shape that follows is one declaration with everything else derived from it:
+
+```mermaid
+flowchart TD
+    C --> E["the engine: plan changes, then apply them<br/>against an injected host"]
+    C["the catalogue — one descriptor per primitive"] --> P["routes"]
+    C --> G["gateway validation entries"]
+    C --> CLI["CLI support"]
+    C ---> S["the owning skill, which primitive.find<br/>points back into instead of copying"]
+    E --> H1["this.platform, in a running realm"]
+    E --> H2["node:fs, from the CLI"]
+    E --> H3["a fixture host, in a test"]
+```
+
 Two consequences matter more than they first appear. Because a descriptor names its owning skill,
 the API becomes a _pointer into_ the documentation rather than a copy of it — `primitive.find`
 returns the skill name so an agent can be sent to the prose. And because the guardrails are

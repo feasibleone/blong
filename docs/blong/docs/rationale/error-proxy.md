@@ -95,6 +95,23 @@ The error system now uses a JavaScript Proxy that:
 5. **Immediate Error on Typos**: Throws immediately when accessing non-existent errors to catch
    typos during destructuring
 
+### Lookup Flow
+
+Every access to the proxy is one of the two paths below, and the second one is where the ergonomics
+come from — the developer writes the name they would have written anyway, and the proxy maps it back
+to the dotted key:
+
+```mermaid
+flowchart TD
+    A["errors.errorReleaseJobTrigger"] --> B{found under that name?}
+    B -- "yes" --> C["return the entry at its dotted key —<br/>legacy dot-notation access keeps working"]
+    B -- "no" --> D["lowercase it, so errorReleaseJobTrigger<br/>becomes errorreleasjobtrigger"]
+    D --> E["strip a leading error,<br/>which leaves releasejobtrigger"]
+    E --> F{found in the lookup map?}
+    F -- "yes" --> C
+    F -- "no" --> G["throw at destructure time,<br/>naming the entries that do exist"]
+```
+
 ## Naming Convention
 
 Error keys are automatically mapped to camelCase variables:

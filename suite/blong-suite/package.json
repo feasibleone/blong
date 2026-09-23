@@ -10,6 +10,7 @@
         "build": "vite build",
         "build-storybook": "storybook build",
         "ci-lint": "blong-dev lint",
+        "ci-storybook": "npm run build-storybook",
         "ci-test": "../../test/integration/wait.sh mysql && blong-dev playwright --coverage",
         "dev": "vite",
         "playwright": "blong-dev playwright",

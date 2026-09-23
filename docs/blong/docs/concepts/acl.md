@@ -4,6 +4,18 @@ Role-based access control decides **which methods** a caller may invoke. The rec
 narrows **which records** those methods may act on. It is opt-in per table, evaluated in SQL at
 query time, and it never widens RBAC — it can only take away.
 
+```mermaid
+flowchart TD
+    call["CRUD call on a table with an acl spec"] --> deny{"explicit access_acl deny<br/>for this principal, action, target?"}
+    deny -->|"yes"| refused["refused — deny always wins"]
+    deny -->|"no"| grant{"implicit hasScope grant,<br/>or an explicit allow?"}
+    grant -->|"no"| refused
+    grant -->|"yes"| scope{"does the record take part<br/>in any scope?"}
+    scope -->|"no"| passThrough["no narrowing — falls back to RBAC"]
+    scope -->|"yes"| sql["narrowed in SQL at query time"]
+    sql --> effect["get → not found · edit / remove → forbidden<br/>find and dropdowns → filtered before paging<br/>add → checked against the scope the new record names"]
+```
+
 ## Key behaviours
 
 - **Two halves, one verdict.** _Implicit_ grants are `hasScope` edges in the resource graph: the
@@ -12,8 +24,8 @@ query time, and it never widens RBAC — it can only take away.
   wins**.
 - **Enforcement is declarative.** The runtime's generic CRUD refuses a denied `get` as _not found_,
   a denied `edit` or `remove` as _forbidden_, filters `find` and dropdowns **before** paging, and
-  checks `add` against the scope the new record names. A handler that writes its own SQL asks
-  through the port instead.
+  checks `add` against the scope the new record names. A handler that writes its own SQL asks the
+  adapter for the same verdict instead.
 - **Opting in is safe.** A record that participates in no scope is not narrowed at all — it falls
   back to RBAC — so guarding a table with existing rows changes nothing until a grant mentions it.
 - **Two scope shapes.** Usually a record points _at_ its scope (`scopes`); when the hierarchy points

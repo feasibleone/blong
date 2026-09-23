@@ -37,17 +37,38 @@ The `client_credentials` grant is different: it issues long-lived **app** tokens
 session** — no refresh rotation, inactivity tracking or restore cookie applies to machine
 credentials.
 
-```text
-login ──► session.create ──► access + refresh tokens issued
-              │
-              ├── renewal (access token near expiry)
-              │     ├─► verify session (not revoked / not expired / not inactive) ── touch lastActivityAt
-              │     └─► re-resolve permissions ─► new access + rotated refresh token ─► rotate tokenHash
-              │
-              ├── logout / session.close ──► isRevoked = 1, revokedAt = now, cookie cleared
-              │
-              └── cleanup (periodic/lazy) ──► DELETE stale/revoked/expired rows
+The lifecycle is a small state machine — a session is issued, renewed in place, and then ends either
+by revocation or by inactivity, after which cleanup deletes the row:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Active: login.token.create (password grant)
+    Active --> Active: renewal — rotate refresh token, touch lastActivityAt
+    Active --> Revoked: logout / access.session.close
+    Active --> Inactive: lastActivityAt older than login.expire.inactivity
+    Revoked --> [*]: access.session.cleanup — DELETE row
+    Inactive --> [*]: access.session.cleanup — DELETE row
 ```
+
+Renewal is the one transition with more than a state change, so it is worth drawing in full:
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant A as access realm
+    participant S as session store
+    C->>A: login.token.create (refresh grant)
+    A->>S: verify session
+    Note over S: not revoked · not expired · not inactive
+    S-->>A: ok — touch lastActivityAt
+    A->>A: re-resolve permissions
+    A->>S: rotate tokenHash to the new refresh token
+    A-->>C: new access token + rotated refresh token
+```
+
+The rotation is what makes a stolen, already-used refresh token useless: the stored `tokenHash`
+follows the newest token, so replaying an older one no longer matches. Logout sets `isRevoked` and
+`revokedAt` and clears the restore cookie; cleanup then deletes the stale, revoked and expired rows.
 
 ### Inactivity timeout & deletion
 

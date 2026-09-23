@@ -1,4 +1,4 @@
-# Kukum pattern
+# Kukum
 
 How to call the kukum API, and how to extend it when the framework or its primitives change.
 
@@ -43,6 +43,19 @@ kukum.<cross-cutting endpoint>
 | `kukum.instruction.find` | every artifact carrying `@kukum-instructions`              |
 
 ## Calling it
+
+All three ways in reach the same operation engine, so a primitive behaves identically however it is
+invoked — which is what lets the CLI be scripted, a test drive the same call in process, and a
+running suite answer it over RPC:
+
+```mermaid
+flowchart LR
+    CLI["the kukum CLI"] --> OP["one operation per primitive —<br/>find, get, add, edit, check"]
+    RPC["JSON-RPC on a running suite —<br/>kukum.primitive.predicate"] --> OP
+    LIB["importing operation.ts in process"] --> OP
+    OP --> CAT["the catalogue —<br/>primitives, their kinds and their descriptors"]
+    CAT --> FILES["files written through the host —<br/>node:fs, or a fixture in a test"]
+```
 
 ### CLI
 
@@ -118,6 +131,21 @@ const result = await build<
 Ownership is the generated marker `import unchanged from '@feasibleone/blong'`, detected with
 `includes` so it may sit on any line. Only `.ts`/`.tsx` files are judged this way — YAML, SQL and
 JSON artifacts never carry it and are therefore always refreshable.
+
+So writing a file that already exists is a decision, not a copy:
+
+```mermaid
+flowchart TD
+    A["add plans a file"] --> B{"does it already exist?"}
+    B -- "no" --> C["create it"]
+    B -- "yes" --> D{"is it machine-generated?<br/>the marker: import unchanged from '@feasibleone/blong'"}
+    D -- "no — hand-written" --> E["skip it and report it;<br/>force overwrites"]
+    D -- "yes" --> F{"mode replace, or no compose hook?"}
+    F -- "yes" --> G["regenerate the descriptor's own output"]
+    F -- "no" --> H{"can the composer recognise the file?"}
+    H -- "yes" --> I["merge — the neighbours are kept"]
+    H -- "no" --> J["overwrite, and warn"]
+```
 
 Adding an entity must never drop its neighbours, which is why the shared artifacts (a test group
 list, a schema registry, a Playwright spec holding one `describe` per entity) have a `compose` hook.

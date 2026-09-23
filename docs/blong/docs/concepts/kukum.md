@@ -7,6 +7,16 @@ introspection endpoints that report what the framework currently has wired up.
 It has three entry points over one implementation: a `kukum` CLI, a JSON-RPC/MCP surface on a
 running suite, and an in-process module for tests and tooling.
 
+```mermaid
+flowchart LR
+    cli["kukum CLI<br/>loads the realm through the cli intent"] --> impl
+    rpc["JSON-RPC / MCP surface<br/>on a running suite"] --> impl
+    lib["in-process module<br/>for tests and tooling"] --> impl
+    impl["one implementation:<br/>a catalogue of primitives,<br/>times the standard predicates"] --> routes["14 primitives x 5 predicates<br/>find · get · add · edit · check"]
+    impl --> intro["introspection endpoints:<br/>what the framework has wired up"]
+    routes --> writes["writes are plan-first and non-destructive,<br/>validated before they happen,<br/>and carry an ownership marker"]
+```
+
 The key behaviours:
 
 - **Everything is derived from one catalogue.** Fourteen [primitive](../patterns/kukum.md)

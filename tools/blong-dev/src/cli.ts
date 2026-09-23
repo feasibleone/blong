@@ -38,6 +38,9 @@ switch (command) {
     case 'memory':
         await (await import('./commands/memory.ts')).memory(args);
         break;
+    case 'docs':
+        await (await import('./commands/docs.ts')).docs(args);
+        break;
     case '--help':
     case '-h':
     case 'help':

@@ -27,6 +27,20 @@ Keep the coarse gate and add a **narrowing layer** that the runtime applies for 
   runtime's generic CRUD, so every path — reads, writes and dropdowns, which are reads — obeys it
   without the handler doing anything.
 
+The two layers answer different questions, and the narrow one only ever subtracts from the wide one:
+
+```mermaid
+flowchart TD
+    Q1["may this caller edit persons?"] --> L1["RBAC — the coarse gate,<br/>one bitmask lookup per request"]
+    Q2["may this caller edit the persons<br/>of the head office?"] --> L2["the narrowing layer — a filter<br/>computed in SQL for this caller"]
+    H["a principal --hasScope--> scope edge"] ---> L2
+    R["an explicit rule in access_acl,<br/>allow or deny"] --> L2
+    L1 --> L2
+    L2 --> V{"the verdict for this record"}
+    V -- "in scope, and not denied" --> A["allowed"]
+    V -- "denied" --> D["refused — and the row is invisible to find"]
+```
+
 ## Decisions and trade-offs
 
 **Deny wins.** An explicit deny must be able to override an organizational grant. The alternative

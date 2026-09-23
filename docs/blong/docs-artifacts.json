@@ -1,0 +1,161 @@
+{
+    "$comment": [
+        "Register of every artefact in the docs site that is GENERATED rather than written.",
+        "",
+        "A generated artefact is committed to the repository and refreshed on demand, so the",
+        "docs build stays a plain Docusaurus build with no monorepo dependency, and a stale",
+        "diagram shows up as a diff in review instead of drifting silently.",
+        "",
+        "Read and checked by `blong-dev docs` (tools/blong-dev/src/commands/docs.ts):",
+        "  blong-dev docs list                 the register, with each destination present or missing",
+        "  blong-dev docs generate [--only id] run the generators and write the artefacts",
+        "  blong-dev docs check                regenerate, compare, restore; non-zero when stale",
+        "",
+        "Fields:",
+        "  id          stable identifier, also used by --only and by the generic GENERATED marker",
+        "  kind        'file'          the generator owns the whole destination file",
+        "              'mermaid-inline' the generator rewrites only the region between a marker pair",
+        "              'png'           a screenshot: `check` only verifies it exists and is non-empty",
+        "                              (PNG bytes depend on font rendering, so it is not compared,",
+        "                              and its generator is not run \u2014 content is reviewed instead)",
+        "  destination repository-relative path of the file the artefact lives in",
+        "  marker      for 'mermaid-inline' only: the text between BEGIN and END, i.e. the value of",
+        "              `<id>` in `<!-- BEGIN <marker> -->` ... `<!-- END <marker> -->`",
+        "  package     repository-relative package the generator runs in (its working directory)",
+        "  command     shell command that regenerates the artefact, run in `package`; a command",
+        "              that runs tap directly must pass `--allow-incomplete-coverage` (and usually",
+        "              `--coverage-report=none`), because the repository gates suites at 100%",
+        "              coverage and a single file run on its own can never reach it \u2014 without the",
+        "              flag the generator exits 1 on a suite that passed. `blong-dev test` passes",
+        "              the same flags for the same reason.",
+        "  doc         for 'mermaid-inline' only: the documentation page that embeds it",
+        "",
+        "The generators are deterministic by design: a call is placed by the counter path its",
+        "caller assigned and no count comes from the clock, so regenerating an up-to-date artefact",
+        "is a no-op and `check` can compare rather than guess. Do not hand-edit a registered",
+        "destination \u2014 the next `generate` overwrites it, and `check` fails until it does."
+    ],
+    "version": 1,
+    "artifacts": [
+        {
+            "id": "flows.artifact",
+            "kind": "file",
+            "destination": "core/semantic-log/docs/observed-flows.md",
+            "package": "core/semantic-log",
+            "command": "SEMANTIC_LOG_UPDATE_DIAGRAMS=1 ./node_modules/.bin/tap --allow-incomplete-coverage --coverage-report=none test/flow/observedFlows.test.ts"
+        },
+        {
+            "id": "flows.transfer-single",
+            "kind": "mermaid-inline",
+            "destination": "docs/blong/docs/patterns/semantic-log-flows.md",
+            "marker": "OBSERVED FLOWS: transfer.single",
+            "package": "core/semantic-log",
+            "command": "SEMANTIC_LOG_UPDATE_DIAGRAMS=1 ./node_modules/.bin/tap --allow-incomplete-coverage --coverage-report=none test/flow/observedFlows.test.ts",
+            "doc": "patterns/semantic-log-flows.md"
+        },
+        {
+            "id": "flows.transfer-inter",
+            "kind": "mermaid-inline",
+            "destination": "docs/blong/docs/patterns/semantic-log-flows.md",
+            "marker": "OBSERVED FLOWS: transfer.inter",
+            "package": "core/semantic-log",
+            "command": "SEMANTIC_LOG_UPDATE_DIAGRAMS=1 ./node_modules/.bin/tap --allow-incomplete-coverage --coverage-report=none test/flow/observedFlows.test.ts",
+            "doc": "patterns/semantic-log-flows.md"
+        },
+        {
+            "id": "layers.activation",
+            "kind": "mermaid-inline",
+            "destination": "docs/blong/docs/concepts/layer.md",
+            "marker": "LAYER ACTIVATION",
+            "package": "core/blong-lib",
+            "command": "BLONG_UPDATE_DOCS=1 ./node_modules/.bin/tap --allow-incomplete-coverage --coverage-report=none layersActivation.test.ts",
+            "doc": "concepts/layer.md"
+        },
+        {
+            "id": "realm.observed-flows",
+            "kind": "file",
+            "destination": "core/blong-realm/docs/observedFlows.md",
+            "package": "core/blong-realm",
+            "command": "BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/blong.play.ts --update-snapshots"
+        },
+        {
+            "id": "gateway.observed-flows",
+            "kind": "file",
+            "destination": "realm/blong-gateway/docs/observedFlows.md",
+            "package": "realm/blong-gateway",
+            "command": "BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/observedFlow.play.ts --update-snapshots"
+        },
+        {
+            "id": "png.marine-coral-browse",
+            "kind": "png",
+            "destination": "docs/blong/docs/patterns/img/marine-coral-browse.png",
+            "package": "demo/blong-marine",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "patterns/blong-model.md"
+        },
+        {
+            "id": "png.marine-species-browse",
+            "kind": "png",
+            "destination": "docs/blong/docs/patterns/img/marine-species-browse.png",
+            "package": "demo/blong-marine",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "patterns/blong-model.md"
+        },
+        {
+            "id": "png.marine-habitat-browse",
+            "kind": "png",
+            "destination": "docs/blong/docs/patterns/img/marine-habitat-browse.png",
+            "package": "demo/blong-marine",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "patterns/blong-model.md"
+        },
+        {
+            "id": "png.editor-open",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-open.png",
+            "package": "demo/blong-marine",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.editor-new-empty",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-new-empty.png",
+            "package": "demo/blong-marine",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.portal-shell",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/portal-shell.png",
+            "package": "demo/blong-marine",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/browser-ui.md"
+        },
+        {
+            "id": "png.marine-coral-report",
+            "kind": "png",
+            "destination": "docs/blong/docs/patterns/img/marine-coral-report.png",
+            "package": "demo/blong-marine",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "patterns/blong-model.md"
+        },
+        {
+            "id": "png.access-acl-rules",
+            "kind": "png",
+            "destination": "docs/blong/docs/patterns/img/access-acl-rules.png",
+            "package": "realm/blong-access",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "patterns/acl.md"
+        },
+        {
+            "id": "png.access-role-effective",
+            "kind": "png",
+            "destination": "docs/blong/docs/patterns/img/access-role-effective.png",
+            "package": "realm/blong-access",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "patterns/acl.md"
+        }
+    ]
+}

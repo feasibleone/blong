@@ -26,6 +26,7 @@
         "build-storybook": "storybook build -o storybook-static",
         "ci-chromatic": "../../common/chromatic.sh",
         "ci-lint": "blong-dev lint",
+        "ci-storybook": "npm run build-storybook",
         "ci-test": "blong-dev test",
         "storybook": "storybook dev -p 6006",
         "storybook:test": "test-storybook",

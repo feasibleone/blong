@@ -109,10 +109,14 @@ list of connected clients and their filters.
 
 The client side is implemented as a React component using:
 
-- **React 18.3.1** with hooks (useState, useCallback, useMemo, useContext, useRef)
-- **SVAR React Grid 2.5.2** - High-performance data grid with row expansion
+- **React 19** with hooks (useState, useCallback, useMemo, useContext, useRef)
+- **SVAR React Grid 2** - High-performance data grid with row expansion
   [https://github.com/svar-widgets/react-grid](https://github.com/svar-widgets/react-grid)
 - **Navigator Clipboard API** - For copy-to-clipboard functionality
+
+Exact versions are pinned in `tools/blong-log/package.json`, not in this document: a rationale that
+names a patch version goes stale on the next dependency bump, which is how the React version above
+came to be wrong.
 
 **Features Implementation**:
 

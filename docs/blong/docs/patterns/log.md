@@ -3,6 +3,48 @@
 The Blong framework ships with a real-time log viewer. When the framework is running locally, a log
 server is available at `http://127.0.0.1:9998`. All queries use a REST API.
 
+## How it fits together
+
+Entries reach a reader through two **independent** pino transports. The live viewer and the on-disk
+cache are separate sinks, not two views of one store, so an entry missing from the viewer is not
+evidence that it was never written to disk (or the other way round):
+
+```mermaid
+flowchart LR
+    app["handlers, adapters, orchestrators"] --> pino["pino"]
+    pino -->|"UDP transport — batched,<br/>8-byte batch id"| srv["log server :9998"]
+    pino -->|"pino-cacache transport"| disk["cacache on disk<br/>~/.blong/log-cache"]
+    srv --> buf["circular buffer in memory"]
+    buf --> ws["WebSocket<br/>live, filtered per client"]
+    buf --> rest["REST API<br/>/api/entries, /api/search"]
+    ws --> viewer["LogViewer (React)"]
+    rest --> viewer
+    disk --> cli["blong-dev log (by ULID)"]
+```
+
+The live path, end to end:
+
+```mermaid
+sequenceDiagram
+    participant App as handler / adapter
+    participant Tr as pino UDP transport
+    participant LS as log server :9998
+    participant Buf as circular buffer
+    participant UI as LogViewer
+
+    App->>Tr: log entry (JSON)
+    Tr->>LS: UDP packets carrying a batch, tagged with an 8-byte batch id
+    LS->>LS: reassemble the batch in order
+    LS->>Buf: parse the JSON, store it with a minted ULID
+    UI->>LS: GET /api/entries (on open)
+    LS-->>UI: recent entries
+    UI->>LS: WebSocket subscribe, with filters
+    LS-->>UI: matching entries as they arrive
+```
+
+The batch id is what lets the server put batched packets back in order; the ULID is what gives every
+entry a stable key, in the buffer and in the on-disk cache alike.
+
 ## Quick Reference
 
 ```bash
@@ -111,8 +153,8 @@ curl -s "http://127.0.0.1:9998/api/entries?after=$LAST_ID" \
 
 ## Runtime Introspection Endpoints
 
-For inspecting the framework's internal state (registered ports, handlers, config), enable the
-`systemDebug` endpoints in the suite's `server.ts` (dev only — never in production):
+For inspecting the framework's internal state (registered adapters/orchestrators, handlers, config),
+enable the `systemDebug` endpoints in the suite's `server.ts` (dev only — never in production):
 
 ```ts
 config: {
@@ -123,18 +165,18 @@ config: {
 }
 ```
 
-| Endpoint               | Returns                                        |
-| ---------------------- | ---------------------------------------------- |
-| `GET /api/sys/config`  | Effective merged runtime configuration         |
-| `GET /api/sys/ports`   | All registered adapter/orchestrator port names |
-| `GET /api/sys/methods` | All handler method groups with handler counts  |
-| `GET /api/sys/modules` | All registered realm module names              |
-| `GET /api/sys/rpc`     | Internal RPC server address                    |
+| Endpoint               | Returns                                       |
+| ---------------------- | --------------------------------------------- |
+| `GET /api/sys/config`  | Effective merged runtime configuration        |
+| `GET /api/sys/ports`   | All registered adapter/orchestrator names     |
+| `GET /api/sys/methods` | All handler method groups with handler counts |
+| `GET /api/sys/modules` | All registered realm module names             |
+| `GET /api/sys/rpc`     | Internal RPC server address                   |
 
 ### Typical troubleshooting workflow
 
 ```bash
-# Is the expected port registered?
+# Is the expected adapter/orchestrator registered?
 curl -s http://localhost:8080/api/sys/ports | jq '.ports[]'
 
 # Are the expected handlers present?

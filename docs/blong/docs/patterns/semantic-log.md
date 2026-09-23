@@ -1,4 +1,4 @@
-# Semantic Log — Pattern
+# Semantic Log
 
 How to use `core/semantic-log/`. The option reference, the inspector, the cluster service's routes
 and the development commands live in the package's own README, `core/semantic-log/README.md`; this
@@ -24,6 +24,19 @@ inline-payload reference, the flow position, the rendering and the local cache �
 | `step(name, fn)`                          | around each protocol phase                  | advances the flow position and records the step; a throw marks that step failed. A stalled flow therefore reports the last step it reached, still `running` |
 | `decide(discriminator, values, branches)` | wherever a service branches                 | records the discriminator, every candidate in evaluation order, the branch taken and the values, on the **next** record emitted in that scope               |
 | `logger.withhold(fields)`                 | for detail held locally and not transmitted | buffered, and released onto the next `error`/`fatal` — "withheld means withheld" until something fails                                                      |
+
+The scopes nest, and what a scope decides is inherited by everything inside it:
+
+```mermaid
+flowchart TD
+    INTENT["withIntent — once, at the entry participant:<br/>the business intent every descendant carries"] --> TRACE["bindTrace — at each hop,<br/>read from the trace header"]
+    TRACE --> FLOW["withFlow — around one execution:<br/>the execution ULID and the flow kind"]
+    FLOW --> STEP["step — around each protocol phase,<br/>advancing the flow position"]
+    STEP --> DEC["decide — the discriminator, every candidate,<br/>the branch taken and the values"]
+    STEP --> HOLD["withhold — detail buffered on the logger,<br/>never on the request"]
+    DEC -.->|"lands on the next record in the scope"| OUT["a record"]
+    HOLD -.->|"released onto the next error or fatal"| OUT
+```
 
 Two identities travel between services as headers: `x-semantic-trace` (causal correlation) and
 `x-semantic-flow` (the execution ULID). An identity is a **single token**: a header that is absent,

@@ -112,6 +112,25 @@ async function step(assert, {previousStep: {nested}}) {
 
 ## Parallel Execution Examples
 
+A group is a list of steps, and the thenable context is what decides which of them wait for each
+other: a step that never touches the context starts immediately, and a step that awaits a context
+property starts when that step resolves.
+
+```mermaid
+flowchart LR
+    subgraph Independent["independent — they all start at once"]
+        direction TB
+        I1["fetchUser"]
+        I2["fetchAccount"]
+        I3["fetchPayment"]
+    end
+    subgraph Dependent["dependent — each awaits the one before it"]
+        direction TB
+        A["step one"] --> B["step two awaits step one"]
+        B --> C["step three reaches into a nested property"]
+    end
+```
+
 ### Independent Steps (Parallel)
 
 ```ts
