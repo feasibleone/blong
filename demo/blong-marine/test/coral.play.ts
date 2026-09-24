@@ -34,5 +34,13 @@ test.describe('Marine Coral', () => {
         editFields: {
             'coral.coralName': 'Test Playwright Coral Edited',
         },
+        // Pin the edit test to the record this spec created. Without it the edit
+        // test opens the first row of the unfiltered table — which is the only
+        // coral the demo database seeds (`Staghorn Coral`, `marineCoralMerge.yaml`)
+        // — and renames it, taking that record away from `docs.play.ts` (F-255).
+        search: 'Test Playwright Coral',
+        // The created coral is a Gorgoniidae, and the table shows the branch the
+        // navigator has selected — its first family by default.
+        navigatorNode: 'Gorgoniidae',
     });
 });

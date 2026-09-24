@@ -22,7 +22,7 @@
  * Without `BLONG_CAPTURE_DOCS=1` the same spec still runs as a smoke test — it opens each page and
  * waits for its table — and writes no files, so a CI run cannot rewrite a committed picture.
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+import {BLONG_ELEMENT_TIMEOUT, expect, test} from '@feasibleone/blong-browser/playwright';
 import {captureDocs} from '@feasibleone/blong-browser/playwright/docs';
 import {openPages} from '@feasibleone/blong-browser/playwright/pages';
 
@@ -69,15 +69,30 @@ test.describe('Editor documentation images', () => {
         // Back to the table, then open a known row so the picture is the same record every run.
         await portal.menuClick('marine.coral.browse');
         await portal.waitForTableData();
+        // The table renders the branch the navigator has selected, and the search
+        // below narrows a table rather than widening it, so the seeded record has
+        // to sit inside that branch already. It does: the navigator selects its
+        // first loaded node by position, and the fixture seeds the families with
+        // `Acroporidae` first — the family `Staghorn Coral` belongs to. Naming that
+        // family in a tree click instead would race `family.play.ts`, whose edit
+        // test renames the family it opens (F-255).
         await portal.page.getByTestId('browse-search').fill('Staghorn');
         await portal.page.waitForTimeout(600);
         await portal.waitForTableData();
 
-        await portal.page
+        // The seeded `Staghorn Coral` is the record this picture is of, and the
+        // demo database seeds no other coral. Another spec used to rename it —
+        // its edit test opened the first row of the unfiltered table, which is
+        // this one — and the search then matched nothing, so the click below
+        // retried until the test timed out and said nothing about the data it
+        // needed (F-255). Ask for the row by name, so its absence fails here.
+        const staghorn = portal.page
             .locator('.p-datatable-tbody tr')
-            .filter({hasNotText: 'No available options'})
-            .first()
-            .click();
+            .filter({hasNotText: 'No available options'});
+        await expect(staghorn.first(), 'the seeded Staghorn Coral row is missing').toBeVisible({
+            timeout: BLONG_ELEMENT_TIMEOUT,
+        });
+        await staghorn.first().click();
         await portal.page.getByTestId('action-component-marine-coral-open').first().click();
         await portal.waitForFormLoad();
         await portal.waitForFormData();
@@ -102,9 +117,15 @@ test.describe('Portal documentation images', () => {
         await portal.waitForTableData();
         // Back to the first tab, so the page in the frame is the one with rows in it — a picture
         // of a tab strip whose visible page is still loading says the wrong thing about the shell.
-        await portal.page.locator('.p-tabview-nav li').first().click();
+        // The tab is clicked by its name, not by position: a positional click has been seen to
+        // move focus to the tab without selecting it, leaving the other panel on screen, and
+        // then the row wait below matches the hidden panel's table and never satisfies.
+        await portal.page.getByRole('tab', {name: 'Browse Coral'}).click();
         await portal.waitForTableData();
-        await portal.page.locator('.p-datatable-tbody tr').first().waitFor({state: 'visible'});
+        await portal.page
+            .locator('.p-datatable-tbody tr:visible')
+            .first()
+            .waitFor({state: 'visible'});
         await captureDocs(portal, {name: 'concepts/img/portal-shell.png'});
     });
 });

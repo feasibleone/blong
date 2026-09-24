@@ -31,5 +31,8 @@ test.describe('Marine Habitat', () => {
         editFields: {
             'habitat.habitatName': 'Test Playwright Habitat Edited',
         },
+        // Pin the edit test to the record this spec created: without it it edits
+        // the first row of the unfiltered table, renaming the seeded habitat.
+        search: 'Test Playwright Habitat',
     });
 });

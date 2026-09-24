@@ -5,7 +5,7 @@
 import type {IWidgetProps} from '@feasibleone/blong';
 import {describe, expect, it, vi} from 'vitest';
 import {FormStateContext} from '../components/Form/FormContext.js';
-import {act, fireEvent, render} from '../test/render.js';
+import {act, fireEvent, render, screen} from '../test/render.js';
 
 import {BooleanWidget} from './BooleanWidget.js';
 import {CurrencyWidget} from './CurrencyWidget.js';
@@ -805,5 +805,43 @@ describe('NavigatorWidget', () => {
         expect(container.querySelector('.blong-navigator')).toBeTruthy();
         // Drain the resolved dispatch promise so no state updates leak outside the test.
         await act(async () => {});
+    });
+
+    it('keeps the selected node when it is clicked again', async () => {
+        const onSelect = vi.fn();
+        const {container} = render(
+            <NavigatorWidget
+                name="category"
+                schema={{
+                    widget: {
+                        type: 'navigator',
+                        keyField: 'id',
+                        parentField: 'parentId',
+                        labelField: 'name',
+                    },
+                }}
+                value={[
+                    {id: 1, parentId: null, name: 'Root'},
+                    {id: 2, parentId: 1, name: 'Child'},
+                ]}
+                onChange={vi.fn()}
+                onBlur={vi.fn()}
+                onSelect={onSelect}
+                readOnly={false}
+                disabled={false}
+            />,
+        );
+        // The first root node is selected on load and published to the page.
+        expect(onSelect).toHaveBeenCalledTimes(1);
+        onSelect.mockClear();
+
+        // Clicking that node again must not clear the selection. The tables beside a
+        // navigator are filtered by it, so a cleared selection takes them off the
+        // page; the node stays selected and nothing new is published.
+        fireEvent.click(screen.getByText('Root'));
+        expect(onSelect).not.toHaveBeenCalled();
+        expect(container.querySelector('.p-treenode-content.p-highlight')?.textContent).toContain(
+            'Root',
+        );
     });
 });

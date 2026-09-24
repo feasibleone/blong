@@ -159,6 +159,12 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
     }, [staticRows, setTreeDataAndExpand, log]);
 
     const handleSelection = (key: string | null) => {
+        // A navigator has no "nothing selected" state to publish: the tables beside it
+        // are filtered by its selection, and the page renders none of them without one.
+        // PrimeReact reports a cleared selection when the selected node is clicked again
+        // (`metaKeySelection` defaults to false, so a plain click unselects), which is a
+        // gesture this widget must not carry into the page — keep the node selected.
+        if (key == null) return;
         setSelectedKey(key);
         const findNode = (nodes: TreeNode[]): TreeNode | undefined => {
             for (const n of nodes) {
@@ -167,7 +173,7 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
                 if (found) return found;
             }
         };
-        const node = key ? findNode(treeData) : undefined;
+        const node = findNode(treeData);
         // Publish selection as {row, index: 0} via onSelect so sibling table widgets
         // can cascade-filter using widget.parent / widget.master
         onSelect?.(name, node ? {row: node.data as Row, index: 0} : null);

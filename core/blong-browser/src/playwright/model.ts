@@ -164,6 +164,15 @@ export interface ICreateAndEditModelOptions {
      */
     search?: string;
     /**
+     * Navigator node (its label) to select in the generated edit test before
+     * filtering. Required whenever the browse table declares `widget.master`:
+     * such a table shows only the subtree the navigator has selected, the
+     * navigator auto-selects the first node it loads (`NavigatorWidget`), and a
+     * text search only ever looks inside that subtree — so a row outside it is
+     * unreachable until its branch is selected, which is also what a user does.
+     */
+    navigatorNode?: string;
+    /**
      * Whether the create test should also apply `editFields` right after save
      * (in the same tab).  Defaults to `true`.  Set to `false` when the created
      * record must keep its create default so the edit test can change a
@@ -485,6 +494,22 @@ async function fillDetailRows(
 }
 
 /**
+ * Select a node in a browse page's navigator tree by its label.
+ *
+ * A table that declares `widget.master` renders only the subtree the navigator
+ * has selected, and the navigator selects its first loaded node — the record the
+ * page was built around. A spec that means to reach a row outside that branch (a
+ * record another spec of the same run created, say) has to select the branch
+ * first, exactly as a user would: a text search narrows a table, it never widens
+ * one, so the row is unreachable until its branch is the selected one.
+ */
+export async function selectNavigatorNode(page: Page, label: string): Promise<void> {
+    const node = page.locator('.blong-navigator .p-treenode-content', {hasText: label}).first();
+    await node.waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+    await node.click({timeout: BLONG_ELEMENT_TIMEOUT});
+}
+
+/**
  * Generate a browse-page test for a model.
  * Opens the browse page via the menu and takes a screenshot.
  */
@@ -521,6 +546,7 @@ export function createAndEditModel(
         fields,
         editFields,
         search,
+        navigatorNode,
         details,
         editInCreate = true,
         skipCreate = false,
@@ -633,6 +659,13 @@ export function createAndEditModel(
         test(`edit ${subject} ${object}`, async ({portal}) => {
             await portal.menuClick(browseMethod);
             await portal.waitForTableData();
+
+            // Reach the branch the row lives in before filtering it by text: a
+            // master-filtered table shows the navigator's selected subtree only.
+            if (navigatorNode !== undefined) {
+                await selectNavigatorNode(portal.page, navigatorNode);
+                await portal.waitForTableData();
+            }
 
             // Optionally filter the browse table to the row we want to edit so
             // the edit test targets the right record (e.g. a test-created row)
