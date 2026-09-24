@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.0](https://github.com/feasibleone/blong/compare/blong-access-v1.7.0...blong-access-v1.8.0) (2026-09-24)
+
+
+### Features
+
+* docs screenshots and diagrams ([65e37d9](https://github.com/feasibleone/blong/commit/65e37d93ef3e71d65b340541e14b50a25f14e3c8))
+* sequence diagram progress points ([dc5b153](https://github.com/feasibleone/blong/commit/dc5b15327f31698a26a75ec73bdf9a0956a43dd9))
+
 ## [1.7.0](https://github.com/feasibleone/blong/compare/blong-access-v1.6.0...blong-access-v1.7.0) (2026-09-21)
 
 

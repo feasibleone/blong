@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.15.0...blong-kopi-v1.16.0) (2026-09-24)
+
+
+### Features
+
+* sequence diagram progress points ([dc5b153](https://github.com/feasibleone/blong/commit/dc5b15327f31698a26a75ec73bdf9a0956a43dd9))
+
 ## [1.15.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.14.0...blong-kopi-v1.15.0) (2026-09-21)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.11.0...blong-suite-v1.12.0) (2026-09-24)
+
+
+### Features
+
+* docs screenshots and diagrams ([65e37d9](https://github.com/feasibleone/blong/commit/65e37d93ef3e71d65b340541e14b50a25f14e3c8))
+
 ## [1.11.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.10.0...blong-suite-v1.11.0) (2026-09-21)
 
 

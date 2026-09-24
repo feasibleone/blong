@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.6.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.5.4...blong-marine-v1.6.0) (2026-09-24)
+
+
+### Features
+
+* docs screenshots and diagrams ([65e37d9](https://github.com/feasibleone/blong/commit/65e37d93ef3e71d65b340541e14b50a25f14e3c8))
+* sequence diagram progress points ([dc5b153](https://github.com/feasibleone/blong/commit/dc5b15327f31698a26a75ec73bdf9a0956a43dd9))
+
+
+### Bug Fixes
+
+* playwright race condition ([c4fb0a8](https://github.com/feasibleone/blong/commit/c4fb0a8519592e15e8fd5931560c7d65803c7c76))
+
 ## [1.5.4](https://github.com/feasibleone/blong/compare/blong-marine-v1.5.3...blong-marine-v1.5.4) (2026-09-21)
 
 

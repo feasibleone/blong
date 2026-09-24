@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.30.0](https://github.com/feasibleone/blong/compare/blong-v1.29.0...blong-v1.30.0) (2026-09-24)
+
+
+### Features
+
+* sequence diagram progress points ([dc5b153](https://github.com/feasibleone/blong/commit/dc5b15327f31698a26a75ec73bdf9a0956a43dd9))
+
 ## [1.29.0](https://github.com/feasibleone/blong/compare/blong-v1.28.0...blong-v1.29.0) (2026-09-21)
 
 
