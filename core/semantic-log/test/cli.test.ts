@@ -377,6 +377,21 @@ t.test('the diagram verb draws one execution from the store alone (R23)', async 
                     chosen: 'accept',
                     values: {},
                 },
+                // The branch the record was made in, and a milestone it reported (PRD
+                // R26). Both are drawn here exactly as the service draws them, so one
+                // store's picture and the cluster's are the same shape; only the
+                // *payload* — the point's data — is this store's alone.
+                progress: {
+                    regions: [
+                        {
+                            id: '1',
+                            discriminator: 'quote-acceptable',
+                            candidates: ['reject', 'accept'],
+                            chosen: 'accept',
+                        },
+                    ],
+                    points: [{name: 'rate-published', data: {rate: 1.1}}],
+                },
                 fields: {withheld: [{time: 1, fields: {routing: {fxp: 'fxp-primary'}}}]},
             },
         ),
@@ -403,6 +418,13 @@ t.test('the diagram verb draws one execution from the store alone (R23)', async 
             /Note over payer: withheld: routing/,
             'and the categories that were withheld',
         );
+        t.match(
+            drawn,
+            /alt quote-acceptable = reject/,
+            'and the branch the call was made in, drawn as the service draws it (R26/R27)',
+        );
+        t.match(drawn, /else accept/, 'with every candidate named, in evaluation order');
+        t.match(drawn, /Note over payer: point: rate-published/, 'and the milestone it reported');
         t.match(drawn, /payer->>hub: payer\.quote\.rates/, 'one arrow for the call');
         t.equal(
             drawn.split('\n').filter(line => line.startsWith('    participant ')).length,

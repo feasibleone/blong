@@ -61,6 +61,40 @@ export function serializeForIdentity(record: LogRecord): string {
             parts.push(`[CANDIDATES: ${decision.candidates.join(',')}]`);
         }
     }
+    // A progress point (PRD R26) is structure, so its *name* shapes the identity:
+    // a checkpoint added, renamed or removed is a change to what the code does,
+    // and appearing as a template is how a deploy makes that visible. Its data is
+    // payload and never contributes, for the reason a decision's values never do.
+    // The region contributes the branch taken, so the same line inside two branches
+    // is two templates and a rate-shift on one branch becomes measurable; its id is
+    // a *position* rather than structure, so it is deliberately left out — the same
+    // record at two places in an execution stays one template (PRD R12).
+    const {progress} = record;
+    if (progress && typeof progress === 'object') {
+        if (Array.isArray(progress.points) && progress.points.length > 0) {
+            const names = progress.points
+                .filter(item => item && typeof item === 'object' && typeof item.name === 'string')
+                .map(item => item.name);
+            if (names.length > 0) {
+                parts.push(`[POINTS: ${names.join(',')}]`);
+            }
+        }
+        const {regions} = progress;
+        if (Array.isArray(regions)) {
+            const chain = regions
+                .filter(
+                    mark =>
+                        mark &&
+                        typeof mark === 'object' &&
+                        typeof mark.discriminator === 'string' &&
+                        typeof mark.chosen === 'string',
+                )
+                .map(mark => `${mark.discriminator}=${mark.chosen}`);
+            if (chain.length > 0) {
+                parts.push(`[REGION: ${chain.join('|')}]`);
+            }
+        }
+    }
     return parts.join(' ');
 }
 

@@ -21,7 +21,7 @@
         "ci-lint": "blong-dev lint",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
         "ci-test": "blong-dev test '*.test.ts';./test-examples-ci.sh",
-        "test": "tap *.test.ts",
+        "test": "blong-dev test '*.test.ts';./test-examples-ci.sh",
         "test:examples": "node --test dist/examples/*.test.js"
     },
     "dependencies": {

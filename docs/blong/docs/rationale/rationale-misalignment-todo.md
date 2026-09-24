@@ -8,7 +8,7 @@ docs, the code, or both.
 
 ## snapshot-testing.md
 
-**6. Automatic snapshots at `[]` checkpoint barriers are not implemented.**
+**6. Automatic snapshots at `[]` sync barriers are not implemented.**
 
 - Misalignment: Strategy 2 in the rationale describes automatic context snapshots at `[]` checkpoint
   barriers; the `blong-chain` executor does not have that feature.

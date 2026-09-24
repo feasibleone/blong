@@ -36,7 +36,7 @@ type StepMeta = {$meta: Record<string, unknown>};
  */
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {
             mongoDocumentAdd,
             mongoDocumentGet,
@@ -204,8 +204,8 @@ export default handler(
                     )) as DocResult;
                 },
 
-                // Phase checkpoint: snapshot all three read-back results together
-                checkpoint('doc-reads', 'getDocument', 'verifyEdit', 'verifyMerge'),
+                // Phase snapshot: all three read-back results together
+                snapshot('doc-reads', 'getDocument', 'verifyEdit', 'verifyMerge'),
 
                 // ── 10. remove — delete the document by _id ───────────────
                 async function removeDocument(

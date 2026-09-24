@@ -15,7 +15,7 @@ type StepMeta = {$meta: Record<string, unknown>};
  */
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {
             sqlUnitCreate,
             sqlUnitDrop,
@@ -123,8 +123,8 @@ export default handler(
                     return (await sqlUnitGet({unitId: (await editUnit).unitId}, $meta)) as UnitRow;
                 },
 
-                // Phase checkpoint: snapshot both read-back results together
-                checkpoint('crud-reads', 'getUnit', 'verifyEdit'),
+                // Phase snapshot: both read-back results together
+                snapshot('crud-reads', 'getUnit', 'verifyEdit'),
 
                 // ── 8. remove — delete the row by primary key ─────────────
                 async function removeUnit(

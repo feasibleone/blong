@@ -200,6 +200,20 @@ t.test('F5: a declined rate stops the chain at the provider and nothing settles'
             'with the values the decision was made on, so it can be replayed from the record alone',
         );
 
+        // R26/R27: the record does not merely *report* the branch, it was emitted **inside** it.
+        // That is the difference between a rationale and a span, and it is what lets a diagram
+        // draw the alternative around the call the branch made rather than beside it.
+        t.same(
+            declined?.progress?.regions?.map(region => [
+                region.discriminator,
+                region.chosen,
+                region.candidates,
+            ]),
+            [['rate-within-limit', 'decline', ['decline', 'accept']]],
+            'the refusal sits inside the branch that refused, with every declared candidate on ' +
+                'it — the drawing marks the one the decision never reached (T-140)',
+        );
+
         const hub = find(records, 'hub', 'provider declined the quote');
         t.ok(hub, 'the hub recorded that the provider declined');
         t.equal(

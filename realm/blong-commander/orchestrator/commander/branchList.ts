@@ -1,6 +1,6 @@
-import {handler} from '@feasibleone/blong';
-import type {ICommanderSource} from '../../types.ts';
+import {type IMeta, handler} from '@feasibleone/blong';
 import {sources as defaultSources} from '../../config/sources.ts';
+import type {ICommanderSource} from '../../types.ts';
 
 function getPath(obj: Record<string, unknown> | undefined, path: string): unknown {
     if (!obj) return undefined;
@@ -49,7 +49,9 @@ function resolve(text: string, parent: Record<string, unknown> | null): string {
         // prefer a direct lookup; fall back to nested traversal for raw objects.
         const literal = parent ? parent[path] : undefined;
         const value =
-            literal !== undefined && literal !== null ? literal : getPath(parent ?? undefined, path);
+            literal !== undefined && literal !== null
+                ? literal
+                : getPath(parent ?? undefined, path);
         return value === undefined || value === null ? '' : String(value);
     });
 }
@@ -71,12 +73,17 @@ export default handler(
                 parent?: Record<string, unknown>;
                 paging?: {pageSize?: number; pageNumber?: number};
             },
-            $meta: Record<string, unknown>,
+            $meta: IMeta,
         ) {
             const sources = (config as {sources?: ICommanderSource[]}).sources ?? defaultSources;
+            const levelIndex = params.level ?? -1;
+            $meta.checkpoint?.('dispatch-started', {source: params.source, level: levelIndex});
             const source = sources.find(s => s.name === params.source);
             if (!source) throw new Error(`Unknown commander source: ${params.source}`);
-            const levelIndex = params.level ?? -1;
+            $meta.checkpoint?.('source-resolved', {
+                source: source.name,
+                levels: source.levels.length,
+            });
             const next = levelIndex + 1;
             if (next >= source.levels.length) return {items: []};
             const level = source.levels[next];
@@ -88,17 +95,48 @@ export default handler(
                 listParams[key] = typeof value === 'string' ? resolve(value, parent) : value;
             }
             if (params.paging) listParams.paging = params.paging;
+            // The outgoing leg: the method is a template resolved against the parent row, so a
+            // drill draws `access.{tableName}.find` and its parameters come from the node the
+            // reader selected — which is what makes the dispatched call the interesting half of
+            // this flow (PRD R26/R27).
+            $meta.checkpoint?.('level-resolved', {
+                level: next,
+                resourceType: level.resourceType,
+                method,
+            });
 
             const result = await h[method](listParams, $meta);
-            if (Array.isArray(result)) {
-                return {items: result.map(flattenItem)};
-            }
             const resultSet = level.list.resultSet;
-            if (resultSet && result && typeof result === 'object') {
-                const items = (result as Record<string, unknown>)[resultSet];
-                if (Array.isArray(items)) return {items: items.map(flattenItem)};
+            // What the backend answered with decides what is read out of it: the rows themselves,
+            // or a named set inside an envelope. Naming the branch rather than testing it twice
+            // keeps the drawing honest — the block is the dispatch that happened.
+            const shape = await $meta.decide?.('result-shape', {resultSet: resultSet ?? null}, [
+                {name: 'array', when: () => Array.isArray(result), run: () => 'array' as const},
+                {
+                    name: 'result-set',
+                    when: () => resultSet !== undefined,
+                    run: () => 'result-set' as const,
+                },
+                {name: 'empty', when: () => true, run: () => 'empty' as const},
+            ]);
+            const taken =
+                shape ??
+                (Array.isArray(result)
+                    ? 'array'
+                    : resultSet !== undefined
+                      ? 'result-set'
+                      : 'empty');
+            const rows =
+                taken === 'array'
+                    ? (result as unknown[])
+                    : taken === 'result-set' && result && typeof result === 'object'
+                      ? (result as Record<string, unknown>)[resultSet as string]
+                      : undefined;
+            if (!Array.isArray(rows)) {
+                $meta.checkpoint?.('rows-listed', {rows: 0});
                 return {items: []};
             }
-            return {items: []};
+            $meta.checkpoint?.('rows-listed', {rows: rows.length});
+            return {items: rows.map(flattenItem)};
         },
 );

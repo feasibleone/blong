@@ -9,7 +9,14 @@
 import {hostname} from 'node:os';
 import {createRingBuffer} from './buffer.ts';
 import type {PayloadStore, RecordStore} from './cache.ts';
-import {currentContext, lastRecordId, rememberRecord, takeDecision} from './context.ts';
+import {
+    currentContext,
+    currentRegions,
+    lastRecordId,
+    rememberRecord,
+    takeDecision,
+    takePoints,
+} from './context.ts';
 import {withIdentity} from './fingerprint.ts';
 import type {LevelName} from './level.ts';
 import {enabled, levelName, LEVELS, levelValue} from './level.ts';
@@ -384,6 +391,13 @@ function create(
         // the same bypass that was closed for the withheld bag. Taking it also
         // consumes it, so it lands on exactly one record (PRD R11).
         const decision = takeDecision();
+        // A progress point (PRD R26) is taken the same way and for the same
+        // reasons, so a filtered-out record cannot consume a point it will never
+        // carry. The region is *read* rather than taken: a mark belongs to every
+        // record the branch emits, so the only thing this scope may do with it is
+        // observe it.
+        const points = takePoints();
+        const regions = currentRegions();
         // The bound leg (PRD R22) rides *inside* `flow`, so a record's flow state
         // is one object on the wire, in the cache and in the registry.
         const flow = flowWithLeg(
@@ -421,6 +435,15 @@ function create(
             // a present `decision` is a `Decision`, so identity minting would
             // throw. Absent stays absent, as it was before this task.
             ...(decision ? {decision} : {}),
+            // A point or a branch (PRD R26), and absent the same way: only when
+            // there is something to carry, with absent members left out rather
+            // than set to `undefined`. A present-but-undefined key is an own
+            // property that a `redact` pattern can replace with the placeholder
+            // *string*, and `serializeForIdentity` would then be reading a string
+            // where it expects a mark.
+            ...(points || regions
+                ? {progress: {...(regions ? {regions} : {}), ...(points ? {points} : {})}}
+                : {}),
             fields: {
                 ...base,
                 ...boundRest,

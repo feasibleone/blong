@@ -13,7 +13,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {authRoleAdd, authRoleFind, authRoleGet, authRoleEdit, authRoleRemove},
     }) => ({
         testKeycloakRoleCrud: ({name = 'keycloak role CRUD'}: {name?: string}) =>
@@ -99,8 +99,8 @@ export default handler(
                     )) as RoleResult;
                 },
 
-                // Phase checkpoint: snapshot both read-back results together
-                checkpoint('role-read-snapshots', 'getRole', 'verifyEdit'),
+                // Phase snapshot: both read-back results together
+                snapshot('role-read-snapshots', 'getRole', 'verifyEdit'),
 
                 // ── 7. remove — delete the test role ──────────────────────
                 async function removeRole(

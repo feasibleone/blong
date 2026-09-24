@@ -37,15 +37,30 @@ export function installFxp(participant: Participant, options: FxpOptions = {}): 
                         when: values =>
                             options.declineAll === true ||
                             (values.rate as number) > (values.rateLimit as number),
-                        run: () => false,
+                        run: () => {
+                            // Emitted *inside* the branch, which is what puts it inside the
+                            // `alt` block the diagram draws (PRD R26/R27): a record written
+                            // after `decide` returns is outside every branch, however much it
+                            // is about the decision.
+                            participant.logger.warn('rate declined', {rate, rateLimit});
+                            return false;
+                        },
                     },
-                    {name: 'accept', when: () => true, run: () => true},
+                    {
+                        name: 'accept',
+                        when: () => true,
+                        run: () => {
+                            participant.logger.info('rate published', {
+                                rate,
+                                condition: 'sha256:condition',
+                            });
+                            return true;
+                        },
+                    },
                 ]);
                 if (!accepted) {
-                    participant.logger.warn('rate declined', {rate, rateLimit});
                     return {status: 409, body: {reason: 'rate above provider limit'}};
                 }
-                participant.logger.info('rate published', {rate, condition: 'sha256:condition'});
                 return {status: 200, body: {rate, condition: 'sha256:condition'}};
             }),
         );

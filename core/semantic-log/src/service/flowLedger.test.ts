@@ -24,6 +24,8 @@ interface Call {
     kind?: string | null;
     /** An event with no flow context at all — an emitter that predates it. */
     noFlow?: boolean;
+    /** Progress points (PRD R26), as the wire carries them. */
+    progress?: IngestEvent['progress'];
 }
 
 /**
@@ -62,6 +64,143 @@ function event(call: Call): IngestEvent {
               }),
     } as IngestEvent;
 }
+
+t.test('a call made inside a branch is observed with the branch and its milestones', t => {
+    const ledger = new FlowLedger();
+    ledger.observe(
+        event({
+            id: 'a',
+            time: 1,
+            leg: 'payer.quote.rates',
+            to: 'hub',
+            seq: '1',
+            progress: {
+                regions: [
+                    {
+                        id: '1',
+                        discriminator: 'rate-within-limit',
+                        candidates: ['decline', 'accept'],
+                        chosen: 'decline',
+                    },
+                ],
+                points: ['rate-declined'],
+            },
+        }),
+    );
+    const observation = ledger.executionOf(FLOW)?.observations[0];
+    t.equal(observation?.regions?.[0]?.discriminator, 'rate-within-limit', 'PRD R26');
+    t.equal(observation?.regions?.[0]?.chosen, 'decline');
+    t.same(observation?.points, ['rate-declined']);
+    t.end();
+});
+
+t.test(
+    'an unusable branch is dropped, and a list that never arrived degrades to the branch that ran',
+    t => {
+        const observed = (progress: IngestEvent['progress']) => {
+            const ledger = new FlowLedger();
+            ledger.observe(
+                event({id: 'a', time: 1, leg: 'payer.quote.rates', to: 'hub', seq: '1', progress}),
+            );
+            return ledger.executionOf(FLOW)?.observations[0];
+        };
+        const region = (over: Partial<{id: string; discriminator: string; chosen: string}>) =>
+            [{id: '1', discriminator: 'd', chosen: 'c', ...over}] as never;
+        t.equal(
+            observed({regions: region({discriminator: ''})})?.regions,
+            undefined,
+            'a branch with no name is not a branch',
+        );
+        t.equal(
+            observed({regions: region({chosen: ''})})?.regions,
+            undefined,
+            'nor is one with no outcome',
+        );
+        t.same(
+            observed({regions: region({})})?.regions?.[0]?.candidates,
+            ['c'],
+            'no candidate list means the only branch known to have run',
+        );
+        t.same(
+            observed({
+                regions: [{id: '1', discriminator: 'd', chosen: 'c', candidates: [1, 2]}] as never,
+            })?.regions?.[0]?.candidates,
+            ['c'],
+            'nor does a list of things that are not names',
+        );
+        t.same(
+            observed({points: ['', 7, 'kept'] as never})?.points,
+            ['kept'],
+            'a note with no text is not a note',
+        );
+        t.equal(
+            observed({points: []})?.points,
+            undefined,
+            'and nothing at all is no progress at all',
+        );
+        t.equal(
+            observed({regions: ['collapsed'] as never})?.regions,
+            undefined,
+            'a branch that is not a mark is dropped rather than read',
+        );
+        t.equal(
+            observed({regions: [{id: 7, discriminator: 'd', chosen: 'c'}] as never})?.regions?.[0]
+                ?.id,
+            '',
+            'a mark with no usable position is still a branch, just an unplaced one',
+        );
+        t.end();
+    },
+);
+
+t.test('the same branch taken in two executions is one entry with a count', t => {
+    const ledger = new FlowLedger();
+    const regions = [
+        {
+            id: '1',
+            discriminator: 'rate-within-limit',
+            candidates: ['decline', 'accept'],
+            chosen: 'accept',
+        },
+    ];
+    ledger.observe(
+        event({
+            id: 'a',
+            time: 1,
+            leg: 'payer.quote.rates',
+            to: 'hub',
+            seq: '1',
+            progress: {regions},
+        }),
+    );
+    ledger.observe(
+        event({
+            id: 'b',
+            time: 2,
+            flowId: OTHER,
+            leg: 'payer.quote.rates',
+            to: 'hub',
+            seq: '1',
+            progress: {regions},
+        }),
+    );
+    const ends = ledger.unionOf(KIND)?.legs[0]?.ends ?? [];
+    t.equal(ends[0]?.count, 2, 'two executions, two declarations');
+    t.same(
+        ends[0]?.branches,
+        [
+            {
+                discriminator: 'rate-within-limit',
+                candidates: ['decline', 'accept'],
+                chosen: 'accept',
+                count: 2,
+                observed: 0,
+            },
+        ],
+        'one entry for the decision, counted twice — which is what a union needs to draw one block',
+    );
+    t.end();
+});
 
 t.test('an event with no flow, or a flow id that is not a ULID, is declined', t => {
     const ledger = new FlowLedger();

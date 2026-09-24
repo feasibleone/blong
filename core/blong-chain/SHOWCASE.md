@@ -1,6 +1,7 @@
 # TestExecutor Feature Showcase
 
-The `showcase.test.ts` file provides a comprehensive demonstration of all TestExecutor features. It serves both as living documentation and as a self-verification test suite.
+The `showcase.test.ts` file provides a comprehensive demonstration of all TestExecutor features. It
+serves both as living documentation and as a self-verification test suite.
 
 ## Running the Showcase
 
@@ -11,7 +12,8 @@ node --test dist/showcase.test.js
 
 ## Test Structure
 
-The showcase is organized into 6 comprehensive test suites, each demonstrating multiple related features:
+The showcase is organized into 6 comprehensive test suites, each demonstrating multiple related
+features:
 
 ### 1. Core Parallel Execution & Dependency Tracking (11 steps)
 
@@ -72,14 +74,22 @@ async function displayUserName(assert, context) {
 
 ```typescript
 const databaseOperations = [
-    async function connectDatabase() { /* ... */ },
-    async function createSchema() { /* ... */ },
-    async function seedData() { /* ... */ },
+    async function connectDatabase() {
+        /* ... */
+    },
+    async function createSchema() {
+        /* ... */
+    },
+    async function seedData() {
+        /* ... */
+    },
 ] as any;
 databaseOperations.name = 'Database Setup';
 
 const steps = [
-    async function initialize() { /* ... */ },
+    async function initialize() {
+        /* ... */
+    },
     databaseOperations, // Nested group
     // ... more steps
 ];
@@ -111,8 +121,9 @@ await executor.execute(steps, {testId: 'nested-showcase'}, t);
 - ✅ **Dependency Chain in Errors**: Tracking what failed and what depended on it
 - ✅ **Source Location for Errors**: Stack traces with file/line information
 
-**⚠️ Intentional Failure:**
-This test includes a deliberately failing step (`failingStep`) to demonstrate error handling. The step will show as failed in the test output, but all verification subtests should pass, confirming that the framework properly:
+**⚠️ Intentional Failure:** This test includes a deliberately failing step (`failingStep`) to
+demonstrate error handling. The step will show as failed in the test output, but all verification
+subtests should pass, confirming that the framework properly:
 
 - Tracks the error
 - Captures error details
@@ -154,9 +165,9 @@ async function createComplexObject() {
         user: {
             name: 'Alice',
             profile: {
-                preferences: {theme: 'dark'}
-            }
-        }
+                preferences: {theme: 'dark'},
+            },
+        },
     };
 }
 
@@ -182,8 +193,7 @@ async function useDeepProperty(assert, context) {
 - ✅ **Complex Dependencies**: Multi-level dependency chains
 - ✅ **Full Feature Integration**: All features working together
 
-**Scenario:**
-A complete e-commerce checkout flow with:
+**Scenario:** A complete e-commerce checkout flow with:
 
 - Product loading
 - Cart validation
@@ -195,14 +205,14 @@ A complete e-commerce checkout flow with:
 - Email notification
 - Inventory update
 
-### 6. Checkpoints and Synchronization Barriers (11 steps)
+### 6. Sync Barriers (11 steps)
 
 **Demonstrates:**
 
-- ✅ **Checkpoints**: Empty arrays `[]` as synchronization barriers
+- ✅ **Sync Barriers**: Empty arrays `[]` as synchronization barriers
 - ✅ **Phased Execution**: Multiple phases with parallel steps within each phase
 - ✅ **Synchronization**: Ensures all steps in a phase complete before next phase starts
-- ✅ **Multiple Checkpoints**: Multiple barriers throughout execution
+- ✅ **Multiple Barriers**: Multiple barriers throughout execution
 - ✅ **Parallel Within Phases**: Steps within same phase still execute in parallel
 - ✅ **Performance Control**: Balance between parallelism and synchronization
 
@@ -211,28 +221,48 @@ A complete e-commerce checkout flow with:
 ```typescript
 const steps = [
     // Phase 1: Initialization (parallel)
-    async function loadConfig() { /* ... */ },
-    async function initializeCache() { /* ... */ },
-    async function setupLogging() { /* ... */ },
+    async function loadConfig() {
+        /* ... */
+    },
+    async function initializeCache() {
+        /* ... */
+    },
+    async function setupLogging() {
+        /* ... */
+    },
 
-    [], // Checkpoint 1: Wait for all initialization
+    [], // Sync barrier 1: Wait for all initialization
 
     // Phase 2: Data loading (parallel, after Phase 1)
-    async function loadUsers({loadConfig}) { /* ... */ },
-    async function loadProducts({loadConfig}) { /* ... */ },
-    async function loadOrders({loadConfig}) { /* ... */ },
+    async function loadUsers({loadConfig}) {
+        /* ... */
+    },
+    async function loadProducts({loadConfig}) {
+        /* ... */
+    },
+    async function loadOrders({loadConfig}) {
+        /* ... */
+    },
 
-    [], // Checkpoint 2: Wait for all data loading
+    [], // Sync barrier 2: Wait for all data loading
 
     // Phase 3: Processing (parallel, after Phase 2)
-    async function generateUserReport({loadUsers, loadOrders}) { /* ... */ },
-    async function generateProductReport({loadProducts, loadOrders}) { /* ... */ },
-    async function calculateMetrics({loadUsers, loadProducts, loadOrders}) { /* ... */ },
+    async function generateUserReport({loadUsers, loadOrders}) {
+        /* ... */
+    },
+    async function generateProductReport({loadProducts, loadOrders}) {
+        /* ... */
+    },
+    async function calculateMetrics({loadUsers, loadProducts, loadOrders}) {
+        /* ... */
+    },
 
-    [], // Checkpoint 3: Wait for all processing
+    [], // Sync barrier 3: Wait for all processing
 
     // Phase 4: Finalization (after Phase 3)
-    async function saveAnalytics({generateUserReport, generateProductReport, calculateMetrics}) { /* ... */ },
+    async function saveAnalytics({generateUserReport, generateProductReport, calculateMetrics}) {
+        /* ... */
+    },
 ];
 ```
 
@@ -253,7 +283,7 @@ Use this checklist to verify all features are working:
 - [x] Sequential execution of dependent steps
 - [x] Configurable concurrency limits
 - [x] Nested array sequential execution
-- [x] Empty array checkpoints for synchronization
+- [x] Empty array sync barriers for synchronization
 
 ### Thenable Proxies
 
@@ -317,10 +347,10 @@ Use this checklist to verify all features are working:
 - [x] Multi-level hierarchy
 - [x] Backward compatibility (without context)
 
-### Checkpoints
+### Sync Barriers
 
 - [x] Empty array as synchronization barrier
-- [x] Multiple checkpoints
+- [x] Multiple barriers
 - [x] Parallel execution within phases
 - [x] Phase ordering enforcement
 

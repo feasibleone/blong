@@ -21,7 +21,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {
             authUserAdd,
             authUserFind,
@@ -125,8 +125,8 @@ export default handler(
                     )) as UserResult;
                 },
 
-                // Phase checkpoint: snapshot both read-back results together
-                checkpoint('user-read-snapshots', 'getUser', 'verifyEdit'),
+                // Phase snapshot: both read-back results together
+                snapshot('user-read-snapshots', 'getUser', 'verifyEdit'),
 
                 // ── 7. setPassword — set a password for the user ──────────
                 async function setPassword(

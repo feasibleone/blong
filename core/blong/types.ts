@@ -113,7 +113,7 @@ export interface ILog {
  * these records alone — a leg it can see is a call it can draw — which is why
  * they are produced by default and only their *destination* is a choice.
  */
-export type CallPhase = 'start' | 'end' | 'error' | 'received';
+export type CallPhase = 'start' | 'end' | 'error' | 'received' | 'answered';
 
 /**
  * The call channel: the framework's own record of a call, beside the level API
@@ -148,6 +148,16 @@ export interface ICallLog {
     error(leg: string, error?: unknown, fields?: Record<string, unknown>): void;
     /** The receiver's receipt for the leg it was handed. */
     received(leg: string, fields?: Record<string, unknown>): void;
+    /**
+     * The receiver's answer for the leg it was handed, carrying what its handler
+     * announced while it ran.
+     *
+     * A realm handler's checkpoints and branches are staged in the ambient scope it runs
+     * in, and no record of its own is written in that scope — the records of a call are
+     * written by the framework around the handler. This is where they reach one: the
+     * adapter reads them when the handler returns and reports them with the leg.
+     */
+    answered(leg: string, fields?: Record<string, unknown>): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -805,6 +815,17 @@ export interface IMeta {
     name?: string;
     checkpoint?: CheckpointFn;
     checkpoints?: Array<{name: string; data?: unknown; timestamp: number}>;
+    /**
+     * Take a branch and keep its rationale on this invocation (PRD R26).
+     *
+     * Present in every mode — a branch has to be taken — and the reason a dispatch attaches
+     * it unconditionally: what production does *not* get is the recorded log, not the
+     * selection. Optional in the type because an `IMeta` can be built by hand; at a
+     * dispatch it is always there.
+     */
+    decide?: DecideFn;
+    /** The decisions this invocation took, in the order it took them (PRD R26). */
+    decisions?: IDecision[];
 }
 
 export interface IContext {
@@ -1039,6 +1060,50 @@ export type ChainStep =
 export type CheckpointFn = (this: IMeta, name: string, data?: unknown) => void;
 
 /**
+ * Report a progress point from code that holds no `$meta` (PRD R26).
+ *
+ * The ambient half of the pair: `$meta.checkpoint` is bound to one invocation and fills the
+ * list a test asserts on, while this one is staged in the ambient scope by the log library's
+ * facade, so a library function can report a milestone without being handed an invocation.
+ * No `this`, for that reason.
+ */
+export type PointFn = (name: string, data?: unknown) => void;
+
+/**
+ * A branch the invocation took, as `$meta.decisions` keeps it (PRD R11/R26).
+ *
+ * The same four fields a `Decision` carries in the log library, declared structurally here
+ * so the base types package keeps its place at the bottom of the dependency graph.
+ */
+export interface IDecision {
+    /** What the branch was about, stable across runs. */
+    discriminator: string;
+    /** Every candidate considered, in evaluation order. */
+    candidates: string[];
+    /** The branch taken, or `none` when none of them matched. */
+    chosen: string;
+    /** The values the decision was made from. */
+    values: Record<string, unknown>;
+}
+
+/**
+ * Take a branch, recording which one was taken (PRD R11/R26).
+ *
+ * Never absent where it is offered — as `lib.decide` or on a dispatch's `$meta` — because
+ * it *selects*: a missing branch would skip the work, where a missing checkpoint costs
+ * only a note. That is the one difference between the two progress-point handles.
+ */
+export type DecideFn = <T>(
+    discriminator: string,
+    values: Record<string, unknown>,
+    branches: ReadonlyArray<{
+        name: string;
+        when: (values: Record<string, unknown>) => boolean;
+        run: () => T;
+    }>,
+) => T | undefined;
+
+/**
  * Manifest — a shared mutable object passed to the `load` function that allows
  * platforms to share information such as effective ports, URLs, or other
  * runtime-resolved values across components.
@@ -1073,20 +1138,39 @@ export interface ILib {
         config?: {autoSnapshot?: boolean; mask?: string[]},
     ) => (handlers: ChainStep[]) => ChainStep[] & {name: string};
     /**
-     * Create a named snapshot checkpoint marker to place inside a `group()` steps array.
+     * Create a named **snapshot marker** to place inside a `group()` steps array.
      * Without extra arguments the `'*'` wildcard waits for all pending steps.
      * With step names only those steps are awaited before the context snapshot is taken.
+     *
+     * Not to be confused with a *checkpoint*, which is the progress point a running handler
+     * reports:
      *
      * @example
      * group('my-test')([
      *   stepA,
      *   stepB,
-     *   checkpoint('after-b', 'stepA', 'stepB'),  // wait for A & B, then snapshot
+     *   snapshot('after-b', 'stepA', 'stepB'),  // wait for A & B, then snapshot
      *   stepC,
-     *   checkpoint('final'),                        // wait for all, then snapshot
+     *   snapshot('final'),                        // wait for all, then snapshot
      * ])
      */
-    checkpoint: (name: string, ...markers: string[]) => string[] & {name: string};
+    snapshot: (name: string, ...markers: string[]) => string[] & {name: string};
+    /**
+     * Report a progress point from code that has no `$meta` (PRD R26).
+     *
+     * `undefined` in production, exactly like `$meta.checkpoint`, so the call is optional-chained
+     * and costs nothing where nothing is recording. Its counterpart {@link ILib.decide} cannot be
+     * optional: a branch has to be taken, so a missing helper would skip work rather than a note.
+     */
+    checkpoint?: PointFn;
+    /**
+     * Take a branch, recording which one was taken (PRD R11/R26).
+     *
+     * Always present, unlike `checkpoint`: it selects, so it cannot be optional. The
+     * rationale reaches the records the branch writes; the array a test asserts on is
+     * `$meta.decisions`, which only the `$meta` handle fills.
+     */
+    decide: DecideFn;
     assert: IAssert | undefined;
     yaml: {
         parse: <T>(source: string, options?: unknown) => T;

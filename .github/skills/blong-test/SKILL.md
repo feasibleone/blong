@@ -42,7 +42,7 @@ Choose the right approach based on your situation:
 
 ## File Structure
 
-```
+```text
 realmname/
 └── test/
     └── test/                    # Handler group: test.test
@@ -108,7 +108,7 @@ export default handler(({lib: {group}, handler: {userUserAdd, userUserFind, user
             async function createUser(assert: IAssert, {$meta}: {$meta: IMeta}) {
                 const result = await userUserAdd(
                     {
-                        username: 'testuser',
+                        username: 'testUser',
                         email: 'test@example.com',
                         role: 'user',
                     },
@@ -116,7 +116,7 @@ export default handler(({lib: {group}, handler: {userUserAdd, userUserFind, user
                 );
 
                 assert.ok(result.userId, 'User ID returned');
-                assert.equal(result.username, 'testuser', 'Username matches');
+                assert.equal(result.username, 'testUser', 'Username matches');
 
                 // Return data for next step
                 return {userId: result.userId};
@@ -129,7 +129,7 @@ export default handler(({lib: {group}, handler: {userUserAdd, userUserFind, user
             ) {
                 const result = await userUserFind({userId}, $meta);
 
-                assert.equal(result.username, 'testuser');
+                assert.equal(result.username, 'testUser');
                 assert.equal(result.email, 'test@example.com');
 
                 return {userId};
@@ -173,7 +173,7 @@ testExample: ({name = 'default name'}, $meta) =>
 ### Custom Parameters
 
 ```typescript
-testExample: ({name = 'example', username = 'testuser', amount = 100}, $meta) =>
+testExample: ({name = 'example', username = 'testUser', amount = 100}, $meta) =>
     group(name)([
         async function test(assert, {$meta}) {
             const result = await handler(
@@ -350,8 +350,8 @@ handles dynamic field masking so step functions never need to know about it.
 | Strategy                      | Config / Marker      | Best for                                                                   |
 | ----------------------------- | -------------------- | -------------------------------------------------------------------------- |
 | `autoSnapshot: true`          | executor config      | Migrating collections; zero-boilerplate suites                             |
-| `['*']` checkpoint            | end of steps array   | Single comprehensive regression snapshot                                   |
-| `['s1','s2']` checkpoint      | phase boundaries     | Multi-phase flows (narrow failure to a phase)                              |
+| `['*']` snapshot marker       | end of steps array   | Single comprehensive regression snapshot                                   |
+| `['s1','s2']` snapshot marker | phase boundaries     | Multi-phase flows (narrow failure to a phase)                              |
 | `assert.snapshot()` (no-args) | inside step function | Per-step structural lock-in, mixed with business assertions                |
 | Hybrid                        | combination of above | Production suites — explicit rules + selective snapshots + full regression |
 
@@ -382,9 +382,9 @@ export default handler(({lib: {group}, handler: {userUserAdd, userUserGet, userU
 > **`group()` config:** Pass `{autoSnapshot, mask}` as the **second argument to `group()`**. The
 > steps array is the sole argument of the returned function.
 
-### Strategy B: `['*']` end-of-chain checkpoint — one declarative marker
+### Strategy B: `['*']` end-of-chain snapshot — one declarative marker
 
-Use `lib.checkpoint('flow-name')` at the end of the steps array. The executor waits for all steps,
+Use `lib.snapshot('flow-name')` at the end of the steps array. The executor waits for all steps,
 then snapshots the full accumulated context in one call.
 
 ```typescript
@@ -400,17 +400,17 @@ group(name)([
         const quote = await createQuote;
         return await transferTransferExecute({quoteId: quote.quoteId}, $meta);
     },
-    checkpoint('p2p-flow'), // ← one marker, full snapshot
+    snapshot('p2p-flow'), // ← one marker, full snapshot
 ]);
 ```
 
-### Strategy C: Phase checkpoints — `['step1','step2']`
+### Strategy C: Phase snapshots — `['step1','step2']`
 
-Named checkpoint markers capture specific step results at phase boundaries. The executor waits
-**only for the listed steps** — other parallel steps keep running.
+Named snapshot markers capture specific step results at phase boundaries. The executor waits **only
+for the listed steps** — other parallel steps keep running.
 
 ```typescript
-export default handler(({lib: {group, checkpoint}, handler: {...}}) => ({
+export default handler(({lib: {group, snapshot}, handler: {...}}) => ({
     testFlow: ({name = 'flow'}, $meta) =>
         group(name)([
             async function createUser(_assert, {$meta}) {
@@ -421,7 +421,7 @@ export default handler(({lib: {group, checkpoint}, handler: {...}}) => ({
                 return await userRoleAssign({userId, roleName: 'admin'}, $meta);
             },
             // Snapshot provisioning phase — only waits for createUser & assignRole
-            checkpoint('provisioning', 'createUser', 'assignRole'),
+            snapshot('provisioning', 'createUser', 'assignRole'),
 
             async function sendPayment(_assert, {$meta, createUser}) {
                 const {userId} = await createUser;
@@ -431,7 +431,7 @@ export default handler(({lib: {group, checkpoint}, handler: {...}}) => ({
                 const {userId} = await createUser;
                 return await accountBalanceGet({userId}, $meta);
             },
-            checkpoint('execution', 'sendPayment', 'verifyBalance'),
+            snapshot('execution', 'sendPayment', 'verifyBalance'),
         ]),
 }));
 ```
@@ -500,16 +500,13 @@ For per-call extra masking: `assert.snapshot({mask: ['createdAt']})`.
 ### Hybrid (recommended for production suites)
 
 Use explicit `assert.equal` / `assert.rejects` for critical business rules; use `assert.snapshot()`
-in sentinel steps; add `checkpoint('name')` at the end for full regression coverage.
+in sentinel steps; add `snapshot('name')` at the end for full regression coverage.
 
 ```typescript
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
-    ({
-        lib: {group, checkpoint},
-        handler: {userUserAdd, paymentTransferSend, accountBalanceGet},
-    }) => ({
+    ({lib: {group, snapshot}, handler: {userUserAdd, paymentTransferSend, accountBalanceGet}}) => ({
         testPaymentFlow: ({name = 'payment flow'}, $meta) =>
             group(name)([
                 async function createUser(assert: IAssert, {$meta}: {$meta: IMeta}) {
@@ -530,7 +527,7 @@ export default handler(
                     const {userId} = await createUser;
                     return await accountBalanceGet({userId}, $meta);
                 },
-                checkpoint('full-regression'), // end-of-chain coverage for all steps
+                snapshot('full-regression'), // end-of-chain coverage for all steps
             ]),
     }),
 );
@@ -557,16 +554,16 @@ Per-call override: `assert.snapshot({mask: ['extraField']})` — merges with cha
 
 ### When to use snapshots
 
-| Situation                                                                 | Approach                                           |
-| ------------------------------------------------------------------------- | -------------------------------------------------- |
-| `get`/`find` step returns a structured object with multiple stable fields | `assert.snapshot()`                                |
-| Verify-edit step re-fetches and confirms multiple updated fields          | `assert.snapshot()`                                |
-| Multi-phase flow (setup → execute → verify)                               | Phase checkpoints `checkpoint('name', 's1', 's2')` |
-| Full flow regression                                                      | End-of-chain `checkpoint('name')`                  |
-| Single business-rule assertion (`status === 'COMPLETED'`)                 | Keep `assert.equal`                                |
-| Dynamic list content (size/order varies by environment)                   | Keep `assert.ok`                                   |
-| `null` / void mutation response                                           | Keep `assert.ok(result !== undefined)`             |
-| `assert.ok(result)` before `assert.snapshot()`                            | **Remove it** — snapshot throws for falsy values   |
+| Situation                                                                 | Approach                                         |
+| ------------------------------------------------------------------------- | ------------------------------------------------ |
+| `get`/`find` step returns a structured object with multiple stable fields | `assert.snapshot()`                              |
+| Verify-edit step re-fetches and confirms multiple updated fields          | `assert.snapshot()`                              |
+| Multi-phase flow (setup → execute → verify)                               | Phase snapshots `snapshot('name', 's1', 's2')`   |
+| Full flow regression                                                      | End-of-chain `snapshot('name')`                  |
+| Single business-rule assertion (`status === 'COMPLETED'`)                 | Keep `assert.equal`                              |
+| Dynamic list content (size/order varies by environment)                   | Keep `assert.ok`                                 |
+| `null` / void mutation response                                           | Keep `assert.ok(result !== undefined)`           |
+| `assert.ok(result)` before `assert.snapshot()`                            | **Remove it** — snapshot throws for falsy values |
 
 ### Generating / updating snapshot files
 
@@ -674,7 +671,7 @@ group(name)([
         },
     ],
 
-    testTeardown({}, $meta),
+    testTearDown({}, $meta),
 ]);
 ```
 

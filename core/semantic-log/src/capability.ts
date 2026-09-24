@@ -49,14 +49,22 @@ export {
 export const CALLS_CAPABILITY = 'calls';
 
 /**
- * The four phases of one call.
+ * The phases of one call.
  *
- * A **caller** writes `start`, then `end` or `error`; the **receiver** writes
- * `received` for the leg it was handed. The phases are this package's own
- * vocabulary — it is where legs, their declared target and their position live —
- * and the ledger reads a call out of the pair (phase, leg) alone.
+ * A **caller** writes `start`, then `end` or `error`. The **receiver** writes two:
+ * `received` for the leg it was handed, the moment it starts work, and `answered`
+ * for the same leg when that work is done — the second one exists for what the
+ * handler did in between: a realm handler announces points and takes branches
+ * (`$meta.checkpoint`, `$meta.decide`), and none of that is on a record of the
+ * handler's own, because a call's records are written by the framework around it.
+ * Without an answer of its own, the progress a handler stages is dropped with the
+ * scope that held it.
+ *
+ * The phases are this package's own vocabulary — it is where legs, their declared
+ * target and their position live — and the ledger reads a call out of the pair
+ * (phase, leg) alone.
  */
-export type CallPhase = 'start' | 'end' | 'error' | 'received';
+export type CallPhase = 'start' | 'end' | 'error' | 'received' | 'answered';
 
 /** One phase of one call, as the channel is asked to write it. */
 export interface CallEvent {
@@ -94,6 +102,11 @@ export interface CallChannel {
     end(leg: string, fields?: Record<string, unknown>): void;
     error(leg: string, error?: unknown, fields?: Record<string, unknown>): void;
     received(leg: string, fields?: Record<string, unknown>): void;
+    /**
+     * The receiver's answer for the leg it was handed, with whatever its handler
+     * announced while it ran (see {@link CallPhase}).
+     */
+    answered(leg: string, fields?: Record<string, unknown>): void;
 }
 
 /** The line a phase writes about a leg. */
@@ -103,6 +116,7 @@ export function callPhaseMessage(phase: CallPhase, leg: string): string {
         end: 'call end',
         error: 'call error',
         received: 'call received',
+        answered: 'call answered',
     };
     return `${text[phase]}: ${leg}`;
 }
@@ -133,5 +147,6 @@ export function createCallChannel(write: CallWriter): CallChannel {
                 ...(fields && {fields}),
             }),
         received: (leg, fields) => emit({phase: 'received', leg, ...(fields && {fields})}),
+        answered: (leg, fields) => emit({phase: 'answered', leg, ...(fields && {fields})}),
     };
 }

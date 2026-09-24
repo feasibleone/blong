@@ -186,6 +186,31 @@ the decision to render a reference are taken together, and the value itself stay
 is an _inline_ payload reference, not a claim check). OSC 8 hyperlinks are available but
 deliberately unused in the default rendering, which must stay escape-free.
 
+## Progress points: one channel, two shapes
+
+**A point and a branch are one concept recorded twice, not two features.** A checkpoint reports a
+moment, a `decide` branch explains a choice; both are progress points, both ride the _next_ emitted
+record in the ambient scope, and both are drawn from the same facet — a point as a note beside the
+participant, a branch as an `alt` block around the calls made inside it (R26, R27).
+
+**A branch is a chain on the record, not a position on the decision.** `Decision` keeps exactly the
+shape R11 gave it — discriminator, candidates, chosen, values — and is untouched; what says "this
+record was emitted inside that branch" is `record.progress.regions`, ordered outermost first. The
+two are deliberately not merged: _reports a branch_ is a statement about the record that explains a
+choice, _was emitted inside one_ is a statement about where the record sits, and a record can name
+only its innermost branch, so the chain has to travel as a chain. Keeping them apart also leaves
+R11's identity and redaction behaviour exactly as it was, since a region contributes names alone.
+
+**Identity takes the names, never the values.** A point's `data` and a region's candidate positions
+stay local; the fingerprint, the wire projection and the ledger carry names only (R12). A point's
+`data` is payload, so a diagram can name a moment without leaking the object it carried.
+
+**An answer inherits its call's chain; a callee's own work does not.** The answer to a call is
+written by the other process, which carries no ambient region, so the ledger credits a declaration
+to the branch it was _made_ in — which is what keeps a call inside an `alt` block from being drawn
+as unanswered. The residual gap, a callee's own records not being drawn inside the caller's block,
+is a recorded limit rather than an oversight.
+
 ## Package shape and dependencies
 
 **No build step: Node strips types.** That makes the _runtime_ the authority, not `tsc` or `tap` —

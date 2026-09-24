@@ -1,5 +1,5 @@
 import t from 'tap';
-import type {DiagramCall, DiagramItem, DiagramObservation} from './diagram.ts';
+import type {DiagramCall, DiagramItem, DiagramModel, DiagramObservation} from './diagram.ts';
 import {modelOfExecution, modelOfObservations, modelOfUnion, renderSequence} from './diagram.ts';
 import type {FlowExecution, LegEnd, ObservedLeg} from './flowLedger.ts';
 import {FlowLedger} from './flowLedger.ts';
@@ -30,13 +30,30 @@ function observed(
 
 /** The items of a model, flattened for comparison. */
 function drawn(model: {items: readonly DiagramItem[]}): string[] {
-    return model.items.map(item =>
-        item.kind === 'call'
-            ? `call ${item.leg} ${item.caller}->${item.callee} x${item.count}/${item.observed}`
-            : item.kind === 'response'
-              ? `response ${item.leg} ${item.callee}->${item.caller}`
-              : `receipt ${item.leg} ${item.service}`,
-    );
+    return model.items.map(item => {
+        if (item.kind === 'call') {
+            return `call ${item.leg} ${item.caller}->${item.callee} x${item.count}/${item.observed}`;
+        }
+        if (item.kind === 'response') {
+            return `response ${item.leg} ${item.callee}->${item.caller}`;
+        }
+        if (item.kind === 'progress') {
+            return `progress ${item.leg} ${item.service} [${item.notes
+                .map(note => note.text)
+                .join(', ')}]`;
+        }
+        if (item.kind === 'region') {
+            return `region ${item.discriminator} [${item.branches
+                .map(branch => `${branch.name}${branch.chosen ? '*' : ''} x${branch.count}`)
+                .join(', ')}]`;
+        }
+        return `receipt ${item.leg} ${item.service}`;
+    });
+}
+
+/** The legs a model draws, in order — a region is not a leg. */
+function legs(model: {items: readonly DiagramItem[]}): string[] {
+    return model.items.flatMap(item => (item.kind === 'call' ? [item.leg] : []));
 }
 
 /** One union leg, with the fields a test cares about named explicitly. */
@@ -51,6 +68,236 @@ function unionLeg(leg: string, ends: LegEnd[], rest: Partial<ObservedLeg> = {}):
         ...rest,
     };
 }
+
+/** The legs a model draws, in order, with regions flattened — a region is not a leg. */
+function flat(model: {items: readonly DiagramItem[]}): DiagramItem[] {
+    return model.items.flatMap(item =>
+        item.kind === 'region'
+            ? item.branches.flatMap(branch => flat({items: branch.items}))
+            : [item],
+    );
+}
+
+t.test(
+    'a call made inside a branch is drawn in an alt block, with the branch not taken left empty',
+    t => {
+        const model = modelOfObservations([
+            observed('fxp.quote.rates', 'fxp', {
+                to: 'hub',
+                seq: '1',
+                regions: [
+                    {
+                        id: '1',
+                        discriminator: 'rate-within-limit',
+                        candidates: ['decline', 'accept'],
+                        chosen: 'decline',
+                    },
+                ],
+                points: ['rate-declined'],
+            }),
+        ]);
+        t.same(
+            drawn(model),
+            ['region rate-within-limit [decline* x1, accept x0]'],
+            'PRD R27: every candidate is a branch, and only the one that ran has anything in it',
+        );
+        const mermaid = renderSequence(model);
+        // The arms are ordered for mermaid, not for the code: the empty ones come first so that
+        // `end` is never preceded by a section with nothing in it. Only the order changes — the
+        // labels still name the candidates, and `accept` is still the one declared second.
+        t.match(mermaid, /alt rate-within-limit = accept/);
+        t.match(mermaid, /else decline/);
+        t.match(mermaid, /^\s+end$/m, 'the block is closed');
+        t.match(
+            mermaid,
+            /Note over fxp: point: rate-declined/,
+            'a milestone is a note over the participant that reported it',
+        );
+        t.equal(flat(model).length, 1, 'the call is inside the block, not beside it');
+        t.end();
+    },
+);
+
+t.test('a block whose arms are all empty still renders, saying so', t => {
+    // Mermaid refuses a section with nothing in it when it is the last before `end`, so a region
+    // with nothing to draw in any arm is given a note in its last one: the branch ran and nothing
+    // inside it was observed, which is content, and a block that failed to draw says nothing at
+    // all. Built by hand because every path through the builders leaves the arm that ran holding
+    // at least the call or the receipt that carried the branch — this is the defensive shape.
+    const model: DiagramModel = {
+        services: ['payer', 'hub'],
+        items: [
+            {
+                kind: 'region',
+                discriminator: 'rate-within-limit',
+                branches: [
+                    {name: 'decline', chosen: true, weighed: true, count: 0, items: []},
+                    {name: 'accept', chosen: false, weighed: false, count: 0, items: []},
+                ],
+            },
+        ],
+    };
+    t.match(
+        renderSequence(model),
+        /else accept — not weighed\n\s+Note over payer: nothing observed yet\n\s+end/m,
+        'the last arm says what was observed instead of being empty',
+    );
+    t.end();
+});
+
+t.test('a branch the candidate list never named is still drawn as the branch that ran', t => {
+    const model = modelOfObservations([
+        observed('fxp.quote.rates', 'fxp', {
+            to: 'hub',
+            seq: '1',
+            regions: [{id: '1', discriminator: 'd', candidates: ['a', 'b'], chosen: 'c'}],
+        }),
+    ]);
+    t.same(
+        drawn(model),
+        ['region d [a x0, b x0, c* x1]'],
+        'the branch that ran is marked, and the candidates that did not are still drawn',
+    );
+    t.end();
+});
+
+t.test(
+    'an answer is drawn inside the branch its call was made in, and a nested branch nests',
+    t => {
+        const mark = (id: string, discriminator: string, candidates: string[], chosen: string) => ({
+            id,
+            discriminator,
+            candidates,
+            chosen,
+        });
+        const chain = [
+            mark('1', 'corridor', ['hubB', 'hold'], 'hubB'),
+            mark('1.1', 'rate-within-limit', ['decline', 'accept'], 'accept'),
+        ];
+        const model = modelOfObservations([
+            observed('hub.proxy.transfer', 'hub', {to: 'proxy', seq: '1', regions: chain}),
+            observed('hub.proxy.transfer', 'proxy', {from: 'hub', seq: '1', regions: chain}),
+        ]);
+        const lines = renderSequence(model).split('\n');
+        // `findIndex` on the line's prefix, not `indexOf`: a block's label carries the branch
+        // that opens it, so the line is `alt corridor = hubB`, not `alt corridor`.
+        const outer = lines.findIndex(line => line.startsWith('    alt corridor'));
+        const inner = lines.findIndex(line => line.startsWith('    alt rate-within-limit'));
+        const answer = lines.findIndex(line => line.includes('-->>'));
+        const firstEnd = lines.indexOf('    end');
+        t.ok(outer > -1, 'the enclosing branch is drawn');
+        t.ok(inner > outer, 'the nested branch is inside it');
+        t.ok(
+            answer > inner && answer < firstEnd,
+            'the answer to a call made in the branch is drawn in the same block, not after it',
+        );
+        t.end();
+    },
+);
+
+t.test('a union draws the branches a call was declared in, each with its own counts', t => {
+    const model = modelOfUnion({
+        kind: 'transfer.single',
+        executions: 3,
+        services: ['hub'],
+        legs: [
+            unionLeg(
+                'hub.fxp.quote',
+                [
+                    {
+                        caller: 'hub',
+                        callee: 'fxp',
+                        count: 3,
+                        observed: 3,
+                        branches: [
+                            {
+                                discriminator: 'rate-within-limit',
+                                candidates: ['decline', 'accept'],
+                                chosen: 'accept',
+                                count: 2,
+                                observed: 2,
+                            },
+                            {
+                                discriminator: 'rate-within-limit',
+                                candidates: ['decline', 'accept'],
+                                chosen: 'decline',
+                                count: 1,
+                                observed: 1,
+                            },
+                        ],
+                    },
+                ],
+                {seq: '1'},
+            ),
+        ],
+    });
+    t.same(
+        drawn(model),
+        ['region rate-within-limit [decline x1, accept* x1]', 'response hub.fxp.quote fxp->hub'],
+        'one block, both branches populated — a union is where both outcomes were really seen',
+    );
+    const mermaid = renderSequence(model);
+    t.match(mermaid, /alt rate-within-limit/);
+    t.match(
+        mermaid,
+        /else accept/,
+        'the other candidate is drawn as an `else`, in evaluation order',
+    );
+    t.match(mermaid, /x2/, 'the branch taken twice shows it on its own arrow');
+    t.equal(
+        mermaid.split('\n').filter(line => line.includes('hub->>fxp') && !line.includes('-->>'))
+            .length,
+        2,
+        'one arrow per branch, because the counts are per branch',
+    );
+    t.end();
+});
+
+t.test('a union call never inside a branch is drawn flat, with no block around it', t => {
+    const model = modelOfUnion({
+        kind: 'transfer.single',
+        executions: 1,
+        services: ['payer'],
+        legs: [
+            unionLeg(
+                'payer.hub.submit',
+                [{caller: 'payer', callee: 'hub', count: 1, observed: 1}],
+                {
+                    seq: '1',
+                },
+            ),
+        ],
+    });
+    t.same(drawn(model), [
+        'call payer.hub.submit payer->hub x1/1',
+        'response payer.hub.submit hub->payer',
+    ]);
+    t.notMatch(renderSequence(model), /alt /, 'nothing was branched, so nothing is boxed');
+    t.end();
+});
+
+t.test('a receipt observed inside a branch is drawn inside the block it was made in', t => {
+    const model = modelOfObservations([
+        observed('hub.proxy.corridor', 'proxy', {
+            from: 'hub',
+            seq: '1',
+            regions: [
+                {
+                    id: '1',
+                    discriminator: 'route-selection',
+                    candidates: ['hubB', 'hold'],
+                    chosen: 'hubB',
+                },
+            ],
+        }),
+    ]);
+    t.same(
+        drawn(model),
+        ['region route-selection [hubB* x1, hold x0]'],
+        'a call nobody declared is still drawn where it was received',
+    );
+    t.end();
+});
 
 t.test('a call is one call however many records were logged inside it', t => {
     // Several records from one call site are one call: counting them would report a
@@ -78,10 +325,94 @@ t.test('a call is one call however many records were logged inside it', t => {
     const call = model.items[0] as DiagramCall;
     t.same(
         call.notes,
-        ['rate limit 5%', 'withheld: routing'],
-        'every note the leg carried travels with it, from whichever end logged it',
+        [
+            {text: 'rate limit 5%', over: 'payer'},
+            {text: 'withheld: routing', over: 'hub'},
+        ],
+        'every note the leg carried travels with it, from whichever end logged it, and is drawn\n' +
+            'over the end that logged it: a note a receiver announced is its work, not the callers',
     );
     t.same(model.services, ['payer', 'hub'], 'the participants are the units the call names');
+    t.end();
+});
+
+t.test('a receiver announces between the arrows, and its branch wraps only what followed it', t => {
+    // The receiver's work is not the caller's: it happens while the call is open, so it is
+    // drawn between the request and the answer, and the branch it took sits between them too.
+    // The record says how many of its points came before that decision, because a branch
+    // cannot have caused work that was already done (PRD R27).
+    const model = modelOfObservations([
+        observed('db/gateway.bundle.merge', 'gateway', {from: 'gateway', to: 'db', seq: '1'}),
+        observed('db/gateway.bundle.merge', 'db', {
+            seq: '1',
+            points: ['merge-started', 'roles-merged', 'role-bit-allocated', 'graph-merged'],
+            regions: [
+                {
+                    id: '1',
+                    discriminator: 'role-bit',
+                    candidates: ['declared', 'allocated'],
+                    chosen: 'allocated',
+                    pointsBefore: 2,
+                },
+            ],
+        }),
+    ]);
+    t.same(
+        drawn(model),
+        [
+            'call db/gateway.bundle.merge gateway->db x1/1',
+            'progress db/gateway.bundle.merge db [point: merge-started, point: roles-merged]',
+            'region role-bit [declared x0, allocated* x0]',
+            'response db/gateway.bundle.merge db->gateway',
+        ],
+        'the work before the decision sits outside the block, and the answer outside it too',
+    );
+    const lines = renderSequence(model).split('\n');
+    const at = (text: string): number => lines.findIndex(line => line.includes(text));
+    t.ok(at('gateway->>db') < at('point: merge-started'), 'the request is drawn before the work');
+    t.ok(
+        at('point: roles-merged') < at('alt role-bit'),
+        'what was announced before the decision stays outside the block',
+    );
+    t.ok(at('alt role-bit') < at('point: role-bit-allocated'), 'and what followed it is inside');
+    t.ok(at('point: graph-merged') < at('end'), 'to the end of the block');
+    t.ok(at('end') < at('db-->>gateway'), 'which closes before the answer');
+    t.end();
+});
+
+t.test('every candidate is drawn, and the ones the decision never reached say so', t => {
+    // A decision stops at the branch it takes, so a candidate declared after it never had its
+    // predicate run. It is still drawn — the code offers it — and labelled, so a reader is not left
+    // to read an unreached alternative as one that was weighed and refused (T-140).
+    const model = modelOfObservations([
+        observed('db/gateway.bundle.merge', 'gateway', {from: 'gateway', to: 'db', seq: '1'}),
+        observed('db/gateway.bundle.merge', 'db', {
+            seq: '1',
+            points: ['rows-listed'],
+            regions: [
+                {
+                    id: '1',
+                    discriminator: 'result-shape',
+                    candidates: ['array', 'result-set', 'empty'],
+                    chosen: 'result-set',
+                    pointsBefore: 0,
+                },
+            ],
+        }),
+    ]);
+    const lines = renderSequence(model).split('\n');
+    t.ok(
+        lines.some(line => line.includes('alt result-shape = array')),
+        'the first candidate opens the block, whether or not it was reached',
+    );
+    t.ok(
+        lines.some(line => line.includes('else result-set') && !line.includes('not weighed')),
+        'the branch that was taken is named without a qualifier',
+    );
+    t.ok(
+        lines.some(line => line.includes('else empty — not weighed')),
+        'and a candidate the decision never reached says so',
+    );
     t.end();
 });
 
@@ -210,10 +541,10 @@ t.test('a reused id is two arrows, and its notes are not dropped', t => {
     );
     t.same(
         (model.items[0] as DiagramCall).notes,
-        ['one'],
+        [{text: 'one', over: 'payer'}],
         'the leg says the same thing on both arrows',
     );
-    t.same((model.items[1] as DiagramCall).notes, ['one']);
+    t.same((model.items[1] as DiagramCall).notes, [{text: 'one', over: 'payer'}]);
     t.end();
 });
 
@@ -227,7 +558,7 @@ t.test('calls are drawn in the order their positions give them', t => {
         observed('payer.discovery.parties', 'payer', {to: 'hub', seq: '1'}),
     ]);
     t.same(
-        model.items.map(item => item.leg),
+        legs(model),
         ['payer.discovery.parties', 'payer.quote.rates', 'payer.transfer.submit'],
         'by counter path numerically, and one leg is one call however many records it logged',
     );
@@ -241,7 +572,7 @@ t.test('a call observed without a position sorts last, and ties settle by id', t
         observed('payer.discovery.parties', 'payer', {to: 'hub'}),
     ]);
     t.same(
-        model.items.map(item => item.leg),
+        legs(model),
         ['payer.transfer.submit', 'payer.discovery.parties', 'payer.quote.rates'],
         'positioned first, then the unpositioned by id',
     );

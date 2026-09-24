@@ -112,6 +112,11 @@ rather than a `semantic-log://` URI, because it is a link within the `r=` family
 through the same store as any other record reference. All of them resolve on demand; see
 [Resolving a reference](#resolving-a-reference).
 
+A record may carry a `progress` facet too: the branch chain it was emitted inside (`regions`) and
+the points announced in its scope (`points`). Both ride the next emitted record, the way a
+`decision` does, and both are reduced to **names** on the wire, so identity never depends on the
+data a point carried ([R26, R27](../../docs/blong/docs/rationale/semantic-log.md)).
+
 ## Resolving a reference
 
 The inspector reads exactly **one file** per lookup; it never enumerates the cache to find a record.
@@ -134,8 +139,10 @@ node bin/semantic-log-inspect.ts diagram --cache <dir> <flow-id|flow-kind>     #
 
 `diagram` draws the observed shape of one execution (a ULID) or one flow kind, from the local store
 alone — no service, no network. It reads what the store has that the service never sees: the branch
-rationale and the **withheld categories** are in the records here and nowhere else, so they are
-drawn as `Note over <participant>:` lines above the call they belong to.
+rationale and the **withheld categories** are in the records here and nowhere else. A **progress
+point** is drawn as a `Note over <participant>:` line above the call it was reported in, and a
+**branch** as an `alt`/`else` block around the calls made inside it
+([R26, R27](../../docs/blong/docs/rationale/semantic-log.md)).
 
 This is the one verb that **enumerates** the store, because a picture of a run needs every record of
 it. That scan is not a second lookup path — `cache.get` still fetches each record, and nothing is

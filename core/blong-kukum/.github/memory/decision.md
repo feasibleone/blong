@@ -283,10 +283,11 @@ and the 14 primitives that share `kukum.<id>.add/edit/find/get/check` use bare `
 `find.ts`, `get.ts` and `check.ts`. The per-primitive files skip the differing segment rather than
 using `primitive` as the generic word, because `kukum.primitive.find` is a real endpoint, so
 `primitiveFind` is already the catalogue's file and reusing it would be double duty; skipping is the
-only collision-free option. Checked against the framework library names (error, assert, render,
-timing, checkpoint, yaml, platform, registry) with no collisions. The rule is not stated in
-`_shared/conventions.md` or the blong-handler skill, and changing shared framework docs affects
-other realms, so it was left as a todo.
+only collision-free option. Checked against the framework library names (error, assert, decide,
+render, timing, checkpoint, snapshot, yaml, platform, registry) with no collisions — rechecked
+2026-09-23 when the snapshot marker was renamed, and no kukum file is named `snapshot*` or
+`decide*`. The rule is not stated in `_shared/conventions.md` or the blong-handler skill, and
+changing shared framework docs affects other realms, so it was left as a todo.
 
 ### D-137 — kukum's operations became the library functions, with no operations layer
 

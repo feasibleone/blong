@@ -7,9 +7,9 @@
  * Strategies:
  *   autoSnapshot  — fully automatic: executor captures every step result, no
  *                   assert.snapshot() calls needed anywhere
- *   ["*"]         — end-of-chain checkpoint: single declarative marker captures
+ *   ["*"]         — end-of-chain snapshot: single declarative marker captures
  *                   the whole context after all steps finish
- *   ["s1","s2"]  — phase checkpoints: markers capture named subsets at phase
+ *   ["s1","s2"]  — phase snapshots: markers capture named subsets at phase
  *                   boundaries, narrowing failure to a specific phase
  *   assert.snapshot()
  *                 — per-step no-args: executor snapshots the return value under
@@ -96,7 +96,7 @@ tap.test('Strategy A — autoSnapshot: true (fully automatic)', async t => {
     await executor.execute(steps, {}, t);
 });
 
-// Strategy B — ["*"] end-of-chain checkpoint  (declarative, one marker)
+// Strategy B — ["*"] end-of-chain snapshot  (declarative, one marker)
 //
 // A ["*"] marker at the end of the steps array snapshots the full accumulated
 // context after all steps finish. The .name property gives the snapshot a
@@ -105,7 +105,7 @@ tap.test('Strategy A — autoSnapshot: true (fully automatic)', async t => {
 // Best for: regression suites needing one comprehensive snapshot without
 // boilerplate in individual step functions.
 
-tap.test("Strategy B — ['*'] end-of-chain checkpoint", async t => {
+tap.test("Strategy B — ['*'] end-of-chain snapshot", async t => {
     const executor = new TestExecutor({concurrency: 4});
 
     const steps: StepArray = [
@@ -151,14 +151,14 @@ tap.test("Strategy B — ['*'] end-of-chain checkpoint", async t => {
     await executor.execute(steps, {}, t);
 });
 
-// Strategy C — phase checkpoints  (phase-boundary snapshots)
+// Strategy C — phase snapshots  (phase-boundary snapshots)
 //
-// Named checkpoint markers capture named subsets of step results at phase
+// Named snapshot markers capture named subsets of step results at phase
 // boundaries. Failure narrows to the specific failing phase.
 //
 // Best for: multi-phase flows (provisioning => execution => verification).
 
-tap.test('Strategy C — phase checkpoints', async t => {
+tap.test('Strategy C — phase snapshots', async t => {
     const executor = new TestExecutor({concurrency: 4});
 
     const steps: StepArray = [
@@ -301,7 +301,7 @@ tap.test('Hybrid — business assertions + sentinel snapshots + end-of-chain', a
             return {accountId: ACCOUNT_ID, currency: payment.currency, newBalance: 950};
         },
 
-        // End-of-chain checkpoint for full regression coverage.
+        // End-of-chain snapshot for full regression coverage.
         Object.assign(['*'], {name: 'hybrid-full-context'}),
     ];
 

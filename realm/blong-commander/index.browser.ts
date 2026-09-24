@@ -16,6 +16,9 @@ export default browser(blong => ({
         }),
     }),
     children: [
+        async function blong() {
+            return import('@feasibleone/blong-realm/browser.ts');
+        },
         async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
         },
@@ -48,6 +51,7 @@ export default browser(blong => ({
                 },
             },
             login: {},
+            blong: {},
             commander: {
                 // UI options for the Commander shell:
                 // showParentRow — show the ".." up-to-parent row in the right table.

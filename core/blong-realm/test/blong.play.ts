@@ -190,6 +190,39 @@ test('an observed execution is drawn as a diagram', async ({portal}) => {
     );
 });
 
+test('every run of a kind is drawn together', async ({portal}) => {
+    // The union is the answer to "how does this flow go, over every run": the service folds the
+    // executions of one kind into one drawing, which is the only way a branch that some runs take
+    // and others do not appears as the pair of alternatives it is. The page asks for it by naming
+    // the kind rather than an execution — the same read of the same service, a different reference.
+    test.setTimeout(90_000);
+    await portal.menuClick('blong.flow.browse');
+    await portal.waitForTableData();
+
+    // The kinds arrive with the executions in one payload, so the control is a read of what the
+    // list above it already shows.
+    const picker = portal.page.getByTestId('flow-kind');
+    await expect(picker).toBeVisible({timeout: 15_000});
+    await picker.click();
+    const option = portal.page.locator('.p-dropdown-item').filter({hasText: REALM_KIND}).first();
+    await expect(option, 'the kind this realm served is offered').toBeVisible({timeout: 15_000});
+    await option.click();
+
+    // The same three states a selection can leave the viewer in as the execution capture.
+    await expect(portal.page.locator('[data-diagram-rendered]')).toBeVisible({timeout: 30_000});
+    const diagram = await diagramText(portal);
+    expect(diagram, 'the union is drawn for the kind that was chosen').toContain(REALM_KIND);
+    if (!drawsACall(diagram)) {
+        test.skip(true, `the union of ${REALM_KIND} declared no calls to draw`);
+        return;
+    }
+    await captureDiagram(portal, expect, {
+        name: 'observed-kind-union',
+        artifact: 'docs/observedKindUnion.md',
+        diagram,
+    });
+});
+
 // The realm's test seed grants `blongRealmRead` to `Admin`; `testViewer` holds
 // `Customer`, which has nothing from this realm. The gateway refuses the method
 // before the realm sees it, which is the behaviour a deployment depends on and the

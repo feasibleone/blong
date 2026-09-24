@@ -1,33 +1,31 @@
 # Handler-Test POC Suite
 
-Proof of concept demonstrating the **unified handler-test concept** — blending
-handlers and tests into a continuum rather than keeping them as separate
-concerns.
+Proof of concept demonstrating the **unified handler-test concept** — blending handlers and tests
+into a continuum rather than keeping them as separate concerns.
 
 ## Concepts Demonstrated
 
 ### 1. Checkpoint-Enabled Handlers
 
-Handlers use `$meta.checkpoint?.()` to record progress through multi-step
-operations. The optional chaining ensures zero overhead in production.
-Checkpoints are recorded in `$meta.checkpoints` when checkpoint mode
-is enabled via `registry.checkpointMode: 'test'`.
+Handlers use `$meta.checkpoint?.()` to record progress through multi-step operations. The optional
+chaining ensures zero overhead in production. Checkpoints are recorded in `$meta.checkpoints` when
+checkpoint mode is enabled via `registry.checkpointMode: 'test'`.
 
 See: `order/orchestrator/order/orderOrderCreate.ts`
 
 ### 2. Optional Assertions in Handlers
 
-Handlers destructure `assert` from `lib`, just like `checkpoint`. Both
-follow the same pattern: `undefined` in production (zero-cost via `?.`),
-active in test/debug mode. No handler signature changes needed — both
-are captured at definition time and used at call time.
+Handlers destructure `assert` from `lib`, just like `checkpoint`. Both follow the same pattern:
+`undefined` in production (zero-cost via `?.`), active in test/debug mode. No handler signature
+changes needed — both are captured at definition time and used at call time.
 
 ```typescript
-export default handler(({lib: {assert}}) =>
-    async function orderOrderCreate({items, customerId}, $meta) {
-        assert?.ok(total > 0, 'Order total must be positive');
-        $meta.checkpoint?.('total-calculated', {total});
-    }
+export default handler(
+    ({lib: {assert}}) =>
+        async function orderOrderCreate({items, customerId}, $meta) {
+            assert?.ok(total > 0, 'Order total must be positive');
+            $meta.checkpoint?.('total-calculated', {total});
+        },
 );
 ```
 
@@ -54,8 +52,8 @@ See: `order/test/test/testOrderInvariant.ts`
 
 ### 5. Canary Assertions
 
-Soft checks that detect anomalies without breaking the flow. In production,
-they log warnings. In tests, they can be verified.
+Soft checks that detect anomalies without breaking the flow. In production, they log warnings. In
+tests, they can be verified.
 
 See: `order/test/test/testOrderCanary.ts`
 
@@ -63,24 +61,26 @@ See: `order/test/test/testOrderCanary.ts`
 
 The same handler code supports multiple verification levels:
 
-| Level | Assertions | Checkpoints | Invariants | Canaries |
-|-------|-----------|-------------|------------|----------|
-| 0 — Production | off | off | off | on |
-| 1 — Monitoring | off | on | off | on |
-| 2 — Staging | warn | on | warn | on |
-| 3 — Debug | throw | on | throw | on |
-| 4 — Test | assert | on | assert | on |
+| Level          | Assertions | Checkpoints | Invariants | Canaries |
+| -------------- | ---------- | ----------- | ---------- | -------- |
+| 0 — Production | off        | off         | off        | on       |
+| 1 — Monitoring | off        | on          | off        | on       |
+| 2 — Staging    | warn       | on          | warn       | on       |
+| 3 — Debug      | throw      | on          | throw      | on       |
+| 4 — Test       | assert     | on          | assert     | on       |
 
 ## Implementation
 
 ### Framework Changes
 
 1. **`IMeta`** extended with `name?: string` and `checkpoints?: Array<{name, data, timestamp}>`
-2. **`ILib`** extended with `checkpoint: CheckpointFn | undefined` and `assert: typeof Assert | undefined`
-3. **`checkpoint.ts`** — `AsyncLocalStorage`-based checkpoint function that finds the current `$meta`
+2. **`ILib`** extended with `checkpoint?: PointFn` (the ambient half of the pair, `undefined` in
+   production) and `assert: IAssert | undefined`
+3. **`checkpoint.ts`** — `AsyncLocalStorage`-based checkpoint function that finds the current
+   `$meta`
 4. **`Registry._createHandlers`** — creates checkpoint and assert based on `checkpointMode` config
-5. **`layerProxy.ts` handler proxy** — wraps handler calls with `withMeta()` to bind `$meta`
-   in `AsyncLocalStorage` for checkpoint recording
+5. **`layerProxy.ts` handler proxy** — wraps handler calls with `withMeta()` to bind `$meta` in
+   `AsyncLocalStorage` for checkpoint recording
 
 ### Configuration
 
@@ -98,9 +98,9 @@ config: {
 
 ### Test Dispatch
 
-The `testDispatch` imports both test and order handlers so all calls
-resolve through its handler proxy, which wraps calls with `withMeta()`.
-This keeps checkpoint data in the same `$meta.checkpoints` array:
+The `testDispatch` imports both test and order handlers so all calls resolve through its handler
+proxy, which wraps calls with `withMeta()`. This keeps checkpoint data in the same
+`$meta.checkpoints` array:
 
 ```typescript
 activation: {
@@ -113,15 +113,18 @@ activation: {
 
 ### Internal API Testing
 
-The suite uses server-only (internal API) testing. Both test handlers
-and business handlers run in the same process, so checkpoints stay
-in the same `$meta` object without crossing HTTP boundaries:
+The suite uses server-only (internal API) testing. Both test handlers and business handlers run in
+the same process, so checkpoints stay in the same `$meta` object without crossing HTTP boundaries:
 
 ```typescript
 // index.ts
 export default async (load): Promise<void> => {
     const platforms = await Promise.all([
-        load(server, 'handler-test-poc', 'handler-test-poc', ['microservice', 'integration', 'dev']),
+        load(server, 'handler-test-poc', 'handler-test-poc', [
+            'microservice',
+            'integration',
+            'dev',
+        ]),
     ]);
     for (const platform of platforms) await platform.start();
     await platforms[0].test();
@@ -131,7 +134,7 @@ export default async (load): Promise<void> => {
 
 ## Structure
 
-```
+```text
 handler-test-poc/
 ├── server.ts              # Suite server entry (enables checkpointMode)
 ├── browser.ts             # Suite browser entry (unused in internal API testing)

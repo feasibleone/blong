@@ -14,7 +14,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {authRealmFind, authRealmAdd, authRealmGet, authRealmEdit, authRealmRemove},
     }) => ({
         testKeycloakRealmCrud: ({name = 'keycloak realm CRUD'}: {name?: string}) =>
@@ -98,8 +98,8 @@ export default handler(
                     )) as RealmResult;
                 },
 
-                // Phase checkpoint: snapshot both read-back results together
-                checkpoint('realm-read-snapshots', 'getRealm', 'verifyEdit'),
+                // Phase snapshot: both read-back results together
+                snapshot('realm-read-snapshots', 'getRealm', 'verifyEdit'),
 
                 // ── 7. remove — delete the test realm ─────────────────────
                 async function removeRealm(

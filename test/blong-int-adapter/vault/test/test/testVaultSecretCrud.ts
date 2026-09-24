@@ -16,7 +16,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {secretsSecretPut, secretsSecretGet, secretsSecretList, secretsSecretRemove},
     }) => ({
         testVaultSecretCrud: ({name = 'vault secret CRUD'}: {name?: string}) =>
@@ -134,8 +134,8 @@ export default handler(
                     )) as SecretData;
                 },
 
-                // Phase checkpoint: snapshot both read-back results together
-                checkpoint('secret-read-snapshots', 'readAlpha', 'verifyUpdate'),
+                // Phase snapshot: both read-back results together
+                snapshot('secret-read-snapshots', 'readAlpha', 'verifyUpdate'),
 
                 // ── 8. remove — delete alpha ───────────────────────────────
                 async function deleteAlpha(

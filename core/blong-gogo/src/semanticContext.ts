@@ -118,6 +118,29 @@ export const enterCapability = vocabulary.enterCapability;
  */
 export const withStep = step;
 
+/**
+ * Report a progress point, or take a branch, from code that holds no `$meta`.
+ *
+ * Re-exported beside `withStep` for the same reason it is: a realm or a bootstrap that already
+ * reaches this module for its scope machinery should not have to import the emitter to say what
+ * the logic was doing (PRD R26). Both degrade when nothing is attached — `point` to nothing,
+ * `decide` to the selection alone, because a branch has to be taken either way.
+ */
+export const point = vocabulary.point;
+export const decide = vocabulary.decide;
+
+/**
+ * Take the progress announced in the scope a handler ran in, and announce it again.
+ *
+ * Both halves of one thing, and both used by the same caller: the adapter reads what its
+ * handler announced when the handler returns (`takeProgress`) and stages it so the record the
+ * call answers with carries it (`attachProgress`) — the only route a realm handler's points
+ * and branches have to a record, since the records of a call are the framework's (PRD R26/R27).
+ */
+export const takeProgress = vocabulary.takeProgress;
+export const attachProgress = vocabulary.attachProgress;
+export const beginProgress = vocabulary.beginProgress;
+
 /** The capability decided for this scope, or `undefined` when nothing decided it. */
 export const capabilityOf = vocabulary.capabilityState;
 

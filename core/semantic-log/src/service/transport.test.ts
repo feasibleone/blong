@@ -25,6 +25,70 @@ function record(overrides: Partial<LogRecord> = {}): LogRecord {
     };
 }
 
+t.test('progress points travel as names, and their payload stays in the process', async t => {
+    const calls: Array<{url: string; init: RequestInit | undefined}> = [];
+    const writer = createServiceWriter({
+        url: 'http://service.test',
+        fetch: (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+            calls.push({url: String(input), init});
+            return new Response(null, {status: 202});
+        }) as typeof fetch,
+    });
+    writer.write(
+        'line\n',
+        record({
+            progress: {
+                regions: [
+                    {
+                        id: '1',
+                        discriminator: 'rate-within-limit',
+                        candidates: ['decline', 'accept'],
+                        chosen: 'decline',
+                    },
+                ],
+                points: [{name: 'rate-declined', data: {rate: 1.3}}, 'collapsed' as never],
+            },
+        }),
+    );
+    writer.write('plain\n', record({id: '01J8Z9K2M9PQRSTVWXYZ0A1B2D'}));
+    // An announcement with no branch in it: a milestone on its own still travels.
+    writer.write(
+        'milestone\n',
+        record({id: '01J8Z9K2M9PQRSTVWXYZ0A1B2E', progress: {points: [{name: 'order-created'}]}}),
+    );
+    await writer.flush();
+
+    const events = calls.flatMap(
+        call => (JSON.parse(String(call.init?.body)) as {events: IngestEvent[]}).events,
+    );
+    t.same(
+        events[0]?.progress,
+        {
+            regions: [
+                {
+                    id: '1',
+                    discriminator: 'rate-within-limit',
+                    candidates: ['decline', 'accept'],
+                    chosen: 'decline',
+                },
+            ],
+            points: ['rate-declined'],
+        },
+        'the branch travels whole; a point travels as its name',
+    );
+    t.notOk(
+        /1\.3|collapsed/.test(String(calls[0]?.init?.body)),
+        'no payload leaves the process (R1, R10)',
+    );
+    t.notOk('progress' in (events[1] ?? {}), 'a record with no progress carries none');
+    t.same(
+        events[2]?.progress,
+        {points: ['order-created']},
+        'a point with no branch travels on its own, and carries no region member',
+    );
+    t.end();
+});
+
 t.test('a record becomes one event posted to the ingest route', async t => {
     const calls: Array<{url: string; init: RequestInit | undefined}> = [];
     const writer = createServiceWriter({
@@ -38,7 +102,11 @@ t.test('a record becomes one event posted to the ingest route', async t => {
     await writer.flush();
 
     t.equal(calls.length, 1, 'one request was sent');
-    t.equal(calls[0]?.url, 'http://service.test/events', 'the trailing slash is normalised and the route is used');
+    t.equal(
+        calls[0]?.url,
+        'http://service.test/events',
+        'the trailing slash is normalised and the route is used',
+    );
     t.equal(calls[0]?.init?.method, 'POST', 'the route is posted to');
     // The assertion is on the header value, not merely that some headers object
     // exists: the route parses the body as JSON only when this is declared.
@@ -50,7 +118,11 @@ t.test('a record becomes one event posted to the ingest route', async t => {
     const body = JSON.parse(String(calls[0]?.init?.body)) as {events: IngestEvent[]};
     t.equal(body.events.length, 1, 'the batch holds the one record');
     t.equal(body.events[0]?.id, '01J8Z9K2M9PQRSTVWXYZ0A1B2C', 'the record id becomes the event id');
-    t.equal(body.events[0]?.fingerprint, 'abcdef0123456789abcdef0123456789', 'the record fingerprint keys the event');
+    t.equal(
+        body.events[0]?.fingerprint,
+        'abcdef0123456789abcdef0123456789',
+        'the record fingerprint keys the event',
+    );
     t.equal(body.events[0]?.service, 'hub', 'the service name travels with the event');
     t.equal(writer.failed(), 0, 'a 202 is not a failure');
     t.equal(writer.dropped(), 0, 'and nothing is dropped when the queue is not full');
@@ -63,7 +135,10 @@ t.test('a non-2xx answer is reported, never thrown', async t => {
         fetch: (async (): Promise<Response> => new Response(null, {status: 500})) as typeof fetch,
         onError: error => void errors.push(error),
     });
-    t.doesNotThrow(() => writer.write('line\n', record()), 'write never throws, even before the send settles');
+    t.doesNotThrow(
+        () => writer.write('line\n', record()),
+        'write never throws, even before the send settles',
+    );
     await writer.flush();
     t.equal(errors.length, 1, 'the failure was reported');
     t.match(String(errors[0]), /answered 500/, 'the report names what the service answered');
@@ -189,7 +264,11 @@ t.test('a record whose refs cannot be read is skipped, never thrown', async t =>
     await writer.flush();
     t.equal(calls, 0, 'nothing is posted without references to carry');
     t.equal(writer.failed(), 0, 'nothing is reported as failed');
-    t.equal(writer.dropped(), 0, 'and nothing is counted as dropped: it was skipped, not discarded');
+    t.equal(
+        writer.dropped(),
+        0,
+        'and nothing is counted as dropped: it was skipped, not discarded',
+    );
 });
 
 t.test('with no fetch injected, the global fetch is used', async t => {
@@ -242,7 +321,9 @@ t.test('a record reaches stdout and the service in parallel (§5.1)', async t =>
         return true;
     }) as typeof process.stdout.write;
     try {
-        createLogger({service: 'hub', sinks: [writer], now: () => 1757765472345}).info('fan-out works');
+        createLogger({service: 'hub', sinks: [writer], now: () => 1757765472345}).info(
+            'fan-out works',
+        );
     } finally {
         process.stdout.write = originalWrite;
     }
@@ -290,7 +371,11 @@ t.test('stdout, the service and a file all receive the same record (§5.1 row)',
         return true;
     }) as typeof process.stdout.write;
     try {
-        const logger = createLogger({service: 'hub', sinks: [service, fileWriter], now: () => 1757765472345});
+        const logger = createLogger({
+            service: 'hub',
+            sinks: [service, fileWriter],
+            now: () => 1757765472345,
+        });
         logger.info('three ways');
         logger.info('three ways');
     } finally {
@@ -357,6 +442,10 @@ t.test('a parent link reaches the lineage index through the shipped sink (PRD R7
     t.ok(first && second, 'both records were emitted');
     t.equal(second?.refs.parent, first?.id, 'the second record names the first as its parent');
     const secondId = second?.id ?? '';
-    t.equal(lineage.chain(secondId)[0]?.id, first?.id, 'the chain reconstructs root-first from the first');
+    t.equal(
+        lineage.chain(secondId)[0]?.id,
+        first?.id,
+        'the chain reconstructs root-first from the first',
+    );
     t.equal(lineage.rootOf(secondId), first?.id, 'the root of the second record is the first');
 });

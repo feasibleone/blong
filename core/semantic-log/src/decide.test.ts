@@ -3,7 +3,15 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import t from 'tap';
 import {openCache} from './cache.ts';
-import {currentContext, step, takeDecision, withFlow, withIntent} from './context.ts';
+import {
+    currentContext,
+    currentRegion,
+    currentRegions,
+    step,
+    takeDecision,
+    withFlow,
+    withIntent,
+} from './context.ts';
 import {decide} from './decide.ts';
 import {createLogger} from './logger.ts';
 import type {Writer} from './writer.ts';
@@ -39,6 +47,86 @@ t.test('the recorded decision is taken once, not twice', t => {
     t.end();
 });
 
+t.test('the chosen branch runs inside a region that names it', t => {
+    const seen: Array<{id?: string; discriminator?: string; chosen?: string}> = [];
+    decide('rate-within-limit', {rate: 1.1}, [
+        {name: 'decline', when: () => false, run: () => 'decline'},
+        {
+            name: 'accept',
+            when: () => true,
+            run: () => {
+                seen.push(currentRegion() ?? {});
+                return 'accept';
+            },
+        },
+    ]);
+    t.equal(
+        seen[0]?.discriminator,
+        'rate-within-limit',
+        'the branch knows the question it answered',
+    );
+    t.equal(seen[0]?.chosen, 'accept', 'and which answer it is');
+    t.ok(seen[0]?.id, 'and carries a position, so two branches of one kind stay apart');
+    t.equal(currentRegion(), undefined, 'the region closes with the branch that opened it');
+    t.end();
+});
+
+t.test('a nested branch reports the whole chain, outermost first', t => {
+    let chain: string[] = [];
+    decide('outer', {}, [
+        {
+            name: 'o',
+            when: () => true,
+            run: () =>
+                decide('inner', {}, [
+                    {
+                        name: 'i',
+                        when: () => true,
+                        run: () => {
+                            chain = (currentRegions() ?? []).map(region => region.discriminator);
+                        },
+                    },
+                ]),
+        },
+    ]);
+    t.same(chain, ['outer', 'inner'], 'the inner branch does not hide the outer one it sits in');
+    t.end();
+});
+
+t.test('sibling branches are numbered apart', t => {
+    const ids: Array<string | undefined> = [];
+    const take = () =>
+        decide('sibling', {}, [
+            {name: 'a', when: () => true, run: () => void ids.push(currentRegion()?.id)},
+        ]);
+    take();
+    take();
+    t.notSame(ids[0], ids[1], 'two branches of one kind are two positions, not one');
+    t.end();
+});
+
+t.test('a branch whose work throws leaves no region behind', t => {
+    t.throws(
+        () =>
+            decide('boom', {}, [
+                {
+                    name: 'a',
+                    when: () => true,
+                    run: () => {
+                        throw new Error('handler failed');
+                    },
+                },
+            ]),
+        /handler failed/,
+    );
+    t.equal(
+        currentRegion(),
+        undefined,
+        'the region is scoped to the branch, so the failure ends it',
+    );
+    t.end();
+});
+
 t.test('no branch matching yields a recorded non-choice, not a crash', t => {
     const result = decide('never', values, [{name: 'a', when: () => false, run: () => 'a'}]);
     t.equal(result, undefined);
@@ -47,15 +135,11 @@ t.test('no branch matching yields a recorded non-choice, not a crash', t => {
 });
 
 t.test('every evaluated branch is recorded, including false ones', t => {
-    decide(
-        'multi',
-        values,
-        [
-            {name: 'first', when: () => false, run: () => 1},
-            {name: 'second', when: () => false, run: () => 2},
-            {name: 'third', when: () => true, run: () => 3},
-        ],
-    );
+    decide('multi', values, [
+        {name: 'first', when: () => false, run: () => 1},
+        {name: 'second', when: () => false, run: () => 2},
+        {name: 'third', when: () => true, run: () => 3},
+    ]);
     t.same(takeDecision()?.candidates, ['first', 'second', 'third']);
     t.end();
 });
@@ -121,7 +205,11 @@ t.test('a filtered record does not consume a rationale it never carried', t => {
     logger.debug('filtered away');
     t.equal(lines.length, 0, 'the threshold suppressed the record');
     logger.warn('written');
-    t.match(lines[0], /decision\s+late -> only/, 'the rationale rides the next record actually emitted');
+    t.match(
+        lines[0],
+        /decision\s+late -> only/,
+        'the rationale rides the next record actually emitted',
+    );
     t.end();
 });
 
@@ -130,10 +218,18 @@ t.test('a decision with no record after it is dropped with its scope', async t =
     const logger = createLogger({service: 'hub', writer});
     await withIntent({name: 'Orphan'}, async () => {
         decide('orphan', {}, [{name: 'only', when: () => true, run: () => 1}]);
-        t.equal(currentContext().pendingDecision?.decision?.discriminator, 'orphan', 'it is pending inside the scope');
+        t.equal(
+            currentContext().pendingDecision?.decision?.discriminator,
+            'orphan',
+            'it is pending inside the scope',
+        );
     });
     logger.info('unrelated');
-    t.notMatch(lines[0], /decision/, 'no record was emitted in that scope, so the rationale never surfaces');
+    t.notMatch(
+        lines[0],
+        /decision/,
+        'no record was emitted in that scope, so the rationale never surfaces',
+    );
     t.end();
 });
 
@@ -157,26 +253,29 @@ t.test('the rationale is attached before redaction, so patterns reach it', t => 
     t.end();
 });
 
-t.test('the rationale is retained with the record and reads back through the cache (PRD R11/R21)', async t => {
-    // The record is snapshotted at emit time, so a `Decision` that survives
-    // redaction must survive `structuredClone` too, or the CLI would read back a
-    // record that had lost the rationale it was told about.
-    const dir = await mkdtemp(join(tmpdir(), 'semantic-log-decide-'));
-    t.teardown(() => rm(dir, {recursive: true, force: true}));
-    const cache = await openCache({dir, limit: 10});
-    const {lines, writer} = capture();
-    const logger = createLogger({service: 'hub', writer, cache});
-    decide('round-trip', {n: 1}, [{name: 'only', when: () => true, run: () => 'only'}]);
-    logger.info('kept');
-    await logger.flush();
-    const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
-    t.ok(id, 'the line carries the id');
-    const stored = await cache.get(id);
-    t.equal(stored?.decision?.discriminator, 'round-trip');
-    t.equal(stored?.decision?.chosen, 'only');
-    t.same(stored?.decision?.candidates, ['only']);
-    await cache.close();
-});
+t.test(
+    'the rationale is retained with the record and reads back through the cache (PRD R11/R21)',
+    async t => {
+        // The record is snapshotted at emit time, so a `Decision` that survives
+        // redaction must survive `structuredClone` too, or the CLI would read back a
+        // record that had lost the rationale it was told about.
+        const dir = await mkdtemp(join(tmpdir(), 'semantic-log-decide-'));
+        t.teardown(() => rm(dir, {recursive: true, force: true}));
+        const cache = await openCache({dir, limit: 10});
+        const {lines, writer} = capture();
+        const logger = createLogger({service: 'hub', writer, cache});
+        decide('round-trip', {n: 1}, [{name: 'only', when: () => true, run: () => 'only'}]);
+        logger.info('kept');
+        await logger.flush();
+        const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
+        t.ok(id, 'the line carries the id');
+        const stored = await cache.get(id);
+        t.equal(stored?.decision?.discriminator, 'round-trip');
+        t.equal(stored?.decision?.chosen, 'only');
+        t.same(stored?.decision?.candidates, ['only']);
+        await cache.close();
+    },
+);
 
 t.test('a rationale is consumed once, globally, not once per scope', async t => {
     // Regression: `takeDecision` used to clear the pending rationale with
@@ -192,7 +291,11 @@ t.test('a rationale is consumed once, globally, not once per scope', async t => 
     logger.info('outside the flow');
     t.equal(lines.length, 2, 'both records were written');
     t.match(lines[0], /decision\s+outer-scope -> only/, 'the nested record reports the branch');
-    t.notMatch(lines[1], /decision/, 'the enclosing record does not repeat a rationale the nested scope consumed');
+    t.notMatch(
+        lines[1],
+        /decision/,
+        'the enclosing record does not repeat a rationale the nested scope consumed',
+    );
     t.end();
 });
 
@@ -204,7 +307,13 @@ t.test('a rationale consumed in any scope-creating helper does not repeat outsid
     const scopes: Array<[string, (emit: () => void) => Promise<void>]> = [
         ['withFlow', emit => withFlow({id: FLOW_ID, kind: 'transfer.single'}, async () => emit())],
         ['withIntent', emit => withIntent({name: 'Checkout'}, async () => emit())],
-        ['step', emit => withFlow({id: FLOW_ID, kind: 'transfer.single'}, () => step('transfer', async () => emit()))],
+        [
+            'step',
+            emit =>
+                withFlow({id: FLOW_ID, kind: 'transfer.single'}, () =>
+                    step('transfer', async () => emit()),
+                ),
+        ],
     ];
     for (const [label, run] of scopes) {
         const {lines, writer} = capture();
@@ -212,7 +321,11 @@ t.test('a rationale consumed in any scope-creating helper does not repeat outsid
         decide(label, {n: 1}, [{name: 'only', when: () => true, run: () => 1}]);
         await run(() => logger.info('nested'));
         logger.info('enclosing');
-        t.match(lines[0], new RegExp(`decision\\s+${label} -> only`), `${label}: the nested record carries it`);
+        t.match(
+            lines[0],
+            new RegExp(`decision\\s+${label} -> only`),
+            `${label}: the nested record carries it`,
+        );
         t.notMatch(lines[1], /decision/, `${label}: the enclosing record is clean`);
     }
     t.end();
@@ -249,7 +362,9 @@ t.test('a redaction pattern that collapses the rationale cannot make logging thr
     for (const pattern of ['**', 'decision', 'decision.candidates']) {
         const {lines, writer} = capture();
         const logger = createLogger({service: 'hub', writer, format: 'json', redact: [pattern]});
-        decide('quote-valid', {amount: 500}, [{name: 'reject', when: () => true, run: () => 'reject'}]);
+        decide('quote-valid', {amount: 500}, [
+            {name: 'reject', when: () => true, run: () => 'reject'},
+        ]);
         t.doesNotThrow(() => logger.info('quote handled'), `${pattern}: logging does not throw`);
         t.equal(lines.length, 1, `${pattern}: the record is still written`);
         const parsed = JSON.parse(lines[0]) as {decision?: unknown; fingerprint?: string};
@@ -277,14 +392,28 @@ t.test('the default format tolerates a redaction-collapsed rationale', t => {
     for (const pattern of ['**', 'decision', 'decision.candidates']) {
         const {lines, writer} = capture();
         const logger = createLogger({service: 'hub', writer, redact: [pattern]});
-        decide('quote-valid', {amount: 500}, [{name: 'reject', when: () => true, run: () => 'reject'}]);
+        decide('quote-valid', {amount: 500}, [
+            {name: 'reject', when: () => true, run: () => 'reject'},
+        ]);
         t.doesNotThrow(() => logger.info('quote handled'), `${pattern}: logging does not throw`);
         t.equal(lines.length, 1, `${pattern}: the record is still written`);
         if (pattern === 'decision.candidates') {
-            t.match(lines[0], /decision\s+quote-valid -> reject/, `${pattern}: the surviving rationale fields render`);
-            t.notMatch(lines[0], /\[redacted\]/, `${pattern}: the collapsed candidate list is omitted, not joined`);
+            t.match(
+                lines[0],
+                /decision\s+quote-valid -> reject/,
+                `${pattern}: the surviving rationale fields render`,
+            );
+            t.notMatch(
+                lines[0],
+                /\[redacted\]/,
+                `${pattern}: the collapsed candidate list is omitted, not joined`,
+            );
         } else {
-            t.match(lines[0], /decision\s+\[redacted\]/, `${pattern}: the withheld rationale keeps its placeholder`);
+            t.match(
+                lines[0],
+                /decision\s+\[redacted\]/,
+                `${pattern}: the withheld rationale keeps its placeholder`,
+            );
             t.notMatch(lines[0], /quote-valid|amount/, `${pattern}: no rationale value survives`);
         }
     }
@@ -300,6 +429,10 @@ t.test('a withheld timestamp renders as an explicit marker in the default format
     const logger = createLogger({service: 'hub', writer, redact: ['time']});
     t.doesNotThrow(() => logger.info('no rationale here'));
     t.equal(lines.length, 1, 'the record is still written');
-    t.match(lines[0], /^\[time withheld\] /, 'the timestamp is an explicit marker, not a wrong date');
+    t.match(
+        lines[0],
+        /^\[time withheld\] /,
+        'the timestamp is an explicit marker, not a wrong date',
+    );
     t.end();
 });

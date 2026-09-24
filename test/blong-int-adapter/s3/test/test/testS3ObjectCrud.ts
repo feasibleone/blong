@@ -24,7 +24,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {
             storageObjectAdd,
             storageObjectGet,
@@ -201,14 +201,8 @@ export default handler(
                     return (await storageObjectGet({key: copiedKey}, $meta)) as GetResult;
                 },
 
-                // Phase checkpoint: snapshot all object read results together
-                checkpoint(
-                    'object-reads',
-                    'getTextObject',
-                    'headObject',
-                    'findObjects',
-                    'getNewKey',
-                ),
+                // Phase snapshot: all object read results together
+                snapshot('object-reads', 'getTextObject', 'headObject', 'findObjects', 'getNewKey'),
 
                 // ── 10. remove — delete all test objects ───────────────────
                 async function removeObjects(

@@ -132,6 +132,11 @@ say — so the pairs nest the way the execution did. A call that never leaves it
 participant is the one exception: it is drawn once, because the answer to it would repeat
 the same caller, the same label and the same step, and the arrow is already solid — the
 receiver's record is what made it solid in the first place.
+
+A branch is an \`alt\`/\`else\` block whose arms are named for the candidates the code declared, and an
+arm whose predicate never ran says so. The arms are **ordered so the block renders**: mermaid refuses
+a section with nothing in it when it is the last before \`end\`, so the empty arms come first and the
+one carrying the calls last. The labels, not the order, are what name the candidates.
 `;
 
 /**

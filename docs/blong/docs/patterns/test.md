@@ -285,15 +285,15 @@ export default handler(({lib: {group}}) => ({
 Tests and handlers share deep structural similarities. The framework provides mechanisms that work
 identically in both contexts, enabling a smooth transition from test code to production code.
 
-### Checkpoints in Tests
+### Progress Points in Tests
 
-The [checkpoint](../concepts/checkpoint) function records progress through multi-step operations. In
-test mode, checkpoints are recorded in `$meta.checkpoints`, enabling assertions on intermediate
-handler states:
+The [checkpoint](../concepts/checkpoint) function records progress through multi-step operations,
+and `$meta.decide` records which branch ran. In test mode both are kept on the invocation, so a test
+can assert on the moments _and_ on the choices between them:
 
 ```ts
 export default handler(({lib: {group}, handler: {orderProcess}}) => ({
-    testOrderCheckpoints: ({name = 'order checkpoints'}, $meta) =>
+    testOrderProgress: ({name = 'order progress'}, $meta) =>
         group(name)([
             async function processOrder(assert, {$meta}) {
                 const result = await orderProcess({items: [{price: 10, quantity: 2}]}, $meta);
@@ -303,17 +303,27 @@ export default handler(({lib: {group}, handler: {orderProcess}}) => ({
                 const checkpoints = $meta.checkpoints;
                 assert.equal(checkpoints[0].name, 'validated');
                 assert.equal(checkpoints[1].name, 'persisted');
+
+                // …and the branch it took, with the candidates it weighed
+                const decisions = $meta.decisions;
+                assert.equal(decisions[0].discriminator, 'price-tier');
+                assert.equal(decisions[0].chosen, 'single');
             },
         ]),
 }));
 ```
+
+A checkpoint is one shape of a progress point; a branch is the other. Asserting on the sequence of
+points and the branches between them reads the same data the log draws as notes and `alt` blocks
+([R26, R27](../rationale/semantic-log.md)).
 
 ### Test Graduation
 
 Test handlers can be promoted to production handlers. The process:
 
 1. Move the handler from `server/test/test/` to `orchestrator/`
-2. Destructure `assert` and `checkpoint` from `lib` (both use `?.` for zero-cost in production)
+2. Keep the `$meta.checkpoint?.()` calls — they are already no-ops in production — and destructure
+   `assert` from `lib`, which uses `?.` for the same reason
 3. Add checkpoints at key progress points
 4. Adjust the orchestrator dispatch configuration
 

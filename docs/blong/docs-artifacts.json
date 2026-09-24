@@ -79,11 +79,32 @@
             "command": "BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/blong.play.ts --update-snapshots"
         },
         {
+            "id": "realm.observed-kind-union",
+            "kind": "file",
+            "destination": "core/blong-realm/docs/observedKindUnion.md",
+            "package": "core/blong-realm",
+            "command": "BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/blong.play.ts --update-snapshots"
+        },
+        {
             "id": "gateway.observed-flows",
             "kind": "file",
             "destination": "realm/blong-gateway/docs/observedFlows.md",
             "package": "realm/blong-gateway",
             "command": "BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/observedFlow.play.ts --update-snapshots"
+        },
+        {
+            "id": "gateway.observed-merge-flow",
+            "kind": "file",
+            "destination": "realm/blong-gateway/docs/observedMergeFlow.md",
+            "package": "realm/blong-gateway",
+            "command": "BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/observedMergeFlow.play.ts --update-snapshots"
+        },
+        {
+            "id": "commander.observed-branch-list",
+            "kind": "file",
+            "destination": "realm/blong-commander/docs/observedBranchList.md",
+            "package": "realm/blong-commander",
+            "command": "BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/observedBranchList.play.ts --update-snapshots"
         },
         {
             "id": "png.marine-coral-browse",

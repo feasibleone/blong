@@ -26,7 +26,7 @@ type StepMeta = {$meta: Record<string, unknown>};
  */
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {
             sqlSchemaTableSync,
             sqlSchemaTableDrop,
@@ -115,7 +115,7 @@ export default handler(
                     await verifyIdempotency;
                     await sqlSchemaTableDrop({}, $meta);
                     assert.ok(true, 'item table dropped');
-                    return checkpoint('item table dropped');
+                    return snapshot('item table dropped');
                 },
             ]),
     }),

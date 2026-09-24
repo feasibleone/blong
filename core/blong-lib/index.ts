@@ -177,7 +177,20 @@ export const group =
             });
         return steps;
     };
-export const checkpoint = (name: string, ...markers: string[]) => {
+/**
+ * Create a **snapshot marker** — an array of step names placed inside a `group()` steps
+ * array, marking where the test context is snapshotted into the TAP context.
+ *
+ * Named `snapshot`, not `checkpoint`: a *checkpoint* is the progress point a running
+ * handler reports (`$meta.checkpoint`, `lib.checkpoint`), which is unrelated to a test's
+ * snapshot, and one word for two things is how they came to read as one.
+ *
+ * - `snapshot('name')`           — one marker, snapshot the full context
+ * - `snapshot('name', 'a', 'b')` — one marker per phase, only those steps snapshotted
+ *
+ * A bare `[]` is neither: it is a sync barrier, which waits without snapshotting.
+ */
+export const snapshot = (name: string, ...markers: string[]) => {
     const arr: string[] = markers.length > 0 ? [...markers] : ['*'];
     return Object.assign(arr, {name});
 };

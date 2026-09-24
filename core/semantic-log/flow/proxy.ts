@@ -59,39 +59,60 @@ export function installProxy(participant: Participant, options: ProxyOptions): v
             const result = await participant.run(traceId, flowId, inbound, () =>
                 participant.phase(phase, async () => {
                     // The receipt belongs to the *caller's* leg — this is the far end of
-                    // the scheme's call. It comes before the routing decision so that the
-                    // rationale that decision records still attaches to the record that
-                    // reports the routing, which is the record it explains (PRD R11/R22).
+                    // the scheme's call — so it is emitted before the routing decision and
+                    // stays outside every branch: it is not a record this proxy chose to
+                    // make, it is the far end acknowledging the call it was handed.
                     logger.info('corridor request received', {
                         req: {operation: 'POST', target: path},
                     });
-                    const route = decide('route-selection', {corridor: TARGET, reachable}, [
-                        {
-                            name: TARGET,
-                            when: values => values.reachable === true,
-                            run: () => options.hubBUrl,
-                        },
-                        {name: 'hold', when: () => true, run: () => undefined},
-                    ]);
-                    if (!route) {
-                        logger.error('no route to the target ecosystem', {
-                            err: {message: `corridor ${TARGET} is not configured`},
-                        });
+                    // The decision's work happens *inside* its branches, so the calls it
+                    // chose are drawn inside the `alt` block rather than beside it
+                    // (PRD R26/R27).
+                    const forwarded = await decide(
+                        'route-selection',
+                        {corridor: TARGET, reachable},
+                        [
+                            {
+                                name: TARGET,
+                                when: values => values.reachable === true,
+                                run: () =>
+                                    bindLeg(
+                                        // The id is the method the call was addressed by,
+                                        // carried on from the inbound leg; the proxy answers
+                                        // for this ecosystem, so it is the unit the next hop
+                                        // is declared by.
+                                        {id: leg, from: participant.name, to: TARGET},
+                                        async () => {
+                                            logger.info('routing to target ecosystem', {
+                                                req: {operation: 'POST', target: path},
+                                                corridor: TARGET,
+                                            });
+                                            return hop(
+                                                participant,
+                                                options.hubBUrl,
+                                                path,
+                                                request.body,
+                                            );
+                                        },
+                                    ),
+                            },
+                            {
+                                name: 'hold',
+                                when: () => true,
+                                run: () => {
+                                    logger.error('no route to the target ecosystem', {
+                                        err: {
+                                            message: `corridor ${TARGET} is not configured`,
+                                        },
+                                    });
+                                    return undefined;
+                                },
+                            },
+                        ],
+                    );
+                    if (!forwarded) {
                         return {status: 503, body: {reason: 'no route to target ecosystem'}};
                     }
-                    const forwarded = await bindLeg(
-                        // The id is the method the call was addressed by, carried on from
-                        // the inbound leg; the proxy answers for this ecosystem, so it is the
-                        // unit the next hop is declared by.
-                        {id: leg, from: participant.name, to: TARGET},
-                        async () => {
-                            logger.info('routing to target ecosystem', {
-                                req: {operation: 'POST', target: path},
-                                corridor: TARGET,
-                            });
-                            return hop(participant, route, path, request.body);
-                        },
-                    );
                     return {status: forwarded.status, body: forwarded.body};
                 }),
             );

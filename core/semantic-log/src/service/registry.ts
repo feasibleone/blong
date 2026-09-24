@@ -7,6 +7,7 @@
  */
 
 import {isLegId, isLegSeq, isServiceName, type LegIdentity} from '../context.ts';
+import type {RegionMark} from '../record.ts';
 import {REF_LENGTH} from '../refs.ts';
 
 export interface IngestEvent {
@@ -76,6 +77,84 @@ export interface IngestEvent {
         legTo?: string;
         legSeq?: string;
     };
+    /**
+     * Progress points (PRD R26): the branches the record was emitted inside, and
+     * the milestones announced at that point.
+     *
+     * Names only, reduced by the emitter: a checkpoint's `data` and a decision's
+     * evaluated `values` are payload and are never transmitted (R1, R10), so the
+     * service cannot leak what it was never sent. Everything here is a name the
+     * source code declares, which is what makes a diagram drawn from it greppable.
+     */
+    progress?: {regions?: RegionMark[]; points?: string[]};
+}
+
+/**
+ * The progress points an event carries, or `undefined` when it carries none (PRD
+ * R26).
+ *
+ * Read here, beside the event type, for the reason {@link legOf} gives: every
+ * consumer — the flow ledger, the observed shape, the diagram — needs the *same*
+ * verdict, and every field arrived from another process, so one the grammar rejects
+ * is treated exactly as an absent one rather than throwing mid-batch (D3).
+ *
+ * A branch whose discriminator or chosen name is unusable is dropped whole: a
+ * half-read branch would be drawn as an alternative no code ever considered. A
+ * candidate list that did not arrive — or arrived collapsed by redaction —
+ * degrades to the one branch that certainly ran, because inventing alternatives
+ * would put names in a diagram that nothing declared. Point names are kept only
+ * when they carry text, because a note with no text is not a note.
+ */
+export function progressOf(
+    event: IngestEvent,
+): {regions: RegionMark[]; points: string[]} | undefined {
+    const progress = event.progress;
+    if (progress === undefined) {
+        return undefined;
+    }
+    const candidates = (value: unknown, chosen: string): string[] => {
+        if (!Array.isArray(value)) {
+            // No list arrived, so the only branch that can be drawn is the one
+            // that ran: inventing alternatives would put names in a diagram that
+            // no code declared.
+            return [chosen];
+        }
+        const names = value.filter((name): name is string => typeof name === 'string');
+        return names.length > 0 ? names : [chosen];
+    };
+    const regions = Array.isArray(progress.regions)
+        ? progress.regions
+              .filter(
+                  mark =>
+                      mark !== null &&
+                      typeof mark === 'object' &&
+                      typeof mark.discriminator === 'string' &&
+                      mark.discriminator.length > 0 &&
+                      typeof mark.chosen === 'string' &&
+                      mark.chosen.length > 0,
+              )
+              .map(mark => ({
+                  id: typeof mark.id === 'string' ? mark.id : '',
+                  discriminator: mark.discriminator,
+                  chosen: mark.chosen,
+                  candidates: candidates(mark.candidates, mark.chosen),
+                  // How many of the record's points were announced before this branch was
+                  // taken: a count the emitter keeps, and the only statement of what preceded
+                  // a decision rather than what the decision caused (PRD R27). Rebuilt here
+                  // with the rest of the mark, because a field this function does not copy
+                  // is a field the service never sees.
+                  ...(typeof mark.pointsBefore === 'number' && Number.isFinite(mark.pointsBefore)
+                      ? {pointsBefore: Math.max(0, Math.trunc(mark.pointsBefore))}
+                      : {}),
+              }))
+        : [];
+    const points = Array.isArray(progress.points)
+        ? progress.points.filter(name => typeof name === 'string' && name.length > 0)
+        : [];
+    if (regions.length === 0 && points.length === 0) {
+        return undefined;
+    }
+    return {regions, points};
 }
 
 /**

@@ -14,7 +14,7 @@
  */
 
 import {LEVELS, levelName, levelValue, type LevelName} from './level.ts';
-import type {Decision, LogRecord} from './record.ts';
+import type {Decision, LogRecord, Progress} from './record.ts';
 import {PAYLOAD_THRESHOLD, encodeSegment, refUri} from './refs.ts';
 
 export interface RenderOptions {
@@ -237,10 +237,43 @@ export function renderField(value: unknown): string {
  * calling `.join` on a string. A wholly collapsed slot keeps its placeholder
  * text (handled by the caller), so the withheld rationale stays visible.
  */
-function decisionDetail(decision: Decision): string {
+function decisionDetail(decision: {
+    discriminator: string;
+    chosen: string;
+    candidates?: unknown;
+}): string {
     const {discriminator, chosen, candidates} = decision;
     const head = `${discriminator} -> ${chosen}`;
     return Array.isArray(candidates) ? `${head} (of ${candidates.join(', ')})` : head;
+}
+
+/**
+ * Render a record's progress points, one clause each.
+ *
+ * Read defensively like {@link decisionDetail}, and for the same reason: a
+ * `redact` pattern may have collapsed the slot, its region or its point list, so
+ * a present value is not necessarily the shape the type promises. A collapsed
+ * point list contributes nothing rather than calling `.map` on a string.
+ */
+function progressDetail(progress: Progress): string {
+    const parts: string[] = [];
+    const {regions} = progress;
+    if (Array.isArray(regions)) {
+        for (const mark of regions) {
+            if (mark && typeof mark === 'object') {
+                parts.push(`region: ${decisionDetail(mark)}`);
+            }
+        }
+    }
+    const {points} = progress;
+    if (Array.isArray(points)) {
+        for (const item of points) {
+            if (item && typeof item === 'object' && typeof item.name === 'string') {
+                parts.push(`point: ${item.name}`);
+            }
+        }
+    }
+    return parts.join('; ');
 }
 
 /**
@@ -388,6 +421,14 @@ export function renderHuman(record: LogRecord, options: RenderOptions = {}): str
                     ? decisionDetail(decision as Decision)
                     : renderField(decision);
             lines.push(blockLine('decision', sanitise(detail)));
+        }
+        if (record.progress) {
+            const progress: unknown = record.progress;
+            const detail =
+                typeof progress === 'object'
+                    ? progressDetail(progress as Progress)
+                    : renderField(progress);
+            lines.push(blockLine('progress', sanitise(detail)));
         }
         if (record.fields) {
             // A field line is `  key: value`, so the colon distinguishes it from

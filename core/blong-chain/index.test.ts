@@ -627,7 +627,7 @@ tap.test('TestExecutor - Nested Steps (Sequential Execution)', async t => {
         assert.ok(step1Index < step2Index, 'Nested array should wait for outer level to complete');
     });
 
-    t.test('empty array acts as checkpoint for parallel execution', async () => {
+    t.test('empty array acts as a sync barrier for parallel execution', async () => {
         const executor = new TestExecutor({concurrency: 10});
         const executionOrder: Array<{step: string; event: string; time: number}> = [];
         const startTime = Date.now();
@@ -678,17 +678,17 @@ tap.test('TestExecutor - Nested Steps (Sequential Execution)', async t => {
                 return {data: 3};
             },
 
-            // Checkpoint - wait for all parallel steps above to complete
+            // Sync barrier - wait for all parallel steps above to complete
             [],
 
-            async function afterCheckpoint1() {
+            async function afterBarrier1() {
                 executionOrder.push({step: 'after1', event: 'start', time: Date.now() - startTime});
                 await new Promise(resolve => setTimeout(resolve, 30));
                 executionOrder.push({step: 'after1', event: 'end', time: Date.now() - startTime});
                 return {data: 4};
             },
 
-            async function afterCheckpoint2() {
+            async function afterBarrier2() {
                 executionOrder.push({step: 'after2', event: 'start', time: Date.now() - startTime});
                 await new Promise(resolve => setTimeout(resolve, 30));
                 executionOrder.push({step: 'after2', event: 'end', time: Date.now() - startTime});
@@ -698,7 +698,7 @@ tap.test('TestExecutor - Nested Steps (Sequential Execution)', async t => {
 
         await executor.execute(steps, {});
 
-        // Verify all parallel steps end before any after-checkpoint steps start
+        // Verify all parallel steps end before any after-barrier steps start
         const parallel1End = executionOrder.find(e => e.step === 'parallel1' && e.event === 'end')!;
         const parallel2End = executionOrder.find(e => e.step === 'parallel2' && e.event === 'end')!;
         const parallel3End = executionOrder.find(e => e.step === 'parallel3' && e.event === 'end')!;
@@ -710,14 +710,14 @@ tap.test('TestExecutor - Nested Steps (Sequential Execution)', async t => {
 
         assert.ok(
             lastParallelEnd <= firstAfterStart,
-            `Checkpoint should ensure all parallel steps complete (${lastParallelEnd}ms) before next steps start (${firstAfterStart}ms)`,
+            `Sync barrier should ensure all parallel steps complete (${lastParallelEnd}ms) before next steps start (${firstAfterStart}ms)`,
         );
 
         const progress = executor.getProgress();
         assert.equal(progress.completedSteps, 5);
     });
 
-    t.test('multiple checkpoints create multiple synchronization barriers', async () => {
+    t.test('multiple sync barriers are honoured in order', async () => {
         const executor = new TestExecutor({concurrency: 10});
         const executionOrder: string[] = [];
 
@@ -734,7 +734,7 @@ tap.test('TestExecutor - Nested Steps (Sequential Execution)', async t => {
                 return {phase: 1, step: 2};
             },
 
-            [], // Checkpoint 1
+            [], // Sync barrier 1
 
             async function phase2Step1() {
                 await new Promise(resolve => setTimeout(resolve, 30));
@@ -748,7 +748,7 @@ tap.test('TestExecutor - Nested Steps (Sequential Execution)', async t => {
                 return {phase: 2, step: 2};
             },
 
-            [], // Checkpoint 2
+            [], // Sync barrier 2
 
             async function phase3Step1() {
                 await new Promise(resolve => setTimeout(resolve, 30));
@@ -1678,7 +1678,7 @@ tap.test('TestExecutor - Rerun (Phase 1)', async t => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// assert.snapshot / mask / autoSnapshot / checkpoint tests
+// assert.snapshot / mask / autoSnapshot / snapshot marker tests
 //
 // The capturing context helper simulates a minimal TAP test context so that
 // we can inspect what matchSnapshot receives without running TAP.
@@ -1915,7 +1915,7 @@ tap.test('autoSnapshot: true', async t => {
     });
 });
 
-tap.test("checkpoint markers — ['*'] and ['step1','step2']", async t => {
+tap.test("snapshot markers — ['*'] and ['step1','step2']", async t => {
     t.test("['*'] snapshots all completed steps into a context object", async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1});
@@ -1936,7 +1936,7 @@ tap.test("checkpoint markers — ['*'] and ['step1','step2']", async t => {
         assert.equal(captured[0][1], 'context');
     });
 
-    t.test("named ['*'] checkpoint uses .name property for snapshot name", async () => {
+    t.test("named ['*'] snapshot uses .name property for snapshot name", async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1});
         const steps: StepArray = [
@@ -1972,7 +1972,7 @@ tap.test("checkpoint markers — ['*'] and ['step1','step2']", async t => {
         assert.ok(!('stepB' in snapshot));
     });
 
-    t.test('checkpoint applies chain-level mask to context snapshot', async () => {
+    t.test('snapshot marker applies chain-level mask to context snapshot', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1, mask: ['id']});
         const steps: StepArray = [
@@ -2011,9 +2011,9 @@ tap.test("checkpoint markers — ['*'] and ['step1','step2']", async t => {
             },
             // Snapshot only 'fast' (which finishes first) — 'slow' keeps running
             ['fast'],
-            // stepC can start immediately after the checkpoint, 'slow' still running
+            // stepC can start immediately after the snapshot marker, 'slow' still running
             async function stepC(_a: unknown, ctx: ITestContext) {
-                await ctx.slow; // wait for slow via context, not checkpoint
+                await ctx.slow; // wait for slow via the context, not the marker
                 order.push('C');
                 return {z: 3};
             },

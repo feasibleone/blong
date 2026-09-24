@@ -180,7 +180,10 @@ sequenceDiagram
     Note over payer, fxp: PHASE 1: discovery
     payer->>hubA: discovery.parties
     hubA->>proxy: discovery.proxy
+    alt route-selection = hold — not weighed
+    else hubB
     proxy->>hubB: proxy.discovery.corridor
+    end
     hubB->>payee: discovery.payee
     payee-->>hubB: discovery.payee
     hubB-->>proxy: proxy.discovery.corridor
@@ -189,7 +192,10 @@ sequenceDiagram
     Note over payer, fxp: PHASE 2: quote
     payer->>hubA: quote.rates
     hubA->>proxy: quote.proxy
+    alt route-selection = hold — not weighed
+    else hubB
     proxy->>hubB: proxy.quote.corridor
+    end
     hubB->>fxp: quote.fx
     fxp-->>hubB: quote.fx
     hubB->>payee: quote.payee
@@ -200,7 +206,10 @@ sequenceDiagram
     Note over payer, fxp: PHASE 3: transfer
     payer->>hubA: transfer.submit
     hubA->>proxy: transfer.proxy
+    alt route-selection = hold — not weighed
+    else hubB
     proxy->>hubB: proxy.transfer.corridor
+    end
     hubB->>payee: transfer.deliver
     payee-->>hubB: transfer.deliver
     hubB-->>proxy: proxy.transfer.corridor

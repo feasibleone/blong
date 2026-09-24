@@ -69,6 +69,8 @@ pages:
 | **Causal graph lineage**                  | Records are a graph rather than a timeline: each one points at the record that caused it                                                | `refs.parent`, walked by the service's lineage index — **R7**                    |
 | **Intent-driven telemetry**               | A business intent declared at an entry point is inherited by every descendant record                                                    | `withIntent`, and the `intent` on each record — **R7**                           |
 | **Rule evaluation trace**                 | A branch records the discriminator, every candidate in evaluation order, and the one taken                                              | `decide` and `Decision` — **R11**                                                |
+| **Progress point**                        | A moment worth keeping in the logic — a checkpoint that reports, a branch that explains                                                 | `point` / `region`, one record facet — **R26**                                   |
+| **Observed alternative**                  | A candidate branch is recorded although it never ran, so a decision is drawn with every branch it weighed                               | `alt` / `else` in the diagram — **R27**                                          |
 | **Polymorphic telemetry facets**          | One recorded fact supports several audiences, projected when read rather than written per audience                                      | `GET /templates/:ref?facet=…` — **R16**                                          |
 | **Template registry as the durable unit** | The group outlives the individual: counts, identity and centroid are kept; records are only evidence                                    | the registry — **R4**, **R12**                                                   |
 | **Claim check** (from integration design) | Evidence is fetched on demand rather than carried in every record                                                                       | exemplar retention — **R13**                                                     |
@@ -94,6 +96,13 @@ registry is bounded and templates can be evicted, so identity is stable for what
 than forever. And rate-shift scoring is a baseline of _completed_ windows, so a burst cannot be
 recognised until a baseline exists: the window has to match the timescale of the traffic being
 scored, and a caller whose activity happens in milliseconds must configure one that does.
+
+A third rule shapes what the wire carries, and it is the rule progressive disclosure already
+follows: **names travel, values stay local.** A checkpoint's name and a branch's discriminator,
+candidates and chosen outcome are structural — they identify the code path — so they are transmitted
+and drawn. A checkpoint's `data` and a branch's evaluated `values` are payload, so they stay in the
+record on disk and in the local cache, where the inspector can show them and a caller's `redact`
+patterns can withhold them (R1, R10).
 
 Two **non-goals** are worth stating just as plainly, because they are what a reader is most likely
 to expect and not get:
@@ -221,6 +230,33 @@ Three existing rows are amended by the same task:
   one kind's union and one execution's diagram.
 - **R14** — search no longer stops at templates: a retained record is rank-able by what it says, and
   the deploy diff is unchanged (it remains a template-and-kind read).
+
+## Requirements added by the progress-point task
+
+R26 and R27 were added when the checkpoint — a milestone a handler reports — and the branch
+rationale of R11 turned out to be one thing seen twice. A checkpoint and a decision are both
+**progress points**: moments in the logic that explain the shape a flow took. So they are one record
+facet and one ambient channel, and they differ only in what they select and how they are drawn.
+
+|     | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R26 | **Progress points.** A point is a milestone that reports (`checkpoint(name, data)`); a region is a branch that explains (`decide(discriminator, values, branches)`) and carries the position it applied at, so the records it spans are attributable to it. Both are announced from `$meta` (which owns the invocation's captured list) or from `lib` (for code that has no `$meta`), and neither is a second mechanism: one ambient channel, one record facet. |
+| R27 | **Progress points in the diagram.** A point is drawn as a note over the participant that reported it; a region is drawn as an `alt`/`else`/`end` block spanning the calls the chosen branch made, with **every** candidate drawn — the unchosen ones empty, because a branch that was weighed and refused is what a reader of a failure most needs to see. A region with no alternatives stays a band over the participants.                                    |
+
+One existing row is amended by the same task, and the amendment is what makes it whole:
+
+- **R11** — the record carries the rationale _and_ the position the branch applied at. Candidates
+  were already recorded in evaluation order; what was missing was where the taken branch's work
+  happened, without which the rationale explains a call rather than the run. The unchosen branches
+  are drawn although they never ran, which is exactly what a diagram drawn only from what happened
+  would have omitted.
+
+Three capabilities fall out of the same mechanism rather than needing one of their own. The **phase
+band** a multi-step flow already draws is a region with no alternatives; a checkpoint is a natural
+escalation point for progressive disclosure (R10); and the captured list a test asserts on is the
+same list the diagram is drawn from, so a test and a diagram cannot disagree about what happened. A
+fourth is consequential but deliberately **not** claimed: region names are not yet part of the shape
+drift compares, so a deploy that adds a branch is not yet a drift observation (R6).
 
 ## The flows in `core/semantic-log/flow/` are the end-to-end evidence: real HTTP between real
 

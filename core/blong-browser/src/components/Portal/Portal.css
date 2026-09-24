@@ -43,6 +43,17 @@
     min-height: 0;
 }
 
+/* The tab strip is a flex item of that column, and a page taller than the area
+   would make it shrink: the strip's box then measures less than the tab it holds
+   (18px against 46px, seen with a navigator listing a few dozen keys), the header
+   is clipped and the panels — laid out after the strip's shortened box — are drawn
+   over it. A strip is never the thing to give up: it keeps its natural height, and
+   the panels below scroll or clip instead, which is what `min-height: 0` on them
+   is for. */
+.p-tabview .p-tabview-nav-container {
+    flex-shrink: 0;
+}
+
 .p-tabview .p-tabview-panels {
     padding: 0;
     flex-grow: 1;

@@ -48,6 +48,15 @@ open (35)
 
 ## Manual
 
+- capture sequence diagram with progress points for commanderBranchList
+- create a skill that explains what needs to be in place for capturing sequence diagrams with
+  progress points
+- F-241 - `blong-dev memory` auto-format
+- F-244
+- T-134 render progress points as test-report steps
+- meta `checkpoints` and `decisions` should be in a single array `progress`
+- implement implicit and explicit metrics
+- set default checkpointMode in blong-gogo
 - todos must be written as instructions
 - align semantic-log and unified-handler-test.md
 - editor features visual content
@@ -83,12 +92,13 @@ open (35)
 - remove axios
 - playwright test runner for backend tests
 - telemetry
-- blong-kustomize
+- blong-kustomize, see
+  https://github.com/kubernetes-sigs/kustomize/blob/master/examples/remoteBuild.md
 - same queries are repeated in multiple places, they should be refactored into a single function
 - avatar photo upload (initials-only for now — per user decision)
 - allow multi statement in blong-dev sql
-- create db admin ui
-- create k8s admin ui
+- commander ui enhancements for admin tasks
+- cross-reference all docs and critical source code
 - tests are doing too many assertions instead of snapshotting
 - compile queries to procedures
 - combined storybook

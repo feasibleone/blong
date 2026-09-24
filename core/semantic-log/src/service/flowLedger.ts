@@ -61,8 +61,9 @@
  * by the per-execution cap by {@link FlowLedger.truncations}.
  */
 
+import type {RegionMark} from '../record.ts';
 import {isUlid} from '../ulid.ts';
-import {legOf, refFromFingerprint, type IngestEvent} from './registry.ts';
+import {legOf, progressOf, refFromFingerprint, type IngestEvent} from './registry.ts';
 
 /** Executions whose detail is retained for the instance view. */
 const DEFAULT_EXECUTION_LIMIT = 1000;
@@ -80,12 +81,24 @@ export interface LegObservation {
     from?: string;
     /** The receiver the **caller** declared; absent on a receiver's own records. */
     to?: string;
+    /**
+     * The phase the record was written in (PRD R26/R27).
+     *
+     * It is what says which end of the call wrote it, and the only thing that does:
+     * a receiver adopts the identity the caller sent, so `to` is present on its answer
+     * too. `start`/`end`/`error` are the caller's, `received`/`answered` the receiver's.
+     */
+    phase?: string;
     /** The call's position in the execution, as the caller assigned it. */
     seq?: string;
     /** The step the record sat in, when the emitter reported one. */
     step?: string;
     /** The flow position the emitter reported, when it reported one. */
     index?: number;
+    /** The branches the record was emitted inside, outermost first (PRD R26). */
+    regions?: RegionMark[];
+    /** Milestones announced with the record (PRD R26), drawn as notes over its call. */
+    points?: string[];
     time: number;
     /** The record the observation came from, so a diagram can name its evidence. */
     ref: string;
@@ -98,6 +111,36 @@ export interface LegEnd {
     /** Declarations observed for this pair — one per execution, however many records it logged. */
     count: number;
     /** Of those, the attempts whose receiver was also observed. */
+    observed: number;
+    /**
+     * The branches declarations of this pair were observed inside, when any were
+     * (PRD R26/R27).
+     *
+     * Tallied here rather than on the leg because a count lives where the *pair*
+     * lives: one leg reaches two receivers only in a deployment that cannot make up
+     * its mind, and each pair's branching is then its own. Absent when the call was
+     * never inside a branch, which is what keeps an un-branched call drawn flat.
+     */
+    branches?: ObservedBranch[];
+}
+
+/**
+ * One branch that declarations of a call were observed inside (PRD R26).
+ *
+ * Keyed by the discriminator and the branch taken, so the *same* decision taken in
+ * every execution of a flow is one entry with a count — which is what a union
+ * needs to draw one `alt` block rather than one per run.
+ */
+export interface ObservedBranch {
+    /** The discriminator consulted. */
+    discriminator: string;
+    /** Every candidate it weighed, in evaluation order. */
+    candidates: string[];
+    /** The branch taken. */
+    chosen: string;
+    /** Declarations of this pair observed inside this branch. */
+    count: number;
+    /** Of those, the ones a receiver was also observed for. */
     observed: number;
 }
 
@@ -116,6 +159,85 @@ export interface ObservedLeg {
     services: string[];
     /** Ends observed, most frequently declared first. */
     ends: LegEnd[];
+}
+
+/**
+ * Fold what a later event on a leg reported into the observation already held for it.
+ *
+ * A union, not an overwrite, and a union by name: points travel as names and branches as named
+ * marks, so the same point announced twice is one note and the same branch taken twice is one
+ * alternative. Arrival order is the only order the service has.
+ */
+function mergeProgress(
+    target: LegObservation,
+    progress: {regions: RegionMark[]; points: string[]} | undefined,
+): void {
+    if (progress === undefined) {
+        return;
+    }
+    if (progress.points.length > 0) {
+        const known = new Set(target.points ?? []);
+        const added = progress.points.filter(name => !known.has(name));
+        if (added.length > 0) {
+            target.points = [...(target.points ?? []), ...added];
+        }
+    }
+    if (progress.regions.length > 0) {
+        const named = (mark: RegionMark) => `${mark.discriminator}\u0000${mark.chosen}`;
+        const known = new Set((target.regions ?? []).map(named));
+        const added = progress.regions.filter(mark => !known.has(named(mark)));
+        if (added.length > 0) {
+            target.regions = [...(target.regions ?? []), ...added];
+        }
+    }
+}
+
+/** The phases a call is recorded in, as `callTrace` names them. */
+const CALL_PHASES: readonly string[] = ['start', 'end', 'error', 'received', 'answered'];
+
+/** Does this phase belong to the end that answers the call rather than the one that made it? */
+export function receiverPhase(phase: string | undefined): boolean {
+    return phase === 'received' || phase === 'answered';
+}
+
+/**
+ * The phase the record was written in, read off the method it was addressed by.
+ *
+ * `callTrace` names the envelope's method `<leg>.<phase>` — the record model the ledger
+ * already reads a call out of — so the phase travels without a field of its own. Anything
+ * else is absent: a method that is not `<leg>.<phase>` says nothing about which end wrote
+ * the record, and a guess would attribute one end's work to the other.
+ */
+function phaseOf(event: IngestEvent): string | undefined {
+    const operation = event.operation;
+    if (operation === undefined) {
+        return undefined;
+    }
+    const tail = operation.slice(operation.lastIndexOf('.') + 1);
+    return CALL_PHASES.includes(tail) ? tail : undefined;
+}
+
+/** The branch an end already knows, or a new tally for it. */
+function branchOf(
+    end: LegEnd,
+    mark: {discriminator: string; candidates: string[]; chosen: string},
+): ObservedBranch {
+    const branches = (end.branches ??= []);
+    const found = branches.find(
+        branch => branch.discriminator === mark.discriminator && branch.chosen === mark.chosen,
+    );
+    if (found !== undefined) {
+        return found;
+    }
+    const branch: ObservedBranch = {
+        discriminator: mark.discriminator,
+        candidates: mark.candidates,
+        chosen: mark.chosen,
+        count: 0,
+        observed: 0,
+    };
+    branches.push(branch);
+    return branch;
 }
 
 /** What was observed of one flow kind. */
@@ -156,6 +278,17 @@ interface Declaration {
     counted: boolean;
     /** Has a receipt been credited to it? */
     credited: boolean;
+    /**
+     * The branch this declaration was made in, when it was made in one.
+     *
+     * Remembered so the *answer* can be credited to that branch. Looking for the
+     * branch on the answering record instead does not work: an answer is written by
+     * the callee, in another process, and a branch is ambient context that does not
+     * cross a process boundary — so the answer would be credited to no branch and a
+     * union would draw a call nobody answered. The answer belongs to the call, and
+     * the call was made in the branch this remembers.
+     */
+    branch?: ObservedBranch;
 }
 
 /** What one execution has declared and seen answered for one call. */
@@ -215,6 +348,16 @@ interface ExecutionState {
      * diagram showed only the first step of the group.
      */
     retained: Set<string>;
+    /**
+     * The observation this execution retained for each call and end, by the same key as
+     * {@link retained}.
+     *
+     * Held so a later event on a leg can still contribute what only it carries: a call's
+     * *answer* (`answered`) is a second receiver-side event on a leg whose receipt came first,
+     * and what its handler announced is there. Without this, the rule that keeps one detail per
+     * call would drop every point a realm handler reports (PRD R26/R27).
+     */
+    detail: Map<string, LegObservation>;
     /**
      * What this execution declared and saw answered, per call.
      *
@@ -358,6 +501,8 @@ export class FlowLedger {
         // would be missing a participant the reader can see in the records.
         state.services.add(event.service);
         const leg = legOf(event);
+        const progress = progressOf(event);
+        const phase = phaseOf(event);
         if (leg !== undefined && !state.seen.has(event.id)) {
             state.seen.add(event.id);
             const observation: LegObservation = {
@@ -365,11 +510,18 @@ export class FlowLedger {
                 service: event.service,
                 from: leg.from,
                 to: leg.to,
+                ...(phase === undefined ? {} : {phase}),
                 seq: leg.seq,
                 step: flow.step,
                 index: flow.index,
                 time: event.time,
                 ref: event.id,
+                ...(progress
+                    ? {
+                          ...(progress.regions.length > 0 ? {regions: progress.regions} : {}),
+                          ...(progress.points.length > 0 ? {points: progress.points} : {}),
+                      }
+                    : {}),
             };
             // The counters are kept for every record — they are per execution and
             // idempotent, and a repetition's own timestamps are the honest ones — while
@@ -379,11 +531,22 @@ export class FlowLedger {
             // may call the same method in one execution — two calls, two arrows, and the
             // second is not a repeat of the first.
             this.aggregate(state, observation);
-            const call = `${leg.id}\u0000${leg.from ?? ''}\u0000${leg.to === undefined ? 'receipt' : 'declaration'}`;
-            if (!state.retained.has(call)) {
+            // The key carries the caller, the method **and the phase**: two units may call the
+            // same method in one execution — two calls, two arrows — and the two ends of one
+            // call write records under the same identity, so the phase is what keeps the
+            // receiver's answer from being filed as the caller's own work.
+            const call = `${leg.id}\u0000${leg.from ?? ''}\u0000${leg.to === undefined ? 'receipt' : 'declaration'}\u0000${phase ?? ''}`;
+            const held = state.detail.get(call);
+            if (held !== undefined) {
+                // The detail is kept once, but the **progress** is cumulative: what a receiver's
+                // answer announces exists on no other record of the leg, so dropping it with the
+                // "already retained" verdict would lose it silently (PRD R26/R27).
+                mergeProgress(held, progress);
+            } else {
                 state.retained.add(call);
                 if (state.observations.length < this.stepLimit) {
                     state.observations.push(observation);
+                    state.detail.set(call, observation);
                 } else {
                     this.truncationCount++;
                 }
@@ -535,6 +698,7 @@ export class FlowLedger {
             observations: [],
             seen: new Set<string>(),
             retained: new Set<string>(),
+            detail: new Map<string, LegObservation>(),
             legs: new Map<string, LegSeen>(),
             refs: [],
             closed: false,
@@ -658,10 +822,22 @@ export class FlowLedger {
                 declared.counted = true;
                 aggregate.count++;
                 end.count++;
+                // The branch this declaration was observed inside (PRD R26). Tailed
+                // with the declaration rather than with every record about it, so a
+                // chatty call site is still one call inside its branch.
+                const innermost = observation.regions?.[observation.regions.length - 1];
+                if (innermost !== undefined) {
+                    const branch = branchOf(end, innermost);
+                    branch.count++;
+                    declared.branch = branch;
+                }
             }
             if (!declared.credited && attributable(seen.declared.size, seen.answered.size)) {
                 declared.credited = true;
                 end.observed++;
+                if (declared.branch !== undefined) {
+                    declared.branch.observed++;
+                }
             }
         }
     }

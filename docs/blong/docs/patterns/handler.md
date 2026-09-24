@@ -486,20 +486,30 @@ Handlers and tests share deep structural similarities — both orchestrate seque
 validate results, and produce outputs. The framework embraces this by providing mechanisms that work
 identically in both contexts.
 
-### Checkpoints
+### Checkpoints and Branches
 
-The `checkpoint` function records progress through multi-step operations. It is available via
-`$meta.checkpoint` and should always be called with optional chaining to ensure zero overhead in
-production:
+A **checkpoint** reports a moment; a **branch** explains a choice. They are the two shapes of one
+idea — a _progress point_, recorded in one place and drawn one way by the log
+([R26, R27](../rationale/semantic-log.md)) — and they differ in one respect: a checkpoint is
+optional-chained, a branch never is, because a branch _selects_.
 
 ```ts
 export default handler(
-    ({handler: {validate, persist}}) =>
+    ({handler: {validate, persist, quote}}) =>
         async function orderProcess(params, $meta) {
             const validated = await validate(params, $meta);
             $meta.checkpoint?.('validated', {orderId: validated.id});
 
-            const saved = await persist(validated, $meta);
+            const price = $meta.decide?.('price-tier', {total: validated.total}, [
+                {
+                    name: 'bulk',
+                    when: values => (values.total as number) > 1000,
+                    run: () => quote.bulk(),
+                },
+                {name: 'single', when: () => true, run: () => quote.single()},
+            ]);
+
+            const saved = await persist(validated, price, $meta);
             $meta.checkpoint?.('persisted', {orderId: saved.id, version: saved.version});
 
             return saved;
@@ -507,9 +517,12 @@ export default handler(
 );
 ```
 
-In test mode, checkpoints are recorded in `$meta.checkpoints` and can be asserted on. In debug mode,
-they emit structured log entries. In production, the `?.` operator ensures they are no-ops. See the
-[checkpoint concept](../concepts/checkpoint) for details.
+`$meta.checkpoint` is **absent** in production, so the `?.` call costs nothing and records nothing;
+`$meta.decide` is present in every mode and keeps which branch ran, which is what lets a production
+sequence diagram draw the alternatives as an `alt` block. Code that holds no `$meta` — a library
+function — reports points through `lib.checkpoint?.()`, `undefined` under the same rule, and
+branches through `lib.decide(…)`, which is always there. See the
+[checkpoint concept](../concepts/checkpoint) for the modes and what each records.
 
 ### Optional Assertions
 

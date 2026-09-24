@@ -52,6 +52,54 @@ t.test('a cache configured without a bound takes the default', async t => {
     t.equal(log.store.stats().size, 1, 'the default bound retains a record comfortably');
 });
 
+t.test('a record carries the branch and the points of the scope that wrote it', async t => {
+    // PRD R26/R27: the framework's logger must not have to know about progress points for them to
+    // reach a record — they ride the emitter's ambient scope, and what this pins is that the
+    // framework's own path (`semanticRecord.ts`, `LogBase`, the call channel that goes through the
+    // same logger) reads that scope rather than writing a record of its own.
+    const dir = await mkdtemp(join(tmpdir(), 'blong-semantic-log-'));
+    t.teardown(() => rm(dir, {recursive: true, force: true}));
+    const log = new SemanticLog({level: 'info', cache: {dir}});
+    await log.init();
+    const at = log.logger('info', {name: 'progress'});
+
+    const chosen = vocabulary.decide('route-selection', {corridor: 'EUR-USD'}, [
+        {name: 'hold', when: () => false, run: () => 'hold'},
+        {
+            name: 'hubB',
+            when: () => true,
+            run: () => {
+                vocabulary.point('corridor-resolved', {hub: 'B'});
+                at.info?.('routing to the far ecosystem');
+                return 'hubB';
+            },
+        },
+    ]);
+    t.equal(chosen, 'hubB', 'the branch ran');
+    await log.stop();
+
+    let record: {msg?: string; progress?: {regions?: unknown[]; points?: unknown[]}} | undefined;
+    for (const id of await cacheRecordIds(dir)) {
+        const candidate = await log.store.get(id);
+        if (candidate?.msg === 'routing to the far ecosystem') {
+            record = candidate;
+        }
+    }
+    t.ok(record, 'the record the branch wrote was retained');
+    t.same(
+        (record?.progress?.regions as Array<{discriminator: string; chosen: string}>).map(
+            region => [region.discriminator, region.chosen],
+        ),
+        [['route-selection', 'hubB']],
+        'it was emitted inside the branch, which is what a diagram draws as an alt block',
+    );
+    t.same(
+        (record?.progress?.points as Array<{name: string}>).map(point => point.name),
+        ['corridor-resolved'],
+        'and the point announced in that scope rides the same record',
+    );
+});
+
 t.test('the home-relative cache path the framework uses is expanded', t => {
     // The framework's own configuration names the shared log cache as
     // `~/.blong/log-cache`, and the pino transport expands that itself — so a

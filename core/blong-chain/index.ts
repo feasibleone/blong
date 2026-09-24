@@ -371,7 +371,7 @@ function captureSourceLocation(): ISourceLocation {
 const DEFAULT_MAX_RETRIES = 1;
 
 // ============================================================================
-// Masking helpers (also used by assert.snapshot and checkpoint snapshots)
+// Masking helpers (also used by assert.snapshot and snapshot markers)
 // ============================================================================
 
 /**
@@ -542,13 +542,13 @@ export class TestExecutor extends EventEmitter {
     ): Promise<void> {
         const stepPromises: Promise<void>[] = [];
         const namedPromises = new Map<string, Promise<void>>();
-        let checkpointIndex = 0;
+        let snapshotIndex = 0;
 
         for (const step of steps) {
             if (Array.isArray(step)) {
                 // Distinguish by element type:
                 //   [] empty array        → sync barrier (existing behaviour)
-                //   ['*'] / ['s1','s2']  → snapshot checkpoint (new)
+                //   ['*'] / ['s1','s2']  → snapshot marker
                 //   [fn, ...] nested     → nested step group (existing behaviour)
                 if (step.length === 0) {
                     // Sync barrier — wait for all parallel steps in this batch
@@ -558,37 +558,35 @@ export class TestExecutor extends EventEmitter {
                 }
 
                 if (step.every(s => typeof s === 'string')) {
-                    // Snapshot checkpoint: await relevant steps, then snapshot
-                    const checkpoint = step as unknown as string[];
+                    // Snapshot marker: await the relevant steps, then snapshot
+                    const marker = step as unknown as string[];
 
-                    if (checkpoint.length === 1 && checkpoint[0] === '*') {
+                    if (marker.length === 1 && marker[0] === '*') {
                         // ['*'] — wait for entire current batch
                         await Promise.all(stepPromises);
                         stepPromises.length = 0;
                     } else {
                         // ['step1','step2'] — wait only for the named steps
-                        const namedToWait = checkpoint
+                        const namedToWait = marker
                             .map(name => namedPromises.get(name))
                             .filter((p): p is Promise<void> => p !== undefined);
                         await Promise.all(namedToWait);
                         // stepPromises is NOT cleared — other steps keep running
                     }
                     const cpName =
-                        (checkpoint as {name?: string}).name ??
-                        (checkpoint.length === 1 && checkpoint[0] === '*'
-                            ? `context`
-                            : checkpoint.join('-'));
+                        (marker as {name?: string}).name ??
+                        (marker.length === 1 && marker[0] === '*' ? `context` : marker.join('-'));
                     // Disambiguate when the same name is used more than once
                     const snapshotName =
-                        checkpointIndex === 0 ? cpName : `${cpName}-${checkpointIndex}`;
-                    checkpointIndex++;
+                        snapshotIndex === 0 ? cpName : `${cpName}-${snapshotIndex}`;
+                    snapshotIndex++;
 
                     const stepsToSnapshot =
-                        checkpoint.length === 1 && checkpoint[0] === '*'
+                        marker.length === 1 && marker[0] === '*'
                             ? [...this.progress.steps.entries()]
                                   .filter(([, s]) => s.status === 'completed')
                                   .map(([name]) => name)
-                            : checkpoint.filter(name =>
+                            : marker.filter(name =>
                                   Object.prototype.hasOwnProperty.call(this.realContext, name),
                               );
 
@@ -940,7 +938,7 @@ export class TestExecutor extends EventEmitter {
 
         for (const step of steps) {
             if (Array.isArray(step)) {
-                // Skip checkpoint markers (string-only arrays) — they are not steps
+                // Skip snapshot markers (string-only arrays) — they are not steps
                 if (step.every(s => typeof s === 'string')) continue;
                 // Recursively collect from nested step groups
                 const nested = this._collectStepNames(step as StepArray);

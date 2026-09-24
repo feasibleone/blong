@@ -394,6 +394,11 @@ function annotatedObservations(record: LogRecord): DiagramObservation[] {
     if (withheld.length > 0) {
         notes.push(`withheld: ${withheld.join(', ')}`);
     }
+    // The branch and the milestones the record carries (PRD R26) are drawn here exactly
+    // as the service draws them from the same fields, so one store's picture and the
+    // cluster's picture of a run are the same shape. What the service cannot see is the
+    // *payload* — a point's data and a decision's values — and that stays where it was
+    // recorded: in this store, on the record the reader already holds.
     return [
         {
             leg,
@@ -406,6 +411,10 @@ function annotatedObservations(record: LogRecord): DiagramObservation[] {
             time: record.time,
             ref: record.id,
             notes,
+            ...(record.progress?.regions ? {regions: record.progress.regions} : {}),
+            ...(record.progress?.points
+                ? {points: record.progress.points.map(item => item.name)}
+                : {}),
         },
     ];
 }

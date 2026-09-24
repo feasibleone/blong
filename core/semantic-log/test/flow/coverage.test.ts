@@ -135,6 +135,22 @@ const COVERAGE: Readonly<Record<string, readonly Demonstration[]>> = {
         'src/service/provider.test.ts::the offline provider hashes text, so it cannot answer a paraphrase (R5, R25)',
         'test/local-model.test.ts::a paraphrase ranks the record it means first, which the hash provider cannot do (R24/R25)',
     ],
+    R26: [
+        'src/progress.test.ts::a point waits for the next record and is taken once',
+        'src/progress.test.ts::a record emitted inside the chosen branch carries it; one after does not',
+        'src/service/flowLedger.test.ts::a call made inside a branch is observed with the branch and its milestones',
+        'src/service/flowLedger.test.ts::the same branch taken in two executions is one entry with a count',
+        'src/service/app.test.ts::both diagram routes report the branches they observed (R26/R27)',
+    ],
+    R27: [
+        'src/service/diagram.test.ts::a call made inside a branch is drawn in an alt block, with the branch not taken left empty',
+        'src/service/diagram.test.ts::an answer is drawn inside the branch its call was made in, and a nested branch nests',
+        'src/service/diagram.test.ts::a receipt observed inside a branch is drawn inside the block it was made in',
+        'src/service/diagram.test.ts::a union draws the branches a call was declared in, each with its own counts',
+        'src/service/diagram.test.ts::a union call never inside a branch is drawn flat, with no block around it',
+        'test/cli.test.ts::the diagram verb draws one execution from the store alone (R23)',
+        'test/flow/observedFlows.test.ts::the published flow shapes are what a run observes (PRD R23)',
+    ],
 };
 
 /**
@@ -144,13 +160,13 @@ const COVERAGE: Readonly<Record<string, readonly Demonstration[]>> = {
  * comparison and comparing a numeric ordering against a lexicographic one fails for
  * reasons that have nothing to do with coverage.
  */
-const REQUIREMENTS = Array.from({length: 25}, (_, index) => `R${index + 1}`).sort();
+const REQUIREMENTS = Array.from({length: 27}, (_, index) => `R${index + 1}`).sort();
 
 t.test('every requirement is mapped to at least one demonstration', t => {
     t.same(
         Object.keys(COVERAGE).sort(),
         REQUIREMENTS,
-        'R1–R25 are all accounted for, and nothing else is',
+        'R1–R27 are all accounted for, and nothing else is',
     );
     for (const requirement of REQUIREMENTS) {
         const demonstrations = COVERAGE[requirement] ?? [];

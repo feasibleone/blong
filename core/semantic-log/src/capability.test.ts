@@ -24,6 +24,31 @@ import {
     withoutCapabilities,
 } from './propagation.ts';
 
+t.test('the receiver answers with a phase of its own', t => {
+    // The receipt says the receiver has the leg; the answer says what its handler did with it,
+    // and it is the only record a realm handler's progress can ride (PRD R26/R27).
+    const events: CallEvent[] = [];
+    const channel = createCallChannel(event => void events.push(event));
+    withCapability('calls', true, () => {
+        channel.received('gateway.bundle.merge');
+        channel.answered('gateway.bundle.merge', {progress: {points: ['merge-merged']}});
+    });
+    t.same(
+        events.map(event => [event.phase, event.fields?.progress]),
+        [
+            ['received', undefined],
+            ['answered', {points: ['merge-merged']}],
+        ],
+        'the two receiver phases are distinct, and the answer carries what the caller passed',
+    );
+    t.equal(
+        callPhaseMessage('answered', 'gateway.bundle.merge'),
+        'call answered: gateway.bundle.merge',
+        'and the line names the leg like every other phase',
+    );
+    t.end();
+});
+
 t.test('a capability is inherited by everything the scope does', t => {
     t.equal(capabilityState('calls'), undefined, 'nothing decides it outside any scope');
     withCapability('calls', true, () => {

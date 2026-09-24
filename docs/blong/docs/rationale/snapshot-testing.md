@@ -83,7 +83,7 @@ Snapshot testing works well for:
   test runs (UUIDs etc. are masked centrally via `group()` config)
 - **Verify-edit re-fetch steps**: Where a read-back after a mutation confirms all updated fields in
   one call
-- **Full-chain regression coverage**: A `checkpoint('name')` marker at the end of the steps array
+- **Full-chain regression coverage**: A `snapshot('name')` marker at the end of the steps array
   captures everything the test produced
 - **Migration scenarios**: Replacing repetitive `assert.equal` calls in existing test collections
 
@@ -149,8 +149,8 @@ The framework provides a spectrum of snapshotting approaches, ordered from most 
 | Approach                                 | Where it lives     | Verbosity            | Granularity     |
 | ---------------------------------------- | ------------------ | -------------------- | --------------- |
 | `autoSnapshot: true` in `group()` config | group config       | zero                 | per-step (auto) |
-| `checkpoint('name')`                     | end of steps array | one marker           | full context    |
-| `checkpoint('name', 's1', 's2')`         | phase boundaries   | one marker per phase | per-phase       |
+| `snapshot('name')`                       | end of steps array | one marker           | full context    |
+| `snapshot('name', 's1', 's2')`           | phase boundaries   | one marker per phase | per-phase       |
 | `assert.snapshot()`                      | inside step        | one call per step    | per-step        |
 | `assert.snapshot(value, 'name', opts)`   | inside step        | explicit             | any value       |
 
@@ -191,9 +191,9 @@ migrating test collections with repetitive assertions.
 **Disadvantages:** Every step is snapshotted, including helper steps whose output is incidental.
 There is no way to opt out of individual steps without restructuring the chain.
 
-#### Strategy B: `checkpoint('name')` — End-of-Chain Context Snapshot
+#### Strategy B: `snapshot('name')` — End-of-Chain Context Snapshot
 
-Place `checkpoint('flow-name')` at the end of the steps array. The executor awaits all steps, then
+Place `snapshot('flow-name')` at the end of the steps array. The executor awaits all steps, then
 snapshots the full accumulated context in one operation.
 
 ```typescript
@@ -201,7 +201,7 @@ import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {partyPartyCreate, quoteQuoteCreate, transferTransferCreate},
     }) => ({
         testP2pFlow: ({name = 'p2p flow'}, $meta) =>
@@ -217,7 +217,7 @@ export default handler(
                     const quote = await requestQuote;
                     return await transferTransferCreate({quoteId: quote.quoteId}, $meta);
                 },
-                checkpoint('p2p-flow'), // waits for all steps, snapshots full context
+                snapshot('p2p-flow'), // waits for all steps, snapshots full context
             ]),
     }),
 );
@@ -229,17 +229,17 @@ mask `id` in every step result at once.
 **Advantages:** One marker, one snapshot file entry. No boilerplate in steps. **Disadvantages:** A
 failure in one step may cascade to the full context diff.
 
-#### Strategy C: Phase Checkpoints — `checkpoint('name', 's1', 's2')`
+#### Strategy C: Phase Snapshots — `snapshot('name', 's1', 's2')`
 
-Named checkpoint markers capture a subset of step results at a phase boundary. Multiple checkpoints
-in the same chain produce independent snapshots that narrow failures to a specific phase.
+Named snapshot markers capture a subset of step results at a phase boundary. Multiple markers in the
+same chain produce independent snapshots that narrow failures to a specific phase.
 
 ```typescript
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {partyPayerAdd, partyPayeeAdd, quoteQuoteCreate, transferTransferCreate},
     }) => ({
         testTransferFlow: ({name = 'transfer flow'}, $meta) =>
@@ -253,7 +253,7 @@ export default handler(
                 },
 
                 // Snapshot Phase 1 — failure here → provisioning problem
-                checkpoint('provisioning', 'createPayer', 'createPayee'),
+                snapshot('provisioning', 'createPayer', 'createPayee'),
 
                 // Phase 2: transfer flow
                 async function requestQuote(_assert, {$meta, createPayer, createPayee}) {
@@ -270,7 +270,7 @@ export default handler(
                 },
 
                 // Snapshot Phase 2 — failure here → transfer-flow problem
-                checkpoint('transfer-flow', 'requestQuote', 'executeTransfer'),
+                snapshot('transfer-flow', 'requestQuote', 'executeTransfer'),
             ]),
     }),
 );
@@ -279,8 +279,8 @@ export default handler(
 An empty array `[]` remains a sync barrier with no snapshot (existing behaviour).
 
 **Advantages:** Phase failures are immediately identifiable. Small, focused snapshot files. Aligns
-with logical stages of the test. **Disadvantages:** Checkpoint placement is a design decision that
-adds structural choices.
+with logical stages of the test. **Disadvantages:** Snapshot marker placement is a design decision
+that adds structural choices.
 
 #### Strategy D: `assert.snapshot()` — Per-Step No-Args
 
@@ -331,7 +331,7 @@ intermediate values that are not the step's return value.
 #### Chain-Level Masking
 
 Configure masking via the second argument to `group()`. It applies to all snapshot operations in the
-chain — `autoSnapshot`, `assert.snapshot()`, and checkpoint snapshots:
+chain — `autoSnapshot`, `assert.snapshot()`, and snapshot markers:
 
 ```typescript
 group(name, {
@@ -358,10 +358,10 @@ The best approach combines strategies based on the test's purpose:
 1. **`autoSnapshot: true`** for migrating existing test collections or for chains where every step
    result matters equally.
 
-2. **`checkpoint('name')`** for regression suites that need one comprehensive snapshot without any
+2. **`snapshot('name')`** for regression suites that need one comprehensive snapshot without any
    per-step changes. Combine with `assert.equal` for the key business rule assertions.
 
-3. **`checkpoint('name', 's1', 's2')`** for multi-phase flows where knowing the failing phase
+3. **`snapshot('name', 's1', 's2')`** for multi-phase flows where knowing the failing phase
    significantly speeds up debugging.
 
 4. **`assert.snapshot()` in sentinel steps** for steps whose exact structure is critical and must be
@@ -372,7 +372,7 @@ import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {
             accountAccountAdd,
             beneficiaryBeneficiaryAdd,
@@ -410,7 +410,7 @@ export default handler(
                     const payment = await sendPayment;
                     return await accountAccountGet({accountId: payment.accountId}, $meta);
                 },
-                checkpoint('payment-flow'), // end-of-chain: full regression coverage
+                snapshot('payment-flow'), // end-of-chain: full regression coverage
             ]),
     }),
 );
@@ -435,8 +435,8 @@ When migrating test collections that have repetitive assertions:
 
 1. **Identify candidates**: Look for test steps with more than 5–10 individual field assertions on
    the same response object
-2. **Choose a strategy**: `autoSnapshot: true` is the fastest migration path; checkpoints are better
-   for multi-phase flows
+2. **Choose a strategy**: `autoSnapshot: true` is the fastest migration path; snapshot markers are
+   better for multi-phase flows
 3. **Capture initial snapshots**: Run against a known-good environment with `TAP_SNAPSHOT=1` to
    capture the reference output
 4. **Configure masking**: Add `mask: ['*.id', '*.createdAt']` (or similar) to the `group()` config
@@ -483,7 +483,6 @@ When migrating test collections that have repetitive assertions:
     This is particularly useful for testing multiple scenarios from the same base state without
     duplicating the full expected object.
 
-5. **Automatic checkpoint snapshots at `[]` barriers** — when `autoSnapshot` is `true` and a `[]`
-   sync barrier is encountered, automatically snapshot the context accumulated up to that point,
-   without needing to change `[]` to `['*']`. This would make all sync barriers implicitly
-   phase-snapshot points.
+5. **Automatic snapshots at `[]` barriers** — when `autoSnapshot` is `true` and a `[]` sync barrier
+   is encountered, automatically snapshot the context accumulated up to that point, without needing
+   to change `[]` to `['*']`. This would make all sync barriers implicitly phase-snapshot points.

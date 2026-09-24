@@ -25,7 +25,7 @@
  *    was closed for the withheld bag.
  */
 
-import {recordDecision} from './context.ts';
+import {recordDecision, withRegion} from './context.ts';
 import type {Decision} from './record.ts';
 
 export interface Branch<T> {
@@ -54,21 +54,45 @@ export function decide<T>(
     values: Record<string, unknown>,
     branches: ReadonlyArray<Branch<T>>,
 ): T | undefined {
+    const candidates = branches.map(branch => branch.name);
+    // Choose first, then record, then run: the evaluation order is the array's,
+    // a predicate that throws still records nothing (the loop never completes),
+    // and `chosen` is known before the rationale is staged.
     let chosen: string | undefined;
-    let result: T | undefined;
+    let taken: Branch<T> | undefined;
     for (const branch of branches) {
         if (branch.when(values)) {
             chosen = branch.name;
-            result = branch.run();
+            taken = branch;
             break;
         }
     }
     const decision: Decision = {
         discriminator,
-        candidates: branches.map(branch => branch.name),
+        candidates,
         chosen: chosen ?? 'none',
         values,
     };
+    // The rationale is staged *before* the branch runs, so a record the branch
+    // emits carries both the branch (through the region) and the rationale, and
+    // so a branch that throws leaves the rationale pending for the record that
+    // reports the failure. It is staged outside the region scope on purpose:
+    // `recordDecision` uses `enterWith`, and a store entered inside the region
+    // would be discarded with it, losing a rationale no record consumed.
     recordDecision(decision);
-    return result;
+    if (taken === undefined) {
+        return undefined;
+    }
+    // The branch's work is a region (PRD R26/R27): every record emitted inside it
+    // is stamped with the branch, which is what lets the sequence diagram draw
+    // the `alt` block around the calls the branch made rather than around the
+    // single call a rationale happened to land on.
+    //
+    // The **mark** carries every candidate the code declared, in the order it declared them,
+    // and a reader is told which of them the decision never reached rather than being shown a
+    // shorter list: a branch after the chosen one had its predicate skipped, and a drawing that
+    // omitted it entirely would hide an alternative the code offers. The position of the chosen
+    // candidate is the whole of what is needed — evaluation stops there — so the mark needs no
+    // extra field, and the renderer marks the arms after it (T-140).
+    return withRegion({discriminator, candidates, chosen: taken.name}, () => taken.run());
 }

@@ -752,6 +752,69 @@ t.test('a retirement is saved, not just published (R4/R8)', async t => {
 
 // --- flow observation wiring (R22/R23) -------------------------------------
 
+t.test('both diagram routes report the branches they observed (R26/R27)', async t => {
+    const ledger = new FlowLedger();
+    const app = createApp({embedding: {kind: 'offline', dimension: 16}, flowLedger: ledger});
+    t.teardown(() => app.close());
+    const flowId = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+    await app.inject({
+        method: 'POST',
+        url: '/events',
+        payload: {
+            events: [
+                {
+                    id: 'leg-1',
+                    time: 10,
+                    fingerprint: 'fp-leg-1',
+                    service: 'fxp',
+                    flow: {
+                        id: flowId,
+                        kind: 'transfer.single',
+                        step: 'quote',
+                        leg: 'fxp.quote.rates',
+                        legFrom: 'fxp',
+                        legTo: 'hub',
+                        legSeq: '1',
+                    },
+                    progress: {
+                        regions: [
+                            {
+                                id: '1',
+                                discriminator: 'rate-within-limit',
+                                candidates: ['decline', 'accept'],
+                                chosen: 'decline',
+                            },
+                        ],
+                        points: ['rate-declined'],
+                    },
+                },
+            ],
+        },
+    });
+
+    const execution = await app.inject({method: 'GET', url: `/flows/${flowId}/diagram`});
+    const body = execution.json() as {
+        observed: {branches: string[]; points: string[]};
+        diagram: string;
+    };
+    t.same(
+        body.observed.branches,
+        ['rate-within-limit'],
+        'the branch the run was observed inside, named for a reader',
+    );
+    t.same(body.observed.points, ['rate-declined'], 'and the milestones it reported');
+    t.match(body.diagram, /alt rate-within-limit/);
+    t.match(body.diagram, /Note over fxp: point: rate-declined/);
+
+    const kind = await app.inject({method: 'GET', url: '/flows/transfer.single/diagram'});
+    t.same(
+        (kind.json() as {observed: {branches: string[]}}).observed.branches,
+        ['rate-within-limit'],
+        'the kind route answers the same question over every execution it saw',
+    );
+    t.end();
+});
+
 t.test('an accepted event reaches the flow ledger, which is what the diagrams read', async t => {
     // The ledger is fed from the ingest's accepted-event seam rather than from a
     // route, so one accepted event produces one observation whether it arrived in

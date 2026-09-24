@@ -8,12 +8,14 @@ import {
     callsFor,
     capabilityOf,
     currentIdentity,
+    decide,
     declareCall,
     enterCapability,
     enterRequestFlow,
     inboundIdentities,
     isFlowId,
     namespaceOf,
+    point,
     runInFlow,
 } from './semanticContext.ts';
 
@@ -30,6 +32,30 @@ const FLOW = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 function inbound(fields: string): IMeta {
     return {mtid: 'request', method: 'm', forward: {'x-semantic-trace': fields}};
 }
+
+t.test('the progress-point handles report through whichever vocabulary is attached', t => {
+    // PRD R26: a realm or a bootstrap reaches these through this module rather than through the
+    // emitter, so what they must be is the *façade's* functions — the ones that degrade when
+    // nothing is attached (this module is on the browser's path too). With the vocabulary attached
+    // above, the same calls reach the emitter itself.
+    point('handler-created', {by: 'semanticContext.test'});
+    t.same(
+        vocabulary.takePoints(),
+        [{name: 'handler-created', data: {by: 'semanticContext.test'}}],
+        'a point reported here is taken by the attached vocabulary',
+    );
+    const chosen = decide('route', {}, [
+        {name: 'a', when: () => false, run: () => 'a'},
+        {name: 'b', when: () => true, run: () => 'b'},
+    ]);
+    t.equal(chosen, 'b', 'and a branch taken here still selects');
+    t.equal(
+        vocabulary.takeDecision()?.chosen,
+        'b',
+        'while its rationale reaches the vocabulary too',
+    );
+    t.end();
+});
 
 t.test('a request enters its flow before the hooks that may reject it', async t => {
     // The enter-style entry. A gateway request is decided in two phases with a

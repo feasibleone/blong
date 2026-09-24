@@ -20,7 +20,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group, checkpoint, sortClientScopes},
+        lib: {group, snapshot, sortClientScopes},
         handler: {authClientAdd, authClientFind, authClientGet, authClientEdit, authClientRemove},
     }) => ({
         testKeycloakClientCrud: ({name = 'keycloak client CRUD'}: {name?: string}) =>
@@ -122,8 +122,8 @@ export default handler(
                     ) as ClientResult;
                 },
 
-                // Phase checkpoint: snapshot both read-back results together
-                checkpoint('client-read-snapshots', 'getClient', 'verifyEdit'),
+                // Phase snapshot: both read-back results together
+                snapshot('client-read-snapshots', 'getClient', 'verifyEdit'),
 
                 // ── 7. remove — delete the test client ────────────────────
                 async function removeClient(

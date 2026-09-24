@@ -14,7 +14,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {
             authGroupAdd,
             authGroupFind,
@@ -128,8 +128,8 @@ export default handler(
                     )) as GroupResult;
                 },
 
-                // Phase checkpoint: snapshot both read-back results together
-                checkpoint('group-read-snapshots', 'getGroup', 'verifyEdit'),
+                // Phase snapshot: both read-back results together
+                snapshot('group-read-snapshots', 'getGroup', 'verifyEdit'),
 
                 // ── 7. members — list members of the group (should be empty)
                 async function listMembers(

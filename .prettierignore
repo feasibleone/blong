@@ -5,6 +5,7 @@
 **/*.yml
 **/*.yaml
 **/*.d.ts
+**/tap-snapshots/
 # Generated, and compared byte for byte by test/flow/observedFlows.test.ts — a formatter
 # that re-padded its tables would turn a green suite red without changing a diagram.
 **/docs/observed-flows.md

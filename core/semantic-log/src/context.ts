@@ -8,7 +8,7 @@
  */
 
 import {AsyncLocalStorage} from 'node:async_hooks';
-import type {Decision, FlowState, IntentState} from './record.ts';
+import type {Decision, FlowState, IntentState, Point, Progress, RegionMark} from './record.ts';
 import {assertUlid} from './ulid.ts';
 
 /**
@@ -24,6 +24,37 @@ import {assertUlid} from './ulid.ts';
  */
 export interface DecisionHolder {
     decision?: Decision;
+}
+
+/**
+ * Mutable box holding the points waiting for the next record (PRD R26).
+ *
+ * A box for the same structural reason as {@link DecisionHolder}: every
+ * scope-creating helper rebuilds the store with `{...context}`, which copies a
+ * field's *value* but a box's *reference*. Two points announced in nested scopes
+ * therefore land in one list, and clearing the box is visible to every scope that
+ * inherited it — which is what makes the take one-shot globally rather than once
+ * per scope.
+ */
+export interface PointsHolder {
+    points?: Point[];
+}
+
+/**
+ * Mutable box holding the branches opened in this scope (PRD R27).
+ *
+ * The marks a *call* may report when it answers — see {@link takeProgress}. A box
+ * like the points one, and for the same reason: a nested scope spreads the context,
+ * so a list created inside the branch would be private to the branch and never
+ * reach the scope that has to report it.
+ */
+export interface VisitedRegions {
+    regions?: RegionMark[];
+}
+
+/** A box counting the regions opened in one scope. */
+export interface RegionCounter {
+    next: number;
 }
 
 /**
@@ -114,6 +145,36 @@ export interface AmbientContext {
     steps?: string[];
     /** Box holding the rationale waiting to be attached to a record (PRD R11). */
     pendingDecision?: DecisionHolder;
+    /**
+     * The branches this scope is running inside, outermost first (PRD R26).
+     *
+     * A plain field rather than a box, unlike the rationale: a mark is never
+     * *taken*, it is read by every record the branch emits, and copying it into a
+     * nested scope is what lets an inner decision extend the chain rather than
+     * replace it. Scoped rather than persisted, like a leg — a record emitted
+     * after the branch returned is not part of it.
+     */
+    regions?: RegionMark[];
+    /** Box holding the milestones waiting to be attached to a record (PRD R26). */
+    pendingPoints?: PointsHolder;
+    /**
+     * Box holding the branches opened in this scope (PRD R27), for the call that will
+     * report them when it answers.
+     *
+     * Distinct from {@link regions}, which is the chain *this* scope is in: this one
+     * collects branches that were opened and **closed** below it, which is the only way a
+     * callee's branch can reach a record — by the time the handler returns, the chain is
+     * empty again.
+     */
+    visitedRegions?: VisitedRegions;
+    /**
+     * Counts the regions opened in this scope, so a nested one reads `1.1`.
+     *
+     * A box, and installed before the region scope is entered, for the reason
+     * {@link legCounter} gives: a counter created *inside* such a scope would be
+     * private to it, and two sibling branches would both take the number 1.
+     */
+    regionCounter?: RegionCounter;
     /** Box holding the id of the most recently emitted record (PRD R7). */
     recordMemory?: RecordMemory;
 }
@@ -620,6 +681,202 @@ export function takeDecision(): Decision | undefined {
     const {decision} = holder;
     holder.decision = undefined;
     return decision;
+}
+
+/**
+ * Report a milestone for the next emitted record (PRD R26).
+ *
+ * The reporting half of the progress-point contract — `decide` in `src/decide.ts`
+ * is the branching half — and it follows `recordDecision` in every respect. The
+ * slot lives in the ambient context rather than in the logger, so a
+ * framework-free caller can report a moment without holding a logger, and
+ * `enterWith` lets the point outlive the call that announced it, because the
+ * record that carries it is emitted afterwards. A point with no record after it
+ * is dropped with the scope that held it, exactly as a rationale is.
+ */
+export function point(name: string, data?: unknown): void {
+    const holder = ensurePointsHolder();
+    holder.points = [...(holder.points ?? []), data === undefined ? {name} : {name, data}];
+}
+
+/**
+ * Take the pending points, clearing them so they attach to exactly one record.
+ *
+ * A point describes one moment, so the list is consumed rather than broadcast,
+ * and the box is cleared by mutation for the reason {@link takeDecision}
+ * documents. `undefined` when there were none, so the logger can leave the slot
+ * out of the record entirely instead of assembling an empty one.
+ */
+export function takePoints(): Point[] | undefined {
+    const holder = currentContext().pendingPoints;
+    if (holder === undefined) {
+        return undefined;
+    }
+    const points = holder.points;
+    if (points === undefined) {
+        return undefined;
+    }
+    holder.points = undefined;
+    return points;
+}
+
+/** The branches this scope is running inside, outermost first (PRD R26). */
+export function currentRegions(): RegionMark[] | undefined {
+    return currentContext().regions;
+}
+
+/** The innermost branch this scope is running inside, when it is (PRD R26). */
+export function currentRegion(): RegionMark | undefined {
+    const regions = currentContext().regions;
+    return regions?.[regions.length - 1];
+}
+
+/**
+ * Run `fn` as the chosen branch of a decision (PRD R26).
+ *
+ * Scoped, not persistent: a record emitted after the branch returned is not part
+ * of it, and unlike a rationale the mark is not consumed by the first record that
+ * carries it — it is read by *every* record the branch emits, which is what makes
+ * the span of an `alt` block the calls the branch actually made.
+ *
+ * The id is minted here rather than by the caller because this is the only place
+ * that knows both the branch and the scope it is nested in, so a branch taken
+ * inside another branch reads `1.1` and the nesting is visible in the data.
+ */
+export function withRegion<T>(
+    region: {discriminator: string; candidates: string[]; chosen: string},
+    fn: () => T,
+): T {
+    // The record memory box has to exist *before* the region scope is entered, for
+    // the reason {@link legIdentity} gives: entering spreads the context, so a box
+    // first created inside the branch would never reach the scope that encloses it
+    // and the caller's next record would lose its causal parent.
+    ensureRecordMemory();
+    const enclosing = currentContext().regions;
+    const innermost = enclosing?.[enclosing.length - 1];
+    const counter = ensureRegionCounter();
+    const id =
+        innermost === undefined ? String(++counter.next) : `${innermost.id}.${++counter.next}`;
+    // A fresh counter for the branch's own children — the rule `legIdentity`
+    // applies to a leg's children — so a branch taken inside this one reads
+    // `3.1` rather than continuing the enclosing sequence.
+    const mark = {
+        ...region,
+        id,
+        // Read before the branch is entered, from the scope's own points box: a point
+        // announced before the decision is not the decision's work (PRD R27).
+        pointsBefore: currentContext().pendingPoints?.points?.length ?? 0,
+    };
+    // Reported twice, deliberately: by the records emitted *inside* the branch (their
+    // `regions` chain, which is what draws the block around them) and by the call that
+    // took it (`takeProgress`, which is what lets a branch taken inside a handler be
+    // seen at all — the branch's own scope is closed by the time that call answers).
+    const visited = ensureVisitedRegions();
+    visited.regions = [...(visited.regions ?? []), mark];
+    return storage.run(
+        {
+            ...currentContext(),
+            regions: [...(enclosing ?? []), mark],
+            regionCounter: {next: 0},
+        },
+        fn,
+    );
+}
+
+/** Ensure this scope has a points box, and return it. */
+function ensurePointsHolder(): PointsHolder {
+    const existing = currentContext().pendingPoints;
+    if (existing !== undefined) {
+        return existing;
+    }
+    const box: PointsHolder = {};
+    storage.enterWith({...currentContext(), pendingPoints: box});
+    return box;
+}
+
+/** Ensure this scope has a region counter, and return it. */
+function ensureRegionCounter(): RegionCounter {
+    const existing = currentContext().regionCounter;
+    if (existing !== undefined) {
+        return existing;
+    }
+    const box: RegionCounter = {next: 0};
+    storage.enterWith({...currentContext(), regionCounter: box});
+    return box;
+}
+
+/** Ensure this scope has a visited-regions box, and return it. */
+function ensureVisitedRegions(): VisitedRegions {
+    const existing = currentContext().visitedRegions;
+    if (existing !== undefined) {
+        return existing;
+    }
+    const box: VisitedRegions = {};
+    storage.enterWith({...currentContext(), visitedRegions: box});
+    return box;
+}
+
+/**
+ * Start collecting what this scope announces (PRD R26/R27).
+ *
+ * The receiver calls this **before** it runs a handler, and the timing is the whole point: the
+ * boxes the collection reads are installed with `enterWith`, which reaches the current context and
+ * what follows it — never a frame that is already suspended. A handler that waits for something
+ * (an inner call, a promise) before it announces anything resumes in a context whose boxes were
+ * created *after* the receiver's own continuation was bound, so a collection that only read at the
+ * end would miss everything staged after that wait. That is exactly what happened: a handler's
+ * points and branches reached no record at all.
+ */
+export function beginProgress(): void {
+    ensurePointsHolder();
+    ensureVisitedRegions();
+}
+
+/**
+ * Take the progress announced in this scope, clearing it (PRD R26/R27).
+ *
+ * The receiver's half of the contract: a call's handler announces points and takes
+ * branches, and this is what the framework around the handler reads when the handler
+ * returns, so the call can report what its own work was (see `CallPhase`).
+ *
+ * Points are consumed — a point describes one moment, and the record that carries it is
+ * the answer — and so are the **visited** branches, because a branch taken inside a nested
+ * call belongs to that call's answer, which is nearer the moment it happened. A scope that
+ * has nothing to report returns `undefined`, so a call with no progress writes no record.
+ */
+export function takeProgress(): Progress | undefined {
+    const points = takePoints();
+    const holder = currentContext().visitedRegions;
+    const regions = holder?.regions;
+    if (holder !== undefined) {
+        holder.regions = undefined;
+    }
+    if (points === undefined && regions === undefined) {
+        return undefined;
+    }
+    return {...(regions ? {regions} : {}), ...(points ? {points} : {})};
+}
+
+/**
+ * Announce progress a caller already holds, on the next record of this scope (PRD
+ * R26/R27).
+ *
+ * The receiving half of {@link takeProgress}: a framework that collected what a handler
+ * announced re-stages it so the record it is about to write carries it — the points as
+ * points, the branch marks as the chain the record sits in. Nothing is interpreted here:
+ * what was taken is what is announced.
+ */
+export function attachProgress(progress: Progress): void {
+    for (const entry of progress.points ?? []) {
+        point(entry.name, entry.data);
+    }
+    const marks = progress.regions ?? [];
+    if (marks.length > 0) {
+        storage.enterWith({
+            ...currentContext(),
+            regions: [...(currentRegions() ?? []), ...marks],
+        });
+    }
 }
 
 /**

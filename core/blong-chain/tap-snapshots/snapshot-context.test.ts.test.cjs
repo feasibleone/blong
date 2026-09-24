@@ -84,7 +84,7 @@ Object {
 }
 `
 
-exports[`snapshot-context.test.ts > TAP > Strategy B — ['*'] end-of-chain checkpoint > p2p-flow 1`] = `
+exports[`snapshot-context.test.ts > TAP > Strategy B — ['*'] end-of-chain snapshot > p2p-flow 1`] = `
 Object {
   "createQuote": Object {
     "expiry": "2024-01-01T00:00:00.000Z",
@@ -114,7 +114,7 @@ Object {
 }
 `
 
-exports[`snapshot-context.test.ts > TAP > Strategy C — phase checkpoints > phase1 1`] = `
+exports[`snapshot-context.test.ts > TAP > Strategy C — phase snapshots > phase1 1`] = `
 Object {
   "fetchConfig": Object {
     "language": "en",
@@ -129,7 +129,7 @@ Object {
 }
 `
 
-exports[`snapshot-context.test.ts > TAP > Strategy C — phase checkpoints > phase2-1 1`] = `
+exports[`snapshot-context.test.ts > TAP > Strategy C — phase snapshots > phase2-1 1`] = `
 Object {
   "buildDashboard": Object {
     "theme": "dark",

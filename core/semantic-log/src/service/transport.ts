@@ -96,6 +96,29 @@ function toEvent(record: LogRecord, fingerprint: string): IngestEvent {
             trace: record.refs.trace,
             ...(record.refs.parent ? {parent: record.refs.parent} : {}),
         },
+        // Progress points travel as names only (PRD R26): a checkpoint's `data` and
+        // a decision's evaluated `values` are payload and stay in the local record
+        // and cache, where the inspector can show them (R1, R10). `regions` is
+        // carried whole because every field of a mark is a name the code declares.
+        ...(record.progress
+            ? {
+                  progress: {
+                      ...(record.progress.regions ? {regions: record.progress.regions} : {}),
+                      ...(record.progress.points
+                          ? {
+                                points: record.progress.points
+                                    .filter(
+                                        item =>
+                                            item &&
+                                            typeof item === 'object' &&
+                                            typeof item.name === 'string',
+                                    )
+                                    .map(item => item.name),
+                            }
+                          : {}),
+                  },
+              }
+            : {}),
         intent: record.intent,
         flow: record.flow,
     };
@@ -117,7 +140,9 @@ const DEFAULT_SEND_LIMIT = 1000;
 export function createServiceWriter(options: ServiceTransportOptions): ServiceWriter {
     const limit = options.sendLimit ?? DEFAULT_SEND_LIMIT;
     if (!(limit >= 1)) {
-        throw new RangeError(`sendLimit must be a positive number of sends, received ${String(limit)}`);
+        throw new RangeError(
+            `sendLimit must be a positive number of sends, received ${String(limit)}`,
+        );
     }
     // `fetch(` is written out literally so the offline audit can see this module
     // for what it is: the service side's second network caller, declared beside

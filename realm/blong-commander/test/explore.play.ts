@@ -105,6 +105,30 @@ async function selectSource(page: Page, label: string, expectedText: string) {
     );
 }
 
+/**
+ * Collapse the node the drill expanded, leaving the selection alone.
+ *
+ * The navigator expands the path down to the selected node, and an expanded node
+ * lists *its children* — which for a backend shared with other suites is live data
+ * the shot must not depend on: Redis keys are written by every suite that caches
+ * anything, so the navigator showed a few dozen `{app:…}:cfg:…` names that change
+ * from run to run. Collapsing the node leaves the path (`Redis (dev) > 0`) as the
+ * evidence that the drill happened, and the filtered rows in the table as the
+ * evidence of what it returned; the key names themselves are in the table anyway.
+ *
+ * The toggler is found through the selected node's `p-highlight` content, because
+ * a node's label (`0` here) is not unique enough to filter on.
+ */
+async function collapseSelectedNode(page: Page) {
+    await page
+        .locator(
+            '.blong-commander-tree .p-treenode-content.p-highlight [data-pc-section="toggler"]',
+        )
+        .first()
+        .click();
+    await page.waitForTimeout(200);
+}
+
 /** Data rows = table rows excluding the ".." up-to-parent row. */
 const dataRows = (page: Page) =>
     page
@@ -293,6 +317,10 @@ test('redis-dev — database index and keys', async ({portal}) => {
         // Filter to the seeded commander:* keys so other suites' `blong-test:*`
         // keys never appear — the two seeded keys are deterministic.
         await filterRows(portal.page, 'commander');
+        // The filter narrows the table, not the navigator, so collapse the expanded
+        // database node: its children are every key in a database other suites write
+        // to, and the shot must not carry them.
+        await collapseSelectedNode(portal.page);
         await expect(portal.page).toHaveScreenshot('explore-redis-keys.png');
     }
 });

@@ -114,4 +114,63 @@ export const vocabulary = {
 
     currentContext: (): ReturnType<AttachedVocabulary['currentContext']> =>
         attached?.currentContext() ?? ({} as ReturnType<AttachedVocabulary['currentContext']>),
+
+    /**
+     * Announce a milestone for the next record (PRD R26).
+     *
+     * Degrades to nothing, which is the whole degradation: a milestone nobody records is
+     * a note that was not written, and unlike every other member here there is no
+     * caller-visible result to get wrong.
+     */
+    point: (name: string, data?: unknown): void => {
+        attached?.point(name, data);
+    },
+
+    /**
+     * Take the branch whose predicate holds, recording the rationale (PRD R11/R26).
+     *
+     * Degrades to the **selection alone**: a branch has to be taken whether or not
+     * anything is recording, so the unattached case is a plain loop rather than a no-op.
+     * That is why a branch is reached through here rather than imported directly — it has
+     * to work on a path that must not reach the emitter's ambient scope (F-197).
+     */
+    decide: <T>(
+        discriminator: string,
+        values: Record<string, unknown>,
+        branches: ReadonlyArray<{
+            name: string;
+            when: (values: Record<string, unknown>) => boolean;
+            run: () => T;
+        }>,
+    ): T | undefined => {
+        if (attached !== undefined) {
+            return attached.decide<T>(discriminator, values, branches);
+        }
+        for (const branch of branches) {
+            if (branch.when(values)) {
+                return branch.run();
+            }
+        }
+        return undefined;
+    },
+
+    /** Start collecting what this scope's work announces — the receiver's first move. */
+    beginProgress: (): void => {
+        attached?.beginProgress();
+    },
+
+    /**
+     * Take the progress announced in this scope, clearing it (PRD R26/R27).
+     *
+     * What the framework around a handler reads when the handler returns, so the call can
+     * report what its own work was: a handler's points and branches are staged in the scope
+     * it ran in, and no record is written there. `undefined` when nothing is attached, which
+     * is what a browser page and an unattached process have to say.
+     */
+    takeProgress: (): ReturnType<AttachedVocabulary['takeProgress']> => attached?.takeProgress(),
+
+    /** Announce progress a caller already holds, on the next record of this scope. */
+    attachProgress: (progress: Parameters<AttachedVocabulary['attachProgress']>[0]): void => {
+        attached?.attachProgress(progress);
+    },
 };

@@ -37,6 +37,12 @@ export default server(() => ({
             login: {},
             access: {},
             gateway: {},
+            // Progress points and branch rationales are instrumentation: a development run records
+            // them and emits them with the records they ride, while production leaves
+            // `$meta.checkpoint` unattached so its `?.` call costs nothing (`core/blong-gogo/src/checkpoint.ts`).
+            // This suite is the one that demonstrates them — `test/observedMergeFlow.play.ts` draws
+            // the merge's notes and the alternative it did not take — so it is where the mode is on.
+            registry: {checkpointMode: 'debug'},
         },
         integration: {
             watch: {

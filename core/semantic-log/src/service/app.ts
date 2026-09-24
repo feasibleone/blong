@@ -31,7 +31,13 @@ import Fastify, {type FastifyInstance} from 'fastify';
 import {rename} from 'node:fs/promises';
 import {isUlid} from '../ulid.ts';
 import {DetectorSuite, type Anomaly} from './detectors.ts';
-import {modelOfExecution, modelOfUnion, renderSequence} from './diagram.ts';
+import {
+    discriminatorsOf,
+    modelOfExecution,
+    modelOfUnion,
+    pointsOf,
+    renderSequence,
+} from './diagram.ts';
 import {DigestLog} from './digest.ts';
 import {EmbeddingCache} from './embedding.ts';
 import {ExemplarStore} from './exemplars.ts';
@@ -452,6 +458,11 @@ export function createApp(options: ServiceOptions = {}): FastifyInstance {
                     services: execution.services,
                     refs: execution.refs,
                     legs: execution.legs,
+                    // The branches and the milestones the run was observed inside (PRD
+                    // R26/R27). Names only, like the record's own `progress`: what a
+                    // checkpoint was *for* is payload and stays on the record.
+                    branches: discriminatorsOf(execution.observations),
+                    points: pointsOf(execution.observations),
                 },
                 diagram: renderSequence(modelOfExecution(execution)),
             };
@@ -466,6 +477,18 @@ export function createApp(options: ServiceOptions = {}): FastifyInstance {
                 executions: union.executions,
                 services: union.services,
                 legs: union.legs,
+                // The branches observed under this kind, in first-observation order. The
+                // legs carry the same information per call; this is the summary a reader
+                // asking "what decisions does this flow make" wants first.
+                branches: [
+                    ...new Set(
+                        union.legs.flatMap(leg =>
+                            leg.ends.flatMap(end =>
+                                (end.branches ?? []).map(branch => branch.discriminator),
+                            ),
+                        ),
+                    ),
+                ],
             },
             diagram: renderSequence(modelOfUnion(union)),
         };

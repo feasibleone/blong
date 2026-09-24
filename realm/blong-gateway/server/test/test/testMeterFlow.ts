@@ -85,10 +85,7 @@ export default handler(
                             );
                             subscriptions += 1;
                         }
-                        await gatewayApplicationRemove(
-                            {applicationId: application.value},
-                            $meta,
-                        );
+                        await gatewayApplicationRemove({applicationId: application.value}, $meta);
                     }
                     assert.ok(
                         true,

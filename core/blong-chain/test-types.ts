@@ -49,26 +49,28 @@ export type StepFunction = (
 ) => unknown | Promise<unknown>;
 
 /**
- * A snapshot checkpoint — an array of step-name strings placed inside the
- * steps array. At runtime, when the executor encounters it the current batch
- * is awaited and the listed step results are snapshotted into the TAP context.
+ * A snapshot marker — an array of step-name strings placed inside the
+ * steps array. At runtime, when the executor encounters it the relevant steps
+ * are awaited and their results snapshotted into the TAP context.
  *
  * - `['*']`            — snapshot ALL completed steps' results into one context object
  * - `['step1', 'step2']` — snapshot only those specific steps
- * - `[]`               — sync barrier only, no snapshot (existing behaviour)
+ * - `[]`               — sync barrier only, no snapshot (the empty array is the spelling;
+ *                        there is no symbol for it, because inventing one would touch every
+ *                        call site for no gain)
  *
  * The array may carry an optional `.name` to give the snapshot a stable name:
  * ```
- * const cp = Object.assign(['*'], {name: 'provisioning-complete'});
+ * const marker = Object.assign(['*'], {name: 'provisioning-complete'});
  * ```
  */
-export type CheckpointMarker = string[] & {name?: string};
+export type SnapshotMarker = string[] & {name?: string};
 
 /**
  * Array of test steps. May contain step functions, nested step groups, or
- * checkpoint markers (string arrays).
+ * snapshot markers (string arrays; `[]` being a sync barrier).
  */
-export type StepArray = (StepFunction | StepArray | CheckpointMarker)[] & {name?: string};
+export type StepArray = (StepFunction | StepArray | SnapshotMarker)[] & {name?: string};
 
 /**
  * Meta information passed through test execution
@@ -370,7 +372,7 @@ export interface ITestExecutorConfig {
     log?: ITestLogger;
     /**
      * Chain-level mask paths. Applied to ALL snapshot operations in this chain:
-     * `autoSnapshot`, `assert.snapshot()`, and checkpoint snapshots.
+     * `autoSnapshot`, `assert.snapshot()`, and snapshot markers.
      *
      * Supports:
      * - Simple name: `'id'` — masks the `id` field in the snapshotted value

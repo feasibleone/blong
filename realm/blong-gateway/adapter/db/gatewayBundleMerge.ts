@@ -58,7 +58,19 @@ export default handler(
                 objectId: string;
             }> = [];
 
+            // A merge is long enough that a reader of the diagram cannot tell where it got to, so
+            // the phases announce themselves (PRD R26). A point is *announced*, not logged: it rides
+            // the next record this scope emits, which is what lets a handler with no logger of its own
+            // report its progress. In production `$meta.checkpoint` is not attached at all, so this
+            // call costs nothing there.
+            $meta.checkpoint?.('merge-started', {
+                capabilities: Object.keys(params.capability ?? {}).length,
+                roles: Object.keys(params.role ?? {}).length,
+                bundles: Object.keys(params.bundle ?? {}).length,
+            });
+
             // 1. Capabilities + their actions
+            let actionsMerged = 0;
             if (params.capability) {
                 for (const [capabilityName, actionList] of Object.entries(params.capability)) {
                     const {resourceId: capabilityId} = await coreResourceEnsure<{
@@ -91,8 +103,13 @@ export default handler(
                             predicateName: 'hasAction',
                             objectId: actionId,
                         });
+                        actionsMerged += 1;
                     }
                 }
+                $meta.checkpoint?.('capabilities-merged', {
+                    capabilities: Object.keys(params.capability).length,
+                    actions: actionsMerged,
+                });
             }
 
             // 2. Roles + their capabilities
@@ -122,6 +139,9 @@ export default handler(
                         });
                     }
                 }
+                $meta.checkpoint?.('roles-merged', {
+                    roles: Object.keys(params.role).length,
+                });
             }
 
             // 3. Bundles (role-wrapped capabilities with rate/credit metadata)
@@ -162,20 +182,52 @@ export default handler(
                         });
                     }
 
-                    // 2. Role (the bundle) + hasCapability edges.  A declared bit
-                    // is honoured; otherwise the framework allocates one.
-                    const {role: bundleRole} = await accessRoleEnsure<{role: {roleId: string}}>(
-                        {
-                            role: {
-                                roleName: bundleName,
-                                description: `${bundleName} bundle role`,
-                                ...(bundleDef.roleBit === undefined || bundleDef.roleBit === null
-                                    ? {}
-                                    : {roleBit: bundleDef.roleBit}),
+                    // 2. Role (the bundle) + hasCapability edges.  A declared bit is honoured;
+                    // otherwise the framework allocates one.  That choice is a branch rather than an
+                    // `if` (PRD R11/R26): which layout a merge chose is exactly what a diagram of it
+                    // should show, and each branch announces the layout it took, so the alternative
+                    // that was not taken stays visible beside the call that was made.
+                    const ensureBundleRole = (roleBit?: number) =>
+                        accessRoleEnsure<{role: {roleId: string}}>(
+                            {
+                                role: {
+                                    roleName: bundleName,
+                                    description: `${bundleName} bundle role`,
+                                    ...(roleBit === undefined ? {} : {roleBit}),
+                                },
                             },
+                            $meta,
+                        );
+                    const decidedRole = await $meta.decide?.(
+                        'role-bit',
+                        {
+                            bundleName,
+                            declared: bundleDef.roleBit ?? null,
                         },
-                        $meta,
+                        [
+                            {
+                                name: 'declared',
+                                when: values => values.declared !== null,
+                                run: () => {
+                                    $meta.checkpoint?.('role-bit-declared', {
+                                        roleBit: bundleDef.roleBit,
+                                    });
+                                    return ensureBundleRole(bundleDef.roleBit);
+                                },
+                            },
+                            {
+                                name: 'allocated',
+                                when: () => true,
+                                run: () => {
+                                    $meta.checkpoint?.('role-bit-allocated', {bundleName});
+                                    return ensureBundleRole();
+                                },
+                            },
+                        ],
                     );
+                    // A `$meta` that no dispatch built carries no branch helper, and the default
+                    // layout then is the one the `allocated` branch states.
+                    const {role: bundleRole} = decidedRole ?? (await ensureBundleRole());
                     const roleId = bundleRole.roleId;
                     const {resourceId: capabilityId} = await coreResourceEnsure<{
                         resourceId: string;
@@ -215,9 +267,18 @@ export default handler(
                             description: bundleDef.description ?? null,
                         });
                 }
+                $meta.checkpoint?.('bundles-merged', {
+                    bundles: Object.keys(params.bundle).length,
+                });
             }
 
             await coreTripleMerge({triples, refreshPath: true}, $meta);
+
+            // The last point of the sequence, and the one that lands on whatever the scope emits
+            // next — the response, when the dispatch records one. A point with no record after it is
+            // dropped with its scope, which is why every other point here is announced *before* the
+            // call that follows it.
+            $meta.checkpoint?.('graph-merged', {triples: triples.length});
 
             return {success: true};
         },

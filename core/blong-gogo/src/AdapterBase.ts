@@ -15,7 +15,14 @@ import PQueue from 'p-queue';
 import ConfigRuntime from './ConfigRuntime.ts';
 import {isExpectedError, portLogCalls} from './lib.ts';
 import loop from './loop.ts';
-import {adoptInbound, inboundIdentities, isFlowId} from './semanticContext.ts';
+import {
+    adoptInbound,
+    attachProgress,
+    beginProgress,
+    inboundIdentities,
+    isFlowId,
+    takeProgress,
+} from './semanticContext.ts';
 
 const errorMap: IErrorMap = {
     'adapter.configValidation': 'Adapter config validation:\r\n{message}',
@@ -376,15 +383,36 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
             // leg that arrived: that is what turns the caller's declaration into a receipt
             // the ledger can match, and it happens only when a flow was traced at all, so an
             // untraced request still pays nothing.
-            const answered = (): unknown => {
+            const answered = async (): Promise<unknown> => {
                 const inbound = inboundIdentities($meta as IMeta);
-                if (isFlowId(inbound.flow) && inbound.leg !== undefined) {
+                const traced = isFlowId(inbound.flow) && inbound.leg !== undefined;
+                if (traced) {
                     // The receipt is the receiver's record for the leg it was handed. It carries
                     // no declared target - the caller named the ends - so the ledger can tell a
                     // receipt from a declaration by the leg alone, in one process or many.
-                    portLogCalls(this)?.received(inbound.leg);
+                    portLogCalls(this)?.received(inbound.leg as string);
+                    // And the collection starts *before* the handler runs, because the boxes it will
+                    // read are installed with `enterWith`: one created after the handler's first wait
+                    // never reaches the frame that answers for the call (T-136).
+                    beginProgress();
                 }
-                return run();
+                const result = await run();
+                // What the handler announced while it ran (`$meta.checkpoint`, `$meta.decide`) is
+                // staged in the scope around it and written on no record of its own: the records
+                // of a call are the framework's, written before the handler starts and after it
+                // returns. Reading the progress here — inside that scope, once the handler is
+                // done — is what lets the call answer with its own work: a point becomes a note
+                // beside this hop, and a branch becomes the alternative that was taken
+                // (PRD R26/R27). Nothing is written when a handler announced nothing, so an
+                // uninstrumented call still costs one scope read.
+                if (traced) {
+                    const progress = takeProgress();
+                    if (progress !== undefined) {
+                        attachProgress(progress);
+                        portLogCalls(this)?.answered(inbound.leg as string);
+                    }
+                }
+                return result;
             };
             // The callee adopts the identity its caller declared, so the records its
             // handler writes belong to the caller's execution and its own calls are

@@ -66,7 +66,7 @@ declared edges before, and it set resource: true explicitly, so nothing changed 
 
 > _2026-09-16 · core/blong-gogo · open_
 
-Watch.load read module.default and passed it straight to _validateAndSetHandlerName, so a plain
+Watch.load read module.default and passed it straight to \_validateAndSetHandlerName, so a plain
 shared module inside a handler folder (realm/blong-access/adapter/db/account.ts, accessModel.ts,
 oidc.ts) threw TypeError: Cannot read properties of undefined (reading name) at startup. No realm
 could be loaded and no test in the repo could run - it predates this work and came from the
@@ -91,30 +91,30 @@ rules naming the record before touching anything (aclReleaseResource, guarded by
 
 The framework's frameworkRealms dedupe compares a resolved specifier against loadedRealmUrls, which
 the wrapper around a suite's children filled from the value those children return. A child answers
-with the realm *factory* (a function), not the module namespace and not the module, so url was never
+with the realm _factory_ (a function), not the module namespace and not the module, so url was never
 a string and nothing was ever recorded: every realm a suite named was loaded a second time by the
 framework's own list. The visible damage was not the double handlers but the ordering: the second
 blong-server copy registered server.subject.validation AFTER the realm's explicit gateway overrides
-(access.access.validation), so Registry._validations() replaced the override and eight blong-access
+(access.access.validation), so Registry.\_validations() replaced the override and eight blong-access
 Playwright specs failed with 'must have required properties capabilityId/roleId/userId' - the ids
 those overrides exist to make optional. Found by printing what the wrapper sees, after reasoning
 about URL equality and pnpm symlinks led nowhere. Fix: record the url inside loadRealm, where the
 module exists, into a Set carried on the shared api so every nested load writes into the tree's one
 set. Lesson: when a dedupe silently does nothing, print the value the comparison is made of - and
-check the *registration order* consequence, because a duplicated realm does not fail loudly, it
+check the _registration order_ consequence, because a duplicated realm does not fail loudly, it
 reorders.
 
 ### F-195 — A shared module that imports node:async_hooks kills the browser bundle
 
 > _2026-09-19 · core/blong-gogo · open_
 
-The new callTrace.ts imported AsyncLocalStorage from node:async_hooks at module scope. Vite resolves
+The new callTrace.ts imported AsyncLocalStorage from node:async*hooks at module scope. Vite resolves
 that to a browser-external stub that throws on the named export, and callTrace is reached from the
-*shared* realm machinery (semanticContext, BrowserLog), so every browser suite in blong-access died
+\_shared* realm machinery (semanticContext, BrowserLog), so every browser suite in blong-access died
 at load with 'does not provide an export named AsyncLocalStorage' - the spec failed immediately
 after I had verified the server side. The framework already documents the pattern for exactly this
 (semanticContext.ts attaches the emitter vocabulary instead of importing it); the file to check
-before adding a Node-only import to anything reachable from load.ts is whether the *browser*
+before adding a Node-only import to anything reachable from load.ts is whether the _browser_
 platform reaches it. Fix: callTrace.ts holds a CallTraceStorage handed in by attachCallTraceStorage,
 and callTraceNode.ts (imported from the Node-only Log/SemanticLog init) attaches the real
 AsyncLocalStorage. Consequence to remember: in a page there is no scope, so callsEnabled() is false
@@ -140,7 +140,7 @@ implementations.
 > _2026-09-19 · core/blong-gogo · open_
 
 Moving the logger's lifecycle into semantic-log took two rewrites of the same file: the first draft
-*extended* the new base and the framework never instantiated it (load.ts identifies components by
+_extended_ the new base and the framework never instantiated it (load.ts identifies components by
 'prototype instanceof Internal'), and the second had the emitter-side base import the service, which
 test/emitter-entry.test.ts forbids even as a type. Both were discoverable before writing: the
 package has emitter-entry, offline and parity tests that state exactly which modules each half may

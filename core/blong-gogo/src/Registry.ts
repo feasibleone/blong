@@ -25,6 +25,7 @@ import merge from 'ut-function.merge';
 
 import * as blongLib from '@feasibleone/blong-lib';
 import {renderAll} from '@feasibleone/blong-template';
+import {vocabulary} from '@feasibleone/semantic-log/attachable';
 import {createAttachCheckpoint} from './checkpoint.ts';
 import {methodId, methodParts} from './lib.ts';
 import type {IResolution} from './Resolution.ts';
@@ -369,13 +370,25 @@ export default class Registry extends Internal implements IRegistry {
         port: object | undefined,
     ): Promise<{local: object; literals: object[]}> {
         const attachCheckpoint = this.#attachCheckpoint;
+        const recording = (this.#config.checkpointMode ?? 'production') !== 'production';
         const lib = {
+            // The library's own surface first, so an injected handle can never be silently
+            // overwritten by a name it happens to share: `blongLib` exports `checkpoint`
+            // for the snapshot marker, and the spread used to sit *after* these members.
+            ...blongLib,
             error: this.#error.register.bind(this.#error),
-            assert: attachCheckpoint ? nodeAssert : undefined,
+            assert: recording ? nodeAssert : undefined,
+            // The progress-point pair (PRD R26). `checkpoint` reports a milestone from code that
+            // has no `$meta` — it is the emitter's own `point` reached through the attachable
+            // facade, and it is `undefined` in production for the same reason `$meta.checkpoint`
+            // is: a note nobody records must cost nothing. `decide` selects, so it is always
+            // there, and it is the same function in every mode — what the mode decides is whether
+            // a record carries the rationale, not whether the branch is taken.
+            checkpoint: recording ? vocabulary.point : undefined,
+            decide: vocabulary.decide,
             render: (what: object[] | object) =>
                 renderAll(Array.isArray(what) ? merge(...what) : what, this.#platform.context),
             timing: this.#platform.timing,
-            ...blongLib,
             // The runtime services a `library()` function needs, mirroring the
             // port API (`registry: this`, `platform: …`).
             //

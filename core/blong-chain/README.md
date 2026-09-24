@@ -2,9 +2,9 @@
 
 **Parallel test execution with automatic dependency detection through thenable proxies.**
 
-`blong-chain` is a TypeScript test framework that automatically detects
-dependencies between test steps and executes them in parallel when possible,
-maximizing performance while maintaining correctness.
+`blong-chain` is a TypeScript test framework that automatically detects dependencies between test
+steps and executes them in parallel when possible, maximizing performance while maintaining
+correctness.
 
 ## Key Features
 
@@ -14,10 +14,8 @@ maximizing performance while maintaining correctness.
 - 🎯 **Thenable Proxies** - Natural async/await syntax for step dependencies
 - 📈 **Performance Metrics** - Queue time, execution time, and critical path analysis
 - 🌳 **Nested Groups** - Hierarchical test organization with proper indentation
-- 🔧 **Error Handling** - Graceful failure with continued execution of
-  independent steps
-- 🧪 **Test Framework Integration** - Works seamlessly with node:test, tap,
-  and others
+- 🔧 **Error Handling** - Graceful failure with continued execution of independent steps
+- 🧪 **Test Framework Integration** - Works seamlessly with node:test, tap, and others
 
 ## Installation
 
@@ -32,7 +30,7 @@ import {TestExecutor} from '@feasibleone/blong-chain';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 
-test('parallel execution example', async (t) => {
+test('parallel execution example', async t => {
     const executor = new TestExecutor({concurrency: 10});
 
     const steps = [
@@ -69,8 +67,7 @@ test('parallel execution example', async (t) => {
 
 ### Thenable Proxies
 
-Steps access previous results through thenable proxies that automatically track
-dependencies:
+Steps access previous results through thenable proxies that automatically track dependencies:
 
 ```typescript
 // Pattern 1: Direct await
@@ -89,7 +86,14 @@ async function step3(assert, {previousStep}) {
 }
 
 // Pattern 4: Deep destructuring
-async function step4(assert, {previousStep: {user: {name}}}) {
+async function step4(
+    assert,
+    {
+        previousStep: {
+            user: {name},
+        },
+    },
+) {
     const userName = await name;
 }
 ```
@@ -155,23 +159,37 @@ Organize steps into hierarchical groups for better structure and output:
 
 ```typescript
 const databaseSetup = [
-    async function connect() { return {connected: true}; },
-    async function createSchema() { return {created: true}; },
-    async function seedData() { return {users: []}; },
+    async function connect() {
+        return {connected: true};
+    },
+    async function createSchema() {
+        return {created: true};
+    },
+    async function seedData() {
+        return {users: []};
+    },
 ] as any;
 databaseSetup.name = 'Database Setup';
 
 const apiTests = [
-    async function testEndpoint1() { return {status: 200}; },
-    async function testEndpoint2() { return {status: 200}; },
+    async function testEndpoint1() {
+        return {status: 200};
+    },
+    async function testEndpoint2() {
+        return {status: 200};
+    },
 ] as any;
 apiTests.name = 'API Tests';
 
 const steps = [
-    async function initialize() { return {ready: true}; },
-    databaseSetup,  // Nested group
-    apiTests,       // Nested group
-    async function cleanup() { return {done: true}; },
+    async function initialize() {
+        return {ready: true};
+    },
+    databaseSetup, // Nested group
+    apiTests, // Nested group
+    async function cleanup() {
+        return {done: true};
+    },
 ];
 
 await executor.execute(steps, {}, t);
@@ -194,9 +212,13 @@ await executor.execute(steps, {}, t);
   ✔ cleanup
 ```
 
-### Checkpoints (Synchronization Barriers)
+### Sync Barriers
 
-Use empty arrays `[]` as checkpoints to synchronize parallel execution. All steps before a checkpoint must complete before any steps after it begin:
+Use empty arrays `[]` as sync barriers to synchronize parallel execution. All steps before a barrier
+must complete before any steps after it begin:
+
+(A _snapshot marker_ — `snapshot('name', ...steps)` — is a different thing: it waits for steps
+**and** snapshots their results. A sync barrier snapshots nothing.)
 
 ```typescript
 const steps = [
@@ -216,7 +238,7 @@ const steps = [
         return {loggerReady: true};
     },
 
-    // Checkpoint: Wait for all Phase 1 steps to complete
+    // Sync barrier: Wait for all Phase 1 steps to complete
     [],
 
     // Phase 2: These run in parallel, but only after Phase 1 completes
@@ -230,7 +252,7 @@ const steps = [
         return await fetchProducts(config.apiUrl);
     },
 
-    // Another checkpoint
+    // Another barrier
     [],
 
     // Phase 3: Runs only after Phase 2 completes
@@ -243,6 +265,7 @@ const steps = [
 ```
 
 **Use Cases:**
+
 - **Phased execution**: Separate initialization, data loading, processing, and cleanup phases
 - **Resource management**: Ensure all resources are ready before proceeding
 - **Testing stages**: Complete all setup before running tests, then cleanup
@@ -255,7 +278,7 @@ Monitor test execution in real-time:
 ```typescript
 const executor = new TestExecutor({concurrency: 10});
 
-executor.on('test:start', (progress) => {
+executor.on('test:start', progress => {
     console.log('Test started:', progress.testName);
 });
 
@@ -314,9 +337,7 @@ console.log(`Critical path: ${latency.criticalPath.join(' → ')}`);
 
 // View bottlenecks
 for (const bottleneck of latency.bottlenecks) {
-    console.log(
-        `${bottleneck.stepName} blocked ${bottleneck.blockedSteps.length} steps`
-    );
+    console.log(`${bottleneck.stepName} blocked ${bottleneck.blockedSteps.length} steps`);
 }
 
 // View individual step metrics
@@ -391,7 +412,7 @@ const executor = new TestExecutor({
 ## Real-World Example
 
 ```typescript
-test('e-commerce checkout flow', async (t) => {
+test('e-commerce checkout flow', async t => {
     const executor = new TestExecutor({concurrency: 5});
 
     const steps = [
@@ -421,9 +442,7 @@ test('e-commerce checkout flow', async (t) => {
             return {amount: product.price * 0.08};
         },
 
-        async function calculateTotal(assert, {
-            loadProduct, calculateShipping, calculateTax
-        }) {
+        async function calculateTotal(assert, {loadProduct, calculateShipping, calculateTax}) {
             const product = await loadProduct;
             const shipping = await calculateShipping;
             const tax = await calculateTax;
@@ -438,9 +457,7 @@ test('e-commerce checkout flow', async (t) => {
             };
         },
 
-        async function processPayment(assert, {
-            calculateTotal, validateInventory
-        }) {
+        async function processPayment(assert, {calculateTotal, validateInventory}) {
             const total = await calculateTotal;
             const inventory = await validateInventory;
 
@@ -465,10 +482,14 @@ test('e-commerce checkout flow', async (t) => {
         },
     ];
 
-    await executor.execute(steps, {
-        testId: 'checkout-001',
-        environment: 'test',
-    }, t);
+    await executor.execute(
+        steps,
+        {
+            testId: 'checkout-001',
+            environment: 'test',
+        },
+        t,
+    );
 
     // Verify results
     const progress = executor.getProgress();
@@ -494,8 +515,7 @@ In this example:
 
 - **[SHOWCASE.md](./SHOWCASE.md)** - Comprehensive feature showcase with all patterns
 - **[TESTING.md](./TESTING.md)** - Testing guide and CI integration
-- **[NESTED_TEST_CONTEXT.md](./NESTED_TEST_CONTEXT.md)** - Test framework
-  integration details
+- **[NESTED_TEST_CONTEXT.md](./NESTED_TEST_CONTEXT.md)** - Test framework integration details
 - **[test-types.ts](./test-types.ts)** - Complete TypeScript API documentation
 
 ## Running Tests
@@ -514,17 +534,17 @@ npm run test:all
 
 ## How It Works
 
-1. **Detection Phase**: When you destructure or access `context.stepName`, a
-   thenable proxy is returned
+1. **Detection Phase**: When you destructure or access `context.stepName`, a thenable proxy is
+   returned
 2. **Dependency Tracking**: The access is recorded as a dependency
 3. **Scheduling Phase**: Steps are added to a priority queue based on dependencies
 4. **Execution Phase**: Steps run as soon as all their dependencies complete
 5. **Resolution Phase**: Step results are stored and proxies are resolved
-6. **Checkpoints**: Empty arrays `[]` create synchronization barriers, waiting for
-   all previous steps to complete before continuing
+6. **Sync Barriers**: Empty arrays `[]` create synchronization barriers, waiting for all previous
+   steps to complete before continuing
 
-This creates a dynamic dependency graph that enables maximum parallelization
-while ensuring correctness, with optional synchronization points for phased execution.
+This creates a dynamic dependency graph that enables maximum parallelization while ensuring
+correctness, with optional synchronization points for phased execution.
 
 ## Use Cases
 

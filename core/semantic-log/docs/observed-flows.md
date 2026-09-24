@@ -32,6 +32,11 @@ participant is the one exception: it is drawn once, because the answer to it wou
 the same caller, the same label and the same step, and the arrow is already solid — the
 receiver's record is what made it solid in the first place.
 
+A branch is an `alt`/`else` block whose arms are named for the candidates the code declared, and an
+arm whose predicate never ran says so. The arms are **ordered so the block renders**: mermaid refuses
+a section with nothing in it when it is the last before `end`, so the empty arms come first and the
+one carrying the calls last. The labels, not the order, are what name the candidates.
+
 <!-- BEGIN OBSERVED FLOWS: transfer.single -->
 Participants: `payer`, `hub`, `payee`, `fxp`. 7 calls observed across 1 execution(s).
 
@@ -86,7 +91,10 @@ sequenceDiagram
     Note over payer, fxp: PHASE 1: discovery
     payer->>hubA: discovery.parties
     hubA->>proxy: discovery.proxy
+    alt route-selection = hold — not weighed
+    else hubB
     proxy->>hubB: proxy.discovery.corridor
+    end
     hubB->>payee: discovery.payee
     payee-->>hubB: discovery.payee
     hubB-->>proxy: proxy.discovery.corridor
@@ -95,7 +103,10 @@ sequenceDiagram
     Note over payer, fxp: PHASE 2: quote
     payer->>hubA: quote.rates
     hubA->>proxy: quote.proxy
+    alt route-selection = hold — not weighed
+    else hubB
     proxy->>hubB: proxy.quote.corridor
+    end
     hubB->>fxp: quote.fx
     fxp-->>hubB: quote.fx
     hubB->>payee: quote.payee
@@ -106,7 +117,10 @@ sequenceDiagram
     Note over payer, fxp: PHASE 3: transfer
     payer->>hubA: transfer.submit
     hubA->>proxy: transfer.proxy
+    alt route-selection = hold — not weighed
+    else hubB
     proxy->>hubB: proxy.transfer.corridor
+    end
     hubB->>payee: transfer.deliver
     payee-->>hubB: transfer.deliver
     hubB-->>proxy: proxy.transfer.corridor

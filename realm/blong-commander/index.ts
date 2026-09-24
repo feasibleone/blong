@@ -47,5 +47,12 @@ export default server(() => ({
                 test: ['test.commander'],
             },
         },
+        dev: {
+            // The dev and Playwright run turns progress points on, so a handler can announce the
+            // milestones and branches a captured diagram draws. Production never activates `dev`,
+            // where `$meta.checkpoint` and `$meta.decide` stay undefined and the `?.` calls cost
+            // nothing.
+            registry: {checkpointMode: 'debug'},
+        },
     },
 }));

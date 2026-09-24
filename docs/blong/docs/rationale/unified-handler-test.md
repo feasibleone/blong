@@ -62,15 +62,35 @@ Unify the handler and test concepts along a **continuum** rather than a **bounda
 
 ## Design
 
-### The Checkpoint Function
+### Progress Points: One Channel, Two Shapes
 
-The `checkpoint` function is injected by the framework. It is implemented in
-`core/blong-gogo/src/checkpoint.ts`:
+A checkpoint and a decision look like two features and are one. Both are **progress points** —
+moments in the logic that explain the shape a run took — recorded in one place and drawn one way
+([R11, R26, R27](semantic-log.md)). They differ in exactly one respect, and it is a property of the
+concept rather than an accident of the API: **a point may be dropped, a branch may not.** A missing
+checkpoint costs a note; a missing branch would skip the work. So `checkpoint` is optional-chained
+and `decide` never is, while everything else about the two is shared.
+
+#### A checkpoint is a point
+
+A point is announced with `$meta.checkpoint?.(name, data)`, or with `lib.checkpoint?.(…)` from code
+that has no `$meta` — a library function, far from the record the point will land on. The recorder
+is implemented in `core/blong-gogo/src/checkpoint.ts`:
 
 ```typescript
+const checkpoint: CheckpointFn = function (this: IMeta, name, data) {
+    (this.checkpoints ??= []).push({name, data, timestamp: Date.now()});
+    vocabulary.point(name, data); // and the same moment is announced to the log
+};
+
+/** `decide` in every mode — it selects. `checkpoint` only where points are recorded. */
 export function createAttachCheckpoint(mode: 'test' | 'debug' | 'production') {
-    return mode === 'production' ? undefined : attachCheckpoint;
-    // undefined → $meta.checkpoint is never set → optional chaining is zero-cost no-op
+    const recording = mode !== 'production';
+    return (meta: IMeta): void => {
+        meta.decide ??= decide;
+        if (recording) meta.checkpoint ??= checkpoint;
+        // production: `checkpoint` is never set → `?.` is a zero-cost no-op
+    };
 }
 ```
 
@@ -97,8 +117,7 @@ export default handler(
 );
 ```
 
-**Test reading those checkpoints**
-(`demo/handler-test-poc/order/server/test/test/testOrderCheckpoint.ts`):
+**Test reading those checkpoints** (`demo/handler-test-poc/order/test/test/testOrderCheckpoint.ts`):
 
 ```typescript
 $meta.checkpoints = [];
@@ -111,14 +130,47 @@ assert.equal(checkpoints[0].name, 'total-calculated');
 assert.equal((checkpoints[0].data as any).total, 200);
 ```
 
-The `checkpoint` function:
+#### What both handles share
 
-- **In production (`checkpointMode: 'production'`):** Is `undefined`. The `checkpoint?.()` call is a
-  no-op with zero overhead (no function call, no object allocation).
-- **In debug/staging mode:** Emits structured log entries with checkpoint names and data, feeding
-  distributed tracing systems.
-- **In test mode:** Records checkpoint data in the test context, enabling assertions on intermediate
-  states without modifying the handler code.
+| `checkpointMode` | `checkpoint` | recorded | emitted | drawn as | `assert`      |
+| ---------------- | ------------ | -------- | ------- | -------- | ------------- |
+| `production`     | `undefined`  | no       | no      | —        | `undefined`   |
+| `debug`          | recorder     | yes      | yes     | a note   | `node:assert` |
+| `test`           | recorder     | yes      | yes     | a note   | `node:assert` |
+
+- **Recorded** means the point lands on the invocation's captured list (`$meta.checkpoints`), which
+  is what a test asserts on.
+- **Emitted** means it reaches the semantic log as a point, so the record carries it and the
+  sequence diagram draws it as a note over the participant that reported it. Its **name** travels;
+  its `data` stays in the local record and cache, where the inspector can show it and a caller's
+  `redact` patterns can withhold it — the same rule a decision's evaluated values follow.
+- **Not built yet:** the `invariant` and `canary` guards, `lib.chain`, and the rendering of points
+  as test-report steps. They are named because the design anticipates them, not because they run.
+
+#### A decision is a region
+
+A branch is a progress point too, and it uses the same channel — but it _selects_, so it is a
+function rather than a notification, and it is never optional-chained:
+
+```typescript
+export default handler(
+    ({lib: {decide}}) =>
+        async function paymentRateQuote({rate, rateLimit}, $meta) {
+            const accepted = decide('rate-within-limit', {rate, rateLimit}, [
+                {name: 'decline', when: v => v.rate > v.rateLimit, run: () => false},
+                {name: 'accept', when: () => true, run: () => true},
+            ]);
+            logger.warn('rate declined', {rate, rateLimit}); // the rationale lands on this record
+            return accepted ? publishRate(rate) : decline('rate above provider limit');
+        },
+);
+```
+
+Taking the branch _is_ announcing it, so the recorded rationale cannot disagree with the branch the
+code took — which is what [R11](semantic-log.md) asks for when it says "deterministically, not as
+prose". The chosen branch is a **region**: the records emitted inside it carry its position, so the
+diagram draws an `alt`/`else`/`end` block spanning the calls the branch made, with every candidate
+drawn and the unchosen ones empty. A region with no alternatives — a phase — stays a band.
 
 ### Optional Assertions
 
@@ -494,7 +546,14 @@ export default handler(({handler: {paymentFlowExecute}}) => ({
 }));
 ```
 
+The list read here is the same list the sequence diagram is drawn from, so a test and a picture
+cannot disagree about what happened.
+
 ## Future Ideas
+
+Nothing in this section is built, and it is recorded here so a reader does not mistake the code
+examples for capabilities. Of the `lib` members named below, only `assert` exists today:
+`invariant`, `canary` and `chain` do not.
 
 1. **Handler coverage matrix** — record which handlers are called by which test steps and generate a
    "handler coverage" report analogous to code coverage. This exposes API paths that are never

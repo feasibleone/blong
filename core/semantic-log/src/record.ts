@@ -65,6 +65,79 @@ export interface Decision {
     values: Record<string, unknown>;
 }
 
+/**
+ * A milestone a handler reported (PRD R26) — the reporting half of a progress
+ * point.
+ *
+ * A checkpoint and a decision are one concept in two shapes: a point says *what
+ * happened here*, a {@link RegionMark} says *which branch this was inside*. Both
+ * ride the same slot, so nothing downstream learns two mechanisms.
+ */
+export interface Point {
+    /** Stable name of the moment, e.g. `total-calculated` (PRD R12: structure, not prose). */
+    name: string;
+    /**
+     * What was true there. Retained locally and never transmitted: the name is
+     * structural and identifies the code path, the data is payload — the rule
+     * `Decision.values` follows, for the reason R1 and R10 give.
+     */
+    data?: unknown;
+}
+
+/**
+ * The branch a record was emitted inside (PRD R26).
+ *
+ * Stamped on **every** record the chosen branch produced, which is what lets a
+ * sequence diagram draw an `alt`/`else`/`end` block around exactly the calls the
+ * branch made. A record that merely *reports* a rationale (the one-shot
+ * `decision`) carries no region: reporting a branch is not being inside it.
+ *
+ * Every field here is a name, so the whole mark may be transmitted — unlike
+ * {@link Point} and `Decision.values`, whose payload stays in the local record.
+ */
+export interface RegionMark {
+    /**
+     * The path of counters identifying the branch, `1` or `3.1`.
+     *
+     * It is a *position*, not structure, so it shapes nothing downstream: it
+     * groups the records one branch emitted, and it is deliberately absent from
+     * the record's identity (PRD R12).
+     */
+    id: string;
+    discriminator: string;
+    /** Every candidate considered, in evaluation order. */
+    candidates: string[];
+    chosen: string;
+    /**
+     * How many of the record's points were announced before this branch was taken
+     * (PRD R27).
+     *
+     * A point announced before a decision is not the decision's work, and a reader
+     * must not read the block as having caused it: the record says how many came
+     * first, so the ones before it are drawn outside the block and the ones after it
+     * inside. A count rather than a flag because the mark is one per branch: with
+     * `n` points already announced, everything up to `n` happened before it.
+     */
+    pointsBefore?: number;
+}
+
+/** The progress points recorded on one record (PRD R26). */
+export interface Progress {
+    /**
+     * The branches this record was emitted inside, **outermost first** — one entry
+     * for a branch taken at the top level, more when a branch was taken within
+     * another.
+     *
+     * A chain rather than a single mark because a record can only report the
+     * region it is *in*: without the enclosing entry, the outer branch's
+     * alternatives would be unknown to a reader of the inner record and the
+     * enclosing `alt` block could not be drawn at all.
+     */
+    regions?: RegionMark[];
+    /** Milestones announced at this point, in the order they were announced. */
+    points?: Point[];
+}
+
 /** Flow position and the call it is part of (PRD R9, R22). */
 export interface FlowState {
     /**
@@ -210,6 +283,17 @@ export interface LogRecord {
     flow?: FlowState;
     intent?: IntentState;
     decision?: Decision;
+    /**
+     * Where this record sat in the logic: the branch it was emitted inside, and
+     * the milestones announced at this point (PRD R26).
+     *
+     * Absent rather than empty when there is nothing to say, for the reason
+     * `decision` is: an always-present `progress: undefined` key is visible to
+     * `redactRecord`, so a pattern matching the slot would replace it with the
+     * placeholder *string* and identity minting would then be reading a string
+     * where it expects a mark.
+     */
+    progress?: Progress;
     req?: RequestDetail;
     res?: ResponseDetail;
     err?: ErrorDetail;

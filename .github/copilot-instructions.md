@@ -20,7 +20,9 @@ Read them the cheap way: every file opens with a generated index (one line per e
 everything already recorded. Never read a whole file to find one entry —
 `blong-dev memory show <id>` prints exactly one, and `blong-dev memory audit` finds dangling
 references. The `## Manual` section of the root `todo.md` is the user's own list: agents never add
-to it, edit it or tidy it up.
+to it, edit it or tidy it up. If you encounter markdown lint issues when using `blong-dev memory`,
+add blong-dev memory todo to address it permanently either by better instructions or improved
+tooling.
 
 - **Output todo metrics explicitly**. Emit the marker **immediately after the switch/pivot**, before
   during reasoning and right before starting the next task from the list. Emit at least once per
@@ -53,9 +55,10 @@ to it, edit it or tidy it up.
   that the user is away, you MUST stop and claim that you cannot complete the task.
 
 - **Track missing, deferred or incomplete features explicitly** —
-  `blong-dev memory add todo --title "<the work left>" --area <area> --body "<why it is deferred>"`
+  `blong-dev memory add todo --title "<the work left>" --area <area> --body "<deferred instructions>"`
   — for any task you are deferring or leaving incomplete because it was not explicitly requested or
-  for any other reason.
+  for any other reason. Describe them as instructions about what needs to be done and include
+  important context.
 
 - **Close what you finish.** `blong-dev memory close <id>` when a friction is fixed, a todo is done
   (removed) or a decision is superseded (`--by <id>` / `--reason <text>`), with `--note` for the
@@ -74,6 +77,8 @@ to it, edit it or tidy it up.
 
 Hard rules — apply first, never contradict.
 
+- Be aware of automatic formatting when editing, your changes may or may not get formatted, imports
+  reordered, non-whitespace characters replaced, dictionary sorted, etc.
 - **Never import handlers directly.** Cross-handler deps via `handler()` proxy (`runtime.handler`);
   direct imports break IoC.
 - **Prefer library functions** when feasible for reusing logic across handlers (see blong-handler
@@ -88,8 +93,8 @@ Hard rules — apply first, never contradict.
 - **Hierarchy never skipped:** suite → realm → layer → handler group → handler.
 - **Two-word properties.** `userName` not `name`; `customerId` not `id`; `emailAddress` not `email`.
 - **Adapters never call adapters directly.** Coordinate via orchestrators.
-- **[REUSE_SERVER]** Realms reuse blong-server's subject orchestrator + db adapter — do NOT create a
-  realm-local `adapter/db.ts` or a dispatch orchestrator; contribute `orchestrator/subject/init.ts`
+- **Realms reuse blong-server** subject orchestrator + db adapter — do NOT create a realm-local
+  `adapter/db.ts` or a dispatch orchestrator; contribute `orchestrator/subject/init.ts`
   (namespace) + `adapter/db/*.ts` handlers (`queryBuilder`) + `meta/`.
 - **Never enable `systemDebug` in production.**
 - **Never commit to `dev/`** (gitignored) — committed code lives in the category folders (`core/`,
@@ -243,6 +248,7 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Using the model for realm API, CRUD pages  | **blong-model**                                       |
 | Developing the model system internals      | **blong-model-dev**                                   |
 | Full-stack Playwright testing              | **blong-playwright**                                  |
+| Capturing a flow's sequence diagram        | **blong-flow-diagram**                                |
 | Writing or reviewing documentation         | **blong-docs**                                        |
 | Parties, RBAC, users, auth, resource graph | **blong-core**                                        |
 
@@ -254,6 +260,8 @@ Suite             — top-level entry point, glues realms, defines deployment co
 - Realm deployment patterns: Call `skill` with **blong-realm**
 - CLI intents and activation system: Call `skill` with **blong-intent**
 - Party/access graph, RBAC, authorization: Call `skill` with **blong-core**
+- A flow's sequence diagram, checkpoint and branch drawings: Call `skill` with
+  **blong-flow-diagram**
 
 ## [KEY_PATTERNS]
 

@@ -1,18 +1,18 @@
 import {DiagramViewer, useBlong, useText} from '@feasibleone/blong-browser';
 import {Column} from 'primereact/column';
 import {DataTable} from 'primereact/datatable';
+import {Dropdown} from 'primereact/dropdown';
 import {InputText} from 'primereact/inputtext';
 import {useState} from 'react';
 import {useRealmCall, useRealmRead} from './useRealmData.js';
 
 /**
- * What has been observed, and what one execution looked like.
+ * What has been observed, and what one execution — or every run of one kind — looked like.
  *
- * Two reads of one service: the kinds it has seen with their executions, and the
- * diagram of whichever execution is selected. The diagram is a *text* diagram
- * drawn by `DiagramViewer`, and which renderer draws it comes from the realm's
- * own configuration — a deployment that wants a different notation changes a
- * config value, not this page.
+ * Two reads of one service: the kinds it has seen with their executions, and the diagram of
+ * whichever execution or kind is selected. The diagram is a *text* diagram drawn by
+ * `DiagramViewer`, and which renderer draws it comes from the realm's own configuration — a
+ * deployment that wants a different notation changes a config value, not this page.
  */
 
 interface IFlowSummary {
@@ -44,7 +44,16 @@ export function Flow() {
     const flows = useRealmRead<IFlows>('blong.flow.find');
     const [diagram, setDiagram] = useState<string>();
     const [filter, setFilter] = useState('');
+    const [kind, setKind] = useState<string>();
     const call = useRealmCall();
+
+    // A kind is what a reader asks for when the question is "how does this flow go, over every
+    // run": the service answers with the union of its executions. An execution id draws the single
+    // run instead — the same route with a different reference, which is why one control and one
+    // read serve both.
+    const kinds = (flows.data?.unions ?? [])
+        .map(union => union.kind)
+        .filter((name): name is string => name !== undefined);
 
     const showDiagram = async (reference: string): Promise<void> => {
         const {data, error} = await call('blong.flow.get', {reference});
@@ -66,13 +75,31 @@ export function Flow() {
             style={{height: '100%', minHeight: 0}}
         >
             {flows.error !== undefined && <small className="text-red-500">{flows.error}</small>}
-            <InputText
-                data-testid="browse-search"
-                value={filter}
-                onChange={event => setFilter(event.target.value)}
-                placeholder={useText('Filter')}
+            <div
+                className="flex gap-2"
                 style={{flexShrink: 0}}
-            />
+            >
+                <InputText
+                    data-testid="browse-search"
+                    value={filter}
+                    onChange={event => setFilter(event.target.value)}
+                    placeholder={useText('Filter')}
+                    className="flex-1"
+                />
+                {/* Choosing a kind draws every run of it; the list below stays the way to look at
+                    one. Both are the same read of the same service. */}
+                <Dropdown
+                    data-testid="flow-kind"
+                    value={kind}
+                    options={kinds}
+                    onChange={event => {
+                        const chosen = event.value as string;
+                        setKind(chosen);
+                        void showDiagram(chosen);
+                    }}
+                    placeholder={useText('Every run of a kind')}
+                />
+            </div>
             {/* The list and the diagram each get a box of their own and scroll inside it:
                 between them they hold everything the panel was given, so the page never
                 outgrows it. A list of every execution the process has served is as long as

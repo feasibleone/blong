@@ -1036,11 +1036,11 @@ tap.test('Feature Showcase: Complete Integration Test', async t => {
 });
 
 // ============================================================================
-// Test 6: Checkpoints for Synchronization
+// Test 6: Sync Barriers
 // Demonstrates: Empty arrays as synchronization barriers between parallel phases
 // ============================================================================
 
-tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t => {
+tap.test('Feature Showcase: Sync Barriers and Parallel Phases', async t => {
     const executor = new TestExecutor({concurrency: 10});
 
     const executionLog: Array<{step: string; event: string; timestamp: number}> = [];
@@ -1085,7 +1085,7 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
             return {logLevel: 'info', destination: 'stdout'};
         },
 
-        // Checkpoint 1: Wait for all initialization to complete
+        // Sync barrier 1: Wait for all initialization to complete
         [],
 
         // Phase 2: Data loading (depends on initialization, runs in parallel)
@@ -1146,7 +1146,7 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
             return {orders: [{orderId: 'O1', total: 99.99}]};
         },
 
-        // Checkpoint 2: Wait for all data loading to complete
+        // Sync barrier 2: Wait for all data loading to complete
         [],
 
         // Phase 3: Processing (depends on all data, runs in parallel)
@@ -1218,7 +1218,7 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
             };
         },
 
-        // Checkpoint 3: Wait for all processing to complete
+        // Sync barrier 3: Wait for all processing to complete
         [],
 
         // Phase 4: Finalization (single step that needs everything)
@@ -1247,12 +1247,12 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
         },
     ];
 
-    await executor.execute(steps, {testId: 'checkpoint-demo'});
+    await executor.execute(steps, {testId: 'sync-barrier-demo'});
 
     // ========================================================================
-    // Verify Checkpoint Barriers
+    // Verify Sync Barriers
     // ========================================================================
-    t.test('Checkpoint Synchronization Verification', async () => {
+    t.test('Sync Barrier Verification', async () => {
         const progress = executor.getProgress();
 
         assert.equal(progress.status, 'completed');
@@ -1276,7 +1276,7 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
 
         assert.ok(
             lastInitEnd <= firstLoadStart,
-            `Checkpoint 1: All init steps must complete (${lastInitEnd}ms) before load steps start (${firstLoadStart}ms)`,
+            `Sync barrier 1: All init steps must complete (${lastInitEnd}ms) before load steps start (${firstLoadStart}ms)`,
         );
 
         // Phase 2 (load steps) should all end before Phase 3 (processing) starts
@@ -1296,7 +1296,7 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
 
         assert.ok(
             lastLoadEnd <= firstProcessStart,
-            `Checkpoint 2: All load steps must complete (${lastLoadEnd}ms) before processing starts (${firstProcessStart}ms)`,
+            `Sync barrier 2: All load steps must complete (${lastLoadEnd}ms) before processing starts (${firstProcessStart}ms)`,
         );
 
         // Phase 3 (processing) should all end before Phase 4 (finalization) starts
@@ -1313,7 +1313,7 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
 
         assert.ok(
             lastProcessEnd <= finalizeStart,
-            `Checkpoint 3: All processing must complete (${lastProcessEnd}ms) before finalization starts (${finalizeStart}ms)`,
+            `Sync barrier 3: All processing must complete (${lastProcessEnd}ms) before finalization starts (${finalizeStart}ms)`,
         );
     });
 
@@ -1357,7 +1357,7 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
     t.test('Performance Benefit of Parallel Phases', async () => {
         const latency = executor.getLatencyReport();
 
-        // With checkpoints and parallelization:
+        // With sync barriers and parallelization:
         // - Phase 1: ~40ms (3 steps in parallel)
         // - Phase 2: ~50ms (3 steps in parallel)
         // - Phase 3: ~30ms (3 steps in parallel)

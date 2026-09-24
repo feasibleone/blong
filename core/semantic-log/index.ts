@@ -23,6 +23,8 @@ export type {
 export {callPhaseMessage, CALLS_CAPABILITY, createCallChannel} from './src/capability.ts';
 export type {CallChannel, CallEvent, CallPhase, CallWriter} from './src/capability.ts';
 export {
+    attachProgress,
+    beginProgress,
     bindInboundLeg,
     bindLeg,
     bindTrace,
@@ -30,6 +32,8 @@ export {
     currentCapabilities,
     currentContext,
     currentLeg,
+    currentRegion,
+    currentRegions,
     currentTrace,
     enterCapability,
     enterFlow,
@@ -39,20 +43,26 @@ export {
     isLegSeq,
     isServiceName,
     lastRecordId,
+    point,
     recordDecision,
     rememberRecord,
     step,
     takeDecision,
+    takePoints,
+    takeProgress,
     withCapability,
     withFlow,
     withIntent,
+    withRegion,
 } from './src/context.ts';
 export type {
     AmbientContext,
     DecisionHolder,
     LegCounter,
     LegIdentity,
+    PointsHolder,
     RecordMemory,
+    RegionCounter,
 } from './src/context.ts';
 export {decide} from './src/decide.ts';
 export type {Branch} from './src/decide.ts';
@@ -93,8 +103,11 @@ export type {
     FlowState,
     IntentState,
     LogRecord,
+    Point,
+    Progress,
     RefKind,
     Refs,
+    RegionMark,
     RequestDetail,
     ResponseDetail,
 } from './src/record.ts';

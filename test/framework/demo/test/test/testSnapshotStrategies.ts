@@ -3,12 +3,12 @@
  *
  * Demonstrates the five snapshotting strategies available through blong-gogo's
  * handler / group() API.  The framework injects assert.snapshot() into every
- * step, chains checkpoint markers are processed by the TestExecutor, and
+ * step, chains snapshot markers are processed by the TestExecutor, and
  * chain-level mask is configured via the second argument to group().
  *
  * Strategies shown:
  *   A — autoSnapshot: true   (group config — every step auto-snapshotted)
- *   B — ['*'] checkpoint     (one marker at end, full context snapshot)
+ *   B — ['*'] snapshot marker (one marker at end, full context snapshot)
  *   C — ['s1','s2']          (phase markers, only named steps snapshotted)
  *   D — assert.snapshot()    (per-step no-args, most granular)
  *   Hybrid                   (explicit asserts + assert.snapshot() + ['*'])
@@ -20,7 +20,7 @@ import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, snapshot},
         handler: {testLoginTokenCreate, testUserAdminLogin, subjectNumberSum, subjectAge},
     }) => ({
         // ── Strategy A ──────────────────────────────────────────────────────
@@ -28,7 +28,10 @@ export default handler(
         // the step function name.  No assert.snapshot() calls needed anywhere.
         // Ideal for migrating an existing test collection: add the config flag
         // and get regression coverage with zero per-step changes.
-        testSnapshotStrategyA: ({name = 'snapshot — A autoSnapshot'}: {name?: string}, $meta: IMeta) =>
+        testSnapshotStrategyA: (
+            {name = 'snapshot — A autoSnapshot'}: {name?: string},
+            $meta: IMeta,
+        ) =>
             group(name, {autoSnapshot: true})([
                 testLoginTokenCreate({}, $meta),
                 testUserAdminLogin({}, $meta),
@@ -45,10 +48,13 @@ export default handler(
             ]),
 
         // ── Strategy B ──────────────────────────────────────────────────────
-        // ['*'] checkpoint — one declarative marker at the end of the array.
+        // ['*'] snapshot marker — one declarative marker at the end of the array.
         // The executor waits for all steps then snapshots the full accumulated
         // context.  Object.assign gives the snapshot a stable name.
-        testSnapshotStrategyB: ({name = 'snapshot — B checkpoint *'}: {name?: string}, $meta: IMeta) =>
+        testSnapshotStrategyB: (
+            {name = 'snapshot — B end-of-chain marker'}: {name?: string},
+            $meta: IMeta,
+        ) =>
             group(name)([
                 testLoginTokenCreate({}, $meta),
                 testUserAdminLogin({}, $meta),
@@ -62,14 +68,17 @@ export default handler(
                 },
 
                 // Snapshot the whole context — both steps captured in one entry
-                checkpoint('math-results'),
+                snapshot('math-results'),
             ]),
 
         // ── Strategy C ──────────────────────────────────────────────────────
-        // Phase checkpoints — named markers capture subsets of the context at
+        // Phase snapshots — named markers capture subsets of the context at
         // phase boundaries.  The executor waits ONLY for the listed steps
         // so parallel steps in other phases keep running.
-        testSnapshotStrategyC: ({name = 'snapshot — C phase checkpoints'}: {name?: string}, $meta: IMeta) =>
+        testSnapshotStrategyC: (
+            {name = 'snapshot — C phase markers'}: {name?: string},
+            $meta: IMeta,
+        ) =>
             group(name)([
                 testLoginTokenCreate({}, $meta),
                 testUserAdminLogin({}, $meta),
@@ -83,7 +92,7 @@ export default handler(
                 },
 
                 // Snapshot phase 1 — only waits for calculateAge & sumSmall
-                checkpoint('phase1', 'calculateAge', 'sumSmall'),
+                snapshot('phase1', 'calculateAge', 'sumSmall'),
 
                 // Phase 2: downstream steps
                 async function sumLarge(_assert: IAssert, {$meta}: {$meta: IMeta}) {
@@ -91,7 +100,7 @@ export default handler(
                 },
 
                 // Snapshot phase 2
-                checkpoint('phase2', 'sumLarge'),
+                snapshot('phase2', 'sumLarge'),
             ]),
 
         // ── Strategy D ──────────────────────────────────────────────────────
@@ -155,7 +164,7 @@ export default handler(
                 },
 
                 // End-of-chain full context snapshot for regression
-                checkpoint('hybrid-context'),
+                snapshot('hybrid-context'),
             ]),
     }),
 );

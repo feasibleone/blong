@@ -95,14 +95,54 @@ Each checkpoint records:
 
 ## Modes
 
-| Environment | `checkpoint` value | Behaviour                                        |
-| ----------- | ------------------ | ------------------------------------------------ |
-| Production  | `undefined`        | No-op via `?.` — zero overhead                   |
-| Monitoring  | logging function   | Emits structured log entries                     |
-| Debug       | tracing function   | Records data + timestamps in `$meta.checkpoints` |
-| Test        | recording function | Records data for test assertions                 |
+The mode is `checkpointMode` in the registry config — no handler code changes.
 
-The mode is controlled by configuration — no code changes needed.
+| Environment | `$meta.checkpoint` | `$meta.decide` | What is recorded                                              |
+| ----------- | ------------------ | -------------- | ------------------------------------------------------------- |
+| Production  | `undefined`        | always         | the branch rationale only — worth tracing even in production  |
+| Debug       | recording function | always         | points and branches, kept in `$meta` and emitted with the log |
+| Test        | recording function | always         | the same, plus `assert`, so a test can assert on the sequence |
+
+`checkpoint` is **absent** in production rather than a no-op function, which is what makes the `?.`
+call free; `lib.checkpoint` follows the same rule for code that has no `$meta`. A branch is the one
+thing that cannot be optional: it selects, so a missing helper would skip the work rather than cost
+a note.
+
+## Points and Branches
+
+A checkpoint is one shape of a **progress point**; a `decide` branch is the other. Both are moments
+in the logic that explain the shape a run took, both are recorded in one place, and both are drawn
+on the sequence diagram the log builds — a point as a note beside the participant that reported it,
+a branch as an `alt` block around the calls made inside it
+([R11, R26, R27](../rationale/semantic-log.md)).
+
+What separates them is what each may cost: a point may be dropped, because nothing else depends on
+it; a branch may not, because it _is_ the control flow.
+
+The block names **every** candidate the code declared, in that order: a candidate the decision never
+reached — evaluation stops at the branch it takes — is drawn and labelled, so a reader sees both the
+alternative that was weighed and refused and the one that was never tried. The record's own
+rationale keeps the same list, in evaluation order, so it can be replayed without reading source
+(R11). A block is also _ordered_ so that it renders: mermaid refuses a section with nothing in it
+when it is the last before `end`, and the whole block stops drawing. So the arms with nothing to
+draw come first and the one carrying the calls last — the arm that ran, drawn under the alternatives
+it weighed. Only the order changes, and the labels are what name the candidates; a block whose arms
+are all empty says "nothing observed yet" on its last one. Both belong to the handler that announces
+them, which the diagram has to show, and a handler's work crosses process boundaries as naturally as
+its call does. A call's records are written by the framework around the handler — before it starts
+and after it returns — so nothing is recorded at the moment a handler speaks: what it announced is
+collected once it is done and written on its answer. The participant a note is drawn over is
+therefore the participant that answered, and the collection is installed **before** the handler is
+run, so that what it announces after its first wait is collected too
+([semantic-log](semantic-log.md) has the whole of that rule).
+
+```typescript
+$meta.checkpoint?.('total-calculated', {total, itemCount});
+const fee = $meta.decide?.('fee-tier', {total}, [
+    {name: 'waived', when: values => (values.total as number) > 100, run: () => 0},
+    {name: 'standard', when: () => true, run: () => total * 0.01},
+]); // the chosen branch's result, or `undefined` when none matched
+```
 
 ## Relationship to Handlers and Tests
 

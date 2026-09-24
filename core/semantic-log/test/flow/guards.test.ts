@@ -464,6 +464,15 @@ t.test('a proxy deployed with no receiving link holds, and records why (PRD R11)
             ['hubB', 'hold'],
             'and both routes considered, the reaching one included',
         );
+
+        // R27: the hold is a *span*, not only a rationale — the record the guard wrote while
+        // holding was emitted inside the branch, so the diagram can draw the block with the
+        // alternative (the route that was never wired) left empty beside it.
+        t.same(
+            refused?.progress?.regions?.map(region => [region.discriminator, region.chosen]),
+            [['route-selection', 'hold']],
+            'and the record sits inside the branch that held',
+        );
     } finally {
         await proxy.close();
     }
