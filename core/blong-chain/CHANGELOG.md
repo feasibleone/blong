@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.9.0...blong-chain-v1.10.0) (2026-09-24)
+
+
+### Features
+
+* sequence diagram progress points ([dc5b153](https://github.com/feasibleone/blong/commit/dc5b15327f31698a26a75ec73bdf9a0956a43dd9))
+
 ## [1.9.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.8.2...blong-chain-v1.9.0) (2026-09-15)
 
 

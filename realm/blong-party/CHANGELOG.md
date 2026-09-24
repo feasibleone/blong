@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-party-v1.6.1...blong-party-v1.7.0) (2026-09-24)
+
+
+### Features
+
+* add from property to leg ([4925e76](https://github.com/feasibleone/blong/commit/4925e76a7d69000e83804cd9a5fa1ea58ab26d81))
+* sequence diagram progress points ([dc5b153](https://github.com/feasibleone/blong/commit/dc5b15327f31698a26a75ec73bdf9a0956a43dd9))
+
 ## [1.6.1](https://github.com/feasibleone/blong/compare/blong-party-v1.6.0...blong-party-v1.6.1) (2026-09-21)
 
 
