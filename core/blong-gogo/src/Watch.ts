@@ -22,7 +22,12 @@ import type {Dirent} from 'node:fs';
 import merge from 'ut-function.merge';
 
 import layerProxy from './layerProxy.ts';
-import {endAllureSession, type IAllureRunOptions} from './chain.ts';
+// The chain is server-side code — it pulls `node:assert` and the event emitter the test
+// executor is built on — so only its types may be imported statically: a value import
+// puts the chain in the browser's eager module graph, where linking its `node:events`
+// import fails before a single handler runs. The Allure session is ended through a
+// dynamic import for the same reason.
+import type {IAllureRunOptions} from './chain.ts';
 import {runInFlow, withStep} from './semanticContext.ts';
 
 export interface IWatch {
@@ -813,8 +818,12 @@ export default class Watch extends Internal implements IWatch {
                     return;
                 } finally {
                     // The results directory belongs to the run, not to any one group,
-                    // so the session closes once every group has reported.
-                    await endAllureSession().catch(error => this.log?.error?.(error));
+                    // so the session closes once every group has reported. The chain is
+                    // imported here rather than at the top of the file so that a
+                    // platform which never runs a group never links it.
+                    await (await import('./chain.ts'))
+                        .endAllureSession()
+                        .catch(error => this.log?.error?.(error));
                 }
                 done?.();
             });
