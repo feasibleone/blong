@@ -16,6 +16,7 @@
 import {LEVELS, levelName, levelValue, type LevelName} from './level.ts';
 import type {Decision, LogRecord, Progress} from './record.ts';
 import {PAYLOAD_THRESHOLD, encodeSegment, refUri} from './refs.ts';
+import {denoiseHidesDetails} from './retention.ts';
 
 export interface RenderOptions {
     /** ANSI colour. Defaults to false so tests and pipes get plain text. */
@@ -116,26 +117,44 @@ function renderTime(time: unknown, format: (time: number) => string): string {
     return typeof time === 'number' && Number.isFinite(time) ? format(time) : TIME_WITHHELD;
 }
 
-/** Render the references as a fixed-shape, greppable trailing group. */
+/**
+ * Render the references as a fixed-shape, greppable trailing group.
+ *
+ * Every part that is a link is a URI and nothing else: the kind is a letter in the
+ * path (`semlog://r/<id>`, `semlog://t/<ref>`), so a label in front of it would
+ * repeat what the URI already says and stop an editor recognising it as a link.
+ *
+ * The **shape is the identity**, and the shape link is the one a reader resolves
+ * against: the store keeps one entry per shape, so that reference resolves to the
+ * newest occurrence of it and says how many times the shape happened. The
+ * per-record link is printed only when the denoise cost something — see
+ * `denoiseHidesDetails` — because a record kept under its own id is the only one
+ * that link can resolve against, and an unresolvable link is worse than none.
+ */
 function renderRefs(record: LogRecord): string {
-    const parts = [`r=${refUri('record', record.refs.record)}`];
+    const parts: string[] = [];
+    if (denoiseHidesDetails(record)) {
+        parts.push(refUri('record', record.refs.record));
+    }
     if (record.refs.template) {
-        parts.push(`t=${refUri('template', record.refs.template)}`);
+        parts.push(refUri('template', record.refs.template));
     }
     if (record.refs.trace) {
-        parts.push(`x=${refUri('trace', record.refs.trace)}`);
+        parts.push(refUri('trace', record.refs.trace));
     }
     if (record.refs.parent) {
-        // Deliberately the bare id rather than a `semantic-log://record/...`
-        // URI — the reference group is grep-shaped and the parent is a link
-        // *within* the r= family — but the id is still untrusted text when the
-        // record is re-rendered from a store, so it goes through the same
-        // encoder the URIs use. Without it a `refs.parent` of
-        // `x] [r=semantic-log://record/ATTACKER` would close the group and forge
-        // a reference (see `refs.ts`).
+        // Deliberately a bare id under a label rather than a URI: the parent names
+        // a relation *within* the shape's own references (this record was caused by
+        // that one), and it keeps its label precisely because it is not a link —
+        // there is nothing that a parent id alone would resolve against.
+        //
+        // The id is still untrusted text when the record is re-rendered from a
+        // store, so it goes through the same encoder the URIs use. Without it a
+        // `refs.parent` of `x] [semlog://r/ATTACKER` would close the group and
+        // forge a reference (see `refs.ts`).
         parts.push(`p=${encodeSegment(record.refs.parent)}`);
     }
-    return `[${parts.join(' ')}]`;
+    return parts.length > 0 ? `[${parts.join(' ')}]` : '';
 }
 
 /** The single-line header: time, level, service, correlators, message, refs. */
@@ -183,6 +202,8 @@ function header(record: LogRecord, options: RenderOptions): string {
     // stays last. `version=` rather than a bare token keeps it distinct from the
     // message it follows.
     if (options.details && record.version) parts.push(`version=${sanitise(record.version)}`);
+    // A group with nothing in it is not printed at all: a record whose identity was
+    // stripped (or assembled by hand) would otherwise end its line with a `[]`.
     parts.push(paint(ANSI.gray, renderRefs(record)));
     return parts.filter(Boolean).join(' ');
 }
@@ -359,7 +380,11 @@ function salvageJson(record: LogRecord): string {
  */
 function salvageHuman(record: LogRecord): string {
     const {id, time, levelName, service, msg} = salvage(record);
-    return `${time} ${levelName.padEnd(5)} ${sanitise(service)} ${sanitise(msg)} [r=${refUri('record', id)}]`;
+    // The record link is printed unconditionally here, unlike in the header: this
+    // line exists *because* rendering failed, so the identity is the only thing it
+    // has left to offer, and a reference that may not resolve is worth more than no
+    // reference at all.
+    return `${time} ${levelName.padEnd(5)} ${sanitise(service)} ${sanitise(msg)} [${refUri('record', id)}]`;
 }
 
 /**

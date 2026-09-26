@@ -69,6 +69,20 @@ tooling.
   problems are otherwise only visible in the editor, so name the files explicitly when you change
   markdown. `memory check` additionally enforces the memory format's own rules.
 
+- **Write markdown the house way.** These conventions are enforced by the linter, so a violation
+  costs a round trip rather than a review comment:
+
+    - **Emphasis is `_italic_`, not `*italic*`** (MD049) — a linter rewrites the asterisks, and a
+      write-then-rewrite cycle shows up as a diff you did not intend. Bold stays `**bold**`.
+    - **Dashes are em dashes (`—`) in prose**, not hyphens used as punctuation.
+    - **Wrap at 100 columns**, the prettier width. Prettier moves the text, so a paragraph written
+      at any other width comes back reformatted.
+    - **Never leave a bare `<angle-bracket>` token in prose** (MD033): markdownlint reads it as
+      inline HTML. Backtick it, e.g. `` `<caller>.<method>` ``. This bites hardest in
+      `blong-dev memory add --body`, which does no escaping of its own.
+    - **In a memory body, write prose, not lists.** `blong-dev memory` flattens a bullet list into
+      one paragraph, so a list arrives as a run-on sentence (recorded as friction T-151).
+
 - **Correct an entry through the CLI.**
   `blong-dev memory edit <id> [--title] [--body|--body-file] [--status]` — never hand-edit a memory
   file, and never re-import a batch that is already written (it duplicates).
@@ -342,7 +356,8 @@ The intent listed is the CLI intent that must be active for the layer to load au
 
 ### Testing
 
-- **Unit tests:** Use `tap` framework (see package.json devDependencies)
+- **Unit tests:** Use `tap` framework (see package.json devDependencies); note that even when all
+  tests pass, `tap` may exit with error for incomplete coverage
 - **API tests:** `index.ts` is either a simple re-export of `server.ts` (declarative, detected by
   kind) or a callback function that loads both server and browser platforms and runs tests from the
   browser side (fastest, simulates most common interaction)

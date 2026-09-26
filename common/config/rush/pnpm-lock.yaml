@@ -404,6 +404,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
+      '@feasibleone/blong-allure':
+        specifier: workspace:^1.0.0
+        version: link:../blong-allure
       '@feasibleone/blong-chain':
         specifier: workspace:^1.0.0
         version: link:../blong-chain
@@ -1160,9 +1163,18 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../../core/blong
+      '@feasibleone/blong-access-mock':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-access-mock
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
       '@feasibleone/blong-login':
         specifier: workspace:^1.0.0
         version: link:../../realm/blong-login
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-server
       '@feasibleone/blong-test':
         specifier: workspace:^1.0.0
         version: link:../../realm/blong-test
@@ -1182,6 +1194,9 @@ importers:
       '@types/node':
         specifier: ^24
         version: 24.12.0
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

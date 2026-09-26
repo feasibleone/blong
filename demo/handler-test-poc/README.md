@@ -8,8 +8,10 @@ into a continuum rather than keeping them as separate concerns.
 ### 1. Checkpoint-Enabled Handlers
 
 Handlers use `$meta.checkpoint?.()` to record progress through multi-step operations. The optional
-chaining ensures zero overhead in production. Checkpoints are recorded in `$meta.checkpoints` when
-checkpoint mode is enabled via `registry.checkpointMode: 'test'`.
+chaining ensures zero overhead in production. Points are recorded in `$meta.progress` when
+checkpoint mode is enabled via `registry.checkpointMode: 'test'` — the same list also holds any
+branch the handler takes with `$meta.decide`, which is what lets a report group the points a branch
+produced.
 
 See: `order/orchestrator/order/orderOrderCreate.ts`
 
@@ -73,7 +75,9 @@ The same handler code supports multiple verification levels:
 
 ### Framework Changes
 
-1. **`IMeta`** extended with `name?: string` and `checkpoints?: Array<{name, data, timestamp}>`
+1. **`IMeta`** extended with `name?: string` and
+   `progress?: Array<IProgressPoint | IProgressRegion>`, one list holding the points a handler
+   announced and the branches it took, in the order it announced them
 2. **`ILib`** extended with `checkpoint?: PointFn` (the ambient half of the pair, `undefined` in
    production) and `assert: IAssert | undefined`
 3. **`checkpoint.ts`** — `AsyncLocalStorage`-based checkpoint function that finds the current
@@ -99,8 +103,8 @@ config: {
 ### Test Dispatch
 
 The `testDispatch` imports both test and order handlers so all calls resolve through its handler
-proxy, which wraps calls with `withMeta()`. This keeps checkpoint data in the same
-`$meta.checkpoints` array:
+proxy. This keeps the progress a handler announces on the same `$meta.progress` list as the test's
+own assertions:
 
 ```typescript
 activation: {
@@ -111,25 +115,44 @@ activation: {
 }
 ```
 
-### Internal API Testing
+### How the scenarios run
 
-The suite uses server-only (internal API) testing. Both test handlers and business handlers run in
-the same process, so checkpoints stay in the same `$meta` object without crossing HTTP boundaries:
+The five scenarios are registered on the **browser** platform (`browser.ts`, under
+`integration.watch.test`) and driven by `index.test.ts`, which is what `blong-dev test` runs. Their
+steps call the order handlers, and those live on the server side of the realm, so each call crosses
+to the server through the test client's backend adapter.
+
+The login step is what establishes the bearer token those calls carry, so the scenarios open with
+one and every authenticated step awaits it: the token is what the login _response_ delivered, and a
+call sent before that response lands goes out without it. Three realms make that login possible, and
+each is in `server.ts` for a stated reason:
+
+- `srv` (blong-server) gives the realms their subject dispatch, and with it the
+  `/rpc/ports/{namespace}/request` route a realm-to-realm call uses. Without it the login's call to
+  the access realm answers 404.
+- `access` is `blong-access-mock`, which answers `access.credential.check` from a constant. The real
+  access realm would work too, but it brings a database and the framework realms the demo does not
+  otherwise need.
+- `login.login.methods` sets `sessionCreate`, `auditRecord` and `sessionCleanup` to `false`, so the
+  login mints a stateless token and touches no session table. That is what keeps the demo
+  database-free.
+
+The scenarios log in by calling `loginTokenCreate` directly rather than through the codec realm's
+`testLoginTokenCreate` helper: that helper resolves `loginTokenCreate` inside the codec namespace's
+own port, where a suite that keeps its scenarios elsewhere has nothing to reach. The `index.ts`
+entry point drives the same groups for the CLI:
 
 ```typescript
-// index.ts
-export default async (load): Promise<void> => {
-    const platforms = await Promise.all([
-        load(server, 'handler-test-poc', 'handler-test-poc', [
-            'microservice',
-            'integration',
-            'dev',
-        ]),
-    ]);
-    for (const platform of platforms) await platform.start();
-    await platforms[0].test();
-    if (process.env.CI) for (const platform of platforms) await platform.stop();
-};
+// index.test.ts — the tap runner (abridged; see the file for the platform load arguments)
+const [serverPlatform, browserPlatform] = await Promise.all([
+    load(serverSuite, 'handler-test-poc', 'handler-test-poc', intents, manifest),
+    load(browserSuite, 'handler-test-poc', 'handler-test-poc', intents, manifest),
+]);
+await Promise.all([serverPlatform.start({}), browserPlatform.start({})]);
+await tap.test('handler-test-poc scenarios', async (test: Test) => {
+    await browserPlatform.test(test);
+});
+await Promise.all([serverPlatform.stop(), browserPlatform.stop()]);
 ```
 
 ## Structure
@@ -137,8 +160,9 @@ export default async (load): Promise<void> => {
 ```text
 handler-test-poc/
 ├── server.ts              # Suite server entry (enables checkpointMode)
-├── browser.ts             # Suite browser entry (unused in internal API testing)
-├── index.ts               # API test entry (server-only)
+├── browser.ts             # Suite browser entry (registers the five scenarios)
+├── index.ts               # Suite entry: loads both platforms for the CLI
+├── index.test.ts          # tap runner used by blong-dev test
 └── order/                 # Order realm
     ├── server.ts          # Realm definition (activates test layer)
     ├── browser.ts         # Realm browser entry

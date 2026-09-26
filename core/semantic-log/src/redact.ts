@@ -51,7 +51,7 @@ const CIRCULAR = '[Circular]';
  *
  * `id` must keep the value the logger minted: the logger restores
  * `refs.record` from it, so a pattern that replaced it (`id`, `**`) made every
- * record share `semantic-log://record/[redacted]`, the cache key every record
+ * record share `semlog://r/[redacted]`, the cache key every record
  * to one file, and the first prune delete it.
  *
  * Naming either slot is therefore a no-op rather than a way to redact identity.

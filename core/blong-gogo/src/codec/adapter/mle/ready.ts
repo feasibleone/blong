@@ -99,10 +99,13 @@ export default handler<{
      * expired session) the tokens are cleared so the next request surfaces a
      * clean 401 to the caller, which the UI turns into a login prompt.
      */
-    async function refresh(this: {
-        exec?(...params: unknown[]): Promise<unknown>;
-        error?(error: unknown, $meta?: unknown): void;
-    }, opts: {force?: boolean} = {}): Promise<void> {
+    async function refresh(
+        this: {
+            exec?(...params: unknown[]): Promise<unknown>;
+            error?(error: unknown, $meta?: unknown): void;
+        },
+        opts: {force?: boolean} = {},
+    ): Promise<void> {
         const now = Date.now();
         if (token && (opts.force || tokenExpire < now)) {
             if (refreshToken && refreshTokenExpire > now) {
@@ -126,7 +129,10 @@ export default handler<{
                                 {},
                             )) as {
                                 statusCode?: number;
-                                body?: {result?: IToken; error?: {type?: string; message?: string; statusCode?: number}};
+                                body?: {
+                                    result?: IToken;
+                                    error?: {type?: string; message?: string; statusCode?: number};
+                                };
                             };
                             return result;
                         })();
@@ -134,7 +140,10 @@ export default handler<{
                     if (pending !== null) pending = null;
                     const {body, statusCode} = result as {
                         statusCode?: number;
-                        body?: {result?: IToken; error?: {type?: string; message?: string; statusCode?: number}};
+                        body?: {
+                            result?: IToken;
+                            error?: {type?: string; message?: string; statusCode?: number};
+                        };
                     };
                     // The gateway MLE-encrypts the response with the handshake
                     // keys, so decrypt the result before reading the token.
@@ -263,7 +272,14 @@ export default handler<{
         },
         async loginTokenCreateResponseReceive(result: Response<{result: unknown}>, $meta: unknown) {
             await decrypt(result.body, 'result');
-            if ((result.body as {error?: unknown})?.error) return super.receive(result, $meta);
+            if ((result.body as {error?: unknown})?.error) {
+                // The base `receive` reads an error from the *decrypted* body and this hook
+                // delegates to it, so the error has to be decrypted here: without this the
+                // encrypted envelope is what a failed login throws, and the reason for the
+                // failure is unreadable to the caller that has to act on it.
+                await decrypt(result.body, 'error');
+                return super.receive(result, $meta);
+            }
             readToken(result.body.result as IToken);
             return super.receive(result, $meta);
         },
@@ -272,9 +288,15 @@ export default handler<{
         async loginTokenRefreshRequestSend(params: {$http?: unknown}, $meta: unknown) {
             return super.send(await encryptPublic(params), $meta);
         },
-        async loginTokenRefreshResponseReceive(result: Response<{result: unknown}>, $meta: unknown) {
+        async loginTokenRefreshResponseReceive(
+            result: Response<{result: unknown}>,
+            $meta: unknown,
+        ) {
             await decrypt(result.body, 'result');
-            if ((result.body as {error?: unknown})?.error) return super.receive(result, $meta);
+            if ((result.body as {error?: unknown})?.error) {
+                await decrypt(result.body, 'error');
+                return super.receive(result, $meta);
+            }
             readToken(result.body.result as IToken);
             return super.receive(result, $meta);
         },
@@ -290,9 +312,15 @@ export default handler<{
         async loginTokenRestoreRequestSend(params: {$http?: unknown}, $meta: unknown) {
             return super.send(await encryptPublic(params), $meta);
         },
-        async loginTokenRestoreResponseReceive(result: Response<{result: unknown}>, $meta: unknown) {
+        async loginTokenRestoreResponseReceive(
+            result: Response<{result: unknown}>,
+            $meta: unknown,
+        ) {
             await decrypt(result.body, 'result');
-            if ((result.body as {error?: unknown})?.error) return super.receive(result, $meta);
+            if ((result.body as {error?: unknown})?.error) {
+                await decrypt(result.body, 'error');
+                return super.receive(result, $meta);
+            }
             readToken(result.body.result as IToken);
             return super.receive(result, $meta);
         },

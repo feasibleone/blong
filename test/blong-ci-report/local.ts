@@ -34,7 +34,9 @@ if (process.argv.includes('--clean')) rmSync(outDir, {recursive: true, force: tr
 
 const {packages} = createFixtureWorkspace(fixtureRoot);
 
-// A baseline, so the report renders its delta columns exactly like a PR run.
+// A baseline, so the report renders its delta columns exactly like a PR run: two
+// packages with coverage to move against (one up, one down), one that did not move, and
+// test times to compare.
 const baseline = join(fixtureRoot, 'baseline.json');
 writeFileSync(
     baseline,
@@ -44,13 +46,19 @@ writeFileSync(
             commit: '',
             run: 1,
             updatedAt: '2026-01-01T00:00:00.000Z',
-            tests: {total: 20, passed: 20, failed: 0, flaky: 0},
+            tests: {total: 20, passed: 20, failed: 0, flaky: 0, durationMs: 120_000},
             coverage: {lines: {hit: 100, found: 300}},
             packages: {
                 'fake-pass': {
-                    tests: {passed: 10, failed: 0, flaky: 0, total: 10},
+                    tests: {passed: 10, failed: 0, flaky: 0, total: 10, durationMs: 8000},
                     coverage: {linesHit: 70, linesTotal: 100},
                 },
+                'fake-fail': {
+                    tests: {passed: 8, failed: 0, flaky: 0, total: 8, durationMs: 60_000},
+                    coverage: {linesHit: 60, linesTotal: 200},
+                },
+                // A loss too small to be a regression: the yellow mark.
+                'fake-silent': {coverage: {linesHit: 504, linesTotal: 1000}},
             },
         },
         null,

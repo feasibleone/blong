@@ -48,12 +48,13 @@ open (35)
 
 ## Manual
 
-- capture sequence diagram with progress points for commanderBranchList
-- create a skill that explains what needs to be in place for capturing sequence diagrams with
-  progress points
 - F-241 - `blong-dev memory` auto-format
 - F-244
-- T-134 render progress points as test-report steps
+- playwright webp
+- blog posts
+- generate .http files
+- decisions as tests and code reference
+- cspell edit tool
 - meta `checkpoints` and `decisions` should be in a single array `progress`
 - implement implicit and explicit metrics
 - set default checkpointMode in blong-gogo

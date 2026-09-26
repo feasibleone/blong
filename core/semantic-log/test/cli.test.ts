@@ -70,7 +70,7 @@ function sink(): Sink {
 t.test('a record reference resolves and prints', async t => {
     await withCache(async dir => {
         const {out, io} = sink();
-        const code = await inspect(['--cache', dir, `semantic-log://record/${ID}`], io);
+        const code = await inspect(['--cache', dir, `semlog://r/${ID}`], io);
         t.equal(code, 0);
         t.match(out.join(''), /connection timeout/);
     });
@@ -116,7 +116,11 @@ t.test(
                 // bound evicted one of them. `dropped` is what separates a prune
                 // from the second `put` having silently done nothing — in that case
                 // the single entry would fit the bound and `dropped` would be 0.
-                t.same(cache.stats(), {size: 1, dropped: 1}, 'older was retained and then pruned');
+                t.same(
+                    cache.recordStats(),
+                    {size: 1, dropped: 1},
+                    'older was retained and then pruned',
+                );
 
                 const {err, io} = sink();
                 t.equal(await inspect(['--cache', dir, OLDER_ID], io), 1);
@@ -214,8 +218,9 @@ t.test('a command line with no reference is a usage error', async t => {
 
 t.test('toId strips a scheme prefix and leaves anything else alone', t => {
     t.equal(toId(ID), ID, 'a bare id is already an id');
-    t.equal(toId(`semantic-log://record/${ID}`), ID, 'a record uri yields its id');
-    t.equal(toId('semantic-log://record'), 'record', 'a kind with no id yields the kind');
+    t.equal(toId(`semlog://r/${ID}`), ID, 'a record uri yields its id');
+    t.equal(toId(`semlog://t/${ID}`), ID, 'and a shape uri yields its shape reference');
+    t.equal(toId('semlog://r'), 'r', 'a kind with no id yields the kind');
     t.end();
 });
 
@@ -260,7 +265,7 @@ async function withPayloads(fn: (dir: string) => Promise<void>): Promise<void> {
 t.test('a payload reference resolves through the payload half of the store', async t => {
     await withPayloads(async dir => {
         const {out, io} = sink();
-        const code = await inspect(['--cache', dir, `semantic-log://payload/${PAYLOAD_ID}`], io);
+        const code = await inspect(['--cache', dir, `semlog://p/${PAYLOAD_ID}`], io);
         t.equal(code, 0, 'a retained payload resolves');
         // The value itself is printed, indented — the same value the HTTP
         // surface returns, so the two surfaces carry the same detail.
@@ -272,10 +277,7 @@ t.test('a payload reference resolves through the payload half of the store', asy
 t.test('--json prints a payload compactly, not indented', async t => {
     await withPayloads(async dir => {
         const {out, io} = sink();
-        t.equal(
-            await inspect(['--cache', dir, '--json', `semantic-log://payload/${PAYLOAD_ID}`], io),
-            0,
-        );
+        t.equal(await inspect(['--cache', dir, '--json', `semlog://p/${PAYLOAD_ID}`], io), 0);
         t.same(JSON.parse(out.join('')), PAYLOAD_VALUE, 'the value parses back unchanged');
         t.notMatch(out.join(''), /\n {2}"/, 'nothing is indented in the machine-readable mode');
     });
@@ -284,12 +286,12 @@ t.test('--json prints a payload compactly, not indented', async t => {
 t.test('an unknown payload exits 1, and 2 when it was expected to be retained', async t => {
     await withPayloads(async dir => {
         const {err, io} = sink();
-        t.equal(await inspect(['--cache', dir, `semantic-log://payload/${ABSENT_ID}`], io), 1);
+        t.equal(await inspect(['--cache', dir, `semlog://p/${ABSENT_ID}`], io), 1);
         t.match(err.join(''), /unknown reference/);
 
         const expected = sink();
         const code = await inspect(
-            ['--cache', dir, '--expect-retained', `semantic-log://payload/${ABSENT_ID}`],
+            ['--cache', dir, '--expect-retained', `semlog://payload/${ABSENT_ID}`],
             expected.io,
         );
         t.equal(
@@ -304,10 +306,10 @@ t.test('an unknown payload exits 1, and 2 when it was expected to be retained', 
 t.test('a scheme with no kind keeps the record kind', async t => {
     await withPayloads(async dir => {
         const {err, io} = sink();
-        // `semantic-log://<id>` names no kind, so the id keeps the record kind
+        // `semlog://<id>` names no kind, so the id keeps the record kind
         // and is never read out of the payload store — which here holds only
         // `PAYLOAD_ID`, so an id it does not hold is simply unknown.
-        const code = await inspect(['--cache', dir, `semantic-log://${ID}`], io);
+        const code = await inspect(['--cache', dir, `semlog://${ID}`], io);
         t.equal(code, 1, 'a reference with no kind resolves as an unknown record');
         t.match(err.join(''), /unknown reference/);
     });

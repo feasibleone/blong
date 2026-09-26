@@ -144,7 +144,7 @@ t.test('a linked invocation resolves a record whose writer has exited', async t 
     const emitted = await attempt(process.execPath, [join(root, 'emit.mjs')]);
     t.equal(emitted.code, 0, 'the writer exits cleanly with no service configured (R18)');
     t.match(emitted.stdout, /transfer prepared/, 'readable stdout from a real process (R18)');
-    const reference = /r=(semantic-log:\/\/record\/[0-9A-Z]+)/.exec(emitted.stdout)?.[1];
+    const reference = /(semlog:\/\/t\/[0-9a-f]+)/.exec(emitted.stdout)?.[1];
     t.ok(reference, 'the rendered line carries a reference, minted without contacting anything (R19)');
 
     // The writer is gone and nothing is running. A second, independent process
@@ -159,7 +159,11 @@ t.test('a linked invocation resolves a record whose writer has exited', async t 
     const resolved = await attempt(link, ['--cache', cacheDir, reference ?? '']);
     t.equal(resolved.code, 0, 'the linked bin path exits 0 on a retained reference');
     t.match(resolved.stdout, /payer transfer prepared/, "R21 acceptance: the link resolved the writer's record after it exited");
-    t.match(resolved.stdout, /r=semantic-log:\/\/record\//, 'the resolved record is itself referenceable');
+    t.match(
+        resolved.stdout,
+        /semlog:\/\/t\/[0-9a-f]+/,
+        'the resolved record is itself referenceable',
+    );
 });
 
 t.test('a linked invocation reports an unknown reference and a usage error distinctly', async t => {
@@ -168,7 +172,7 @@ t.test('a linked invocation reports an unknown reference and a usage error disti
     const {cacheDir, link} = await fixture(root);
     await attempt(process.execPath, [join(root, 'emit.mjs')]);
 
-    const unknown = await attempt(link, ['--cache', cacheDir, 'semantic-log://record/01J8Z9K2M9PQRSTVWXYZ0A1B2C']);
+    const unknown = await attempt(link, ['--cache', cacheDir, 'semlog://r/01J8Z9K2M9PQRSTVWXYZ0A1B2C']);
     t.equal(unknown.code, 1, 'an unknown reference exits 1');
     t.match(unknown.stderr, /unknown reference/, 'and says which reference did not resolve');
 

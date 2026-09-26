@@ -43,11 +43,17 @@ logger.error('settlement failed', {err: new Error('connection timeout')});
 One greppable header line, with indented detail beneath it:
 
 ```text
-2026-09-13T10:11:12.345Z info  transfer prepared [r=semantic-log://record/01J8Z9… t=semantic-log://template/9f3a2c1d4e5f]
-2026-09-13T10:11:12.346Z error settlement failed [r=semantic-log://record/01J8ZA… t=semantic-log://template/1b2c3d4e5f60]
+2026-09-13T10:11:12.345Z info  transfer prepared [semlog://t/9f3a2c1d4e5f]
+2026-09-13T10:11:12.346Z error settlement failed [semlog://r/01J8ZA… semlog://t/1b2c3d4e5f60]
   error  Error: connection timeout
     at Socket.handleTimeout (/app/src/net/pool.ts:42:12)
 ```
+
+The shape link (`semlog://t/<shape>`) is the one every record carries: the store keeps one entry per
+**shape** — one per kind of record, not one per occurrence — so that link resolves to the newest
+occurrence of that kind and says how many times it happened. The record link (`semlog://r/<id>`) is
+printed when folding a record into its shape would hide something: it withheld a payload, or it
+carries an error.
 
 That is the compact default. Pass `details: true` to print the service name, the version and the
 base fields (`pid`, `hostname`) on the header as well — the inspector asks for them, a pod's log
@@ -69,7 +75,7 @@ Nothing needs configuring for this to work — no service, no transport, no sche
 | `writer`        | `stdoutWriter`      | the primary destination; `setWriter(null)` silences it process-wide                                                                |
 | `sinks`         | `[]`                | extra destinations, fanned out after the primary (`createLogger({sinks: [createServiceWriter({url})]})`)                           |
 | `cache`         | —                   | retains records on disk so a printed reference can be resolved later                                                               |
-| `payloads`      | —                   | retains large field values, which then render as a `semantic-log://payload/…` reference                                            |
+| `payloads`      | —                   | retains large field values, which then render as a `semlog://p/…` reference                                                        |
 | `redact`        | `[]`                | field paths replaced with `[redacted]` **before** identity is derived                                                              |
 | `writeLimit`    | `1000`              | max queued cache writes; excess is dropped and counted                                                                             |
 | `withholdLimit` | `500`               | max withheld entries held for escalation                                                                                           |
@@ -104,12 +110,14 @@ pointing at the record that caused it in the same scope, and a reference group:
 
 ```text
 2026-09-13T10:11:12.345Z info  checkout transfer prepared
-  [r=semantic-log://record/01J8Z9… t=semantic-log://template/9f3a2c1d4e5f x=semantic-log://trace/tr-1 p=01J8Z8…]
+  [semlog://t/9f3a2c1d4e5f semlog://x/tr-1 p=01J8Z8…]
 ```
 
-`r` is the record, `t` the template identity, `x` the trace, `p` the causal parent — a bare id
-rather than a `semantic-log://` URI, because it is a link within the `r=` family, but it resolves
-through the same store as any other record reference. All of them resolve on demand; see
+Every part that is a link is a URI and nothing else: the kind is a single letter in the path, so a
+label in front of it (`r=…`) would repeat what the URI already says and would stop an editor
+recognising it as a clickable link. `r` is a record, `t` a shape (the template identity), `x` the
+trace, `p` the causal parent. The parent is the one bare id, because it is a relation within the
+record's own references rather than a reference of its own. All of the links resolve on demand; see
 [Resolving a reference](#resolving-a-reference).
 
 A record may carry a `progress` facet too: the branch chain it was emitted inside (`regions`) and
@@ -149,8 +157,11 @@ it. That scan is not a second lookup path — `cache.get` still fetches each rec
 written or pruned — and the module's own contract says so rather than leaving a reader to wonder why
 R21's "never enumerates" does not hold here.
 
-The reference's own kind chooses the store: `semantic-log://record/<id>` reads the record half and
-`semantic-log://payload/<id>` the payload half, while a bare id is read as a record. Exit codes say
+The reference's own kind chooses the store: `semlog://r/<id>` and `semlog://t/<shape>` read the record
+half — a record kept under its own id, and a shape, which is what the store holds one of per kind of
+record — and `semlog://p/<id>` the payload half. A bare id is read as a record. The word spellings
+(`semlog://record/…`, `semlog://payload/…`) are accepted too, so a reference copied from an older log
+still resolves. Exit codes say
 _why_ a lookup did not produce a record, because that is the difference between a typo and a
 retention bound:
 

@@ -104,6 +104,18 @@ and drawn. A checkpoint's `data` and a branch's evaluated `values` are payload, 
 record on disk and in the local cache, where the inspector can show them and a caller's `redact`
 patterns can withhold them (R1, R10).
 
+A fourth trade-off is about the store's own cost, and it was learned the hard way. The retention
+store keeps the order it prunes by in memory, loaded from `cacache`'s index once at open, because
+the alternative — reading the whole index per write — makes one log line cost the size of the store.
+That pass is therefore the one step whose cost grows with everything the directory has ever held,
+and two rules follow from it. A pruned entry **deletes its index file** instead of appending a
+deletion to it: a `cacache` key hashes into a file of its own, so tombstoning leaves one file per
+entry ever written whatever the bound does — 450 000 of them here, and a nine-second pause before
+the first line a process prints. And a step that crosses the margin in `log.slowMs` is reported at
+warn level, because a delay as long as a start is otherwise indistinguishable from work: the warning
+names the step, its elapsed time and how far it had got. A directory that still carries those files
+is repaired when it is opened, so the slow index scan is reported and then answers itself.
+
 Two **non-goals** are worth stating just as plainly, because they are what a reader is most likely
 to expect and not get:
 
@@ -114,6 +126,51 @@ to expect and not get:
 - **This is not a metrics or tracing backend.** There is no span UI and no sampling. The causal
   trace id is consumed and carried because lineage needs it; it is not a replacement for the tracing
   system that produced it.
+
+## The cache is storage, not a log
+
+What the on-disk cache is _for_ explains most of the decisions above, and it is worth stating
+directly because it caps what any retention mechanism there has to guarantee. It serves four
+purposes, and none of them is "keep everything":
+
+- **Progressive disclosure.** stdout and stderr carry the line a person needs; everything bulky —
+  the configuration an adapter reports at startup, a payload, a full record — is retained and
+  reachable by reference instead of printed. The console stays readable and the context a reader or
+  an agent has to hold stays small.
+- **No echo of what the console said.** The cache does not need to repeat it. A varying field such
+  as the time or the pid is not worth retaining twice, and the retention order does not need it
+  either: the order of an append-only index _is_ the order. (The pino transport's `stripKeys` say
+  the same thing for the entries themselves.)
+- **Per-call sequence diagrams.** What one call did, drawn from the records it left.
+- **Per-flow sequence diagrams.** The same, aggregated across the branches a test walked through.
+
+The last two are also delivery artifacts: they are committed and diffed in review, which is why they
+must be reproducible from a run rather than typed by hand.
+
+So the cache is a **storage mechanism** for inspection — through the CLI or the API, including after
+the process that wrote it has exited — and it will grow more tenants than it has today: more
+diagrams, performance metrics, and whatever else turns out to be worth reading back. That is what
+the design has to leave room for, and it is the honest reading of two of its choices: a bounded
+store with a per-surface limit rather than one number, and an index that carries each entry's kind,
+so another surface is additive rather than a redesign.
+
+The first of those tenants has since arrived, and the shape is what it turned out to be about: the
+store holds one entry per **shape** — one per kind of record rather than one per occurrence — and
+keeps a record under its own id beside that shape exactly when folding it away would hide something
+worth reading (a withheld payload, an error). Two things follow from it. The bound measures kinds of
+event rather than traffic, which is what lets a shape every run emits keep its place while one-off
+records age out. And the store is no longer the record of _how often_ something happened; anything
+that counts occurrences — the service's rate and novelty detectors — is fed from the stream as the
+run makes it, which is what a deployment does anyway and what the count on a shape's entry exists to
+keep honest.
+
+Retention may still need more than one mechanism, and that remains a decision for when the next
+tenant asks for it rather than machinery to build in advance.
+
+Today the cache is a development and CI concern: it is what makes a failing test's records readable
+afterwards and what the diagrams are drawn from. Nothing about it is production-only, though, and
+some of it — the digest, the incidents — is the kind of thing a UAT or production deployment could
+ask for later.
 
 ## Ideas deliberately not built
 
@@ -194,8 +251,8 @@ demonstration fails there rather than going unnoticed.
 | R17 | **Front door with capability parity.** The library _is_ the logging API; every capability of the libraries it replaces is kept, replaced with a stated superset, or dropped with a stated user-visible consequence.                                                                                                                                                                                                                                                                                                  |
 | R18 | **Readable stdout, independent of the service.** A readable record always reaches stdout (errors also to stderr), with a machine-readable mode; output never depends on the service being reachable.                                                                                                                                                                                                                                                                                                                 |
 | R19 | **Cross-reference identifiers.** Every record carries compact references minted locally at emit time — record, template, trace, and an inline **payload** reference for a value too large to inline — resolvable on demand through the CLI, and rendered as a clickable hyperlink where the terminal supports it. The kind set is extensible rather than fixed. The HTTP half of the payload kind is **not** delivered: the service holds no payload store, and the §5.1 row says so rather than claiming otherwise. |
-| R20 | **Standard rendered format.** At minimum timestamp, level, service, logger context, message id, operation, message and the record reference, plus structured request and response blocks when the record provides them. Field order and styling are free; presence and structure are not.                                                                                                                                                                                                                            |
-| R21 | **Inspect on demand.** Every record is retained in a bounded local cache keyed by its reference, whether or not the service received it, so a reference resolves after the emitting process has exited. The CLI resolves one reference directly, compactly, in detail or machine-readably.                                                                                                                                                                                                                           |
+| R20 | **Standard rendered format.** At minimum timestamp, level, service, logger context, message id, operation, message and the shape reference (the record's own, where the record was kept in its own right), plus structured request and response blocks when the record provides them. Field order and styling are free; presence and structure are not.                                                                                                                                                              |
+| R21 | **Inspect on demand.** Every record is retained in a bounded local cache keyed by its **shape** — one entry per kind of record, plus a per-emit entry where folding would hide detail — whether or not the service received it, so a reference resolves after the emitting process has exited. The CLI resolves one reference directly, compactly, in detail or machine-readably.                                                                                                                                    |
 
 A caveat on R20's "at minimum": the service name and the version are on every record, but they reach
 the human line — and the base fields (`pid`, `hostname`) are collected at all — only when `details`

@@ -191,6 +191,25 @@ curl -s 'http://127.0.0.1:9998/api/entries?level=error&limit=10' \
   | jq '.entries[] | {msg, name}'
 ```
 
+## The on-disk cache
+
+The `pino-cacache` transport keeps entries in a `cacache` directory (`cachePath`, default
+`~/.blong/log-cache`) so `blong-dev log <ulid>` can fetch one later. Two properties of that store
+are worth knowing:
+
+- **Retention deletes the entry's index file.** A `cacache` key hashes into an index file of its
+  own, so marking a pruned entry as deleted instead of removing the file leaves one file per entry
+  ever written and makes every later read of the truth read all of them. The transport removes the
+  file (`removeFully`), and so does the semantic store that shares the directory.
+- **The semantic store keeps a secondary index** (`order.jsonl`, append-only) and reads that instead
+  of `cacache`'s index, which is one file per key. The transport keeps none: it is protected by the
+  store's interval sweep, which reconciles against `cacache` and prunes to the same bound.
+- **A slow retention pass is reported.** The transport runs in a pino worker thread with no logger,
+  so it writes to stderr when its index scan or its retention pass takes longer than a second — the
+  same margin the rest of the framework uses for a slow step. A retention that _fails_ is reported
+  there too, rather than swallowed: a pass that never runs is indistinguishable from one that found
+  nothing to do, and the difference is a cache that grows without bound.
+
 ## Implementation
 
 The log viewer lives in `tools/blong-log/`. It exposes a React `LogViewer` component (used in the

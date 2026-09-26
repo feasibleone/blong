@@ -21,9 +21,18 @@ export * from './report/coverage.ts';
 export * from './report/failuresBundle.ts';
 export * from './report/history.ts';
 export * from './report/metrics.ts';
+export * from './report/provenance.ts';
 export {renderCiReport} from './report/renderReport.ts';
 export * from './report/reportPaths.ts';
 export * from './report/reportTypes.ts';
-export {renderSummaryMarkdown, writeCiReport, writeReport} from './report/reportWrite.ts';
-export {buildTapReport, parseTapJson, renderTapConsole} from './report/tapReport.ts';
-export {buildVitestReport, readVitestJson, VITEST_JSON} from './report/vitestReport.ts';
+export {
+    clearRun,
+    readReport,
+    renderSummaryMarkdown,
+    singleRunReport,
+    writeCiReport,
+    writeReport,
+    writeRun,
+} from './report/reportWrite.ts';
+export {buildTapRun, parseTapJson, renderTapConsole} from './report/tapReport.ts';
+export {buildVitestRun, readVitestJson, VITEST_JSON} from './report/vitestReport.ts';

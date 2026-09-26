@@ -172,8 +172,8 @@ curl -s 'http://127.0.0.1:9998/api/search?search=statusCode' | jq '.entries[] | 
 Beyond the live log server, Blong's `pino-cacache` transport stores every log entry **on disk**
 (default `~/.blong/log-cache`) with full detail, so they can be inspected later in greater detail
 even after the process has exited. The VS Code extension reads this cache when you click a
-`semantic-log://record/<ULID>` link in the terminal. Coding agents can read it directly with the
-`blong-dev log` CLI:
+`semlog://t/<shape>` (or `semlog://r/<id>`) link in the terminal. Coding agents can read it directly
+with the `blong-dev log` CLI:
 
 ```bash
 # Recent entries, condensed one-liners (default — ideal for agents to grep)

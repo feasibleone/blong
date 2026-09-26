@@ -26,13 +26,13 @@ import {mkdtemp, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 
+import * as cacache from 'cacache';
 import t from 'tap';
 
 import {startFlow, type FlowFaults, type FlowHandle} from '../../flow/flows.ts';
 import type {Participant} from '../../flow/participant.ts';
 import {cacheRecordIds, openCache} from '../../src/cache.ts';
 import type {LogRecord} from '../../src/record.ts';
-import {renderHuman} from '../../src/render.ts';
 import {createApp} from '../../src/service/app.ts';
 import {DetectorSuite} from '../../src/service/detectors.ts';
 import {createServiceWriter} from '../../src/service/transport.ts';
@@ -43,9 +43,14 @@ import {getWriter, setWriter} from '../../src/writer.ts';
  * fault runs cannot be mistaken for tap's own output. The records are still
  * retained in the caches — a writer chooses the destination, not whether the
  * artifact is kept.
+ *
+ * Deliberately a *discarding writer* rather than the `null` silence sentinel: the
+ * sentinel silences a participant's service sink as well, and the sink is the
+ * stream F2 measures the burst on (the store keeps one entry per shape, so a run
+ * can no longer be replayed into the service from it).
  */
 const RESTORE_WRITER = getWriter();
-t.beforeEach(() => setWriter(null));
+t.beforeEach(() => setWriter({write: () => undefined}));
 t.afterEach(() => setWriter(RESTORE_WRITER));
 
 /** Every record the participant retained, read back out of the store it wrote. */
@@ -61,6 +66,37 @@ async function retained(participant: Participant): Promise<LogRecord[]> {
     }
     await cache.close();
     return records;
+}
+
+/**
+ * Every entry the participant retained, with the number of occurrences it stands
+ * for.
+ *
+ * The store keeps one entry per shape, so a record's entry is not the log line:
+ * the count is what says whether a shape happened once or forty-one times, and it
+ * lives on the entry's `cacache` metadata so that it survives the process that
+ * wrote it. A test asserting a *burst* therefore reads a count rather than
+ * counting records, which is the whole point of the fold.
+ */
+async function retainedWithCounts(
+    participants: Participant[],
+): Promise<Array<{record: LogRecord; count: number}>> {
+    const entries: Array<{record: LogRecord; count: number}> = [];
+    for (const participant of participants) {
+        const dir = participant.cacheDir;
+        for (const id of await cacheRecordIds(dir)) {
+            const stored = await cacache.get(dir, id).catch(() => undefined);
+            if (!stored) {
+                continue;
+            }
+            const metadata = stored.metadata as {count?: number} | undefined;
+            entries.push({
+                record: JSON.parse(stored.data.toString()) as LogRecord,
+                count: typeof metadata?.count === 'number' ? metadata.count : 1,
+            });
+        }
+    }
+    return entries;
 }
 
 /**
@@ -461,47 +497,54 @@ t.test(
             const address = await service.listen({port: 0, host: '127.0.0.1'});
             sink = createServiceWriter({url: address});
 
-            const quiet = await startFlow('single', {cacheDir: join(dir, 'quiet')});
+            // Each run ships its records to the service **as it makes them**, which is
+            // what a deployment does: the participant's own transport is a second
+            // destination, and the local cache stays the record of what was retained.
+            // Replaying the run into the service *from the cache* would work only while
+            // the cache held one entry per occurrence, and it deliberately does not: it
+            // holds one per shape, so a replay could not produce the 41 occurrences a
+            // rate baseline is made of (see `test/flow/faults.test.ts` history and
+            // `.github/memory/decision.md` D-281).
+            const quiet = await startFlow('single', {
+                cacheDir: join(dir, 'quiet'),
+                serviceUrl: address,
+            });
             await quiet.run();
             await quiet.close();
-            for (const record of await collected(quiet)) {
-                sink.write(renderHuman(record), record);
-            }
-            // Flushed before the boundary: the baseline is a *completed* window, and a
-            // batch still in the queue would arrive after the burst it is meant to
-            // measure.
             await sink.flush();
 
             // Past a whole window boundary and a margin, so the quiet window closes and
             // becomes the baseline wherever inside its window the quiet record landed.
             await new Promise(resolve => setTimeout(resolve, WINDOW_MS + 300));
 
+            const burstStart = Date.now();
             const burst = await startFlow('single', {
                 cacheDir: join(dir, 'burst'),
                 faults: {retries: 40},
+                serviceUrl: address,
             });
             const result = await burst.run();
             await burst.close();
-            const burstRecords = await collected(burst);
-            for (const record of burstRecords) {
-                sink.write(renderHuman(record), record);
-            }
             await sink.flush();
 
             t.equal(result.status, 200, 'every retry settles: the burst is rate, not failure');
-            const attempts = burstRecords.filter(
-                record => record.service === 'payer' && record.msg === 'submitting transfer',
+            // The store holds one entry per shape, so what says the driver really retried
+            // is the **count** on the shape's entry: 41 occurrences retained as one entry,
+            // which is R12 in miniature and the denoise the count exists to make harmless.
+            const attempts = (await retainedWithCounts(burst.participants)).filter(
+                entry =>
+                    entry.record.service === 'payer' && entry.record.msg === 'submitting transfer',
             );
-            t.equal(
-                attempts.length,
-                41,
+            t.same(
+                attempts.map(entry => entry.count),
+                [41],
                 'the driver really retried — one attempt for the first try and each of the 40',
             );
 
             // R12 in miniature: 41 executions of unchanged code are ONE identifier. A
             // driver that minted a template per attempt would make the burst invisible and
             // the registry unbounded.
-            const templates = new Set(attempts.map(record => record.refs.template));
+            const templates = new Set(attempts.map(entry => entry.record.refs.template));
             t.equal(
                 templates.size,
                 1,
@@ -529,7 +572,8 @@ t.test(
             );
             // Bounded to the burst: the quiet run's own first occurrences are novelty by
             // definition, and counting those would make this assertion about the wrong run.
-            const burstStart = Math.min(...burstRecords.map(record => record.time));
+            // The bound is taken from the clock rather than from the retained records,
+            // because the store no longer holds every occurrence of the burst.
             const novel = digest.entries.filter(
                 entry =>
                     entry.kind === 'anomaly' &&

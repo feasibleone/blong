@@ -1,3 +1,4 @@
+import * as cacache from 'cacache';
 import {readFileSync} from 'node:fs';
 import {mkdtemp, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -11,9 +12,28 @@ import {PAYLOAD_THRESHOLD} from './refs.ts';
 import {packageVersion} from './version.ts';
 import {getWriter, setWriter, stdoutWriter, type Writer} from './writer.ts';
 
-function capture(): {lines: string[]; writer: Writer} {
+/**
+ * Capture both halves of what a writer is handed: the rendered line, and the
+ * record it renders.
+ *
+ * The record matters because the line stopped carrying a per-record id: an
+ * ordinary record is represented by its shape, so the identity on the line is the
+ * shape reference. A test that needs a record's *own* id — a parent chain — reads
+ * it here rather than out of the line.
+ */
+function capture(): {lines: string[]; records: LogRecord[]; writer: Writer} {
     const lines: string[] = [];
-    return {lines, writer: {write: (line: string) => void lines.push(line)}};
+    const records: LogRecord[] = [];
+    return {
+        lines,
+        records,
+        writer: {
+            write: (line: string, record?: LogRecord) => {
+                lines.push(line);
+                if (record) records.push(record);
+            },
+        },
+    };
 }
 
 t.test('zero-config usage writes a readable line to the configured writer', t => {
@@ -22,8 +42,12 @@ t.test('zero-config usage writes a readable line to the configured writer', t =>
     logger.info('hello');
     t.equal(lines.length, 1);
     // Asserted by shape, not by day: the injected clock only makes output deterministic.
-    t.match(lines[0], /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z info {2}hello \[r=/);
-    t.match(lines[0], /r=semantic-log:\/\/record\//, 'a reference is always present');
+    t.match(
+        lines[0],
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z info {2}hello \[semlog:\/\/t\//,
+    );
+    t.match(lines[0], /semlog:\/\/t\/[0-9a-f]{12}/, 'the shape reference is always present');
+    t.notMatch(lines[0], /semlog:\/\/r\//, 'and an ordinary record keeps no link of its own');
     t.end();
 });
 
@@ -298,14 +322,22 @@ t.test('a fatal record is on disk the moment fatal returns, with no flush (PRD R
     // asynchronous write would still be pending here, because the event loop has
     // not turned. `putSync` is what lets the record a process failure most needs
     // to be looked up survive the `exit` that follows.
-    const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
-    t.ok(id, 'the rendered line carries the id');
+    const id = /semlog:\/\/r\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
+    t.ok(id, 'the rendered line carries the record id, an error being what folding would hide');
     const staged = stagedEntries(dir);
     const stored = JSON.parse(staged.find(entry => entry.id === id)?.json ?? '{}') as LogRecord;
     t.equal(stored.msg, 'unrecoverable', 'the fatal record is retained before exit');
     t.equal(stored.levelName, 'fatal');
     t.equal(stored.refs.record, id, 'the retained copy names itself');
-    t.equal(staged.length, 1, 'the staging line landed too, so the record is not an orphan');
+    // Two entries, because a fatal is kept as a shape *and* under its own id: the
+    // shape entry is what a reader resolving `t=` gets, and the record entry is the
+    // occurrence the line linked to.
+    t.equal(staged.length, 2, 'the staging lines landed too, so the record is not an orphan');
+    t.same(
+        staged.map(entry => entry.kind).sort(),
+        ['record', 'template'],
+        'staged for both tenants',
+    );
     t.same(exited, [1], 'the exit still ran immediately');
     // No flush of any kind was called, and the normal lookup path resolves it.
     t.equal((await cache.get(id))?.msg, 'unrecoverable');
@@ -380,13 +412,13 @@ t.test('every emitted record lands in the local cache', async t => {
     const logger = createLogger({service: 'hub', writer, cache});
     logger.info('cached');
     await logger.flush();
-    const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
-    t.ok(id, 'the line carries the id');
-    const stored = await cache.get(id);
+    const shape = /semlog:\/\/t\/([0-9a-f]+)/.exec(lines[0])?.[1] ?? '';
+    t.ok(shape, 'the line carries the shape reference');
+    const stored = await cache.get(shape);
     t.equal(stored?.msg, 'cached', 'PRD R21 acceptance');
     // The retained copy is the emitted record, identity stamped, not the
     // pre-identity draft: the CLI reads back what the writer rendered.
-    t.equal(stored?.refs.record, id, 'the retained record names itself');
+    t.equal(stored?.refs.template, shape, 'the retained record names its shape');
     t.equal(stored?.service, 'hub');
     await cache.close();
 });
@@ -411,13 +443,12 @@ t.test(
         await logger.flush();
 
         const line = lines[0];
-        const reference =
-            /^ {2}large: (semantic-log:\/\/payload\/[0-9A-HJKMNP-TV-Z]+)$/m.exec(line)?.[1] ?? '';
+        const reference = /^ {2}large: (semlog:\/\/p\/[0-9A-HJKMNP-TV-Z]+)$/m.exec(line)?.[1] ?? '';
         t.ok(reference, 'the large field renders as a payload reference, not inlined');
         t.notMatch(line, /A{1024}/, 'the large value itself is not in the line');
         t.match(line, `  small: ${belowThreshold}`, 'a field below the threshold is still inlined');
 
-        const id = reference.slice('semantic-log://payload/'.length);
+        const id = reference.slice('semlog://p/'.length);
         t.equal(
             await cache.getPayload(id),
             atThreshold,
@@ -428,7 +459,7 @@ t.test(
         // The record stays complete: the value is still in `fields` and the record
         // names its payload, so nothing had to be fetched back to render it and
         // JSON mode carries it verbatim.
-        const recordId = /r=semantic-log:\/\/record\/([0-9A-HJKMNP-TV-Z]+)/.exec(line)?.[1] ?? '';
+        const recordId = /semlog:\/\/r\/([0-9A-HJKMNP-TV-Z]+)/.exec(line)?.[1] ?? '';
         const stored = await cache.get(recordId);
         t.equal(stored?.fields?.large, atThreshold, 'the value stays in the retained record');
         t.equal(
@@ -538,9 +569,7 @@ t.test('a fatal record retains its payload synchronously, before exit (PRD R19/R
     // record. Reading the files directly, with no `await` in between, is what
     // distinguishes a synchronous write from one still queued on the event loop.
     const id =
-        /^ {2}configuration: semantic-log:\/\/payload\/([0-9A-HJKMNP-TV-Z]+)$/m.exec(
-            lines[0],
-        )?.[1] ?? '';
+        /^ {2}configuration: semlog:\/\/p\/([0-9A-HJKMNP-TV-Z]+)$/m.exec(lines[0])?.[1] ?? '';
     t.ok(id, 'the rendered line names the payload');
     const staged = stagedEntries(dir).filter(entry => entry.kind === 'payload');
     const staged_payload = staged.find(candidate => candidate.id === id);
@@ -567,8 +596,8 @@ t.test('the retained copy is a snapshot taken at emit time (PRD R21)', async t =
     // artifact has to agree with the line the writer already rendered.
     order.status = 'paid';
     await logger.flush();
-    const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
-    const stored = await cache.get(id);
+    const shape = /semlog:\/\/t\/([0-9a-f]+)/.exec(lines[0])?.[1] ?? '';
+    const stored = await cache.get(shape);
     t.same(
         stored?.fields?.order,
         {id: 'o-1', status: 'pending'},
@@ -592,8 +621,8 @@ t.test(
         // dropped and the rest of the record is still retained.
         logger.debug('with a function', {handler: () => 'nope'});
         await logger.flush();
-        const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
-        t.equal((await cache.get(id))?.msg, 'with a function');
+        const shape = /semlog:\/\/t\/([0-9a-f]+)/.exec(lines[0])?.[1] ?? '';
+        t.equal((await cache.get(shape))?.msg, 'with a function');
 
         // A value neither `structuredClone` (the function) nor `JSON.stringify` (the
         // cycle) can copy is retained as-is: losing strict snapshot semantics for an
@@ -622,8 +651,8 @@ t.test('a record is redacted before it is retained (§5.1 retained store row)', 
     });
     logger.info('guarded', {password: 'hunter2', credential: {token: 'tok-9'}});
     await logger.flush();
-    const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
-    const stored = await cache.get(id);
+    const shape = /semlog:\/\/t\/([0-9a-f]+)/.exec(lines[0])?.[1] ?? '';
+    const stored = await cache.get(shape);
     t.notMatch(
         JSON.stringify(stored),
         /hunter2|tok-9/,
@@ -688,8 +717,12 @@ t.test('a child shares the family cache, and the parent flush drains it', async 
     // The child's writes are still in flight here; only the shared tracker makes
     // this flush wait for them.
     await root.flush();
-    t.equal(cache.stats().size, 5, 'the cache is bounded across the family');
-    t.equal(cache.stats().dropped, 3, 'the overflow was pruned');
+    // Eight lines of one shape are one entry, and the count on it is what proves the
+    // family's shared tracker drained all eight writes to the one cache.
+    t.equal(cache.stats().size, 1, 'the family wrote through one shared cache');
+    const listed = (await cacache.ls(dir)) as Record<string, {metadata?: {count?: number}}>;
+    const shape = Object.keys(listed).find(key => key !== cachePaths.marker) ?? '';
+    t.equal(listed[shape]?.metadata?.count, 8, 'and every one of the eight landed there');
     await cache.close();
 });
 
@@ -811,11 +844,12 @@ t.test(
         });
         logger.info('predecessor');
         logger.fatal('unrecoverable');
-        const idOf = (line: string): string =>
-            /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(line)?.[1] ?? '';
-        const predecessor = idOf(lines[0]);
-        const fatal = idOf(lines[1]);
-        t.ok(predecessor && fatal, 'both records carry their references');
+        // Both records carry a shape reference on the line; only the fatal one is
+        // also kept under its own id, which is what the staging file shows.
+        const shapeOf = (line: string): string => /semlog:\/\/t\/([0-9a-f]+)/.exec(line)?.[1] ?? '';
+        const predecessor = shapeOf(lines[0]);
+        const fatal = shapeOf(lines[1]);
+        t.ok(predecessor && fatal, 'both records carry their shape references');
         t.ok(
             stagedEntries(dir).some(entry => entry.id === fatal),
             'the fatal record is staged before fatal returns',
@@ -1001,17 +1035,16 @@ t.test('a hostile trace id cannot forge a record reference in the rendered group
     // fixed-pattern extractor picked up as the record's own.
     const {lines, writer} = capture();
     const logger = createLogger({service: 'hub', writer});
-    bindTrace('x] [r=semantic-log://record/ATTACKER', () => logger.info('m'));
-    const extracted = [...lines[0].matchAll(/r=semantic-log:\/\/record\/[0-9A-Z]+/g)];
+    // An error, so the line carries a record link of its own: the claim is that the
+    // hostile trace id cannot add a *second* one, and a line with no record link
+    // could not show that.
+    bindTrace('x] [semlog://r/ATTACKER', () => logger.error('m'));
+    const extracted = [...lines[0].matchAll(/semlog:\/\/r\/[0-9A-Z]+/g)];
     t.equal(extracted.length, 1, 'exactly one record reference is extractable');
-    t.notMatch(
-        lines[0],
-        /r=semantic-log:\/\/record\/ATTACKER/,
-        'and it is not the attacker-chosen one',
-    );
+    t.notMatch(lines[0], /semlog:\/\/r\/ATTACKER/, 'and it is not the attacker-chosen one');
     t.match(
         lines[0],
-        /x=semantic-log:\/\/trace\/x%5D%20%5Br%3D/,
+        /semlog:\/\/x\/x%5D%20%5Bsemlog%3A%2F%2Fr%2F/,
         'the trace id is percent-encoded',
     );
     t.end();
@@ -1173,14 +1206,18 @@ t.test('the silence sentinel silences every sink too, and stays total', t => {
 });
 
 t.test('consecutive records in one scope are chained parent to child (PRD R7)', async t => {
-    const {lines, writer} = capture();
+    const {lines, records, writer} = capture();
     const logger = createLogger({service: 'hub', writer});
     logger.info('first');
     logger.info('second');
     logger.info('third');
-    const ids = lines.map(line => /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(line)?.[1] ?? '');
-    t.ok(ids[0] && ids[1] && ids[2], 'every line carries an id');
+    // The ids come from the records: an ordinary record's line carries its shape,
+    // not its own id, and the chain is what the *parent* segment on the next line
+    // has to name.
+    const ids = records.map(record => record.refs.record);
+    t.ok(ids[0] && ids[1] && ids[2], 'every record has an id');
     t.notMatch(lines[0], /p=/, 'the first record has no parent');
+    t.notMatch(lines[1], /semlog:\/\/r\//, 'and an ordinary record carries no link of its own');
     t.match(lines[1], new RegExp(`p=${ids[0]}`), 'the second points at the first');
     t.match(lines[2], new RegExp(`p=${ids[1]}`), 'the third points at the second');
     t.end();
@@ -1195,15 +1232,14 @@ t.test('a chain does not leak across sibling scopes', async t => {
     // passes for zero parented lines as well as one. Invoking the branches and
     // asserting the documented outcome exactly ("the first sibling inherits
     // nothing; the second inherits the first") gives the test the power to fail.
-    const {lines, writer} = capture();
+    const {lines, records, writer} = capture();
     const logger = createLogger({service: 'hub', writer});
     await Promise.all([
         (async () => logger.info('branch a'))(),
         (async () => logger.info('branch b'))(),
     ]);
     t.equal(lines.length, 2, 'both branches emitted');
-    const id = (index: number): string =>
-        /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[index])?.[1] ?? '';
+    const id = (index: number): string => records[index]?.refs.record ?? '';
     const parent = (index: number): string | undefined => /p=([0-9A-Z]+)/.exec(lines[index])?.[1];
     t.equal(parent(0), undefined, 'the first sibling inherits nothing');
     t.equal(parent(1), id(0), 'the second sibling inherits the first');
@@ -1217,7 +1253,7 @@ t.test('a causal chain survives a step boundary (PRD R7)', async t => {
     // after it, silently dropping every record the step emitted — so the full
     // causal chain would not be reconstructible from records alone, which is
     // R7's acceptance. This pins the boundary the ambient memory has to cross.
-    const {lines, writer} = capture();
+    const {lines, records, writer} = capture();
     const logger = createLogger({service: 'hub', writer});
     await withFlow({id: '01ARZ3NDEKTSV4RRFFQ69G5FAV', kind: 'transfer.single'}, async () => {
         logger.info('before');
@@ -1226,8 +1262,7 @@ t.test('a causal chain survives a step boundary (PRD R7)', async t => {
         });
         logger.info('after');
     });
-    const id = (index: number): string =>
-        /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[index])?.[1] ?? '';
+    const id = (index: number): string => records[index]?.refs.record ?? '';
     const parent = (index: number): string | undefined => /p=([0-9A-Z]+)/.exec(lines[index])?.[1];
     t.equal(lines.length, 3, 'all three records were written');
     t.equal(parent(0), undefined, 'the first record has no parent');

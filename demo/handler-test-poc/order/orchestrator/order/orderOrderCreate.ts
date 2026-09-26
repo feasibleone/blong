@@ -27,7 +27,7 @@ interface OrderResult {
  * - Both become active in test/debug mode without code changes
  *
  * This handler can be tested by calling it from a test handler,
- * then verifying the checkpoints captured in $meta.checkpoints.
+ * then verifying the progress captured in $meta.progress.
  */
 export default handler(
     ({lib: {assert, calculateTotal}}) =>
@@ -40,11 +40,30 @@ export default handler(
             assert?.ok(total > 0, 'Order total must be positive');
             $meta.checkpoint?.('total-calculated', {total, itemCount: items.length});
 
-            // Step 2: Apply discount (10% for orders over 100)
-            const discount = total > 100 ? 0.1 : 0;
+            // Step 2: Apply discount (10% for orders over 100) — as a branch, not a ternary, so
+            // the choice is a progress point of its own and the checkpoint the tier produces is
+            // announced *inside* it. That nesting is what a report draws as a group (PRD
+            // R26/R27). The fallback keeps the arithmetic identical where nothing prepared
+            // `$meta`.
+            const discount =
+                $meta.decide?.('discount-tier', {total}, [
+                    {
+                        name: 'standard',
+                        when: values => (values.total as number) > 100,
+                        run: () => {
+                            const rate = 0.1;
+                            $meta.checkpoint?.('discount-applied', {
+                                discount: rate,
+                                discountedTotal: total * (1 - rate),
+                            });
+                            return rate;
+                        },
+                    },
+                    {name: 'none', when: () => true, run: () => 0},
+                ]) ?? (total > 100 ? 0.1 : 0);
+
             const discountedTotal = total * (1 - discount);
             assert?.ok(discountedTotal <= total, 'Discounted total must not exceed original');
-            $meta.checkpoint?.('discount-applied', {discount, discountedTotal});
 
             // Step 3: Create order record
             const orderId = `ORD-${customerId}-${Date.now()}`;

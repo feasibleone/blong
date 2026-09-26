@@ -65,6 +65,12 @@ export interface RetentionOptions {
     limit?: number;
     /** How long a retention sweep is trusted for, in milliseconds. */
     sweepIntervalMs?: number;
+    /**
+     * How long the store's own steps may take before they are reported at warn
+     * level — reading the index at open above all, which is the step a delayed
+     * start waits behind. Defaults to the framework's margin for a slow step.
+     */
+    slowMs?: number;
 }
 
 /**
@@ -166,6 +172,13 @@ export interface LogBaseOptions {
     format?: Format;
     /** ANSI colour in human format. Opt-in, as the emitter's own option is. */
     color?: boolean;
+    /**
+     * How long one of the log's own steps may take before it is reported at warn
+     * level, in milliseconds. Measured in the store's steps (`cache.slowMs`
+     * overrides it there) and in the framework's, which reads the same key when
+     * it loads. Defaults to the framework's margin for a slow step.
+     */
+    slowMs?: number;
     /** Retain records on disk so a printed reference resolves later. */
     cache?: RetentionOptions;
     /** The call channel. */
@@ -538,6 +551,12 @@ export class LogBase {
             dir: resolveHome(cache.dir),
             limit: cache.limit ?? DEFAULT_RETENTION_LIMIT,
             sweepIntervalMs: cache.sweepIntervalMs,
+            slowMs: cache.slowMs ?? this.config.slowMs,
+            // The store reports its own slow steps through the logger that is
+            // opening it. That is the only channel available at this point — and
+            // the right one: the step a delayed start waits behind is this call,
+            // so a warning about it has to be written by the store itself.
+            log: this.logger,
         });
     }
 

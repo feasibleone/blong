@@ -130,6 +130,15 @@ export const point = vocabulary.point;
 export const decide = vocabulary.decide;
 
 /**
+ * The branches the calling scope is running inside, outermost first.
+ *
+ * Re-exported for the `$meta` recorder, which has to *name* the nesting on every entry it
+ * keeps: a report rebuilds the tree from those names, where the marks the log mints for
+ * itself would only describe a position in whichever process announced them.
+ */
+export const currentRegions = vocabulary.currentRegions;
+
+/**
  * Take the progress announced in the scope a handler ran in, and announce it again.
  *
  * Both halves of one thing, and both used by the same caller: the adapter reads what its

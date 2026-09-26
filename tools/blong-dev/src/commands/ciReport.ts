@@ -38,8 +38,10 @@ import {
     type HistoryRecord,
 } from '../report/history.ts';
 import {buildMetricsSnapshot, readMetrics, rebuildMetrics} from '../report/metrics.ts';
+import {indexProvenance} from '../report/provenance.ts';
 import {renderCiReport, type IReportLinks} from '../report/renderReport.ts';
 import {REPORT_DIR, repoRoot} from '../report/reportPaths.ts';
+import {formatDurationMs} from '../report/reportTypes.ts';
 import {writeCiReport} from '../report/reportWrite.ts';
 import {runTool, type RunOptions} from '../utils/runTool.ts';
 import {toolEnv} from '../utils/toolPath.ts';
@@ -117,11 +119,24 @@ export async function ciReport(args: string[]): Promise<void> {
     const run = envNumber('GITHUB_RUN_NUMBER');
     const projects = readRushProjects(root);
     const reports = collectReports(root);
-    const failures = collectFailures(reports);
     const coverage = readLcov(join(root, 'coverage', 'lcov.info'));
 
+    // The base branch's baseline and history are read before anything is summarised,
+    // because two parts of the report are comparisons against them: the per-package
+    // deltas, and where each failing test stands on main (its provenance). Reading
+    // them once here also keeps the rebuild at the end from reading them again.
+    const baseline = readMetrics(baseMetricsFile);
+    const baseHistory = baseHistoryFile
+        ? readHistory(baseHistoryFile)
+        : readHistory(historyFile(root));
+
+    const failures = collectFailures(reports, indexProvenance(baseHistory));
+
     // 1. Per-package data for the workflow artifacts and any downstream tool.
-    const summary = buildAggregateSummary(reports, failures, projects.length);
+    const summary = buildAggregateSummary(reports, failures, projects.length, {
+        coverage,
+        baseline,
+    });
     writeReportData(outDir, reports, summary);
 
     // A stale bundle from an earlier red run must never be republished as current.
@@ -152,8 +167,8 @@ export async function ciReport(args: string[]): Promise<void> {
         runAllure,
     });
 
-    // 4. The consolidated report (deltas need the base-branch baseline).
-    const baseline = readMetrics(baseMetricsFile);
+    // 4. The consolidated report (deltas and provenance need the base-branch data
+    // read above).
     // Published links are derived here rather than assembled by a later workflow
     // step, so the run summary and the pull-request comment are the same
     // document: the base URL comes from the reports repository (the workflow
@@ -205,6 +220,14 @@ export async function ciReport(args: string[]): Promise<void> {
         `# ci-report: ${reports.length}/${projects.length} package(s), ${totals.passed} passed, ` +
             `${totals.failed} failed${totals.flaky > 0 ? `, ${totals.flaky} flaky` : ''} (${totals.tests} total)\n`,
     );
+    if (totals.durationMs > 0) {
+        process.stdout.write(
+            `# test time: ${formatDurationMs(totals.durationMs)} across ${reports.length} package(s)\n`,
+        );
+    }
+    if (totals.newFailures > 0) {
+        process.stdout.write(`# ${totals.newFailures} new failure(s) (green on the base branch)\n`);
+    }
     if (bundle) {
         process.stdout.write(
             `# failures bundle: ci-failures/publish/failures.json (${bundle.count} failing test(s))\n`,

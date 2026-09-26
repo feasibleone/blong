@@ -1,5 +1,9 @@
-import {handler, type IMeta} from '@feasibleone/blong';
+import {handler, type IMeta, type IProgressPoint} from '@feasibleone/blong';
 import type Assert from 'node:assert';
+
+/** The points an invocation announced, in the order it announced them. */
+const pointsOf = (meta: IMeta): IProgressPoint[] =>
+    (meta.progress ?? []).filter((entry): entry is IProgressPoint => entry.kind === 'point');
 
 /**
  * Test: testOrderGraduate
@@ -22,11 +26,18 @@ import type Assert from 'node:assert';
  * internal assertions execute during tests without any caller changes.
  */
 export default handler(
-    ({handler: {testLoginTokenCreate, orderOrderCreate, orderOrderConfirm, orderFlowExecute}}) => ({
+    ({handler: {loginTokenCreate, orderOrderCreate, orderOrderConfirm, orderFlowExecute}}) => ({
         testOrderGraduate: (_params: {}, $meta: IMeta) => [
-            testLoginTokenCreate({}, $meta),
+            async function login(_assert: unknown, {$meta}: {$meta: IMeta}) {
+                return loginTokenCreate({username: 'testUser', password: 'testPassword'}, $meta);
+            },
             // Step 1: The "test" version — manual orchestration with mandatory assertions
-            async function manualFlow(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+            async function manualFlow(
+                assert: typeof Assert,
+                {login, $meta}: {login: Promise<unknown>; $meta: IMeta},
+            ) {
+                await login;
+
                 const order = (await orderOrderCreate(
                     {
                         items: [{name: 'Book', price: 30, quantity: 4}],
@@ -50,8 +61,8 @@ export default handler(
             // Step 2: The "graduated" version — same workflow via the production handler
             // The handler receives assert? automatically from the proxy
             async function graduatedFlow(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                // Reset checkpoints to track graduated handler's progress
-                $meta.checkpoints = [];
+                // Reset the invocation's progress to track the graduated handler's own
+                $meta.progress = [];
 
                 const result = (await orderFlowExecute(
                     {
@@ -68,9 +79,9 @@ export default handler(
                 assert.equal(result.status, 'CONFIRMED', 'Graduated: status matches');
 
                 // Verify the graduated handler's own checkpoints fired
-                const checkpoints = $meta.checkpoints;
-                assert.ok(checkpoints.length > 0, 'Graduated handler emitted checkpoints');
-                const names = checkpoints.map(cp => cp.name);
+                const points = pointsOf($meta);
+                assert.ok(points.length > 0, 'Graduated handler emitted checkpoints');
+                const names = points.map(point => point.name);
                 assert.ok(
                     names.includes('order-phase-complete'),
                     'Graduated handler: order phase checkpoint',

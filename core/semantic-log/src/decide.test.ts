@@ -267,8 +267,8 @@ t.test(
         decide('round-trip', {n: 1}, [{name: 'only', when: () => true, run: () => 'only'}]);
         logger.info('kept');
         await logger.flush();
-        const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
-        t.ok(id, 'the line carries the id');
+        const id = /semlog:\/\/t\/([0-9a-f]+)/.exec(lines[0])?.[1] ?? '';
+        t.ok(id, 'the line carries the shape reference, which is what it is retained under');
         const stored = await cache.get(id);
         t.equal(stored?.decision?.discriminator, 'round-trip');
         t.equal(stored?.decision?.chosen, 'only');

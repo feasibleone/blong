@@ -4,7 +4,7 @@
 
 import type {IStepProgress} from '@feasibleone/blong-chain';
 import type {IAllureStep} from '../types.js';
-import {allureStatusMap} from './allureStatusMap.js';
+import {allureStatusMap} from './allureStatusMap.ts';
 
 /**
  * Map IStepProgress array to Allure steps array

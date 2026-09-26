@@ -217,13 +217,119 @@ config: {
 - `level` (level name) — records below it are not emitted at all.
 - `format` (`'human'` or `'json'`) — one readable line, or one JSON object per record.
 - `color` (`boolean`) — ANSI in human format; on by default at a terminal.
-- `cache` (`{dir, limit}`) — the store: where records live, and how many.
+- `slowMs` (number) — how long one of the log's own steps may take before it is reported at warn
+  level; default 1000. The loader reads the same key for its own steps.
+- `cache` (`{dir, limit, slowMs}`) — the store: where records live, how many, and how long the read
+  of the retention order may take.
 - `cluster.enabled` (`boolean`) — run the service in this process.
 - `cluster.port` / `cluster.host` — where it binds; the bound port is read back and reported.
 
 `cluster` is on in `dev`, `integration` and `playwright`, and off in `cli` and `prod`: a development
 run can then be drawn from what it just did, and a test run leaves diagrams behind, without a
 production process holding a service open.
+
+## Slow steps, and what retention does with them
+
+Every step the framework measures is reported at warn level when it takes longer than `log.slowMs`,
+and reported _while_ it runs once it crosses that margin — so a start that spends seconds in one
+step says which step, how long it has been there and how far it has got, rather than printing
+nothing:
+
+```text
+warn  blong operation "start log" still running (1000ms) {"label":"start log","elapsedMs":1000}
+warn  blong operation "start log" took 8500ms {"label":"start log","elapsedMs":8500}
+```
+
+The steps measured are the loader's — the suite factory, the config, layer discovery, every
+component import and start, every child realm — and the store's own read of the retention order,
+which is the one that grows with what the directory holds.
+
+## What the store keeps: three tenants, and why the shape is the key
+
+The store holds three kinds of entry, each bounded on its own:
+
+| Tenant     | Key                   | What one entry is                                             | Bound         |
+| ---------- | --------------------- | ------------------------------------------------------------- | ------------- |
+| `template` | the shape reference   | the newest occurrence of that shape, plus how many there were | `limit`       |
+| `record`   | the record's id       | one record, kept beside its shape                             | `recordLimit` |
+| `payload`  | the payload reference | one large field value                                         | `limit`       |
+
+The **shape** is the primary one. A shape is what a record repeats — the emitter's fingerprint with
+the varying values masked, cut to the shape reference that also rides the record as `refs.template`
+— so a retry burst of forty-one attempts is _one_ entry that says it happened forty-one times,
+rather than forty-one entries that each say it happened once. Two consequences are the reason it is
+worth the change: a shape that every run emits (a startup record) keeps a place at the bound while
+the one-off records written after it age out, and the store holds kinds of event instead of traffic,
+so the same bound spans far more history.
+
+It also means the entry is **not** the log line, and that is stated rather than hidden. A record
+earns an entry of its own, in the second tenant, exactly when folding it into its shape would hide
+something worth keeping: it **withheld a payload** (the reference in the line has to resolve against
+an occurrence that carried it), or it **carries an error** (the shape of a failure repeats, but the
+occurrence is what is being diagnosed). Those two questions live in one place, `src/retention.ts`,
+so that the store writing an entry and the renderer printing a link cannot disagree about whether
+that link resolves — the record link is printed only when the entry exists.
+
+Nothing that _counts_ occurrences should read the store as its source: the service's rate and
+novelty detectors are fed from the stream as a run happens (`serviceUrl`), which is also what a
+deployment does. A store that folds is a store, not a ledger.
+
+## The retention order, and the index over it
+
+The store prunes oldest-first, so it needs the order of what it retains. That order is kept in a
+secondary index beside the cache — `order.jsonl`, an append-only file, one line per write and one
+per removal:
+
+```json
+{"id":"9f3a2c1d4e5f","k":"template","n":3}
+{"id":"01J8Z9K2M9…","k":"record","s":"9f3a2c1d4e5f"}
+{"id":"01JZ...","d":1}
+```
+
+Reading that one file is what an open does. The alternative is `cacache`'s own index, which is one
+file _per key_, each in a directory of its own: ten thousand retained entries is ten thousand reads
+and roughly half a second before a process prints its first line. On this machine the difference was
+1.2 s before the index existed and 0.67 s after.
+
+**The order is the position, and a line carries no noise.** A line carries the entry, its tenant and
+the two things the next open cannot re-derive — the count a shape stands for (`n`) and the shape a
+per-emit record belongs to (`s`) — never the time: an entry's place in the file is when it was last
+written, the time is already on stdout, and a cache that kept every varying field would be
+accumulating the noise the log design exists to remove.
+
+Three rules keep it honest, and they are what make it safe for several processes at once:
+
+- **Append only.** A small append lands whole, so two writers interleave lines instead of
+  overwriting each other. A rewrite is the single-writer assumption the store before this one was
+  retired for.
+- **Last line for an id wins.** That is what makes a repeated write a _refresh_: the entry takes the
+  newest place in the prune order rather than a second one, and the count stays exact — the last
+  line for a shape carries the count it had reached. Counted twice it would take the bound over by
+  one and evict an entry that should have stayed.
+- **`cacache` is the truth**, and the pass that rewrites the file reads it first. That pass is due
+  when the interval has elapsed (`sweepIntervalMs`, a day by default) and also when the index has
+  grown past a few times what it holds: between passes the file gains a line per write and per
+  removal, and a process that logs at all logs faster than it is swept. Either way the truth is read
+  first, which is what makes the rewrite complete rather than one process's view of a store other
+  processes are writing to. An index that has drifted costs the store time, never correctness.
+- **A directory without one is read the expensive way once** and given one: a directory written
+  before this index existed, or by a writer that keeps none. That read is also the one that is
+  reported when slow, and the one that triggers the repair below.
+
+There is deliberately no pass inside a running process. The file grows only with _activity_ — a
+process that is idle appends nothing, measured — so a long-lived one accumulates in proportion to
+what it logs, and the next open bounds it: one sequential read, then the rewrite. A pass inside a
+running process would have to read the truth to be complete, which is the half second this index
+exists to avoid, and paying it periodically to shrink a file that is only as large as the traffic
+that earned it is the wrong trade.
+
+- **Retention deletes the index file of a pruned entry** rather than appending a deletion to it,
+  because a `cacache` key hashes into a file of its own: a tombstone leaves the file behind, so the
+  index grows by one file per entry ever written and any read of the truth reads all of them. A
+  directory that still holds such files is repaired when it is read that way — the slow read is
+  reported, the dead files are removed in the background, and the retention pass then collects the
+  content they orphaned. Raise `log.slowMs` on a machine that is legitimately slow, or set it to `0`
+  in the store's config to turn both the report and the repair off.
 
 ## Exposing it to a reader
 

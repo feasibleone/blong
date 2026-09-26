@@ -85,8 +85,8 @@ export default class RpcServer extends Internal implements IRpcServer {
                 jsonrpc: '2.0',
                 id,
                 result,
-                ...((newMeta as {checkpoints?: unknown[]}).checkpoints?.length && {
-                    checkpoints: (newMeta as {checkpoints?: unknown[]}).checkpoints,
+                ...((newMeta as {progress?: unknown[]}).progress?.length && {
+                    progress: (newMeta as {progress?: unknown[]}).progress,
                 }),
             };
         }

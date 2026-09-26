@@ -240,9 +240,16 @@ t.test('the store reads and writes through the cache once it is open', async t =
     log.componentFace('realm', 'info', {}).info('and again');
     log.store.putSync(record);
     await log.store.put(records[1] as LogRecord);
-    t.equal((await log.store.get(record.id))?.msg, 'through the cache', 'a record reads back');
+    // Looked up by the shape, which is the key: both records here are ordinary ones,
+    // so each is represented by its shape's entry and keeps none of its own. The
+    // shape entry holds the newest occurrence of that shape — the one just written.
+    const shape = record.refs.template as string;
+    t.equal((await log.store.get(shape))?.msg, 'through the cache', 'a record reads back');
     t.ok(log.store.stats().size >= 1, 'and the store counts what it holds');
-    t.ok(await log.store.get((records[1] as LogRecord).id), 'and the second record reads back too');
+    t.ok(
+        await log.store.get((records[1] as LogRecord).refs.template as string),
+        'and the second record reads back too',
+    );
     await log.store.putPayload(record.id, record.time, '{"a":1}');
     log.store.putPayloadSync(record.id, record.time, '{"b":2}');
     t.same(await log.store.getPayload(record.id), {b: 2}, 'a payload reads back too');

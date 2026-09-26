@@ -1,6 +1,6 @@
 import t from 'tap';
-import type { LogRecord } from './record.ts';
-import { renderHuman, renderJson } from './render.ts';
+import type {LogRecord} from './record.ts';
+import {renderHuman, renderJson} from './render.ts';
 
 const base: LogRecord = {
     id: '01J8Z9K2M9PQRSTVWXYZ0A1B2C',
@@ -66,9 +66,23 @@ t.test('a context field is a header token, not a detail line', t => {
 
 t.test('references are appended and are dereferenceable', t => {
     const line = renderHuman(base, {color: false});
-    t.match(line, /r=semantic-log:\/\/record\/01J8Z9K2M9PQRSTVWXYZ0A1B2C/);
-    t.match(line, /t=semantic-log:\/\/template\/tpl_9f3a/);
-    t.match(line, /x=semantic-log:\/\/trace\/tr-1/);
+    // The shape link is the one every line carries; the record link is not printed
+    // unless folding this record into its shape would hide something, and this
+    // record is an ordinary one.
+    t.match(line, /\[semlog:\/\/t\/tpl_9f3a/);
+    t.match(line, /semlog:\/\/x\/tr-1/);
+    t.notMatch(line, /semlog:\/\/r\//, 'an ordinary record carries no link of its own');
+    t.match(line, /tpl_9f3a/, 'the link is the shape reference, not a label');
+
+    // A record that withheld a payload, or that carries an error, *does* carry its
+    // own link, because the store keeps an entry that link can resolve.
+    const withheld = renderHuman(
+        {...base, refs: {...base.refs, payloads: {config: '01P'}}},
+        {color: false},
+    );
+    t.match(withheld, /semlog:\/\/r\/01J8Z9K2M9PQRSTVWXYZ0A1B2C/, 'a withheld payload earns one');
+    const errored = renderHuman({...base, level: 50, levelName: 'error'}, {color: false});
+    t.match(errored, /semlog:\/\/r\/01J8Z9K2M9PQRSTVWXYZ0A1B2C/, 'and so does an error');
     t.end();
 });
 
@@ -77,17 +91,17 @@ t.test('a forged parent id cannot add a second reference to the group', t => {
     // `LogRecord` and the inspect CLI re-renders records read back from a store,
     // so the id is untrusted text. Unencoded, this one closes the reference
     // group and forges a record reference; the segment is encoded by the same
-    // rule the `semantic-log://` members use, so it cannot.
+    // rule the `semlog://` members use, so it cannot.
     const line = renderHuman(
-        {...base, refs: {...base.refs, parent: 'x] [r=semantic-log://record/ATTACKER'}},
+        {...base, refs: {...base.refs, parent: 'x] [semlog://r/ATTACKER'}},
         {color: false},
     );
     t.match(
         line,
-        /p=x%5D%20%5Br%3Dsemantic-log%3A%2F%2Frecord%2FATTACKER/,
+        /p=x%5D%20%5Bsemlog%3A%2F%2Fr%2FATTACKER/,
         'the parent segment is percent-encoded, leaving the group intact',
     );
-    t.notMatch(line, /r=semantic-log:\/\/record\/ATTACKER/, 'no forged reference was rendered');
+    t.notMatch(line, /semlog:\/\/r\/ATTACKER/, 'no forged reference was rendered');
     t.equal(line.split('\n').length, 1, 'and the header stays one line');
     t.end();
 });
@@ -107,7 +121,7 @@ t.test('a payload index for a value that is not large inlines instead (PRD R19 t
         {color: false},
     );
     t.match(line, /^ {2}short: tiny$/m, 'the value is inlined, not replaced');
-    t.notMatch(line, /semantic-log:\/\/payload\//, 'no reference is rendered for it');
+    t.notMatch(line, /semlog:\/\/p\//, 'no reference is rendered for it');
     t.end();
 });
 
@@ -124,7 +138,7 @@ t.test('a payload index for a large value renders the reference instead (PRD R19
         },
         {color: false},
     );
-    t.match(line, /^ {2}big: semantic-log:\/\/payload\/01J8Z9K2M9PQRSTVWXYZ0A1B2D$/m);
+    t.match(line, /^ {2}big: semlog:\/\/p\/01J8Z9K2M9PQRSTVWXYZ0A1B2D$/m);
     t.notMatch(line, /z{1024}/, 'the value is not inlined');
     t.end();
 });

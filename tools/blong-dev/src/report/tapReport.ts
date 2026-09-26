@@ -11,19 +11,19 @@
  * machine readable.
  */
 
-import {spawn} from 'node:child_process';
-import {writeFileSync} from 'node:fs';
+import {spawn, type ChildProcess} from 'node:child_process';
+import {createWriteStream, existsSync, readFileSync, writeFileSync} from 'node:fs';
 
-import {packageName, packageRelPath, reportPath} from './reportPaths.ts';
+import {packageName, reportPath} from './reportPaths.ts';
 import {
     countTests,
     statusOf,
-    type IReport,
+    type IRunReport,
     type ISuiteEntry,
     type ITestEntry,
     type TestStatus,
 } from './reportTypes.ts';
-import {writeReport} from './reportWrite.ts';
+import {clearRun, writeRun} from './reportWrite.ts';
 
 /** Maximum number of failure details printed to the console. */
 const MAX_CONSOLE_DETAILS = 10;
@@ -33,6 +33,28 @@ const MAX_MESSAGE_CHARS = 400;
 
 /** Maximum number of captured lines dumped when the TAP stream is unusable. */
 const MAX_FALLBACK_LINES = 40;
+
+/**
+ * File inside `.ci-report/` holding the raw TAP stream of the last run.
+ *
+ * The raw stream is what carries the test process's own records — the framework
+ * logs a suite prints — because the reporter's JSON does not include them. It is
+ * also tap's own view of the run: the `ok`/`not ok` tree with `# Subtest:`
+ * nesting. A watched run echoes it; a captured one keeps it as an artifact.
+ */
+const RAW_TAP_FILE = 'tap.raw.tap';
+
+/** File inside `.ci-report/` holding tap's structured report. */
+const TAP_JSON_FILE = 'tap.json';
+
+/**
+ * The flag that asks a dev run for the structured report instead of the live view.
+ *
+ * A run has one reporter, so a dev run is the live one — which is what a person watching
+ * wants — and this is how a tool or an agent asks for the other, making a dev run behave
+ * exactly as CI does.
+ */
+export const REPORT_FLAG = '--report';
 
 interface ITapLocation {
     fileName?: string;
@@ -141,6 +163,18 @@ function statusOfSuite(suite: ITapSuite): TestStatus {
  * Returns the number of failing leaves found, so a suite that failed without a
  * failing assertion (crash, timeout, plan mismatch) can be reported as well.
  */
+/**
+ * tap times suites and subtests in milliseconds, and nothing else.
+ *
+ * A *subtest* — what the blong runtime's handler tests are, and what a `t.test(...)`
+ * group is — carries its own time. An assertion inside a group (`cases`) does not, so
+ * a test that only ever asserted gets no duration rather than its group's total, which
+ * would credit it with time its siblings spent.
+ */
+function timingOf(suite: ITapSuite): {durationMs?: number} {
+    return typeof suite.time === 'number' ? {durationMs: suite.time} : {};
+}
+
 function collectSuite(
     suite: ITapSuite,
     groups: string[],
@@ -185,6 +219,7 @@ function collectSuite(
         out.push({
             name: childGroups.join(' › ') || suiteName || '(suite)',
             status,
+            ...timingOf(suite),
             ...locationOf(suite.diag),
             message:
                 status === 'failed' ? (failureMessage(suite.diag) ?? 'suite failed') : undefined,
@@ -199,6 +234,7 @@ function collectSuite(
         out.push({
             name: childGroups.join(' › ') || suiteName || '(suite)',
             status: 'failed',
+            ...timingOf(suite),
             ...locationOf(suite.diag),
             message: failureMessage(suite.diag) ?? 'suite failed',
             stack: suite.diag?.stack,
@@ -216,13 +252,11 @@ function collectSuite(
  * with two skips reports `failures: 2`, `skipped: 2` and still exits 0), so it
  * cannot be used to detect a failure the report failed to describe.
  */
-export function buildTapReport(
+export function buildTapRun(
     tap: ITapJsonReport | null,
-    pkg: string,
-    path: string,
     exitCode: number,
     durationMs?: number,
-): IReport {
+): IRunReport {
     const suites: ISuiteEntry[] = [];
     for (const file of tap?.suites ?? []) {
         const tests: ITestEntry[] = [];
@@ -252,9 +286,6 @@ export function buildTapReport(
 
     const counts = countTests(suites.flatMap(suite => suite.tests));
     return {
-        schema: 1,
-        package: pkg,
-        path,
         runner: 'tap',
         status: statusOf(counts),
         counts,
@@ -265,10 +296,10 @@ export function buildTapReport(
 }
 
 /** Render the compact console view of a completed tap run. */
-export function renderTapConsole(report: IReport): string {
+export function renderTapConsole(run: IRunReport, pkg: string): string {
     const lines: string[] = [];
     const problems: ITestEntry[] = [];
-    for (const suite of report.suites) {
+    for (const suite of run.suites) {
         for (const test of suite.tests) {
             if (test.status === 'failed' || test.status === 'broken' || test.status === 'flaky') {
                 problems.push(test);
@@ -287,10 +318,10 @@ export function renderTapConsole(report: IReport): string {
     }
 
     lines.push(
-        `# ${report.package}: ${report.counts.passed} passed, ${report.counts.failed} failed` +
-            `${report.counts.flaky > 0 ? `, ${report.counts.flaky} flaky` : ''}` +
-            `${report.counts.skipped > 0 ? `, ${report.counts.skipped} skipped` : ''} ` +
-            `(${report.counts.total} total)`,
+        `# ${pkg}: ${run.counts.passed} passed, ${run.counts.failed} failed` +
+            `${run.counts.flaky > 0 ? `, ${run.counts.flaky} flaky` : ''}` +
+            `${run.counts.skipped > 0 ? `, ${run.counts.skipped} skipped` : ''} ` +
+            `(${run.counts.total} total)`,
     );
     lines.push(
         `# raw report: ${reportPath('.', 'tap.json')}, structured: ${reportPath('.', 'report.json')}`,
@@ -318,12 +349,62 @@ export function hasCustomReporter(args: readonly string[]): boolean {
  * the inherited configuration makes a nested run behave like a standalone one,
  * which is what its caller asked for: a report for the package it ran in.
  */
+/**
+ * Whether this run is itself inside another tap run.
+ *
+ * tap marks its descendants with `TAP`/`TAP_CHILD_ID`/`TAP_JOB_ID`, and the recorded
+ * artifacts of a run belong to the process that started it: a nested run that replayed
+ * the stream would rewrite the parent's own recording.
+ */
+function isNestedRun(env: NodeJS.ProcessEnv): boolean {
+    return Boolean(env['TAP'] ?? env['TAP_CHILD_ID'] ?? env['TAP_JOB_ID']);
+}
+
 function childEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-    const nested = Boolean(env['TAP'] ?? env['TAP_CHILD_ID'] ?? env['TAP_JOB_ID']);
-    if (!nested) return env;
+    if (!isNestedRun(env)) return env;
     return Object.fromEntries(
         Object.entries(env).filter(([name]) => name !== 'TAP' && !name.startsWith('TAP_')),
     );
+}
+/**
+ * Whether this run is watched rather than captured.
+ *
+ * A watched run is driven by tap's own reporter, live, because that is what tells a
+ * person something is happening: a long step is visible while it runs instead of
+ * appearing at the end with its duration, which is exactly when a run that waited too
+ * long for something is worth noticing. A captured run (CI) stays quiet and keeps the
+ * artifacts.
+ */
+export function isWatchedRun(env: NodeJS.ProcessEnv): boolean {
+    return !env['CI'];
+}
+
+/**
+ * The tap argument list for a run.
+ *
+ * A captured run is asked for the structured report and told to write it straight to
+ * `tap.json` with `--reporter-file`, so this module never holds it; its raw TAP stream
+ * goes to its artifact with `--output-file`, which is the only thing carrying the test
+ * process's own records — the JSON report does not include them.
+ *
+ * A watched run is given neither: its reporter is tap's own, which is the live view, and
+ * `--output-file` is left out because tap echoes the child's stream twice when it is set.
+ * Its artifact is written from that live stream instead, so the report a tool reads there
+ * is the TAP itself.
+ */
+export function tapInvocation(
+    jsonPath: string,
+    rawPath: string,
+    args: string[],
+    watched = false,
+): string[] {
+    if (watched) return [...args];
+    return ['--reporter=json', `--reporter-file=${jsonPath}`, `--output-file=${rawPath}`, ...args];
+}
+
+/** Read a file, or `undefined` when a run never wrote it. */
+function readIfPresent(path: string): string | undefined {
+    return existsSync(path) ? readFileSync(path, 'utf8') : undefined;
 }
 
 /**
@@ -331,10 +412,23 @@ function childEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
  *
  * Returns the tap exit code. When `args` selects a custom reporter the child
  * inherits stdio and no report is produced.
+ *
+ * A watched run (a dev run, unless `--report` asks otherwise) is driven by tap's own
+ * reporter and its output is relayed as it arrives, which is what tells a person
+ * something is happening: a long step is visible while it runs instead of appearing at
+ * the end with its duration, and a step that waited too long is noticeable while it is
+ * still waiting. That stream is written to `tap.raw.tap` as it comes — the machine
+ * readable artifact of a watched run.
+ *
+ * A captured run (CI, or `--report`) is asked for the structured report instead, which
+ * only a captured run can have: tap prints a live report and a JSON one through the same
+ * reporter, so one run is one of the two. It prints the failure view and nothing else.
  */
 export async function runTap(args: string[], cwd: string, env: NodeJS.ProcessEnv): Promise<number> {
     const spawnEnv = childEnv(env);
     if (hasCustomReporter(args)) {
+        // The caller asked for its own reporter, so it owns reporting entirely: this
+        // run neither writes the package report nor clears a slice of it.
         return new Promise((resolve, reject) => {
             const child = spawn('tap', args, {stdio: 'inherit', cwd, env: spawnEnv});
             child.on('error', reject);
@@ -343,56 +437,83 @@ export async function runTap(args: string[], cwd: string, env: NodeJS.ProcessEnv
     }
 
     const started = Date.now();
-    let stdout = '';
+    const jsonPath = reportPath(cwd, TAP_JSON_FILE, true);
+    const rawPath = reportPath(cwd, RAW_TAP_FILE);
+    // `--report` is this tool's own flag, not tap's: it asks a dev run for the report
+    // instead of the live view, which is what CI gets anyway.
+    const captured = !isWatchedRun(spawnEnv) || args.includes(REPORT_FLAG);
+    if (captured) {
+        // This runner's slice of the package report is dropped before tap starts, so a
+        // run that dies mid-way leaves no previous tap report to be aggregated as this
+        // one's — and the other runners' slices are kept, because a package can run more
+        // than one in a cycle. A watched dev run writes no report, so it must not clear
+        // one either: that would leave the package described by its other runners alone.
+        clearRun('tap', cwd);
+    }
+    const tapArgs = args.filter(arg => arg !== REPORT_FLAG);
     let stderr = '';
 
     const exitCode = await new Promise<number>((resolve, reject) => {
-        const child = spawn('tap', ['--reporter=json', ...args], {
-            cwd,
-            env: spawnEnv,
-            stdio: ['inherit', 'pipe', 'pipe'],
+        const child: ChildProcess = spawn(
+            'tap',
+            tapInvocation(jsonPath, rawPath, tapArgs, !captured),
+            {
+                cwd,
+                env: spawnEnv,
+                stdio: ['inherit', 'pipe', 'pipe'],
+            },
+        );
+        // A watched run is relayed and written out as it arrives, so the terminal shows
+        // the run while it happens and the artifact is the same stream. A captured run's
+        // artifacts are files tap writes itself.
+        const sink = captured ? undefined : createWriteStream(rawPath);
+        child.stdout?.setEncoding('utf8');
+        child.stderr?.setEncoding('utf8');
+        child.stdout?.on('data', (chunk: string) => {
+            sink?.write(chunk);
+            process.stdout.write(chunk);
         });
-        child.stdout.setEncoding('utf8');
-        child.stderr.setEncoding('utf8');
-        // tap writes the structured report to stdout; anything on stderr is a
-        // genuine runner message, so it is forwarded live and kept in the artifact.
-        child.stdout.on('data', (chunk: string) => {
-            stdout += chunk;
-        });
-        child.stderr.on('data', (chunk: string) => {
+        child.stderr?.on('data', (chunk: string) => {
             stderr += chunk;
             process.stderr.write(chunk);
         });
         child.on('error', reject);
-        child.on('close', code => resolve(code ?? 0));
+        child.on('close', code => {
+            sink?.end();
+            resolve(code ?? 0);
+        });
     });
 
-    writeFileSync(reportPath(cwd, 'tap.json', true), stdout);
     if (stderr.trim() !== '') writeFileSync(reportPath(cwd, 'tap-stderr.txt'), stderr);
 
-    const parsed = parseTapJson(stdout);
-    const report = buildTapReport(
-        parsed,
-        packageName(cwd),
-        packageRelPath(cwd),
-        exitCode,
-        Date.now() - started,
-    );
-    writeReport(report, cwd);
+    if (!captured) {
+        // Nothing to summarise: the run has just been printed, failure lines and all.
+        process.stdout.write(
+            `# ${RAW_TAP_FILE} has this run's output; the structured report is a captured run's (CI, or \`blong-dev test --report\`)\n`,
+        );
+        return exitCode;
+    }
+
+    const raw = readIfPresent(jsonPath) ?? '';
+    const parsed = parseTapJson(raw);
+    const run = buildTapRun(parsed, exitCode, Date.now() - started);
+    writeRun(run, cwd);
 
     if (parsed === null) {
         // tap never produced a report (crash, compile error, kill): show the tail
-        // so the CI log stays diagnosable, then point at the artifact.
-        const tail = [stdout, stderr]
+        // of what it did produce, so the log stays diagnosable, then point at the
+        // artifacts. Only a captured run gets here — a watched one has already
+        // printed the whole stream.
+        const tail = [raw, stderr]
             .filter(text => text.trim() !== '')
             .map(text => text.split('\n').slice(-MAX_FALLBACK_LINES).join('\n').trimEnd())
             .join('\n');
         if (tail) process.stdout.write(tail + '\n');
         process.stdout.write(
-            `# tap produced no report that could be parsed; raw output: ${reportPath('.', 'tap.json')}\n`,
+            `# tap produced no report that could be parsed; raw output: ${reportPath('.', TAP_JSON_FILE)}\n`,
         );
     } else {
-        process.stdout.write(renderTapConsole(report) + '\n');
+        process.stdout.write(renderTapConsole(run, packageName(cwd)) + '\n');
     }
 
     return exitCode;

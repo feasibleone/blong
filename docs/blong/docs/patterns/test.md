@@ -299,23 +299,29 @@ export default handler(({lib: {group}, handler: {orderProcess}}) => ({
                 const result = await orderProcess({items: [{price: 10, quantity: 2}]}, $meta);
                 assert.ok(result.orderId, 'Order created');
 
-                // Verify the handler's internal progress
-                const checkpoints = $meta.checkpoints;
-                assert.equal(checkpoints[0].name, 'validated');
-                assert.equal(checkpoints[1].name, 'persisted');
+                // One list, the points and the branches together, in the order they happened
+                const progress = $meta.progress ?? [];
+                const points = progress.filter(entry => entry.kind === 'point');
+                assert.equal(points[0].name, 'validated');
+                assert.equal(points[1].name, 'persisted');
 
-                // …and the branch it took, with the candidates it weighed
-                const decisions = $meta.decisions;
-                assert.equal(decisions[0].discriminator, 'price-tier');
-                assert.equal(decisions[0].chosen, 'single');
+                // …and the branch the handler took, with the candidates it weighed
+                const [branch] = progress.filter(entry => entry.kind === 'region');
+                assert.equal(branch.discriminator, 'price-tier');
+                assert.equal(branch.chosen, 'single');
+
+                // A point announced inside that branch names it, which is what a report groups by
+                assert.equal(points[1].regions?.[0]?.chosen, 'single');
             },
         ]),
 }));
 ```
 
-A checkpoint is one shape of a progress point; a branch is the other. Asserting on the sequence of
-points and the branches between them reads the same data the log draws as notes and `alt` blocks
-([R26, R27](../rationale/semantic-log.md)).
+A checkpoint is one shape of a progress point; a branch is the other, and one list holds both so
+that the order between them survives. Asserting on it reads the same data the log draws as notes and
+`alt` blocks ([R26, R27](../rationale/semantic-log.md)) — and it is the same data a **test report**
+draws: each point becomes a step under the step that announced it, and a branch the group of the
+points taken inside it.
 
 ### Test Graduation
 

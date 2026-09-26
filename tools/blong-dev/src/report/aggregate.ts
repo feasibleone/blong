@@ -10,9 +10,18 @@ import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import stripJsonComments from 'strip-json-comments';
 
+import type {ICoverage} from './coverage.ts';
 import {readJson} from './jsonFile.ts';
+import {coverageMovers, type ICoverageMover, type IMetrics} from './metrics.ts';
+import type {IFailureHistory, IProvenanceIndex} from './provenance.ts';
 import {PUBLISH_DIR, REPORT_DIR} from './reportPaths.ts';
-import {isProblem, type IReport, type ITestEntry, type TestStatus} from './reportTypes.ts';
+import {
+    isProblem,
+    reportDurationMs,
+    type IReport,
+    type ITestEntry,
+    type TestStatus,
+} from './reportTypes.ts';
 
 export interface IRushProject {
     packageName: string;
@@ -74,23 +83,32 @@ export interface IFailure extends ITestEntry {
     path: string;
     runner: string;
     suite: string;
+    /** Where the test stands in the base branch's recent history, when known. */
+    history?: IFailureHistory;
 }
 
 /** Flatten the problem tests of every report, failures first. */
-export function collectFailures(reports: readonly IReport[]): IFailure[] {
+export function collectFailures(
+    reports: readonly IReport[],
+    provenance?: IProvenanceIndex,
+): IFailure[] {
     const failures: IFailure[] = [];
     for (const report of reports) {
-        for (const suite of report.suites) {
-            for (const test of suite.tests) {
-                if (!isProblem(test.status)) continue;
-                failures.push({
-                    ...test,
-                    file: test.file ?? suite.file,
-                    package: report.package,
-                    path: report.path,
-                    runner: report.runner,
-                    suite: suite.name,
-                });
+        for (const run of report.runs) {
+            for (const suite of run.suites) {
+                for (const test of suite.tests) {
+                    if (!isProblem(test.status)) continue;
+                    const history = provenance?.lookup(report.package, test.name, test.fullName);
+                    failures.push({
+                        ...test,
+                        file: test.file ?? suite.file,
+                        package: report.package,
+                        path: report.path,
+                        runner: run.runner,
+                        suite: suite.name,
+                        ...(history ? {history} : {}),
+                    });
+                }
             }
         }
     }
@@ -112,6 +130,16 @@ export interface IAggregateTotals {
     failed: number;
     flaky: number;
     skipped: number;
+    todo: number;
+    /**
+     * Test time across every package, added up: every runner's slice of every
+     * package. It is not the wall clock of the job — packages run in parallel and
+     * the split over job runners is the workflow's business — but it is the number
+     * that moves when a package gets slower.
+     */
+    durationMs: number;
+    /** Problems the base branch was green on, i.e. what this run introduced. */
+    newFailures: number;
 }
 
 export interface IAggregateSummary {
@@ -121,11 +149,26 @@ export interface IAggregateSummary {
     packages: Array<{
         package: string;
         path: string;
-        runner: string;
+        /**
+         * Every runner that reported into the package, in the order they ran. A
+         * package can run more than one (a realm's handler tests and its browser
+         * tests), so there is no single `runner` to point at.
+         */
+        runners: string[];
         status: TestStatus;
         counts: IReport['counts'];
+        /** Test time of every runner that reported into this package. */
+        durationMs: number;
     }>;
+    /** Packages whose coverage moved most against the baseline, best and worst first. */
+    coverageMovers: ICoverageMover[];
     failures: IFailure[];
+}
+
+/** What the aggregate view needs beyond the reports themselves. */
+export interface IAggregateInput {
+    coverage?: ICoverage | null;
+    baseline?: IMetrics | null;
 }
 
 /** Build the aggregate `ci-summary.json` payload. */
@@ -133,6 +176,7 @@ export function buildAggregateSummary(
     reports: readonly IReport[],
     failures: readonly IFailure[],
     totalPackages: number,
+    input: IAggregateInput = {},
 ): IAggregateSummary {
     const totals: IAggregateTotals = {
         packages: totalPackages,
@@ -143,6 +187,9 @@ export function buildAggregateSummary(
         failed: 0,
         flaky: 0,
         skipped: 0,
+        todo: 0,
+        durationMs: 0,
+        newFailures: failures.filter(failure => failure.history?.kind === 'new').length,
     };
     for (const report of reports) {
         totals.tests += report.counts.total;
@@ -150,6 +197,8 @@ export function buildAggregateSummary(
         totals.failed += report.counts.failed;
         totals.flaky += report.counts.flaky;
         totals.skipped += report.counts.skipped;
+        totals.todo += report.counts.todo;
+        totals.durationMs += reportDurationMs(report);
     }
 
     return {
@@ -159,10 +208,12 @@ export function buildAggregateSummary(
         packages: reports.map(report => ({
             package: report.package,
             path: report.path,
-            runner: report.runner,
+            runners: report.runs.map(run => run.runner),
             status: report.status,
             counts: report.counts,
+            durationMs: reportDurationMs(report),
         })),
+        coverageMovers: coverageMovers(input.coverage, input.baseline),
         failures: [...failures],
     };
 }

@@ -16,11 +16,18 @@ import type Assert from 'node:assert';
  * - Discounted total is always ≤ total
  * - Discount is 10% for orders > 100, 0% otherwise
  */
-export default handler(({handler: {testLoginTokenCreate, orderOrderCreate}}) => ({
+export default handler(({handler: {loginTokenCreate, orderOrderCreate}}) => ({
     testOrderInvariant: (_params: {}, $meta: IMeta) => [
-        testLoginTokenCreate({}, $meta),
+        async function login(_assert: unknown, {$meta}: {$meta: IMeta}) {
+            return loginTokenCreate({username: 'testUser', password: 'testPassword'}, $meta);
+        },
         // Test invariant: discount boundary at 100
-        async function belowThreshold(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+        async function belowThreshold(
+            assert: typeof Assert,
+            {login, $meta}: {login: Promise<unknown>; $meta: IMeta},
+        ) {
+            await login;
+
             const result = (await orderOrderCreate(
                 {
                     items: [{name: 'Small item', price: 10, quantity: 5}],

@@ -243,14 +243,46 @@ export function crockfordDecode(input: string): Uint8Array {
 }
 
 /**
+ * How long a step may take before it is reported, when the caller names no
+ * margin. One second is the framework's answer to "no step of a well-behaved
+ * start is this slow": it is long enough that an ordinary operation never
+ * reaches it, and short enough that a slow one is named while a person is still
+ * looking at the terminal rather than after the process has finished.
+ */
+export const SLOW_STEP_MS = 1_000;
+
+/**
+ * The longest gap between the reports of one step.
+ *
+ * The gap doubles after every report, so a step that has been running for ten
+ * minutes is reported once every five minutes rather than once every five
+ * seconds: a long operation should say it is alive, not bury the log it is meant
+ * to explain.
+ */
+export const MAX_PROGRESS_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
  * Progress reporting for long-running async operations.
  *
  * Some operations (schema sync, seed data, procedure sync, external calls) can
  * take a long time, and it is hard to tell whether the process is stuck or
  * just slow. `withProgress` wraps a promise and, once the operation has run
- * past a threshold, logs a progress snapshot every `intervalMs` via a
- * `getProgress` callback. A final "completed" line is logged with the total
- * elapsed time.
+ * past a threshold, logs a progress snapshot via a `getProgress` callback — the
+ * first when the threshold is crossed, and each later one after twice the gap of
+ * the one before it, up to `MAX_PROGRESS_INTERVAL_MS`. A final line reports the
+ * total elapsed time.
+ *
+ * ## A slow step is a warning
+ *
+ * An operation that finishes later than `slowMs` is *unexpected*: nothing in the
+ * framework is designed to take that long, and the last time one did the cost
+ * turned out to be a defect (the log cache's index growing a file per record).
+ * The completion of such a step is therefore logged at `warn` level, with the
+ * elapsed time and whatever `getProgress` can say about it, instead of the
+ * `info` line a merely slow operation gets. A step that also crossed
+ * `thresholdMs` reports while it runs — which is what makes a long silence
+ * readable as work rather than a hang — and its completion line is the same
+ * warning.
  *
  * The logger is intentionally duck-typed (`{info, warn}`) so any framework
  * logger (server `Log`, browser `BrowserLog`, or a plain test logger) can be
@@ -259,18 +291,31 @@ export function crockfordDecode(input: string): Uint8Array {
 export interface WithProgressOptions {
     /** Called periodically after the threshold to produce a progress snapshot. */
     getProgress?: () => string | object;
-    /** Only start reporting after this many ms. Defaults to 10 000. */
+    /**
+     * Only start reporting after this many ms. Defaults to `slowMs`, so that a
+     * step which is slow enough to warn about is also slow enough to report on
+     * while it runs.
+     */
     thresholdMs?: number;
-    /** How often to report after the threshold. Defaults to 5 000. */
+    /**
+     * The gap before the second report. Each report doubles the gap for the one
+     * after it, up to `MAX_PROGRESS_INTERVAL_MS`. Defaults to 5 000.
+     */
     intervalMs?: number;
-    /** Log level used for progress lines. Defaults to 'warn'. */
+    /** Log level used for the "still running" lines. Defaults to 'warn'. */
     level?: 'info' | 'warn';
+    /**
+     * A step that takes at least this long is reported at `warn` level when it
+     * finishes. `0` disables the warning, leaving only the periodic reporting.
+     * Defaults to `SLOW_STEP_MS`.
+     */
+    slowMs?: number;
 }
 
 type ProgressLogger = {info?: (...args: unknown[]) => void; warn?: (...args: unknown[]) => void};
 
 /**
- * Run `promise`, reporting progress once it exceeds `thresholdMs`.
+ * Run `promise`, reporting it while it runs and warning when it was slow.
  *
  * Returns the promise's resolved value unchanged; a rejected promise is
  * propagated as-is.
@@ -281,29 +326,57 @@ export async function withProgress<T>(
     promise: Promise<T>,
     {
         getProgress,
-        thresholdMs = 10_000,
         intervalMs = 5_000,
         level = 'warn',
+        slowMs = SLOW_STEP_MS,
+        thresholdMs = slowMs,
     }: WithProgressOptions = {},
 ): Promise<T> {
     if (!log) return promise;
     const started = Date.now();
     let reported = false;
-    const timer = setInterval(() => {
+    const report = (): void => {
         const elapsedMs = Date.now() - started;
         if (elapsedMs < thresholdMs) return;
         reported = true;
         const progress = getProgress ? getProgress() : undefined;
         const emit = level === 'warn' ? log.warn : log.info;
         emit?.({label, elapsedMs, progress}, `operation "${label}" still running (${elapsedMs}ms)`);
-    }, intervalMs);
-    timer.unref?.();
+    };
+    // The reports thin out as the step goes on. The first comes when the step
+    // crosses the threshold, which is when a person starts wondering whether the
+    // process is stuck; each later one comes after twice the gap of the one before
+    // it, up to `MAX_PROGRESS_INTERVAL_MS`. A step that runs for an hour must not
+    // produce a line every five seconds — that is the excessive logging this
+    // reporting would otherwise be, and it buries the log the report is in.
+    let gapMs = intervalMs;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = (): void => {
+        timer = setTimeout(() => {
+            report();
+            gapMs = Math.min(gapMs * 2, MAX_PROGRESS_INTERVAL_MS);
+            schedule();
+        }, gapMs);
+        timer.unref?.();
+    };
+    const first = setTimeout(() => {
+        report();
+        schedule();
+    }, thresholdMs);
+    first.unref?.();
     try {
         return await promise;
     } finally {
-        clearInterval(timer);
-        if (reported) {
-            const elapsedMs = Date.now() - started;
+        clearTimeout(first);
+        if (timer) clearTimeout(timer);
+        const elapsedMs = Date.now() - started;
+        if (slowMs > 0 && elapsedMs >= slowMs) {
+            // The step took longer than anything expects to take. Warn rather
+            // than inform: this line is how a delayed start names the step that
+            // delayed it, and a warning is not filtered out of a quiet log.
+            const progress = getProgress ? getProgress() : undefined;
+            log.warn?.({label, elapsedMs, progress}, `operation "${label}" took ${elapsedMs}ms`);
+        } else if (reported) {
             log.info?.({label, elapsedMs}, `operation "${label}" completed in ${elapsedMs}ms`);
         }
     }

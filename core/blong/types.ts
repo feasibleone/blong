@@ -814,7 +814,19 @@ export interface IMeta {
     validation?: unknown;
     name?: string;
     checkpoint?: CheckpointFn;
-    checkpoints?: Array<{name: string; data?: unknown; timestamp: number}>;
+    /**
+     * What this invocation announced, in the order it announced it (PRD R26).
+     *
+     * One array rather than one per shape, because a checkpoint and a branch are the same
+     * thing in two shapes and it is their *order* that carries the meaning: a point whose
+     * chain names a branch came inside it, and one announced before the branch did not.
+     * Splitting them into two arrays threw that away, and joining them is what lets a test
+     * report draw a branch as the group of the points announced inside it.
+     *
+     * A point keeps its `data` and a branch its `values`, as the record does — the same two
+     * fields stay local there (R1/R10), and this array is the local surface.
+     */
+    progress?: IProgressEntry[];
     /**
      * Take a branch and keep its rationale on this invocation (PRD R26).
      *
@@ -824,8 +836,6 @@ export interface IMeta {
      * dispatch it is always there.
      */
     decide?: DecideFn;
-    /** The decisions this invocation took, in the order it took them (PRD R26). */
-    decisions?: IDecision[];
 }
 
 export interface IContext {
@@ -944,10 +954,12 @@ export interface ILogger {
     /**
      * Wrap a long-running promise and report progress on this logger.
      *
-     * Once the operation runs past `thresholdMs`, a snapshot (from `getProgress`)
-     * is logged every `intervalMs` at the given `level` (default 'warn'), followed
-     * by a completion line. Delegates to the shared `withProgress` helper from
-     * `@feasibleone/blong-lib`.
+     * A snapshot (from `getProgress`) is logged once the operation passes
+     * `thresholdMs`, and each later report comes after twice the gap of the one
+     * before it, up to `MAX_PROGRESS_INTERVAL_MS`. A completion line follows — at
+     * warn level when the operation took longer than `slowMs`, because a step that
+     * slow is a delay worth naming. Delegates to the shared `withProgress` helper
+     * from `@feasibleone/blong-lib`.
      *
      * @example
      * await runtime.log.progress('schema sync', syncPromise, {getProgress: () => ({done: 1, total: 2})});
@@ -960,6 +972,7 @@ export interface ILogger {
             thresholdMs?: number;
             intervalMs?: number;
             level?: 'info' | 'warn';
+            slowMs?: number;
         },
     ) => Promise<T>;
     /**
@@ -1062,29 +1075,67 @@ export type CheckpointFn = (this: IMeta, name: string, data?: unknown) => void;
 /**
  * Report a progress point from code that holds no `$meta` (PRD R26).
  *
- * The ambient half of the pair: `$meta.checkpoint` is bound to one invocation and fills the
- * list a test asserts on, while this one is staged in the ambient scope by the log library's
+ * The ambient half of the pair: `$meta.checkpoint` is bound to one invocation and fills
+ * `$meta.progress`, while this one is staged in the ambient scope by the log library's
  * facade, so a library function can report a milestone without being handed an invocation.
  * No `this`, for that reason.
  */
 export type PointFn = (name: string, data?: unknown) => void;
 
 /**
- * A branch the invocation took, as `$meta.decisions` keeps it (PRD R11/R26).
+ * A branch as the entries of `$meta.progress` name it (PRD R11/R26).
  *
- * The same four fields a `Decision` carries in the log library, declared structurally here
- * so the base types package keeps its place at the bottom of the dependency graph.
+ * Names only. The log library's own mark additionally carries the *position* it was minted
+ * at, which is the log's business and not the report's: a report groups by the chain of
+ * names, and a chain that arrived over the wire from another process is described here by
+ * exactly the same three fields as a local one.
  */
-export interface IDecision {
+export interface IRegionMark {
     /** What the branch was about, stable across runs. */
     discriminator: string;
     /** Every candidate considered, in evaluation order. */
     candidates: string[];
     /** The branch taken, or `none` when none of them matched. */
     chosen: string;
+}
+
+/** A milestone an invocation announced (PRD R26). */
+export interface IProgressPoint {
+    /** Which of the two shapes this entry is; the array holds both. */
+    kind: 'point';
+    /** Stable name of the moment, e.g. `total-calculated` (PRD R12: structure, not prose). */
+    name: string;
+    /** What was true there — kept locally, exactly as a record keeps it. */
+    data?: unknown;
+    /** When it was announced, in epoch milliseconds. */
+    timestamp: number;
+    /**
+     * The branches it was announced *inside*, outermost first.
+     *
+     * This is what makes the flattened array a tree: the entry says where it belongs, so a
+     * reader never has to infer the nesting from positions.
+     */
+    regions?: IRegionMark[];
+}
+
+/** A branch the invocation took, in the same array as the points (PRD R11/R26). */
+export interface IProgressRegion extends IRegionMark {
+    /** Which of the two shapes this entry is; the array holds both. */
+    kind: 'region';
     /** The values the decision was made from. */
     values: Record<string, unknown>;
+    /** The branches this one was itself taken inside, outermost first. */
+    regions?: IRegionMark[];
 }
+
+/**
+ * One entry of `$meta.progress`.
+ *
+ * Pushed in the order announced, which is the order a report draws them in, and each entry
+ * names the branch it sat in, so the tree survives both the array being flat and the chain
+ * crossing a process boundary.
+ */
+export type IProgressEntry = IProgressPoint | IProgressRegion;
 
 /**
  * Take a branch, recording which one was taken (PRD R11/R26).
@@ -1168,7 +1219,7 @@ export interface ILib {
      *
      * Always present, unlike `checkpoint`: it selects, so it cannot be optional. The
      * rationale reaches the records the branch writes; the array a test asserts on is
-     * `$meta.decisions`, which only the `$meta` handle fills.
+     * `$meta.progress`, which only the `$meta` handle fills.
      */
     decide: DecideFn;
     assert: IAssert | undefined;
@@ -1191,6 +1242,14 @@ export interface ILib {
     render: (what: object[] | object) => object;
     crockfordEncode: (data: Uint8Array) => string;
     crockfordDecode: (data: string) => Uint8Array;
+    /**
+     * Run a promise, reporting it while it runs and warning when it was slow.
+     *
+     * The first report comes when the operation crosses `thresholdMs`, and each
+     * later one comes after twice the gap of the one before it, up to
+     * `MAX_PROGRESS_INTERVAL_MS`. A step that finishes later than `slowMs` is
+     * reported at warn level.
+     */
     withProgress: <T>(
         log: {info?: LogFn; warn?: LogFn} | undefined,
         label: string,
@@ -1200,6 +1259,7 @@ export interface ILib {
             thresholdMs?: number;
             intervalMs?: number;
             level?: 'info' | 'warn';
+            slowMs?: number;
         },
     ) => Promise<T>;
     /**

@@ -22,6 +22,7 @@ import type {Dirent} from 'node:fs';
 import merge from 'ut-function.merge';
 
 import layerProxy from './layerProxy.ts';
+import {endAllureSession, type IAllureRunOptions} from './chain.ts';
 import {runInFlow, withStep} from './semanticContext.ts';
 
 export interface IWatch {
@@ -82,6 +83,8 @@ interface IConfig {
     ignored: string[];
     configs: string[];
     logLevel: Parameters<ILog['logger']>[0];
+    /** Allure reporting options, as the framework config supplies them. */
+    allure?: IAllureRunOptions;
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +118,7 @@ export default class Watch extends Internal implements IWatch {
         ignored: [],
         configs: [],
         logLevel: 'debug',
+        allure: undefined,
     };
 
     #handlerFolders: Map<string, {name: string; pkg: IModuleConfig['pkg']; base: string}> =
@@ -739,10 +743,6 @@ export default class Watch extends Internal implements IWatch {
                     test?: unknown;
                 };
                 try {
-                    const chain = await (
-                        await import('./chain.ts')
-                    ).default(test as ITestContext, this.log);
-
                     const groups = ([] as string[]).concat(this.#config.test);
                     let executed = 0;
                     await withProgress(
@@ -763,6 +763,22 @@ export default class Watch extends Internal implements IWatch {
                                 // were then made in no flow at all, and the observed flow the
                                 // run was supposed to leave behind never existed.
                                 const meta: IMeta = {mtid: 'event', method};
+                                // The chain is built per group because it carries the
+                                // group's wire name: Allure labels come from it, and the
+                                // result's own name is the group's display name, which is
+                                // set on the steps just below.
+                                const chain = await (
+                                    await import('./chain.ts')
+                                ).default(test as ITestContext, this.log, {
+                                    method,
+                                    allure: this.#config.allure,
+                                    // The Allure integration writes files, which a browser
+                                    // platform has nowhere to do: the platform is handed over
+                                    // so the chain can explain the report a browser run asked
+                                    // for and cannot have, instead of failing to import its
+                                    // way to the same end once per group.
+                                    platform: this.#platform.platform,
+                                });
                                 await runInFlow(meta, method, async () => {
                                     const steps = await remote.remote(method)({}, meta);
                                     if (Array.isArray(steps) && !('name' in steps)) {
@@ -795,6 +811,10 @@ export default class Watch extends Internal implements IWatch {
                     this.log?.error?.(error);
                     done?.(error);
                     return;
+                } finally {
+                    // The results directory belongs to the run, not to any one group,
+                    // so the session closes once every group has reported.
+                    await endAllureSession().catch(error => this.log?.error?.(error));
                 }
                 done?.();
             });

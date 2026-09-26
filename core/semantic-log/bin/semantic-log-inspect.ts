@@ -22,11 +22,18 @@
  * Making the distinction derivable needs the cache to keep a tombstone of pruned
  * ids; that is a store change and is deliberately not made here.
  *
- * The reference's own kind chooses the store: `semantic-log://record/<id>` reads
- * the record half, `semantic-log://payload/<id>` the payload half (PRD R19), and
- * a bare id keeps the record kind. A payload is a large embedded value that the
- * rendered line replaced with a reference; printing it back is what makes the
- * reference *inline* rather than a claim check.
+ * The reference's own kind chooses the store: `semlog://r/<id>` and
+ * `semlog://t/<ref>` read the record half — a record kept under its own id, and a
+ * shape, which is what the store holds one of per kind of record — and
+ * `semlog://p/<id>` reads the payload half (PRD R19). A bare id keeps the record
+ * kind. A payload is a large embedded value that the rendered line replaced with a
+ * reference; printing it back is what makes the reference *inline* rather than a
+ * claim check.
+ *
+ * Both spellings of every kind are accepted: the one-letter segments are what the
+ * renderer prints, and the older words (`record`, `template`, `trace`, `payload`)
+ * are still readable so a reference copied from an older log, or written by hand,
+ * still resolves.
  */
 
 import {realpathSync, statSync, type Stats} from 'node:fs';
@@ -91,7 +98,7 @@ const USAGE =
     '  diagram            render the observed shape of one execution (a ULID) or one flow kind, with the\n' +
     '                     decisions and withheld detail only the local store has (exit 1 when nothing matches)\n';
 
-/** Strip a `semantic-log://<kind>/` prefix if present, leaving a bare id. */
+/** Strip a `semlog://<kind>/` prefix if present, leaving a bare id. */
 export function toId(reference: string): string {
     if (!reference.startsWith(URI_PREFIX)) {
         return reference;
@@ -102,13 +109,16 @@ export function toId(reference: string): string {
 }
 
 /**
- * The kind of a `semantic-log://<kind>/<id>` reference, or `undefined` for a
- * bare id or a scheme-only string.
+ * The kind of a `semlog://<kind>/<id>` reference, or `undefined` for a bare id or
+ * a scheme-only string.
  *
- * The kind decides *which* store the id is looked up in (PRD R19): a record
- * reference reads the record store, a payload reference reads the payload
- * store, and the id alone cannot say which. A bare id keeps the record kind,
- * exactly as before this kind existed.
+ * The kind decides *which* store the id is looked up in (PRD R19): a payload
+ * reference reads the payload store, and everything else — a record kept under its
+ * own id, a shape, a trace — reads the record store. A bare id keeps the record
+ * kind, exactly as before this kind existed. The segment is returned as written, so
+ * both spellings of a kind (the one-letter segment the renderer prints, and the word
+ * an older line or a hand-written reference uses) arrive here unchanged: the caller
+ * is the one place that knows which kinds it must tell apart.
  */
 export function refKind(reference: string): string | undefined {
     if (!reference.startsWith(URI_PREFIX)) {
@@ -117,6 +127,12 @@ export function refKind(reference: string): string | undefined {
     const rest = reference.slice(URI_PREFIX.length);
     const slash = rest.indexOf('/');
     return slash === -1 ? undefined : rest.slice(0, slash);
+}
+
+/** Whether a reference names a payload rather than a record, in either spelling. */
+function isPayloadRef(reference: string): boolean {
+    const kind = refKind(reference);
+    return kind === 'p' || kind === 'payload';
 }
 
 /**
@@ -252,7 +268,7 @@ export async function inspect(argv: string[], io: InspectIo): Promise<number> {
         await cache.close();
         return code;
     }
-    if (refKind(reference) === 'payload') {
+    if (isPayloadRef(reference)) {
         // A payload reference resolves through the payload half of the same
         // store (`getPayload`), with the same exit-code contract as a record:
         // an id the store does not hold is unknown (1) unless the caller says it

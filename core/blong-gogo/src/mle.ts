@@ -94,7 +94,7 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                       jsonrpc?: unknown;
                       result?: Record<string, unknown>;
                       error?: Record<string, unknown>;
-                      checkpoints?: unknown;
+                      progress?: unknown;
                   },
         ) => {
             if (isPublic(request.originalUrl)) return payload;
@@ -119,7 +119,7 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                           id: undefined,
                           jsonrpc: undefined,
                           error: undefined,
-                          checkpoints: undefined,
+                          progress: undefined,
                       };
                 let result,
                     error = undefined as string | undefined;
@@ -141,7 +141,7 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                         jsonrpc: where.jsonrpc,
                         result: result && (await encrypt(Buffer.from(result))),
                         error: error && (await encrypt(Buffer.from(error))),
-                        checkpoints: where.checkpoints,
+                        progress: where.progress,
                     });
                 } catch (error) {
                     reply.code(400);

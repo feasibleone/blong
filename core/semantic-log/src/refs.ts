@@ -11,7 +11,28 @@ import {monotonicFactory} from 'ulidx';
 import type {RefKind} from './record.ts';
 
 /** URI scheme used by every reference kind. */
-export const REF_SCHEME = 'semantic-log';
+export const REF_SCHEME = 'semlog';
+
+/**
+ * The path segment each kind is spelled as.
+ *
+ * One letter, because the rendered line is the surface a reader pays for: the kind
+ * used to be a label in front of the URI (`r=semlog://record/<id>`), which is a
+ * byte-for-byte duplicate of a segment that can carry the same information — and
+ * the label is what stopped an editor from recognising the URI as a link and
+ * making it clickable. A rendered reference is now the URI and nothing else.
+ *
+ * The letters are the ones the labels used or named: `r` record, `t` template, `x`
+ * trace, `p` payload. They are part of the link format the editor extension and
+ * `blong-dev log` match on, so they are declared here, once, rather than spelled in
+ * each of them.
+ */
+const KIND_SEGMENT: Readonly<Record<RefKind, string>> = {
+    record: 'r',
+    template: 't',
+    trace: 'x',
+    payload: 'p',
+};
 
 /**
  * Length of the short template reference cut from the 32-hex fingerprint —
@@ -88,10 +109,10 @@ function encodeChar(char: string): string {
  * throw out of a logging call either.
  *
  * Exported so the renderer's `p=<parent>` segment (`render.ts`) encodes by the
- * same rule: it renders an id without the `semantic-log://` prefix, but a
- * `refs.parent` read back from a store is untrusted text, and a raw id of
- * `x] [r=semantic-log://record/ATTACKER` would close the reference group and
- * forge a second reference exactly as it would in a URI.
+ * same rule: it renders an id without a URI, but a `refs.parent` read back from a
+ * store is untrusted text, and a raw id of
+ * `x] [semlog://r/ATTACKER` would close the reference group and forge a second
+ * reference exactly as it would in a URI.
  */
 export function encodeSegment(id: string): string {
     let out = '';
@@ -103,7 +124,7 @@ export function encodeSegment(id: string): string {
 
 /** Build a dereferenceable reference URI. */
 export function refUri(kind: RefKind, id: string): string {
-    return `${REF_SCHEME}://${kind}/${encodeSegment(id)}`;
+    return `${REF_SCHEME}://${KIND_SEGMENT[kind]}/${encodeSegment(id)}`;
 }
 
 /**

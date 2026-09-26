@@ -8,7 +8,12 @@
  * no emitter is attached, because a dispatch path must never reach the emitter's ambient
  * scope (F-197).
  */
-import type {IMeta} from '@feasibleone/blong/types';
+import type {
+    IMeta,
+    IProgressEntry,
+    IProgressPoint,
+    IProgressRegion,
+} from '@feasibleone/blong/types';
 import {
     attachSemanticVocabulary,
     detachSemanticVocabulary,
@@ -18,6 +23,14 @@ import t from 'tap';
 import {createAttachCheckpoint} from './checkpoint.ts';
 
 const MODES = ['production', 'debug', 'test'] as const;
+
+/** The points an invocation recorded, in the order it announced them. */
+const pointsOf = (progress: IProgressEntry[] | undefined): IProgressPoint[] =>
+    (progress ?? []).filter((entry): entry is IProgressPoint => entry.kind === 'point');
+
+/** The branches an invocation took, in the order it took them. */
+const regionsOf = (progress: IProgressEntry[] | undefined): IProgressRegion[] =>
+    (progress ?? []).filter((entry): entry is IProgressRegion => entry.kind === 'region');
 
 t.test('a branch is taken and its rationale kept, in every mode', t => {
     for (const mode of MODES) {
@@ -29,9 +42,10 @@ t.test('a branch is taken and its rationale kept, in every mode', t => {
         ]);
         t.equal(result, 'declined', `${mode}: the branch is taken`);
         t.same(
-            meta.decisions,
+            meta.progress,
             [
                 {
+                    kind: 'region',
                     discriminator: 'rate-within-limit',
                     candidates: ['decline', 'accept'],
                     chosen: 'decline',
@@ -56,10 +70,85 @@ t.test('a checkpoint exists only where points are recorded', t => {
     const debug: IMeta = {};
     createAttachCheckpoint('debug')(debug);
     debug.checkpoint?.('total-calculated', {total: 200});
-    t.equal(debug.checkpoints?.length, 1, 'recorded where points are');
-    t.equal(debug.checkpoints?.[0]?.name, 'total-calculated');
-    t.same(debug.checkpoints?.[0]?.data, {total: 200});
-    t.type(debug.checkpoints?.[0]?.timestamp, 'number', 'and stamped when it happened');
+    const [point] = pointsOf(debug.progress);
+    t.equal(debug.progress?.length, 1, 'recorded where points are');
+    t.equal(point?.name, 'total-calculated');
+    t.same(point?.data, {total: 200});
+    t.type(point?.timestamp, 'number', 'and stamped when it happened');
+    t.end();
+});
+
+t.test('a point announced inside a branch names the branch it sat in', t => {
+    attachSemanticVocabulary(semantic);
+    t.teardown(() => detachSemanticVocabulary());
+    const meta: IMeta = {};
+    createAttachCheckpoint('test')(meta);
+    meta.checkpoint?.('before-the-branch');
+    meta.decide?.('rate-within-limit', {rate: 2}, [
+        {
+            name: 'decline',
+            when: () => true,
+            run: () => {
+                meta.checkpoint?.('declined');
+                return 'declined';
+            },
+        },
+        {name: 'accept', when: () => true, run: () => 'accepted'},
+    ]);
+
+    t.same(
+        meta.progress?.map(entry => entry.kind),
+        ['point', 'region', 'point'],
+        'the branch is announced where it was taken, between the points on either side of it',
+    );
+    t.same(
+        pointsOf(meta.progress).map(point => point.regions?.length ?? 0),
+        [0, 1],
+        'and only the point announced inside the branch names it, which is what nests a report',
+    );
+    t.same(
+        pointsOf(meta.progress)[1]?.regions,
+        [
+            {
+                discriminator: 'rate-within-limit',
+                candidates: ['decline', 'accept'],
+                chosen: 'decline',
+            },
+        ],
+        'by the names of the branch, not by a position the log mints for itself',
+    );
+    t.same(
+        regionsOf(meta.progress)[0]?.regions,
+        undefined,
+        'while the branch itself names nothing above it',
+    );
+    t.end();
+});
+
+t.test('a branch taken inside a branch names the one it sits in', t => {
+    attachSemanticVocabulary(semantic);
+    t.teardown(() => detachSemanticVocabulary());
+    const meta: IMeta = {};
+    createAttachCheckpoint('test')(meta);
+    meta.decide?.('outer', {}, [
+        {
+            name: 'taken',
+            when: () => true,
+            run: () =>
+                meta.decide?.('inner', {}, [{name: 'only', when: () => true, run: () => 'inner'}]),
+        },
+    ]);
+
+    t.same(
+        regionsOf(meta.progress).map(region => region.discriminator),
+        ['outer', 'inner'],
+        'both are announced, outermost first',
+    );
+    t.same(
+        regionsOf(meta.progress)[1]?.regions?.map(region => region.discriminator),
+        ['outer'],
+        'and the nested one is in the chain of the one that encloses it',
+    );
     t.end();
 });
 
@@ -119,7 +208,7 @@ t.test('no branch matching is a recorded non-choice', t => {
     const meta: IMeta = {};
     createAttachCheckpoint('test')(meta);
     t.equal(meta.decide?.('never', {}, [{name: 'a', when: () => false, run: () => 1}]), undefined);
-    t.equal(meta.decisions?.[0]?.chosen, 'none', 'and it is recorded as `none` rather than lost');
+    t.equal(regionsOf(meta.progress)[0]?.chosen, 'none', 'recorded as `none` rather than lost');
     t.end();
 });
 
@@ -159,7 +248,7 @@ t.test('a branch that throws records nothing', t => {
         'the failure is not swallowed',
     );
     t.notOk(
-        meta.decisions,
+        meta.progress,
         'a decision that never completed is not a decision, so nothing is recorded',
     );
     t.end();

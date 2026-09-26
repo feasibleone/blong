@@ -79,7 +79,12 @@ is implemented in `core/blong-gogo/src/checkpoint.ts`:
 
 ```typescript
 const checkpoint: CheckpointFn = function (this: IMeta, name, data) {
-    (this.checkpoints ??= []).push({name, data, timestamp: Date.now()});
+    const regions = currentRegions()?.map(({discriminator, candidates, chosen}) => ({
+        discriminator,
+        candidates,
+        chosen,
+    }));
+    (this.progress ??= []).push({kind: 'point', name, data, timestamp: Date.now(), regions});
     vocabulary.point(name, data); // and the same moment is announced to the log
 };
 
@@ -117,35 +122,44 @@ export default handler(
 );
 ```
 
-**Test reading those checkpoints** (`demo/handler-test-poc/order/test/test/testOrderCheckpoint.ts`):
+**Test reading that progress** (`demo/handler-test-poc/order/test/test/testOrderCheckpoint.ts`):
 
 ```typescript
-$meta.checkpoints = [];
+$meta.progress = [];
 const result = await orderOrderCreate({items: [...], customerId: 'customer-1'}, $meta);
 
 assert.equal(result.total, 200);
-const checkpoints = $meta.checkpoints!;
-assert.equal(checkpoints.length, 3);
-assert.equal(checkpoints[0].name, 'total-calculated');
-assert.equal((checkpoints[0].data as any).total, 200);
+const points = ($meta.progress ?? []).filter(
+    (entry): entry is IProgressPoint => entry.kind === 'point',
+);
+assert.equal(points.length, 3);
+assert.equal(points[0].name, 'total-calculated');
+assert.equal((points[0].data as any).total, 200);
 ```
 
 #### What both handles share
 
-| `checkpointMode` | `checkpoint` | recorded | emitted | drawn as | `assert`      |
-| ---------------- | ------------ | -------- | ------- | -------- | ------------- |
-| `production`     | `undefined`  | no       | no      | —        | `undefined`   |
-| `debug`          | recorder     | yes      | yes     | a note   | `node:assert` |
-| `test`           | recorder     | yes      | yes     | a note   | `node:assert` |
+| `checkpointMode` | `checkpoint` | recorded | emitted | drawn as       | `assert`      |
+| ---------------- | ------------ | -------- | ------- | -------------- | ------------- |
+| `production`     | `undefined`  | no       | no      | —              | `undefined`   |
+| `debug`          | recorder     | yes      | yes     | a note, a step | `node:assert` |
+| `test`           | recorder     | yes      | yes     | a note, a step | `node:assert` |
 
-- **Recorded** means the point lands on the invocation's captured list (`$meta.checkpoints`), which
-  is what a test asserts on.
+- **Recorded** means the point lands on the invocation's own list (`$meta.progress`), which is what
+  a test asserts on. One list holds the points and the branches together, in the order they were
+  announced, and every entry names the branches it sat inside — which is what lets a report nest
+  them and what keeps the nesting intact when the entry arrived from another process.
 - **Emitted** means it reaches the semantic log as a point, so the record carries it and the
   sequence diagram draws it as a note over the participant that reported it. Its **name** travels;
   its `data` stays in the local record and cache, where the inspector can show it and a caller's
   `redact` patterns can withhold it — the same rule a decision's evaluated values follow.
-- **Not built yet:** the `invariant` and `canary` guards, `lib.chain`, and the rendering of points
-  as test-report steps. They are named because the design anticipates them, not because they run.
+- **Drawn as** covers both reports: a point is a note over the participant on the sequence diagram
+  and a step nested under the step that announced it in the test report, and a branch is an `alt`
+  block on the diagram and the group of the points taken inside it in the report. The test report is
+  written from the entry list by `core/blong-chain` (nested tap sub-tests, via `progressTree`) and
+  by `core/blong-allure` (`result.steps`), so the two cannot disagree about the shape.
+- **Not built yet:** the `invariant` and `canary` guards and `lib.chain`. They are named because the
+  design anticipates them, not because they run.
 
 #### A decision is a region
 
@@ -523,7 +537,7 @@ handler alias.
 
 #### Checkpoint-Driven Test Assertions
 
-When a handler with checkpoints is called from a test, the framework collects checkpoint data and
+When a handler with checkpoints is called from a test, the framework collects what it announced and
 makes it available for assertions:
 
 ```typescript
@@ -536,18 +550,22 @@ export default handler(({handler: {paymentFlowExecute}}) => ({
             );
             assert.ok(result.transferId);
 
-            const checkpoints = $meta.checkpoints;
-            assert.equal(checkpoints[0].name, 'account-ready');
-            assert.ok(checkpoints[0].data.accountId);
-            assert.equal(checkpoints[1].name, 'transfer-done');
-            assert.equal(checkpoints[1].data.transferId, result.transferId);
+            const points = ($meta.progress ?? []).filter(
+                (entry): entry is IProgressPoint => entry.kind === 'point',
+            );
+            assert.equal(points[0].name, 'account-ready');
+            assert.ok(points[0].data.accountId);
+            assert.equal(points[1].name, 'transfer-done');
+            assert.equal(points[1].data.transferId, result.transferId);
         },
     ],
 }));
 ```
 
 The list read here is the same list the sequence diagram is drawn from, so a test and a picture
-cannot disagree about what happened.
+cannot disagree about what happened — and the same list is what the test report is drawn from, so
+the picture, the test and the report cannot either. A point lands as a step nested under the step
+that announced it; a branch lands as the group of the points taken inside it.
 
 ## Future Ideas
 

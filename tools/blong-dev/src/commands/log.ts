@@ -4,7 +4,7 @@
  *
  * Blong's pino-cacache transport stores full log entries on disk (default
  * `~/.blong/log-cache`) so they can be inspected on demand. The VS Code
- * extension reads them when clicking `semantic-log://record/<ULID>` terminal links; this
+ * extension reads them when clicking `semlog://r/<id>` terminal links; this
  * command exposes the same data on the CLI for coding agents and humans.
  *
  * Output modes:

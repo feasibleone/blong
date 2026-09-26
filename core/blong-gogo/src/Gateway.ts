@@ -462,7 +462,7 @@ export default class Gateway extends Internal implements IGateway {
                                                           Type.Number(),
                                                       ]),
                                                       result: value.result,
-                                                      checkpoints: Type.Optional(
+                                                      progress: Type.Optional(
                                                           Type.Array(Type.Any()),
                                                       ),
                                                   }),
@@ -643,10 +643,8 @@ export default class Gateway extends Internal implements IGateway {
                                 jsonrpc: '2.0',
                                 id,
                                 result,
-                                ...((resultMeta as {checkpoints?: unknown[]})?.checkpoints
-                                    ?.length && {
-                                    checkpoints: (resultMeta as {checkpoints?: unknown[]})
-                                        .checkpoints,
+                                ...((resultMeta as {progress?: unknown[]})?.progress?.length && {
+                                    progress: (resultMeta as {progress?: unknown[]}).progress,
                                 }),
                             };
                         }

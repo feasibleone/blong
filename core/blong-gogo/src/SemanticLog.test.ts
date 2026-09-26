@@ -324,7 +324,17 @@ t.test('every level is bound, and emits at its own level', async t => {
     // `fatal` is written synchronously, so it is staged rather than stored: it is
     // the one level whose record survives an exit that drains no I/O, and it
     // reaches the store on the next open. The other five take the queued path.
-    t.same(levels.sort(), ['debug', 'error', 'info', 'trace', 'warn']);
+    //
+    // An error appears twice, and that is the tenant model rather than a duplicate
+    // write: every record is stored once under its **shape** (keyed by the shape
+    // reference, standing for every occurrence of it), and a record whose denoise
+    // would hide something — an error, or one that withheld a payload — is stored
+    // under its own id as well, because that occurrence is what is being diagnosed.
+    t.same(
+        levels.sort(),
+        ['debug', 'error', 'error', 'info', 'trace', 'warn'],
+        'every level is stored, and the error under its shape and its own id',
+    );
     const staged = readFileSync(cachePaths.sidecarFile(dir), 'utf8')
         .trim()
         .split('\n')
@@ -332,8 +342,8 @@ t.test('every level is bound, and emits at its own level', async t => {
         .map(entry => JSON.parse(entry.json) as {levelName: string});
     t.same(
         staged.map(entry => entry.levelName),
-        ['fatal'],
-        'the fatal record is staged, not stored',
+        ['fatal', 'fatal'],
+        'the fatal record is staged under its shape and its own id, and never stored',
     );
     await cache.close();
 });

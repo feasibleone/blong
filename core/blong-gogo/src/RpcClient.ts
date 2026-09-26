@@ -195,9 +195,9 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                         const result = await decode(body.result);
                         if (/\.service\.get$/.test(method!))
                             Object.assign((result as Record<string, unknown>[])[0], requestParams);
-                        if ((body as unknown as {checkpoints?: unknown[]}).checkpoints?.length) {
-                            ((callerMeta as {checkpoints?: unknown[]}).checkpoints ??= []).push(
-                                ...(body as unknown as {checkpoints: unknown[]}).checkpoints,
+                        if ((body as unknown as {progress?: unknown[]}).progress?.length) {
+                            ((callerMeta as {progress?: unknown[]}).progress ??= []).push(
+                                ...(body as unknown as {progress: unknown[]}).progress,
                             );
                         }
                         return result;

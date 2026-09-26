@@ -87,16 +87,19 @@ const has = (path: string): boolean => existsSync(join(FIXTURE, path));
  * runtime's realm tests) is still a test there, and its status separates a test
  * that ran from one that was skipped.
  */
-function fixtureReport(): {runner: string; passed: string[]; failed: number} {
+function fixtureReport(): {runners: string[]; passed: string[]; failed: number} {
     const report = JSON.parse(read('.ci-report/report.json')) as {
-        runner: string;
-        counts: {failed: number};
-        suites: Array<{tests: Array<{name: string; status: string}>}>;
+        runs: Array<{
+            runner: string;
+            counts: {failed: number};
+            suites: Array<{tests: Array<{name: string; status: string}>}>;
+        }>;
     };
     return {
-        runner: report.runner,
-        failed: report.counts.failed,
-        passed: report.suites
+        runners: report.runs.map(run => run.runner),
+        failed: report.runs.reduce((sum, run) => sum + run.counts.failed, 0),
+        passed: report.runs
+            .flatMap(run => run.suites)
             .flatMap(suite => suite.tests)
             .filter(entry => entry.status === 'passed')
             .map(entry => entry.name),
@@ -176,9 +179,12 @@ t.test(
         // the report the tap leg just wrote has to name it as a passing test.
         // The fixture's own summary line is folded into the compared text, so a
         // failure shows what the run actually reported (test count and all).
-        const {runner, passed, failed} = fixtureReport();
+        const {runners, passed, failed} = fixtureReport();
         const summary = /# e2e-realm: [^\n]*/.exec(output)?.[0] ?? '(no summary line)';
-        t.equal(runner, 'tap', 'the tap leg wrote the report, not a later runner');
+        t.ok(
+            runners.includes('tap'),
+            'the tap leg reported into the package (the report holds every runner that did)',
+        );
         t.equal(failed, 0, 'the report records no failing test');
         const names = [summary, ...passed].join('\n');
         t.match(names, /(^| › )addGadget$/m, 'the added server test ran: add');

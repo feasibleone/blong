@@ -1,32 +1,18 @@
-import {
-    copyFileSync,
-    existsSync,
-    mkdirSync,
-    readdirSync,
-    readFileSync,
-    renameSync,
-    rmSync,
-} from 'node:fs';
+import {copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-import {historyFile, readHistory, sliceForPackage, writeSlice} from '../report/history.ts';
-import {
-    PUBLISH_DIR,
-    REPORT_DIR,
-    packageName,
-    packageRelPath,
-    repoRoot,
-} from '../report/reportPaths.ts';
+import {publishAllureReport} from '../report/allurePublish.ts';
 import {
     countTests,
     statusOf,
-    type IReport,
+    type IRunReport,
     type ISuiteEntry,
     type TestStatus,
 } from '../report/reportTypes.ts';
-import {writeReport} from '../report/reportWrite.ts';
+import {clearRun, writeRun} from '../report/reportWrite.ts';
 import {runTool, type RunOptions} from '../utils/runTool.ts';
+import {toolEnv} from '../utils/toolPath.ts';
 
 const blongDevBin = fileURLToPath(new URL('../../node_modules/.bin', import.meta.url));
 const PATH_SEP = process.platform === 'win32' ? ';' : ':';
@@ -100,54 +86,33 @@ export async function playwright(args: string[]): Promise<void> {
     // Clear stale results from previous runs
     const resultsDir = join(cwd, 'allure-results');
     rmSync(resultsDir, {recursive: true, force: true});
+    // This runner's slice of the package report goes with them, and before the run
+    // rather than after it: a browser leg that dies before producing results leaves
+    // no `writeRun` behind, and the previous cycle's numbers must not be aggregated
+    // as this cycle's. The other runners' slices are kept — the file describes the
+    // package, and their results belong to the same cycle.
+    clearRun('playwright', cwd);
 
     const exitCode = await run('playwright', ['test', ...pwArgs]);
 
     // Generate the single-file Allure report published for this package, plus
-    // the `.ci-report/` contract consumed by `blong-dev ci-report`.
+    // the `.ci-report/` contract consumed by `blong-dev ci-report`. The report is
+    // merged from every producer's results, so a package whose handler tests also
+    // reported has one document rather than two.
     if (existsSync(resultsDir)) {
-        const publishDir = join(cwd, REPORT_DIR, PUBLISH_DIR);
-        const tracesDir = join(publishDir, 'traces');
-        rmSync(publishDir, {recursive: true, force: true});
-        mkdirSync(publishDir, {recursive: true});
-
-        // Move trace zips out before generating the single-file report to avoid
-        // embedding them (they're too large and can't be opened via trace.playwright.dev when inlined).
         const traceFiles = readdirSync(resultsDir).filter(f => f.endsWith('-attachment.zip'));
-        if (traceFiles.length > 0) {
-            mkdirSync(tracesDir, {recursive: true});
-            for (const file of traceFiles) {
-                renameSync(join(resultsDir, file), join(tracesDir, file));
-            }
+        const published = await publishAllureReport(cwd, {
+            baseHistory: process.env['CI_BASE_HISTORY'],
+            run: (command, args, dir) => runTool(command, args, {cwd: dir, env: toolEnv(dir)}),
+        });
+        if (published.published) {
+            console.log(
+                `Allure report: ${published.reportDir} (${published.producers} producer(s))`,
+            );
         }
 
-        // Allure trend history: give it this package's slice of the committed
-        // history file; Allure appends the current run to that slice, which
-        // `blong-dev ci-report` later folds back into `.github/history.jsonl`.
-        // CI hands us the base-branch copy so repeated runs of one pull request
-        // never stack on top of each other.
-        const baseHistory = process.env['CI_BASE_HISTORY'];
-        const historyPath = writeSlice(
-            cwd,
-            sliceForPackage(
-                readHistory(baseHistory || historyFile(repoRoot(cwd))),
-                packageName(cwd),
-            ),
-        );
-
-        console.log('Generating Allure report from allure-results/ ...');
-        await run('allure', [
-            'awesome',
-            '--single-file',
-            '--history-path',
-            historyPath,
-            '-o',
-            join(REPORT_DIR, PUBLISH_DIR),
-            'allure-results',
-        ]);
-
         const parsed = parseResults(resultsDir, traceFiles);
-        writeReport(toReport(parsed, cwd), cwd);
+        writeRun(toRun(parsed.tests, parsed.durationMs), cwd);
     }
 
     // ── Coverage collection ──────────────────────────────────────────────────
@@ -189,6 +154,9 @@ interface AllureResult {
     status?: string;
     testCaseId?: string;
     historyId?: string;
+    /** Epoch milliseconds; the run's span is the union of every result's span. */
+    start?: number;
+    stop?: number;
     labels?: Array<{name: string; value: string}>;
     steps?: Array<{attachments?: Array<{source?: string; type?: string}>}>;
 }
@@ -198,16 +166,37 @@ interface TestResult {
     suite: string;
     status: string;
     trace?: string;
+    durationMs?: number;
+    /** Allure's own name for the test, which is what the history is keyed on. */
+    fullName?: string;
 }
 
-function parseResults(resultsDir: string, traceFiles: string[]): TestResult[] {
+/** The parsed results of a run, plus how long the run itself took. */
+interface ParsedResults {
+    tests: TestResult[];
+    /** Span of the Allure timestamps, i.e. the browser leg's wall clock. */
+    durationMs?: number;
+}
+
+function parseResults(resultsDir: string, traceFiles: string[]): ParsedResults {
     const traceSet = new Set(traceFiles);
 
     // Collect all attempts grouped by test identity
     const attempts = new Map<
         string,
-        Array<{status: string; name: string; suite: string; trace?: string}>
+        Array<{
+            status: string;
+            name: string;
+            suite: string;
+            trace?: string;
+            durationMs?: number;
+            fullName?: string;
+            start?: number;
+            stop?: number;
+        }>
     >();
+    let started: number | undefined;
+    let stopped: number | undefined;
 
     for (const file of readdirSync(resultsDir).filter(f => f.endsWith('-result.json'))) {
         const data = JSON.parse(readFileSync(join(resultsDir, file), 'utf8')) as AllureResult;
@@ -216,6 +205,14 @@ function parseResults(resultsDir: string, traceFiles: string[]): TestResult[] {
         const name = data.name ?? data.fullName ?? file;
         const status = data.status ?? 'unknown';
         const key = data.testCaseId ?? data.historyId ?? `${suite}/${subSuite}/${name}`;
+        // Allure timestamps are epoch milliseconds; a retried test is re-started, so
+        // the attempts of one test carry different spans and the run's span is the
+        // union of them all.
+        const {start, stop} = data;
+        if (typeof start === 'number')
+            started = started === undefined ? start : Math.min(started, start);
+        if (typeof stop === 'number')
+            stopped = stopped === undefined ? stop : Math.max(stopped, stop);
 
         let trace: string | undefined;
         for (const step of data.steps ?? []) {
@@ -231,7 +228,16 @@ function parseResults(resultsDir: string, traceFiles: string[]): TestResult[] {
         }
 
         const group = attempts.get(key) ?? [];
-        group.push({status, name, suite: subSuite ? `${suite} › ${subSuite}` : suite, trace});
+        group.push({
+            status,
+            name,
+            suite: subSuite ? `${suite} › ${subSuite}` : suite,
+            trace,
+            ...(data.fullName ? {fullName: data.fullName} : {}),
+            ...(typeof start === 'number' && typeof stop === 'number' && stop >= start
+                ? {durationMs: stop - start, start, stop}
+                : {}),
+        });
         attempts.set(key, group);
     }
 
@@ -243,7 +249,18 @@ function parseResults(resultsDir: string, traceFiles: string[]): TestResult[] {
         const status = hasFailed && hasPassed ? 'flaky' : hasFailed ? 'failed' : group[0]!.status;
         // Use the trace from the failed attempt (most useful for debugging)
         const trace = group.find(a => a.trace)?.trace;
-        results.push({name: group[0]!.name, suite: group[0]!.suite, status, trace});
+        // The slowest attempt, which is what a timeout budget has to cover.
+        const slowest = group.reduce((worst, attempt) =>
+            (attempt.durationMs ?? 0) > (worst.durationMs ?? 0) ? attempt : worst,
+        );
+        results.push({
+            name: group[0]!.name,
+            suite: group[0]!.suite,
+            status,
+            trace,
+            ...(group[0]!.fullName ? {fullName: group[0]!.fullName} : {}),
+            ...(typeof slowest.durationMs === 'number' ? {durationMs: slowest.durationMs} : {}),
+        });
     }
 
     results.sort((a, b) => {
@@ -252,7 +269,12 @@ function parseResults(resultsDir: string, traceFiles: string[]): TestResult[] {
         return (a.suite + a.name).localeCompare(b.suite + b.name);
     });
 
-    return results;
+    return {
+        tests: results,
+        ...(started !== undefined && stopped !== undefined && stopped >= started
+            ? {durationMs: stopped - started}
+            : {}),
+    };
 }
 
 /**
@@ -261,7 +283,7 @@ function parseResults(resultsDir: string, traceFiles: string[]): TestResult[] {
  * The Allure `suite › subSuite` label becomes the suite, and each test keeps
  * its trace name so the failures bundle can link straight at it.
  */
-function toReport(results: TestResult[], cwd: string): IReport {
+function toRun(results: TestResult[], durationMs?: number): IRunReport {
     const suites: ISuiteEntry[] = [];
     for (const result of results) {
         const name = result.suite || '(unknown suite)';
@@ -273,8 +295,13 @@ function toReport(results: TestResult[], cwd: string): IReport {
         suite.tests.push({
             name: result.name,
             status: toStatus(result.status),
+            ...(result.fullName ? {fullName: result.fullName} : {}),
+            ...(typeof result.durationMs === 'number' ? {durationMs: result.durationMs} : {}),
             ...(result.trace
-                ? {trace: result.trace, attachments: [{name: 'trace', file: `traces/${result.trace}`}]}
+                ? {
+                      trace: result.trace,
+                      attachments: [{name: 'trace', file: `traces/${result.trace}`}],
+                  }
                 : {}),
         });
     }
@@ -285,12 +312,10 @@ function toReport(results: TestResult[], cwd: string): IReport {
 
     const counts = countTests(suites.flatMap(suite => suite.tests));
     return {
-        schema: 1,
-        package: packageName(cwd),
-        path: packageRelPath(cwd),
         runner: 'playwright',
         status: statusOf(counts),
         counts,
+        ...(typeof durationMs === 'number' ? {durationMs} : {}),
         generatedAt: new Date().toISOString(),
         suites,
     };
@@ -309,5 +334,3 @@ function toStatus(status: string): TestStatus {
             return 'unknown';
     }
 }
-
-

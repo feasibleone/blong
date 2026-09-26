@@ -9,11 +9,11 @@
 import {existsSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 
-import {packageName, packageRelPath, repoRoot} from './reportPaths.ts';
+import {repoRoot} from './reportPaths.ts';
 import {
     countTests,
     statusOf,
-    type IReport,
+    type IRunReport,
     type ISuiteEntry,
     type ITestEntry,
     type TestStatus,
@@ -87,8 +87,8 @@ function testEntry(assertion: IVitestAssertion): ITestEntry {
     return entry;
 }
 
-/** Build the `IReport` for a completed vitest run. */
-export function buildVitestReport(vitest: IVitestJson | null, cwd: string): IReport {
+/** Build the `IRunReport` for a completed vitest run. */
+export function buildVitestRun(vitest: IVitestJson | null, cwd: string): IRunReport {
     const root = repoRoot(cwd);
     const suites: ISuiteEntry[] = [];
 
@@ -97,7 +97,11 @@ export function buildVitestReport(vitest: IVitestJson | null, cwd: string): IRep
         const tests: ITestEntry[] = [];
         if (file.message?.trim()) {
             // A file that never produced assertions (import error, syntax error).
-            tests.push({name: `${name} — test file failed to run`, status: 'failed', message: file.message});
+            tests.push({
+                name: `${name} — test file failed to run`,
+                status: 'failed',
+                message: file.message,
+            });
         }
         for (const assertion of file.assertionResults ?? []) {
             const entry = testEntry(assertion);
@@ -110,9 +114,6 @@ export function buildVitestReport(vitest: IVitestJson | null, cwd: string): IRep
 
     const counts = countTests(suites.flatMap(suite => suite.tests));
     return {
-        schema: 1,
-        package: packageName(cwd),
-        path: packageRelPath(cwd),
         runner: 'vitest',
         status: statusOf(counts),
         counts,

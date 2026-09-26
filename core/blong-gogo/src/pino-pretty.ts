@@ -46,7 +46,7 @@ export default (options: PinoPretty.PrettyOptions) =>
                 $meta,
             } = log;
             return [
-                id && colors.dim(`semantic-log://record/${id}`),
+                id && colors.dim(`semlog://r/${id}`),
                 context && colors.greenBright(context),
                 prefix,
                 $meta?.mtid && colors.magenta($meta.mtid),

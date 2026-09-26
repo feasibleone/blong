@@ -18,7 +18,7 @@ import {
     type SolutionFactory,
 } from '@feasibleone/blong/types';
 
-import {withProgress} from '@feasibleone/blong-lib';
+import {SLOW_STEP_MS, withProgress} from '@feasibleone/blong-lib';
 import {WELL_KNOWN_LAYERS} from '@feasibleone/blong-lib/layers';
 import {Type, type TSchema} from 'typebox';
 import merge from 'ut-function.merge';
@@ -214,6 +214,42 @@ async function discoverRealmTestMethods(
         }
     }
     return methods;
+}
+
+/**
+ * The margin a step of a load is measured against when the realm names none.
+ *
+ * Read off the log config (`log.slowMs`) so a realm or a runner can raise it for
+ * a machine that is legitimately slow, and so one number tunes both halves of a
+ * delayed start: the loader's steps and the retention store's own.
+ */
+function slowStepMs(log: unknown): number {
+    const configured = (log as {slowMs?: unknown} | undefined)?.slowMs;
+    return typeof configured === 'number' && configured >= 0 ? configured : SLOW_STEP_MS;
+}
+
+/**
+ * A logger for the steps that run before the realm's own log exists.
+ *
+ * A root load builds the log component first, and until it is up there is nothing
+ * to log through — which is exactly when a slow step is least visible and most
+ * confusing, because the process prints nothing at all for as long as it takes.
+ * This writes to stderr, where the framework's other startup messages go, and
+ * stays silent in a platform that has no process (the browser bundle). Only
+ * `warn` is answered: a step that is not slow has nothing to say, and the
+ * loader's ordinary progress belongs in the log the realm is about to have.
+ */
+function bootstrapLogger(): {warn: (...args: unknown[]) => void} {
+    return {
+        // Pino-shaped, like every other logger `withProgress` is handed: the
+        // details object first, the message second.
+        warn: (...args: unknown[]) => {
+            const [details, message] = args as [Record<string, unknown> | undefined, string];
+            const stderr = (globalThis as {process?: {stderr?: {write: (text: string) => void}}})
+                .process?.stderr;
+            stderr?.write(`warn  blong ${message} ${JSON.stringify(details ?? {})}\n`);
+        },
+    };
 }
 
 const System: symbol = Symbol('system');
@@ -449,7 +485,15 @@ export default async function loadRealm<T extends TSchema>(
     // always false, and every framework realm is silently absent: the gateway then
     // refuses every unauthenticated route (no login realm) and RBAC resolves nothing.
     const isPlatformRoot = api === undefined;
-    const mod = await def({type: Type, manifest});
+    const bootstrap = bootstrapLogger();
+    // A factory may answer with the module or with a promise for it, so the
+    // measurement wraps whatever it answered rather than assuming the shape.
+    const mod = await withProgress(
+        bootstrap,
+        `suite ${name}`,
+        Promise.resolve(def({type: Type, manifest})),
+        {slowMs: SLOW_STEP_MS},
+    );
     // Record the realm's own file in the tree's set, so a realm reached twice -
     // once as a suite's child and once by the framework's `frameworkRealms` - is
     // recognised the second time. A realm answers with its *factory*, so its url
@@ -489,6 +533,26 @@ export default async function loadRealm<T extends TSchema>(
                     default: {
                         watch: {
                             test: [],
+                            /**
+                             * Allure reporting for handler tests. Off by default: a report is
+                             * something a run is asked for, which is what `--watch.allure.enabled=true`
+                             * on the blong CLI does for a dev run and what the `ci` block below does
+                             * for a captured one. `blong-allure` is a dependency of this package, so
+                             * the CLI that turns the results into HTML is the one they were written
+                             * for rather than whatever is on the runner's PATH.
+                             *
+                             * The results have a directory of their own because a package can report
+                             * to Allure from two producers — the browser tests of a realm and its
+                             * handler tests — and each clears the directory it writes to before a run.
+                             * `blong-dev` merges every producer's directory into the one report a
+                             * package publishes.
+                             */
+                            allure: {
+                                enabled: false,
+                                outputDir: 'allure-results-tap',
+                                historyPath: '.allure/history.jsonl',
+                                generateOnEnd: false,
+                            },
                         },
                         // The server's log implementation. The browser platform
                         // keeps its own logger regardless: the loader checks the
@@ -522,7 +586,7 @@ export default async function loadRealm<T extends TSchema>(
                             // The semantic implementation's store, and the pino
                             // implementation's cache beside it: they share one
                             // directory and one key space, so a
-                            // `semantic-log://record/<id>` reference resolves
+                            // `semlog://r/<id>` reference resolves
                             // whichever implementation wrote the entry.
                             cache: {
                                 dir: '~/.blong/log-cache',
@@ -606,9 +670,17 @@ export default async function loadRealm<T extends TSchema>(
                     /**
                      * A run whose output is captured rather than watched. The
                      * Playwright webServer passes this last in CI, so it wins over the
-                     * `playwright` block's colours.
+                     * `playwright` block's colours. A captured run is also the run whose
+                     * report nobody is watching, so its Allure results are written and
+                     * its HTML report generated at the end.
                      */
-                    ci: {log: {color: false}},
+                    ci: {
+                        log: {color: false},
+                        // Results, not a report: `blong-dev` turns every producer's results
+                        // into the one report a package publishes, so generating here would
+                        // be the same work again, into a directory nobody uploads.
+                        watch: {allure: {enabled: true}},
+                    },
                     /**
                      * A deployed process never runs the service itself: the
                      * service is deployed once, beside the processes whose
@@ -806,7 +878,7 @@ export default async function loadRealm<T extends TSchema>(
         });
     }
     loadedConfigs.push(...activeConfigs(mod, configNames, platformApi.configs));
-    const {loadedConfig: mergedConfig, configRuntime} = await platformApi.loadConfig(
+    const configPromise = platformApi.loadConfig(
         {
             name,
             pkg: {name, version: '0.0.0'},
@@ -833,6 +905,14 @@ export default async function loadRealm<T extends TSchema>(
         },
         parentConfig,
         loadedConfigs.filter(Boolean) as object[],
+    );
+    // The config is what says how slow a step may be (`log.slowMs`), so it cannot
+    // itself be measured against a configured margin — only against the default.
+    const {loadedConfig: mergedConfig, configRuntime} = await withProgress(
+        bootstrap,
+        `config ${name}`,
+        configPromise,
+        {slowMs: SLOW_STEP_MS},
     );
 
     // Populate the manifest from config values (e.g. `--manifest.gatewayPort=8080`
@@ -866,6 +946,12 @@ export default async function loadRealm<T extends TSchema>(
             context: `${defKind}`,
         },
     );
+    // From here on every step of the load is measured against the margin the
+    // config names, and a step that crosses it is reported at warn level through
+    // whichever logger exists — the realm's own, or the bootstrap one while the
+    // log component is still being built.
+    const slowMs = slowStepMs(mergedConfig.log);
+    const stepLog = () => logger ?? bootstrap;
     if (typeof parentConfig === 'string' && mergedConfig.watch)
         mergedConfig.watch.configs = mergedConfig.configs;
 
@@ -891,11 +977,11 @@ export default async function loadRealm<T extends TSchema>(
         const explicitChildren = new Set(
             children.filter(c => typeof c === 'string').map(c => platformApi.basename(c as string)),
         );
-        const discoveredFolders = await discoverLayerFolders(
-            platformApi,
-            base,
-            rootKind,
-            explicitChildren,
+        const discoveredFolders = await withProgress(
+            stepLog(),
+            `discover layers of ${name}`,
+            discoverLayerFolders(platformApi, base, rootKind, explicitChildren),
+            {slowMs},
         );
         for (const [folderName, activation] of discoveredFolders) {
             if (!(folderName in mergedConfig))
@@ -1300,12 +1386,22 @@ export default async function loadRealm<T extends TSchema>(
                 );
                 item = async () => loaded.filter(Boolean);
             }
-            const loadedModules = await (item as () => Promise<unknown[]>)();
+            // The import and the start are separate steps with separate costs: an
+            // import is the module graph, which is slow on a cold filesystem, while
+            // a start is the component's own init. A delayed start that names only
+            // "load log" would not say which of the two to look at, so the two are
+            // reported under labels that do.
+            const loadedModules = await withProgress(
+                stepLog(),
+                `import ${itemName}`,
+                (item as () => Promise<unknown[]>)(),
+                {slowMs},
+            );
             const modules = Array.isArray(loadedModules) ? loadedModules : [loadedModules];
             let loadedCount = 0;
             await withProgress(
-                logger,
-                `load ${itemName}`,
+                stepLog(),
+                `start ${itemName}`,
                 (async () => {
                     for (const module of modules) {
                         const item = await module;

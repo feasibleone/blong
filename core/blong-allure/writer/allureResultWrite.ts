@@ -7,9 +7,10 @@ import {createHash, randomUUID} from 'node:crypto';
 import {writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import type {IAllureContext, IAllureResult} from '../types.js';
-import {allureLabelsBuild} from './allureLabelsBuild.js';
-import {allureLinksBuild} from './allureLinksBuild.js';
-import {allureStatusMap} from './allureStatusMap.js';
+import {allureLabelsBuild} from './allureLabelsBuild.ts';
+import {allureLinksBuild} from './allureLinksBuild.ts';
+import {allureProgressMap} from './allureProgressMap.ts';
+import {allureStatusMap} from './allureStatusMap.ts';
 
 /**
  * Write an Allure result file for a test step
@@ -57,6 +58,15 @@ export async function allureResultWrite(
             message: step.error.message,
             trace: step.error.stack,
         };
+    }
+
+    // The progress the step announced, as nested steps (PRD R26/R27): a point is a step, and a
+    // branch is the group of the points taken inside it. This is the shape `steps` was put on a
+    // result for, and the only thing that fills it — a report that shows a step without the
+    // moments it reported is the gap this closes.
+    const nested = allureProgressMap(step.progress);
+    if (nested !== undefined) {
+        result.steps = nested;
     }
 
     // Write result file

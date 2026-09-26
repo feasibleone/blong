@@ -127,6 +127,20 @@ export const vocabulary = {
     },
 
     /**
+     * The branches this scope is running inside, outermost first (PRD R26).
+     *
+     * Read by a caller that has to *name* the nesting rather than describe it: `$meta`
+     * stamps the chain on every progress entry it keeps, so a test report can rebuild the
+     * tree from a flat array — including one that arrived over the wire, where the log's
+     * own marks describe a position in another process and mean nothing here.
+     *
+     * `undefined` where nothing is attached, like every other reader: a page has no flow to
+     * be inside of, and a dispatch path must not reach the emitter to discover that (F-197).
+     */
+    currentRegions: (): ReturnType<AttachedVocabulary['currentRegions']> =>
+        attached?.currentRegions(),
+
+    /**
      * Take the branch whose predicate holds, recording the rationale (PRD R11/R26).
      *
      * Degrades to the **selection alone**: a branch has to be taken whether or not

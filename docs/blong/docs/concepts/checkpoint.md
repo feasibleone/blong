@@ -64,7 +64,7 @@ export default handler(
 Tests can assert on checkpoints captured during handler execution:
 
 ```typescript
-import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
+import {handler, type IAssert, type IMeta, type IProgressPoint} from '@feasibleone/blong';
 
 export default handler(({handler: {paymentTransferExecute}}) => ({
     // No 'name' parameter — context name is injected into $meta by the framework proxy
@@ -73,25 +73,32 @@ export default handler(({handler: {paymentTransferExecute}}) => ({
             const result = await paymentTransferExecute({accountId: 'acc-1', amount: 100}, $meta);
             assert.ok(result.transferId, 'Transfer created');
 
-            // Verify checkpoints recorded during execution
-            const checkpoints = $meta.checkpoints;
-            assert.equal(checkpoints.length, 3);
-            assert.equal(checkpoints[0].name, 'account-loaded');
-            assert.equal(checkpoints[1].name, 'balance-verified');
-            assert.equal(checkpoints[2].name, 'transfer-created');
+            // Verify the checkpoints recorded during execution — the list also holds any branch
+            // the handler took, which is why the entries are filtered by kind
+            const points = ($meta.progress ?? []).filter(
+                (entry): entry is IProgressPoint => entry.kind === 'point',
+            );
+            assert.equal(points.length, 3);
+            assert.equal(points[0].name, 'account-loaded');
+            assert.equal(points[1].name, 'balance-verified');
+            assert.equal(points[2].name, 'transfer-created');
         },
     ],
 }));
 ```
 
-### Checkpoint Data
+### What a point records
 
-Each checkpoint records:
+A point says which of the two shapes it is, so one list can hold it and a branch together:
 
+- **`kind: 'point'`** — This entry is a checkpoint. A branch is `kind: 'region'`.
 - **`name`** — A descriptive string identifying the checkpoint (e.g., `'account-loaded'`,
   `'transfer-created'`).
 - **`data`** — An optional object with relevant state at that point.
 - **`timestamp`** — Automatically added by the framework.
+- **`regions`** — The branches this point was announced inside, outermost first. A report groups by
+  it, and it travels with the point: an entry that arrived from another process over a call still
+  says which branches it sat in, even though that process is the one that numbered them.
 
 ## Modes
 
@@ -114,7 +121,20 @@ A checkpoint is one shape of a **progress point**; a `decide` branch is the othe
 in the logic that explain the shape a run took, both are recorded in one place, and both are drawn
 on the sequence diagram the log builds — a point as a note beside the participant that reported it,
 a branch as an `alt` block around the calls made inside it
-([R11, R26, R27](../rationale/semantic-log.md)).
+([R11, R26, R27](../rationale/semantic-log.md)). The **test report** draws the same two shapes from
+the same list, each as what it is: a branch becomes a group — a sub-test in tap, a step in Allure —
+holding the points taken inside it, and a point is printed beside the step that announced it. In tap
+that is a comment, because a moment a step passed through is not a test of its own:
+
+```text
+# total-calculated: total=200, itemCount=2
+# Subtest: discount-tier = standard
+    # discount-applied: discount=0.1, discountedTotal=180
+```
+
+The data is printed only while it stays small enough to read: the five shortest properties, values
+longer than a line left out, and the count of what was left out said, so the line never reads as the
+whole story. Allure keeps every point as a step, so nothing is lost where a report has the room.
 
 What separates them is what each may cost: a point may be dropped, because nothing else depends on
 it; a branch may not, because it _is_ the control flow.

@@ -296,7 +296,7 @@ t.test('references are locally minted and carry a template-id prefix (PRD R19, R
         }
         t.match(
             refUri('record', records[0].id),
-            /^semantic-log:\/\/record\/[0-9A-Z]{26}$/,
+            /^semlog:\/\/r\/[0-9A-Z]{26}$/,
             'the ref URI is dereferenceable',
         );
     });

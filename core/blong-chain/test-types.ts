@@ -78,6 +78,15 @@ export type StepArray = (StepFunction | StepArray | SnapshotMarker)[] & {name?: 
 export interface IMeta {
     /** Optional concurrency limit for parallel step execution */
     concurrency?: number;
+    /**
+     * What the invocation has announced so far, in the order it announced it (PRD R26/R27).
+     *
+     * The same array a framework dispatch keeps on its own `$meta`: the handlers a step calls
+     * are handed this object, so whatever they announce while it runs appears here — which is
+     * the only place the executor can read a step's progress from, and why it reads it at the
+     * step's boundaries.
+     */
+    progress?: IProgressEntry[];
     /** Additional metadata properties */
     [key: string]: unknown;
 }
@@ -89,6 +98,14 @@ export interface IMeta {
 export interface ITestFrameworkContext {
     /** Creates a nested test scope for proper indentation */
     test: (name: string, fn: (t: unknown) => void | Promise<void>) => unknown;
+    /**
+     * Writes a comment into the run's output (`# …` in TAP).
+     *
+     * What a point is reported as: a moment a step passed through is not a test,
+     * so it does not deserve a sub-test of its own — but it is what a reader
+     * wants to see beside the step, which is what a comment is.
+     */
+    comment?: (text: string) => void;
     /** Captures a snapshot of a value under the given name */
     matchSnapshot?: (value: unknown, name: string) => void;
 }
@@ -202,6 +219,71 @@ export interface IDependencyEdge {
 // ============================================================================
 
 /**
+ * A branch as a progress entry names it (PRD R11/R26).
+ *
+ * Declared structurally here, matching the framework's own declaration in
+ * `core/blong/types.ts` the way {@link IMeta} does, because this package stands at the bottom
+ * of the dependency graph with `p-queue` as its only dependency. The names are what a report
+ * groups by; the position a log mints for itself is deliberately not here.
+ */
+export interface IRegionMark {
+    /** What the branch was about, stable across runs. */
+    discriminator: string;
+    /** Every candidate considered, in evaluation order. */
+    candidates: string[];
+    /** The branch taken, or `none` when none of them matched. */
+    chosen: string;
+}
+
+/** A milestone an invocation announced (PRD R26). */
+export interface IProgressPoint {
+    /** Which of the two shapes this entry is; one array holds both. */
+    kind: 'point';
+    /** Stable name of the moment, e.g. `total-calculated`. */
+    name: string;
+    /** What was true there; kept locally, exactly as a record keeps it. */
+    data?: unknown;
+    /** When it was announced, in epoch milliseconds. */
+    timestamp: number;
+    /** The branches it was announced *inside*, outermost first. */
+    regions?: IRegionMark[];
+}
+
+/** A branch the invocation took, in the same array as the points (PRD R11/R26). */
+export interface IProgressRegion extends IRegionMark {
+    /** Which of the two shapes this entry is; one array holds both. */
+    kind: 'region';
+    /** The values the decision was made from. */
+    values: Record<string, unknown>;
+    /** The branches this one was itself taken inside, outermost first. */
+    regions?: IRegionMark[];
+}
+
+/** One entry of an invocation's `progress` list. */
+export type IProgressEntry = IProgressPoint | IProgressRegion;
+
+/**
+ * One node of the progress tree a report is drawn from (PRD R26/R27).
+ *
+ * `name` is the display name rather than the raw entry, so both renderers label a branch the
+ * same way: `<discriminator> = <chosen>` for a region, the point's own name for a point.
+ */
+export interface IProgressNode {
+    /** What a report calls it: the point's name, or `<discriminator> = <chosen>`. */
+    name: string;
+    /** Which of the two shapes it is. */
+    kind: 'point' | 'region';
+    /**
+     * What the point announced, printed beside it when it is small enough to read.
+     *
+     * A branch carries none: what it has to say is its name.
+     */
+    data?: Record<string, unknown>;
+    /** The points and branches announced inside it, in the order they were announced. */
+    children: IProgressNode[];
+}
+
+/**
  * Overall test execution progress
  */
 export interface ITestProgress {
@@ -259,6 +341,17 @@ export interface IStepProgress {
     result?: unknown;
     /** Error information if step failed */
     error?: IStepError;
+    /**
+     * What this step announced while it ran (PRD R26/R27), or absent when it announced
+     * nothing.
+     *
+     * Read from the invocation's own list at the step's boundaries rather than reported by the
+     * step: the handlers it called announced into the `$meta` every step shares, so the window
+     * is the only thing that attributes a point to the step that made it. A report draws these
+     * as the step's nested steps — a point as a step, a branch as the group of the points
+     * taken inside it.
+     */
+    progress?: IProgressEntry[];
 }
 
 /**

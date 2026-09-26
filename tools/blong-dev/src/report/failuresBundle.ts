@@ -13,12 +13,21 @@
  */
 
 import {createHash} from 'node:crypto';
-import {copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {
+    copyFileSync,
+    existsSync,
+    mkdirSync,
+    readdirSync,
+    readFileSync,
+    rmSync,
+    writeFileSync,
+} from 'node:fs';
 import {basename, dirname, join} from 'node:path';
 
 import type {IFailure} from './aggregate.ts';
+import type {IFailureHistory} from './provenance.ts';
 import {PUBLISH_DIR, REPORT_DIR} from './reportPaths.ts';
-import type {IReport, TestStatus} from './reportTypes.ts';
+import {hasRun, type IReport, type TestStatus} from './reportTypes.ts';
 
 /** Maximum characters of a failure message inlined into `summary.md`. */
 const MAX_SUMMARY_MESSAGE = 1200;
@@ -103,7 +112,8 @@ function stagePackageResults(resultsDir: string, staging: string): number {
 
     // Containers group results into fixtures/suites; copy them all (they are tiny).
     for (const file of files) {
-        if (file.endsWith('-container.json')) copyFileSync(join(resultsDir, file), join(staging, file));
+        if (file.endsWith('-container.json'))
+            copyFileSync(join(resultsDir, file), join(staging, file));
     }
 
     for (const file of files) {
@@ -144,6 +154,11 @@ function syntheticResult(failure: IFailure): Record<string, unknown> {
             {name: 'suite', value: failure.suite},
             {name: 'runner', value: failure.runner},
             {name: 'blong.status', value: failure.status},
+            // Whether the base branch was already red on this test belongs in the
+            // published report too: the bundle is what a reviewer opens from the
+            // pull request, and the difference between "new" and "recurring" is the
+            // first thing they want to know.
+            ...(failure.history ? [{name: 'blong.history', value: failure.history.kind}] : []),
         ],
         attachments: [],
         steps: [],
@@ -155,7 +170,11 @@ function renderFailuresSummary(
     meta: IFailuresBundleMeta,
 ): string {
     const lines: string[] = ['# Failed tests', ''];
-    const runText = [meta.repository, meta.workflow && `workflow ${meta.workflow}`, meta.run && `build #${meta.run}`]
+    const runText = [
+        meta.repository,
+        meta.workflow && `workflow ${meta.workflow}`,
+        meta.run && `build #${meta.run}`,
+    ]
         .filter(Boolean)
         .join(' · ');
     if (runText) lines.push(`_${runText}_`, '');
@@ -167,15 +186,24 @@ function renderFailuresSummary(
     for (const [pkg, failures] of failuresByPackage) {
         lines.push(`## ${pkg}`, '');
         for (const failure of failures) {
-            const location = failure.file ? `${failure.file}${failure.line ? `:${failure.line}` : ''}` : '';
+            const location = failure.file
+                ? `${failure.file}${failure.line ? `:${failure.line}` : ''}`
+                : '';
+            const provenance = failure.history ? ` — \`${failure.history.kind}\`` : '';
             lines.push(
                 `- ${failure.status === 'flaky' ? '🟡 flaky' : '🔴 failed'} **${failure.suite} › ${failure.name}**` +
-                    `${location ? ` — \`${location}\`` : ''}`,
+                    `${location ? ` — \`${location}\`` : ''}${provenance}`,
             );
             if (failure.trace) lines.push(`  - trace: \`traces/${failure.trace}\``);
             if (failure.message) {
                 const message = failure.message.slice(0, MAX_SUMMARY_MESSAGE).trimEnd();
-                lines.push('', '  ```', ...message.split('\n').map(line => `  ${line}`), '  ```', '');
+                lines.push(
+                    '',
+                    '  ```',
+                    ...message.split('\n').map(line => `  ${line}`),
+                    '  ```',
+                    '',
+                );
             }
         }
         lines.push('');
@@ -186,12 +214,28 @@ function renderFailuresSummary(
 interface IFailuresJsonPackage {
     package: string;
     path: string;
-    runner: string;
+    /**
+     * Every runner that reported into the package, in the order they ran.
+     *
+     * There is deliberately no singular `runner`: a package can run two (a realm's
+     * handler tests and its browser tests), and a reader that picked the first would
+     * attribute the package's failures to a leg that did not produce them. Each
+     * failure carries its own `runner`.
+     */
+    runners: string[];
     counts: IReport['counts'];
     failures: Array<{
         suite: string;
         test: string;
         status: TestStatus;
+        /** The runner this test failed under, since one package can have several. */
+        runner: string;
+        /**
+         * Where the test stands in the base branch's recent history, when it could be
+         * matched there. `new` means main was green on it, which is the field that
+         * decides whether this run's failure is this branch's doing.
+         */
+        history?: IFailureHistory;
         file?: string;
         line?: number;
         message?: string;
@@ -212,12 +256,23 @@ function buildFailuresJson(
         entries.push({
             package: pkg,
             path: report?.path ?? failures[0]?.path ?? '',
-            runner: report?.runner ?? failures[0]?.runner ?? '',
-            counts: report?.counts ?? {total: 0, passed: 0, failed: 0, flaky: 0, skipped: 0, todo: 0},
+            runners: report
+                ? report.runs.map(run => run.runner)
+                : [...new Set(failures.map(failure => failure.runner))],
+            counts: report?.counts ?? {
+                total: 0,
+                passed: 0,
+                failed: 0,
+                flaky: 0,
+                skipped: 0,
+                todo: 0,
+            },
             failures: failures.map(failure => ({
                 suite: failure.suite,
                 test: failure.name,
                 status: failure.status,
+                runner: failure.runner,
+                ...(failure.history ? {history: failure.history} : {}),
                 ...(failure.file ? {file: failure.file} : {}),
                 ...(failure.line ? {line: failure.line} : {}),
                 ...(failure.message ? {message: failure.message} : {}),
@@ -229,33 +284,47 @@ function buildFailuresJson(
     }
 
     const total = entries.reduce((sum, entry) => sum + entry.failures.length, 0);
-    return JSON.stringify(
-        {
-            schema: 1,
-            generatedAt: new Date().toISOString(),
-            repository: meta.repository ?? '',
-            workflow: meta.workflow ?? '',
-            run: meta.run ?? 0,
-            commit: meta.commit ?? '',
-            runUrl: meta.runUrl ?? '',
-            totals: {
-                packages: entries.length,
-                tests: total,
-                failed: entries.reduce(
-                    (sum, entry) => sum + entry.failures.filter(failure => failure.status !== 'flaky').length,
-                    0,
-                ),
-                flaky: entries.reduce(
-                    (sum, entry) => sum + entry.failures.filter(failure => failure.status === 'flaky').length,
-                    0,
-                ),
+    return (
+        JSON.stringify(
+            {
+                schema: 1,
+                generatedAt: new Date().toISOString(),
+                repository: meta.repository ?? '',
+                workflow: meta.workflow ?? '',
+                run: meta.run ?? 0,
+                commit: meta.commit ?? '',
+                runUrl: meta.runUrl ?? '',
+                totals: {
+                    packages: entries.length,
+                    tests: total,
+                    failed: entries.reduce(
+                        (sum, entry) =>
+                            sum +
+                            entry.failures.filter(failure => failure.status !== 'flaky').length,
+                        0,
+                    ),
+                    flaky: entries.reduce(
+                        (sum, entry) =>
+                            sum +
+                            entry.failures.filter(failure => failure.status === 'flaky').length,
+                        0,
+                    ),
+                    /** Problems the base branch was green on, i.e. what this run introduced. */
+                    newFailures: entries.reduce(
+                        (sum, entry) =>
+                            sum +
+                            entry.failures.filter(failure => failure.history?.kind === 'new')
+                                .length,
+                        0,
+                    ),
+                },
+                allure: 'index.html',
+                packages: entries,
             },
-            allure: 'index.html',
-            packages: entries,
-        },
-        null,
-        2,
-    ) + '\n';
+            null,
+            2,
+        ) + '\n'
+    );
 }
 
 /**
@@ -281,9 +350,9 @@ export async function buildFailuresBundle(
         failuresByPackage.set(failure.package, list);
     }
 
-    // Real Allure results where the runner produced them (Playwright).
+    // Real Allure results where a runner produced them (Playwright).
     for (const report of reports) {
-        if (report.runner !== 'playwright') continue;
+        if (!hasRun(report, 'playwright')) continue;
         if (!failuresByPackage.has(report.package)) continue;
         const resultsDir = join(root, report.path, 'allure-results');
         stagePackageResults(resultsDir, staging);
@@ -304,7 +373,10 @@ export async function buildFailuresBundle(
         for (const failure of list) {
             if (failure.runner === 'playwright') continue;
             const id = shortHash(failure.package, failure.suite, failure.name);
-            writeFileSync(join(staging, `${id}-result.json`), JSON.stringify(syntheticResult(failure), null, 2));
+            writeFileSync(
+                join(staging, `${id}-result.json`),
+                JSON.stringify(syntheticResult(failure), null, 2),
+            );
             synthesised += 1;
         }
     }
@@ -326,7 +398,8 @@ export async function buildFailuresBundle(
     if (indexHtml) {
         copyFileSync(indexHtml, join(publishDir, 'index.html'));
         const allureSummary = join(dirname(indexHtml), 'summary.json');
-        if (existsSync(allureSummary)) copyFileSync(allureSummary, join(publishDir, 'summary.json'));
+        if (existsSync(allureSummary))
+            copyFileSync(allureSummary, join(publishDir, 'summary.json'));
     }
 
     const failuresJson = join(publishDir, 'failures.json');

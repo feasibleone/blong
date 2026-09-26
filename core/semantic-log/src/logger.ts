@@ -104,7 +104,7 @@ export interface LoggerOptions {
     /**
      * Retain inline payloads (PRD R19/R20): the values of fields too large to
      * inline are written here, and the field renders as its
-     * `semantic-log://payload/<id>` reference instead of the whole value.
+     * `semlog://p/<id>` reference instead of the whole value.
      *
      * Omitted, no payload reference is minted and large values inline exactly
      * as before. A reference to a payload nothing retains is a dead link —

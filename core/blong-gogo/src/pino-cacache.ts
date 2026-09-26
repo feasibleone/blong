@@ -44,8 +44,48 @@ export interface CacacheTransportOptions {
 const RETENTION_STATE_KEY = '__blong_retention_state__';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * `cacache.rm.entry` with its third argument, which the published types do not
+ * declare.
+ *
+ * `removeFully` is real: `cacache`'s own `lib/rm.js` hands the options to
+ * `index.delete`, which removes the key's index file rather than appending a
+ * deletion to it. The types shipped for `cacache` 20 model only the two-argument
+ * form, so the option is declared here once instead of being cast at the call.
+ */
+const removeEntryFully = cacache.rm.entry as unknown as (
+    cachePath: string,
+    key: string,
+    opts: {removeFully?: boolean},
+) => Promise<unknown>;
+
+/**
+ * How long a retention step may take before it is reported.
+ *
+ * The transport runs in a pino worker thread with no logger of its own, so it
+ * writes to stderr — which is where the loader's own messages go, and where a
+ * reader of the process's output will see it. Matches the framework's margin for
+ * a slow step: a retention pass that took longer is the kind of delay that has
+ * cost a start its first seconds.
+ */
+const SLOW_STEP_MS = 1_000;
+
+function reportSlow(step: string, started: number, details?: Record<string, unknown>): void {
+    const elapsedMs = Date.now() - started;
+    if (elapsedMs < SLOW_STEP_MS) {
+        return;
+    }
+    process.stderr.write(
+        `warn  pino-cacache ${step} took ${elapsedMs}ms` +
+            (details ? ` ${JSON.stringify(details)}` : '') +
+            '\n',
+    );
+}
+
 async function pruneOldEntries(cachePath: string, retentionCount: number): Promise<void> {
+    const scanStarted = Date.now();
     const index = await cacache.ls(cachePath);
+    reportSlow('index scan', scanStarted, {entries: Object.keys(index).length});
 
     // Collect all real log entries (skip the retention-state entry itself)
     const entries = Object.values(index).filter(e => e.key !== RETENTION_STATE_KEY);
@@ -61,13 +101,25 @@ async function pruneOldEntries(cachePath: string, retentionCount: number): Promi
         return ta - tb;
     });
 
+    const pruneStarted = Date.now();
     const toDelete = entries.slice(0, entries.length - retentionCount);
     for (const entry of toDelete) {
-        await cacache.rm.entry(cachePath, entry.key);
+        // `removeFully` deletes the entry's index file. Without it `cacache`
+        // appends a deletion and keeps the file, so the index grows one file per
+        // entry ever written — and `cacache.ls` above, which reads all of them,
+        // becomes the slowest thing a process does. See
+        // `core/semantic-log/src/cache.ts`, which shares this directory and makes
+        // the same call.
+        await removeEntryFully(cachePath, entry.key, {removeFully: true});
     }
 
     // Garbage-collect content that is no longer referenced by any index entry
+    const verifyStarted = Date.now();
     await cacache.verify(cachePath);
+    reportSlow('retention pass', pruneStarted, {
+        pruned: toDelete.length,
+        verifyMs: Date.now() - verifyStarted,
+    });
 }
 
 async function retentionCheckRun(cachePath: string, retentionCount: number): Promise<void> {
@@ -100,8 +152,12 @@ export default async function transport(options: CacacheTransportOptions) {
     const cachePath = resolveHome(rawCachePath);
 
     // Run retention check once on transport startup (at most once per day)
-    retentionCheckRun(cachePath, retentionCount).catch(() => {
-        // Retention errors must not crash the transport
+    retentionCheckRun(cachePath, retentionCount).catch((error: unknown) => {
+        // Retention errors must not crash the transport — but a retention that
+        // fails is why a cache grows without bound, so it is reported rather than
+        // swallowed: silently skipping the pass is indistinguishable from running
+        // it and finding nothing to do.
+        process.stderr.write(`warn  pino-cacache retention failed: ${String(error)}\n`);
     });
 
     return build(async function (source) {

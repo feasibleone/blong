@@ -14,6 +14,9 @@ export function allureLabelsBuild(context: IAllureContext): IAllureLabel[] {
     const labels: IAllureLabel[] = [
         {name: 'framework', value: 'blong'},
         {name: 'language', value: 'typescript'},
+        // A package can report to Allure from more than one producer — a browser suite and
+        // its handler tests, say — and they land in one report, so each says which it is.
+        {name: 'source', value: 'handler-test'},
     ];
 
     // parentSuite = realm name

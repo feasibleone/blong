@@ -43,8 +43,8 @@ t.test('a default logger emits with no service configured', t => {
     );
     t.match(
         writes.join(''),
-        /r=semantic-log:\/\/record\//,
-        'and it still carries a local reference',
+        /semlog:\/\/t\/[0-9a-f]{12}/,
+        'and it still carries a local reference, to its shape',
     );
     t.end();
 });

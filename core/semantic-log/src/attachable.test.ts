@@ -21,6 +21,7 @@ t.test('unattached, every reader degrades and every scope still runs', async t =
     t.same(vocabulary.currentCapabilities(), {}, 'and no capability is decided');
     t.equal(vocabulary.capabilityState('calls.-payloads'), undefined, 'nothing is decided at all');
     t.same(vocabulary.currentContext(), {}, 'the scope is empty rather than absent');
+    t.equal(vocabulary.currentRegions(), undefined, 'and no branch is open to be named');
 
     let ran = 0;
     t.equal(
@@ -152,4 +153,20 @@ t.test('attached, the facade is the emitter vocabulary itself', async t => {
         'gateway meter flow',
         'and a phase-scoped region is entered with the phase it named',
     );
+    t.same(
+        vocabulary.decide(
+            'rate-within-limit',
+            {rate: 2},
+            [
+                {
+                    name: 'accept',
+                    when: () => true,
+                    run: () => vocabulary.currentRegions()?.map(region => region.discriminator),
+                },
+            ],
+        ),
+        ['rate-within-limit'],
+        'a branch is named by the chain it is inside, so `$meta` can name it too',
+    );
+    t.equal(vocabulary.currentRegions(), undefined, 'and nothing outside it is inside it');
 });

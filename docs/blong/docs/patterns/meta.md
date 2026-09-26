@@ -35,14 +35,16 @@ The metadata may contain the following properties:
   `(name, data?) => void`, used to observe the intermediate state of a flow. Absent in production,
   so callers optional-chain it (see [checkpoints](../concepts/checkpoint.md) and
   [progress points](../rationale/unified-handler-test.md))
-- `checkpoints`: what has been recorded so far — one `{name, data?, timestamp}` entry per call to
-  `checkpoint`
 - `decide`: takes a branch and keeps which one it was — `decide(discriminator, values, branches)`,
   returning the chosen branch's result. Present in **every** mode, because a branch has to be taken
   whether or not anything is recording
-- `decisions`: the branches this invocation took, in the order it took them — one
-  `{discriminator, candidates, chosen, values}` entry per call to `decide`, so a test can assert on
-  the selection as it asserts on `checkpoints`
+- `progress`: everything this invocation announced, in the order it announced it — one entry per
+  call to `checkpoint` (`{kind: 'point', name, data?, timestamp, regions?}`) and one per call to
+  `decide` (`{kind: 'region', discriminator, candidates, chosen, values, regions?}`), so a test can
+  assert on the moments _and_ on the choices between them, in one list. An entry's `regions` names
+  the branches it sat inside, outermost first, which is what lets a report draw a branch as the
+  group of the points taken in it — and what keeps that nesting intact when the entry arrived from
+  another process
 - `forward`: contains [b3-propagation](https://github.com/openzipkin/b3-propagation) data used for
   tracing
 - `dispatch`: optional function to be called during the `dispatch` step of the

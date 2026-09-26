@@ -66,6 +66,16 @@ const SERVER_ONLY: Array<[RegExp, string]> = [
     ],
     [/\/semantic-log\/src\/service\//, 'the semantic-log HTTP service'],
     [
+        // Its own entry, although rule 2 catches it as `fs`, `fs/promises`, `url` and
+        // `child_process`: the name says what is wrong, where those builtins only say
+        // that something node-only got in. It was reachable from `chain.ts`, whose three
+        // `await import('@feasibleone/blong-allure')` calls were literals — resolved by
+        // the bundler however dynamic they looked — and it is kept out by building the
+        // specifier at runtime instead (see `allurePackage` there).
+        /^blong-allure$/,
+        'the Allure reporting integration, which writes result files',
+    ],
+    [
         /^fastify$|^@fastify\/|^avvio$|^find-my-way$|^light-my-request$|^fastify-plugin$/,
         'the fastify server stack',
     ],

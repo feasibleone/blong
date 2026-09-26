@@ -123,6 +123,7 @@ sandbox
 *storybook.log
 .playwright
 allure-results
+allure-results-tap
 allure-report
 vitest-report
 .ci-report

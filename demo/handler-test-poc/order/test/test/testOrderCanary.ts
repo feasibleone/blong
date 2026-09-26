@@ -20,11 +20,18 @@ import type Assert from 'node:assert';
  * At each level, the handler code is identical — only the
  * configuration changes what's active.
  */
-export default handler(({handler: {testLoginTokenCreate, orderOrderCreate, orderFlowExecute}}) => ({
+export default handler(({handler: {loginTokenCreate, orderOrderCreate, orderFlowExecute}}) => ({
     testOrderCanary: (_params: {}, $meta: IMeta) => [
-        testLoginTokenCreate({}, $meta),
+        async function login(_assert: unknown, {$meta}: {$meta: IMeta}) {
+            return loginTokenCreate({username: 'testUser', password: 'testPassword'}, $meta);
+        },
         // Verify normal flow works
-        async function normalOrder(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+        async function normalOrder(
+            assert: typeof Assert,
+            {login, $meta}: {login: Promise<unknown>; $meta: IMeta},
+        ) {
+            await login;
+
             const result = (await orderOrderCreate(
                 {
                     items: [{name: 'Normal item', price: 20, quantity: 3}],

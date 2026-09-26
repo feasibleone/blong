@@ -1,7 +1,7 @@
 import {rmSync} from 'node:fs';
 import {join} from 'node:path';
 
-import {reportDir} from '../report/reportPaths.ts';
+import {publishAllureReport} from '../report/allurePublish.ts';
 import {runTap} from '../report/tapReport.ts';
 import {toolEnv} from '../utils/toolPath.ts';
 
@@ -37,8 +37,10 @@ export async function test(args: string[]): Promise<void> {
 
     // Fresh coverage output each run so tap V8 JSONs never accumulate.
     rmSync(join(cwd, '.tap', 'coverage'), {recursive: true, force: true});
-    // Fresh report output so a stale report can never be aggregated as current.
-    rmSync(reportDir(cwd), {recursive: true, force: true});
+    // The package's report is *not* wiped here: it holds one slice per runner, and a
+    // package can run more than one in a cycle (`runTap` clears tap's own slice
+    // before it starts). What used to be a blank wipe also deleted the published
+    // Allure report and the package's trend history, which belong to the browser leg.
 
     // Explicit globs by default: tap's own discovery also matches non-test files
     // that merely live under a `test/` folder (Playwright specs, layer files).
@@ -56,6 +58,20 @@ export async function test(args: string[]): Promise<void> {
         cwd,
         env,
     );
+
+    // A package's Allure report is published here rather than by the run that wrote the
+    // results: the results of every producer are merged into it, and this is the command
+    // a handler-test run shares with the browser one. A package with no results at all
+    // publishes nothing, which is what keeps this off the path of a suite that does not
+    // report to Allure.
+    const published = await publishAllureReport(cwd, {
+        baseHistory: process.env['CI_BASE_HISTORY'],
+    });
+    if (published.published) {
+        process.stdout.write(
+            `# allure report: ${published.reportDir} (${published.producers} producer(s))\n`,
+        );
+    }
 
     process.exitCode = exitCode;
 }

@@ -19,14 +19,17 @@ interface BlongLogTerminalLink extends vscode.TerminalLink {
 }
 
 /**
- * Regex matching the ULID embedded in a `semantic-log://record/<ULID>` link.
+ * Regex matching the id embedded in a `semlog://r/<id>` or `semlog://t/<id>` link.
  *
- * The same scheme the emitter mints for a record's own reference, so the link
- * the terminal renders and the `r=` token in the line are one string: whichever
- * implementation wrote the entry — the semantic logger or the pino transport —
- * the reader matches it.
+ * Both kinds resolve the same way — a cache lookup by key — because both are keys in
+ * the same store: `r` is a record kept under its own id, and `t` is a shape, which is
+ * the entry a reader resolves far more often (the store keeps one per shape, and the
+ * line carries the shape reference on every record).
+ *
+ * The long form is still matched so that a line printed by an older build, or a log
+ * left in a terminal's scrollback, still opens.
  */
-const LOG_LINK_REGEX = /semantic-log:\/\/record\/([0-9A-Z]+)/;
+const LOG_LINK_REGEX = /(?:semlog|semantic-log):\/\/(?:r|record|t|template)\/([0-9A-Za-z_-]+)/;
 
 /**
  * This method is called when your extension is activated
@@ -197,7 +200,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(shellTaskProviderRegistration);
 
-    // Register terminal link provider for semantic-log://record/<ULID> links
+    // Register terminal link provider for semlog://r/<id> and semlog://t/<id> links
     const logLinkProvider = vscode.window.registerTerminalLinkProvider({
         provideTerminalLinks(
             terminalContext: vscode.TerminalLinkContext,

@@ -25,7 +25,7 @@ extending** them; for using them to monitor applications, see the **blong-log** 
   (cacache) for on-demand inspection.
 - `tools/blong-dev/src/commands/log.ts` — the `blong-dev log` CLI that reads the cacache cache.
 - `ext/rest-fs/src/extension.ts` — VS Code extension that opens a single cached entry when you click
-  a `semantic-log://record/<ULID>` terminal link.
+  a `semlog://t/<shape>` terminal link.
 
 ## Data flow
 
@@ -47,7 +47,7 @@ the log server. Each entry carries a monotonic ULID `id` injected by the `Log` m
 
 ## File map
 
-```
+```text
 tools/blong-log/
   src/
     index.ts           ← public exports (LogServer, transport, types)
@@ -74,8 +74,31 @@ tools/blong-dev/src/
   index.ts             ← programmatic exports
 
 ext/rest-fs/src/
-  extension.ts         ← terminal link provider for semantic-log://record/<ULID> + cacache lookup
+  extension.ts         ← terminal link provider for semlog://r|t/<id> + cacache lookup
 ```
+
+## Three invariants of the on-disk cache
+
+The directory (`~/.blong/log-cache`) is shared by the pino transport and by `semantic-log`'s record
+store, and three rules keep it healthy. The first two were learned from a cache that had grown to
+871 680 files for 10 001 live entries, which cost every process nine seconds before its first line:
+
+- **Retention deletes the entry's index file** (`cacache.rm.entry(dir, key, {removeFully: true})`).
+  A `cacache` key hashes into an index file of its own, so a removal that only appends a deletion
+  leaves the file, and the index grows by one file per entry ever written whatever the bound does.
+  `cacache.verify` does not repair that: it rebuilds the index from the entries it can still read,
+  so it walks entries and never the files that no longer hold one. `semantic-log`'s store reclaims
+  such files when a read of the truth turns out to be slow.
+- **The store reads `order.jsonl`, not `cacache`'s index.** That file is the secondary index over
+  the retention order: append-only (a small append lands whole, so several processes interleave
+  lines rather than overwrite each other), one line per write and one per removal, last line for an
+  id wins. Reading it is one read; reading `cacache`'s index is one file per key, each in a
+  directory of its own. `cacache` stays the truth: the interval sweep reads it, re-applies the bound
+  and rewrites the file, and only that pass rewrites it. Do not add a rewrite to the write path —
+  that is the single-writer assumption the store before `cacache` was retired for.
+- **A slow or failed retention pass is reported**, never swallowed: the transport writes to stderr
+  (it runs in a worker thread with no logger), and a pass that never runs looks exactly like one
+  that found nothing to do.
 
 ## Data model
 

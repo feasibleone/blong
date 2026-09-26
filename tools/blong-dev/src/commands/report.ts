@@ -1,7 +1,8 @@
 import {resolve} from 'node:path';
 
-import {writeReport} from '../report/reportWrite.ts';
-import {VITEST_JSON, buildVitestReport, readVitestJson} from '../report/vitestReport.ts';
+import {packageName} from '../report/reportPaths.ts';
+import {clearRun, writeRun} from '../report/reportWrite.ts';
+import {VITEST_JSON, buildVitestRun, readVitestJson} from '../report/vitestReport.ts';
 
 /** Read `--flag value` or `--flag=value` from a positional argument list. */
 function readFlag(args: readonly string[], flag: string): string | undefined {
@@ -37,15 +38,21 @@ export async function report(args: string[]): Promise<void> {
     const input = resolve(cwd, readFlag(rest, '--input') ?? VITEST_JSON);
     const vitest = readVitestJson(input);
     if (!vitest) {
-        process.stderr.write(`blong-dev: no vitest json could be read from ${input}; report skipped\n`);
+        process.stderr.write(
+            `blong-dev: no vitest json could be read from ${input}; report skipped\n`,
+        );
         return;
     }
 
-    const built = buildVitestReport(vitest, cwd);
-    writeReport(built, cwd);
+    // This runner's slice is dropped first, so a converter that dies mid-way leaves
+    // no previous vitest report to be aggregated as this one's — and the package's
+    // other runners keep theirs.
+    clearRun('vitest', cwd);
+    const run = buildVitestRun(vitest, cwd);
+    writeRun(run, cwd);
     process.stdout.write(
-        `# ${built.package}: ${built.counts.passed} passed, ${built.counts.failed} failed` +
-            `${built.counts.skipped > 0 ? `, ${built.counts.skipped} skipped` : ''} ` +
-            `(${built.counts.total} total)\n`,
+        `# ${packageName(cwd)} (vitest): ${run.counts.passed} passed, ${run.counts.failed} failed` +
+            `${run.counts.skipped > 0 ? `, ${run.counts.skipped} skipped` : ''} ` +
+            `(${run.counts.total} total)\n`,
     );
 }

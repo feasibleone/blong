@@ -5,16 +5,19 @@
  * and Allure 3's file-based reporting format.
  */
 
-export * from './writer/allureResultWrite.js';
-export * from './writer/allureStepMap.js';
-export * from './writer/allureStatusMap.js';
-export * from './writer/allureLabelsBuild.js';
-export * from './writer/allureLinksBuild.js';
-export * from './writer/allureAttachmentAdd.js';
+export * from './writer/allureResultWrite.ts';
+export * from './writer/allureGroupResultWrite.ts';
+export * from './writer/allureStepTreeMap.ts';
+export * from './writer/allureProgressMap.ts';
+export * from './writer/allureStepMap.ts';
+export * from './writer/allureStatusMap.ts';
+export * from './writer/allureLabelsBuild.ts';
+export * from './writer/allureLinksBuild.ts';
+export * from './writer/allureAttachmentAdd.ts';
 
-export * from './lifecycle/allureSessionStart.js';
-export * from './lifecycle/allureSessionEnd.js';
+export * from './lifecycle/allureSessionStart.ts';
+export * from './lifecycle/allureSessionEnd.ts';
 
-export * from './config/allurerc.js';
+export * from './config/allurerc.ts';
 
-export * from './types.js';
+export * from './types.ts';

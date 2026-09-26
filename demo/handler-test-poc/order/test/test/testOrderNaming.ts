@@ -1,5 +1,9 @@
-import {handler, type IMeta} from '@feasibleone/blong';
+import {handler, type IMeta, type IProgressPoint} from '@feasibleone/blong';
 import type Assert from 'node:assert';
+
+/** The points an invocation announced, in the order it announced them. */
+const pointsOf = (meta: IMeta): IProgressPoint[] =>
+    (meta.progress ?? []).filter((entry): entry is IProgressPoint => entry.kind === 'point');
 
 /**
  * Test: testOrderNaming
@@ -23,7 +27,7 @@ import type Assert from 'node:assert';
 export default handler(
     ({
         handler: {
-            testLoginTokenCreate,
+            loginTokenCreate,
             // Approach 1: Sub-property destructuring — camelCase name becomes sentence in $meta.name
             orderOrderCreate: {singleItemOrder, bulkOrder},
             orderOrderConfirm,
@@ -39,11 +43,18 @@ export default handler(
         },
     }) => ({
         testOrderNaming: (_params: {}, $meta: IMeta) => [
-            testLoginTokenCreate({}, $meta),
+            async function login(_assert: unknown, {$meta}: {$meta: IMeta}) {
+                return loginTokenCreate({username: 'testUser', password: 'testPassword'}, $meta);
+            },
 
             // Approach 1: singleItemOrder → $meta.name = 'single item order'
-            async function singleItem(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                $meta.checkpoints = [];
+            async function singleItem(
+                assert: typeof Assert,
+                {login, $meta}: {login: Promise<unknown>; $meta: IMeta},
+            ) {
+                await login;
+
+                $meta.progress = [];
                 delete $meta.name;
 
                 const result = (await singleItemOrder(
@@ -61,14 +72,18 @@ export default handler(
                     'single item order',
                     'Approach 1: $meta.name set to camelCase→sentence',
                 );
-                assert.equal($meta.checkpoints.length, 3, 'Checkpoints propagated through alias');
+                assert.deepEqual(
+                    pointsOf($meta).map(point => point.name),
+                    ['total-calculated', 'order-created'],
+                    'Checkpoints propagated through alias — an order under the threshold takes the no-discount tier, so it announces no discount point',
+                );
 
                 return result;
             },
 
             // Approach 1: bulkOrder → $meta.name = 'bulk order'
             async function bulk(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                $meta.checkpoints = [];
+                $meta.progress = [];
                 delete $meta.name;
 
                 const result = (await bulkOrder(
@@ -90,14 +105,14 @@ export default handler(
                     'bulk order',
                     'Approach 1: different alias → different $meta.name',
                 );
-                assert.equal($meta.checkpoints.length, 3, 'Checkpoints propagated through alias');
+                assert.equal(pointsOf($meta).length, 3, 'Checkpoints propagated through alias');
 
                 return result;
             },
 
             // Approach 2 Mode A: @name annotation → $meta.name = 'premium order'
             async function premium(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                $meta.checkpoints = [];
+                $meta.progress = [];
                 delete $meta.name;
 
                 const result = (await premiumOrder(
@@ -116,7 +131,7 @@ export default handler(
                     'Approach 2 Mode A: @name annotation injected into $meta',
                 );
                 assert.equal(
-                    $meta.checkpoints.length,
+                    pointsOf($meta).length,
                     3,
                     'Checkpoints propagated through annotation',
                 );
@@ -130,7 +145,7 @@ export default handler(
                 {premium, $meta}: {premium: Promise<{orderId: string}>; $meta: IMeta},
             ) {
                 const order = await premium;
-                $meta.checkpoints = [];
+                $meta.progress = [];
                 delete $meta.name;
                 delete ($meta as Record<string, unknown>).tag;
 
@@ -150,14 +165,14 @@ export default handler(
                     'fast',
                     'Approach 2: @tag from multiple annotations',
                 );
-                assert.equal($meta.checkpoints.length, 3, 'Checkpoints propagated');
+                assert.equal(pointsOf($meta).length, 3, 'Checkpoints propagated');
 
                 return result;
             },
 
             // Verify direct handler call still works (no naming, no proxy interference)
             async function directCall(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                $meta.checkpoints = [];
+                $meta.progress = [];
                 delete $meta.name;
 
                 const result = (await orderOrderConfirm(
@@ -167,14 +182,14 @@ export default handler(
 
                 assert.equal(result.status, 'CONFIRMED', 'Direct call works');
                 assert.equal($meta.name, undefined, 'Direct call: no name injection');
-                assert.equal($meta.checkpoints.length, 3, 'Checkpoints still work');
+                assert.equal(pointsOf($meta).length, 3, 'Checkpoints still work');
 
                 return result;
             },
 
             // Approach 2 Mode B: @priority (no params) → merges config.handler.priority into $meta
             async function configPriority(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                $meta.checkpoints = [];
+                $meta.progress = [];
                 delete $meta.name;
                 const meta = $meta as unknown as Record<string, string> & IMeta;
                 delete meta.level;
@@ -200,14 +215,18 @@ export default handler(
                     '3',
                     'Mode B: config.handler.priority.maxRetries merged into $meta',
                 );
-                assert.equal($meta.checkpoints.length, 3, 'Checkpoints propagated');
+                assert.deepEqual(
+                    pointsOf($meta).map(point => point.name),
+                    ['total-calculated', 'order-created'],
+                    'Checkpoints propagated — total of 100 is not over the threshold, so no discount point',
+                );
 
                 return result;
             },
 
             // Approach 2 Mode B: @cache ttl=5000 → merges config.handler.cache, then overrides ttl
             async function configCacheOverride(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                $meta.checkpoints = [];
+                $meta.progress = [];
                 delete $meta.name;
                 const meta = $meta as unknown as Record<string, string> & IMeta;
                 delete meta.ttl;
@@ -233,14 +252,14 @@ export default handler(
                     '1000',
                     'Mode B: config.handler.cache.maxSize preserved',
                 );
-                assert.equal($meta.checkpoints.length, 3, 'Checkpoints propagated');
+                assert.equal(pointsOf($meta).length, 3, 'Checkpoints propagated');
 
                 return result;
             },
 
             // Mixed Mode A + Mode B: @name + @cache → $meta.name set, config merged with override
             async function mixedModeAB(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                $meta.checkpoints = [];
+                $meta.progress = [];
                 delete $meta.name;
                 const meta = $meta as unknown as Record<string, string> & IMeta;
                 delete meta.ttl;
@@ -263,7 +282,7 @@ export default handler(
                     '1000',
                     'Mixed: Mode B config.handler.cache.maxSize preserved',
                 );
-                assert.equal($meta.checkpoints.length, 3, 'Checkpoints propagated');
+                assert.equal(pointsOf($meta).length, 3, 'Checkpoints propagated');
 
                 return result;
             },

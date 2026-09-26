@@ -9,13 +9,19 @@
 import type {ICoverage} from './coverage.ts';
 import {lineCoveragePct} from './coverage.ts';
 import {readJson} from './jsonFile.ts';
-import type {IReport} from './reportTypes.ts';
+import {reportDurationMs, type IReport} from './reportTypes.ts';
 
 export interface ITestTotals {
     total: number;
     passed: number;
     failed: number;
     flaky: number;
+    /**
+     * Test time of the run, when any runner measured one. Optional because a baseline
+     * committed before durations were collected has no such field, and a report is
+     * expected to render without one rather than invent a delta.
+     */
+    durationMs?: number;
 }
 
 export interface IHistoryEntry {
@@ -32,6 +38,8 @@ export interface IPackageMetrics {
         failed: number;
         flaky: number;
         total: number;
+        /** Test time of every runner of the package, when one was measured. */
+        durationMs?: number;
     };
     coverage?: {linesHit: number; linesTotal: number};
 }
@@ -75,14 +83,16 @@ export function buildMetricsSnapshot(
     coverage: ICoverage | null,
     env: IMetricsEnv = {},
 ): IMetrics {
-    const totals: ITestTotals = {total: 0, passed: 0, failed: 0, flaky: 0};
+    const totals: ITestTotals = {total: 0, passed: 0, failed: 0, flaky: 0, durationMs: 0};
     const packages: Record<string, IPackageMetrics> = {};
 
     for (const report of reports) {
+        const durationMs = reportDurationMs(report);
         totals.total += report.counts.total;
         totals.passed += report.counts.passed;
         totals.failed += report.counts.failed;
         totals.flaky += report.counts.flaky;
+        totals.durationMs = (totals.durationMs ?? 0) + durationMs;
         packages[report.package] = {
             ...packages[report.package],
             tests: {
@@ -90,6 +100,7 @@ export function buildMetricsSnapshot(
                 failed: report.counts.failed,
                 flaky: report.counts.flaky,
                 total: report.counts.total,
+                ...(durationMs > 0 ? {durationMs} : {}),
             },
         };
     }
@@ -143,6 +154,66 @@ export function metricsCoveragePct(metrics: IMetrics | null): number | null {
     const lines = metrics?.coverage?.lines;
     if (!lines || lines.found === 0) return null;
     return Math.round((lines.hit / lines.found) * 1000) / 10;
+}
+
+/** One package's coverage now, beside what it was on the base branch. */
+export interface ICoverageMover {
+    package: string;
+    /** Line coverage now, in percent. */
+    pct: number;
+    /** Percentage-point change against the baseline; positive is better. */
+    deltaPp: number;
+    /** Lines covered now minus then. */
+    deltaLines: number;
+    hit: number;
+    found: number;
+}
+
+/**
+ * The packages whose line coverage moved the most against the baseline.
+ *
+ * A per-package row already carries this delta, but a reader has to scan the whole
+ * table to find it, and the table is ordered by name. This is the same number ranked
+ * by how much it moved, so the two or three packages a branch actually touched are
+ * visible without reading 30 identical rows.
+ *
+ * Only packages the baseline also measured are eligible (a new package has nothing to
+ * compare against), and a move smaller than `minPoints` is rounding noise rather than
+ * news, so it is left out entirely.
+ */
+export function coverageMovers(
+    coverage: ICoverage | null | undefined,
+    baseline: IMetrics | null | undefined,
+    options: {limit?: number; minPoints?: number} = {},
+): ICoverageMover[] {
+    const {limit = 5, minPoints = 0.1} = options;
+    const movers: ICoverageMover[] = [];
+
+    for (const [pkg, lines] of coverage?.packages ?? []) {
+        if (lines.found === 0) continue;
+        const before = baseline?.packages?.[pkg]?.coverage;
+        if (!before || before.linesTotal === 0) continue;
+        const pct = lineCoveragePct(lines);
+        const beforePct = lineCoveragePct({hit: before.linesHit, found: before.linesTotal});
+        const deltaPp = Math.round((pct - beforePct) * 10) / 10;
+        if (Math.abs(deltaPp) < minPoints) continue;
+        movers.push({
+            package: pkg,
+            pct,
+            deltaPp,
+            deltaLines: lines.hit - before.linesHit,
+            hit: lines.hit,
+            found: lines.found,
+        });
+    }
+
+    return movers
+        .sort(
+            (left, right) =>
+                Math.abs(right.deltaPp) - Math.abs(left.deltaPp) ||
+                left.package.localeCompare(right.package),
+        )
+        .slice(0, limit);
 }
 
 export {lineCoveragePct};

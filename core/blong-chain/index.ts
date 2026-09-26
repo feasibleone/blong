@@ -13,10 +13,12 @@
 import assert from 'node:assert';
 import {EventEmitter} from 'node:events';
 import PQueue from 'p-queue';
+import {progressTree, reportProgress} from './progress.ts';
 import type {
     IDependencyEdge,
     IDependencyGraph,
     IMeta,
+    IProgressEntry,
     IPromiseEntry,
     ISourceLocation,
     IStepError,
@@ -652,6 +654,43 @@ export class TestExecutor extends EventEmitter {
     }
 
     /**
+     * The invocation's progress list as it stands, for a read at a step boundary (PRD R26/R27).
+     *
+     * The `$meta` object is the one every step of this run shares — the same object the steps
+     * destructure, and the one the handlers they call are handed.
+     */
+    private _progressList(): IProgressEntry[] | undefined {
+        const progress = (this.realContext.$meta as IMeta | undefined)?.progress;
+        return Array.isArray(progress) ? progress : undefined;
+    }
+
+    /**
+     * What was announced since `seen`, or `undefined` when nothing was (PRD R26/R27).
+     *
+     * Two shapes, and both are ordinary. A list that still holds what it held is *appended* to,
+     * and the difference between the two boundary reads is the step's own progress. A list that
+     * no longer begins with those entries was **replaced**: a step that resets it to scope its
+     * own assertions (`$meta.progress = []`, which is how a scenario keeps one step's
+     * checkpoints out of the next one's) then owns everything in the new list, including when it
+     * happens to end up as long as it started.
+     *
+     * Best-effort attribution, and deliberately so: steps that run in parallel share the one
+     * list, so a point announced while two of them were running is reported by whichever
+     * boundary read it. It is never lost, and a scenario whose steps are ordered by their
+     * dependencies — which is what a test that asserts on progress is — has one at a time.
+     */
+    private _announcedSince(seen: IProgressEntry[] | undefined): IProgressEntry[] | undefined {
+        const progress = this._progressList();
+        if (progress === undefined || progress.length === 0) {
+            return undefined;
+        }
+        if (!keeps(progress, seen)) {
+            return progress;
+        }
+        return progress.length > seen.length ? progress.slice(seen.length) : undefined;
+    }
+
+    /**
      * Executes a single step function
      */
     private async _executeStep(
@@ -701,8 +740,6 @@ export class TestExecutor extends EventEmitter {
         // Wrap execution function for potential test context wrapping
         // When a TAP sub-test context is supplied, assert is augmented with:
         //   assert.snapshot(value, 'name', opts?)   — explicit snapshot
-        //   assert.snapshot({mask?: []})             — deferred: snapshot the
-        //                                              step's return value
         //   assert.snapshot()                        — deferred, no extra mask
         // Deferred snapshots are taken after fn() returns, under the step name.
         // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -760,6 +797,7 @@ export class TestExecutor extends EventEmitter {
             this.graph.nodes.get(stepName)!.status = 'running';
             this.graph.nodes.get(stepName)!.startTime = latency.startedAt;
 
+            const progressBefore = this._progressList();
             this.emit('step:start', stepName, stepProgress);
 
             try {
@@ -821,6 +859,11 @@ export class TestExecutor extends EventEmitter {
                 // Store result in real context
                 this.realContext[stepName] = result;
 
+                // What this step announced, read at the boundary before the event so a
+                // listener that writes the step's result file sees it (see `step:end`).
+                const announced = this._announcedSince(progressBefore);
+                if (announced !== undefined) stepProgress.progress = announced;
+
                 // Resolve all promises for this step
                 this.promiseManager.resolveStep(stepName, result);
 
@@ -845,6 +888,24 @@ export class TestExecutor extends EventEmitter {
 
                 this.progress.completedSteps++;
                 this.emit('step:end', stepName, stepProgress);
+
+                // A point becomes a sub-test of the step that announced it, and a branch the
+                // sub-test holding the points taken inside it — a checkpoint as a *step* in
+                // the report, which is what "checkpoints drive test reporting" claims
+                // (PRD R26/R27). Rendered from the same entries `blong-allure` maps into
+                // Allure steps, so the two reports cannot describe different shapes.
+                //
+                // The context is checked the way the snapshot handling checks it, because
+                // the queue hands the task its own options where there is no test context:
+                // only a context that can nest a test gets progress nested in it.
+                if (
+                    typeof stepTestContext?.test === 'function' &&
+                    stepProgress.progress !== undefined
+                ) {
+                    for (const node of progressTree(stepProgress.progress)) {
+                        await reportProgress(stepTestContext, node);
+                    }
+                }
             } catch (error) {
                 // Handle error
                 latency.completedAt = Date.now();
@@ -868,6 +929,12 @@ export class TestExecutor extends EventEmitter {
                 this.graph.nodes.get(stepName)!.status = 'failed';
                 this.graph.nodes.get(stepName)!.endTime = latency.completedAt;
                 this.graph.nodes.get(stepName)!.error = error as Error;
+
+                // Kept even though the step failed, and especially then: what a failing step
+                // announced is the evidence a reader wants, and Allure renders it from here.
+                // The tap side leaves it out — sub-tests are not added to a step that threw.
+                const announcedOnFailure = this._announcedSince(progressBefore);
+                if (announcedOnFailure !== undefined) stepProgress.progress = announcedOnFailure;
 
                 this.progress.failedSteps++;
                 this.emit('step:error', stepName, error as Error, stepProgress);
@@ -1117,3 +1184,21 @@ export class TestExecutor extends EventEmitter {
 
 // Export all types
 export type * from './test-types.js';
+export {progressTree, reportProgress} from './progress.ts';
+
+/**
+ * Whether a progress list still holds what it held, entry for entry and by identity.
+ *
+ * Identity rather than equality, because the entries are objects the recorder pushed: a list
+ * that kept them is one that was spread back with additions, and a list whose first entry is a
+ * different object is one that was reset and announced afresh — which is the difference between
+ * a step *adding* to the invocation's progress and *replacing* it.
+ */
+const keeps = (
+    progress: IProgressEntry[],
+    seen: IProgressEntry[] | undefined,
+): seen is IProgressEntry[] =>
+    progress === seen ||
+    (seen !== undefined &&
+        progress.length >= seen.length &&
+        seen.every((entry, at) => progress[at] === entry));

@@ -85,7 +85,7 @@ export interface SemanticLogConfig {
     /**
      * Retain records on disk so a printed reference resolves later. The directory is
      * the framework's log cache, which the pino transport also writes — one store,
-     * shared, so a `semantic-log://record/<id>` reference resolves whichever
+     * shared, so a `semlog://r/<id>` reference resolves whichever
      * implementation emitted it.
      */
     cache?: RetentionOptions;
