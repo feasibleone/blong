@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.6.0...blong-dev-v1.7.0) (2026-09-26)
+
+
+### Features
+
+* progress points in test reports ([fb73036](https://github.com/feasibleone/blong/commit/fb730360877eb371ab3d1603ae7bf35976c170dc))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.5.0...blong-dev-v1.6.0) (2026-09-24)
 
 
