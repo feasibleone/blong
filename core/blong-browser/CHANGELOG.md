@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.20.0...blong-browser-v1.21.0) (2026-09-26)
+
+
+### Features
+
+* progress points in test reports ([fb73036](https://github.com/feasibleone/blong/commit/fb730360877eb371ab3d1603ae7bf35976c170dc))
+
 ## [1.20.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.19.0...blong-browser-v1.20.0) (2026-09-24)
 
 
