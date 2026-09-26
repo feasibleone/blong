@@ -121,6 +121,10 @@ test('withProgress', t => {
         const result = await withProgress(log, 'slow step', promise, {
             getProgress: () => ({done: 1, total: 2}),
             slowMs: 10,
+            // The reporting threshold defaults to `slowMs`, so a step past the margin also
+            // reports while it runs. This test is about the completion line alone, so the
+            // threshold is put out of the step's reach.
+            thresholdMs: 10_000,
             intervalMs: 10_000,
         });
 
@@ -134,6 +138,21 @@ test('withProgress', t => {
             'the warning carries the progress snapshot',
         );
         t.match(calls[0].args[1] as string, /took \d+ms/, 'the message reports the elapsed time');
+        t.end();
+    });
+
+    t.test('a step past the margin reports while it runs as well', async t => {
+        const {log, calls} = makeLog();
+        const promise = new Promise<string>(resolve => setTimeout(() => resolve('done'), 60));
+        await withProgress(log, 'slow step', promise, {slowMs: 10, intervalMs: 10_000});
+
+        t.equal(calls[0].level, 'warn', 'the first line is the running warning');
+        t.match(calls[0].args[1] as string, /still running/, 'it says the step is still running');
+        t.match(
+            calls.at(-1)!.args[1] as string,
+            /took \d+ms/,
+            'and the last one reports the total',
+        );
         t.end();
     });
 

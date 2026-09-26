@@ -397,6 +397,10 @@ the full reference.
 
 - `server` — always present on the server platform
 - `browser` — always present on the browser platform
+- `ci` — present when the process runs on CI (`isCI()` in the loader). It is the
+  captured-run configuration (colours off, Allure results written, connection resilience
+  in the db adapter), so a package's report no longer depends on its entry remembering to
+  pass the intent.
 
 **Default intents:** Running `blong` with no arguments activates `dev + microservice + integration`.
 This default provides a fast feedback loop — file saves trigger hot-reload and integration tests

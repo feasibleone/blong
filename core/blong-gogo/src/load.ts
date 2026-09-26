@@ -268,12 +268,24 @@ function activeConfigs<T extends TSchema>(
     platformConfigs: string[],
 ): (boolean | object)[] {
     return (
-        (['default'] as string[])
-            .concat(configNames)
-            .concat(platformConfigs)
-            .map(name => (mod.config as unknown as Record<string, unknown>)?.[name])
-            .filter(Boolean) as (boolean | object)[]
-    ).concat({pkg: mod.pkg, children: mod.children, url: mod.url});
+        (
+            (['default'] as string[])
+                .concat(configNames)
+                .concat(platformConfigs)
+                // A CI run *is* a captured run, so the `ci` block applies whether or not the
+                // entry named the intent — the same reason `exit` is derived from `isCI()`
+                // in the synthetic config. Which entry happened to know about CI decided
+                // whether a package's tap leg wrote Allure results at all, and a package
+                // whose only runner is tap then had no report to link.
+                //
+                // Named last, which is where a caller that passes it puts it: the Playwright
+                // webServer passes `ci` after `playwright` so its colours win over the block's
+                // `log.color = false`.
+                .concat(isCI() ? ['ci'] : [])
+                .map(name => (mod.config as unknown as Record<string, unknown>)?.[name])
+                .filter(Boolean) as (boolean | object)[]
+        ).concat({pkg: mod.pkg, children: mod.children, url: mod.url})
+    );
 }
 
 /** A thenable value that can be externally resolved/rejected. */
@@ -673,6 +685,11 @@ export default async function loadRealm<T extends TSchema>(
                      * `playwright` block's colours. A captured run is also the run whose
                      * report nobody is watching, so its Allure results are written and
                      * its HTML report generated at the end.
+                     *
+                     * On CI the block applies whether or not the intent was named: the
+                     * environment already says the output is captured, and an entry that
+                     * has to remember to pass `ci` for its package to have a report is a
+                     * trap for the next package (`activeConfigs`).
                      */
                     ci: {
                         log: {color: false},

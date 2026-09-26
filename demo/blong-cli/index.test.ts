@@ -20,8 +20,21 @@ import t from 'tap';
  */
 const bin = fileURLToPath(new URL('./bin/blong-cli.ts', import.meta.url));
 
+/**
+ * The framework's slow-step margin, raised for every invocation below.
+ *
+ * A step that takes longer than `log.slowMs` — one second by default — is warned about on
+ * stderr: the framework calls a step that slow a defect waiting to be named. That is true
+ * of a watched run on a quiet machine and false of a shared runner, where a cold start of
+ * a couple of seconds is ordinary, and the runner is the one that knows the difference —
+ * the margin is read off the log config so a runner can raise it for a machine that is
+ * legitimately slow. Without this the first assertion below fails on a busy CI runner
+ * with the framework's warnings, which say nothing about the command.
+ */
+const SLOW_MARGIN = '--log.slowMs=60000';
+
 const run = (args: string[]): {stdout: string; stderr: string; status: number | null} => {
-    const result = spawnSync(process.execPath, [bin, ...args], {encoding: 'utf-8'});
+    const result = spawnSync(process.execPath, [bin, ...args, SLOW_MARGIN], {encoding: 'utf-8'});
     return {stdout: result.stdout, stderr: result.stderr, status: result.status};
 };
 
