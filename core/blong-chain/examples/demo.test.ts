@@ -1,12 +1,12 @@
 /**
  * Demonstration of nested test context with automatic indentation
- * Run with: node --test demo.test.js
+ * Run with: node --test examples/demo.test.ts
  */
 
 import {strict} from 'node:assert';
 import {describe, it} from 'node:test';
-import {TestExecutor} from '../index.js';
-import type {StepArray} from '../test-types.js';
+import {TestExecutor} from '../index.ts';
+import type {StepArray} from '../test-types.ts';
 
 describe('Demo: Nested Test Context with Automatic Indentation', () => {
     it('demonstrates nested test hierarchy', async t => {

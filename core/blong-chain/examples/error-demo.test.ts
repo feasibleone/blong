@@ -2,7 +2,7 @@
  * Demonstration of error reporting in nested test contexts
  *
  * This file shows how errors are properly reported with indentation and tracking.
- * Run with: node --test error-demo.test.js
+ * Run with: node --test examples/error-demo.test.ts
  *
  * You'll see that:
  * 1. Errors appear in the nested test output with proper indentation
@@ -12,7 +12,7 @@
  */
 
 import {describe, it} from 'node:test';
-import {TestExecutor, type StepArray} from '../index.js';
+import {TestExecutor, type StepArray} from '../index.ts';
 
 describe('Error Reporting Demo', () => {
     it('shows error in nested output with full details', async t => {

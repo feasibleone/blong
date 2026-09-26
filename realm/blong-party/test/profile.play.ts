@@ -47,6 +47,15 @@ test.describe('Party user profile', () => {
             );
         });
 
+        // The edit above reaches the database, not the page: the account menu rendered
+        // before it and keeps the initials it was given, so the avatar has to be read from
+        // a page that started after the edit. The leftover name is what a CI run showed —
+        // the avatar read `TE` where this spec wants `TA`, was held for the full
+        // expectation, and the *retry* passed because the call above had normalised the
+        // row by then, which is the same state a reload produces here.
+        await page.reload();
+        await expect(portal.page.locator('.blong-portal-menubar')).toBeVisible();
+
         // The avatar shows the name initials (Test Admin → TA).
         const avatar = page.locator('.blong-account-menu__avatar');
         await expect(avatar).toBeVisible();

@@ -255,6 +255,15 @@ export function defineBlongConfig(
             ...use,
         },
         expect: {
+            // The budget for an expectation that waits on *work*: a spec asserting after a
+            // round trip through the gateway is waiting on the registration, the token and
+            // the first profile fetch at once, and on a loaded runner those two calls took
+            // 2.7s and 2.1s — so Playwright's 5s default judged a working flow as a missing
+            // element, and `blong-party`'s self-registration spec failed on
+            // `.blong-portal-menubar` while the screenshot of the form before it passed.
+            // The Portal helpers keep failing fast: they pass their own
+            // BLONG_ELEMENT_TIMEOUT for the missing-element case they are about.
+            timeout: 15_000,
             toHaveScreenshot: {maxDiffPixelRatio: 0.01},
         },
         outputDir: '.playwright/results',
