@@ -71,7 +71,6 @@ tooling.
 
 - **Write markdown the house way.** These conventions are enforced by the linter, so a violation
   costs a round trip rather than a review comment:
-
     - **Emphasis is `_italic_`, not `*italic*`** (MD049) — a linter rewrites the asterisks, and a
       write-then-rewrite cycle shows up as a diff you did not intend. Bold stays `**bold**`.
     - **Dashes are em dashes (`—`) in prose**, not hyphens used as punctuation.
@@ -434,6 +433,14 @@ alongside the component.
 - Workspace dependencies use `workspace:^` protocol
 - Framework built entirely on TypeScript and ECMAScript modules
 - CommonJS supported when possible but ESM preferred
+- **A package's tsconfig must allow `.ts` import extensions** — `allowImportingTsExtensions: true`
+  with `noEmit: true` (or `emitDeclarationOnly`), and the matching `module: "preserve"` +
+  `moduleResolution: "bundler"`. Packages here export their _sources_ (`"./index.ts"`), so a
+  consumer's type-check compiles the dependency's files too and inherits their import syntax: adding
+  `.ts` extensions inside one package breaks every consumer whose tsconfig lacks the option
+  (TS5097), while a stray `declaration: true` cannot coexist with it. Set it in a new package's
+  tsconfig from the start, and after changing a package's imports, type-check the packages that
+  depend on it.
 
 ### File Structure
 
