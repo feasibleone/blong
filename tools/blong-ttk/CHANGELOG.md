@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/feasibleone/blong/compare/blong-ttk-v1.3.0...blong-ttk-v1.3.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* build failure ([19223c1](https://github.com/feasibleone/blong/commit/19223c1b2a2260257feeee4caa978a87b77d854e))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-ttk-v1.2.3...blong-ttk-v1.3.0) (2026-09-21)
 
 
