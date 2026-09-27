@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.37.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.36.0...blong-gogo-v1.37.0) (2026-09-26)
+
+
+### Features
+
+* progress points in test reports ([fb73036](https://github.com/feasibleone/blong/commit/fb730360877eb371ab3d1603ae7bf35976c170dc))
+
+
+### Bug Fixes
+
+* chain dynamic import ([7db222f](https://github.com/feasibleone/blong/commit/7db222f0a6469b624fa1935027f63b0593585ee6))
+* misc CI failures ([950289d](https://github.com/feasibleone/blong/commit/950289d65e6187d10658dd0fd76361bd4d3d56e8))
+
 ## [1.36.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.35.0...blong-gogo-v1.36.0) (2026-09-24)
 
 

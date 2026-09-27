@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/feasibleone/blong/compare/blong-party-v1.7.0...blong-party-v1.7.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* misc CI failures ([60689af](https://github.com/feasibleone/blong/commit/60689af66dc246ef8f88fef8edbd2b8a16a6c4d9))
+
 ## [1.7.0](https://github.com/feasibleone/blong/compare/blong-party-v1.6.1...blong-party-v1.7.0) (2026-09-24)
 
 
