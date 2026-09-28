@@ -18,4 +18,5 @@ documentation.
 
 A realm is scaffolded rather than hand-built: from the CLI with `blong realm <name>`, or through the
 API with `kukum.realm.add`. See the [realm pattern](../patterns/realm.md) for the folder layout and
-the [kukum pattern](../patterns/kukum.md) for the programmatic entry points.
+the [kukum pattern](../patterns/kukum.md) for the programmatic entry points. A realm that needs
+entities with relationships contributes its own tables to [the resource graph](resource-graph.md).

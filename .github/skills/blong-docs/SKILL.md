@@ -125,6 +125,15 @@ A pattern doc does **not** contain philosophical discussion or design rationale.
 4. **File naming:** use kebab-case, matching the feature name. If the same feature appears in all
    three tiers the file name should be identical across folders (e.g. `schema-sync.md` in all
    three).
+5. **Disable wrap** in flowcharts - define a class and apply it to all the nodes, use explicit
+   breaks at the proper places.
+
+    ```mermaid
+    flowchart LR
+    A[node<br/>A] --> B[node<br>B]
+    classDef nowrap white-space:nowrap
+    class A,B nowrap
+    ```
 
 ---
 
@@ -241,6 +250,13 @@ Two habits that avoid most breakage, both learned the hard way:
   whichever image does not match the reader's theme with `display: none`. Two consequences worth
   knowing: both `<img>` elements are always in the DOM, and a theme-hidden image is never fetched,
   so a check that judges images must only judge the ones that are actually rendered.
+- **A diagram committed as an image pair cannot let the theme colour its labels.** Mermaid paints
+  label text from the theme — dark in the light theme, light in the dark one — so a `style` or
+  `classDef` that sets a `fill` and leaves the text alone renders as near-white on near-white for a
+  dark-mode reader. This is a reason to prefer the inline block: a docs page or a blog post whose
+  diagram stays in the page is coloured by the site, while a committed pair needs its own palette
+  and a check to enforce it. `blong-dev docs verify` visits blog posts as well as docs pages, so an
+  inline diagram is covered by the same count check either way.
 
 ### Images
 

@@ -159,8 +159,35 @@ and a suite can add its own through `registry.register()`. The registered types 
 7. `anyOf` — resolved from the first non-`null` branch
 8. otherwise `input`
 
-Custom widgets (via the `editors` prop) allow realm-specific input components that receive `Input`,
-`Label`, and `ErrorLabel` helper props; the `Editor/CustomEditors` story shows one.
+There are two switches, not one. The one above runs when the schema is loaded (`schema/registry.ts`,
+`resolveWidget`), and it is the one that reads the server's schema: an explicit `x-widget.type`
+wins, then the JSON type (`boolean`, `integer`, `number`, `bigint`), then the first non-null `anyOf`
+branch, then an `enum` becomes a `select`, and finally a field _name_ heuristic picks `date`,
+`dateTime`, `time`, `password` or `textArea` (a name containing `Description` or `Notes`). Whatever
+it decides is stored on the enriched field. The second runs when a card renders (`Card.tsx`,
+`resolveWidgetType`) and falls back through `widget.type`, `format`, `type === 'boolean'`,
+`widget.dropdown`, `widget.options`, a name ending in `Description`, the numeric types, `anyOf`, and
+`input`.
+
+The extension keys the first switch understands are declared in one place — `x-filter`,
+`x-filterable`, `x-sort`, `x-cards` and `x-widget` — and an unknown `x-` key is reported rather than
+silently ignored.
+
+## 5b. Custom widgets and field-change events
+
+A realm can supply its own widget through the `editors` prop of `Form` or `Editor`: a component that
+receives `Input`, `Label` and `ErrorLabel` factories and declares the fields it owns in a static
+`properties` array, so the layout treats those fields as one row. The `Editor/CustomEditors` story
+shows the smallest real one — a period and a unit rendered together.
+
+A widget talks back to the form with a method name rather than an emitter. `methods` on the form
+maps a name to a function, and a field's `widget.onChange: 'handleA'` (or the form's `onFieldChange`
+default) is dispatched before the value is written: the method receives `{field, value, form}` with
+`form.getValues`/`form.setValue`, and returning `false` aborts the change while a thrown error is
+logged and the change dropped. The `Editor/Events` story computes a read-only total from two fields
+that way, and its `EventsFormAPI` variant shows a widget's `visible`/`enabled` subscribed to a value
+path. A separate, global event bus (`blongEvents`, section 14) carries action lifecycle events and
+is not the per-field mechanism.
 
 ---
 
@@ -215,6 +242,27 @@ the matching card is shown at a time.
 
 See the `Editor/MasterDetail` story, and `Editor/MasterDetailPolymorphic` for the `match` variant.
 
+## 8b. Declared master-detail
+
+The card above is hand-built. A model can declare the relationship instead, and the generator
+expands it: `IModelSpec.details` takes one entry per child object, and the defaults turn each into a
+sibling array property of the master's key, an editable table widget, a card and a tab in the edit
+layout. The declarations in `realm/blong-access/` are the reference
+(`details: [{object: 'credential'}, {object: 'role'}]` on the user model).
+
+Two behaviours follow from that shape and are worth knowing when writing a handler for it.
+
+The child rows are read **with** the master: the generic database adapter discovers the detail
+tables through their foreign keys and returns their rows as sibling arrays in `get`, persists them
+on `add`, and **replaces** them on `edit` (delete-then-reinsert). A save therefore sends the whole
+structure, and the validation for it is generated from the same declaration.
+
+On the browse page, deleting a master refreshes the table: the default Delete action is declared
+with `refresh: true`, which invalidates the `find` and `get` queries, and the adapter deletes detail
+rows before their master so a foreign key does not block it. Inside an open form, deleting a row
+from a detail table only removes it from the form array — nothing is persisted until the parent is
+saved.
+
 ---
 
 ## 9. Cascaded Dropdowns
@@ -268,7 +316,18 @@ Examples: a permissions matrix (one row per permission), a weekday schedule (one
 
 - **Static pivot** — `pivot.examples` provides the seed rows
 - **Dynamic pivot** — `pivot.dropdown` names a dropdown list whose entries seed the rows;
-  `pivot.join` maps the seed key to the row key field
+  `pivot.join` maps the seed key to the row key field, and `pivot.defaults` seeds the cells of a row
+  the first time it is created
+
+Stored rows are overlaid onto the seed rows by matching every `join` pair, so a row that exists
+appears filled and a slot that does not yet exist appears empty; saving a cell for a seed row that
+had none creates that row.
+
+Four limits are real rather than incidental. A pivot table has no Add, no Delete and no multi-select
+checkbox — its rows come from the declaration. A pivot whose editable cells are all toggles is
+toggle-only, with no row editor. A named pivot dropdown is loaded once through the dropdown
+registry, so rows are as fresh as that load. And writing a pivot needs a handler that reconciles the
+whole array: the generic CRUD adapter does not do it.
 
 See the `Editor/Pivot` story, which shows both halves — a weekday schedule built from
 `pivot.examples`, and a permissions matrix whose rows come from `pivot.dropdown`.
@@ -305,3 +364,33 @@ returns an unsubscribe function, and the dispatch wrapper emits `action:before`,
 and `action:error` with `{method, params}` plus `{result}` or `{error}`. The Storybook
 `withDispatch` decorator uses this to show success toasts after mutations, and the `Editor/Events`
 story subscribes to all three.
+
+---
+
+## 15. The form-based explorer
+
+The generated browse page is an `Editor` in a split layout: a `navigator` widget on the left, a
+table with a `listAction` in the middle, a detail panel on the right, and action buttons on the
+editor's toolbar. The `Editor/Explorer` stories are that composition written out by hand, and they
+supersede the older standalone `Explorer` component's stories for generated pages: the standalone
+component is still there for a page that wants a table and filters without an editor around them.
+
+## 16. What made it usable
+
+Three defects in the generated editor were worth fixing at the framework level, because every page
+inherits them.
+
+**A keystroke re-rendered the world.** `handleFormChange` called `setLocalValue` and `setIsDirty` on
+every change, which re-rendered the editor, the form and every widget. Neither call was needed: the
+dirty flag comes from the form library through `onDirtyChange`. Two regression tests now pin it —
+typing in one field must not re-render a sibling widget.
+
+**Saving ignored what the server said.** The save path wrote the value the client had just submitted
+and then re-read the form, discarding whatever the server added (timestamps, computed fields). It
+now uses the response: `const savedValue = result ?? formValue`, and the form rebases on it.
+
+**One context carried everything.** Every consumer subscribed to a context that held the form
+values, the errors, the table selections and the loading flags, so any change re-rendered all of
+them. The context is split now: a stable one for the schema, the cards and the callbacks, and a
+slower one for the selections, read-only and loading state, with the values reached through a getter
+instead of a subscription.

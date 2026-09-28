@@ -17,7 +17,7 @@ kukum.<cross-cutting endpoint>
 
 | Primitive      | Owning skill          | Kinds                                                                    |
 | -------------- | --------------------- | ------------------------------------------------------------------------ |
-| `realm`        | `blong-realm`         | `default` (the whole `blong-kopi` tree)                                  |
+| `realm`        | `blong-realm`         | `default` (the whole `blong-kopi` tree; see [folder mode](./kopi.md))    |
 | `suite`        | `blong-suite`         | `default`                                                                |
 | `layer`        | `blong-layer`         | `server`, `browser`, `custom`                                            |
 | `handler`      | `blong-handler`       | `api`, `library`, `db`, `super`, `libBindings`                           |
@@ -111,7 +111,10 @@ platform and the live registry off `this`, so drive them the way the runtime doe
 ```ts
 import type {PrimitiveHost} from '@feasibleone/blong-kukum/engine.ts';
 import {type OperationParams, type OperationResult} from '@feasibleone/blong-kukum/operation.ts';
-import addOperation from '@feasibleone/blong-kukum/orchestrator/kukum/add.ts';
+// Import by path relative to the package: only operation.ts, engine.ts, primitives/,
+// server.ts and cli.ts are declared in the package's `exports`, so the handler modules
+// below them cannot be reached as `@feasibleone/blong-kukum/orchestrator/kukum/…`.
+import addOperation from '../realm/…/orchestrator/kukum/add.ts';
 
 const build = <T>(mod: unknown): T => (mod as (api: object) => T)({config: {}});
 

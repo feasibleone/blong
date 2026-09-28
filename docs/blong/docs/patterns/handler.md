@@ -319,7 +319,7 @@ export default handler(({lib: {precision}}) => ({
 
 The generic knex adapter implements `find`/`get`/`add`/`edit`/`remove`/
 `merge`/`insert`/`update`/`delete` for every declared table (see
-[`adapter.knex`](./schema-sync.md#auto-bound-crud-handlers)). A custom persistence handler that must
+[`adapter.knex`](./schema-sync.md#routed-crud-methods)). A custom persistence handler that must
 run business logic before or after the standard operation is named after the method (e.g.
 `accessUserEdit` → `access.user.edit`) and delegates the generic part with `super.exec`:
 

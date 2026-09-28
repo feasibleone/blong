@@ -17,7 +17,7 @@
         "              'mermaid-inline' the generator rewrites only the region between a marker pair",
         "              'png'           a screenshot: `check` only verifies it exists and is non-empty",
         "                              (PNG bytes depend on font rendering, so it is not compared,",
-        "                              and its generator is not run \u2014 content is reviewed instead)",
+        "                              and its generator is not run — content is reviewed instead)",
         "  destination repository-relative path of the file the artefact lives in",
         "  marker      for 'mermaid-inline' only: the text between BEGIN and END, i.e. the value of",
         "              `<id>` in `<!-- BEGIN <marker> -->` ... `<!-- END <marker> -->`",
@@ -25,7 +25,7 @@
         "  command     shell command that regenerates the artefact, run in `package`; a command",
         "              that runs tap directly must pass `--allow-incomplete-coverage` (and usually",
         "              `--coverage-report=none`), because the repository gates suites at 100%",
-        "              coverage and a single file run on its own can never reach it \u2014 without the",
+        "              coverage and a single file run on its own can never reach it — without the",
         "              flag the generator exits 1 on a suite that passed. `blong-dev test` passes",
         "              the same flags for the same reason.",
         "  doc         for 'mermaid-inline' only: the documentation page that embeds it",
@@ -33,7 +33,7 @@
         "The generators are deterministic by design: a call is placed by the counter path its",
         "caller assigned and no count comes from the clock, so regenerating an up-to-date artefact",
         "is a no-op and `check` can compare rather than guess. Do not hand-edit a registered",
-        "destination \u2014 the next `generate` overwrites it, and `check` fails until it does."
+        "destination — the next `generate` overwrites it, and `check` fails until it does."
     ],
     "version": 1,
     "artifacts": [
@@ -177,6 +177,22 @@
             "package": "realm/blong-access",
             "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
             "doc": "patterns/acl.md"
+        },
+        {
+            "id": "png.commander-sources",
+            "kind": "png",
+            "destination": "docs/blong/docs/patterns/img/commander-sources.png",
+            "package": "realm/blong-commander",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "patterns/commander.md"
+        },
+        {
+            "id": "png.commander-access-db",
+            "kind": "png",
+            "destination": "docs/blong/docs/patterns/img/commander-access-db.png",
+            "package": "realm/blong-commander",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "patterns/commander.md"
         }
     ]
 }

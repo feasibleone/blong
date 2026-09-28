@@ -10,7 +10,7 @@
 
 import t from 'tap';
 
-import {countImages, countMermaidBlocks, routeForDocsFile} from './visualPages.ts';
+import {blogSlug, countImages, countMermaidBlocks, routeForDocsFile} from './visualPages.ts';
 
 t.test('countMermaidBlocks counts only mermaid fences', t => {
     t.equal(countMermaidBlocks(''), 0, 'nothing in, nothing counted');
@@ -74,5 +74,22 @@ t.test('routeForDocsFile mirrors how Docusaurus maps files to routes', t => {
         'index.md is the directory itself, not a child called index',
     );
     t.equal(routeForDocsFile('index.md'), '', 'the docs root is the empty route');
+    t.end();
+});
+
+t.test('blogSlug reads the front matter, and falls back to the folder name', t => {
+    t.equal(
+        blogSlug(
+            '2026-01-25-the-name-is-the-api/index.md',
+            '---\nslug: the-name-is-the-api\n---\n',
+        ),
+        'the-name-is-the-api',
+        'an explicit slug wins',
+    );
+    t.equal(
+        blogSlug('2026-01-19-one-adapter-api/index.md', '---\ntitle: x\n---\n'),
+        'one-adapter-api',
+        'without one, the date prefix is dropped like Docusaurus does',
+    );
     t.end();
 });

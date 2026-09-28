@@ -40,8 +40,9 @@ export default defineBlongConfig({
 });
 ```
 
-`defineBlongConfig()` includes `webServer` entries that auto-start the blong server (port 8080) and
-Vite dev server (port 5173) in CI (`reuseExistingServer: !process.env.CI`).
+`defineBlongConfig()` includes `webServer` entries that start the blong server and the Vite dev
+server (8080 and 5173 locally, or a pair derived from the package's index in `rush.json` in CI,
+where `reuseExistingServer` turns off).
 
 ## Test File Pattern
 
@@ -255,8 +256,8 @@ test('full flow', async ({portal}) => {
 node --run ci-test
 
 # Local development (servers already running)
-node --run blong &    # blong server on port 8080
-node --run dev &      # Vite dev server on port 5173
+node --run blong-watch &   # blong server, watch mode — local default port 8080
+node --run dev &           # Vite dev server — local default port 5173
 node --run playwright
 
 # Run specific test file
@@ -352,8 +353,8 @@ process exits.
 **Browser-side:** The `@feasibleone/blong-browser/playwright` package includes a coverage fixture
 that runs automatically for every test. It uses Playwright's Chromium-specific
 `page.coverage.startJSCoverage()` API to collect JavaScript coverage from the browser. After each
-test, it maps Vite dev server URLs (e.g. `http://localhost:5173/src/...`) to filesystem paths and
-writes V8-format JSON files.
+test, it maps Vite dev server URLs (e.g. `http://localhost:5173/src/...`, or whatever frontend port
+the run used) to filesystem paths and writes V8-format JSON files.
 
 After all tests complete, both sets of coverage files are copied with a `pw-` prefix into
 `core/blong-gogo/.tap/coverage/`, where they are picked up by the next `c8 report` run.
@@ -415,9 +416,10 @@ fi
 
 ### Path Mapping
 
-Browser coverage URLs from Vite (e.g. `http://localhost:5173/src/components/Portal.tsx`) are mapped
-to filesystem paths by stripping the protocol/host prefix and resolving relative to the project
-root. Files from `node_modules`, Vite's HMR client, and `@react-refresh` are excluded automatically.
+Browser coverage URLs from Vite (e.g. `http://localhost:5173/src/components/Portal.tsx`, on the
+frontend port the run used) are mapped to filesystem paths by stripping the protocol/host prefix and
+resolving relative to the project root. Files from `node_modules`, Vite's HMR client, and
+`@react-refresh` are excluded automatically.
 
 ## Stateful Mock Pattern (Dirty Cycle)
 
@@ -425,7 +427,9 @@ When the mock adapter mutates an in-memory array, records persist across test ru
 tests may find the record already contains the expected values, leaving react-hook-form in a clean
 state (Save button disabled).
 
-The `createAndEditModel()` helper uses a dirty cycle to work around this:
+The `createAndEditModel()` helper uses a dirty cycle to work around this. The sketch below is the
+shape of it rather than code to copy — `addSuffix` is private to the helper, and the real
+implementation runs the suffixed save only when the field map produced something to change:
 
 ```typescript
 // 1. Text/textarea fields get a random suffix → form becomes dirty → save.

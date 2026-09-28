@@ -18,9 +18,10 @@ debugging, which is slower and harder to observe in production.
 
 A self-contained log viewer that runs alongside the application, receiving all Pino log output via
 UDP, storing it in a circular in-memory buffer, and presenting it as a filterable, searchable,
-real-time web UI. The viewer requires no additional infrastructure — it is a single microservice
-started as part of the `dev` suite configuration — and it integrates with distributed tracing
-systems via configurable trace URL patterns.
+real-time web UI. The viewer requires no additional infrastructure — it is a single command
+(`blong-log`, from `tools/blong-log/`) that starts a UDP receiver and a web server on the
+developer's machine, rather than something the suite itself wires up — and it integrates with
+distributed tracing systems via configurable trace URL patterns.
 
 ## Features
 
@@ -97,13 +98,13 @@ entries in real time, and also to provide filters. The log server also exposes a
 allows the client to fetch recent log entries on open, and also to fetch log entries based on
 filters.
 
-The server side also hosts the client side artifacts. The REST API is implemented with the usual
-Blong patterns for orchestrator and a namespace "log". For implementing the WebSocket API, it
-extends the blong capabilities to allow this. The log server keeps track of the connected clients
-and their filters, and when a new log entry is added to the buffer, it checks if it matches the
-filters of any connected client, and if it does, it sends the log entry to that client via
-WebSocket. The log server also handles the case when a client disconnects, by removing it from the
-list of connected clients and their filters.
+The server side also hosts the client side artifacts. It is deliberately not a Blong component: the
+receiver, the REST routes and the WebSocket hub are a plain `node:http` server with `ws`
+(`tools/blong-log/src/server.ts`), so the viewer can run on a developer's machine without a suite, a
+realm or an intent. The log server keeps track of the connected clients and their filters, and when
+a new log entry is added to the buffer, it checks if it matches the filters of any connected client,
+and if it does, it sends the log entry to that client via WebSocket. The log server also handles the
+case when a client disconnects, by removing it from the list of connected clients and their filters.
 
 ### Client side
 

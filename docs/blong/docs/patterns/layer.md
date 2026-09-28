@@ -132,21 +132,22 @@ export default realm(blong => ({
 }));
 ```
 
-## Handler Group Naming
+## Configuration Levels
 
-Groups are named `realmname.foldername`. For example, a realm named `user` with a folder
-`orchestrator/user/` produces the group name `user.user`.
+Configuration sits next to the thing it configures, and the levels override each other in a fixed
+order — the last one that sets a value wins:
 
-Reference groups in the `imports` property:
+| Level                  | Where                                                 | Scope                         |
+| ---------------------- | ----------------------------------------------------- | ----------------------------- |
+| Component config       | `activation` in the layer file (or its `validation`)  | one adapter/orchestrator      |
+| Handler group defaults | `config.ts` in the group folder                       | one `realmname.foldername`    |
+| Realm override         | `config.namespace.<group>` in the realm's `server.ts` | one group, for one deployment |
 
-```ts
-activation: {
-    default: {
-        namespace: ['user', 'role'],
-        imports: ['user.user', 'user.role'],
-    },
-},
-```
+A component's own config is merged as `default` → each active intent → the platform's configs → `ci`
+when the process runs on CI, so a `dev:` block overrides a `default:` one and a `prod:` block
+overrides neither unless `prod` is active. See the [configuration pattern](./configuration.md) for
+the global merge chain that decides the effective values, and [concepts/layer](../concepts/layer.md)
+for why the config belongs in the layer.
 
 ### Group-Level Default Config
 
@@ -164,6 +165,46 @@ export default {
         endpoint: 'https://api.dev.payment.example.com',
     },
 };
+```
+
+The blocks are merged in the order `default`, then the active intents, so a handler in that folder
+reads the effective object as its `config`. A realm can override one value for a deployment without
+touching the folder — the realm's `namespace.<folder>` entry is merged on top:
+
+```ts
+// server.ts — the override wins over the group's own config.ts
+export default realm(blong => ({
+    url: import.meta.url,
+    config: {
+        prod: {
+            namespace: {
+                payment: {endpoint: 'https://payment.internal'},
+            },
+        },
+    },
+}));
+```
+
+### Portability
+
+Because each layer declares when it is active, the same realm runs as a monolith and as separate
+services without edits: a layer whose `activation` also names `microservice` is loaded when the
+realm is deployed on its own, and the realm's `server.ts` never had to know which case it was in.
+
+## Handler Group Naming
+
+Groups are named `realmname.foldername`. For example, a realm named `user` with a folder
+`orchestrator/user/` produces the group name `user.user`.
+
+Reference groups in the `imports` property:
+
+```ts
+activation: {
+    default: {
+        namespace: ['user', 'role'],
+        imports: ['user.user', 'user.role'],
+    },
+},
 ```
 
 ## Error Layer

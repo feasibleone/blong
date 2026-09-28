@@ -63,7 +63,7 @@ flowchart TD
     D -- "at least one" --> F{"does the record participate<br/>in a declared scope?"}
     F -- "no" --> G["RBAC alone decides —<br/>this is what makes opting a table in safe"]
     F -- "yes" --> H{"does an active deny rule match<br/>the record or one of its scopes?"}
-    H -- "yes" --> I["refused — a deny always wins"]
+    H -- "yes" --> I["refused — a deny beats the grant"]
     H -- "no" --> J{"a hasScope grant to one of those scopes,<br/>or an active allow rule?"}
     J -- "yes" --> K["allowed"]
     J -- "no" --> I
@@ -128,13 +128,13 @@ acl:
       }
 ```
 
-| Field                         | Meaning                                                                        |
-| ----------------------------- | ------------------------------------------------------------------------------ |
-| `principal` / `principalType` | who the rule is for — `user`, `role`, `unit`, `capability` (or a `typeAlias`)  |
-| `action` / `actions`          | the guarded action(s) by name (`party.person.edit`, or a comma-separated list) |
-| `target` / `targetType`       | the record or scope; `'*'` means every record                                  |
-| `targetKind`                  | `record` (default), `scope`, or `all` for the wildcard target                  |
-| `effect`                      | `allow` (default) or `deny`; a deny always wins                                |
+| Field                         | Meaning                                                                           |
+| ----------------------------- | --------------------------------------------------------------------------------- |
+| `principal` / `principalType` | who the rule is for — `user`, `role` or `unit` (or a `typeAlias`)                 |
+| `action` / `actions`          | the guarded action(s) by name (`party.person.edit`, or a comma-separated list)    |
+| `target` / `targetType`       | the record or scope; `'*'` means every record                                     |
+| `targetKind`                  | `record` (default), `scope`, or `all` for the wildcard target                     |
+| `effect`                      | `allow` (default) or `deny`; a deny wins over an allow on a record inside a scope |
 
 A rule's action must be the _same identity_ as the guarded method: the runtime matches action names
 with the dots removed, so `party.person.edit` and `partyPersonEdit` are one action, and a rule

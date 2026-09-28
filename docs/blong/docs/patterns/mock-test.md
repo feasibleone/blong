@@ -20,6 +20,22 @@ When the `integration` intent is active, the framework automatically sets
 `remote.canSkipSocket: true`, so every call (`eip.*`, `mock.*`, `test.*`) stays in the same process
 and resolves through the in-process local registry – no network or RPC transport needed.
 
+## Mock, sim or real
+
+Three levels of backend fidelity are available, and what separates them is what they can prove — not
+how convenient they are:
+
+| Level | Where it lives                     | Activated by                         | Proves                                                                                    | Cannot prove                                                                        |
+| ----- | ---------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Mock  | `test/mock/` + `mockDispatch`      | the `integration` intent, in-process | business logic, branching, EIP composition, that call names wire up                       | anything about the adapter — the protocol, framing, codec and credentials never run |
+| Sim   | the `sim/` layer                   | the `integration` intent             | the adapter, codec and transport: framing, request/response mapping, idle and retry paths | the backend's behaviour: persistence, isolation, offsets, real credentials          |
+| Real  | `test/blong-int-*` + a k3d cluster | each suite's adapter config          | the backend itself: SQL isolation and deadlocks, broker semantics, service quirks         | nothing about the backend — but fewer cases fit in one run                          |
+
+The rule those three imply: **mock the logic, simulate the protocol, and use the real backend when
+the hard part is state.** A mock proves nothing about the adapter because it replaces it; a sim
+speaks the real protocol but answers with fixed values, so an HSM that rejects a key type still
+passes; only a real backend can deadlock.
+
 ## Folder structure
 
 ```text
@@ -248,16 +264,49 @@ flowchart LR
     R -- "integration — mockDispatch ran" --> MOCK["the mock handler in test/mock/"]
 ```
 
+## Level 2 — the `sim` layer
+
+A `sim` layer is a fake backend that answers the real protocol. It is a well-known layer activated
+only under the `integration` intent (`sim: {server: {integration: true}}` in
+`core/blong-lib/layers.ts`), and the adapter under test reaches it through its own configuration —
+no handler changes, which is the whole point.
+
+### An HTTP service: `test/blong-sim-api`
+
+The suite serves a real OpenAPI spec from an in-process mock: `orchestrator.openapi` runs the
+world-time API on port 8082, the sim's adapter maps the operation to a handler
+(`namespace: {mocktime: 'time.world-time'}`), and the client adapter (`extends: 'adapter.http'` with
+`codec.openapi`) is pointed at the same spec URL its production config names. The test then calls
+`time.get` and asserts on a value that crossed the codec, the HTTP client and the mock server.
+
+### A device on a socket: `test/blong-sim-tcp`
+
+The Payshield HSM has no HTTP in front of it, so the sim is a socket server on the port the client
+connects to (1601). Both sides use the same codec — `ut-codec-payshield` with
+`headerFormat: '6/string-left-zero'` — and the sim's `receive` handler answers each command, so the
+test exercises framing, the request/response match and the reply parsing rather than a stub that
+returns an object.
+
+## Level 3 — real back ends
+
+The real level is the integration suites: `test/blong-int-adapter/` runs the real drivers against
+services provisioned in a throwaway cluster (MySQL, MongoDB, Kafka, Redis, Keycloak, Vault, MinIO
+and the cluster API itself), and `test/blong-int-sql/` runs MySQL, including a test that provokes a
+real deadlock. Each suite waits for its backends to answer before it starts.
+
+Not everything has a real suite: Slack and GitHub are manual, `webhook` has none, and TCP has only
+its sim. Those gaps are the honest measure of what the suite can claim.
+
 ## Full example
 
-See `demo/blong-eip/` for a complete working implementation (modern layout: server-side mock/test
-handlers under `server/test/`):
+See `demo/blong-eip/` for a complete working implementation — sixteen patterns, each tested against
+the mock level:
 
 - Business handlers: `eip/orchestrator/eip/`
-- Mock handlers: `eip/server/test/mock/`
-- Test handlers: `eip/server/test/test/`
-- Mock orchestrator: `eip/server/test/mockDispatch.ts`
-- Test orchestrator: `eip/server/test/testDispatch.ts`
+- Mock handlers: `eip/test/mock/`
+- Test handlers: `eip/test/test/`
+- Mock orchestrator: `eip/test/mockDispatch.ts`
+- Test orchestrator: `eip/test/testDispatch.ts`
 - Test runner: `index.test.ts`
 
 ## See also
@@ -265,3 +314,6 @@ handlers under `server/test/`):
 - [EIP patterns](./eip) – the patterns that are tested using this approach
 - [Test handler pattern](./test) – general test handler documentation
 - [Handler pattern](./handler) – how business handlers are written
+- [Layer concept](../concepts/layer.md) – where the `sim` layer sits in the activation table
+- [Suite patterns](./suite.md) – the integration suites and their cluster
+- `test/blong-sim-api/`, `test/blong-sim-tcp/` and `test/blong-int-adapter/` – the worked examples

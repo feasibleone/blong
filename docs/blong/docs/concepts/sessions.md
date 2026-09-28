@@ -57,7 +57,7 @@ sequenceDiagram
     participant C as Client
     participant A as access realm
     participant S as session store
-    C->>A: login.token.create (refresh grant)
+    C->>A: login.token.refresh (the rotating refresh token)
     A->>S: verify session
     Note over S: not revoked · not expired · not inactive
     S-->>A: ok — touch lastActivityAt
@@ -77,18 +77,25 @@ follows the newest token, so replaying an older one no longer matches. Logout se
   `access.session.verify`.
 - **Delete interval** (`login.expire.deleteAfter`, default 24 h): stale rows — revoked more than the
   interval ago, inactive for longer than the interval, or past `expiresAt` — are purged by
-  `access.session.cleanup`.
+  `access.session.cleanup`. Note that the interval is currently **config that does not reach the
+  handler**: every caller passes an empty argument set and `access.session.cleanup` then uses its
+  own 24-hour default, so changing `login.expire.deleteAfter` has no effect.
 
 Cleanup is a plain knex handler (dialect-neutral — cut-offs are computed in JS, no stored procedures
-or SQL date functions). Call it periodically or lazily from the login / refresh / restore flows.
+or SQL date functions). It is invoked lazily from the login, refresh, restore and revoke flows;
+calling it on a schedule is an option rather than something the framework does for you.
 
 ### Closing a session
 
-`access.session.close` (the logout/revoke primitive) closes the caller's **own** session with just a
-valid token — when no id is passed it defaults to the JWT `ses` claim (`$meta.auth.sessionId`), so
-an empty call logs the current session out. Closing any **other** session (an arbitrary id) requires
-the `access.session.close` action; otherwise the operation is refused with
-`access.session.closeForbidden` (403). Revocation clears the restore cookie.
+`access.session.close` is the logout/revoke primitive, and what it takes to call it depends on how
+the call arrives. When no id is passed it defaults to the JWT `ses` claim (`$meta.auth.sessionId`),
+so an empty call logs the **caller's own** session out — but only through `login.token.revoke`,
+which is declared on the route with the authorization check skipped. Called directly as
+`access.session.close` over RPC, the gateway's access check runs first, so it needs the
+`access.session.close` action like any other method; the adapter's own-session shortcut is reached
+after that check, not instead of it. Closing another session (an arbitrary id) always needs the
+action, and is refused with `access.session.closeForbidden` (403) otherwise. Revocation clears the
+restore cookie.
 
 ## Token renewal
 
@@ -202,6 +209,13 @@ Access-table DML (`access.user.add`, `access.role.edit`, …) additionally carri
 detail (entity + id/name keys only — never credentials or hashes). Login success/failure is recorded
 by the login flow itself.
 
+An operator reads the result two ways, and neither of them is a SQL prompt. The
+`access.audit.browse` page lists `occurredAt`, `actionName`, `actorId`, `sessionId`, `statusCode`,
+`userId`, `credentialType`, `ipAddress` and `isSuccess`, browse-only and with no toolbar — an audit
+log an operator can edit is not an audit log. `access.audit.find` is the method behind it, so the
+same rows are reachable from an orchestrator or a test (the session flow asserts a `login` entry by
+`actionName` and `sessionId`) and it is granted to Admin in the test authorization seed.
+
 Audit is **best-effort and non-blocking** — an audit failure never fails a request. Operations that
 record their own audit trail (e.g. payments) or that must not generate audit noise (integration-test
 probes) opt out by declaring `audit: false` on the route, or by listing a methodId pattern in
@@ -231,3 +245,31 @@ revoked, so a reload shows the login screen.
 > restore endpoint can exchange keeps the bearer tokens out of the cookie jar entirely. `__Host-`
 > cookies cannot be combined with a sub-path scope, so the Path-scoping is the deliberate trade-off
 > here.
+
+## Self-registration
+
+`access.registration.add` creates an account from an email address and a password, and it is the one
+entry point in the login flow that is deliberately reachable without a session: its route is
+declared `auth: 'login'`, so the endpoint answers but the call is not yet an authenticated
+operation. It validates the address and a password of at least eight characters, hands off to
+`accessAccountAdd`, and then creates the human record behind the account:
+
+1. `accessAccountAdd` checks that the email is unused, creates the `access.user` resource, stores
+   the PBKDF2 password (or a Google subject id, for the federated path), and gives the account the
+   `Guest` role.
+2. `party.person.add` creates the person that the account belongs to — a cross-realm call, because
+   an account belongs to the access realm and a person to the party realm.
+3. A `hasProfile` triple in `core.triple` records `user → person`, which is what turns the account
+   into a profile in the rest of the graph.
+
+Google sign-in with no matching link and no matching address runs the same handler with
+`googleSubjectId` instead of a password, so an operator sees one shape of account however it
+arrived.
+
+Two things about the outcome are worth stating plainly, because the usual expectation is the
+opposite. A registered account is **active immediately** — there is no pending state, no email
+verification and no approval queue; searching the realm finds no such concept. And the rights it has
+are whatever the `Guest` role carries, today `accessTestGuest` and `access.profile.get` from the
+authorization seed. Everything beyond that is an operator grant through `access.user.edit`, which is
+also why the audit trail matters here: a registration is a write with no actor behind it, and the
+`access.audit.record` entries for the account it produced are how it becomes attributable.

@@ -244,11 +244,12 @@ Metadata flows through two levels:
 This layering lets server teams define clean TypeBox schemas and browser teams tune visual
 presentation independently.
 
-### 6. Interactive Design Editor _(Not yet implemented)_
+### 6. Interactive Design Editor
 
-> **Note:** The design editor described below is planned but not yet part of `core/blong-browser`.
-> It will be built after the base form and table generation is stable and fully covered by Storybook
-> stories.
+The editor has a design mode: with `designable` set, the `Editor` mounts a `DesignModeProvider`,
+shows a property editor and `designMode` state, and a page can be inspected as it is built
+(`Editor.tsx`). It is an authoring aid rather than a replacement for the model declaration, which
+remains the source of truth.
 
 The design editor from ut-prime is retained as a first-class feature:
 
@@ -266,9 +267,11 @@ server-side inter-realm communication.
 
 ### 8. Model-Driven CRUD Factory
 
-For the common 80 % of CRUD screens, the `modelFactory()` function accepts an array of `IModelSpec`
-objects and automatically generates Browse / New / Open / Report pages for each entity. This
-eliminates the need to write individual page components for standard list/edit workflows.
+For the common 80 % of CRUD screens, one component — `subjectObjectComponent` in
+`core/blong-browser/src/model/`, the realm's default `component/` export — accepts an array of
+`IModelSpec` objects and registers Browse / New / Open / Report pages for each entity, usually with
+`withDefaults` from `@feasibleone/blong-mock` filling in the declaration. This eliminates the need
+to write individual page components for standard list/edit workflows.
 
 ## Trade-offs
 

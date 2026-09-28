@@ -263,55 +263,12 @@ await platform.stop();
 A complete working example is in the
 [blong-eip](https://github.com/feasibleone/blong/tree/main/demo/blong-eip) package.
 
-### Integration tests with K8s test back ends
+### Integration tests with real back ends
 
-When testing adapters against a real back end that is unavailable in developer environments, the
-back end can be provisioned automatically in a temporary Kubernetes cluster.
-
-**How it works:**
-
-1. A `test/integration/` folder at the repository root contains a `kustomization.yaml` and
-   Kubernetes resource manifests (Deployments, Services, ConfigMaps, PVCs) that provision the test
-   back end.
-2. In CI the GitHub Actions `integration` job creates a k3d cluster and deploys the services:
-
-    ```text
-    kubectl apply -k test/integration/
-    ```
-
-3. The Rush `ci-test` bulk command then runs each package's `ci-test` npm script.
-4. The `ci-test` in case of integration tests:
-    - Waits for all deployments in the test namespace to become `Available`
-    - Runs `blong-dev test`
-5. `*.test.ts` is the tap-wrapped entry point that loads only the server platform with the
-   `integration` intent and calls `platform.test(test)`.
-
-**`test/integration/` folder structure:**
-
-```text
-test/
-└── integration/
-    ├── kustomization.yaml     # Kustomize entry point
-    ├── mysql-deployment.yaml  # Back end resources (Namespace, Deployment, Service, …)
-    └── wait.sh                # Wait for readiness + run tap tests
-```
-
-**`test/integration/kustomization.yaml`:**
-
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-namespace: blong-integration
-resources:
-    - namespace.yaml
-    - mysql-deployment.yaml
-    - mongodb-deployment.yaml
-    - keycloak-deployment.yaml
-    - keycloak-init-job.yaml
-    - minio-deployment.yaml
-    - kafka-deployment.yaml
-    - vault-deployment.yaml
-```
+A suite whose adapters must talk to a real system — a database, a broker, a key store — is run with
+the `integration` intent, and CI provisions those systems into a temporary cluster before the tests
+start. The suite's own part of that is small: the tap entry point below, and a `ci-test` script that
+waits for the back ends it needs.
 
 **`test.ts`** — tap entry point for the integration run:
 
@@ -338,7 +295,7 @@ if (import.meta.main) {
 }
 ```
 
-**`package.json`** — hooks the wait script into the Rush `ci-test` command:
+**`package.json`** — hooks the readiness gate into the Rush `ci-test` command:
 
 ```json
 {
@@ -347,6 +304,9 @@ if (import.meta.main) {
     }
 }
 ```
+
+The other half — the manifests, the ports, the readiness gate and how to read a failure — is in
+[integration tests with real back ends](./test-int.md).
 
 **Realm configuration** — the `test` and `sim` layers are only activated under `adapter.xxx`:
 

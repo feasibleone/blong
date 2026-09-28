@@ -22,7 +22,10 @@ Keep the coarse gate and add a **narrowing layer** that the runtime applies for 
 - **Explicit rules carry the exceptions** — a single record, or a scope that must be forbidden even
   though the hierarchy grants it. They live in `access_acl`, keyed by principal, action and target.
 - **The verdict is computed in SQL at query time**, as a filter on the query itself. There is no
-  materialized effective table to invalidate, so a grant takes effect on the next read.
+  materialized _rule_ table to invalidate, so a new rule takes effect on the next read — but the
+  verdict itself reads the materialized graph (`access.effectiveScope` for a record's ancestors,
+  `access.effectiveRole` for a role or unit principal), so a change to the hierarchy still needs
+  `CALL access_pathRefresh()` before the narrowing reflects it.
 - **The guard is declared on the table** (`acl: {…}` in the schema) and implemented once in the
   runtime's generic CRUD, so every path — reads, writes and dropdowns, which are reads — obeys it
   without the handler doing anything.

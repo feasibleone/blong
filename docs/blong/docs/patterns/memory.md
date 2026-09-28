@@ -113,9 +113,11 @@ blong-dev memory format                 # re-wrap and re-render everything the C
 blong-dev memory index                  # regenerate the index blocks only
 ```
 
-`check` is the gate: it is wired into the pre-commit hook for staged memory files and runs in CI, so
-it also reports the markdown a hand-written body would break — a section heading in the middle of a
-body, a line over 100 columns, `<placeholder>` HTML, emphasis on a line of its own, a list or fence
-without a blank line around it. `blong-dev lint --files …` covers the same ground for any markdown
-file plus cspell, and is the command to run when you have touched a `.md` file outside the memory
-tree.
+`check` is the gate: `common/git-hooks/pre-commit` runs `blong-dev lint-staged`, which detects the
+staged files under `.github/memory/` and checks them, so a malformed entry fails your commit rather
+than a review comment. (The CI workflow delegates to a reusable Rush workflow and does not run this
+itself, so the hook is the gate a contributor actually meets.) It also reports the markdown a
+hand-written body would break — a section heading in the middle of a body, a line over 100 columns,
+`<placeholder>` HTML, emphasis on a line of its own, a list or fence without a blank line around it.
+`blong-dev lint --files …` covers the same ground for any markdown file plus cspell, and is the
+command to run when you have touched a `.md` file outside the memory tree.

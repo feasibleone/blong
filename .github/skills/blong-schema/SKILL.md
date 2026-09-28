@@ -48,14 +48,17 @@ Canonical framework rules + archetype: `.github/skills/_shared/conventions.md` �
 
 `adapter.knex` in `blong-gogo` = **declarative schema management** — declare the desired state
 (tables/constraints/procedures/seeds) as TypeBox + YAML; the framework reconciles the DB
-automatically (no migration files). Concerns run at different times:
+automatically (no migration files). What happens is decided by the merged config, not by a separate
+program: `default`, `prod`, `microservice` and `ci` declare no `schema` block, while `dev` and
+`upgrade` do — so a production pod binds without running DDL and a development run reconciles on
+every startup. Ordered within one `ready()` hook:
 
-| Concern               | When it runs                     | Enabled by               |
-| --------------------- | -------------------------------- | ------------------------ |
-| **Schema sync** (DDL) | Deployment-time job only         | `schema.sync: true`      |
-| **Seed data**         | Deployment-time job (after sync) | `schema.seed: true`      |
-| **Test seed data**    | Dev startup (after sync+seed)    | `schema.dbTest: true`    |
-| **Handler binding**   | Every startup                    | Always (if tables exist) |
+| Concern               | Enabled by            | Notes                                          |
+| --------------------- | --------------------- | ---------------------------------------------- |
+| **Schema sync** (DDL) | `schema.sync: true`   | Tables (by `order`) → constraints → procedures |
+| **Seed data**         | `schema.seed: true`   | Runs after sync                                |
+| **Test seed data**    | `schema.dbTest: true` | Runs after sync+seed (`dev`)                   |
+| **Handler binding**   | Every startup         | Always, whether or not `sync` is on            |
 
 ## Folder Structure
 

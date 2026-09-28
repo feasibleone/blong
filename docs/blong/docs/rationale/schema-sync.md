@@ -23,9 +23,12 @@ responsible for detecting drift between the current state and the desired state.
 ## The solution: declare, don't migrate
 
 The `adapter.knex` schema feature takes a different approach: **the TypeBox schema is the single
-source of truth**. A dedicated deployment job (with `schema.sync: true`) compares the desired state
-(declared in config) against the actual database state and reconciles the difference. Normal
-application instances never run DDL — they only bind synthetic handlers at startup. The developer
+source of truth**. When `schema.sync: true` is in the merged configuration, the adapter compares the
+desired state (declared in config) against the actual database state and reconciles the difference.
+The intended deployment is a dedicated short-lived job so that the structure exists before anything
+binds to it, and in that deployment a normal application instance runs no DDL at all — it only binds
+synthetic handlers at startup. The `dev` and `upgrade` intents declare their own `schema` block, so
+a development run reconciles too: the split is configuration, not a second program. The developer
 never writes `CREATE TABLE` or `ALTER TABLE` SQL — they only maintain a TypeBox object definition.
 The whole mechanism is a comparison that runs one way, with the declaration as the only thing a
 developer edits:
@@ -62,9 +65,12 @@ Because each realm declares its own tables independently, a suite composed of mu
 naturally builds up the full database schema from its parts. There is no central migration registry
 to update — the adapter's `ready()` hook handles each realm's tables idempotently.
 
-This makes it straightforward to assemble applications from independently-versioned packages. A
-`blong-login` realm contributes its `user` and `session` tables; a `payment` realm contributes its
-`transaction` table; both land in the same database without coordination overhead.
+This makes it straightforward to assemble applications from independently-versioned packages.
+`blong-access` declares `access_user` and `access_session`; `blong-party` declares `party_person`
+and the rest of the party tables; they land in the same database without coordination overhead. Each
+realm names its own tables after itself, which is why the resource graph an access rule points at
+and the person a profile describes can be reconciled in one schema without either realm owning the
+other's table.
 
 ### 3. The database looks like a normal async function call
 
@@ -88,16 +94,20 @@ procedure in the database. This means:
   test assertions whether the underlying implementation is a stored procedure or a TypeScript
   function.
 
-### 4. Auto-bound CRUD removes boilerplate for common operations
+### 4. Routed CRUD removes boilerplate for common operations
 
-Setting `namespace: 'sql'` and declaring a table automatically generates six standard CRUD handlers
-(`Get`, `Find`, `Add`, `Edit`, `Remove`, `Merge`) without any handler files. This satisfies the RAD
-principle: the default gives you everything for a straightforward table, and you override only the
-operations that need custom logic.
+Setting `namespace: 'sql'` and declaring a table answers nine standard methods — `get`, `find`,
+`add`, `edit`, `remove`, `merge`, and the bulk `insert`, `update`, `delete` — without any handler
+files. This satisfies the RAD principle: the default gives you everything for a straightforward
+table, and you override only the operations that need custom logic.
 
-The override mechanism is natural: a handler file with the matching name (`sqlItemAdd.ts`) takes
-precedence over the synthetic handler, and can delegate back to the generated version via
-`super.sqlItemAdd(params, $meta)` if it only needs to wrap or extend the default behaviour.
+The override mechanism differs from a stored procedure's, and the difference is worth knowing. A
+procedure is a synthetic handler attached to the port, so an override delegates with
+`super.sqlItemListActive(params, $meta)`. Routed CRUD has no handler object to sit beneath: the call
+falls through to the adapter's generic `exec`, so a handler named after the method (`sql.item.add` →
+`sqlItemAdd.ts`) takes precedence simply by existing, and delegates the standard work with
+`super.exec(params, $meta)` — which is what `realm/blong-access/adapter/db/accessUserEdit.ts` does
+when it persists the graph edges a user row implies on top of the ordinary update.
 
 ### 5. Diff-only procedure sync avoids unnecessary work
 

@@ -1,0 +1,42 @@
+# Declared so the blog resolves the tags its posts use inline. One entry per arc, plus `blong`
+# itself: Docusaurus warns on every tag it cannot resolve, and the earliest post already uses
+# `blong` inline.
+blong:
+  label: Blong
+  permalink: /blong
+  description: The framework itself — how it is shaped and why.
+
+design:
+  label: Design
+  permalink: /design
+  description: The shape of the framework — naming, layers, config and errors.
+
+observability:
+  label: Observability
+  permalink: /observability
+  description: Watching a running system — logs, graphs and sequence diagrams.
+
+testing:
+  label: Testing
+  permalink: /testing
+  description: Tests that find their own parallelism, prove themselves and report where they got to.
+
+ui:
+  label: UI
+  permalink: /ui
+  description: Generated pages, widgets, themes and portals.
+
+data:
+  label: Data
+  permalink: /data
+  description: Schema, access and the domain graph.
+
+tooling:
+  label: Tooling
+  permalink: /tooling
+  description: The commands and generators that build Blong itself.
+
+ci:
+  label: CI
+  permalink: /ci
+  description: The pipeline that gates and releases the framework.

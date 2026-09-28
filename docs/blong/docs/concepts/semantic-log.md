@@ -1,12 +1,16 @@
 # Semantic Log
 
-**Semantic logging** keeps one readable line on stdout and gives **every record a locally-minted
-id**, so a human or an agent can reach the full detail on demand instead of grepping. It lives in
-`core/semantic-log/`.
+**Semantic logging** keeps one readable line on stdout and mints **a local id for every record**, so
+a human or an agent can reach the full detail on demand instead of grepping. Two qualifications are
+worth having up front, because the shorter claim was the one written here first: the id is printed
+on the line (as `semlog://r/<ulid>`) when the line is folded rather than verbose — which is the case
+for an error, a withholding record or a payload ref — and a record is resolvable by its own id only
+when it earned its own cache entry rather than being folded into its shape. The **template** ref is
+the one every line carries. It lives in `core/semantic-log/`.
 
 ```mermaid
 flowchart TD
-    ENTRY["the entry participant mints the identity<br/>and attaches the business intent, once"] --> EXEC["a flow execution —<br/>a caller-minted ULID"]
+    ENTRY["the entry participant attaches the business intent<br/>and mints the flow execution id, once"] --> EXEC["a flow execution —<br/>a caller-minted ULID"]
     EXEC --> LEG["a leg — one call, with<br/>from, to and its position"]
     LEG --> PHASE["the caller writes start,<br/>then end or error;<br/>the receiver writes received,<br/>then answered"]
     PHASE --> REC["a record, naming the record<br/>that caused it"]
@@ -17,10 +21,18 @@ flowchart TD
 
 It goes beyond ordinary logging in six ways.
 
-- **Identity comes from structure, not text.** Timestamps, ids, IP addresses, numbers and home paths
-  are masked, and the masked message is hashed — so two occurrences of one code path share one
-  **template** however much their values differ. The **template registry**, not the stream of
-  records, is the durable artifact.
+- **Identity comes from structure, not text.** Timestamps, numbers, IP addresses, home paths, and
+  ids in the ULID and UUID shapes are masked, and the masked message is hashed — so two occurrences
+  of one code path share one **template** however much those values differ. The **template
+  registry**, not the stream of records, is the durable artifact.
+
+    The masking is a set of patterns rather than a parser, and the honest limit is visible at the
+    edges: a 16-hex id is not one of the recognised shapes (it masks its leading digits and leaves
+    the rest), a version token like `v2` survives into the template, and a route such as `/users/42`
+    is masked as a home path because the pattern is generic. A template is therefore exact about the
+    values it recognises and approximate about the rest — which is why the registry is reviewed by
+    exemplars rather than trusted blindly.
+
 - **Causal lineage and intent travel with the request.** A **trace** id follows one request across
   services; a **flow execution** id names exactly one execution of a named process, and the flow's
   progress through its steps is recorded as it goes; each record points at the record that caused
@@ -42,12 +54,16 @@ It goes beyond ordinary logging in six ways.
   the moments as notes and the alternatives as `alt` blocks
   ([R26, R27](../rationale/semantic-log.md)).
 
-The cluster service is optional. An emitter writes readable lines and retains every record in a
-local cache with no service anywhere, and ships the same records to one when configured. It keeps
-**two** things durably — the template registry and the calls observed per flow kind — and treats
-records as evidence it holds for a while rather than a corpus it keeps: what it can _search_ is the
-templates and the few records per template it is currently holding, so "find me the record that
-looked like this" is a question about now, not about history.
+The cluster service is optional. An emitter writes readable lines and keeps a local cache with no
+service anywhere, and ships the same records to one when configured — but the cache holds one entry
+per **shape**, with a count, not one per record: an individual entry is written only when folding it
+into its shape would hide something (a withheld payload, or an error). What the service adds is the
+registry, the anomaly detectors, the flow ledger and its diagrams, search and the digest; none of it
+is required to read a line or resolve a ref against the local store. It keeps **two** things durably
+— the template registry and the calls observed per flow kind — and treats records as evidence it
+holds for a while rather than a corpus it keeps: what it can _search_ is the templates and the few
+records per template it is currently holding, so "find me the record that looked like this" is a
+question about now, not about history.
 
 **A reader sees it as pages.** `core/blong-realm` is the framework realm that asks the service what
 it observed and draws the answer: the flows and the diagram of one execution, the templates,

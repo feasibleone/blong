@@ -85,20 +85,20 @@ files are additive and idempotent.
 
 ## 4. Role bits
 
-| Situation                                | Behaviour                                                    | Error               |
-| ---------------------------------------- | ------------------------------------------------------------ | ------------------- |
-| No bit given                             | allocated as `MAX(roleBit) + 1`; a freed bit is never reused | —                   |
-| Bit given and free                       | used                                                         | —                   |
-| Bit given and owned by another role      | refused                                                      | `role.bitTaken`     |
-| Bit that is not a number in 0–1023       | refused                                                      | `role.bitInvalid`   |
-| Edit that changes an existing role's bit | refused; the column is never written                         | `role.bitImmutable` |
+| Situation                                | Behaviour                                                                                  | Error               |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------- |
+| No bit given                             | allocated as `MAX(roleBit) + 1`; a freed bit is reused only when it was the highest in use | —                   |
+| Bit given and free                       | used                                                                                       | —                   |
+| Bit given and owned by another role      | refused                                                                                    | `role.bitTaken`     |
+| Bit that is not a number in 0–1023       | refused                                                                                    | `role.bitInvalid`   |
+| Edit that changes an existing role's bit | refused; the column is never written                                                       | `role.bitImmutable` |
 
 All five rows are one decision, taken in one place:
 
 ```mermaid
 flowchart TD
     A["a role is created or edited"] --> B{"was a bit submitted?"}
-    B -- "no" --> C["allocate MAX(roleBit) + 1 —<br/>a freed bit is never reused"]
+    B -- "no" --> C["allocate MAX(roleBit) + 1 —<br/>reused only if it was the highest"]
     B -- "yes" --> D{"is it a number in 0-1023?"}
     D -- "no" --> E["role.bitInvalid"]
     D -- "yes" --> F{"does another role own it?"}

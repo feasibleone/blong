@@ -25,6 +25,11 @@ flowchart TD
     J --> I
 ```
 
+The last step is the template renderer: every string in the merged configuration is rendered as a
+JavaScript template literal, so a configuration value can refer to another — `${host}`,
+`${db.connection.port}` — and the master key's secrets are decrypted there. That renderer comes in a
+trusted and a safe mode; see the [template pattern](./template.md).
+
 Environment variables are not a general merge layer in that chain: `BLONG_PLATFORM`, `BLONG_METHOD`
 and `BLONG_ENV` select the platform, the method and the intent list, and `BLONG_MASTER_KEY` switches
 on the template render. A component that needs a secret reads its own key instead — the gateway

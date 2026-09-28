@@ -23,15 +23,18 @@ export default adapter(({schema}) => ({
             knex: {
                 connection: {database: 'demo', user: 'app', password: 'secret'},
             },
-            namespace: 'sql', // prefix for auto-bound CRUD and procedure handlers
+            namespace: 'sql', // prefix for the routed CRUD methods and procedure handlers
             imports: ['mysql.sql'], // handler group name for dispatch routing
 
             schema: {
-                sync: true, // run DDL (deployment job only, not normal startup)
+                sync: true, // run DDL — the deploy job, and a dev or upgrade run
 
                 tables: {
-                    // SQL table name → ISchemaTable spec (or plain TObject)
-                    schema_item: {
+                    // table name → ISchemaTable spec (or plain TObject). The name is what the
+                    // routed methods resolve to: the CRUD fallback derives the table from the
+                    // method, `sql.item.get` → `sql_item`, so a key of `schema_item` under the
+                    // `sql` namespace would never be found.
+                    sql_item: {
                         definition: schema.mysql.item, // TypeBox TObject
                         order: 1, // creation order (FK dependencies)
                         dropColumns: true, // allow dropping removed columns
@@ -93,10 +96,12 @@ export default schema(async ({lib: {type}}) => ({
 **Column rules:**
 
 - **Property names** are used as SQL column names verbatim (camelCase is preserved).
-- Any property whose name ends in `Id` and has type `Type.Integer()` is created as an
-  `AUTO_INCREMENT` primary key column.
-- Any property whose name ends in `Id` and has any other type (e.g. `Type.String()`) is treated as a
-  plain column — no auto-increment.
+- A column becomes a primary key by **marker**, not by name: `type.increment()` carries
+  `default: 'auto-increment'` and becomes a `BIGINT AUTO_INCREMENT`, `type.ulid()` carries
+  `default: 'ulid'` and becomes `BINARY(16)`, and `type.uuid()` carries `default: 'uuid'` and
+  becomes a binary UUID — the last two are declared `PRIMARY KEY` by the adapter itself. A plain
+  `Type.Integer()` named `itemId` is an ordinary `INT`. A composite primary key, or a single-column
+  key on a column that carries no marker, comes from the `constraints` second pass instead.
 - Properties listed in the schema's `required` array generate `NOT NULL` columns; all others are
   nullable.
 - Use `dropColumns: true` in the `ISchemaTable` spec to let the adapter remove columns that are no
@@ -113,19 +118,26 @@ queryBuilder produced by the shared `srv.db` adapter — see
 
 ### TypeBox → SQL type mapping
 
-| TypeBox type                         | SQL column type                                  |
-| ------------------------------------ | ------------------------------------------------ |
-| `Type.Integer()`                     | `INT` / `AUTO_INCREMENT` (if name ends `Id`)     |
-| `Type.String({maxLength: N≤255})`    | `VARCHAR(N)`                                     |
-| `Type.String({maxLength: N>255})`    | `TEXT`                                           |
-| `Type.String()` (no maxLength)       | `VARCHAR(255)` (default when no maxLength given) |
-| `Type.String({format: 'date-time'})` | `DATETIME`                                       |
-| `Type.String({format: 'date'})`      | `DATE`                                           |
-| `Type.String({format: 'uuid'})`      | `UUID`                                           |
-| `Type.Boolean()`                     | `BOOLEAN`                                        |
-| `Type.Number()`                      | `DOUBLE`                                         |
-| `Type.Unknown()` / `Type.Object()`   | `JSON`                                           |
-| `Type.Optional(T)`                   | nullable column                                  |
+| TypeBox type                                     | SQL column type                                       |
+| ------------------------------------------------ | ----------------------------------------------------- |
+| `type.increment()` — `default: 'auto-increment'` | `BIGINT AUTO_INCREMENT` (the key is the marker)       |
+| `type.ulid()` — `default: 'ulid'`                | `BINARY(16)` `PRIMARY KEY`                            |
+| `type.uuid()` — `default: 'uuid'`                | binary `UUID` `PRIMARY KEY` (`useBinaryUuid`)         |
+| `Type.Integer()`                                 | `INT`                                                 |
+| `Type.BigInt()`                                  | `BIGINT UNSIGNED`                                     |
+| `Type.Number()`                                  | `DOUBLE`                                              |
+| `Type.String({maxLength: N≤255})`                | `VARCHAR(N)`                                          |
+| `Type.String({maxLength: N>255})`                | `TEXT`                                                |
+| `Type.String()` (no maxLength)                   | `VARCHAR(255)` (default when no maxLength given)      |
+| `Type.String({format: 'date-time'})`             | `DATETIME`                                            |
+| `Type.String({format: 'date'})`                  | `DATE`                                                |
+| `Type.String({format: 'time'})`                  | `TIME`                                                |
+| `Type.String({format: 'uuid'})`                  | binary `UUID`                                         |
+| `Type.String({format: 'uid'})`                   | `BINARY(16)` (`type.uidNull()` / `uidNotNull()`)      |
+| `Type.Boolean()`                                 | `BOOLEAN`                                             |
+| `Type.Object()` / `Type.Array()`                 | `JSON`                                                |
+| `Type.Unknown()`                                 | `TEXT` — no `type` to map, so it falls to the default |
+| `Type.Optional(T)` / `Type.Null()` in a union    | nullable column                                       |
 
 ---
 
@@ -327,12 +339,13 @@ passes `{itemStatus: value}`.
 
 ---
 
-## Auto-bound CRUD handlers
+## Routed CRUD methods
 
-When `namespace` is set, the adapter generates six CRUD handlers for every declared table, stored as
-synthetic own-property handlers (same mechanism as procedures):
+When `namespace` is set, every declared table answers **nine** methods — `get`, `find`, `add`,
+`edit`, `remove`, `merge`, and the bulk `insert`, `update`, `delete` — resolved as
+`<namespace>.<table>.<method>`:
 
-| Handler name pattern  | Example (`namespace=sql`, `table=item`) |
+| Method name pattern   | Example (`namespace=sql`, `table=item`) |
 | --------------------- | --------------------------------------- |
 | `${ns}${Table}Get`    | `sqlItemGet`                            |
 | `${ns}${Table}Find`   | `sqlItemFind`                           |
@@ -341,8 +354,12 @@ synthetic own-property handlers (same mechanism as procedures):
 | `${ns}${Table}Remove` | `sqlItemRemove`                         |
 | `${ns}${Table}Merge`  | `sqlItemMerge`                          |
 
-These are bound **automatically** — no handler files are needed. To use them from a test or
-orchestrator, import them by name in the `handler:{}` proxy:
+There is no handler object per table: the call falls through to the adapter's generic `exec`, which
+derives the table name from the method and runs the query. That is why a declared table needs no
+handler files, why the method list above is the whole surface, and why the way to change one
+operation is a handler named after the method that delegates the standard work to `super.exec`.
+
+To use them from a test or orchestrator, name them in the `handler:{}` proxy:
 
 ```typescript
 handler: {
@@ -395,17 +412,22 @@ framework stores synthetic handlers under both keys to support this pattern.
 
 ## Explicit schema helper methods
 
-The adapter also exposes schema operations as callable handler methods for cases where explicit
-imperative control is needed (e.g., integration test cleanup or one-off migrations):
+The adapter exposes four schema operations as methods on the port itself — these are what the
+`ready()` hook calls, and they are reachable from a handler as `this.<name>` when imperative control
+is wanted (integration-test cleanup, a one-off):
 
-| Handler                  | Description                                                 |
-| ------------------------ | ----------------------------------------------------------- |
-| `sqlSchemaTableSync`     | Create or alter a specific table to match a TypeBox schema  |
-| `sqlSchemaTableDrop`     | Drop a specific table                                       |
-| `sqlSchemaProcedureSync` | Create / replace a list of stored procedures                |
-| `sqlSchemaProcedureBind` | Discover all procedures and return them as handler closures |
+| Adapter method        | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `schemaTableSync`     | Create or alter one table to match a TypeBox schema (`table, schema, opt`) |
+| `schemaProcedureSync` | Create or replace a list of stored procedures                              |
+| `schemaProcedureBind` | Discover procedures in the database and return callables + schemas         |
+| `schemaHandlersBind`  | Attach a group's handlers to the port                                      |
 
-For normal development the declarative config path is preferred over these helpers.
+`test/blong-int-adapter/mysql/adapter/sql/` shows how a realm wraps one: `sqlSchemaTableSync` is a
+handler that calls `this.schemaTableSync('sql_item', schema.mysql.item, {dropColumns})`, and
+`sqlSchemaTableDrop` is a handler that drops the tables through the query builder directly — there
+is no `schemaTableDrop` on the adapter, because dropping is a test concern rather than a deployment
+one. The declarative configuration path remains the preferred route over any of these.
 
 ---
 

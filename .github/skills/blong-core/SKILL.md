@@ -29,7 +29,11 @@ description:
 - **Use `type.uuid()` for resource PKs** — `increment`/`ulid` PKs don't get auto `core_resource`
   creation.
 - **Seed the type alias before instances** (`0-`-prefixed alias file sorts first).
-- **Every `resourceType` seed row needs a `name`** — it's the merge/dedup key → `resourceName`.
+- **Every `resourceType` seed row needs a `name`** — it becomes `resourceName`, and `merge`/`ensure`
+  look a resource up by `(typeAlias, resourceName)`. That pair is the _logical_ identity, not a
+  database constraint: `resourceName` carries only a non-unique index, so two writers that bypass
+  `merge` (a plain `add` mints `${subject}.${object}.${columnName}` when no name is given) can leave
+  duplicates in a type. Keep writes on `merge`/`ensure` if you want identity to hold.
 - **Resource relationships often live in `core.triple`, not FK columns** — mixing breaks
   materialized-path queries.
 - **Refresh `core.path` after RBAC graph edits** (`CALL access_pathRefresh()`) or effective queries
@@ -101,8 +105,11 @@ provide and the _extension points_ they expose.
 
 ## The core data model (`blong-core`)
 
-`blong-core` is intentionally **just schema** — it defines tables and seeds type aliases, and ships
-**no handlers** of its own. CRUD is auto-provided by the runtime (see next section).
+`blong-core` is **almost** just schema — it defines tables and seeds type aliases, and CRUD for them
+is auto-provided by the runtime (see next section). What it does ship is the graph's two non-generic
+operations, in `adapter/db/`: `core.resource.ensure` (find-or-create a resource by type and name,
+healing a resource whose entity row is missing) and `core.triple.merge` (insert edges idempotently,
+optionally refreshing the materialized paths). No orchestrators.
 
 | Table              | Purpose                                                                                                                                                                                                       |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -113,10 +120,10 @@ provide and the _extension points_ they expose.
 | `core.translation` | i18n display names per resource: `(resourceId, languageCode, translatedName)`.                                                                                                                                |
 | `core.path`        | **Materialized reachability**: `(originId, destinationId, pathType, pathDepth)`. Precomputed "can X reach Y through predicate-chain P" — makes deep RBAC lookups fast (no recursive traversal at query time). |
 
-Type aliases are seeded via `meta/db/0-coreTypeMerge.yaml`:
+Type aliases are seeded via `meta/db/coreTypeMerge.yaml`:
 
 ```yaml
-# realm/blong-core/meta/db/0-coreTypeMerge.yaml
+# realm/blong-core/meta/db/coreTypeMerge.yaml
 key: typeAlias
 type:
     - typeAlias: core.currency
@@ -256,10 +263,12 @@ basic CRUD — only for custom logic (e.g. access's authorization merge).
 Party has **no** `organizationId`/`parentUnitId` FK columns and no member join tables. All hierarchy
 and membership relationships are `core.triple` edges:
 
-| Predicate   | Meaning                                                                              |
-| ----------- | ------------------------------------------------------------------------------------ |
-| `belongsTo` | `unit → organization` (unit belongs to an org); `person → unit` (person is a member) |
-| `isPartOf`  | `unit → parent unit` (tree hierarchy — child under parent)                           |
+| Predicate    | Meaning                                                                                  |
+| ------------ | ---------------------------------------------------------------------------------------- |
+| `belongsTo`  | `unit → organization` (unit belongs to an org); `person → unit` (person is a member)     |
+| `isPartOf`   | `unit → parent unit` (tree hierarchy — child under parent)                               |
+| `hasProfile` | `user → person` — the account's human profile (written at registration)                  |
+| `hasScope`   | `<principal> → <scope>` — an explicit organizational grant, read by the record-level ACL |
 
 This is deliberate: because access's RBAC traversal already understands `belongsTo` on
 `core_triple`, a person's unit membership feeds straight into role/action resolution
@@ -269,7 +278,8 @@ This is deliberate: because access's RBAC traversal already understands `belongs
 
 - **New party type** (e.g. `party.vendor`): follow the shared-PK pattern above — add the entity with
   PK = `type.uuid()` + FK to `core.resource.resourceId`, register the table (order > 300), seed the
-  alias in `0-coreTypeMerge.yaml`, and (optionally) seed instances with `resourceType`.
+  alias in `meta/db/coreTypeMerge.yaml` (or a realm's own `0-`-prefixed seed), and (optionally) seed
+  instances with `resourceType`.
 - **New sub-entity** (like contact/address/identifier — details attached to a party): plain table
   with an auto-increment PK and an FK column (`partyResourceId`) to `core.resource.resourceId`.
   These are **not** resources themselves — they hang off a party resource.
@@ -287,8 +297,10 @@ This is deliberate: because access's RBAC traversal already understands `belongs
 - CRUD: `party.person.add/find/get/edit/remove/merge` (same for organization/unit).
 - Query membership/hierarchy: query `core.triple` with `predicateName = 'belongsTo' | 'isPartOf'`
   (see Querying the graph below).
-- Contact/address/identifier: currently **schema-only** in the realm — no handler wiring/CRUD. If a
-  feature needs them, extend the realm to expose them.
+- Contact/address/identifier: registered as declared tables (`meta/db/db.ts`), so the generic CRUD
+  reaches them, but the realm ships no handler files and no browser models for them. They are
+  sub-entities of a party rather than resources of their own, and nothing in the suite drives them
+  yet — treat their method surface as unexercised.
 
 ---
 
@@ -329,7 +341,8 @@ Two SQL views + one stored procedure materialize reachability into `core.path`:
 - `access_effectiveActionPath` — `user → role → capability → action` (depth 3) and
   `user → unit → role → capability → action` (depth 4).
 - `access_pathRefresh` — deletes and rebuilds `core_path` for `pathType` in (`access.effectiveRole`,
-  `access.effectiveAction`).
+  `access.effectiveAction`, `access.effectiveScope` — the last one a recursive `isPartOf` ancestor
+  walk).
 
 Authorization queries read the **materialized** `core_path` (a single indexed lookup on `originId` +
 `pathType`), never recursive traversal.### Record-level ACL

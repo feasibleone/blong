@@ -98,6 +98,14 @@ adapter(({config}) => {
 The rule: **destructure intermediate config objects freely at startup; read leaf (primitive) values
 only at call time**.
 
+**What the code does today.** That rule holds for code reading the runtime's own configuration
+proxy. It does _not_ hold for the `config` argument a handler or a layer receives:
+`mergeLayerConfig` merges that component's slice into a plain object before handing it over, so the
+argument is a snapshot taken when the layer was assembled. A handler reading `config.timeout` inside
+its function body therefore sees the value from load time however it reached it. A live
+handler-facing config is unimplemented; what the reload reaches is the runtime's configuration proxy
+and the components that implement the `configChanged` hook.
+
 ### ConfigRuntime
 
 A `ConfigRuntime` class owns the full config lifecycle:
@@ -108,20 +116,23 @@ A `ConfigRuntime` class owns the full config lifecycle:
 | Merge          | Apply intent-ordered merge (`default` + active intents)    |
 | Proxy exposure | Return a live proxy object wrapping the merged snapshot    |
 | Diff           | Compute a structural diff between old and new snapshots    |
-| Subscribe      | Allow adapters to register `onChange(diff)` callbacks      |
+| Subscribe      | A `subscribe()` hook for `(diff, next, prev)` callbacks    |
 | Reload         | Re-run load+merge, compute diff, notify subscribers        |
 
-`ConfigRuntime` is instantiated once at suite startup and passed into the `Watch` instance,
-replacing the current ad hoc merge calls in `load.ts` and `Watch._loadHandlers`.
+`ConfigRuntime` is created once, at the root of the load, and only when the caller passed its parent
+config by name; `Watch` uses it for the reload path. The hook a component implements is
+`configChanged(diff, config)` on the port, not `onChange`.
 
 ### Proxy contract
 
 The proxy wraps the mutable snapshot object. When config reloads:
 
-1. The snapshot object is mutated in place (or replaced with prototype swap).
-2. Existing proxy references held by adapters/handlers continue to resolve against the new backing
-   data.
-3. No action is required from handler code — it transparently reads the latest values.
+1. The new snapshot is built completely, diffed, and installed by a single reference assignment, so
+   no reader can observe a half-merged object.
+2. Path-based proxies re-read the backing cell on every access, so a reference taken before the
+   reload resolves against the new data — which is what the proxy tests assert.
+3. A component is notified through `configChanged`, or — with no such hook — its port is stopped and
+   started again.
 
 ### Adapter config-change hook
 
@@ -160,6 +171,22 @@ async configChanged(diff, next, _prev) {
 The hook only reconstructs the connection pool when the `knex` sub-key changed. Unrelated config
 changes do not interrupt existing queries.
 
+### Turning the watcher on
+
+Hot reload is off unless a deployment asks for it. `watch.enabled` defaults to `false`, no intent
+turns it on — not `dev`, not `integration` — and the `cli` intent disables it explicitly, so a
+command-line run never reloads anything.
+
+```yaml
+# .blong_devrc or the suite's own rc file
+watch:
+    enabled: true
+```
+
+Only the files `blong-config` resolved are watched: the shared rc file, the suite's rc file and any
+file named with `--config=`. A change to any of them re-runs the merge; a change to a handler or a
+layer file takes the ordinary hot-reload path instead.
+
 ### Reload pipeline (step by step)
 
 1. **File change detected** (chokidar, existing Watch logic).
@@ -172,35 +199,40 @@ changes do not interrupt existing queries.
 
 ### Structured log events
 
-Every reload emits a log entry with:
+Every reload emits a log entry with the changed keys — and, at present, only those:
 
 ```json
 {
     "$meta": {"mtid": "event", "method": "watch.config.reload"},
-    "changed": ["db.knex.connection.host"],
-    "portsAffected": ["core.db"],
-    "action": "configChanged"
+    "changed": ["db.knex.connection.host"]
 }
 ```
 
+`portsAffected` and `action` were planned and are not emitted. The entry is written before the
+empty-diff early return, so a reload whose diff is empty still produces one.
+
 ## Impact on existing code
 
-| Area                | Impact                                                                               |
-| ------------------- | ------------------------------------------------------------------------------------ |
-| `blong-config`      | No breaking changes; `ConfigRuntime` wraps it                                        |
-| `load.ts`           | Merge orchestration delegates to `ConfigRuntime`                                     |
-| `Watch.ts`          | Config-file branch calls `ConfigRuntime.reload()` instead of touching `watch.log.ts` |
-| Adapters (existing) | No change required; fallback is a full adapter restart                               |
-| Adapters (opt-in)   | Can implement `configChanged` for zero-downtime reconfiguration                      |
-| Handler code        | No change required; leaf reads inside handlers are already call-time                 |
+| Area                | Impact                                                                                        |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| `blong-config`      | No breaking changes; `ConfigRuntime` wraps it                                                 |
+| `load.ts`           | Merge orchestration delegates to `ConfigRuntime`                                              |
+| `Watch.ts`          | Config-file branch calls `ConfigRuntime.reload()` instead of touching `watch.log.ts`          |
+| Adapters (existing) | No change required; fallback is a full adapter restart                                        |
+| Adapters (opt-in)   | Can implement `configChanged` for zero-downtime reconfiguration                               |
+| Handler code        | No change required, but no handler sees a reloaded value: its `config` argument is a snapshot |
 
 ## Developer Rules (Summary)
 
-1. **Do** read leaf config values inside handler/operation functions.
-2. **Do** destructure intermediate config objects at startup (e.g., `const {db} = config`).
-3. **Don't** cache leaf primitives at startup if they should update on hot reload.
-4. **Adapters** that hold stateful connections should implement `configChanged` to avoid unnecessary
-   downtime.
+1. **Do** implement `configChanged` on a component whose connection must survive a reload; without
+   it the port is stopped and started, and in-flight requests to it can fail.
+2. **Do** read leaf config values inside a function body in the runtime's own code, where the proxy
+   is what was passed; in a handler the same read is a snapshot either way.
+3. **Don't** expect a reload to reach handler code, or to re-resolve the intent list, or to override
+   a `--key=value` from the command line — the intent blocks are frozen at start and argv is
+   re-applied last on every merge.
+4. **Don't** rely on a reload for a key that no port owns: a log-level change produces a diff and no
+   action at all.
 
 **Real example** (`core/config-hot-reload/configReload/server/test/test/testConfigGet.ts`):
 
@@ -237,8 +269,10 @@ export default handler(({lib: {group}, handler: {configGet}}) => ({
 
 ## Config Access Patterns in Depth
 
-The proxy enforces one rule: **stop destructuring at the object level**. Leaf (primitive) values
-must only be read inside the handler body, not in the factory argument.
+These patterns describe the runtime's configuration proxy, and the caveat below used to be the other
+way round. Because the proxy is path-based, a captured sub-object is _not_ stale when the backing
+store is replaced; what makes all three patterns equivalent today is the snapshot the handler's
+`config` argument already is — see the note under the rule above.
 
 ### Pattern 1 — Root proxy access ✅ (always safe)
 
@@ -271,10 +305,8 @@ export default handler(({config: {theme}}) => ({
 }));
 ```
 
-> **Caveat:** Partial destructuring captures the sub-object proxy at factory time. If the backing
-> object reference is _replaced_ on reload (rather than mutated in place), the captured sub-proxy
-> may become stale. Root proxy access (Pattern 1) is always the safest choice and is preferred when
-> in doubt.
+> **Note:** a captured sub-object is a path-based proxy, so it follows a replaced backing store.
+> `ConfigRuntime.test.ts` asserts exactly that.
 
 ### Pattern 3 — Full destructuring ❌ (never safe for hot-reload values)
 
@@ -304,8 +336,10 @@ export default handler(
 
 ## PoC Suite
 
-A dedicated PoC suite (`core/config-hot-reload`) demonstrates and validates the concept end-to-end.
-The `configReload` realm contains:
+A dedicated PoC suite (`core/config-hot-reload`) exercises the reload path. Its tests assert the
+configured defaults rather than a reload: no test in the repository asserts that `configChanged` is
+called, that an unrelated key leaves a port alone, or that a handler observes a new value. The
+`configReload` realm contains:
 
 - `orchestrator/config/configGet.ts` — side-by-side comparison of root access and partial
   destructuring patterns.

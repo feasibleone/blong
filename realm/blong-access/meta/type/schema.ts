@@ -310,15 +310,20 @@ export default schema(async ({lib: {type}}) => ({
      *
      * One row grants or refuses one action on one target for one principal:
      *
-     * - `principalId` — a user, role, unit or capability resource.  A row on the
+     * - `principalId` — a user, role or unit resource.  A row on the
      *   **user** is an *explicit* grant; a row on a role/unit the user inherits is
-     *   the *implicit* half of the ACL (the hierarchy-derived grant).
+     *   the *implicit* half of the ACL (the hierarchy-derived grant).  A capability
+     *   is not a principal: the filter resolves the caller, their effective roles
+     *   and their units, so a capability rule would match nobody.
      * - `actionId` — the `access_action` resource, i.e. the guarded method.
-     * - `targetKind` — `record` (a single row of the guarded table) or `scope`
+     * - `targetKind` — `record` (a single row of the guarded table), `scope`
      *   (every record linked to that scope through the table's declared scope
-     *   predicates, e.g. `belongsTo` / `isPartOf`).
-     * - `effect` — `allow` / `deny`.  **A deny always wins**, which is how an
-     *   implicitly enabled record is explicitly forbidden.
+     *   predicates, e.g. `belongsTo` / `isPartOf`), or `all` (the wildcard target).
+     * - `effect` — `allow` / `deny`.  A deny wins over the grant, except on a
+     *   record that participates in no scope, where the unscoped term short-circuits
+     *   the whole guard (the same property that makes `mode: 'scoped'` safe to opt
+     *   into).  A deny is the way an implicitly enabled record is explicitly
+     *   forbidden.
      *
      * The effective ACL is evaluated in SQL at query time (no materialized
      * effective table) — see `ISchemaTable.acl` and the adapter's `acl` helpers.

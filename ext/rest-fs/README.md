@@ -1,6 +1,8 @@
 # REST Filesystem VS Code Extension
 
-A VS Code extension that implements a custom filesystem backed by REST API. This allows you to browse, read, write, and manage files and directories on a remote server through a standard REST interface.
+A VS Code extension that implements a custom filesystem backed by REST API. This allows you to
+browse, read, write, and manage files and directories on a remote server through a standard REST
+interface.
 
 ## Features
 
@@ -21,18 +23,22 @@ Configure the REST API endpoint through VS Code settings:
 
 ```json
 {
-  "restfs": {
-    "workspace": {
-      "example": {
-          "baseUrl": "http://localhost:3000/api/fs",
-          "headers": {
-              "Authorization": "Basic ..."
-          }
-      }
+    "restfs": {
+        "workspace": {
+            "example": {
+                "baseUrl": "http://localhost:3000/api/fs",
+                "headers": {
+                    "Authorization": "Bearer <token>"
+                }
+            }
+        }
     }
-  }
 }
 ```
+
+The server component that answers these routes accepts `auth: false` or a bearer token
+(`auth: 'jwt'`) — not HTTP Basic — and its shell route always requires the token. `baseUrl` ends in
+the server's `routePrefix`, `/api/fs` by default.
 
 Or use the command palette:
 
@@ -79,8 +85,8 @@ Lists the contents of a directory.
 
 ```json
 [
-  { "name": "file.txt", "type": "file" },
-  { "name": "subfolder", "type": "directory" }
+    {"name": "file.txt", "type": "file"},
+    {"name": "subfolder", "type": "directory"}
 ]
 ```
 
@@ -111,9 +117,9 @@ Renames or moves a file/directory.
 
 ```json
 {
-  "oldPath": "/old/path",
-  "newPath": "/new/path",
-  "overwrite": true
+    "oldPath": "/old/path",
+    "newPath": "/new/path",
+    "overwrite": true
 }
 ```
 
@@ -125,15 +131,16 @@ Copies a file or directory.
 
 ```json
 {
-  "source": "/source/path",
-  "destination": "/dest/path",
-  "overwrite": true
+    "source": "/source/path",
+    "destination": "/dest/path",
+    "overwrite": true
 }
 ```
 
 ## Example REST Server
 
-See the [example-server/](example-server/) directory for a sample Node.js REST API server implementation that you can use for testing.
+See the [example-server/](example-server/) directory for a sample Node.js REST API server
+implementation that you can use for testing.
 
 ## Development
 

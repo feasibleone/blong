@@ -61,16 +61,17 @@ flowchart TD
 
 | Intent                 | Primary effect                                                                                                                                       | Process lifetime                                             |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `dev`                  | Verbose logging, relaxed config, hot-reload                                                                                                          | Long-running; restarts on file change                        |
+| `dev`                  | Resolution on, `systemDebug` exposes `/api/sys/*`, gateway debug and development keys, verbose log cache and cluster transport                       | Long-running                                                 |
 | `prod`                 | Production endpoints, strict config                                                                                                                  | Long-running                                                 |
 | `integration`          | Enables test layer and watch/test mode                                                                                                               | Long-running; reruns tests on change; exits when `CI` is set |
 | `microservice`         | Activates layers needed for standalone realm deployment                                                                                              | Long-running                                                 |
 | `db`                   | Database creation / seeding                                                                                                                          | **Short-lived** — exits after completion                     |
 | `cli`                  | Serves nothing: gateway, RPC server, API gateway, rest-fs, system debug and MCP are all off, watching is off, and every dispatch resolves in-process | **Short-lived** — exits after its work                       |
 | `playwright`           | Marker: the Playwright runner owns the process lifetime, so the platform must outlive the test command                                               | Long-running until the runner stops it                       |
-| `debug`                | Exposes `/api/sys/*`, includes stack traces                                                                                                          | No effect on lifetime                                        |
+| `debug`                | Nothing on its own — the framework has no `debug` block; `/api/sys/*` comes from `dev` and stack traces from the gateway's `debug` flag              | No effect on lifetime                                        |
 | `server` _(implicit)_  | Always present on the server platform                                                                                                                | —                                                            |
 | `browser` _(implicit)_ | Always present on the browser platform                                                                                                               | —                                                            |
+| `ci` _(implicit)_      | Appended whenever the process runs on CI: colours off, Allure reporting on                                                                           | —                                                            |
 
 ### The `microservice` Intent
 
@@ -121,26 +122,24 @@ const intents = target ? rest : argv._;
 ```
 
 When no intents are present (plain `blong`), `runServer.ts` falls back to
-`DEFAULT_INTENTS = ['microservice', 'integration', 'dev']`.
+`DEFAULT_INTENTS = ['microservice', 'integration', 'dev']`, plus `ci` when the process is running on
+CI. The first positional is a target only when it names an existing path, and `realm` and `grant`
+are reserved first positionals of their own.
 
 ### Exclusion Groups
 
-Intents that are semantically incompatible can be declared as exclusion groups in `server.ts`:
-
-```typescript
-intentsExclusionGroups: [
-    ['dev', 'prod'], // environment intents — must not combine
-    ['integration', 'prod'], // test vs production
-];
-```
-
-The pair `['dev', 'prod']` is recognised by convention even without an explicit declaration.
+Exclusion groups were designed to reject incompatible combinations, for example `dev` with `prod`,
+or `integration` with `prod`. **They are not implemented**: nothing reads an
+`intentsExclusionGroups` declaration and the framework warns about no combination. Passing two
+incompatible intents merges both configuration blocks in the order given, which means the later one
+silently wins where they overlap — a combination to avoid rather than one to rely on being caught.
 
 ### Platform Intents
 
 `server` and `browser` are added automatically by the framework — they are never passed on the CLI.
 They allow layer activation maps to vary configuration per platform without requiring separate
-files.
+files. `ci` is added the same way whenever the process runs on CI, which is what makes a captured
+run behave the same whatever entry point started it.
 
 ## See Also
 

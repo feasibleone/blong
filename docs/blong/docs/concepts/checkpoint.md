@@ -104,16 +104,21 @@ A point says which of the two shapes it is, so one list can hold it and a branch
 
 The mode is `checkpointMode` in the registry config — no handler code changes.
 
-| Environment | `$meta.checkpoint` | `$meta.decide` | What is recorded                                              |
-| ----------- | ------------------ | -------------- | ------------------------------------------------------------- |
-| Production  | `undefined`        | always         | the branch rationale only — worth tracing even in production  |
-| Debug       | recording function | always         | points and branches, kept in `$meta` and emitted with the log |
-| Test        | recording function | always         | the same, plus `assert`, so a test can assert on the sequence |
+| Environment | `$meta.checkpoint` | `$meta.decide` | What is recorded                                                                    |
+| ----------- | ------------------ | -------------- | ----------------------------------------------------------------------------------- |
+| Production  | `undefined`        | always         | the branch rationale only — worth tracing even in production                        |
+| Debug       | recording function | always         | points and branches, kept in `$meta` and emitted with the log                       |
+| Test        | recording function | always         | the same; the registry also attaches `assert`, so a test can assert on the sequence |
 
 `checkpoint` is **absent** in production rather than a no-op function, which is what makes the `?.`
 call free; `lib.checkpoint` follows the same rule for code that has no `$meta`. A branch is the one
 thing that cannot be optional: it selects, so a missing helper would skip the work rather than cost
 a note.
+
+One thing the table's "plus `assert`" is often misread as: **a checkpoint does not take an
+assertion.** The optional assertion is a separate handle the registry attaches under the same mode
+(`assert: recording ? nodeAssert : undefined`), so a handler written `assert?.ok(...)` does nothing
+in production — that is what makes one handler usable as both production code and a test.
 
 ## Points and Branches
 
@@ -139,8 +144,8 @@ whole story. Allure keeps every point as a step, so nothing is lost where a repo
 What separates them is what each may cost: a point may be dropped, because nothing else depends on
 it; a branch may not, because it _is_ the control flow.
 
-The block names **every** candidate the code declared, in that order: a candidate the decision never
-reached — evaluation stops at the branch it takes — is drawn and labelled, so a reader sees both the
+The block names **every** candidate the code declared: a candidate the decision never reached —
+evaluation stops at the branch it takes — is drawn and labelled, so a reader sees both the
 alternative that was weighed and refused and the one that was never tried. The record's own
 rationale keeps the same list, in evaluation order, so it can be replayed without reading source
 (R11). A block is also _ordered_ so that it renders: mermaid refuses a section with nothing in it
@@ -158,7 +163,7 @@ run, so that what it announces after its first wait is collected too
 
 ```typescript
 $meta.checkpoint?.('total-calculated', {total, itemCount});
-const fee = $meta.decide?.('fee-tier', {total}, [
+const fee = $meta.decide('fee-tier', {total}, [
     {name: 'waived', when: values => (values.total as number) > 100, run: () => 0},
     {name: 'standard', when: () => true, run: () => total * 0.01},
 ]); // the chosen branch's result, or `undefined` when none matched

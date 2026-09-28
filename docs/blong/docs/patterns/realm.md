@@ -3,7 +3,9 @@
 A [realm](../concepts/realm.md) is a business domain boundary. Realms are scaffolded with the
 `blong realm <name>` CLI (from the `blong-kopi` template) — do not hand-build the folder structure.
 The same scaffold is available through the API as `kukum.realm.add` — see the
-[kukum pattern](./kukum.md).
+[kukum pattern](./kukum.md) — and the template, the folder mode that runs loose handler files, and
+the conditions under which a missing realm is created on the spot are in
+[folder mode and scaffolding](./kopi.md).
 
 ## The modern minimal `server.ts`
 

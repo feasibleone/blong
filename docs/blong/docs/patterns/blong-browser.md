@@ -135,6 +135,13 @@ export function CoralOpen({schema, coralId}: {schema: IEnrichedSchema; coralId: 
 
 ## Using Explorer Directly
 
+The standalone `Explorer` is a table, a filter panel and a toolbar without an editor around them.
+For a _generated_ browse page the composition to follow is `Editor` in its split layout — a
+`navigator` widget, a table with a `listAction` and a detail panel — which the `Editor/Explorer`
+stories write out and which the model's browse page builds. The widget catalogue, the pivot and
+master-detail mechanics are in the [editor features concept](../concepts/editor-features.md); the
+declaration that generates the pages is in the [model patterns](./blong-model.md).
+
 ```tsx
 import {Explorer} from '@feasibleone/blong-browser';
 
@@ -313,85 +320,12 @@ export const CoralOpenSplit = page('marine.coral.open', 1, {layout: 'editSplit'}
 
 ---
 
-## Internationalisation (i18n)
+## Internationalisation
 
-blong-browser has a lightweight translation system built on `appStore`.
-
-### Text component
-
-`<Text>` is the universal translation primitive. Its string children act as both the translation key
-and the English fallback:
-
-```tsx
-import {Text} from '@feasibleone/blong-browser';
-
-<Text>Save</Text>
-<Text params={{field: 'Name', minLength: 3}}>
-    {'{field} must be at least {minLength} characters'}
-</Text>
-```
-
-### Button auto-translation
-
-The blong `Button` wrapper auto-translates its string `label` via `<Text>`. Always import `Button`
-from blong-browser rather than primereact to get automatic translation:
-
-```tsx
-import {Button} from '@feasibleone/blong-browser'; // ✅ translates label
-<Button
-    label="Save"
-    icon="pi pi-check"
-/>;
-```
-
-### Activating a language
-
-```ts
-import {useAppStore} from '@feasibleone/blong-browser';
-
-useAppStore.getState().setTranslations({
-    Save: 'Запази',
-    '{field} is required': '{field} е задължително',
-});
-useAppStore.getState().setLanguage('bg');
-```
-
-### PrimeReact widget locale via `Theme.languages`
-
-Register custom PrimeReact locale data through `IThemeConfig.languages`, which `Theme` passes to
-`addLocale` automatically. Fetch locale data from
-[primefaces/primelocale](https://github.com/primefaces/primelocale):
-
-```tsx
-<App
-    dispatch={dispatch}
-    theme={{
-        name: 'lara-light-blue',
-        languages: {
-            bg: {
-                accept: 'Да',
-                cancel: 'Отказ',
-                emptyMessage: 'Не са открити резултати',
-                dateFormat: 'dd/mm/yy',
-                firstDayOfWeek: 1,
-                // … full locale object
-            },
-        },
-    }}
-/>
-```
-
-Calling `setLanguage('bg')` activates the PrimeReact locale via `locale('bg')` in `Theme`.
-
-### Storybook language stories
-
-Set `lang: '<locale>'` as a story arg to activate a language for that story — `withDispatch` picks
-it up from `context.args.lang`:
-
-```ts
-export const ToolbarBG: Story = {...Toolbar};
-ToolbarBG.args = {lang: 'bg'};
-```
+Translation, the language switcher, PrimeReact locales and the Storybook `lang` arg have their own
+page — see [internationalisation](./i18n.md). In short: a string child is both the key and the
+English fallback, a realm declares its `portal.languages` and `portal.translations`, and
+PrimeReact's own widget strings arrive through `IThemeConfig.languages`.
 
 ---
 

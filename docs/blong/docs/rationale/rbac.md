@@ -49,15 +49,15 @@ expansion per bit instead of a list per request.
 
 **A bit is identity, so it never moves.** The mask in an _already minted_ token is resolved against
 the current role-to-bit mapping, so moving a bit would silently hand that token's permissions to a
-different role. Role bits are therefore allocated (`MAX(roleBit) + 1`), never reused when a role is
-deleted, and an edit that changes one is refused. Three consequences were accepted deliberately: the
-1024 ceiling (acceptable because allocation stays dense), gaps after a deletion (harmless), and the
-loss of the ability to renumber roles for tidiness.
+different role. Role bits are therefore allocated (`MAX(roleBit) + 1`) and not recycled when a role
+is deleted, and an edit that changes one is refused. Three consequences were accepted deliberately:
+the 1024 ceiling (acceptable because allocation stays dense), gaps after a deletion (harmless), and
+the loss of the ability to renumber roles for tidiness.
 
 ```mermaid
 flowchart TD
     B["a bit is how an already-minted token names a role"] --> C["moving a bit would silently hand<br/>that token's permissions to another role"]
-    C --> D["so bits are allocated, never reused,<br/>and an edit that changes one is refused"]
+    C --> D["so bits are allocated as MAX + 1,<br/>and an edit that changes one is refused"]
     D --> E["bits stay dense, which keeps the mask small"]
     D --> F["gaps appear after a deletion — harmless"]
     D --> G["roles cannot be renumbered for tidiness — accepted"]

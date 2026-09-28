@@ -51,7 +51,7 @@ no direct `blong-chain` import or TAP `t.matchSnapshot()` call is needed in busi
 Snapshot files are stored in `tap-snapshots/` directories alongside the test file entry point and
 regenerated with `TAP_SNAPSHOT=1`.
 
-**Example test handler (`demo/blong-hello/server/test/test/testHelloNumberSum.ts`):**
+**Example test handler:**
 
 ```typescript
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
@@ -67,6 +67,12 @@ export default handler(({lib: {group}, handler: {mathNumberSum}}) => ({
         ]),
 }));
 ```
+
+The step's returned value is what the chain snapshots when the group is configured to snapshot; the
+assertion above is the explicit alternative for a test that only cares about one field. Real
+committed snapshots to read for the shape:
+`core/blong-chain/tap-snapshots/snapshot-context.test.ts.test.cjs`, and the masked ones under
+`test/blong-int-adapter/tap-snapshots/`.
 
 Dynamic values (port numbers, UUIDs, timestamps) are handled by the `mask` option declared in the
 `group()` config — no manual normalization needed:
@@ -444,6 +450,34 @@ When migrating test collections that have repetitive assertions:
 5. **Replace assertions**: Remove individual `assert.equal` calls and any `assert.ok(result)` guards
    before `assert.snapshot()`, leaving only those that document specific business invariants
 6. **Review snapshots**: Ensure captured snapshots represent correct expected behaviour
+
+## The visual half
+
+The same idea applies to pictures, with a different mechanism, and it is the larger surface in this
+repository: 256 `toHaveScreenshot` baselines in 38 `*.play.ts-snapshots/` directories, committed and
+reviewed like any other file. Two rules make them bearable.
+
+**Narrow the region and mask what cannot repeat.** A baseline should show that the UI works, not
+that a timestamp is the same. The commander explorer's spec states the policy it follows — mask only
+the columns whose values are inherently dynamic, never the whole table — and the realm's flow page
+does the same with a region (`.p-datatable-tbody tr:first-child`) and one masked clock cell. The
+cost of getting this wrong is on record: a set of capture pages that masked nothing showed error
+messages and passed as green, and a deliberate refresh once rewrote 198 baselines, over half of them
+differing for reasons unrelated to the change that triggered it.
+
+**Updating is a deliberate act with a sharp edge.** `--update-snapshots` defaults to updating only
+what changed, and is a no-op when the comparison passes; a forced refresh needs
+`--update-snapshots=all`, which is a decision to re-approve every picture in a package rather than a
+way to make a red run green.
+
+Chromatic is the Storybook half of the same story, and its behaviour in CI is worth stating exactly,
+because it is easy to assume more than it does. The workflow's `chromatic` job runs only when the
+project token secret is present; it calls the `ci-chromatic` Rush verb, which only
+`core/blong-browser` and `tools/blong-log` define, and that script invokes `chromatic` with
+**`--exit-zero-on-changes`**. So a visual difference **reports** — a check, a comment, a diff to
+review — and cannot fail the build. The team decides what a visual change means; the pipeline
+refuses to decide for them. Baselines themselves live in Chromatic rather than in this repository,
+which is why a Chromatic review is not something a committed file can show.
 
 ## Future Ideas
 

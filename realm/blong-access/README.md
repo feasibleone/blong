@@ -65,10 +65,13 @@ may act on. It is opt-in per table:
 `mode` is `none` (the default — nothing changes), `scoped` (grants may target a scope) or `explicit`
 (only per-record grants count). `access_acl` holds one rule per row:
 
-- **`principalId`** — a user, role, unit or capability resource, so a rule can sit at any level of
-  the hierarchy
+- **`principalId`** — a user, role or unit resource, so a rule can sit at any level of the
+  hierarchy. A **capability** is deliberately not a principal: the filter resolves the caller, their
+  effective roles and their units (plus those units' ancestors), so a rule naming a capability
+  matches nobody and sits inert.
 - **`actionId`** — the `access_action` resource, i.e. the guarded method
-- **`targetKind`** — `record` (one row) or `scope` (every record linked to that scope)
+- **`targetKind`** — `record` (one row), `scope` (every record linked to that scope), or `all` (the
+  wildcard target, i.e. every record of the guarded table)
 - **`targetId`** — the guarded record, or the scope node
 - **`effect`** — `allow` / `deny`; **a deny always wins**
 

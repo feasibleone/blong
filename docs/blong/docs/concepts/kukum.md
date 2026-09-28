@@ -1,5 +1,7 @@
 # Kukum
 
+> kukum = to cook in [Bislama](https://en.wikipedia.org/wiki/Bislama)
+
 **Kukum is the framework's own scaffolding API.** It exposes the file recipes that live in the
 skills as callable endpoints — `kukum.handler.add`, `kukum.schema.add`, `kukum.realm.add` — and adds
 introspection endpoints that report what the framework currently has wired up.
@@ -24,8 +26,12 @@ The key behaviours:
   `get`, `add`, `edit`, `check`). Adding a primitive adds five routes and no new plumbing.
 - **`add` is plan-first and non-destructive by default.** It composes with machine-generated shared
   files so a second entity does not drop the first, and refuses hand-written files unless forced.
-- **It validates before it writes.** Subject, object and predicate names are checked against
-  `_shared/conventions.md`, and a descriptor may only write into the layers it declares.
+- **It validates before it writes.** The name checks live in each descriptor and run on `add` and
+  `check` (not on `get` or `find`, which write nothing): the subject on every primitive that takes
+  one, the object on the four where it matters (handler, model, test, component), and the predicate
+  on `handler`, where the standard predicates are the point. `handler` is also the primitive that
+  restricts its target to the layers it declares — the restriction is per descriptor, not a property
+  every primitive has.
 - **Generated files are self-describing.** They carry an ownership marker and may carry
   `@kukum-instructions` for the next agent, readable back through `source get`.
 - **The CLI is not a reimplementation.** It loads the realm through the `cli` intent and dispatches

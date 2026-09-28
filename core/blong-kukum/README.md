@@ -184,9 +184,14 @@ a skill changes its recipe, the descriptor changes in the same commit and the fi
 and reviewed. This is the main way generated artifacts drift from the documentation.
 
 **Guardrails live in `check()`** (shared ones in `primitives/checks.ts`). They mirror
-`_shared/conventions.md`: names must be lowerCamelCase, an object must be a single word, a predicate
-must be standard (`STANDARD_PREDICATES`), and a descriptor may only write into the layers it
-declares (`checkLayer`). Tighten a guardrail here rather than documenting a rule nobody enforces.
+`_shared/conventions.md`, and the mirror is partial by design: the subject is checked on every
+primitive that takes one (lowerCamelCase for a realm, whose name is substituted into identifiers),
+the object on the four where the shape matters (`handler`, `model`, `test`, `component`), the
+predicate only on `handler` (against `STANDARD_PREDICATES`), and `checkLayer` — the rule that a
+descriptor may write only into the layers it declares — is imported by `handler` alone. Two
+consequences worth knowing: `add`/`check` are the only predicates that run these, and a `--layer`
+passed to a primitive that does not read it is silently ignored. Tighten a guardrail here rather
+than documenting a rule nobody enforces.
 
 **Shared-file generators need a merge helper.** If a template must register something in a file that
 other entities also contribute to (a test group in `browser-test.ts`, an entry in the schema

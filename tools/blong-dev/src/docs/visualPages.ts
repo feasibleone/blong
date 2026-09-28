@@ -23,9 +23,9 @@ import {join, relative} from 'node:path';
 
 /** One page with visuals, and what the verification run has to find on it. */
 export interface IVisualPage {
-    /** Documentation-relative markdown path, e.g. `concepts/rbac.md`. */
+    /** Path relative to the tree that was scanned, e.g. `concepts/rbac.md`. */
     file: string;
-    /** Route below the site's docs prefix, e.g. `concepts/rbac`. */
+    /** Site route below the base path, e.g. `docs/concepts/rbac`, `blog/one-adapter-api`. */
     route: string;
     /** How many mermaid blocks the page contains. */
     blocks: number;
@@ -83,20 +83,51 @@ function walk(dir: string): string[] {
 }
 
 /**
- * Every page under `docsDir` that has a diagram or an image.
- *
- * Pages with neither are left out rather than reported as passing, so the run visits only what it
- * can assert something about.
+ * The blog route of a post: its `slug` front matter, or the folder name with the
+ * date prefix dropped, which is what Docusaurus falls back to.
  */
-export function findVisualPages(docsDir: string): IVisualPage[] {
+export function blogSlug(file: string, markdown: string): string {
+    const slug = /^slug:\s*(\S+)\s*$/m.exec(markdown)?.[1];
+    if (slug !== undefined) return slug;
+    return file.split('/')[0].replace(/^\d{4}-\d{2}-\d{2}-/, '');
+}
+
+/** Every page under `dir` that has a diagram or an image, routed by `routeFor`. */
+function pagesUnder(
+    dir: string,
+    routeFor: (file: string, markdown: string) => string,
+): IVisualPage[] {
     const pages: IVisualPage[] = [];
-    for (const path of walk(docsDir)) {
+    for (const path of walk(dir)) {
         const markdown = readFileSync(path, 'utf8');
         const blocks = countMermaidBlocks(markdown);
         const images = countImages(markdown);
         if (blocks === 0 && images === 0) continue;
-        const file = relative(docsDir, path).split('\\').join('/');
-        pages.push({file, route: routeForDocsFile(file), blocks, images});
+        const file = relative(dir, path).split('\\').join('/');
+        pages.push({file, route: routeFor(file, markdown), blocks, images});
     }
     return pages;
+}
+
+/**
+ * Every docs page under `docsDir` that has a diagram or an image.
+ *
+ * Pages with neither are left out rather than reported as passing, so the run visits only what it
+ * can assert something about.
+ */
+export function findVisualPages(docsDir: string, prefix = 'docs'): IVisualPage[] {
+    return pagesUnder(docsDir, file => {
+        const route = routeForDocsFile(file);
+        return (route === '' ? prefix : `${prefix}/${route}`).replace(/\/$/, '');
+    });
+}
+
+/**
+ * Every blog post under `blogDir` that has a diagram or an image.
+ *
+ * A post's route comes from its front matter rather than from its folder, which
+ * is why it is not an argument to `findVisualPages`.
+ */
+export function findBlogPages(blogDir: string): IVisualPage[] {
+    return pagesUnder(blogDir, (file, markdown) => `blog/${blogSlug(file, markdown)}`);
 }

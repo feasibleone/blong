@@ -50,8 +50,10 @@ open (35)
 
 - F-241 - `blong-dev memory` auto-format
 - F-244
+- T-160
 - playwright webp
-- blog posts
+- exclusion groups
+- check login.expire.deleteAfter, access.session.close
 - generate .http files
 - decisions as tests and code reference
 - cspell edit tool

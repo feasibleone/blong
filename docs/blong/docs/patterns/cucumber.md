@@ -191,11 +191,11 @@ Cucumber tests run exactly like any other blong test — they are activated by t
 in `server.ts`:
 
 ```typescript
-// server.ts
+// server.ts — the group name, not the file name: testCucumberCalculator is test.cucumber.calculator
 config: {
     integration: {
         watch: {
-            test: ['test.realm.calculator'],
+            test: ['test.cucumber.calculator'],
         },
     },
 },

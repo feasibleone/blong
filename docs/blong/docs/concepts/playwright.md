@@ -34,10 +34,10 @@ flowchart LR
         t["test code"]
         portal["Portal helper"]
     end
-    subgraph vite["Vite dev server :5173"]
+    subgraph vite["Vite dev server — local default :5173"]
         app["React app"]
     end
-    subgraph srv["Blong server :8080"]
+    subgraph srv["Blong server — local default :8080"]
         direction TB
         gw["gateway"]
         orc["orchestrator"]
@@ -74,7 +74,7 @@ translations). The strategy, in priority order:
     - Portal menu items: `portal-menu-{method}` (semantic triple with dots→dashes)
     - Portal menu groups: `portal-menu-{subject}`
     - Login submit: `login-submit`
-    - Table cells: `{fieldName}-{rowIndex}`
+    - Table cells: `{tableId}-{rowIndex}-{field}`, e.g. `coral-0-coralName`
     - Dropdown widgets: `data-testid` on wrapper div (e.g. `coral-familyId`, uses hyphens)
     - Table search input: `browse-search`
 
@@ -118,7 +118,7 @@ The `portal` fixture does **not** grant permissions by default (`blongPermission
 ## Shared Configuration
 
 The `defineBlongConfig()` helper from `@feasibleone/blong-browser/playwright/config` provides
-sensible defaults (test directory, viewport, reporters, `webServer` entries for CI). Suite-level
+sensible defaults (test directory, viewport, reporters, the `webServer` pair). Suite-level
 `playwright.config.ts` files stay minimal:
 
 ```typescript
@@ -126,8 +126,13 @@ import {defineBlongConfig} from '@feasibleone/blong-browser/playwright/config';
 export default defineBlongConfig();
 ```
 
-The `webServer` entries auto-start both the blong server (port 8080) and Vite dev server (port 5173)
-when `process.env.CI` is set, enabling headless CI runs with `node --run ci-test`.
+The `webServer` entries start both the blong server and the Vite dev server. They are always
+configured — what `process.env.CI` changes is the commands and whether an already-running server is
+reused: locally the backend runs under `blong-watch` and an existing server is kept
+(`reuseExistingServer: true`), while CI runs the servers itself and forces a fresh Vite. The ports
+are the suite's own: 8080 and 5173 by default, or a pair derived from the package's position in
+`rush.json` in CI, where the backend port is `9000 + <project index>`, the frontend `backend + 100`,
+and both can be overridden with `PLAYWRIGHT_BACKEND_PORT` / `PLAYWRIGHT_FRONTEND_PORT`.
 
 ## Handling Stateful Mock Data
 
@@ -147,15 +152,23 @@ opening it, so it never edits seeded data.
 Similarly, the `waitForFormData()` method on the Portal helper waits for API data to populate form
 inputs before filling fields, preventing race conditions.
 
-## Static Keys for Hot Reload Survival
+## Static keys for hot reload survival
 
-The blong server generates random JWT signing and encryption keys by default (in `dev` intent). When
-the server hot-reloads after a code change, the keys change and all existing browser sessions become
-invalid.
+When the gateway has no key material configured it generates a key pair per process (`Gateway.ts`:
+`{generate: {alg: 'ES384', crv: 'P-384', use: 'sig'}}`). That is the right default for a deployment
+and the wrong one for a development loop: the server hot-reloads after a code change, the key
+changes with it, and every browser session becomes invalid — which is what makes a test suite
+re-login in the middle of a run for no reason the author can see.
 
-For the `integration` intent (which is active during Playwright test development), static JWK keys
-are configured in the suite's `server.ts`. This means browser sessions survive server restarts, so
-developers can iterate on tests without re-logging in manually.
+The `dev` intent therefore supplies a static pair from `core/blong-gogo/src/devKeys.ts` (`ES384` to
+sign, `ECDH-ES+A256KW` to encrypt). The keys are committed and deliberately not secret; their job is
+that two processes started from the same checkout agree, so a session survives a restart and a token
+minted by `blong grant` is a token the running gateway accepts. A deployment replaces them with
+`GATEWAY_SIGN_KEY` / `GATEWAY_ENCRYPT_KEY`, or by configuring `sign` / `encrypt` in the gateway's
+config, and the module is never consulted when either is set.
+
+Nothing in a suite's `server.ts` needs to mention keys: this is why a Playwright session survives a
+hot reload without anyone configuring anything.
 
 ## Screenshot-First Assertions
 

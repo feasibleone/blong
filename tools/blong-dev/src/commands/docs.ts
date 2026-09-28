@@ -36,7 +36,7 @@ import {dirname, join, relative} from 'node:path';
 import stripJsonComments from 'strip-json-comments';
 
 import {serveStatic} from '../docs/staticServer.ts';
-import {findVisualPages} from '../docs/visualPages.ts';
+import {findBlogPages, findVisualPages} from '../docs/visualPages.ts';
 import {repoRoot} from '../report/reportPaths.ts';
 
 /** Repository-relative path of the register. */
@@ -420,7 +420,14 @@ async function verify(root: string, args: string[]): Promise<void> {
         process.stderr.write('blong-dev docs: docs/blong/docs not found\n');
         process.exit(1);
     }
-    const all = findVisualPages(docsDir);
+    // Blog posts are read by the same renderer as a docs page, so they are checked
+    // the same way: a post's diagram is an inline mermaid block, and one that fails
+    // to parse draws nothing.
+    const blogDir = join(root, 'docs/blong/blog');
+    const all = [
+        ...findVisualPages(docsDir),
+        ...(existsSync(blogDir) ? findBlogPages(blogDir) : []),
+    ];
     const pages =
         filter === undefined ? all : all.filter(page => globToRegExp(filter).test(page.file));
     if (pages.length === 0) {
@@ -474,7 +481,7 @@ async function verify(root: string, args: string[]): Promise<void> {
                 }
             });
             try {
-                await tab.goto(`${origin}/docs/${page.route}`, {
+                await tab.goto(`${origin}/${page.route}`, {
                     waitUntil: 'domcontentloaded',
                     timeout: 30_000,
                 });

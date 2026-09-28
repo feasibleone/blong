@@ -28,21 +28,27 @@ Configure via VS Code settings or run `REST FS: Configure API Endpoint`:
 
 ```json
 {
-  "restfs.baseUrl": "http://localhost:3000/api/fs",
-  "restfs.headers": {
-    "Authorization": "Bearer your-token"
-  }
+    "restfs.workspace": {
+        "example": {
+            "baseUrl": "http://localhost:3000/api/fs",
+            "headers": {"Authorization": "Bearer <token>"}
+        }
+    }
 }
 ```
 
+The workspace name in the settings key is the authority of the mounted URI, so `restfs://example/`
+is the folder served by that entry. The server component accepts `auth: false` or a bearer token
+(`auth: 'jwt'`) — not HTTP Basic.
+
 ## Features
 
-✅ Read files and directories
-✅ Write and create files
-✅ Delete files and directories
-✅ Rename and move files
-✅ Copy files and directories
-✅ VS Code integration (syntax highlighting, IntelliSense, etc.)
+- Read files and directories
+- Write and create files
+- Delete files and directories
+- Rename and move files
+- Copy files and directories
+- VS Code integration (syntax highlighting, IntelliSense, etc.)
 
 ## Testing
 

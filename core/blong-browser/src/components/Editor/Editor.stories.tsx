@@ -324,9 +324,13 @@ WoodToolbar.play = Toolbar.play;
 
 /**
  * ToolbarBG — same as Toolbar but with Bulgarian translations applied.
- * Demonstrates multi-language support: card titles, field labels, column headers,
- * and built-in toolbar/widget button labels are all translated.
- * PrimeReact UI (e.g. Calendar month names) is also localized.
+ * Demonstrates multi-language support: card titles, field labels, column headers
+ * and widget labels go through `<Text>`, so they translate, and the PrimeReact UI
+ * (e.g. Calendar month names) is localized too.
+ *
+ * The editor's own toolbar buttons are raw `<button aria-label="…">` elements with
+ * English names, so their labels stay English in this story — see
+ * `docs/blong/docs/patterns/i18n.md` for the caveat.
  */
 export const ToolbarBG: StoryFn = Template.bind({});
 ToolbarBG.args = {

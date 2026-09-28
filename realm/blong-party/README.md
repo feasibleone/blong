@@ -8,14 +8,14 @@ adapter.
 
 ## Data model
 
-| Table | PK | Notes |
-| ----- | -- | ----- |
-| `party.person` | `personId` → `core.resource.resourceId` | firstName / middleName / lastName / birthDate / gender / maritalStatus / nationality / occupation |
-| `party.organization` | `organizationId` → `core.resource.resourceId` | legalName / tradingName / registrationNumber / taxId / industry / website |
-| `party.unit` | `unitId` → `core.resource.resourceId` | unitName / unitType (department, branch, division, team) |
-| `party.contact` | `partyContactId` (increment) | FK `partyResourceId` → `core.resource.resourceId`; contactType + contactValue + isPrimary |
-| `party.address` | `partyAddressId` (increment) | FK `partyResourceId`; addressType / streetAddress / city / stateProvince / postalCode / countryId |
-| `party.identifier` | `partyIdentifierId` (increment) | FK `partyResourceId`; identifierType / value / issuingAuthority / dates |
+| Table                | PK                                            | Notes                                                                                             |
+| -------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `party.person`       | `personId` → `core.resource.resourceId`       | firstName / middleName / lastName / birthDate / gender / maritalStatus / nationality / occupation |
+| `party.organization` | `organizationId` → `core.resource.resourceId` | legalName / tradingName / registrationNumber / taxId / industry / website                         |
+| `party.unit`         | `unitId` → `core.resource.resourceId`         | unitName / unitType (department, branch, division, team)                                          |
+| `party.contact`      | `partyContactId` (increment)                  | FK `partyResourceId` → `core.resource.resourceId`; contactType + contactValue + isPrimary         |
+| `party.address`      | `partyAddressId` (increment)                  | FK `partyResourceId`; addressType / streetAddress / city / stateProvince / postalCode / countryId |
+| `party.identifier`   | `partyIdentifierId` (increment)               | FK `partyResourceId`; identifierType / value / issuingAuthority / dates                           |
 
 Party tables are registered with order numbers 300–305 so `core.*` tables (order 1) exist first.
 Type aliases (`party.person`, `party.organization`, `party.unit`) are seeded via
@@ -27,11 +27,11 @@ Type aliases (`party.person`, `party.organization`, `party.unit`) are seeded via
 Party has **no** `organizationId` / `parentUnitId` columns and no member join tables. All hierarchy
 and membership is stored as `core.triple` edges:
 
-| Predicate | Edge | Meaning |
-| --------- | ---- | ------- |
+| Predicate   | Edge                  | Meaning                             |
+| ----------- | --------------------- | ----------------------------------- |
 | `belongsTo` | `unit → organization` | the unit belongs to an organization |
-| `belongsTo` | `person → unit` | the person is a member of the unit |
-| `isPartOf` | `unit → parentUnit` | tree hierarchy (child under parent) |
+| `belongsTo` | `person → unit`       | the person is a member of the unit  |
+| `isPartOf`  | `unit → parentUnit`   | tree hierarchy (child under parent) |
 
 Storing hierarchy in the graph is deliberate: `blong-access` traverses the same `belongsTo`
 predicate for RBAC inheritance (`user → unit → role → capability → action`).
@@ -89,8 +89,9 @@ Models are auto-discovered from `meta/model/` on the browser platform.
 
 Basic CRUD is auto-provided by the runtime: `party.person.add/find/get/edit/remove/merge` (and the
 same for `organization` and `unit`). The `add` operation auto-creates the `core_resource` row;
-`merge` with `resourceType` + `name` seeds idempotently. No handler files are needed for basic
-operations.
+`merge` with `resourceType` + `name` finds the resource by `(typeAlias, resourceName)` and creates
+it only when it is absent, which is what makes repeated seeding idempotent. No handler files are
+needed for basic operations.
 
 ## Extending
 
@@ -118,6 +119,8 @@ instability, not a test bug. Rerun once. Full triage: blong-playwright skill →
 
 ## References
 
-- [blong-core skill](../../.github/skills/blong-core/SKILL.md) — extending/utilizing the core, party, and access realms
-- [blong-model skill](../../.github/skills/blong-model/SKILL.md) — browser CRUD pages from model specs
+- [blong-core skill](../../.github/skills/blong-core/SKILL.md) — extending/utilizing the core,
+  party, and access realms
+- [blong-model skill](../../.github/skills/blong-model/SKILL.md) — browser CRUD pages from model
+  specs
 - [blong-schema skill](../../.github/skills/blong-schema/SKILL.md) — declarative schema management

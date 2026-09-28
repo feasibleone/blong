@@ -354,23 +354,23 @@ test('navigate coral by family', async ({portal}) => {
 
 The `Portal` class wraps common interactions:
 
-| Method                           | Description                                                               |
-| -------------------------------- | ------------------------------------------------------------------------- |
-| `login(username, password)`      | Fill and submit the login form                                            |
-| `menuClick(method)`              | Open a portal menu item by semantic triple                                |
-| `save()`                         | Click save and wait for success icon                                      |
-| `edit()`                         | Click the edit button                                                     |
-| `cancel()`                       | Click the reset/cancel button                                             |
-| `refresh()`                      | Click the refresh button                                                  |
-| `fill(fieldName, value)`         | Fill an input by name attribute                                           |
-| `fillTextarea(fieldName, value)` | Fill a textarea by name attribute                                         |
-| `tableRowClick(field, index)`    | Click a table cell by data-testid                                         |
-| `tableRowClickByText(text)`      | Click a table row containing text                                         |
-| `tableAdd(fieldName)`            | Click the table add button                                                |
-| `tableDelete(fieldName)`         | Click the table delete button                                             |
-| `waitForFormLoad()`              | Wait for form/editor to be visible and skeleton to disappear              |
-| `waitForFormData()`              | Wait for API data to populate form inputs (use after `waitForFormLoad()`) |
-| `waitForTableData()`             | Wait for table rows to appear                                             |
+| Method                           | Description                                                                                                                                                           |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `login(username, password)`      | Fill and submit the login form                                                                                                                                        |
+| `menuClick(method)`              | Open a portal menu item by semantic triple                                                                                                                            |
+| `save()`                         | Click save and wait for success icon                                                                                                                                  |
+| `edit()`                         | Click the edit button                                                                                                                                                 |
+| `cancel()`                       | Click the reset/cancel button                                                                                                                                         |
+| `refresh()`                      | Click the refresh button                                                                                                                                              |
+| `fill(fieldName, value)`         | Fill an input by name attribute                                                                                                                                       |
+| `fillTextarea(fieldName, value)` | Fill a textarea by name attribute                                                                                                                                     |
+| `tableRowClick(field, index)`    | Delegates to `getByTestId(${field}-${index})`— does **not** match a real cell id, which is`${tableId}-${index}-${field}`; use `page.getByTestId('coral-0-coralName')` |
+| `tableRowClickByText(text)`      | Click a table row containing text                                                                                                                                     |
+| `tableAdd(fieldName)`            | Click the table add button                                                                                                                                            |
+| `tableDelete(fieldName)`         | Click the table delete button                                                                                                                                         |
+| `waitForFormLoad()`              | Wait for form/editor to be visible and skeleton to disappear                                                                                                          |
+| `waitForFormData()`              | Wait for API data to populate form inputs (use after `waitForFormLoad()`)                                                                                             |
+| `waitForTableData()`             | Wait for table rows to appear                                                                                                                                         |
 
 ## Model Test Helpers
 

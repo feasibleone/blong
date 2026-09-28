@@ -115,13 +115,13 @@ downstream hop would see success and a failure could never leave the participant
 A fault is a **deployment property** handed to `startFlow`, never a branch a test steers a
 participant into. Each exists to make a requirement reachable:
 
-| Fault                    | Configuration            | Requirements made reachable                                                                              |
-| ------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------- |
-| F1 payee refuses         | `faults.blockTransfers`  | R15 one incident ranked to the payee; R6a novelty; R10 escalation                                        |
-| F2 payer retries         | `faults.retries = 40`    | R6b rate-shift; R12 one identifier for unchanged code                                                    |
-| F3 hub rewords a message | `faults.rewordLiquidity` | R6c drift; the reword is a new template, which is what the deploy diff reports as one added and one gone |
-| F4 payee stalls          | `faults.stallTransfers`  | R9 last step recorded                                                                                    |
-| F5 provider declines     | `faults.declineRate`     | R11 branch rationale                                                                                     |
+| Fault                    | Configuration            | Requirements made reachable                                                                                                                                                        |
+| ------------------------ | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1 payee refuses         | `faults.blockTransfers`  | R15 one incident ranked to the payee; R6a novelty; R10 escalation                                                                                                                  |
+| F2 payer retries         | `faults.retries = 40`    | R6b rate-shift; R12 one identifier for unchanged code                                                                                                                              |
+| F3 hub rewords a message | `faults.rewordLiquidity` | R14 template turnover — one template added and one gone; the faults test asserts the new template, not a drift anomaly (drift is exercised through the ingest on a flow signature) |
+| F4 payee stalls          | `faults.stallTransfers`  | R9 last step recorded                                                                                                                                                              |
+| F5 provider declines     | `faults.declineRate`     | R11 branch rationale                                                                                                                                                               |
 
 ## Requirement → demonstration
 
