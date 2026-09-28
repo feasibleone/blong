@@ -210,6 +210,51 @@ export default handler(
                     return result.role;
                 },
 
+                // 2f. The highest bit is not re-issued after a delete.  `MAX + 1`
+                //     alone would hand the freed bit to the next role created, and a
+                //     token minted for the deleted role would then name the new one
+                //     (T-169).  The persisted high-water mark is what prevents it.
+                async function reuseDeletedBit(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                    async function added(
+                        suffix: string,
+                    ): Promise<{roleId: string; roleName: string; roleBit: number}> {
+                        const result = await accessRoleAdd<{
+                            role: {roleId: string; roleName: string; roleBit: number};
+                        }>({role: {roleName: `MODEL-TEST-REUSE-${suffix}-${Date.now()}`}}, $meta);
+                        return result.role;
+                    }
+                    const first = await added('A');
+                    const second = await added('B');
+                    assert.equal(
+                        Number(second.roleBit),
+                        Number(first.roleBit) + 1,
+                        'a second allocated role takes the next bit',
+                    );
+
+                    await accessRoleRemove({roleId: second.roleId}, $meta);
+                    const third = await added('C');
+
+                    assert.notEqual(
+                        Number(third.roleBit),
+                        Number(second.roleBit),
+                        'the freed highest bit is not re-issued',
+                    );
+                    assert.equal(
+                        Number(third.roleBit),
+                        Number(second.roleBit) + 1,
+                        'and allocation continues above the deleted role',
+                    );
+
+                    for (const role of [first, third]) {
+                        try {
+                            await accessRoleRemove({roleId: role.roleId}, $meta);
+                        } catch {
+                            // Best effort: the step's assertions are what matter.
+                        }
+                    }
+                    return third;
+                },
+
                 // 3. Create a user with the role, read it back, edit it, list it.
                 //    The list step looks the user up by the email minted here — the
                 //    table grows with every run, so an unfiltered page would miss it.

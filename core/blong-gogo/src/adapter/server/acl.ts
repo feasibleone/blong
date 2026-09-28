@@ -13,10 +13,12 @@ import type {IAclAdapterConfig} from '../schema/knex/types.ts';
  * access_acl(aclId, principalId, actionId, targetId, targetKind, effect, isActive)
  * ```
  *
- * - `principalId` — a user, role, unit or capability resource id;
+ * - `principalId` — a user, role or unit resource id (never a capability: the
+ *   filter resolves the caller, their effective roles and their units);
  * - `actionId`      — the `access_action` resource of the guarded method;
  * - `targetId`      — the guarded record, or a **scope** node (`targetKind`);
- * - `effect`        — `allow` / `deny`, where **deny always wins**.
+ * - `effect`        — `allow` / `deny`; a deny beats a grant for a record inside
+ *   a scope, while a `record`-targeted deny on a record in no scope is ignored.
  *
  * Two things grant access, and both narrow RBAC (a method the caller's action
  * list does not contain is refused by the gateway before this ever runs):

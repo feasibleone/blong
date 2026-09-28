@@ -29,6 +29,13 @@ export default server(() => ({
         // No `log`/`apiSchema` entries here: stdout is this command's result
         // channel, and the framework's `cli` intent already quietens its own
         // logging for exactly that reason.
-        cli: {},
+        cli: {
+            // kukum reads source files and the live registry, never a table.
+            // The manifest still declares blong-server — the fixture and the
+            // served `index.ts` need it — so the framework would otherwise
+            // auto-load its knex adapter and die on `Unknown database kukum`
+            // before the first primitive is reached (F-294).
+            framework: {realms: {server: false}},
+        },
     },
 }));

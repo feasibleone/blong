@@ -12,7 +12,7 @@ into `core.path`.
 | ------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `access.user`       | `userId` → `core.resource.resourceId`       | emailAddress, isActive                                                                                                                     |
 | `access.credential` | `credentialId` (increment)                  | FK userId; credentialType (`password`/`clientSecret`), secret hash + salt, `credentialParamsJSON` (function + params), isActive, expiresAt |
-| `access.role`       | `roleId` → `core.resource.resourceId`       | roleBit (0–1023, unique; **allocated**, never reused), description                                                                         |
+| `access.role`       | `roleId` → `core.resource.resourceId`       | roleBit (0–1023, unique; **allocated** as `MAX + 1`), description                                                                          |
 | `access.capability` | `capabilityId` → `core.resource.resourceId` | bundles actions into a "what"                                                                                                              |
 | `access.action`     | `actionId` → `core.resource.resourceId`     | name = the semantic triple / RPC method                                                                                                    |
 | `access.policy`     | `policyId` → `core.resource.resourceId`     | credential complexity/lifecycle rules + `credentialParamsJSON` (dictated credential-function params; the `password` policy is seeded)      |
@@ -43,10 +43,20 @@ graph LR
 
 Two SQL views (`access_effectiveRolePath`, `access_effectiveActionPath`) and one stored procedure
 (`access_pathRefresh`) materialize reachability into `core.path` for the path types
-`access.effectiveRole` and `access.effectiveAction`. Authorization queries read the materialized
-`core.path` (a single indexed lookup on `originId` + `pathType`), never recursive `core.triple`
-traversal. After any RBAC graph mutation, run `CALL access_pathRefresh()` (the
+`access.effectiveRole`, `access.effectiveAction` and `access.effectiveScope`. Where they are read
+matters: the per-request `access.authorization.list` hook expands the token's role bits by joining
+`core.triple` (`hasCapability` / `hasAction`) directly and caches the expansion per role bit for 30
+seconds, while `core.path` is read at login (to pack the `per` bitmask, by `access.permission.list`)
+and by `access.session.verify`. After any RBAC graph mutation, run `CALL access_pathRefresh()` (the
 `accessAuthorizationMerge` handler does this automatically).
+
+**Role bits are allocated, not chosen.** A new role takes `max(high-water mark, MAX(roleBit)) + 1`
+and its bit is immutable — an edit that changes it is refused. The mark is a `core.counter` row, so
+a deletion recycles nothing, not even the highest bit in use: `MAX` on its own falls back when the
+row that held it goes, and the next role created would then be handed a bit a live token still
+carries. The price is that the 1024-value space is consumed by every role ever created, so a
+database that runs out needs its `core_counter` row reset (or the roles that hold the high bits
+removed after their tokens have expired).
 
 ## Record-level ACL
 
@@ -63,7 +73,9 @@ may act on. It is opt-in per table:
 ```
 
 `mode` is `none` (the default — nothing changes), `scoped` (grants may target a scope) or `explicit`
-(only per-record grants count). `access_acl` holds one rule per row:
+(deny-by-default: no scope set is built unless the table is `selfScope`, so only a wildcard `all`
+rule or one naming the record itself admits it, and the unscoped fallback below is not built).
+`access_acl` holds one rule per row:
 
 - **`principalId`** — a user, role or unit resource, so a rule can sit at any level of the
   hierarchy. A **capability** is deliberately not a principal: the filter resolves the caller, their
@@ -73,7 +85,9 @@ may act on. It is opt-in per table:
 - **`targetKind`** — `record` (one row), `scope` (every record linked to that scope), or `all` (the
   wildcard target, i.e. every record of the guarded table)
 - **`targetId`** — the guarded record, or the scope node
-- **`effect`** — `allow` / `deny`; **a deny always wins**
+- **`effect`** — `allow` / `deny`; a deny beats a grant for a record _inside_ a scope. A
+  `record`-targeted deny on a record that participates in no scope is ignored, because the unscoped
+  term of the filter short-circuits — the same property that makes opting in safe.
 
 Two halves make up the effective ACL:
 
@@ -84,10 +98,12 @@ Two halves make up the effective ACL:
 - **explicit** — `access_acl` rules targeting a scope or a single record. This is also how an
   implicitly enabled record is explicitly forbidden (`effect: 'deny'`).
 
-The effective ACL is evaluated in SQL at query time — there is no materialized effective table, so a
-change takes effect immediately. A record that participates in **no** scope has nothing to be
-narrowed against and falls back to RBAC alone, which is what makes opting a table in safe for
-existing data.
+The effective ACL is evaluated in SQL at query time — there is no materialized rule table to
+invalidate, so a rule change takes effect immediately. It does read the materialized
+`access.effectiveScope` (and `access.effectiveRole`) paths, so a change to the hierarchy still needs
+`CALL access_pathRefresh()`. In `scoped` mode a record that participates in **no** scope has nothing
+to be narrowed against and falls back to RBAC alone, which is what makes opting a table in safe for
+existing data; `explicit` mode builds no such fallback and denies by default.
 
 Two scope shapes are supported. The usual one follows a predicate **from the record**
 (`party.person --belongsTo--> unit`), so a grant on a parent unit covers the record through the

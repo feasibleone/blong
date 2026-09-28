@@ -256,7 +256,7 @@ failing run from this repository chunk zero held 333 bytes and the run itself sa
 so the command printed an empty timeline. Documenting that as a limitation would have enshrined a
 defect in a page whose purpose is to tell a reader what the tool does, so the fix was made instead -
 every numbered chunk in order, a message when there are none, and a test - and the post tells the
-story because the mistake is more instructive than the feature. Recorded as T-165 then closed.
+story because the mistake is more instructive than the feature. Recorded as a todo and then closed.
 
 ## Superseded
 

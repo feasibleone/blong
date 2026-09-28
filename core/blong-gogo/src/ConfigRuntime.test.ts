@@ -17,7 +17,7 @@
 
 import {test} from 'tap';
 
-import {createConfigProxy, deepDiff} from './ConfigRuntime.ts';
+import ConfigRuntime, {createConfigProxy, deepDiff} from './ConfigRuntime.ts';
 
 // ---------------------------------------------------------------------------
 // deepDiff
@@ -324,4 +324,82 @@ test('factory phase guard — exitConfigFactoryPhase returns empty array in thro
     }
     const errors = exitConfig();
     t.equal(errors.length, 0, 'no errors collected in throw mode (they were thrown)');
+});
+
+// ---------------------------------------------------------------------------
+// liveLayerConfig — the config a handler closure receives
+// ---------------------------------------------------------------------------
+
+/**
+ * The merge input is a getter over a `let`, so a "reload" in these tests replaces
+ * the object the next merge sees — the way `ConfigRuntime.#rawSnapshot` is
+ * replaced while the version moves with it.
+ */
+
+test('liveLayerConfig — a handler sees a reloaded value', async t => {
+    let source: Record<string, unknown> = {timeout: 5, db: {host: 'a', port: 1}};
+    let version = 0;
+    const config = ConfigRuntime.liveLayerConfig(
+        () => source,
+        () => version,
+    ) as {
+        timeout: number;
+        db: {host: string};
+    };
+
+    t.equal(config.timeout, 5, 'the value at assembly time');
+
+    source = {timeout: 9, db: {host: 'b', port: 2}};
+    version += 1;
+
+    t.equal(config.timeout, 9, 'a leaf read after the reload is fresh');
+    t.end();
+});
+
+test('liveLayerConfig — an intermediate node destructured at startup stays live', async t => {
+    let source: Record<string, unknown> = {db: {host: 'a'}};
+    let version = 0;
+    const config = ConfigRuntime.liveLayerConfig(
+        () => source,
+        () => version,
+    ) as {
+        db: {host: string};
+    };
+
+    // The pattern the config rationale calls safe: the node is taken once, its
+    // leaves are read at call time.
+    const {db} = config;
+    t.equal(db.host, 'a', 'the leaf before the reload');
+    t.equal(config.db, db, 'and the node reference is stable');
+
+    source = {db: {host: 'b'}};
+    version += 1;
+
+    t.equal(db.host, 'b', 'the same node reads the reloaded leaf');
+    t.end();
+});
+
+test('liveLayerConfig — an unchanged version does not re-merge', async t => {
+    let merges = 0;
+    let version = 3;
+    const config = ConfigRuntime.liveLayerConfig(
+        () => {
+            merges += 1;
+            return {timeout: 5};
+        },
+        () => version,
+    ) as {timeout: number};
+
+    t.equal(merges, 1, 'assembled once');
+    void config.timeout;
+    void config.timeout;
+    t.equal(merges, 1, 'reads at the same version do not merge again');
+
+    version += 1;
+    void config.timeout;
+    t.equal(merges, 2, 'a new version merges once');
+
+    void config.timeout;
+    t.equal(merges, 2, 'and then caches again');
+    t.end();
 });

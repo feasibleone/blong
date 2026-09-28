@@ -4,6 +4,7 @@ import {
     type ITokenResult,
     type SessionConfig,
     SESSION_COOKIE_DEFAULT,
+    sessionCleanupParams,
 } from './sessionLib.ts';
 
 /**
@@ -45,14 +46,12 @@ export default handler(
             const ipAddress = ($meta as {ipAddress?: string}).ipAddress;
             const cookieHandle = readSessionCookie($meta, SESSION_COOKIE);
             const cookieOptions = sessionCookieOptions(sessionConfig);
-            const recordAudit = (
-                entry: {
-                    actorId?: string;
-                    sessionId?: string;
-                    isSuccess: boolean;
-                    failureReason?: string;
-                },
-            ) =>
+            const recordAudit = (entry: {
+                actorId?: string;
+                sessionId?: string;
+                isSuccess: boolean;
+                failureReason?: string;
+            }) =>
                 methods.auditRecord
                     ? (
                           methods.auditRecord(
@@ -135,10 +134,11 @@ export default handler(
             let actions: string[] = [];
             let isActive = true;
             if (methods.permissionList) {
-                const resolved = (await methods.permissionList(
-                    {userId: check.userId!},
-                    $meta,
-                )) as {permissionMap: string; actions: string[]; isActive: boolean};
+                const resolved = (await methods.permissionList({userId: check.userId!}, $meta)) as {
+                    permissionMap: string;
+                    actions: string[];
+                    isActive: boolean;
+                };
                 permissionMap = resolved.permissionMap;
                 actions = resolved.actions;
                 isActive = resolved.isActive;
@@ -188,9 +188,11 @@ export default handler(
                 profile,
             })) as ITokenResult;
             if (methods.sessionCleanup) {
-                await (methods.sessionCleanup({}, $meta) as Promise<{deleted: number}>).catch(
-                    () => undefined,
-                );
+                await (
+                    methods.sessionCleanup(sessionCleanupParams(sessionConfig), $meta) as Promise<{
+                        deleted: number;
+                    }>
+                ).catch(() => undefined);
             }
             await recordAudit({actorId, sessionId, isSuccess: true});
             // Rotate the restore cookie (one-time use) via $meta.httpResponse.

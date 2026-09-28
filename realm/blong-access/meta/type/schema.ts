@@ -325,14 +325,16 @@ export default schema(async ({lib: {type}}) => ({
      *   into).  A deny is the way an implicitly enabled record is explicitly
      *   forbidden.
      *
-     * The effective ACL is evaluated in SQL at query time (no materialized
-     * effective table) — see `ISchemaTable.acl` and the adapter's `acl` helpers.
-     * A ULID PK is used because the row is a rule, not a named entity.
+     * The effective ACL is evaluated in SQL at query time (no materialized rule
+     * table, though the verdict does read the materialized `access.effectiveScope`
+     * and `access.effectiveRole` paths, so a hierarchy change still needs
+     * `access_pathRefresh()`) — see `ISchemaTable.acl` and the adapter's `acl`
+     * helpers. A ULID PK is used because the row is a rule, not a named entity.
      */
     acl: type.Object(
         {
             aclId: type.ulid(),
-            /** The principal the rule applies to (user / role / unit / capability). */
+            /** The principal the rule applies to (user / role / unit). */
             principalId: type.uidNotNull(),
             /** The guarded action resource (`access_action`). */
             actionId: type.uidNotNull(),
@@ -340,7 +342,7 @@ export default schema(async ({lib: {type}}) => ({
             targetId: type.uidNotNull(),
             /** `record` — a single record; `scope` — every record in that scope. */
             targetKind: type.stringNotNull({maxLength: 8}),
-            /** `allow` or `deny`; a deny always wins over every allow. */
+            /** `allow` or `deny`; a deny beats a grant for a record in a scope. */
             effect: type.stringNotNull({maxLength: 8}),
             isActive: type.booleanNotNull(),
         },

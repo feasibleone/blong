@@ -43,6 +43,17 @@ import merge from 'ut-function.merge';
  */
 export function createConfigProxy<T extends object>(
     store: T,
+    options: {
+        /**
+         * Called before every read, at every level of the proxy.
+         *
+         * A caller whose backing store has to be re-read from somewhere charges
+         * the check here, so a node destructured once at startup (a handler's
+         * `config.db`, say) refreshes on its own reads rather than only when the
+         * root is touched.
+         */
+        beforeRead?: () => void;
+    } = {},
 ): {
     proxy: T;
     update: (next: T) => void;
@@ -131,6 +142,7 @@ export function createConfigProxy<T extends object>(
 
         const pathProxy = new Proxy({} as T, {
             get(_target, prop) {
+                options.beforeRead?.();
                 const container = getNode(path);
                 const val = container == null ? undefined : Reflect.get(container as object, prop);
                 if (
@@ -166,16 +178,19 @@ export function createConfigProxy<T extends object>(
                 return Reflect.set(container as object, prop, value);
             },
             has(_target, prop) {
+                options.beforeRead?.();
                 const container = getNode(path);
                 if (container == null) return false;
                 return Reflect.has(container as object, prop);
             },
             ownKeys() {
+                options.beforeRead?.();
                 const container = getNode(path);
                 if (container == null) return [];
                 return Reflect.ownKeys(container as object);
             },
             getOwnPropertyDescriptor(_target, prop) {
+                options.beforeRead?.();
                 const container = getNode(path);
                 if (container == null) return undefined;
                 return Object.getOwnPropertyDescriptor(container as object, prop);
@@ -265,6 +280,7 @@ export default class ConfigRuntime implements IConfigRuntime {
     #rawSnapshot: object = {};
     #proxy: object;
     #updateProxy: (next: object) => void;
+    #version = 0;
 
     readonly enterConfig: (mode?: FactoryPhaseMode) => void;
     readonly exitConfig: () => Error[];
@@ -292,6 +308,11 @@ export default class ConfigRuntime implements IConfigRuntime {
         return this.#rawSnapshot;
     }
 
+    /** Bumped whenever the effective config is replaced; see `IConfigRuntime`. */
+    public get version(): number {
+        return this.#version;
+    }
+
     private mergeConfigs(blongConfig: object): object {
         const loaded = loadBlong(blongConfig);
         return merge({}, this.#baseConfig, ...this.#configs, loaded);
@@ -305,6 +326,7 @@ export default class ConfigRuntime implements IConfigRuntime {
     public async load(params: object = {}): Promise<object> {
         const loaded = this.mergeConfigs({config: {suite: this.#suite}, ...params});
         this.#rawSnapshot = loaded;
+        this.#version += 1;
         this.#updateProxy(loaded);
         return this.#proxy;
     }
@@ -324,6 +346,7 @@ export default class ConfigRuntime implements IConfigRuntime {
         // Only do work when something actually changed
         if (diff.size > 0) {
             this.#rawSnapshot = next;
+            this.#version += 1;
             this.#updateProxy(next);
             for (const subscriber of this.#subscribers) {
                 try {
@@ -372,6 +395,44 @@ export default class ConfigRuntime implements IConfigRuntime {
         portNamespaceConfig?: unknown,
     ): Record<string, unknown> {
         return merge({}, moduleConfigSlice, portNamespaceConfig) as Record<string, unknown>;
+    }
+
+    /**
+     * A live view of one component's config slice, for a handler closure.
+     *
+     * `mergeLayerConfig` copies, so a handler that reads `config.timeout` inside
+     * its function keeps whatever the value was when the layer was assembled,
+     * however often the config is reloaded (T-159).  This hands the closure a
+     * proxy over the merged slice instead: `mergeOnce` is called again when
+     * `version()` reports a new runtime version, and the readers see the new
+     * values — the handler's own `config` argument, and any intermediate node it
+     * destructured at startup, because the nodes are the path proxies of a
+     * `createConfigProxy` instance whose backing is replaced rather than a copy
+     * of it.
+     *
+     * The merge runs at most once per runtime version, so a hot path that reads a
+     * config leaf pays a property lookup and an integer compare, not a merge.
+     */
+    static liveLayerConfig(
+        mergeOnce: () => Record<string, unknown>,
+        version: () => number,
+    ): Record<string, unknown> {
+        let seen = version();
+        const refresh = (): void => {
+            const current = version();
+            if (current === seen) return;
+            seen = current;
+            live.update(mergeOnce());
+        };
+        // The hook is passed to the proxy instance itself, so a node the closure
+        // destructured at startup refreshes on its own reads — reading through
+        // the root would leave it stale.
+        //
+        // This instance's factory-phase guard is never armed: layer assembly arms
+        // the *runtime's* proxy, and a handler has always been free to destructure
+        // a leaf from its `config` argument at factory time.
+        const live = createConfigProxy(mergeOnce(), {beforeRead: refresh});
+        return live.proxy as Record<string, unknown>;
     }
 
     /**

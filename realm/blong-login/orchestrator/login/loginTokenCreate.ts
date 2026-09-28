@@ -5,6 +5,7 @@ import {
     type ITokenResult,
     type SessionConfig,
     SESSION_COOKIE_DEFAULT,
+    sessionCleanupParams,
 } from './sessionLib.ts';
 
 type CredentialCheckResult = {
@@ -40,7 +41,11 @@ type ClientCredentialCheckResult = {
  * in the audit.  Failures are audited too (success=false) then re-thrown.
  */
 export default handler(
-    ({errors, config, lib: {methods = {}, token, sessionCookieOptions, newCookieHandle, sha256Hex}}) => {
+    ({
+        errors,
+        config,
+        lib: {methods = {}, token, sessionCookieOptions, newCookieHandle, sha256Hex},
+    }) => {
         const sessionConfig = config as SessionConfig;
         const SESSION_COOKIE = sessionConfig.session?.cookieName ?? SESSION_COOKIE_DEFAULT;
         return async function loginTokenCreate(
@@ -61,16 +66,14 @@ export default handler(
         ) {
             const ipAddress = ($meta as {ipAddress?: string}).ipAddress;
             const cookieOptions = sessionCookieOptions(sessionConfig);
-            const recordAudit = (
-                entry: {
-                    userId?: string;
-                    actorId?: string;
-                    credentialType?: string;
-                    isSuccess: boolean;
-                    failureReason?: string;
-                    sessionId?: string;
-                },
-            ) =>
+            const recordAudit = (entry: {
+                userId?: string;
+                actorId?: string;
+                credentialType?: string;
+                isSuccess: boolean;
+                failureReason?: string;
+                sessionId?: string;
+            }) =>
                 methods.auditRecord
                     ? (
                           methods.auditRecord(
@@ -96,7 +99,9 @@ export default handler(
 
             if (grantType === 'client_credentials') {
                 if (!methods.credentialCheckClient) {
-                    throw errors['login.configurationError']({params: {method: 'credentialCheckClient'}});
+                    throw errors['login.configurationError']({
+                        params: {method: 'credentialCheckClient'},
+                    });
                 }
                 let result: ClientCredentialCheckResult;
                 try {
@@ -207,7 +212,9 @@ export default handler(
                         userId: result.userKey,
                         credentialId: result.credentialId,
                         tokenHash: sha256Hex(tokenResult.refresh_token),
-                        expiresAt: new Date(Date.now() + tokenResult.refresh_token_expires_in * 1000),
+                        expiresAt: new Date(
+                            Date.now() + tokenResult.refresh_token_expires_in * 1000,
+                        ),
                         ipAddress,
                         sessionId,
                         cookieHash: sha256Hex(cookieHandle),
@@ -216,9 +223,11 @@ export default handler(
                 ) as Promise<{sessionId: string; userId: string}>);
             }
             if (methods.sessionCleanup) {
-                await (methods.sessionCleanup({}, $meta) as Promise<{deleted: number}>).catch(
-                    () => undefined,
-                );
+                await (
+                    methods.sessionCleanup(sessionCleanupParams(sessionConfig), $meta) as Promise<{
+                        deleted: number;
+                    }>
+                ).catch(() => undefined);
             }
             await recordAudit({
                 userId: result.userKey,

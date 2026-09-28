@@ -16,6 +16,11 @@ open (4)
   rule
 - `F-174` · realm/blong-access — The ACL matrix never rendered its stored rules
 
+resolved (2)
+
+- `F-296` · realm/blong-access — The gateway does not read the paths the RBAC pages say it reads
+- `F-297` · realm/blong-access — The ACL documentation promised a deny that the guard can ignore
+
 <!-- /memory:index -->
 
 ## Open
@@ -62,3 +67,45 @@ made). resourceLabel() is now shared by resourceOptions and aclMatrixRows; the -
 capture proves load. A read handler must emit the joined label exactly as the dropdown builds it.
 
 ## Resolved
+
+### F-296 — The gateway does not read the paths the RBAC pages say it reads
+
+> _2026-09-27 · realm/blong-access · resolved_
+
+Verification for two posts caught three claims that had been repeated across the RBAC documentation.
+The authorization hook queries core_triple directly, joining hasCapability and hasAction, and never
+reads the materialized core_path paths - those are read at login, where the per bitmask is built
+from access.effectiveRole, and by access.session.verify from access.effectiveAction. So 'a decision
+is one indexed lookup instead of a recursive walk' describes login rather than the per-request
+check. 'No database round-trip on the hot path' holds only while a 30-second per-caller cache is
+warm. And 'a freed bit is never reused' is false for the highest bit in use, because allocation is
+MAX + 1: deleting that role hands its bit to the next one. The lesson is that a claim about where a
+query happens is as testable as a claim about its result, and it is the kind of claim that survives
+review because it reads like a summary.
+
+Corrected the stale claims wherever they were repeated: realm/blong-access/README.md, the RBAC
+rationale, the gateway concept, the 2026-07-05 post, the blong-core skill, and the role-bit comments
+in error.ts, accessRoleEnsure.ts and 1-accessRoleMerge.yaml. Verified against the code:
+accessAuthorizationList joins core_triple with a 30s per-bit cache, accessPermissionList and
+accessSessionVerify read core_path, and allocation is MAX + 1.
+
+### F-297 — The ACL documentation promised a deny that the guard can ignore
+
+> _2026-09-27 · realm/blong-access · resolved_
+
+The record-level ACL is documented as 'a deny always wins', but the combined filter is (unscoped OR
+guarded) and the unscoped term short-circuits for a record that participates in no scope, so a
+record-targeted deny on such a record is not applied. The same term is what makes mode scoped safe
+to adopt, so the two properties are one mechanism described twice, once as a guarantee and once as a
+convenience. Three other statements were wrong in the same area: a capability cannot be a principal
+because the filter resolves the caller, their effective roles and their units and never a
+capability, so such a rule is inert; targetKind 'all' exists in code and in the seeded data but was
+missing from the README field list; and 'no materialized table to invalidate' ignored that the
+verdict reads access.effectiveScope and access.effectiveRole, so a hierarchy change still needs
+access_pathRefresh(). Corrected in the concept, pattern and rationale pages, the realm README and
+the schema comments.
+
+The concept and pattern pages already carried the hole; brought the realm README, the ACL rationale,
+the ACL schema comments, the gogo acl comments (server/acl.ts, schema/knex/types.ts) and the
+blong-core skill in line, and dropped the capability-as-principal wording. mode explicit's
+deny-by-default and targetKind all are now stated everywhere.

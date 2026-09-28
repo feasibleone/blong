@@ -20,9 +20,10 @@ import * as account from './account.ts';
  *
  * The rules this handler enforces:
  *
- * - **Blank means allocate** — `MAX(roleBit) + 1`, never reused.  A bit is the
- *   role's position in a minted token's `per` mask, so a freed bit must not be
- *   handed to a new role while old tokens still carry it.
+ * - **Blank means allocate** — `max(high-water mark, MAX(roleBit)) + 1`.  A bit
+ *   is the role's position in a minted token's `per` mask, so a freed bit must
+ *   not be handed to a new role while old tokens still carry it; the mark in
+ *   `core.counter` is what makes that true for every bit, the highest included.
  * - **An explicit bit is honoured or refused** — a bit owned by *another* role
  *   raises `role.bitTaken`, an out-of-range or non-numeric one `role.bitInvalid`.
  * - **A bit never moves** — an existing role keeps the bit it has, whatever the

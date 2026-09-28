@@ -96,9 +96,10 @@ export interface IResourceTableSpec {
  * Record-level (ACL) guard for a table.
  *
  * The ACL lives in `access_acl` rows — `(principalId, actionId, targetId,
- * targetKind, effect)` — where `principalId` is a user, role, unit or capability,
- * `targetId` is the guarded record (or a scope node) and `effect` is `allow` /
- * `deny` (deny always wins).
+ * targetKind, effect)` — where `principalId` is a user, role or unit (never a
+ * capability — the filter resolves the caller, their effective roles and their
+ * units), `targetId` is the guarded record (or a scope node) and `effect` is
+ * `allow` / `deny` (a deny beats a grant for a record inside a scope).
  */
 export interface IAclTableSpec {
     /**

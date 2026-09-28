@@ -104,49 +104,55 @@ export default handler(
                 // 2. Resolve the target keys.  A call without `$meta.auth` is a
                 //    system call: the record gate is bypassed (seeds and internal
                 //    dispatches must be able to read every record).
+                //
+                //    Every name is looked up with `filterBy`, as the later steps do,
+                //    rather than read off the first page of a `find`: the database is
+                //    shared with the browser suite, and once it holds more than a page
+                //    of persons the seeded fixture is no longer on page one.
                 async function systemKeys(assert: IAssert, {$meta}: {$meta: IMeta}) {
                     const system = {...$meta, auth: undefined};
-                    const persons = rowsOf(
-                        await partyPersonFind<unknown>(
-                            {paging: {pageNumber: 1, pageSize: 100}},
-                            {...system, method: 'party.person.find'},
-                        ),
-                    );
-                    const units = rowsOf(
-                        await partyUnitFind<unknown>(
-                            {paging: {pageNumber: 1, pageSize: 100}},
-                            {...system, method: 'party.unit.find'},
-                        ),
-                    );
-                    const person = (lastName: string): string => {
-                        const found = persons.find(row => row.lastName === lastName);
-                        assert.ok(found, `person ${lastName} is seeded`);
-                        return found!.personId as string;
+                    const rowsNamed = async (
+                        find: unknown,
+                        filterBy: Record<string, unknown>,
+                        method: string,
+                    ): Promise<Array<Record<string, unknown>>> =>
+                        rowsOf(
+                            await (find as (params: object, meta: object) => Promise<unknown>)(
+                                {filterBy, paging: {pageNumber: 1, pageSize: 10}},
+                                {...system, method},
+                            ),
+                        );
+                    const person = async (lastName: string): Promise<string> => {
+                        const rows = await rowsNamed(
+                            partyPersonFind,
+                            {lastName},
+                            'party.person.find',
+                        );
+                        assert.ok(rows.length >= 1, `person ${lastName} is seeded`);
+                        return rows[0]!.personId as string;
                     };
-                    const unit = (unitName: string): string => {
-                        const found = units.find(row => row.unitName === unitName);
-                        assert.ok(found, `unit ${unitName} is seeded`);
-                        return found!.unitId as string;
+                    const unit = async (unitName: string): Promise<string> => {
+                        const rows = await rowsNamed(partyUnitFind, {unitName}, 'party.unit.find');
+                        assert.ok(rows.length >= 1, `unit ${unitName} is seeded`);
+                        return rows[0]!.unitId as string;
                     };
-                    const organizations = rowsOf(
-                        await partyOrganizationFind<unknown>(
-                            {paging: {pageNumber: 1, pageSize: 100}},
-                            {...system, method: 'party.organization.find'},
-                        ),
-                    );
-                    const organization = (legalName: string): string => {
-                        const found = organizations.find(row => row.legalName === legalName);
-                        assert.ok(found, `organization ${legalName} is seeded`);
-                        return found!.organizationId as string;
+                    const organization = async (legalName: string): Promise<string> => {
+                        const rows = await rowsNamed(
+                            partyOrganizationFind,
+                            {legalName},
+                            'party.organization.find',
+                        );
+                        assert.ok(rows.length >= 1, `organization ${legalName} is seeded`);
+                        return rows[0]!.organizationId as string;
                     };
                     return {
-                        john: person('Doe'),
-                        jane: person('Smith'),
-                        alice: person('Brown'),
-                        retail: unit('Retail Branch'),
-                        finServe: unit('FinServe Branch'),
-                        globalBank: organization('Global Bank Corp'),
-                        finServeOrg: organization('FinServe Solutions Ltd'),
+                        john: await person('Doe'),
+                        jane: await person('Smith'),
+                        alice: await person('Brown'),
+                        retail: await unit('Retail Branch'),
+                        finServe: await unit('FinServe Branch'),
+                        globalBank: await organization('Global Bank Corp'),
+                        finServeOrg: await organization('FinServe Solutions Ltd'),
                     };
                 },
 

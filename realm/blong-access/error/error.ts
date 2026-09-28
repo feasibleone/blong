@@ -39,7 +39,9 @@ export default {
     // Creating a record in a scope the caller has no grant on.
     'acl.scopeDenied': {message: 'Not allowed to create a record in this scope', statusCode: 403},
     // Role bits.  A bit is the role's position in a token's permission mask, so
-    // it is allocated once (`MAX(roleBit) + 1`, never reused) and never moved:
+    // it is allocated once (`max(high-water mark, MAX(roleBit)) + 1`) and never
+    // moved, and a deletion recycles nothing — not even the highest bit in use,
+    // because the mark outlives the rows it numbered:
     // an explicitly requested bit that is taken, out of range, or different from
     // the one a role already owns is refused instead of being silently dropped.
     'role.bitTaken': 'Role bit {roleBit} is already used by the role {roleName}',

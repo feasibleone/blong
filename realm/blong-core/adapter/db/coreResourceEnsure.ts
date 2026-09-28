@@ -49,8 +49,9 @@ export default handler(
                 keyName?: string;
                 /**
                  * Allocate a value for a UNIQUE counter column the caller left
-                 * blank (`{column: 'roleBit', max: 1023}`): the first free value
-                 * is taken, monotonically and never reused (see `nextCounter`).
+                 * blank (`{column: 'roleBit', max: 1023}`): the next value is
+                 * `max(high-water mark, MAX(column)) + 1`, so a value freed by a
+                 * delete is never handed out again (see `nextCounter`).
                  */
                 allocate?: {column: string; max: number};
             },
@@ -90,6 +91,12 @@ export default handler(
             const entityKey = uuidBuf(resourceId);
             const rowExists = async (): Promise<boolean> =>
                 Boolean(await qb(table).where(keyName, entityKey).first(keyName));
+            // An existing row keeps what it has: the insert below is `INSERT IGNORE`
+            // and could not change it anyway, while allocating first would take a
+            // fresh value for a row that never carries it.  Every idempotent
+            // `ensure` — a seed merge re-applied on every start — used to burn one
+            // `roleBit` per seeded role because of that (T-169).
+            if (await rowExists()) return {resourceId};
             const allocate = params.allocate;
             const supplied = allocate ? params.extraColumns?.[allocate.column] : undefined;
             // An empty form field arrives as '' — treat it like "not supplied".
@@ -102,13 +109,11 @@ export default handler(
             const attempts = allocate && explicit === undefined ? 3 : 1;
             for (let attempt = 0; attempt < attempts; attempt++) {
                 const extra: Record<string, unknown> = {...(params.extraColumns ?? {})};
+                let commitAllocation: (() => Promise<void>) | undefined;
                 if (allocate && explicit === undefined) {
-                    extra[allocate.column] = await nextCounter(
-                        qb,
-                        table,
-                        allocate.column,
-                        allocate.max,
-                    );
+                    const allocation = await nextCounter(qb, table, allocate.column, allocate.max);
+                    extra[allocate.column] = allocation.value;
+                    commitAllocation = allocation.commit;
                 }
                 // `INSERT IGNORE` (not `ON DUPLICATE KEY UPDATE`): the keyName is
                 // a fresh UUID so it never conflicts here, while `merge()` would
@@ -121,7 +126,12 @@ export default handler(
                     .insert({[keyName]: entityKey, ...extra})
                     .onConflict(keyName)
                     .ignore();
-                if (await rowExists()) return {resourceId};
+                if (await rowExists()) {
+                    // The value is now in use, so the mark may advance.  Committing
+                    // earlier would burn it on an attempt that lost a race.
+                    await commitAllocation?.();
+                    return {resourceId};
+                }
             }
             throw new Error(
                 `Could not create the ${table} row for "${params.name}"` +

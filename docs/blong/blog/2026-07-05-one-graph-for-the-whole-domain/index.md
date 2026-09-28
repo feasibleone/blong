@@ -98,10 +98,12 @@ flowchart LR
 **Party** reads the hierarchy — membership through `belongsTo`, the unit tree through `isPartOf`,
 the human behind an account through `hasProfile`. **RBAC** walks user → role → capability → action,
 directly or through the unit the user belongs to, and materializes the answer into `core.path` as
-`access.effectiveRole`, `access.effectiveAction` and `access.effectiveScope`, so a permission check
-is one indexed lookup instead of a recursive walk. **The record-level ACL** adds the narrowing
-direction: `access_acl` is a table whose principal, action and target are all resources, so a rule
-can attach to any of them, and its implicit half is a `hasScope` edge in the same graph.
+`access.effectiveRole`, `access.effectiveAction` and `access.effectiveScope`, so the caller's
+effective actions are one indexed lookup instead of a recursive walk — read at login, to pack the
+token's bitmask, while the per-request check expands that bitmask with a cache. **The record-level
+ACL** adds the narrowing direction: `access_acl` is a table whose principal, action and target are
+all resources, so a rule can attach to any of them, and its implicit half is a `hasScope` edge in
+the same graph.
 
 Note what is _not_ claimed here: the graph does not replace the tables. A role is still a table with
 a `roleBit` column; `access_acl` is still a table with rules in it; the unit hierarchy is

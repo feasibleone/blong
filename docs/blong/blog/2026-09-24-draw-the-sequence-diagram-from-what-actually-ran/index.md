@@ -57,9 +57,9 @@ sequenceDiagram
     participant B as receiver — answers it
     A->>B: leg: hub/transfer.create#1
     Note over A: point: transfer-started
-    alt amount within limit
+    alt over limit
+    else amount within limit
         Note over B: point: debited
-    else over limit
     end
     B-->>A: answered
 ```

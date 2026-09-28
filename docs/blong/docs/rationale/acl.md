@@ -48,12 +48,16 @@ flowchart TD
 
 **Deny wins.** An explicit deny must be able to override an organizational grant. The alternative
 ("most specific wins", or a precedence ladder) requires every reader to re-implement the ladder in
-their head; predictability was chosen over expressiveness.
+their head; predictability was chosen over expressiveness. The guarantee is about a record that
+participates in a scope: a `record`-targeted deny on a record that participates in none is not
+applied, because the unscoped term of the filter short-circuits — the same property, below, that
+makes opting in safe.
 
-**Opt-in per table, tolerant of existing data.** A record that participates in no scope is not
-narrowed at all and falls back to RBAC alone. That is what makes switching the guard on safe: a
-table with no `acl` spec behaves exactly as before, and a guarded table changes nothing until a
-grant exists.
+**Opt-in per table, tolerant of existing data.** In `scoped` mode a record that participates in no
+scope is not narrowed at all and falls back to RBAC alone. That is what makes switching the guard on
+safe: a table with no `acl` spec behaves exactly as before, and a guarded table changes nothing
+until a grant exists. `explicit` mode is the opposite and worth choosing deliberately — the unscoped
+fallback is not built, so every record is denied until a rule admits it.
 
 **Filter before paging, and hide reads.** `find` is filtered as part of the query, so the total
 counts only readable records — filtering after paging would render phantom pages. A denied

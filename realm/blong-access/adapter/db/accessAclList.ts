@@ -17,7 +17,7 @@ type AclRow = {
     targetName: string;
     /** `record` — a single record; `scope` — every record linked to it. */
     targetKind: string;
-    /** `allow` or `deny` (a deny always wins). */
+    /** `allow` or `deny` (a deny beats a grant for a record in a scope). */
     effect: string;
     /** `explicit` — an `access_acl` rule; `implicit` — a `hasScope` grant. */
     source: 'explicit' | 'implicit';

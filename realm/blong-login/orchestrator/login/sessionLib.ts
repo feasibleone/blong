@@ -132,7 +132,7 @@ export interface ResolvedLoginMethods {
 /** Session-relevant `login` config consumed by the `sessionLib` library. */
 export interface SessionConfig {
     methods?: LoginMethods;
-    expire?: {cookie?: number; inactivity?: number};
+    expire?: {cookie?: number; inactivity?: number; deleteAfter?: number};
     session?: {
         cookieName?: string;
         cookiePath?: string;
@@ -164,6 +164,20 @@ function sessionCookieOptions(config: SessionConfig): SessionCookieOptions {
     };
 }
 
+/**
+ * The params a login caller passes to `access.session.cleanup`.
+ *
+ * `login.expire.deleteAfter` is the documented knob, but the access handler
+ * falls back to its own 24-hour constant when it is absent — so a suite that
+ * configures the value would see it have no effect (T-165). Passing the
+ * configured number through, and nothing when it is unset, keeps the two in
+ * step.
+ */
+export function sessionCleanupParams(config: SessionConfig): {deleteAfter?: number} {
+    const deleteAfter = config.expire?.deleteAfter;
+    return deleteAfter === undefined ? {} : {deleteAfter};
+}
+
 /** Read the restore cookie value from `$meta.httpRequest.state` (cookies). */
 function readSessionCookie($meta: unknown, cookieName: string): string | undefined {
     const httpRequest = ($meta as {httpRequest?: {state?: Record<string, string>}})?.httpRequest;
@@ -185,31 +199,29 @@ function readSessionCookie($meta: unknown, cookieName: string): string | undefin
  *     methods.auditRecord?.({...}, $meta);
  *     const hash = sha256Hex<string>(refreshToken);
  */
-export default library(
-    ({config, handler}) => {
-        const methods: ResolvedLoginMethods = {
-            credentialCheck: resolveLoginMethod(config, 'credentialCheck', handler),
-            credentialCheckClient: resolveLoginMethod(config, 'credentialCheckClient', handler),
-            identityCheck: resolveLoginMethod(config, 'identityCheck', handler),
-            permissionList: resolveLoginMethod(config, 'permissionList', handler),
-            profileGet: resolveLoginMethod(config, 'profileGet', handler),
-            sessionCreate: resolveLoginMethod(config, 'sessionCreate', handler),
-            sessionVerify: resolveLoginMethod(config, 'sessionVerify', handler),
-            sessionRestore: resolveLoginMethod(config, 'sessionRestore', handler),
-            sessionRotate: resolveLoginMethod(config, 'sessionRotate', handler),
-            sessionClose: resolveLoginMethod(config, 'sessionClose', handler),
-            sessionCleanup: resolveLoginMethod(config, 'sessionCleanup', handler),
-            auditRecord: resolveLoginMethod(config, 'auditRecord', handler),
-        };
-        return {
-            /** Conventional map of resolved access-method bindings. */
-            methods,
-            sha256Hex,
-            newCookieHandle,
-            sessionCookieOptions,
-            readSessionCookie,
-            bufToUuid,
-            base64ToUuid,
-        };
-    },
-);
+export default library(({config, handler}) => {
+    const methods: ResolvedLoginMethods = {
+        credentialCheck: resolveLoginMethod(config, 'credentialCheck', handler),
+        credentialCheckClient: resolveLoginMethod(config, 'credentialCheckClient', handler),
+        identityCheck: resolveLoginMethod(config, 'identityCheck', handler),
+        permissionList: resolveLoginMethod(config, 'permissionList', handler),
+        profileGet: resolveLoginMethod(config, 'profileGet', handler),
+        sessionCreate: resolveLoginMethod(config, 'sessionCreate', handler),
+        sessionVerify: resolveLoginMethod(config, 'sessionVerify', handler),
+        sessionRestore: resolveLoginMethod(config, 'sessionRestore', handler),
+        sessionRotate: resolveLoginMethod(config, 'sessionRotate', handler),
+        sessionClose: resolveLoginMethod(config, 'sessionClose', handler),
+        sessionCleanup: resolveLoginMethod(config, 'sessionCleanup', handler),
+        auditRecord: resolveLoginMethod(config, 'auditRecord', handler),
+    };
+    return {
+        /** Conventional map of resolved access-method bindings. */
+        methods,
+        sha256Hex,
+        newCookieHandle,
+        sessionCookieOptions,
+        readSessionCookie,
+        bufToUuid,
+        base64ToUuid,
+    };
+});

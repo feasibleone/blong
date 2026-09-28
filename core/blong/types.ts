@@ -187,6 +187,14 @@ export interface IConfigRuntime {
     readonly snapshot: object;
     /** Raw (non-proxy) snapshot of the current effective config */
     readonly rawSnapshot: object;
+    /**
+     * Monotonic counter, bumped whenever the effective config is replaced.
+     *
+     * A live view built over a config slice compares it to know when the slice
+     * has to be re-read, so the comparison costs an integer compare rather than
+     * a merge on every read (see `ConfigRuntime.liveLayerConfig`).
+     */
+    readonly version: number;
     /** Load (or reload) config from all sources; returns the updated snapshot */
     load(params?: object): Promise<object>;
     /**

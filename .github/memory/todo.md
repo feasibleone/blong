@@ -53,6 +53,8 @@ open (35)
 - T-160
 - playwright webp
 - exclusion groups
+- ACL test in cucumber
+- local table order
 - check login.expire.deleteAfter, access.session.close
 - generate .http files
 - decisions as tests and code reference

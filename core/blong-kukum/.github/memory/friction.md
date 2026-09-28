@@ -13,7 +13,7 @@ open (2)
 - `F-211` · core/blong-kukum — A package that hosts a generated fixture must declare what the
   fixture imports
 
-resolved (11)
+resolved (12)
 
 - `F-122` · core/blong-kukum — A record-driven route map collapsed onto one empty key
 - `F-123` · core/blong-kukum — `realm add` needs a single-word realm name
@@ -26,6 +26,7 @@ resolved (11)
 - `F-135` · core/blong-kukum — Moving a module one folder deeper changed its `import.meta.url` depth
 - `F-136` · core/blong-kukum — Renaming a binding to `find` collided with a local of the same name
 - `F-184` · core/blong-kukum — component add refuses an existing folder and emits a stray import
+- `F-294` · core/blong-kukum — The kukum CLI needs a database named after its own realm
 
 <!-- /memory:index -->
 
@@ -208,3 +209,17 @@ call.
 the stray import is UNCHANGED_MARKER, a deliberate generated marker asserted by engine, scaffold and
 operations tests, and scaffold.test.ts scaffolds every primitive kind into one realm with no
 failures
+
+### F-294 — The kukum CLI needs a database named after its own realm
+
+> _2026-09-27 · core/blong-kukum · resolved_
+
+kukum is a generator whose CLI is meant to need no server, but bin/kukum.ts loads cliSuite, which
+pulls in blong-server's knex adapter, and the dev configuration derives the database name from the
+suite: running it from a fresh checkout fails with Unknown database kukum before any primitive is
+reached. Creating that database once (blong-dev sql "CREATE DATABASE IF NOT EXISTS kukum") makes the
+CLI work and the reported primitives are correct, so the defect is the dependency rather than the
+generator. Either the cli intent should not activate the db adapter, or the kukum suite should not
+depend on blong-server; demo/blong-cli already declares no blong-server dependency, which is the
+shape to copy. The same failure mode is described in the load.ts comment about demo/blong-cli
+exiting 1 with Unknown database and test/framework/nscfg failing with ER_BAD_DB_ERROR.

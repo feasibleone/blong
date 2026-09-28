@@ -15,29 +15,32 @@ Blong reuses the resource graph it already has instead of growing an RBAC schema
   `hasCapability`, `hasAction`, `belongsTo`) — so RBAC inherits the graph's types, naming and
   hierarchy, and org units can hold roles for their members.
 - Reachability is **materialized** into `core.path` (`access.effectiveRole`,
-  `access.effectiveAction`) by one stored procedure, turning a decision into a single indexed
-  lookup; a recursive traversal never runs while serving a request.
+  `access.effectiveAction`, `access.effectiveScope`) by one stored procedure, and read as a single
+  indexed lookup where it is needed — at login, to pack the token's `per` bitmask, and by
+  `access.session.verify`. The per-request authorization expansion joins `core.triple` directly
+  (`hasCapability` / `hasAction`) and caches the result per role bit, so no recursive traversal runs
+  while serving a request.
 - The caller's roles are encoded as **bits in the signed token**. The gateway verifies the token and
   compares the requested method against the expanded bitmask, so the enormous majority of requests
   never touch the database; the expansion is cached per bit set with a TTL.
 
-The shape that follows from that split is a hot path with no database access and a write path that
-rewrites the graph once:
+The shape that follows from that split is a hot path with no database access while the expansion
+cache is warm, and a write path that rewrites the graph once:
 
 ```mermaid
 flowchart TD
     subgraph Hot["the hot path — every request"]
         H1["the signed token"] --> H2["role bits"]
-        H2 --> H3["access.authorization.list —<br/>the expansion is cached per bit set, with a TTL"]
+        H2 --> H3["access.authorization.list —<br/>joins core.triple, cached per role bit"]
         H3 --> H4{"is the requested method allowed?"}
-        H4 -- "yes" --> H5["served, with no database read at all"]
+        H4 -- "yes" --> H5["served from the cache"]
         H4 -- "no" --> H6["refused"]
     end
     subgraph Write["the write path — a grant changes"]
         W1["a grant"] --> W2["one stored procedure<br/>rebuilds core.path"]
-        W2 --> W3["access.effectiveAction"]
+        W2 --> W3["access.effectiveRole /<br/>access.effectiveAction"]
     end
-    W3 -. "read only when the cache is cold" .-> H3
+    W3 -. "read at login, to pack the per bitmask" .-> H2
 ```
 
 ## Decisions and trade-offs
@@ -49,17 +52,20 @@ expansion per bit instead of a list per request.
 
 **A bit is identity, so it never moves.** The mask in an _already minted_ token is resolved against
 the current role-to-bit mapping, so moving a bit would silently hand that token's permissions to a
-different role. Role bits are therefore allocated (`MAX(roleBit) + 1`) and not recycled when a role
-is deleted, and an edit that changes one is refused. Three consequences were accepted deliberately:
-the 1024 ceiling (acceptable because allocation stays dense), gaps after a deletion (harmless), and
+different role. Role bits are therefore allocated (`max(high-water mark, MAX(roleBit)) + 1`) and
+immutable — an edit that changes one is refused. The mark is a `core.counter` row rather than `MAX`
+alone, because `MAX` falls back when the row that held it is deleted and the next role created would
+then be handed a bit a live token still carries. Three consequences were accepted deliberately: the
+1024 ceiling, now consumed by every role ever created rather than only the live ones, so a
+long-lived database has to have the mark reset when it fills; gaps after a deletion (harmless); and
 the loss of the ability to renumber roles for tidiness.
 
 ```mermaid
 flowchart TD
     B["a bit is how an already-minted token names a role"] --> C["moving a bit would silently hand<br/>that token's permissions to another role"]
-    C --> D["so bits are allocated as MAX + 1,<br/>and an edit that changes one is refused"]
-    D --> E["bits stay dense, which keeps the mask small"]
-    D --> F["gaps appear after a deletion — harmless"]
+    C --> D["so bits are allocated as max(mark, MAX) + 1,<br/>and an edit that changes one is refused"]
+    D --> E["gaps accumulate — a value is never re-issued"]
+    D --> F["the 1024-value space is consumed<br/>by every role ever created"]
     D --> G["roles cannot be renumbered for tidiness — accepted"]
 ```
 

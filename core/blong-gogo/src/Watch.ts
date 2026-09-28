@@ -116,6 +116,73 @@ export function affectedNamespaces(diff: ConfigDiff, portNames: Iterable<string>
     return affected;
 }
 
+/**
+ * The port surface a config reload needs — `IRegistry`, narrowed so the reload
+ * loop can be driven with fakes (see `Watch.test.ts`).
+ */
+export interface IReloadablePort {
+    /** Zero-downtime path: the port reconfigures itself. */
+    configChanged?(diff: ConfigDiff, next: unknown, prev: unknown): Promise<void> | void;
+    stop(): Promise<void> | void;
+    start(configOverride: object): Promise<void> | void;
+    ready(): Promise<void> | void;
+}
+
+export interface IReloadRegistry {
+    ports: {keys: () => Iterable<string>};
+    getPort(id: string): Promise<IReloadablePort | undefined>;
+    createPort(id: string): Promise<IReloadablePort | undefined>;
+}
+
+/**
+ * Apply a config reload to the ports the diff affects.
+ *
+ * A port that implements `configChanged` is asked to reconfigure itself — the
+ * zero-downtime path, which is what keeps an in-flight request or an expensive
+ * connection alive. A port that does not is stopped and started again with the
+ * current override. A port the diff does not name is not touched at all, which is
+ * the property that makes a log-level change safe: it must not cost a database
+ * pool.
+ *
+ * Returns the number of ports the loop reached, and reports each one through
+ * `onReloaded` so the caller's progress view can follow it.
+ */
+export async function applyConfigReload(
+    registry: IReloadRegistry,
+    affected: Iterable<string>,
+    diff: ConfigDiff,
+    next: object,
+    prev: object,
+    configOverride: object,
+    onPortError: (error: unknown) => void = () => undefined,
+    onReloaded?: (done: number, total: number) => void,
+): Promise<number> {
+    const total = [...affected].length;
+    let reloaded = 0;
+    for (const portId of affected) {
+        const portInstance = await registry.getPort(portId);
+        if (portInstance) {
+            if (typeof portInstance.configChanged === 'function') {
+                try {
+                    await portInstance.configChanged(diff, next, prev);
+                } catch (error) {
+                    onPortError(error);
+                }
+            } else {
+                await portInstance.stop();
+                const fresh = await registry.createPort(portId);
+                if (fresh) {
+                    await fresh.start(configOverride);
+                    await fresh.ready();
+                }
+            }
+        }
+        reloaded += 1;
+        onReloaded?.(reloaded, total);
+    }
+    return reloaded;
+}
+
 export default class Watch extends Internal implements IWatch {
     #config: IConfig = {
         enabled: false,
@@ -566,28 +633,18 @@ export default class Watch extends Internal implements IWatch {
             this.log,
             'reload config',
             (async () => {
-                for (const portId of affected) {
-                    const portInstance = await registry.getPort(portId);
-                    if (portInstance) {
-                        if (typeof portInstance['configChanged'] === 'function') {
-                            // Adapter supports the configChanged hook — zero-downtime update
-                            try {
-                                await portInstance['configChanged'](diff, next, prev);
-                            } catch (error) {
-                                this.log?.error?.(error);
-                            }
-                        } else {
-                            // Fallback: stop and restart the port with the current configOverride
-                            await portInstance.stop();
-                            const fresh = await registry.createPort(portId);
-                            if (fresh) {
-                                await fresh.start(configOverride);
-                                await fresh.ready();
-                            }
-                        }
-                    }
-                    reloaded += 1;
-                }
+                await applyConfigReload(
+                    registry as unknown as IReloadRegistry,
+                    affected,
+                    diff,
+                    next,
+                    prev,
+                    configOverride,
+                    error => this.log?.error?.(error),
+                    done => {
+                        reloaded = done;
+                    },
+                );
             })(),
             {getProgress: () => ({done: reloaded, total: affected.size})},
         );

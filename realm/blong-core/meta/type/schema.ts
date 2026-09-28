@@ -94,4 +94,18 @@ export default schema(async ({lib: {type}}) => ({
             },
         },
     ),
+    /**
+     * Named monotonic counters — the allocator's own memory.
+     */
+    counter: type.Object(
+        {
+            counterName: type.stringNotNull(),
+            counterValue: type.integerNotNull(),
+        },
+        {
+            constraints: {
+                primaryKey: {columns: ['counterName']},
+            },
+        },
+    ),
 }));

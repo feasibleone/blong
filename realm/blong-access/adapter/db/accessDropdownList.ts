@@ -18,8 +18,9 @@ type KnexQb = any;
  *
  * `access.aclPrincipal` / `access.aclTarget` list the graph resources an ACL
  * rule can name, labelled `<short type>: <name>` — principals are the users,
- * roles, units and capabilities the rules hang off; targets are the records and
- * scopes they point at.
+ * roles and units the rules hang off (never a capability: the filter resolves
+ * the caller, their roles and their units, so such a rule would match nobody);
+ * targets are the records and scopes they point at.
  */
 export default handler(() => ({
     async accessDropdownList(
@@ -44,7 +45,6 @@ export default handler(() => ({
                 'access.user',
                 'access.role',
                 'party.unit',
-                'access.capability',
             ]),
             'access.aclTarget': await model.resourceOptions(qb, [
                 'party.unit',

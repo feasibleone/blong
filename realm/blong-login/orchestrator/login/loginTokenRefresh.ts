@@ -1,6 +1,6 @@
 import {type IMeta, handler} from '@feasibleone/blong';
 
-import {type ITokenResult, type SessionConfig} from './sessionLib.ts';
+import {type ITokenResult, type SessionConfig, sessionCleanupParams} from './sessionLib.ts';
 
 /**
  * OAuth refresh-grant endpoint (JSON-RPC `login.token.refresh`).
@@ -23,222 +23,230 @@ import {type ITokenResult, type SessionConfig} from './sessionLib.ts';
  *
  * Wire: `login.token.refresh` (`auth: 'login'`).
  */
-export default handler(
-    ({errors, config, lib: {methods = {}, readRefresh, token, sha256Hex}}) => {
-        const inactivityTimeout = (config as SessionConfig).expire?.inactivity;
-        return async function loginTokenRefresh(
-            {refreshToken}: {refreshToken: string},
-            $meta: IMeta,
-        ) {
-            const ipAddress = ($meta as {ipAddress?: string}).ipAddress;
-            const recordAudit = (
-                entry: {
-                    actorId?: string;
-                    sessionId?: string;
-                    isSuccess: boolean;
-                    failureReason?: string;
-                },
-            ) =>
-                methods.auditRecord
-                    ? (
-                          methods.auditRecord(
-                              {
-                                  audit: [
-                                      {
-                                          ...entry,
-                                          actionName: 'login.refresh',
-                                          ipAddress,
-                                          statusCode: entry.isSuccess ? 200 : 401,
-                                      },
-                                  ],
-                              },
-                              $meta,
-                          ) as Promise<{inserted: number}>
-                      ).catch(() => undefined)
-                    : Promise.resolve(undefined);
+export default handler(({errors, config, lib: {methods = {}, readRefresh, token, sha256Hex}}) => {
+    const inactivityTimeout = (config as SessionConfig).expire?.inactivity;
+    return async function loginTokenRefresh({refreshToken}: {refreshToken: string}, $meta: IMeta) {
+        const ipAddress = ($meta as {ipAddress?: string}).ipAddress;
+        const recordAudit = (entry: {
+            actorId?: string;
+            sessionId?: string;
+            isSuccess: boolean;
+            failureReason?: string;
+        }) =>
+            methods.auditRecord
+                ? (
+                      methods.auditRecord(
+                          {
+                              audit: [
+                                  {
+                                      ...entry,
+                                      actionName: 'login.refresh',
+                                      ipAddress,
+                                      statusCode: entry.isSuccess ? 200 : 401,
+                                  },
+                              ],
+                          },
+                          $meta,
+                      ) as Promise<{inserted: number}>
+                  ).catch(() => undefined)
+                : Promise.resolve(undefined);
 
-            let payload: {
-                actorId: string;
-                sessionId: string;
-                clientId?: string;
-                mlsk?: object | 'header';
-                mlek?: object | 'header';
-                refresh?: number;
-                expire?: number;
-                actions?: string[];
-            };
-            try {
-                payload = readRefresh(refreshToken) as typeof payload;
-            } catch (error) {
-                await recordAudit({isSuccess: false, failureReason: 'login.refreshTokenExpired'});
-                throw error;
-            }
-            if (!payload?.sessionId) {
-                await recordAudit({
-                    isSuccess: false,
-                    failureReason: 'login.invalidRefreshToken',
-                });
-                throw errors['login.invalidRefreshToken']();
-            }
-            const {sessionId, actorId, clientId, mlsk, mlek} = payload;
+        let payload: {
+            actorId: string;
+            sessionId: string;
+            clientId?: string;
+            mlsk?: object | 'header';
+            mlek?: object | 'header';
+            refresh?: number;
+            expire?: number;
+            actions?: string[];
+        };
+        try {
+            payload = readRefresh(refreshToken) as typeof payload;
+        } catch (error) {
+            await recordAudit({isSuccess: false, failureReason: 'login.refreshTokenExpired'});
+            throw error;
+        }
+        if (!payload?.sessionId) {
+            await recordAudit({
+                isSuccess: false,
+                failureReason: 'login.invalidRefreshToken',
+            });
+            throw errors['login.invalidRefreshToken']();
+        }
+        const {sessionId, actorId, clientId, mlsk, mlek} = payload;
 
-            // Session verification is required for renewal — without it a
-            // refresh cannot validate the session (lightweight suites disable
-            // it and don't expose renewal).
-            if (!methods.sessionVerify) {
-                await recordAudit({
-                    actorId,
-                    sessionId,
-                    isSuccess: false,
-                    failureReason: 'login.configurationError',
-                });
-                throw errors['login.configurationError']({params: {method: 'sessionVerify'}});
-            }
-            let check: {sessionId: string; userId: string; tokenHash?: string};
-            try {
-                check = await (methods.sessionVerify(
-                    {
-                        sessionId,
-                        touch: true,
-                        inactivityTimeout,
-                    },
-                    $meta,
-                ) as Promise<{sessionId: string; userId: string; tokenHash?: string}>);
-            } catch (error) {
-                // `access.session.verify` throws the specific `access.session.*`
-                // error with the reason on `error.params.reason`; surface it as
-                // the matching `login.*` error (the endpoint's public contract).
-                const reason =
-                    (error as {params?: {reason?: 'notFound' | 'revoked' | 'expired' | 'inactive' | 'userInactive' | 'loginNotAllowed'}})
-                        .params?.reason ?? 'notFound';
-                const errorType =
-                    reason === 'revoked'
-                        ? 'login.sessionRevoked'
-                        : reason === 'inactive'
-                          ? 'login.sessionInactive'
-                          : reason === 'expired'
-                            ? 'login.sessionExpired'
-                            : reason === 'userInactive'
-                              ? 'login.userInactive'
-                              : reason === 'loginNotAllowed'
-                                ? 'login.loginNotAllowed'
-                                : 'login.sessionNotFound';
-                await recordAudit({actorId, sessionId, isSuccess: false, failureReason: errorType});
-                throw errors[errorType]();
-            }
-
-            // Refresh-token reuse detection: the presented refresh token must
-            // still be the CURRENT one.  A mismatch means the token was rotated
-            // already (stolen/replayed) — revoke the session as a precaution.
-            if (check.tokenHash && check.tokenHash !== sha256Hex<string>(refreshToken)) {
-                if (methods.sessionClose) {
-                    // The session bound to the presented refresh token is the caller's
-                    // own — mark it as such so closing it (reuse protection) does not
-                    // require the `access.session.close` permission.
-                    await (methods.sessionClose(
-                        {sessionId},
-                        {...$meta, auth: {...$meta.auth, sessionId}},
-                    ) as Promise<{success: boolean}>);
-                }
-                await recordAudit({
-                    actorId,
-                    sessionId,
-                    isSuccess: false,
-                    failureReason: 'login.invalidRefreshToken',
-                });
-                throw errors['login.invalidRefreshToken']();
-            }
-
-            // Fresh permission set — role/capability/action changes apply on renewal.
-            // Optional: without a configured `permissionList` (lightweight suite)
-            // the renewed token simply carries no permissions.
-            let permissionMap = '';
-            let actions: string[] = [];
-            let isActive = true;
-            if (methods.permissionList) {
-                const resolved = (await methods.permissionList(
-                    {userId: check.userId},
-                    $meta,
-                )) as {permissionMap: string; actions: string[]; isActive: boolean};
-                permissionMap = resolved.permissionMap;
-                actions = resolved.actions;
-                isActive = resolved.isActive;
-            }
-
-            // Login-eligibility gates on renewal: a user who has since been
-            // deactivated (`user.isActive = false`) or lost the `accessLogin`
-            // action can no longer renew.  Their session dies within one
-            // access-token lifetime instead of living on.
-            if (methods.permissionList) {
-                if (!isActive) {
-                    await recordAudit({
-                        actorId,
-                        sessionId,
-                        isSuccess: false,
-                        failureReason: 'login.userInactive',
-                    });
-                    throw errors['login.userInactive']();
-                }
-                if (!actions.includes('accessLogin')) {
-                    await recordAudit({
-                        actorId,
-                        sessionId,
-                        isSuccess: false,
-                        failureReason: 'login.loginNotAllowed',
-                    });
-                    throw errors['login.loginNotAllowed']();
-                }
-            }
-
-            // Keep the session lifetime FIXED (absolute expiry from login): the
-            // new refresh token expires at the same moment as the session.
-            const remaining = payload.expire
-                ? Math.max(0, Math.round((payload.expire - Date.now()) / 1000))
-                : undefined;
-
-            // Best-effort profile resolution so the UI can apply the user's
-            // preferred language after renewal.  Optional — yields 'en'.
-            let profile: {actorId?: string; language?: string} | undefined;
-            let language = 'en';
-            if (methods.profileGet) {
-                try {
-                    const profileData = (await methods.profileGet(
-                        {},
-                        {...$meta, auth: {...$meta.auth, actorId}},
-                    )) as {preferredLanguage?: string | null} | undefined;
-                    language = profileData?.preferredLanguage ?? 'en';
-                    profile = {actorId, language};
-                } catch {
-                    // Profile is optional refresh metadata — never fails the refresh.
-                }
-            }
-
-            const tokenResult = (await token({
-                clientId: clientId ?? '',
+        // Session verification is required for renewal — without it a
+        // refresh cannot validate the session (lightweight suites disable
+        // it and don't expose renewal).
+        if (!methods.sessionVerify) {
+            await recordAudit({
                 actorId,
                 sessionId,
-                language,
-                refresh: remaining ?? payload.refresh ?? 0,
-                permissionMap,
-                mlek,
-                mlsk,
-                actions,
-                profile,
-            })) as ITokenResult;
+                isSuccess: false,
+                failureReason: 'login.configurationError',
+            });
+            throw errors['login.configurationError']({params: {method: 'sessionVerify'}});
+        }
+        let check: {sessionId: string; userId: string; tokenHash?: string};
+        try {
+            check = await (methods.sessionVerify(
+                {
+                    sessionId,
+                    touch: true,
+                    inactivityTimeout,
+                },
+                $meta,
+            ) as Promise<{sessionId: string; userId: string; tokenHash?: string}>);
+        } catch (error) {
+            // `access.session.verify` throws the specific `access.session.*`
+            // error with the reason on `error.params.reason`; surface it as
+            // the matching `login.*` error (the endpoint's public contract).
+            const reason =
+                (
+                    error as {
+                        params?: {
+                            reason?:
+                                | 'notFound'
+                                | 'revoked'
+                                | 'expired'
+                                | 'inactive'
+                                | 'userInactive'
+                                | 'loginNotAllowed';
+                        };
+                    }
+                ).params?.reason ?? 'notFound';
+            const errorType =
+                reason === 'revoked'
+                    ? 'login.sessionRevoked'
+                    : reason === 'inactive'
+                      ? 'login.sessionInactive'
+                      : reason === 'expired'
+                        ? 'login.sessionExpired'
+                        : reason === 'userInactive'
+                          ? 'login.userInactive'
+                          : reason === 'loginNotAllowed'
+                            ? 'login.loginNotAllowed'
+                            : 'login.sessionNotFound';
+            await recordAudit({actorId, sessionId, isSuccess: false, failureReason: errorType});
+            throw errors[errorType]();
+        }
 
-            if (methods.sessionRotate) {
-                await (methods.sessionRotate(
-                    {sessionId, tokenHash: sha256Hex(tokenResult.refresh_token)},
-                    $meta,
+        // Refresh-token reuse detection: the presented refresh token must
+        // still be the CURRENT one.  A mismatch means the token was rotated
+        // already (stolen/replayed) — revoke the session as a precaution.
+        if (check.tokenHash && check.tokenHash !== sha256Hex<string>(refreshToken)) {
+            if (methods.sessionClose) {
+                // The session bound to the presented refresh token is the caller's
+                // own — mark it as such so closing it (reuse protection) does not
+                // require the `access.session.close` permission.
+                await (methods.sessionClose(
+                    {sessionId},
+                    {...$meta, auth: {...$meta.auth, sessionId}},
                 ) as Promise<{success: boolean}>);
             }
-            if (methods.sessionCleanup) {
-                await (methods.sessionCleanup({}, $meta) as Promise<{deleted: number}>).catch(
-                    () => undefined,
-                );
+            await recordAudit({
+                actorId,
+                sessionId,
+                isSuccess: false,
+                failureReason: 'login.invalidRefreshToken',
+            });
+            throw errors['login.invalidRefreshToken']();
+        }
+
+        // Fresh permission set — role/capability/action changes apply on renewal.
+        // Optional: without a configured `permissionList` (lightweight suite)
+        // the renewed token simply carries no permissions.
+        let permissionMap = '';
+        let actions: string[] = [];
+        let isActive = true;
+        if (methods.permissionList) {
+            const resolved = (await methods.permissionList({userId: check.userId}, $meta)) as {
+                permissionMap: string;
+                actions: string[];
+                isActive: boolean;
+            };
+            permissionMap = resolved.permissionMap;
+            actions = resolved.actions;
+            isActive = resolved.isActive;
+        }
+
+        // Login-eligibility gates on renewal: a user who has since been
+        // deactivated (`user.isActive = false`) or lost the `accessLogin`
+        // action can no longer renew.  Their session dies within one
+        // access-token lifetime instead of living on.
+        if (methods.permissionList) {
+            if (!isActive) {
+                await recordAudit({
+                    actorId,
+                    sessionId,
+                    isSuccess: false,
+                    failureReason: 'login.userInactive',
+                });
+                throw errors['login.userInactive']();
             }
-            await recordAudit({actorId, sessionId, isSuccess: true});
-            return tokenResult;
-        };
-    },
-);
+            if (!actions.includes('accessLogin')) {
+                await recordAudit({
+                    actorId,
+                    sessionId,
+                    isSuccess: false,
+                    failureReason: 'login.loginNotAllowed',
+                });
+                throw errors['login.loginNotAllowed']();
+            }
+        }
+
+        // Keep the session lifetime FIXED (absolute expiry from login): the
+        // new refresh token expires at the same moment as the session.
+        const remaining = payload.expire
+            ? Math.max(0, Math.round((payload.expire - Date.now()) / 1000))
+            : undefined;
+
+        // Best-effort profile resolution so the UI can apply the user's
+        // preferred language after renewal.  Optional — yields 'en'.
+        let profile: {actorId?: string; language?: string} | undefined;
+        let language = 'en';
+        if (methods.profileGet) {
+            try {
+                const profileData = (await methods.profileGet(
+                    {},
+                    {...$meta, auth: {...$meta.auth, actorId}},
+                )) as {preferredLanguage?: string | null} | undefined;
+                language = profileData?.preferredLanguage ?? 'en';
+                profile = {actorId, language};
+            } catch {
+                // Profile is optional refresh metadata — never fails the refresh.
+            }
+        }
+
+        const tokenResult = (await token({
+            clientId: clientId ?? '',
+            actorId,
+            sessionId,
+            language,
+            refresh: remaining ?? payload.refresh ?? 0,
+            permissionMap,
+            mlek,
+            mlsk,
+            actions,
+            profile,
+        })) as ITokenResult;
+
+        if (methods.sessionRotate) {
+            await (methods.sessionRotate(
+                {sessionId, tokenHash: sha256Hex(tokenResult.refresh_token)},
+                $meta,
+            ) as Promise<{success: boolean}>);
+        }
+        if (methods.sessionCleanup) {
+            await (
+                methods.sessionCleanup(
+                    sessionCleanupParams(config as SessionConfig),
+                    $meta,
+                ) as Promise<{deleted: number}>
+            ).catch(() => undefined);
+        }
+        await recordAudit({actorId, sessionId, isSuccess: true});
+        return tokenResult;
+    };
+});

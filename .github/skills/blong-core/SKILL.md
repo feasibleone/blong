@@ -312,7 +312,7 @@ This is deliberate: because access's RBAC traversal already understands `belongs
 | ------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `access.user`       | `userId` → core.resource       | emailAddress, isActive                                                                                                                     |
 | `access.credential` | `credentialId` (increment)     | FK userId; credentialType (`password`/`clientSecret`), secret hash + salt, `credentialParamsJSON` (function + params), isActive, expiresAt |
-| `access.role`       | `roleId` → core.resource       | roleBit (0–1023, unique; **allocated**, never reused), description                                                                         |
+| `access.role`       | `roleId` → core.resource       | roleBit (0–1023, unique; **allocated** as `MAX + 1`), description                                                                          |
 | `access.capability` | `capabilityId` → core.resource | groups actions into a "what"                                                                                                               |
 | `access.action`     | `actionId` → core.resource     | description; name (in resourceName) is the semantic triple                                                                                 |
 | `access.policy`     | `policyId` → core.resource     | credential complexity/lifecycle rules + `credentialParamsJSON` (dictated credential-function params; `password` policy is seeded)          |
@@ -344,8 +344,11 @@ Two SQL views + one stored procedure materialize reachability into `core.path`:
   `access.effectiveAction`, `access.effectiveScope` — the last one a recursive `isPartOf` ancestor
   walk).
 
-Authorization queries read the **materialized** `core_path` (a single indexed lookup on `originId` +
-`pathType`), never recursive traversal.### Record-level ACL
+The gateway's `access.authorization.list` hook expands the token's bits by joining `core_triple`
+directly, caching the result per role bit; the **materialized** `core_path` (a single indexed lookup
+on `originId` + `pathType`) is read at login and by `access.session.verify`.
+
+### Record-level ACL
 
 RBAC decides the verb; the ACL narrows **which records**. A table opts in from its `meta/db/db.ts`:
 
@@ -357,10 +360,12 @@ RBAC decides the verb; the ACL narrows **which records**. A table opts in from i
 ```
 
 `access_acl` holds one rule per row — `(principalId, actionId, targetId, targetKind, effect)` —
-where the principal is a user, role, unit or capability, the target is a record or a scope, and
-`effect` is `allow` / `deny` (**a deny always wins**). Two halves make the effective ACL: a
-`<principal> --hasScope--> <scope>` edge is the _implicit_ organizational grant — it covers every
-action the principal holds and the records of descendant scopes too, through the
+where the principal is a user, role or unit (a capability matches nobody: the filter resolves the
+caller, their effective roles and their units), the target is a record or a scope, and `effect` is
+`allow` / `deny` (a deny beats a grant for a record inside a scope; a `record`-targeted deny on a
+record in no scope is ignored, because the unscoped term short-circuits). Two halves make the
+effective ACL: a `<principal> --hasScope--> <scope>` edge is the _implicit_ organizational grant —
+it covers every action the principal holds and the records of descendant scopes too, through the
 `access.effectiveScope` path that `access_pathRefresh` rebuilds — and `access_acl` rows are the
 _explicit_ rules, which is also how an implicitly enabled record is forbidden. A record that
 participates in no scope falls back to RBAC alone. The effective ACL is evaluated in SQL at query
@@ -402,9 +407,10 @@ name and then skips the entity insert, that entity could never be created again 
    (falling back to the `config.password` defaults declared in the realm's `server.ts` when not
    stored) — then reads effective role bits + action names from `core_path`.
 3. Role bits are packed into a base64 `permissionMap` bitmask (roleBit 0–1023 → bit position). A bit
-   is **allocated** when the role is created (`MAX(roleBit) + 1`, never reused) and never changes,
-   because the mask in an already-minted token is resolved against the current mapping: a moved bit
-   would silently re-grant that token's permissions to a different role.
+   is **allocated** when the role is created (`max(high-water mark, MAX(roleBit)) + 1`, the mark in
+   `core.counter`) and never changes, and a deletion recycles nothing, however high the freed bit
+   was — because the mask in an already-minted token is resolved against the current mapping: a
+   re-issued bit would silently re-grant that token's permissions to a different role.
 4. `loginTokenCreate` signs a JWT carrying `per: permissionMap` (and `sub` = actorId), creates the
    DB session, and sets the restore cookie.
 5. The gateway's `authorize` hook (`access.authorization.list`) decodes `per` from the token, maps
@@ -452,12 +458,13 @@ The login response also returns `permissions` (the resolved action names) for cl
   `hasAction`.
 - **New capability**: seed with `resourceType: access.capability` + `name`; link it to its actions.
 - **New role**: seed with `resourceType: access.role` + `name` and **no bit** — `access.role.merge`
-  (and every other creation path, via `access.role.ensure`) allocates `MAX(roleBit) + 1`, which is
-  never reused: a bit is the role's position in a token's `per` mask, so it is assigned once and
-  never moves. An explicitly declared bit is honoured or refused (`role.bitTaken`), and an edit that
-  changes one is refused (`role.bitImmutable`). Link capabilities via `hasCapability`. After any
-  graph change, run `CALL access_pathRefresh()` (the `accessAuthorizationMerge` handler does this
-  for you).
+  (and every other creation path, via `access.role.ensure`) allocates
+  `max(high-water mark, MAX(roleBit)) + 1` from the `core.counter` mark; a bit is the role's
+  position in a token's `per` mask, so it is assigned once, never moves, and is never re-issued
+  after a deletion — the mark is what makes that true for every bit, the highest in use included. An
+  explicitly declared bit is honoured or refused (`role.bitTaken`), and an edit that changes one is
+  refused (`role.bitImmutable`). Link capabilities via `hasCapability`. After any graph change, run
+  `CALL access_pathRefresh()` (the `accessAuthorizationMerge` handler does this for you).
 - **New user**: seed or call `access.authorization.merge` with
   `{user: {name: ..., password: ..., roles: ...}}` — it creates the credential and the `hasRole`
   edges. The credential's hashing params resolve as **policy → `config.password` → built-in

@@ -102,7 +102,7 @@ export default handler(
                     targetType?: string;
                     /** `record` (default), `scope`, or `all` (the wildcard target). */
                     targetKind?: string;
-                    /** `allow` (default) or `deny` — a deny always wins. */
+                    /** `allow` (default) or `deny` — a deny beats a grant for a record in a scope. */
                     effect?: string;
                 }>;
             },

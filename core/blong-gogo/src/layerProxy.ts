@@ -58,9 +58,13 @@ function createHandlerClosure(
         port: Adapter;
         attachCheckpoint?: (meta: IMeta) => void;
     }) {
-        const mergedConfig = ConfigRuntime.mergeLayerConfig(
-            moduleConfigSlice,
-            port?.config?.[namespace],
+        // A live view, not a copy: the module slice the loader hands over is the
+        // runtime's own config proxy, so re-merging it after a reload is what
+        // lets a handler read a reloaded value without the layer being assembled
+        // again (T-159).
+        const mergedConfig = ConfigRuntime.liveLayerConfig(
+            () => ConfigRuntime.mergeLayerConfig(moduleConfigSlice, port?.config?.[namespace]),
+            () => configRuntime?.version ?? 0,
         );
         const layerApi = {
             ...rest,

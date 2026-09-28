@@ -1,7 +1,9 @@
 resourceType: access.role
 role:
   # No `roleBit` here: a bit is allocated when the role is first created
-  # (`MAX(roleBit) + 1`, never reused) by this realm's `access.role.merge`.
+  # (`max(high-water mark, MAX(roleBit)) + 1`, the mark kept in `core.counter`)
+  # by this realm's `access.role.merge`, and a deletion never recycles one —
+  # not even the highest bit in use.
   # It is the role's position in a token's `per` permission mask, so it is
   # assigned once and never moves: a fresh database numbers these roles 0..5
   # exactly as a hand-written table did, while adding a role here can no longer

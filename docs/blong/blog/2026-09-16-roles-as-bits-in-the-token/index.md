@@ -39,13 +39,15 @@ Roles are reached directly (`hasRole`) or through the unit the user belongs to, 
 bundle of methods, a caller's roles are a bitmask, and the question at the gateway is whether the
 requested method appears in the expansion of that mask.
 
-Allocation is `MAX(roleBit) + 1`, starting at 0, and the bit is immutable: an edit that tries to
-change one is refused with a typed error. Two properties follow, and they are worth stating
-precisely because the loose version is wrong. Bits are unique and are not recycled — **except for
-the highest one in use**: allocation is `MAX + 1`, so deleting the role that owns the current
-maximum hands that same bit to the next role created. And exhausting the range throws, at 1024
-roles, with a message that names the limit; it is not a typed `role.*` error, which is a gap in an
-otherwise tidy error model.
+Allocation is `max(high-water mark, MAX(roleBit)) + 1`, starting at 0, and the bit is immutable: an
+edit that tries to change one is refused with a typed error. Two properties follow, and they are
+worth stating precisely because the loose version kept being wrong. The mark is a `core.counter` row
+that outlives the rows it numbered, so **no bit is ever re-issued** — the highest one in use
+included, which an earlier version of this section had to describe as an exception, because
+`MAX + 1` alone hands that bit on the moment the role holding it is deleted. And exhausting the
+range throws: the 1024 values are consumed by every role ever created rather than only the live
+ones, so a long-lived database can reach the limit and has to have the counter reset. The throw is a
+plain `Error`, not a typed `role.*` one — a gap in an otherwise tidy error model.
 
 ## The materialized paths, and where they are actually read
 
@@ -88,11 +90,13 @@ capabilities by roles, and none of those names appears in a handler's code. Addi
 row, not a branch in an `if`.
 
 The cost is paid in three places, and all three are visible in the schema rather than hidden. The
-bitmask bounds you to 1024 roles — comfortable, and a hard ceiling. Permissions are evaluated from
-the token, so they are as fresh as the token is: the 30-second cache is a deliberate staleness
-window, and anything that must take effect _immediately_ needs the session gate rather than the
-bitmask. And since the graph is materialized, a hierarchy change needs `access_pathRefresh()` before
-it is reflected in a login's expansion — the paths do not maintain themselves.
+bitmask bounds you to 1024 role values, and because none is ever re-issued they are consumed by
+every role ever created — comfortable for a realm that adds roles rarely, and a ceiling that a
+long-lived database clears only by resetting the counter. Permissions are evaluated from the token,
+so they are as fresh as the token is: the 30-second cache is a deliberate staleness window, and
+anything that must take effect _immediately_ needs the session gate rather than the bitmask. And
+since the graph is materialized, a hierarchy change needs `access_pathRefresh()` before it is
+reflected in a login's expansion — the paths do not maintain themselves.
 
 Read next: [the RBAC concept](/docs/concepts/rbac) for the graph and the gate,
 [the pattern](/docs/patterns/rbac) for seeding and granting, and

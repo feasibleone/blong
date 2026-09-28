@@ -7,7 +7,7 @@
  */
 
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
-import {join} from 'node:path';
+import {join, relative} from 'node:path';
 import stripJsonComments from 'strip-json-comments';
 
 import type {ICoverage} from './coverage.ts';
@@ -65,14 +65,43 @@ export function collectPublishable(root: string, reports: readonly IReport[]): s
         .map(report => report.package);
 }
 
-/** Read every package report present in the workspace, ordered by package path. */
-export function collectReports(root: string): IReport[] {
+/**
+ * Warn on stderr that a report file was written by an older schema.
+ *
+ * Named rather than silent: the file is the only thing that identifies which
+ * package needs re-running.
+ */
+function warnStaleReport(file: string): void {
+    process.stderr.write(
+        `blong-dev: ignoring ${file} — a stale package report without \`runs\`; ` +
+            're-run that package to rewrite it\n',
+    );
+}
+
+/**
+ * Read every package report present in the workspace, ordered by package path.
+ *
+ * A report is only accepted when it carries `runs`. The field arrived with the
+ * multi-runner report, but a file written before it is still `schema: 1`, so it
+ * would pass the schema check and reach the aggregate — which walks `runs` and
+ * throws `report.runs is not iterable` with nothing naming the file (T-168).
+ * Such a file is skipped and named through `onStaleReport` instead, so one
+ * forgotten slice cannot cost the whole run.
+ */
+export function collectReports(
+    root: string,
+    onStaleReport: (file: string) => void = warnStaleReport,
+): IReport[] {
     const reports: IReport[] = [];
     for (const project of readRushProjects(root)) {
-        const parsed = readJson<IReport>(
-            join(packageReportDir(root, project.projectFolder), 'report.json'),
-        );
-        if (parsed && parsed.schema === 1) reports.push(parsed);
+        const file = join(packageReportDir(root, project.projectFolder), 'report.json');
+        const parsed = readJson<Partial<IReport>>(file);
+        if (!parsed || parsed.schema !== 1) continue;
+        if (!Array.isArray(parsed.runs)) {
+            onStaleReport(relative(root, file));
+            continue;
+        }
+        reports.push(parsed as IReport);
     }
     return reports.sort((left, right) => left.path.localeCompare(right.path));
 }

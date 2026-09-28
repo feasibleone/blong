@@ -6,9 +6,10 @@ import {model} from '@feasibleone/blong';
  * One row grants (`allow`) or refuses (`deny`) one action on one target for one
  * principal — the *explicit* half of the record-level ACL:
  *
- * - **principal** — a user, role, unit or capability.  A rule on a role/unit is
- *   what a user inherits, so the same page administers every level of the
- *   hierarchy.
+ * - **principal** — a user, role or unit (never a capability: the filter
+ *   resolves the caller, their roles and their units, so such a rule would match
+ *   nobody).  A rule on a role/unit is what a user inherits, so the same page
+ *   administers every level of the hierarchy.
  * - **action** — the `access_action` resource, i.e. the guarded method.
  * - **target kind** — `scope` (every record linked to that unit/organization
  *   through the table's declared scope edges, descendants included) or `record`

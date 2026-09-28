@@ -30,10 +30,10 @@ flowchart TD
 ## Key behaviours
 
 - **Roles are bits.** A role carries a unique `roleBit` (0–1023), allocated when the role is created
-  as `MAX(roleBit) + 1` and immutable afterwards — an edit that tries to change it is refused. The
-  JWT's `per` claim is a base64 bitmask of the caller's roles. "Never reused" holds for every bit
-  except the highest one in use: allocation is `MAX + 1`, so deleting the role that owns the current
-  maximum hands that bit to the next role created.
+  as `max(high-water mark, MAX(roleBit)) + 1` and immutable afterwards — an edit that tries to
+  change it is refused. The JWT's `per` claim is a base64 bitmask of the caller's roles. A bit is
+  never re-issued: the mark is a `core.counter` row, so it outlives the role it numbered and
+  deletion — even of the role holding the highest bit — hands nothing back.
 - **The graph is materialized.** `CALL access_pathRefresh()` rebuilds three path types in
   `core.path` — `access.effectiveRole`, `access.effectiveAction` and `access.effectiveScope` — from
   two views (`access_effectiveRolePath`, `access_effectiveActionPath`) plus a recursive `isPartOf`

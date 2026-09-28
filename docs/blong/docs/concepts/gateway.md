@@ -8,7 +8,7 @@ exposed.
 flowchart TD
     client["API client"] --> ing["Kubernetes ingress"]
     ing --> gw["gateway layer"]
-    gw --> auth["authorize from the token alone<br/>no database round-trip"]
+    gw --> auth["authorize from the token's role bits —<br/>expansion cached per role bit"]
     auth --> val["validate against the handler's Handler type"]
     val --> rpc["JSON-RPC endpoint<br/>/rpc/subject/object/predicate"]
     rpc --> orchestrator["orchestrator"]
