@@ -114,14 +114,14 @@ The three predicates are not interchangeable, and this is where the model is eas
 
 So each record answers to this scope set:
 
-| Record                         | Own scope objects | + `access.effectiveScope` | = scope set                     |
-| ------------------------------ | ----------------- | ------------------------- | ------------------------------- |
-| John Doe (person)              | Retail Branch     | Head Office               | {Retail Branch, Head Office}    |
-| Jane Smith (person)            | Corporate Branch  | Head Office               | {Corporate Branch, Head Office} |
-| Carlos Garcia (person)         | Head Office       | —                         | {Head Office}                   |
-| Alice Brown (person)           | FinServe Branch   | —                         | {FinServe Branch}               |
-| Head Office (unit)             | Global Bank Corp  | —                         | {Global Bank Corp}              |
-| Global Bank Corp (`selfScope`) | itself            | —                         | {Global Bank Corp}              |
+| Record                         | Own scope objects | + `access.effectiveScope` | = scope set                       |
+| ------------------------------ | ----------------- | ------------------------- | --------------------------------- |
+| John Doe (person)              | Retail Branch     | Head Office               | `{Retail Branch, Head Office}`    |
+| Jane Smith (person)            | Corporate Branch  | Head Office               | `{Corporate Branch, Head Office}` |
+| Carlos Garcia (person)         | Head Office       | —                         | `{Head Office}`                   |
+| Alice Brown (person)           | FinServe Branch   | —                         | `{FinServe Branch}`               |
+| Head Office (unit)             | Global Bank Corp  | —                         | `{Global Bank Corp}`              |
+| Global Bank Corp (`selfScope`) | itself            | —                         | `{Global Bank Corp}`              |
 
 ### `party.person` — the caller is the `Admin` role
 
