@@ -30,17 +30,39 @@ generated
          */
         const current = '$' + '{current}';
         const idPlaceholder = '$' + '{' + ctx.object + 'Id}';
+        // The scaffolding template ships this file too (`blong-kopi/meta/fixture/$subjectFixture.ts`),
+        // and a scaffolded realm receives that copy verbatim. `engine.test.ts` compares the two
+        // structurally — handler name, the keyed object, and the row fields this descriptor
+        // declares — because the template's rows are its own sample data (they mirror its test
+        // seed, and its Open story opens record 1); the comments differ on purpose.
         if (ctx.kind === 'fixture') {
             return [
                 {
                     path: `meta/fixture/${ctx.subject}Fixture.ts`,
-                    content: `import {fixture} from '@feasibleone/blong';
+                    content: `import {handler} from '@feasibleone/blong';
 
-export default fixture(() => async function ${ctx.subject}Fixture() {
-    return {
-        '${ctx.subject}.${ctx.object}': [{${ctx.object}Id: '1', ${ctx.object}Name: 'Example'}],
-    };
-});
+/**
+ * meta/fixture/${ctx.subject}Fixture.ts — sample rows for Storybook.
+ *
+ * A plain \`handler()\`, named ${ctx.subject}Fixture: the mock adapter matches
+ * this folder's group (${ctx.subject}.fixture) and reads the data by calling
+ * \`blong.handler['${ctx.subject}Fixture']\`. It must NOT use the \`fixture()\`
+ * factory — that one describes mock OpenAPI subjects/dropdowns, a different
+ * shape entirely.
+ *
+ * \`browser.ts\` has to glob \`meta/fixture/**/*.ts\`, or the handler never
+ * reaches the adapter and every story renders empty.
+ */
+export default handler(
+    () =>
+        async function ${ctx.subject}Fixture() {
+            return {
+                '${ctx.subject}.${ctx.object}': [
+                    {${ctx.object}Id: '1', ${ctx.object}Name: 'Example'},
+                ],
+            };
+        },
+);
 `,
                 },
             ];

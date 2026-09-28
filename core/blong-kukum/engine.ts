@@ -1,3 +1,9 @@
+import {
+    isStampedFile,
+    scaffoldManifest,
+    scaffoldSubject,
+    TEMPLATE_FILES_IGNORE,
+} from '@feasibleone/blong-lib/template';
 import type {Dirent} from 'node:fs';
 
 /**
@@ -25,6 +31,16 @@ export interface PrimitiveFile {
     /** Root-relative target path (POSIX separators). */
     path: string;
     content: string;
+    /**
+     * True when the content *extends* what is already on disk instead of
+     * replacing it — the descriptor read the existing file and inserted into it
+     * (a `compose` hook splicing one entry into a list the file already holds).
+     *
+     * Such a file is written even when it is hand-written, because nothing it
+     * contains can be lost; a descriptor that regenerates a file must not set
+     * this.
+     */
+    composed?: boolean;
     /**
      * Observations worth surfacing to the caller that are not files — for
      * example a test group that could not be registered in the platform
@@ -295,14 +311,21 @@ export function plan(
         const exists = host.existsSync(absolute);
         const current = exists ? String(host.readFileSync(absolute, {encoding: 'utf-8'})) : '';
         // The generated marker is a TypeScript sentinel, so it only decides
-        // ownership for code files. YAML/SQL/JSON artifacts (seeds, procedures)
-        // never carry it and would otherwise never be refreshed again.
-        const isCode = file.path.endsWith('.ts') || file.path.endsWith('.tsx');
-        const generated = !exists || !isCode ? true : isGenerated(current);
-        const content = isCode
+        // ownership for stamped sources. YAML/SQL/JSON artifacts (seeds,
+        // procedures) never carry it and would otherwise never be refreshed.
+        const stamped = isStampedFile(file.path);
+        const generated = !exists || !stamped ? true : isGenerated(current);
+        // A file the descriptor extended rather than regenerated is not at risk
+        // of losing anything, so hand-written ownership does not protect it from
+        // being written.
+        const extended = exists && Boolean(file.composed);
+        const content = stamped
             ? applyInstructions(withMarker(file.content), instructions)
             : file.content;
-        const merged = exists && generated && mode !== 'replace' && Boolean(descriptor.compose);
+        const merged =
+            exists &&
+            mode !== 'replace' &&
+            (extended || (generated && Boolean(descriptor.compose)));
         let action: FileChange['action'] = 'create';
         if (exists) action = current === content ? 'unchanged' : 'overwrite';
         changes.push({
@@ -311,7 +334,7 @@ export function plan(
             content,
             action,
             generated,
-            handWritten: exists && isCode && !generated,
+            handWritten: exists && stamped && !generated && !extended,
             merged,
             notices: file.notices,
         });
@@ -383,22 +406,64 @@ export async function find(
     return found.sort();
 }
 
-/** Directories never worth walking when enumerating sources. */
-const SKIP_DIRS = new Set([
-    'node_modules',
+/**
+ * The template-relative directory path an ignore pattern names, if it names one.
+ *
+ * A globstar, a path, a globstar is how {@link TEMPLATE_FILES_IGNORE} spells
+ * "this folder is never template content" — one entry names one directory
+ * (`node_modules`), another a nested one (`.github/memory`). A pattern that
+ * globs the middle (the Playwright snapshots) or names a file (`.gitignore`)
+ * returns `undefined`.
+ */
+function ignoredDirectory(pattern: string): string | undefined {
+    return /^\*\*\/([^*/]+(?:\/[^*/]+)*)\/\*\*$/.exec(pattern)?.[1];
+}
+
+/**
+ * Directories never worth walking when enumerating a template.
+ *
+ * Derived from the shared {@link TEMPLATE_FILES_IGNORE} so the two can never
+ * drift — a per-package artifact (CI report, coverage, memory) is excluded once,
+ * for both scaffolders. A single-segment entry matches at any depth (a
+ * `node_modules` nested in a fixture is still `node_modules`), and a nested one
+ * matches as a suffix of the walk-relative path: the leading globstar the pattern
+ * carries means what it says, so `listTemplateFiles`, which globs the same entry,
+ * skips the same directories. The literals below are the ones that are kukum's
+ * own, which no template could name.
+ */
+const templateIgnorePaths = TEMPLATE_FILES_IGNORE.map(ignoredDirectory).filter(
+    (path): path is string => Boolean(path),
+);
+const SKIP_DIR_NAMES = new Set([
+    ...templateIgnorePaths.filter(path => !path.includes('/')),
+    // A template root is a package folder, so it never holds a `.git` — but a
+    // stray one must not be copied if the root is ever pointed at a repo.
     '.git',
-    'dist',
-    '.tap',
-    '.rush',
-    'rush-logs',
-    '.playwright',
-    'allure-results',
-    'allure-report',
+    // kukum's own scratch directory for scaffold tests (not a template entry:
+    // no package other than this one has one).
     '.kukum-test',
 ]);
+const SKIP_DIR_PATHS = templateIgnorePaths.filter(path => path.includes('/'));
 
-/** Recursively list files under `dir`, skipping build output and VCS data. */
-export async function walk(host: PrimitiveHost, dir: string, depth = 0): Promise<string[]> {
+/** POSIX form of a walk-relative path, so it compares against the ignore list. */
+const walkPath = (value: string): string => value.split(/[\\/]/).join('/');
+
+/** True when a directory, relative to the walk root, is on the shared ignore list. */
+const isIgnoredDirectory = (relative: string): boolean =>
+    SKIP_DIR_PATHS.some(skip => relative === skip || relative.endsWith(`/${skip}`));
+
+/**
+ * Recursively list files under `dir`, skipping build output and VCS data.
+ *
+ * `root` is where the walk started: a nested ignore path is only meaningful
+ * relative to it, so the recursion carries it along.
+ */
+export async function walk(
+    host: PrimitiveHost,
+    dir: string,
+    depth = 0,
+    root: string = dir,
+): Promise<string[]> {
     if (depth > 12) return [];
     const found: string[] = [];
     let entries;
@@ -409,8 +474,11 @@ export async function walk(host: PrimitiveHost, dir: string, depth = 0): Promise
     }
     for (const entry of entries) {
         if (entry.isDirectory()) {
-            if (SKIP_DIRS.has(entry.name) || entry.name.endsWith('-snapshots')) continue;
-            found.push(...(await walk(host, host.join(dir, entry.name), depth + 1)));
+            const child = host.join(dir, entry.name);
+            if (entry.name.endsWith('-snapshots')) continue;
+            if (SKIP_DIR_NAMES.has(entry.name)) continue;
+            if (isIgnoredDirectory(walkPath(host.relative(root, child)))) continue;
+            found.push(...(await walk(host, child, depth + 1, root)));
         } else if (entry.isFile()) {
             found.push(host.join(dir, entry.name));
         }
@@ -427,6 +495,7 @@ export interface TemplateOptions {
     templateRoot: string;
     /** Destination root. */
     root: string;
+    /** Realm name — the folder name is accepted too, since `blong-` is dropped. */
     subject: string;
     object: string;
     /** Paths (relative, `/`-separated) to skip, in addition to VCS/build output. */
@@ -434,7 +503,15 @@ export interface TemplateOptions {
     instructions?: string[];
 }
 
-const templateTokens = (value: string, subject: string, object: string): string =>
+/**
+ * Substitute the template's dollar tokens in a path or a file's content.
+ *
+ * Exported because the parity test that compares a descriptor's output with the
+ * template file it mirrors has to substitute exactly what a scaffold would:
+ * asserting against a second, hand-rolled substitution would let the two lists
+ * drift apart.
+ */
+export const templateTokens = (value: string, subject: string, object: string): string =>
     value
         .replaceAll('$subject', subject)
         .replaceAll('$Subject', capitalize(subject))
@@ -444,14 +521,20 @@ const templateTokens = (value: string, subject: string, object: string): string 
 /**
  * Plan a scaffold from a whole directory template (the `blong-kopi` realm
  * template), mirroring `createRealm`: tokens are substituted in both paths and
- * contents, every `.ts` file is stamped with the generated marker, and
- * `package.json` is written separately with only the package name replaced.
+ * contents, every stamped source (`.ts`, `.tsx`) carries the generated marker,
+ * and `package.json` is rewritten with the realm's own name, version and
+ * description (`scaffoldManifest`, shared with `createRealm`).
+ *
+ * The subject is passed through `scaffoldSubject` for the same reason: a caller
+ * may hand over the folder name (`blong-marine`), and a name that cannot be
+ * substituted into the template is refused rather than written out broken.
  */
 export async function planTemplate(
     host: PrimitiveHost,
     options: TemplateOptions,
 ): Promise<FileChange[]> {
-    const {templateRoot, root, subject, object} = options;
+    const {templateRoot, root, object} = options;
+    const subject = scaffoldSubject(options.subject);
     const ignore = new Set(['kopi.ts', 'README.md', 'CHANGELOG.md', ...(options.ignore ?? [])]);
     const files = await walk(host, templateRoot);
     const changes: FileChange[] = [];
@@ -481,7 +564,7 @@ export async function planTemplate(
         if (relativePath === 'package.json') continue; // written below
         const raw = String(host.readFileSync(file, {encoding: 'utf-8'}));
         const target = templateTokens(relativePath, subject, object);
-        const content = target.endsWith('.ts')
+        const content = isStampedFile(target)
             ? applyInstructions(
                   withMarker(templateTokens(raw, subject, object)),
                   options.instructions ?? [],
@@ -492,9 +575,11 @@ export async function planTemplate(
 
     const pkgPath = host.join(templateRoot, 'package.json');
     if (host.existsSync(pkgPath)) {
-        const pkg = String(host.readFileSync(pkgPath, {encoding: 'utf-8'})).replace(
-            /"name"\s*:\s*"[^"]*"/,
-            `"name": "${subject}"`,
+        // The manifest is the template's own — name, version and description are
+        // the realm's, and `createRealm` rewrites them with the same helper.
+        const pkg = scaffoldManifest(
+            String(host.readFileSync(pkgPath, {encoding: 'utf-8'})),
+            subject,
         );
         add('package.json', pkg, true);
     }

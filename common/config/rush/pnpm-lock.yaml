@@ -625,6 +625,12 @@ importers:
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0
+      '@storybook/addon-a11y':
+        specifier: ^10.3.6
+        version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@storybook/react-vite':
+        specifier: ^10.3.6
+        version: 10.3.6(esbuild@0.27.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@6.0.3)(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(@swc/core@1.15.21)(esbuild@0.27.4))
       '@swc/core':
         specifier: ^1.7.14
         version: 1.15.21
@@ -646,6 +652,9 @@ importers:
       react-dom:
         specifier: ^19.1.0
         version: 19.2.4(react@19.2.4)
+      storybook:
+        specifier: ^10.3.6
+        version: 10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       tap:
         specifier: ^21.6.3
         version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)

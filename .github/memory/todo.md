@@ -50,7 +50,10 @@ open (35)
 
 - F-241 - `blong-dev memory` auto-format
 - F-244
-- T-160
+- F-306
+- F-308
+- F-303
+- T-172
 - playwright webp
 - exclusion groups
 - ACL test in cucumber

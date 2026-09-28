@@ -37,16 +37,18 @@ kukum realm get --subject=shop            # list the files it would produce
 ```
 
 The realm name must be a **single lowercase word** (`shop`): the template substitutes `$subject`
-into identifiers and derives seed method names from `<subject><Object>Merge`. `blong realm` has the
-same constraint, but fails later and less clearly.
+into identifiers and derives seed method names from `<subject><Object>Merge`. `kukum realm add`
+validates the name it is given; `blong realm` takes a _folder_ name, drops a `blong-` prefix from it
+(`blong realm blong-shop` scaffolds the realm `shop`), and refuses a name it could not substitute,
+before writing anything.
 
 ### Then adjust (what to change per context)
 
 1. **Rename the entity** — the default is `entry` (plus a `line` detail table). Rename `entry` →
    your entity (e.g. `invoice`) and `line` → your detail entity across file names, table names and
    field prefixes. Use two-word property names everywhere (`invoiceNumber`, not `number`).
-2. **Set the package name/version** in `package.json`, register the package in `rush.json`,
-   `rush update`.
+2. **Register the package** — the scaffold already names it `@feasibleone/blong-<realm>` at version
+   `0.1.0`; add that package to `rush.json` and run `rush update`.
 3. **Add tables** — edit `meta/type/schema.ts` + `meta/db/db.ts` (see **blong-schema**).
 4. **Add models** — edit/extend `meta/model/*Model.ts` (see **blong-model**).
 5. **Add custom DB handlers** — `adapter/db/<subject><Object><Predicate>.ts` using `queryBuilder`
@@ -100,8 +102,12 @@ The shape, for orientation only:
 - **Namespace** — `orchestrator/subject/init.ts` and `browser/orchestrator/subject/init.ts`
   (namespace only; REUSE blong-server, folder name `subject` stays literal).
 - **Persistence** — `adapter/db/` for custom handlers; `meta/` for `type/schema.ts`, `db/db.ts`,
-  `db/*.yaml` (prod seeds), `dbTest/*.yaml` (test seeds), `model/*Model.ts`.
+  `db/*.yaml` (prod seeds), `dbTest/*.yaml` (test seeds), `model/*Model.ts`, `fixture/*Fixture.ts`
+  (sample rows for Storybook; `browser.ts` globs it).
 - **API surface** — `gateway/<subject>/` for explicit validations of non-standard operations.
+- **Storybook** — `.storybook/main.ts`, `.storybook/preview.tsx` and
+  `src/stories/<Object>.stories.tsx` (model page stories), built on the shared
+  `@feasibleone/blong-browser` factories. See **storybook-v10-setup** and **blong-model**.
 - **Errors and tests** — `error/error.ts`; `server/test/test/` (tap), `browser/test/test/` (tap),
   `test/` (Playwright `*.play.ts`, a browser layer).
 

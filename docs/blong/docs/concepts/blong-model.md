@@ -150,8 +150,8 @@ render model pages in Storybook stories. It uses the full blong platform (loaded
 
 See `demo/blong-marine/` for a working Storybook example using the marine biology realm. Stories
 live in `demo/blong-marine/src/stories/` and use `page()` / `portal()` helpers from
-`@feasibleone/blong-browser/storyHelper.tsx`. The suite wrapper `suite/blong-suite/` also exposes
-all realm stories by listing `@feasibleone/blong-marine` in `realmPackages`.
+`@feasibleone/blong-browser/storyHelper`. The suite wrapper `suite/blong-suite/` also exposes all
+realm stories by listing `@feasibleone/blong-marine` in `realmPackages`.
 
 ---
 

@@ -1,6 +1,7 @@
 import t from 'tap';
 
 import {
+    appendChildFolder,
     appendDescribeBlock,
     appendStringEntry,
     appendYamlBlock,
@@ -96,6 +97,56 @@ t.test('appendDescribeBlock keeps one block per entity', t => {
         appendDescribeBlock(source, 'Gadget', "test.describe('Gadget', () => {});"),
         "test.describe('Widget', () => {});\n\ntest.describe('Gadget', () => {});\n",
         'a second entity is appended',
+    );
+    t.end();
+});
+
+/** A realm `browser.ts` children declaration, in the shape the template writes it. */
+const REALM_BROWSER = `export default realm(() => ({
+    url: import.meta.url,
+    children: globalThis.window
+        ? import.meta.glob([
+              './meta/model/**/*.ts',
+              './browser/orchestrator/**/*.ts',
+          ])
+        : ['./meta/model', './browser/orchestrator'],
+    config: {
+        default: {meta: true},
+    },
+}));
+`;
+
+t.test('appendChildFolder adds a folder to both children lists', t => {
+    const spliced = appendChildFolder(REALM_BROWSER, './meta/fixture');
+    t.match(
+        spliced ?? '',
+        /\? import\.meta\.glob\(\[\n {14}'\.\/meta\/model\/\*\*\/\*\.ts',\n {14}'\.\/browser\/orchestrator\/\*\*\/\*\.ts',\n {14}'\.\/meta\/fixture\/\*\*\/\*\.ts',\n {10}\]\)/,
+        'the glob list gains the pattern, one entry per line',
+    );
+    t.match(
+        spliced ?? '',
+        /: \['\.\/meta\/model', '\.\/browser\/orchestrator', '\.\/meta\/fixture'\]/,
+        'the non-window list gains the directory',
+    );
+    t.equal(
+        appendChildFolder(spliced ?? '', './meta/fixture'),
+        spliced,
+        'idempotent: a folder that is already listed is not added twice',
+    );
+    t.end();
+});
+
+t.test('appendChildFolder leaves arrays that are not children lists alone', t => {
+    const source = "watch: {test: ['test.widget']};\nchildren: ['./meta', './browser'];\n";
+    t.equal(
+        appendChildFolder(source, './meta/fixture'),
+        "watch: {test: ['test.widget']};\nchildren: ['./meta', './browser', './meta/fixture'];\n",
+        'the array without a ./meta entry is untouched',
+    );
+    t.equal(
+        appendChildFolder("children: ['./src', './browser'];\n", './meta/fixture'),
+        undefined,
+        'no ./meta list means the caller must tell the human',
     );
     t.end();
 });

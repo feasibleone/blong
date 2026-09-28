@@ -10,16 +10,6 @@
             "development": "./browser.ts",
             "import": "./browser.ts"
         },
-        "./data": {
-            "development": "./data/index.ts",
-            "import": "./data/index.ts"
-        },
-        "./data/index.ts": "./data/index.ts",
-        "./storybook.ts": "./storybook.ts",
-        "./storybook.js": {
-            "development": "./storybook.ts",
-            "import": "./storybook.ts"
-        },
         "./package.json": "./package.json"
     },
     "scripts": {

@@ -278,13 +278,13 @@ not a TTY, and exits non-zero when diagnostics contain errors.
 | `error`        | `layer`, `inline`, `librarySet`                                          |
 | `schema`       | `table`, `register`, `procedure`                                         |
 | `seed`         | `prod`, `test`                                                           |
-| `model`        | `model`, `fixture`                                                       |
+| `model`        | `model`, `fixture` (a plain `handler()`)                                 |
 | `test`         | `server`, `browser`, `playwright`                                        |
 | `suite`        | `default`                                                                |
 | `realm`        | `default` (scaffolds the full canonical tree from the template)          |
 | `gateway`      | `validation`, `openapi`                                                  |
 | `component`    | `component`, `actions`, `portal`                                         |
-| `storybook`    | `main`, `preview`, `story`                                               |
+| `storybook`    | `main`, `preview`, `story` (model pages), `portal` (shell)               |
 
 ### Predicates
 
@@ -326,9 +326,9 @@ prompt that says "enhance this later" should record the intent this way rather t
 
 - **Do not invent a predicate** — `add`/`edit`/`find`/`get`/`check` are the vocabulary.
 - **A realm name must be a single lowercase word** (`shop`, not `my-shop` or `myShop`): the template
-  substitutes `$subject` into identifiers and derives seed method names from `<subject><Object>Merge`.
-  A suite name is lowerCamelCase (`blongMarine`) — the check that enforces the single-word rule is
-  `realm`'s, not `suite`'s.
+  substitutes `$subject` into identifiers and derives seed method names from
+  `<subject><Object>Merge`. A suite name is lowerCamelCase (`blongMarine`) — the check that enforces
+  the single-word rule is `realm`'s, not `suite`'s.
 - `add` **composes** by default — adding an entity never drops the ones already there. A file the
   generator wrote (carrying the `import unchanged` marker) is merged into: a second table becomes a
   sibling `meta/type/<object>.ts` (`meta/type/*.ts` files all merge into `schema[<realm>]`), a

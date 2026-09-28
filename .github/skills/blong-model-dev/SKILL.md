@@ -278,7 +278,8 @@ The mock adapter (`adapter/mock.ts`) activates in `storybook` and `integration` 
 2. Calls `subjectObjectMock(models, blong)` for each batch of `.model` handlers to generate mock API
    handlers
 3. Fixture data is loaded by calling `blong.handler['{subject}Fixture']({}, {})` — a handler
-   exported from a `{subject}Fixture.ts` file using the `fixture()` factory
+   exported from a `{subject}Fixture.ts` file with the ordinary `handler()` factory (NOT
+   `fixture()`, which describes mock OpenAPI documents)
 
 `subjectObjectMock.ts` generates the following mock handlers per model:
 
@@ -291,9 +292,11 @@ The mock adapter (`adapter/mock.ts`) activates in `storybook` and `integration` 
 - `{subject}.{object}.report` — returns all fixture rows
 - `{subject}.dropdown.list` — synthesises `{value, label}` pairs from fixture data
 
-Fixture handlers (`{subject}Fixture`) use the `fixture()` factory from `@feasibleone/blong` and
-return a YAML-parsed object keyed by entity name (e.g.
-`{'marine.coral': [...], 'marine.family': [...]}`).
+Fixture handlers (`{subject}Fixture`) are plain `handler()` definitions returning a YAML-parsed
+object keyed by entity name (e.g. `{'marine.coral': [...], 'marine.family': [...]}`). The realm's
+`browser.ts` must glob `meta/fixture/**/*.ts` for the mock adapter to reach them. Adding a story
+through kukum (`kukum storybook add --kind=story`) splices that glob into the entry itself, so an
+empty story usually means the fixture handler is missing rather than the glob.
 
 ---
 
@@ -318,7 +321,7 @@ The following are areas where the model system has known gaps:
 5. **Storybook stories for model pages in realm packages** — The model pages are exercised via the
    realm's own `.storybook/` setup (e.g. `demo/blong-marine/.storybook/`, using `withBlong(browser)`
     - the full blong platform loaded), not via `blong-browser/.storybook/` per-component stories.
-      The `page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper.tsx` generate
+      The `page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper` generate
       story objects with minimal boilerplate.
 
 ---

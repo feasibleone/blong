@@ -59,6 +59,18 @@ const [maybeTarget, ...rest] = allPositional;
 const targetIsFile = Boolean(maybeTarget && existsSync(resolve(maybeTarget)));
 const cliIntents = targetIsFile ? rest : allPositional;
 
+/**
+ * `IPlatformApi.mkdirSync` — create a directory, parents included.
+ *
+ * Recursive and idempotent on purpose: callers use it to make sure a file's
+ * parent exists before writing (kukum's `apply`), so a directory that is
+ * already there must be a no-op rather than an `EEXIST`. Node's bare
+ * `mkdirSync` throws on both an existing directory and a missing parent.
+ */
+const mkdirRecursiveSync = (path: string): void => {
+    mkdirSync(path, {recursive: true});
+};
+
 export default load.bind(null, {
     platform: 'server',
     readdir: async (path: string) => readdir(path, {withFileTypes: true}),
@@ -74,7 +86,7 @@ export default load.bind(null, {
     relative,
     readFileSync,
     writeFileSync,
-    mkdirSync,
+    mkdirSync: mkdirRecursiveSync,
     statSync,
     watch,
     timing: timing(hrtime),

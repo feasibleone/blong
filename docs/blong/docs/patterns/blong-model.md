@@ -140,21 +140,25 @@ export default model(
 
 ## Fixture Data for Storybook and Tests
 
-The mock adapter auto-generates all CRUD mock handlers from model and fixture handlers. Create a
-fixture handler using the `fixture()` factory from `@feasibleone/blong`:
+The mock adapter auto-generates all CRUD mock handlers from the handlers whose group name ends in
+`.model` / `.fixture`. Create a fixture handler with the ordinary `handler()` factory from
+`@feasibleone/blong`:
 
 ```typescript
 // marine/meta/fixture/marineFixture.ts
-import {fixture} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
 import marineYaml from '../../data/marine.yaml?raw';
 
-export default fixture(
+export default handler(
     ({lib: {yaml}}) =>
         async function marineFixture() {
             return yaml.parse(marineYaml);
         },
 );
 ```
+
+> **Not the `fixture()` factory.** `fixture()` from `@feasibleone/blong` describes mock **OpenAPI**
+> documents (a `{subjects, dropdowns}` shape), so its type rejects the sample-rows object below.
 
 The fixture handler must be named `{subject}Fixture` and return an object keyed by
 `'{subject}.{object}'` with arrays of item objects. The mock adapter calls
@@ -163,9 +167,9 @@ The fixture handler must be named `{subject}Fixture` and return an object keyed 
 For inline fixture data (small datasets or when YAML is overkill):
 
 ```typescript
-import {fixture} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
 
-export default fixture(
+export default handler(
     () =>
         async function marineFixture() {
             return {
@@ -181,6 +185,12 @@ export default fixture(
         },
 );
 ```
+
+The realm's `browser.ts` must glob the fixture folder next to the models
+(`import.meta.glob(['./meta/model/**/*.ts', './meta/fixture/**/*.ts', …])`). The browser platform
+loads a realm only through the children it is given — it does not scan layer folders the way the
+server does — so a fixture that `browser.ts` does not glob never reaches the mock adapter and every
+story renders empty.
 
 The mock generates the following handlers automatically from each model + fixture:
 

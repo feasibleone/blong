@@ -11,7 +11,8 @@ description:
 # Storybook v10 Component Testing
 
 > **Scaffold, don't transcribe.** `.storybook/main.ts`, `.storybook/preview.tsx` and story files
-> come from `kukum storybook add --subject=<realm> --object=<Component> --kind=main|preview|story`
+> come from
+> `kukum storybook add --subject=<realm> --object=<entity> --kind=main|preview|story|portal`
 > (`[KUKUM_API]` in `_shared/conventions.md`).
 
 ## Overview
@@ -20,6 +21,56 @@ Configure Storybook v10 for React/TypeScript component libraries with automatic 
 markup snapshots, following modern best practices for component testing and documentation.
 
 **For development workflow and testing patterns,** see **storybook-testing-workflow** skill.
+
+## Blong realms — use the shared factories
+
+A realm scaffolded from `blong-kopi` (every realm, via `blong realm <name>` or `kukum realm add`)
+**already ships** `.storybook/main.ts`, `.storybook/preview.tsx`, `src/stories/<Object>.stories.tsx`
+(the model pages), `src/stories/<Subject>.stories.tsx` (the portal shell) and the
+`meta/fixture/<subject>Fixture.ts` the stories read. The snippets in _Quick Start_ below are for a
+package outside Blong; in a realm only the following are realm-specific:
+
+- **`.storybook/main.ts`** — `defineBlongStorybookMain({importMetaDirname: __dirname})`; stories
+  default to `src/**`.
+- **`.storybook/preview.tsx`** — `withBlong(browser)`, the default export of
+  `@feasibleone/blong-browser/storybook.tsx`, over the composed entry (below).
+- **`src/stories/*.stories.tsx`** —
+  `page('{subject}.{object}.browse' | '.open' | '.new' | '.report')` from
+  `@feasibleone/blong-browser/storyHelper` for a model page, and `portal()` for the whole shell.
+- **scripts** — `storybook dev -p 6007`, `build-storybook`, `ci-storybook` (bulk Rush command).
+
+Two imports are easy to get wrong, because both modules live in one package:
+
+- `withBlong` is the **default** export of `@feasibleone/blong-browser/storybook.tsx`;
+  `@feasibleone/blong-browser/storyHelper` exports `page`/`portal` and has **no** `withBlong`.
+- `preview.tsx` composes the entry that carries the `ui.portal` port (T-162): a **realm**'s
+  `index.browser.ts`, because the realm's own `browser.ts` is not composed — while a **suite**'s
+  `browser.ts` already is, so a suite's preview imports `../browser.ts` (as `blong-suite` does).
+
+Also note the export paths: they are `.../storyHelper`, `.../storybookMain` and `.../vite` —
+appending `.ts`/`.tsx` to those (e.g. `.../storyHelper.tsx`) does not resolve, because they are
+declared without an extension in `blong-browser`'s `exports`.
+
+Every story renders against the **browser mock adapter** (the `storybook` intent, activated by
+`withBlong`), fed by `meta/fixture`; nothing is fetched from a server, so a story needs the realm's
+`browser.ts` to glob `meta/fixture/**/*.ts` or it renders empty. `kukum storybook add --kind=story`
+does that for you — it splices the folder into both `browser.ts` children lists — and says so in the
+result when the entry cannot be read or lists no `./meta` folder; only then add it by hand. Those
+rows are Storybook's data: the app's Vite config stubs every `meta/fixture` module and this factory
+removes that stub, so a Storybook gets the fixture and an app build does not — keep both halves, and
+do not "fix" a missing fixture by adding the glob to `.storybook/`. Toggling a story between that
+mock and a **real** backend is not implemented yet — see the todo on `withBlong` in
+`core/blong-browser`'s memory, which also names the per-model `config.mock` switch in
+`meta/db/db.ts` that lets a dev server serve a realm without a database.
+
+A model that declares `layouts` earns one story per layout, because the layout is what a reviewer
+comes to the story to see: `demo/blong-marine/src/stories/Coral.stories.tsx` is the reference, with
+`page('marine.coral.open', 1, {layout: 'editSplit'})` beside the default, and a `play()` function on
+one story that types a value and saves, as the only place a model's write path is exercised without
+Playwright. A model without `layouts` needs no such variants.
+
+Model story specifics (mock adapter, fixture data, the `meta/fixture` glob, `config.mock`) are in
+the **blong-model** skill.
 
 ## Key Features
 

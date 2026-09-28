@@ -25,10 +25,58 @@ import react from '@vitejs/plugin-react';
 import {dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import gzipPlugin from 'rollup-plugin-gzip';
-import {type UserConfig, defineConfig, mergeConfig} from 'vite';
+import {type Plugin, type UserConfig, defineConfig, mergeConfig} from 'vite';
 import {brotliCompressSync} from 'zlib';
 
 const dir = (url: string) => dirname(url.replace(/file:\//g, ''));
+
+/**
+ * Name of the plugin that keeps fixtures out of an app build.
+ *
+ * Exported so `defineBlongStorybookMain` removes the very same plugin instead of
+ * repeating the string: Storybook is the one build that wants the real rows.
+ */
+export const DROP_FIXTURES = 'blong-drop-fixtures';
+
+/**
+ * Replace every `meta/fixture` module with an empty handler of the same name.
+ *
+ * A realm globs `meta/fixture` in its `browser.ts` so the Storybook mock adapter
+ * can register the sample rows it reads through `handler['{subject}Fixture']`.
+ * That glob cannot be made conditional: `import.meta.glob` is expanded at build
+ * time, so the matched modules are in the app's module graph — and in its
+ * output — even behind a branch that is never taken.
+ *
+ * Fixtures are Storybook's data, so an app build drops them here instead: each
+ * `meta/fixture` module resolves to a handler that returns no rows, and
+ * Storybook's own config removes this plugin (see `storybookMain.ts`) so its
+ * build keeps the real file.
+ *
+ * The stub is a *handler* rather than an empty module on purpose: the loader logs
+ * an error for a handler file whose default export is missing, and a stub that
+ * threw would turn an unused fixture into a boot failure. The server platform is
+ * unaffected either way — it scans layer folders instead of globbing them, so a
+ * realm's `config.mock` still serves its models from the real fixture file.
+ */
+const dropFixtures = (): Plugin => ({
+    name: DROP_FIXTURES,
+    enforce: 'pre',
+    load(id) {
+        const [file] = id.split('?');
+        if (!/[\\/]meta[\\/]fixture[\\/]/.test(file as string)) return null;
+        const name = (file as string)
+            .split(/[\\/]/)
+            .pop()!
+            .replace(/\.\w+$/, '');
+        return [
+            `import {handler} from '@feasibleone/blong';`,
+            `export default handler(() => async function ${name}() {`,
+            `    return {};`,
+            `});`,
+            '',
+        ].join('\n');
+    },
+});
 
 /**
  * This package, as source — what a suite bundles instead of the published bundle.
@@ -71,7 +119,7 @@ export function defineBlongViteConfig({
 }: IBlongViteOptions): ReturnType<typeof defineConfig> {
     const base: UserConfig = {
         base: '/s/',
-        plugins: [react()],
+        plugins: [react(), dropFixtures()],
         build: {
             minify: false,
             assetsInlineLimit: 0,
@@ -107,11 +155,18 @@ export function defineBlongViteConfig({
              * that follows it, which is how a single flake becomes a run of
              * failures. The rest of the list is the same class of file: anything a
              * run writes into its own package.
+             *
+             * `dist/` is on that list for the same reason and cost a debugging
+             * cycle: `vite build` leaves the app bundle (HTML included) in the
+             * served root, and a Playwright run started while that write is fresh
+             * reloads mid-test — six tests went flaky with one-minute timeouts,
+             * then the suite was green twice in a row once `dist/` was removed.
              */
             watch: {
                 ignored: [
                     '**/.git/**',
                     '**/node_modules/**',
+                    '**/dist/**',
                     '**/.playwright/**',
                     '**/allure-results/**',
                     '**/allure-report/**',

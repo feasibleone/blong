@@ -165,7 +165,11 @@ t.test(
     'the realm runs its server and browser tests over the added entity',
     {skip: skipped},
     async t => {
-        const {output, status} = runFixture(['test']);
+        // `--report` (`REPORT_FLAG` in blong-dev's tap runner) is what makes a dev
+        // run write `.ci-report/report.json` (a live dev run deliberately does
+        // not). Without it the assertions below could only read a report that
+        // some *other* run left behind.
+        const {output, status} = runFixture(['test', '--report']);
 
         if (DB_MISSING.test(output)) {
             t.pass('skipped: the local dev database is not reachable');

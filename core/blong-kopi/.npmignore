@@ -40,6 +40,8 @@
 !/server/**
 !/test/**
 !/browser/**
+!/src/**
+!/.storybook/**
 !browser.ts
 !server.ts
 !browser-test.ts

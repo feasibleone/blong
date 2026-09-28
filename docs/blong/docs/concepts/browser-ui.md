@@ -160,6 +160,6 @@ in isolation.
 **`demo/blong-marine/src/stories/`** — End-to-end model page stories using the `Model` component.
 Uses `withBlong(browser)` from `@feasibleone/blong-browser/storybook.tsx` which loads the full blong
 platform (including the mock adapter). Stories use the `page()` and `portal()` helpers from
-`@feasibleone/blong-browser/storyHelper.tsx`. Best for verifying complete CRUD flows for a realm.
-The canonical domain is **marine biology** (corals, habitats, fish families, species). Realm
-packages include their own `.storybook/` folder configured with `defineBlongStorybookMain()`.
+`@feasibleone/blong-browser/storyHelper`. Best for verifying complete CRUD flows for a realm. The
+canonical domain is **marine biology** (corals, habitats, fish families, species). Realm packages
+include their own `.storybook/` folder configured with `defineBlongStorybookMain()`.

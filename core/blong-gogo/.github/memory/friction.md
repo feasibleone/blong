@@ -26,7 +26,7 @@ open (12)
 - `F-279` · core/blong-gogo — A tap-only package had no CI report because its entry had to remember
   an intent
 
-resolved (22)
+resolved (23)
 
 - `F-094` · core/blong-gogo — Knex `table.list` prefixed table names with the subject twice
 - `F-095` · core/blong-gogo — tap's order-sensitive snapshots broke on an appended `id` field
@@ -54,6 +54,7 @@ resolved (22)
 - `F-269` · core/blong-gogo — Realm start and tap both pause for seconds before their first line
 - `F-272` · core/blong-gogo — A literal dynamic import bundled the Allure integration into browser
   builds
+- `F-299` · core/blong-gogo — The CLI host could not create a nested or existing folder
 
 <!-- /memory:index -->
 
@@ -542,3 +543,17 @@ Fixed in the same change: chain.ts imports the package through a runtime-assembl
 (allurePackage), and browserBundle.test.ts now lists blong-allure as server-only so the regression
 fails by name. The browser bundle test passes with the package absent from the graph (785 modules
 before, 766 after).
+
+### F-299 — The CLI host could not create a nested or existing folder
+
+> _2026-09-28 · core/blong-gogo · resolved_
+
+Scaffolding more than one file into one folder through the kukum CLI failed: a missing parent was
+refused, and a folder that already existed was an error, because IPlatformApi.mkdirSync was bound
+straight to the node:fs mkdirSync, which is neither recursive nor idempotent. engine.apply calls it
+as a make-sure-the-parent-exists before every write, so the contract callers expect is recursive and
+idempotent; loadServer now passes a wrapper that calls mkdirSync with recursive true. Any future
+call site should assume that contract.
+
+Fixed: loadServer.ts now passes a wrapper that calls node:fs mkdirSync with recursive true, so the
+parent is created and an existing folder is a no-op.

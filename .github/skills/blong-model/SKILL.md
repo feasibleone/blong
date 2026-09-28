@@ -183,15 +183,15 @@ export default handler(({handler: {portalMenuItem}}) => ({
 
 ## Step 3 — Fixture Data for Storybook / Tests
 
-The mock adapter (`adapter/mock.ts`) in blong-browser automatically generates all CRUD mock handlers
-from `.model` and `.fixture` handlers. All you need is a fixture handler that returns sample data
-keyed by `'{subject}.{object}'`:
+The mock adapter generates all CRUD mock handlers from the handlers whose group name ends in
+`.model` / `.fixture`. All you need is a fixture handler that returns sample data keyed by
+`'{subject}.{object}'`:
 
 ```typescript
 // marine/meta/fixture/marineFixture.ts
-import {fixture} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
 
-export default fixture(
+export default handler(
     () =>
         async function marineFixture() {
             // Return an object keyed by '{subject}.{object}' with arrays of items
@@ -209,14 +209,18 @@ export default fixture(
 );
 ```
 
+> **Do NOT use the `fixture()` factory here.** `fixture()` from `@feasibleone/blong` describes mock
+> **OpenAPI** documents (a `{subjects, dropdowns}` shape) and its type rejects the sample-rows
+> object; the model fixture is an ordinary `handler()` named `{subject}Fixture`.
+
 For larger datasets, load from YAML:
 
 ```typescript
 // marine/meta/fixture/marineFixture.ts
-import {fixture} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
 import marineYaml from '../../data/marine.yaml?raw';
 
-export default fixture(
+export default handler(
     ({lib: {yaml}}) =>
         async function marineFixture() {
             return yaml.parse(marineYaml);
@@ -228,25 +232,77 @@ The mock adapter reads fixture data by calling `blong.handler['{subject}Fixture'
 generates `find`, `get`, `add`, `edit`, `remove`, `report`, `schema`, and `{subject}.dropdown.list`
 handlers automatically from the model spec and fixture data.
 
+> **The realm's `browser.ts` must glob the fixture folder** (`./meta/fixture/**/*.ts`, beside
+> `./meta/model/**/*.ts`). The browser platform loads a realm only through the `import.meta.glob`
+> children it is given — it does not scan layer folders the way the server does — so a fixture that
+> is declared but not globbed never reaches the mock adapter, and every story renders empty while
+> `meta/model` looks perfectly fine. `kukum storybook add --kind=story` registers the folder in both
+> `browser.ts` children lists itself, so a realm scaffolded and storied through kukum is already
+> right; check the entry when a story you wrote by hand renders empty. Do NOT try to make that glob
+> conditional: `import.meta.glob` is expanded at build time, so a glob in a module the app bundles
+> ships the fixture in the app's own build even behind a branch that is never taken. The build draws
+> the line instead — see the next note.
+>
+> **Fixtures are Storybook's data and do not reach the app.** `defineBlongViteConfig` (the app's
+> Vite config) replaces every `meta/fixture` module with an empty handler, and
+> `defineBlongStorybookMain` removes that plugin so Storybook loads the real file. That is why the
+> glob stays in `browser.ts` — it is needed for the mock adapter either way — while the rows stay
+> out of the app bundle. A realm whose app really needs its fixture at runtime (a live-backend
+> Storybook, say) is the case the stubbing does not cover; the server is never affected, because it
+> scans folders rather than globbing them, so `config.mock` keeps reading the real file.
+
 **No `setupModelMock()` call is needed** — the mock adapter in blong-browser activates automatically
 in `storybook` and `integration` environments when the `ui.mock` config key is present (set in
 `.storybook/preview.tsx` via the `withBlong(browser)` decorator which passes `{ui: {mock: {}}}` as
 config).
+
+### Server-side model mocks — `config.mock` in `meta/db/db.ts`
+
+The fixture above feeds the **browser** mock adapter. The **server** side has its own, independent
+per-model switch: `config.mock` on the realm's `meta/db/db.ts` names the model handlers the shared
+`srv.db` knex adapter should serve from fixture data instead of the database. `mock: true` mocks
+every model, `mock: {<modelHandlerName>: true}` mocks only the named ones (a `RegExp` value matches
+by pattern), and the omitted case is the real table:
+
+```typescript
+// demo/blong-marine/meta/db/db.ts — coral stays on the database, the rest are mocked
+export default handler(() => ({
+    config: {
+        schema: {tables: {'marine.coral': 1, 'marine.family': 1, ...}},
+        mock: {
+            marineFamilyModel: true,
+            marineSpeciesModel: true,
+            marineHabitatModel: true,
+        },
+    },
+}));
+```
+
+`demo/blong-marine` does this deliberately: coral is served by its MySQL table (seeded from
+`meta/db/marineCoralMerge.yaml`, and pinned by its Playwright captures) while family, species and
+habitat are served from `marineFixture`, so one suite covers the DB path **and** the mock path. A
+realm that has no database at all — a CI leg without MySQL, or a Storybook pointed at a live dev
+server (the mock/real toggle planned for `withBlong`, see `core/blong-browser`'s memory) — mocks
+every model this way and still renders real pages.
+
+The mocked models read the same `<subject>Fixture` handler the browser mock reads, so the fixture
+and the seed must agree on the row _shape_ (they need not agree on key values); and because each
+mocked model is served by `srv.db` rather than the table, a mocked model's rows can never come from
+the seed.
 
 ---
 
 ## Step 4 — Storybook Stories
 
 Use the `Model` component from `@feasibleone/blong-browser` to render model pages in stories. The
-`page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper.tsx` reduce
-boilerplate:
+`page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper` reduce boilerplate:
 
 Then in story files:
 
 ```typescript
 // marine/src/stories/Coral.stories.tsx
 import type {Meta} from '@storybook/react-vite';
-import {page} from '@feasibleone/blong-browser/storyHelper.tsx';
+import {page} from '@feasibleone/blong-browser/storyHelper';
 
 const meta: Meta = {title: 'Marine/Coral', parameters: {layout: 'fullscreen'}};
 export default meta;
@@ -261,12 +317,15 @@ export const CoralOpenSplit = page('marine.coral.open', 1, {layout: 'editSplit'}
 ```
 
 The `.storybook/preview.tsx` must use `withBlong(browser)` from
-`@feasibleone/blong-browser/storybook.tsx`:
+`@feasibleone/blong-browser/storybook.tsx`, and it must compose the realm's **composed** browser
+entry (`index.browser.ts`) rather than the realm entry `browser.ts`:
 
 ```typescript
 // .storybook/preview.tsx
 import withBlong from '@feasibleone/blong-browser/storybook.tsx';
-import browser from '../browser.ts';
+// The composed entry carries the portal port (blong-browser); through the realm
+// entry alone a model story would render against an undefined portal.
+import browser from '../index.browser.ts';
 
 export default {
     decorators: [withBlong(browser)],
@@ -275,7 +334,9 @@ export default {
 ```
 
 This loads the full blong platform (including the mock adapter) in the browser, so stories work
-without a running server.
+without a running server. None of these three files are written by hand: `kukum storybook add`
+(`[KUKUM_API]` in `_shared/conventions.md`) generates them, and the realm template `blong-kopi`
+already ships them.
 
 ---
 

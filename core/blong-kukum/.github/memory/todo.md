@@ -84,3 +84,5 @@ swap still leaves a window where the path does not exist. The real fix is for `b
 honour a package-level tap `include`/`exclude` config instead of hard-coding globs, a shared-tool
 change with repo-wide blast radius. Do not re-litigate this without deciding to change
 `blong-dev test`. It is the blocker before Stage 2, the split of `catalog.ts`.
+
+## Done

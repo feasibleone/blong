@@ -13,7 +13,7 @@ open (3)
 - `F-253` · core/blong-browser — A screenshot 28px high: the tab strip was the squeezed flex item
 - `F-254` · core/blong-browser — A "race" that was two different baselines and a 1% tolerance
 
-resolved (14)
+resolved (15)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -34,6 +34,8 @@ resolved (14)
 - `F-224` · core/blong-browser — A diagram screenshot was 358px tall on one machine and 359px on the
   next
 - `F-226` · core/blong-browser — A diagram capture followed the element position, not its size
+- `F-307` · core/blong-browser — A fresh app build in the served root made six Playwright tests
+  flaky
 
 <!-- /memory:index -->
 
@@ -302,3 +304,23 @@ Fixed by D-248: captureDiagram frames the whole drawing (growing the viewport un
 inside its scrolling box and the window) and clips on rounded coordinates. Verified by reproducing
 the CI geometry locally by hand and matching the committed baseline; realm/blong-gateway 17/17 and
 core/blong-realm 7/7 are green with no baseline change.
+
+### F-307 — A fresh app build in the served root made six Playwright tests flaky
+
+> _2026-09-28 · core/blong-browser · resolved_
+
+After running vite build in demo/blong-marine and then its Playwright suite, six tests went flaky in
+one run — four browse tests, the portal tab test and a documentation capture that hung for a full
+minute before passing on retry — while the same suite had been green in 16 seconds before the build
+and was green twice in a row once dist was deleted. It is the failure mode defineBlongViteConfig
+already documents for .playwright: the build writes its output into the served root, the HTML in it
+is treated as a page, the watcher reloads the browser mid-test. dist was missing from
+server.watch.ignored while every other artifact of a run (.playwright, .ci-report, .tap, coverage,
+storybook-static, allure) was listed; it is on the list now. The lesson for anyone chasing a
+reload-shaped flake is to check what the run itself wrote into the package last.
+
+Fixed: **/dist/** joined the server.watch.ignored list in defineBlongViteConfig, next to the other
+artifacts a run writes into its own package.
+
+Fixed: the dist folder joined the server.watch.ignored list in defineBlongViteConfig, next to the
+other artifacts a run writes into its own package.

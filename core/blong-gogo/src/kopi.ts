@@ -1,7 +1,12 @@
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {basename, dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {listTemplateFiles} from './template-files.ts';
+import {
+    isStampedFile,
+    listTemplateFiles,
+    scaffoldManifest,
+    scaffoldSubject,
+} from './template-files.ts';
 
 export interface CreateRealmOptions {
     /**
@@ -43,14 +48,21 @@ function resolveTemplateRoot(): string {
  * Scaffold a new realm from the `@feasibleone/blong-kopi` template.
  *
  * Copies the whole template into `destUrl` (the realm folder), substituting:
- *  - `$subject` → the destination folder basename (the realm name)
+ *  - `$subject` → the realm name: the folder basename, less a `blong-` prefix
  *  - `$Subject` → capitalized realm name
  *  - `$object`  → the entity name (default `entry`)
  *  - `$Object`  → capitalized entity name
  *
- * Every generated `.ts` file is prefixed with an `import unchanged ...` marker;
- * on re-scaffold, files that do NOT start with that marker are treated as hand
- * edits and left alone (idempotent).
+ * The folder may be named either way — `marine` or `blong-marine`, the monorepo
+ * convention — and the name a realm cannot have is refused before anything is
+ * written (`scaffoldSubject`).
+ *
+ * `package.json` is written separately: its name, version and description belong
+ * to the realm, not to the template (see `scaffoldManifest`).
+ *
+ * Every generated source (`.ts`, `.tsx`) is prefixed with an `import unchanged
+ * ...` marker; on re-scaffold, files that do NOT start with that marker are
+ * treated as hand edits and left alone (idempotent).
  *
  * Used by both the runtime auto-trigger (`blong-gogo/src/load.ts`) and the
  * explicit `blong realm <name>` CLI path (`blong-gogo/bin/blong.ts`).
@@ -63,7 +75,9 @@ export async function createRealm(
     const result = [];
     const cwd = resolveTemplateRoot();
     destUrl = destUrl.startsWith('file://') ? dirname(destUrl.slice(7)) : destUrl;
-    const subject = basename(destUrl);
+    // `blong-` is the package prefix, not part of the realm name the template
+    // substitutes (`realm/blong-access` is the realm `access`).
+    const subject = scaffoldSubject(basename(destUrl));
     const object = options.object ?? 'entry';
     const replace = (str: string): string =>
         str
@@ -87,7 +101,7 @@ export async function createRealm(
             const content = readFileSync(source, 'utf8');
             writeFileSync(
                 dest,
-                file.endsWith('.ts')
+                isStampedFile(file)
                     ? "import unchanged from '@feasibleone/blong';\r" + replace(content)
                     : replace(content),
             );
@@ -96,7 +110,9 @@ export async function createRealm(
     }
     writeFileSync(
         join(destUrl, 'package.json'),
-        readFileSync(join(cwd, 'package.json'), 'utf8').replace('@feasibleone/blong-kopi', subject),
+        // The manifest is the template's own, so name/version/description are
+        // rewritten for the realm (shared with kukum's scaffolder).
+        scaffoldManifest(readFileSync(join(cwd, 'package.json'), 'utf8'), subject),
     );
     return result;
 }

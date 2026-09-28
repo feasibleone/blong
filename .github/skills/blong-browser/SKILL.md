@@ -1,6 +1,15 @@
 ---
 name: blong-browser
-description: Implement, extend, or debug the blong-browser React/TypeScript component library and portal framework. blong-browser is a Blong realm that lives in `core/blong-browser/`. Use this skill whenever working on UI components, Editor/Form/Explorer/Report pages, widgets, portal navigation, schema-driven forms, action wiring, Storybook stories, or any blong-browser adapter/orchestrator code — even if the user just says "add a page", "fix the widget", or "show this in a tab". For multi-language support, translations, or i18n, use the blong-i18n skill. For developing or improving the model system itself, use the blong-model-dev skill. For using the model to implement CRUD pages in a realm, use the blong-model skill. For visual theme variants (glass/wood, design-matching, textures, PrimeReact overlay styling), use the blong-theme skill.
+description:
+    Implement, extend, or debug the blong-browser React/TypeScript component library and portal
+    framework. blong-browser is a Blong realm that lives in `core/blong-browser/`. Use this skill
+    whenever working on UI components, Editor/Form/Explorer/Report pages, widgets, portal
+    navigation, schema-driven forms, action wiring, Storybook stories, or any blong-browser
+    adapter/orchestrator code — even if the user just says "add a page", "fix the widget", or "show
+    this in a tab". For multi-language support, translations, or i18n, use the blong-i18n skill. For
+    developing or improving the model system itself, use the blong-model-dev skill. For using the
+    model to implement CRUD pages in a realm, use the blong-model skill. For visual theme variants
+    (glass/wood, design-matching, textures, PrimeReact overlay styling), use the blong-theme skill.
 ---
 
 # blong-browser Skill
@@ -17,14 +26,16 @@ description: Implement, extend, or debug the blong-browser React/TypeScript comp
 
 ## [CRITICAL_GUARDRAILS]
 
-- **Never use a single `saveAction` pointing to `.add` for a create form** — it calls `.add` on every
-  save → duplicate records. Use distinct `createAction` + `saveAction`.
-- **Hoist `title` objects outside the render fn** — inline object literals cause an infinite update loop.
-- **Internal `__xxx__` actions** (`__save__`, `__refresh__`, …) are handled inside the Editor — never
-  pass them to `ActionButton` (RPC call fails) nor dispatch them as RPC methods.
+- **Never use a single `saveAction` pointing to `.add` for a create form** — it calls `.add` on
+  every save → duplicate records. Use distinct `createAction` + `saveAction`.
+- **Hoist `title` objects outside the render fn** — inline object literals cause an infinite update
+  loop.
+- **Internal `__xxx__` actions** (`__save__`, `__refresh__`, …) are handled inside the Editor —
+  never pass them to `ActionButton` (RPC call fails) nor dispatch them as RPC methods.
 - **Always wrap `<form>` in `handleSubmit(...)`** even with no `onSubmit` prop — else Enter/submit
   causes browser navigation.
-- **No arbitrary `setTimeout` waits in tests** — mocks resolve synchronously; use `findBy*`/`waitFor`.
+- **No arbitrary `setTimeout` waits in tests** — mocks resolve synchronously; use
+  `findBy*`/`waitFor`.
 - **Planned/stub features:** do not implement without first checking they're not already in code.
 
 Canonical pitfalls (dedup with blong-model / blong-model-dev):
@@ -117,14 +128,19 @@ async function ui() {
 
 ```ts
 // ready → mount React. Full proxy (blong) → <App handlerProxy={blong}>.
-export default handler((blong) => {
-    const {config: {shouldRender}} = blong;
+export default handler(blong => {
+    const {
+        config: {shouldRender},
+    } = blong;
     return async function ready(params, _$meta) {
         const [{default: React}, {default: ReactDOM}, {App}] = await Promise.all([
-            import('react'), import('react-dom/client'), import('../../src/components/App/App.js'),
+            import('react'),
+            import('react-dom/client'),
+            import('../../src/components/App/App.js'),
         ]);
         this.config.context ||= {};
-        this.config.context.container = p => React.createElement(App, {handlerProxy: blong, log: this.log, ...p});
+        this.config.context.container = p =>
+            React.createElement(App, {handlerProxy: blong, log: this.log, ...p});
         if (shouldRender !== undefined && !shouldRender) return;
         ReactDOM.createRoot(rootEl).render(this.config.context.container(params));
     };
@@ -670,10 +686,10 @@ Named handlers in `dispatch.tsx` follow the pattern `{entity}{Entity}{Verb}`:
 
 Uses `withBlong(browser)` from `@feasibleone/blong-browser/storybook.tsx` which loads the full blong
 platform (including the mock adapter) so model pages work without a running server. Stories use the
-`page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper.tsx`:
+`page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper`:
 
 ```tsx
-import {page, portal} from '@feasibleone/blong-browser/storyHelper.tsx';
+import {page, portal} from '@feasibleone/blong-browser/storyHelper';
 export const CoralBrowse = page('marine.coral.browse');
 export const CoralOpen = page('marine.coral.open', 1);
 export const Portal = portal();
@@ -686,16 +702,18 @@ See the **blong-model** skill for full story setup instructions.
 Three helpers make it trivial for any realm to run standalone with Vite, Storybook, and Playwright:
 
 **`defineBlongViteConfig(options)`** — Vite config factory:
+
 ```typescript
 // vite.config.ts
-import {defineBlongViteConfig} from '@feasibleone/blong-browser/vite.ts';
+import {defineBlongViteConfig} from '@feasibleone/blong-browser/vite';
 export default defineBlongViteConfig({importMetaUrl: import.meta.url});
 ```
 
 **`defineBlongStorybookMain(options)`** — Storybook main.ts factory:
+
 ```typescript
 // .storybook/main.ts
-import {defineBlongStorybookMain} from '@feasibleone/blong-browser/storybookMain.ts';
+import {defineBlongStorybookMain} from '@feasibleone/blong-browser/storybookMain';
 export default defineBlongStorybookMain({
     importMetaDirname: __dirname,
     // A suite can add realm stories:
@@ -703,7 +721,9 @@ export default defineBlongStorybookMain({
 });
 ```
 
-**`defineBlongConfig(options)`** — Playwright config factory (already existed; extended with `realmPackages`):
+**`defineBlongConfig(options)`** — Playwright config factory (already existed; extended with
+`realmPackages`):
+
 ```typescript
 // playwright.config.ts
 import {defineBlongConfig} from '@feasibleone/blong-browser/playwright/config';

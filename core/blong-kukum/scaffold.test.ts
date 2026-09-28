@@ -121,14 +121,42 @@ t.test('scaffolds a full realm through the API', {skip: skipped}, async t => {
         `server/test/test/test${Object}.ts`,
         `browser/test/test/test${Object}.flow.ts`,
         `test/${SUBJECT}.play.ts`,
+        // The Storybook the template ships: the config, a model story, the portal
+        // story and the fixture the stories render their rows from.
+        '.storybook/main.ts',
+        '.storybook/preview.tsx',
+        `src/stories/${Object}.stories.tsx`,
+        `src/stories/${SUBJECT[0].toUpperCase()}${SUBJECT.slice(1)}.stories.tsx`,
+        `meta/fixture/${SUBJECT}Fixture.ts`,
     ]) {
-        t.ok(existsSync(join(REALM_ROOT, testEntry)), `template test ${testEntry} exists`);
+        t.ok(existsSync(join(REALM_ROOT, testEntry)), `template file ${testEntry} exists`);
     }
-
+    // A stamped `.tsx` is what makes the Storybook files kukum's own: an
+    // unstamped one is refused as hand-written when the same kind is re-added.
+    t.match(
+        readFileSync(join(REALM_ROOT, `src/stories/${Object}.stories.tsx`), 'utf8'),
+        /^import unchanged from '@feasibleone\/blong';/,
+        'a generated story carries the marker the merge engine looks for',
+    );
     const pkg = JSON.parse(readFileSync(join(REALM_ROOT, 'package.json'), 'utf8')) as {
         name: string;
+        version: string;
+        description: string;
     };
-    t.equal(pkg.name, SUBJECT, 'package name substituted');
+    t.equal(
+        pkg.name,
+        `@feasibleone/blong-${SUBJECT}`,
+        'package name is the scoped realm name a suite imports',
+    );
+    t.equal(pkg.version, '0.1.0', "the scaffold starts at its own version, not the template's");
+    t.notMatch(pkg.description, /template/, 'the description does not advertise the template');
+
+    // The template's own memory describes scaffolding this realm, and the realm
+    // gets its own file the first time `blong-dev memory add` runs there.
+    t.notOk(
+        existsSync(join(REALM_ROOT, '.github', 'memory')),
+        "the template's own memory is not copied into the realm",
+    );
 });
 
 t.test('adds every primitive and kind into the scaffolded realm', {skip: skipped}, async t => {

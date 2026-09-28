@@ -27,6 +27,16 @@ import type {StorybookConfig} from '@storybook/react-vite';
 import {createRequire} from 'node:module';
 import {dirname, resolve} from 'node:path';
 
+/**
+ * Name of the app-only plugin that stubs a realm's `meta/fixture` modules.
+ *
+ * A literal rather than an import of `DROP_FIXTURES` from `./vite.ts`: Storybook
+ * loads this module as raw ESM, where the app config's `.js`-for-`.ts` imports
+ * do not resolve. Keep the two in step — the value is asserted against the plugin
+ * it removes in `storybookMain.test.ts`.
+ */
+const DROP_FIXTURES = 'blong-drop-fixtures';
+
 export interface IBlongStorybookMainOptions {
     /**
      * Absolute path of the `.storybook/` directory — pass `__dirname`.
@@ -62,7 +72,9 @@ function getAbsolutePath(value: string, fromDir: string): string {
 
 function resolveRealmStories(packageName: string, fromDir: string): string[] {
     try {
-        const pkgPath = createRequire(fromDir + '/package.json').resolve(`${packageName}/package.json`);
+        const pkgPath = createRequire(fromDir + '/package.json').resolve(
+            `${packageName}/package.json`,
+        );
         const realmRoot = dirname(pkgPath);
         return [`${realmRoot}/src/stories/**/*.stories.@(ts|tsx)`];
     } catch {
@@ -71,9 +83,7 @@ function resolveRealmStories(packageName: string, fromDir: string): string[] {
     }
 }
 
-export function defineBlongStorybookMain(
-    options: IBlongStorybookMainOptions,
-): StorybookConfig {
+export function defineBlongStorybookMain(options: IBlongStorybookMainOptions): StorybookConfig {
     const {
         importMetaDirname,
         localStories = ['../src/**/*.stories.@(ts|tsx)'],
@@ -81,16 +91,16 @@ export function defineBlongStorybookMain(
         extraAddons = [],
     } = options;
 
-    const realmStories = realmPackages.flatMap(pkg =>
-        resolveRealmStories(pkg, importMetaDirname),
-    );
+    const realmStories = realmPackages.flatMap(pkg => resolveRealmStories(pkg, importMetaDirname));
 
     const monorepoNodeModules = resolve(importMetaDirname, '../../../common/temp/node_modules');
 
     // Extra fs.allow entries for realm story file roots
     const realmRoots = realmPackages.flatMap(pkg => {
         try {
-            const pkgPath = createRequire(importMetaDirname + '/package.json').resolve(`${pkg}/package.json`);
+            const pkgPath = createRequire(importMetaDirname + '/package.json').resolve(
+                `${pkg}/package.json`,
+            );
             return [dirname(pkgPath)];
         } catch {
             return [];
@@ -104,7 +114,10 @@ export function defineBlongStorybookMain(
             ...extraAddons.map(a => getAbsolutePath(a, importMetaDirname)),
         ],
         framework: {
-            name: getAbsolutePath('@storybook/react-vite', importMetaDirname) as '@storybook/react-vite',
+            name: getAbsolutePath(
+                '@storybook/react-vite',
+                importMetaDirname,
+            ) as '@storybook/react-vite',
             options: {},
         },
         typescript: {
@@ -113,6 +126,14 @@ export function defineBlongStorybookMain(
         viteFinal(config) {
             return {
                 ...config,
+                // Storybook is the one build that wants a realm's fixtures: an app
+                // build stubs every `meta/fixture` module (`defineBlongViteConfig`
+                // installs the plugin), and Storybook resolves the project's own
+                // `vite.config.ts` into this one — verified by removing the stub by
+                // hand and watching the fixture leave the Storybook bundle too.
+                plugins: (config.plugins ?? [])
+                    .flat()
+                    .filter(plugin => (plugin as {name?: string})?.name !== DROP_FIXTURES),
                 define: {
                     ...config.define,
                     'process.env': {},

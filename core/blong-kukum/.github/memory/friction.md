@@ -13,7 +13,7 @@ open (2)
 - `F-211` · core/blong-kukum — A package that hosts a generated fixture must declare what the
   fixture imports
 
-resolved (12)
+resolved (14)
 
 - `F-122` · core/blong-kukum — A record-driven route map collapsed onto one empty key
 - `F-123` · core/blong-kukum — `realm add` needs a single-word realm name
@@ -27,6 +27,9 @@ resolved (12)
 - `F-136` · core/blong-kukum — Renaming a binding to `find` collided with a local of the same name
 - `F-184` · core/blong-kukum — component add refuses an existing folder and emits a stray import
 - `F-294` · core/blong-kukum — The kukum CLI needs a database named after its own realm
+- `F-300` · core/blong-kukum — Two generated templates were wrong in ways only the runtime could
+  show
+- `F-301` · core/blong-kukum — An end-to-end assertion passed off a stale artifact
 
 <!-- /memory:index -->
 
@@ -223,3 +226,34 @@ generator. Either the cli intent should not activate the db adapter, or the kuku
 depend on blong-server; demo/blong-cli already declares no blong-server dependency, which is the
 shape to copy. The same failure mode is described in the load.ts comment about demo/blong-cli
 exiting 1 with Unknown database and test/framework/nscfg failing with ER_BAD_DB_ERROR.
+
+### F-300 — Two generated templates were wrong in ways only the runtime could show
+
+> _2026-09-28 · core/blong-kukum · resolved_
+
+The storybook descriptor and the model fixture descriptor each emitted code that cannot work.
+preview.tsx imported withBlong from storyHelper, which exports page and portal and has no withBlong
+(the decorator is the default export of storybook.tsx); main.ts passed a stories option the factory
+does not accept, so the option was silently ignored; the story imported a component under
+src/components that no generator produces; and the fixture kind used the fixture factory, which is
+typed for mock OpenAPI documents and rejects the sample-rows object. All four were invisible because
+kukum skips tsc when the target has no node_modules. engine.test.ts now asserts the two-factory
+contract on the generated text. Lesson: a generated template needs a content assertion, not just a
+file-exists assertion, and the owning skill is the only place that records which import is the real
+one.
+
+Fixed: storybook.ts generates the correct main/preview/story, model.ts generates a handler()
+fixture, and engine.test.ts asserts both contracts on the generated text.
+
+### F-301 — An end-to-end assertion passed off a stale artifact
+
+> _2026-09-28 · core/blong-kukum · resolved_
+
+e2e.test.ts read the fixture realm report.json to prove the added entity ran, and that file only
+existed because the kopi template shipped its own .ci-report folder, which the scaffolder copied. A
+dev blong-dev test run deliberately writes no report, so the assertion was satisfied by another
+package artifacts. Excluding .ci-report from the template exposed it; the suite now runs the realm
+leg with --report so the tap slice is written by the run being asserted.
+
+Fixed: the realm leg runs blong-dev test --report, so the tap slice is written by the run the
+assertions read; the .ci-report and coverage exclusions stay.

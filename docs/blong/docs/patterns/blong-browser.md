@@ -292,13 +292,14 @@ export const Default = {
 ### Model page stories (realm package)
 
 For end-to-end model page stories, use the `page()` / `portal()` helpers from
-`@feasibleone/blong-browser/storyHelper.tsx` with `withBlong(browser)` in the
-`.storybook/preview.tsx`. This loads the full blong platform including the mock adapter:
+`@feasibleone/blong-browser/storyHelper` with `withBlong(browser)` in the `.storybook/preview.tsx`,
+composing the realm's **composed** entry (`index.browser.ts`, which carries the portal port). This
+loads the full blong platform including the mock adapter:
 
 ```tsx
 // .storybook/preview.tsx
 import withBlong from '@feasibleone/blong-browser/storybook.tsx';
-import browser from '../browser.ts';
+import browser from '../index.browser.ts';
 
 export default {
     decorators: [withBlong(browser)],
@@ -310,7 +311,7 @@ Then stories use the `page()` helper:
 
 ```tsx
 // coral/Coral.stories.tsx
-import {page} from '../../storyHelper.js';
+import {page} from '@feasibleone/blong-browser/storyHelper';
 
 export const CoralBrowse = page('marine.coral.browse');
 export const CoralOpen = page('marine.coral.open', 1);

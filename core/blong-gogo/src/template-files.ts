@@ -7,7 +7,12 @@
  * This module is kept as the stable import path for the gogo-side consumers.
  */
 export {
+    isStampedFile,
     listTemplateFiles,
+    SCAFFOLD_VERSION,
+    scaffoldManifest,
+    scaffoldPackageName,
+    scaffoldSubject,
     TEMPLATE_FILES_IGNORE,
     type ListTemplateFilesOptions,
 } from '@feasibleone/blong-lib/template';

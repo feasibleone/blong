@@ -58,15 +58,21 @@ never overwrite work. A load error that is not "module not found" is rethrown ra
 over.
 
 The template writes a complete realm: `server.ts`, `browser.ts` and their entries, `error/`, `meta/`
-(the schema, the seed and a model spec), `orchestrator/subject/init.ts`, `server/test/`, a
-Playwright spec, the toolchain files and a `package.json`. The scaffolded realm contributes only
-what is its own — the namespace in `orchestrator/subject/init.ts`, the schema and the model spec —
-and reuses `blong-server`'s subject orchestrator and its `db` adapter, which is the same rule every
-hand-written realm follows.
+(the schema, the seed, a model spec and the Storybook fixture), `.storybook/` with the model and
+portal stories, `orchestrator/subject/init.ts`, `server/test/`, a Playwright spec, the toolchain
+files and a `package.json`. The scaffolded realm contributes only what is its own — the namespace in
+`orchestrator/subject/init.ts`, the schema and the model spec — and reuses `blong-server`'s subject
+orchestrator and its `db` adapter, which is the same rule every hand-written realm follows.
+
+Generated _output_ is not part of the template: `node_modules`, `dist`, `.tap`, `coverage`,
+`.ci-report`, `allure-*`, `.playwright`, `storybook-static`, `*-snapshots` and the template's own
+`.github/memory` are excluded by the shared ignore list, so a new realm does not inherit another
+package's reports or development notes. `package.json` is rewritten rather than copied — the scoped
+`@feasibleone/blong-<realm>` name, version `0.1.0` and a description of the realm.
 
 Files the template generates carry an `import unchanged …` marker and are only rewritten while that
 marker is present, so a generated file you have adopted is never overwritten by a later run. Rename
-the realm and its `package.json` name after the scaffold, and delete what the realm does not use
+the entity the template modelled (`entry`) after the scaffold and delete what the realm does not use
 (`browser.ts` for a server-only service, for instance).
 
 ## The explicit form
@@ -76,6 +82,7 @@ The same template, without the auto-trigger:
 ```bash
 blong realm payment                 # or: blong create realm payment
 blong realm order --object order    # pick the entity the scaffold should model
+blong realm blong-order             # the same realm: the folder prefix is not part of its name
 kukum realm add --subject=shop      # the same thing through the primitive API
 ```
 
@@ -83,7 +90,16 @@ The CLI form creates the folder, changes into it and runs it. It refuses to star
 missing, or when the word `realm` names an existing path — a real folder wins over the intent, so
 running a folder called `realm` is never mistaken for creating one. The `kukum` form is the one to
 use from a script or an agent: it takes `--target`, `--object` and `--dry-run`, and it validates the
-name against `^[a-z][a-z0-9]*$`.
+name against `^[a-z][a-z0-9]*$` (it takes the realm name, where the CLI takes a folder name and
+drops a `blong-` prefix from it).
+
+That prefix is what makes a scaffolded realm fit the repository: the realm name is the part after
+`blong-`, and it is the name the template substitutes — the subject namespace (`order.entry.add`),
+the identifiers inside the generated handlers (`async function orderFixture`), the file names and
+the config key a suite sets. `blong-` is added back where the template needs the app or package
+name, so `blong realm blong-order` produces the package `@feasibleone/blong-order` from the realm
+`order`. A folder whose name cannot be a realm name (`my-realm`, `MyRealm`) is refused before
+anything is written, because the template would otherwise emit code that does not parse.
 
 ## See also
 
