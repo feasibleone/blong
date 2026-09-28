@@ -1,0 +1,149 @@
+{
+    "name": "realm-eval",
+    "version": 1,
+    "description": "Rubric for scoring a realm-creation eval run. Machine checks (automated) sum to 70; semantic judge items sum to 30. Total 0-100.",
+    "weights": {
+        "machine": 70,
+        "semantic": 30
+    },
+    "machine": [
+        {
+            "id": "structure-layers",
+            "label": "Realm folder with auto-discovered layers (error/, adapter/, orchestrator/, test/)",
+            "weight": 5,
+            "type": "anyFile",
+            "patterns": ["error/", "adapter/", "orchestrator/", "test/"]
+        },
+        {
+            "id": "triple-naming",
+            "label": "Handler files named as semantic triples (subjectObjectPredicate)",
+            "weight": 6,
+            "type": "regexFiles",
+            "pattern": "^(invoice)[A-Z][a-zA-Z]+(Add|Find|Get|Edit|Remove|Merge)$"
+        },
+        {
+            "id": "two-word-props",
+            "label": "Two-word property names used (invoiceId, invoiceNumber, invoiceName, invoiceTotal, invoiceStatus, lineName, lineQuantity, linePrice)",
+            "weight": 4,
+            "type": "content",
+            "glob": "**/*.ts",
+            "pattern": "invoiceId|invoiceNumber|invoiceName|invoiceTotal|invoiceStatus|lineName|lineQuantity|linePrice"
+        },
+        {
+            "id": "convenience-types",
+            "label": "TypeBox convenience types used (type.increment, type.stringNotNull, type.numberNull)",
+            "weight": 6,
+            "type": "content",
+            "glob": "**/schema.ts",
+            "pattern": "type\\.(increment|stringNotNull|numberNull|integer|stringNull)"
+        },
+        {
+            "id": "tables-registered",
+            "label": "Tables registered in meta/db/db.ts in dependency order",
+            "weight": 5,
+            "type": "content",
+            "glob": "**/db/db.ts",
+            "pattern": "invoice\\.invoice"
+        },
+        {
+            "id": "seed-yaml",
+            "label": "Production seeds in YAML under meta/db/",
+            "weight": 6,
+            "type": "anyFile",
+            "patterns": ["**/meta/db/*.yaml"]
+        },
+        {
+            "id": "test-seed-yaml",
+            "label": "Test seeds in YAML under meta/dbTest/",
+            "weight": 4,
+            "type": "anyFile",
+            "patterns": ["**/meta/dbTest/*.yaml"]
+        },
+        {
+            "id": "no-seed-ts",
+            "label": "No seed values embedded in TypeScript",
+            "weight": 4,
+            "type": "absent",
+            "glob": "**/*.ts",
+            "pattern": "Widget A|Gadget B|seed.*YAML|YAML.*seed"
+        },
+        {
+            "id": "handler-factory",
+            "label": "Handlers use handler() factory with destructured runtime",
+            "weight": 6,
+            "type": "content",
+            "glob": "**/*.ts",
+            "pattern": "export default handler\\(|handler\\(\\("
+        },
+        {
+            "id": "meta-forwarded",
+            "label": "$meta forwarded as 2nd argument in handler calls",
+            "weight": 6,
+            "type": "content",
+            "glob": "**/*.ts",
+            "pattern": "\\$meta"
+        },
+        {
+            "id": "no-direct-imports",
+            "label": "No direct handler-to-handler imports (IoC proxy only)",
+            "weight": 6,
+            "type": "absent",
+            "glob": "**/*.ts",
+            "pattern": "import\\s+[^;]+from\\s+['\"].*\\b(invoice|user|adapter|orchestrator)[A-Za-z]*/.*['\"]"
+        },
+        {
+            "id": "standard-predicates",
+            "label": "Only standard predicates prioritized (Add/Find/Get/Edit/Remove/Merge)",
+            "weight": 4,
+            "type": "content",
+            "glob": "**/*.ts",
+            "pattern": "(Add|Find|Get|Edit|Remove|Merge)"
+        },
+        {
+            "id": "typed-errors",
+            "label": "Typed errors defined in an error layer",
+            "weight": 5,
+            "type": "anyFile",
+            "patterns": ["**/error/**"]
+        },
+        {
+            "id": "validation",
+            "label": "Validation via Handler type + ~.schema.ts files",
+            "weight": 5,
+            "type": "anyFile",
+            "patterns": ["**/*.schema.ts"]
+        },
+        {
+            "id": "tests-wiring",
+            "label": "Test layer present with integration.watch.test wiring",
+            "weight": 5,
+            "type": "anyFile",
+            "patterns": ["**/test/**", "**/integration.watch.test*"]
+        },
+        {
+            "id": "suite-wiring",
+            "label": "Realm registered in suite server.ts children",
+            "weight": 5,
+            "type": "content",
+            "glob": "**/server.ts",
+            "pattern": "invoice|children"
+        }
+    ],
+    "semantic": [
+        {
+            "id": "intent-match",
+            "label": "Implementation matches the prompt intent",
+            "max": 10
+        },
+        {
+            "id": "would-run",
+            "label": "Code would compile/lint/run (no obvious breakage)",
+            "max": 10
+        },
+        {
+            "id": "completeness",
+            "label": "End-to-end completeness (schema -> handlers -> tests -> wiring)",
+            "max": 10
+        }
+    ]
+}
