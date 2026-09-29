@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/feasibleone/blong/compare/blong-login-v1.11.0...blong-login-v1.11.1) (2026-09-29)
+
+
+### Bug Fixes
+
+* gaps ([19beb7d](https://github.com/feasibleone/blong/commit/19beb7d191e853c8182409256c97af7a1e413d57))
+
 ## [1.11.0](https://github.com/feasibleone/blong/compare/blong-login-v1.10.1...blong-login-v1.11.0) (2026-09-15)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-lib-v1.6.0...blong-lib-v1.7.0) (2026-09-29)
+
+
+### Features
+
+* improve storybook scaffold ([cc66ab4](https://github.com/feasibleone/blong/commit/cc66ab480eb9af2def562873cac12d06591c0de4))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-lib-v1.5.0...blong-lib-v1.6.0) (2026-09-26)
 
 

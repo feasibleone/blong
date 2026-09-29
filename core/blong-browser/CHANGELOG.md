@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.22.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.21.0...blong-browser-v1.22.0) (2026-09-29)
+
+
+### Features
+
+* improve storybook scaffold ([cc66ab4](https://github.com/feasibleone/blong/commit/cc66ab480eb9af2def562873cac12d06591c0de4))
+
+
+### Bug Fixes
+
+* failed tests ([108caf5](https://github.com/feasibleone/blong/commit/108caf5f3e92151f8b929115e0a8f6b2acdd3d23))
+
 ## [1.21.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.20.0...blong-browser-v1.21.0) (2026-09-26)
 
 

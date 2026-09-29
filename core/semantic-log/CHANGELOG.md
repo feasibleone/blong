@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/feasibleone/blong/compare/semantic-log-v1.3.0...semantic-log-v1.3.1) (2026-09-29)
+
+
+### Bug Fixes
+
+* failed tests ([108caf5](https://github.com/feasibleone/blong/commit/108caf5f3e92151f8b929115e0a8f6b2acdd3d23))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/semantic-log-v1.2.0...semantic-log-v1.3.0) (2026-09-26)
 
 

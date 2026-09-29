@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.1](https://github.com/feasibleone/blong/compare/blong-dev-v1.7.0...blong-dev-v1.7.1) (2026-09-29)
+
+
+### Bug Fixes
+
+* failed tests ([108caf5](https://github.com/feasibleone/blong/commit/108caf5f3e92151f8b929115e0a8f6b2acdd3d23))
+* gaps ([19beb7d](https://github.com/feasibleone/blong/commit/19beb7d191e853c8182409256c97af7a1e413d57))
+
 ## [1.7.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.6.0...blong-dev-v1.7.0) (2026-09-26)
 
 

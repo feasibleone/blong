@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.16.0...blong-kopi-v1.17.0) (2026-09-29)
+
+
+### Features
+
+* improve storybook scaffold ([cc66ab4](https://github.com/feasibleone/blong/commit/cc66ab480eb9af2def562873cac12d06591c0de4))
+
 ## [1.16.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.15.0...blong-kopi-v1.16.0) (2026-09-24)
 
 

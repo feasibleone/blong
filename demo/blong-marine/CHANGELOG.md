@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.6.0...blong-marine-v1.7.0) (2026-09-29)
+
+
+### Features
+
+* improve storybook scaffold ([cc66ab4](https://github.com/feasibleone/blong/commit/cc66ab480eb9af2def562873cac12d06591c0de4))
+
+
+### Bug Fixes
+
+* gaps ([19beb7d](https://github.com/feasibleone/blong/commit/19beb7d191e853c8182409256c97af7a1e413d57))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.5.4...blong-marine-v1.6.0) (2026-09-24)
 
 
