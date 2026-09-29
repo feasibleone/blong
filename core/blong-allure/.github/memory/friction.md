@@ -20,7 +20,7 @@ open (1)
 > _2026-09-26 · core/blong-allure · open_
 
 Allure 3's `generate` does not take the results directory as an argument the way Allure 2 did. It is
-handed a *search root* with `--cwd` and looks for `**/allure-results` underneath it, so the working
+handed a _search root_ with `--cwd` and looks for `**/allure-results` underneath it, so the working
 directory of the test run is what it wants. Invoking it as `generate <resultsDir> --output <dir>` —
 which is what the README here used to imply — exits 1 with a syntax error naming the valid options,
 and the failure only shows up as a missing HTML file after a run that otherwise passed.

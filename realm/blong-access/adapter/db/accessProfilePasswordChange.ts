@@ -16,10 +16,7 @@ type KnexQb = any;
  * password does not sign the user out.
  */
 export default handler(
-    ({
-        errors,
-        lib: {crockfordDecode, verifyPassword, hashPassword, credentialPolicyParams},
-    }) =>
+    ({errors, lib: {crockfordDecode, verifyPassword, hashPassword, credentialPolicyParams}}) =>
         async function accessProfilePasswordChange(
             params: {currentPassword: string; newPassword: string},
             $meta: IMeta,

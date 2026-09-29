@@ -14,52 +14,53 @@ type KnexQb = any;
  * reusing that role's resource id, making the bundle create/edit pages work
  * end-to-end.
  */
-export default handler(
-    ({handler: {'db/accessRoleEnsure': accessRoleEnsure}}) =>
-        async function gatewayBundleAdd(
-            params: {bundle?: Record<string, unknown>},
-            $meta: IMeta,
-        ): Promise<{bundle: Record<string, unknown>}> {
-            const qb: KnexQb = this.config?.context?.queryBuilder;
-            if (!qb) throw new Error('Database not available');
+export default handler(() => ({
+    async gatewayBundleAdd(
+        params: {bundle?: Record<string, unknown>},
+        $meta: IMeta,
+    ): Promise<{bundle: Record<string, unknown>}> {
+        const qb: KnexQb = this.config?.context?.queryBuilder;
+        if (!qb) throw new Error('Database not available');
 
-            const data = (params.bundle ?? {}) as {
-                baseMonthlyCredits?: number;
-                rateLimit?: number;
-                rateWindowSec?: number;
-                description?: string | null;
-                isActive?: boolean | number;
-            };
+        const data = (params.bundle ?? {}) as {
+            baseMonthlyCredits?: number;
+            rateLimit?: number;
+            rateWindowSec?: number;
+            description?: string | null;
+            isActive?: boolean | number;
+        };
 
-            // A bundle IS a role: ensure a fresh role resource (unique name, the
-            // bit allocated by the framework); the bundle row reuses its id.
-            const bundleName = `bundle-${newUuid()}`;
-            const {role: bundleRole} = await accessRoleEnsure<{role: {roleId: string}}>(
-                {role: {roleName: bundleName, description: `${bundleName} bundle role`}},
-                $meta,
-            );
-            const roleId = bundleRole.roleId;
+        // A bundle IS a role: ensure a fresh role resource (unique name, the
+        // bit allocated by the framework); the bundle row reuses its id.
+        // `access.role.ensure` comes from `access`, a library realm this process
+        // carries itself, so `super` reaches it in the same process.
+        const bundleName = `bundle-${newUuid()}`;
+        const {role: bundleRole} = (await super.accessRoleEnsure(
+            {role: {roleName: bundleName, description: `${bundleName} bundle role`}},
+            $meta,
+        )) as {role: {roleId: string}};
+        const roleId = bundleRole.roleId;
 
-            await qb('gateway_bundle').insert({
-                bundleId: uuidBuf(roleId),
-                roleId: uuidBuf(roleId),
+        await qb('gateway_bundle').insert({
+            bundleId: uuidBuf(roleId),
+            roleId: uuidBuf(roleId),
+            isActive: data.isActive ? 1 : 0,
+            baseMonthlyCredits: data.baseMonthlyCredits ?? 0,
+            rateLimit: data.rateLimit ?? 0,
+            rateWindowSec: data.rateWindowSec ?? 60,
+            description: data.description ?? null,
+        });
+
+        return {
+            bundle: {
+                bundleId: roleId,
+                roleId,
                 isActive: data.isActive ? 1 : 0,
                 baseMonthlyCredits: data.baseMonthlyCredits ?? 0,
                 rateLimit: data.rateLimit ?? 0,
                 rateWindowSec: data.rateWindowSec ?? 60,
                 description: data.description ?? null,
-            });
-
-            return {
-                bundle: {
-                    bundleId: roleId,
-                    roleId,
-                    isActive: data.isActive ? 1 : 0,
-                    baseMonthlyCredits: data.baseMonthlyCredits ?? 0,
-                    rateLimit: data.rateLimit ?? 0,
-                    rateWindowSec: data.rateWindowSec ?? 60,
-                    description: data.description ?? null,
-                },
-            };
-        },
-);
+            },
+        };
+    },
+}));

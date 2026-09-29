@@ -31,7 +31,7 @@ import * as account from './account.ts';
  *
  * Wire: `access.role.ensure` — shared helper in the `access.db` handler group.
  */
-export default handler(({errors, handler: {'db/coreResourceEnsure': coreResourceEnsure}}) => ({
+export default handler(({errors}) => ({
     async accessRoleEnsure(
         params: {
             role?: {
@@ -68,7 +68,10 @@ export default handler(({errors, handler: {'db/coreResourceEnsure': coreResource
                 });
             }
         }
-        const {resourceId} = await coreResourceEnsure<{resourceId: string}>(
+        // `core.resource.ensure` comes from `core`, a library realm this process carries
+        // itself: `super` reaches it by prototype-chain delegation, in this process and on
+        // this connection (core is listed as an early child of every suite that has it).
+        const {resourceId} = (await super.coreResourceEnsure(
             {
                 name: roleName,
                 typeAlias: 'access.role',
@@ -83,7 +86,7 @@ export default handler(({errors, handler: {'db/coreResourceEnsure': coreResource
                 allocate: {column: 'roleBit', max: model.ROLE_BIT_MAX},
             },
             $meta,
-        );
+        )) as {resourceId: string};
         const row = (await qb('access_role')
             .where('roleId', account.uuidBuf(resourceId))
             .first('roleBit')) as {roleBit?: number | null} | undefined;

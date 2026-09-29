@@ -9,14 +9,14 @@ export type TextStatistics = {
     characters: number;
 };
 
-/** The group's library functions, as the proxy attaches them. */
+/** The group's injected library functions, as the proxy attaches them. */
 type TextLib = {textInput: (params: TextParams) => string};
 
 /**
  * `text.statistics.get` — line, word and character counts.
  *
  * Reuses the same `textInput` library as `slug`, which is the point of putting
- * the shared part in a library function rather than in one of the handlers. The
+ * the shared part in an injected library function rather than in one of the handlers. The
  * member call keeps `this` bound, which is where the library reads `platform`.
  */
 export default handler(({lib}) => ({

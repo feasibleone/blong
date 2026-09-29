@@ -70,41 +70,42 @@ export function verifyIdToken(
     jwks: {keys?: IJwk[]},
     audience: string,
 ): Record<string, unknown> {
-        const [headerB64, payloadB64, signatureB64] = token.split('.');
-        if (!headerB64 || !payloadB64 || !signatureB64) {
-            throw new Error('Invalid ID token format');
-        }
+    const [headerB64, payloadB64, signatureB64] = token.split('.');
+    if (!headerB64 || !payloadB64 || !signatureB64) {
+        throw new Error('Invalid ID token format');
+    }
 
-        const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf8')) as {
-            kid?: string;
-            alg?: string;
-        };
-        const payload = JSON.parse(
-            Buffer.from(payloadB64, 'base64url').toString('utf8'),
-        ) as Record<string, unknown>;
-        const signature = Buffer.from(signatureB64, 'base64url');
-        const data = Buffer.from(`${headerB64}.${payloadB64}`, 'utf8');
+    const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf8')) as {
+        kid?: string;
+        alg?: string;
+    };
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8')) as Record<
+        string,
+        unknown
+    >;
+    const signature = Buffer.from(signatureB64, 'base64url');
+    const data = Buffer.from(`${headerB64}.${payloadB64}`, 'utf8');
 
-        if (header.alg !== 'RS256') {
-            throw new Error(`Unsupported ID token algorithm: ${header.alg}`);
-        }
-        const key = (jwks?.keys ?? []).find(k => k.kid === header.kid);
-        if (!key || key.kty !== 'RSA' || !key.n || !key.e) {
-            throw new Error('No matching RSA signing key in JWKS');
-        }
+    if (header.alg !== 'RS256') {
+        throw new Error(`Unsupported ID token algorithm: ${header.alg}`);
+    }
+    const key = (jwks?.keys ?? []).find(k => k.kid === header.kid);
+    if (!key || key.kty !== 'RSA' || !key.n || !key.e) {
+        throw new Error('No matching RSA signing key in JWKS');
+    }
 
-        const publicKey = crypto.createPublicKey({
-            key: {kty: key.kty, n: key.n, e: key.e},
-            format: 'jwk',
-        });
-        const verified = crypto.verify('sha256', data, publicKey, signature);
-        if (!verified) {
-            throw new Error('ID token signature verification failed');
-        }
+    const publicKey = crypto.createPublicKey({
+        key: {kty: key.kty, n: key.n, e: key.e},
+        format: 'jwk',
+    });
+    const verified = crypto.verify('sha256', data, publicKey, signature);
+    if (!verified) {
+        throw new Error('ID token signature verification failed');
+    }
 
-        if (payload.aud && String(payload.aud) !== audience) {
-            throw new Error('ID token audience mismatch');
-        }
+    if (payload.aud && String(payload.aud) !== audience) {
+        throw new Error('ID token audience mismatch');
+    }
 
-        return payload;
+    return payload;
 }

@@ -284,7 +284,7 @@ CI build #574 failed on `realm/blong-gateway`'s diagram spec with
 fix. Two independent causes, both measured rather than reasoned about:
 
 **The screenshot's size followed the element's position, not its size.** A locator screenshot snaps
-the element's box *outward* to whole pixels. Probe (Playwright 1.63): an element 100px tall at
+the element's box _outward_ to whole pixels. Probe (Playwright 1.63): an element 100px tall at
 `y=50.5` photographs as 101 rows whose first row is the page behind it; the same element at an
 integral offset gives its own 100 rows. So the same drawing is 355 tall in a run where the layout
 lands on a pixel boundary and 356 where it does not — and the element's offset comes from a flex

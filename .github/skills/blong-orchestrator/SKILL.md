@@ -34,13 +34,13 @@ orchestrator/
 ├── dispatch.ts              # Orchestrator definition
 ├── entity1/                 # Handler group: realmname.entity1
 │   ├── ~.schema.ts         # Auto-generated validation
-│   ├── helper.ts           # Library function
+│   ├── helper.ts           # Injected library function
 │   ├── realmEntity1Add.ts  # Business handler
 │   └── realmEntity1Edit.ts
 └── entity2/                 # Handler group: realmname.entity2
     ├── ~.schema.ts
     ├── realmEntity2Find.ts
-    └── validate.ts          # Library function
+    └── validate.ts          # Injected library function
 ```
 
 ## Built-in Orchestrators
@@ -131,7 +131,7 @@ type Handler = ({
 
 export default handler(({
     lib: {
-        validateEmail  // Library function
+        validateEmail  // Injected library function
     },
     errors,
     handler: {
@@ -165,7 +165,7 @@ export default handler(({
 );
 ```
 
-### Library Function
+### Injected Library Function
 
 ```typescript
 // realmname/orchestrator/user/validateEmail.ts
@@ -393,7 +393,7 @@ orchestrator/
 - **One namespace per orchestrator**; business logic only, no protocol detail.
 - **Call current realms' adapters, any orchestrators, not other realms' adapters.**
 - **Domain errors + saga compensation** for distributed transactions.
-- **Extract shared logic to library functions**; minimal transformation.
+- **Extract shared logic to injected library functions**; minimal transformation.
 - **Config over code** for destinations/fallbacks; `Handler` types for validation.
 - **Test handlers** covering orchestration logic.
 

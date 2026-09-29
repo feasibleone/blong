@@ -12,6 +12,12 @@ type KnexQb = any;
  * (`login.token.create` / `refresh` / `restore`) use it to refuse disabled
  * users at login and at every token renewal.
  *
+ * The materialized paths are the only source here, deliberately: they are kept
+ * complete by the writers rather than repaired by readers, so a request may be a
+ * millisecond behind a concurrent write but never behind a *lost* one.  What the
+ * writers guarantee, and where it is checked, is in `IPathRefresh`
+ * (`core/blong/types.ts`) and `access_pathRefresh.sql` (T-174).
+ *
  * Wire: `access.permission.list` — shared RBAC helper in the `access.db`
  * handler group, reused by credential check and identity resolution.
  */
@@ -21,7 +27,12 @@ export default handler(
             params: {userId: string},
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             _$meta: IMeta,
-        ): Promise<{roleBits: number[]; actions: string[]; permissionMap: string; isActive: boolean}> {
+        ): Promise<{
+            roleBits: number[];
+            actions: string[];
+            permissionMap: string;
+            isActive: boolean;
+        }> {
             const qb: KnexQb = this.config?.context?.queryBuilder;
             if (!qb) throw new Error('Database not available');
 
@@ -33,6 +44,13 @@ export default handler(
                 .where('u.userId', userId)
                 .first();
 
+            // The caller's roles and actions are read out of the materialized
+            // `core_path` (`access.effectiveRole` / `access.effectiveAction`), which
+            // is what makes this read cheap enough for the token path.  It is also
+            // the reason a writer that skipped its rebuild has to be counted rather
+            // than trusted to a flag: this read is what the gateway authorizes
+            // against, so an edge missing here is a method the caller was granted and
+            // is refused (T-174).
             const roles = await qb
                 .select('r.roleBit')
                 .from('access_role as r')
@@ -49,10 +67,13 @@ export default handler(
                 .where('p.originId', userId)
                 .where('p.pathType', 'access.effectiveAction');
 
-            const actionNames: string[] = actions.map((a: {resourceName: string}) => a.resourceName);
+            const actionNames: string[] = actions.map(
+                (a: {resourceName: string}) => a.resourceName,
+            );
 
             const maxRoleBit = roleBits.length ? Math.max(...roleBits) : 0;
-            if (maxRoleBit > 1023) throw new Error('Role bit exceeds maximum allowed value of 1023');
+            if (maxRoleBit > 1023)
+                throw new Error('Role bit exceeds maximum allowed value of 1023');
 
             const permissionMap: string = Buffer.from(
                 roleBits.reduce(
@@ -66,6 +87,11 @@ export default handler(
                 ),
             ).toString('base64');
 
-            return {roleBits, actions: actionNames, permissionMap, isActive: Boolean(user?.isActive)};
+            return {
+                roleBits,
+                actions: actionNames,
+                permissionMap,
+                isActive: Boolean(user?.isActive),
+            };
         },
 );

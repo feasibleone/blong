@@ -82,6 +82,13 @@ before writing anything.
 - **Browser namespace file REQUIRED** for portal pages: `browser/orchestrator/subject/init.ts`
   exporting `namespace: '<realmname>'` — without it browse fails "Method binding failed".
 - **Name consistency:** realm folder = package name = namespace prefix.
+- **[LIBRARY_REALM]** Two realms are _libraries_ rather than domains of their own — `blong-core`
+  (resource graph) and `blong-access` (RBAC): every process that calls them carries a copy and their
+  schema is created in each database. List them as **early children** (`srv`, `login`, `core`,
+  `access`, …) so a realm loaded later can reach their helpers with `super.<name>` (prototype-chain
+  delegation) and hand over its transaction; never import their package, and never expect a `lib`
+  binding to reach them. `blong-party` is deliberately _not_ a library realm — it holds business data
+  that must not be copied per database.
 
 Canonical framework rules + layer table: `.github/skills/_shared/conventions.md` →
 `[CRITICAL_GUARDRAILS]`, `[LAYER_DEFAULTS_TABLE]`, `[CONFIG_EXAMPLE]`. Siblings: **blong-layer**,

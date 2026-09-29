@@ -16,17 +16,6 @@ import {v4} from 'uuid';
 import yaml from 'yaml';
 import {methodParts} from '../../lib.ts';
 import {
-    aclActionId,
-    aclActionName,
-    aclActorId,
-    aclActorOf,
-    aclAllowed,
-    aclCheckSql,
-    aclConfig,
-    aclEntityOf,
-    aclKeyColumn,
-} from './acl.ts';
-import {
     binaryToStr,
     discoverBinaryColumns,
     isBinaryColumn,
@@ -63,6 +52,18 @@ import {
     readSqlFiles,
     snakeToCamel,
 } from '../schema/knex/utils.ts';
+import {
+    aclActionId,
+    aclActionName,
+    aclActorId,
+    aclActorOf,
+    aclAllowed,
+    aclCheckSql,
+    aclConfig,
+    aclEntityOf,
+    aclKeyColumn,
+} from './acl.ts';
+import {createPathRefresh, type IPathRefresh} from './pathRefresh.ts';
 
 // Helpers to access the binary-column map stored on the adapter context.
 // Cast through `any` because the base `ServerContext & BrowserContext` type
@@ -72,6 +73,33 @@ function getBinaryCols(ctx: object): Map<string, Set<string>> | undefined {
 }
 function setBinaryCols(ctx: object, map: Map<string, Set<string>>): void {
     (ctx as Record<string, unknown>).binaryColumns = map;
+}
+
+/** The shared rebuild coordinator this connection's edge writers defer through. */
+function getPathRefresh(ctx: object | undefined): IPathRefresh | undefined {
+    return (ctx as {pathRefresh?: IPathRefresh} | undefined)?.pathRefresh;
+}
+function setPathRefresh(ctx: object, coordinator: IPathRefresh): void {
+    (ctx as {pathRefresh?: IPathRefresh}).pathRefresh = coordinator;
+}
+
+/**
+ * The coordinator for `config`, created on first use.
+ *
+ * The schema is not always resolved when the adapter builds its context (which is
+ * why `start` tries as well), so this is the place that guarantees one exists
+ * before a seed merge asks for it.
+ */
+function ensurePathRefresh(config: {
+    context?: object;
+    schema?: {accessPathRefresh?: boolean};
+}): IPathRefresh | undefined {
+    const existing = getPathRefresh(config.context);
+    if (existing) return existing;
+    if (!config.schema?.accessPathRefresh || !config.context) return undefined;
+    const created = createPathRefresh();
+    setPathRefresh(config.context, created);
+    return created;
 }
 
 export type {IConfig, ISchemaTable} from '../schema/knex/types.ts';
@@ -226,6 +254,13 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         logKnexConnectionError(this.config, this.log, error),
                     retry: this.config.knex.retry,
                 }) as unknown as Knex,
+                // The shared rebuild: every edge writer defers through it while the
+                // seed phase is open, which is what keeps the rebuild behind the
+                // last write (`pathRefresh.ts`, T-174). Only a schema that declares
+                // the procedure gets one.
+                ...(this.config.schema?.accessPathRefresh
+                    ? {pathRefresh: createPathRefresh()}
+                    : {}),
             };
             super.connect();
             return super.start();
@@ -335,15 +370,20 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 await bindSyntheticHandlers(self, knex);
             }
             if (schema?.seed) {
-                // Seed merges each trigger an `access_pathRefresh()` full rebuild
-                // by default.  During the batch we defer it — merges only write
-                // `core_triple` edges and skip the rebuild (see `core.triple.merge`
-                // deferPathRefresh handling) — then run ONE refresh at the end.
-                // This avoids both redundant full rebuilds and the write-vs-refresh
-                // deadlock between concurrent merges.
-                (this.config.context as {deferPathRefresh?: boolean}).deferPathRefresh = true;
-                try {
-                    let currentSeed = '';
+                // Seed merges write `core_triple` edges and skip the rebuild by
+                // default (see the deferral in `core.triple.merge`): each of them
+                // counts itself in a durable generation, and the batch ends with
+                // ONE rebuild through the coordinator, which waits for this
+                // process's writers first and then rebuilds while the counters say
+                // the paths are behind.  That is what makes the rebuild follow the
+                // last write — a rebuild per merge is neither wanted (redundant
+                // full rebuilds, and the write-vs-rebuild deadlock between
+                // concurrent merges) nor sufficient, because a rebuild that merely
+                // happened to be last left edges out of the paths until the next
+                // start (T-174).
+                const pathRefresh = ensurePathRefresh(this.config);
+                let currentSeed = '';
+                const seedPhase = async () => {
                     await withProgress(
                         this.log,
                         'seed data',
@@ -362,17 +402,25 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                                     name => (currentSeed = name),
                                 );
                             }
-                            // 3. Single rebuild after all seed edges are in place.
-                            if (schema?.accessPathRefresh)
-                                await knex?.raw('CALL access_pathRefresh()');
                         })(),
                         {
                             getProgress: () => ({current: currentSeed || 'starting'}),
                         },
                     );
-                } finally {
-                    (this.config.context as {deferPathRefresh?: boolean}).deferPathRefresh = false;
-                }
+                };
+                if (pathRefresh) await pathRefresh.defer(knex, seedPhase);
+                else await seedPhase();
+            }
+            if (knex) {
+                // Every start makes the flattened paths catch up, whatever left them
+                // behind: a writer in another process that counted its edges and died
+                // before the batch owed the rebuild, or a rebuild that could not
+                // finish. The counters are durable and every rebuild publishes what
+                // it covered, so this is a no-op after a clean shutdown and the one
+                // repair a crash needs — without waiting for the next write, and
+                // without assuming any ordering between processes.
+                const pathRefresh = ensurePathRefresh(this.config);
+                if (pathRefresh) await pathRefresh.drain(knex);
             }
 
             // Discover binary(16) columns for Buffer <-> string conversion.
@@ -405,6 +453,9 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         logKnexConnectionError(this.config, this.log, error),
                     retry: (newKnexConfig as IKnexConfig).retry ?? this.config.knex.retry,
                 }) as unknown as Knex,
+                ...(this.config.schema?.accessPathRefresh
+                    ? {pathRefresh: createPathRefresh()}
+                    : {}),
             };
         },
         async exec(
@@ -449,7 +500,8 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 // connection can see (information_schema, mysql, other realms' DBs).
                 const schema = (params as Record<string, unknown>).schema as string | undefined;
                 const database =
-                    schema ?? (this.config.knex?.connection as {database?: string} | undefined)?.database;
+                    schema ??
+                    (this.config.knex?.connection as {database?: string} | undefined)?.database;
                 let query = qb
                     .select('TABLE_NAME as tableName', 'TABLE_TYPE as tableType')
                     .from('information_schema.tables')
@@ -499,7 +551,11 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             ): Promise<void> => {
                 const mode = opts.acl.mode ?? 'none';
                 if (mode === 'none' || !aclActor || !recordId) return;
-                const actionId = await aclActionId(this.config.context.queryBuilder!, aclCfg, method!);
+                const actionId = await aclActionId(
+                    this.config.context.queryBuilder!,
+                    aclCfg,
+                    method!,
+                );
                 if (!actionId) return; // the method is not an RBAC-managed action
                 const allowed = await aclAllowed(this.config.context.queryBuilder!, {
                     cfg: aclCfg,
@@ -536,11 +592,16 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             const aclReleaseResource = async (
                 opts: IResolvedTableOptions,
                 recordId: Buffer,
+                /**
+                 * The transaction the removal runs in, when there is one, so the
+                 * released rules and the deletes that follow them commit together.
+                 */
+                qb?: Knex,
             ): Promise<void> => {
                 const mode = opts.acl.mode ?? 'none';
                 if (mode === 'none') return;
-                await this.config.context
-                    .queryBuilder!(aclCfg.table)
+                const target = qb ?? this.config.context.queryBuilder!;
+                await target(aclCfg.table)
                     .where('principalId', recordId)
                     .orWhere('targetId', recordId)
                     .orWhere('actionId', recordId)
@@ -557,7 +618,11 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             ): Promise<{sql: string; bindings: unknown[]} | undefined> => {
                 const mode = opts.acl.mode ?? 'none';
                 if (mode === 'none' || !aclActor) return undefined;
-                const actionId = await aclActionId(this.config.context.queryBuilder!, aclCfg, method!);
+                const actionId = await aclActionId(
+                    this.config.context.queryBuilder!,
+                    aclCfg,
+                    method!,
+                );
                 if (!actionId) return undefined;
                 return aclCheckSql({
                     cfg: aclCfg,
@@ -593,7 +658,8 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     const binding = opts.edges.find(e => e.predicate === addScope.predicate);
                     const detailObject =
                         binding?.object ?? addScope.predicate.replace(/^has/, '').toLowerCase();
-                    for (const row of (rest[detailObject] as Array<Record<string, unknown>>) ?? []) {
+                    for (const row of (rest[detailObject] as Array<Record<string, unknown>>) ??
+                        []) {
                         // The scope id is the object's key in the edge row —
                         // `{unitId: '<base64>'}` for a `belongsTo` edge.
                         const found = Object.entries(row ?? {}).find(
@@ -603,7 +669,11 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     }
                 }
                 if (!ids.length) return;
-                const actionId = await aclActionId(this.config.context.queryBuilder!, aclCfg, method!);
+                const actionId = await aclActionId(
+                    this.config.context.queryBuilder!,
+                    aclCfg,
+                    method!,
+                );
                 if (!actionId) return;
                 const allowed = await aclAllowed(this.config.context.queryBuilder!, {
                     cfg: aclCfg,
@@ -742,7 +812,8 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     // Record-level ACL: the filter is applied before paging so both
                     // the page and its total only contain readable records.
                     const aclFilter = await aclReadFilter(opts);
-                    if (aclFilter) query = query.whereRaw(aclFilter.sql, aclFilter.bindings as never[]);
+                    if (aclFilter)
+                        query = query.whereRaw(aclFilter.sql, aclFilter.bindings as never[]);
                     if (limit) query = query.limit(limit);
                     if (offset) query = query.offset(offset);
                     const rows = (await query.select(select)) as Record<string, unknown>[];
@@ -782,7 +853,6 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             | Record<string, Record<string, string>>
                             | undefined
                     )?.foreign;
-                    const qb = this.config.context.queryBuilder!;
                     const binaryCols = getBinaryCols(this.config.context);
                     const opts = tableOptions(objectSchema, this.config, subject, object);
                     const cols = columns as Record<string, unknown>;
@@ -808,164 +878,178 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     // Track the generated key so the inserted row can be selected
                     // back by it.
                     let generatedKey: string | undefined;
-                    // Ensure a `core_type` row exists (mirrors core.resource.ensure)
-                    // so resource-backed inserts always get a type.
-                    const ensureType = async (typeAlias: string): Promise<number | undefined> => {
-                        const existing = await qb('core_type').where({typeAlias}).first('typeId');
-                        if (existing) return existing.typeId as number;
-                        await qb('core_type').insert({typeAlias}).onConflict().ignore();
-                        const inserted = await qb('core_type').where({typeAlias}).first('typeId');
-                        return inserted ? (inserted.typeId as number) : undefined;
-                    };
-                    // Create the matching `core_resource` row for a generated
-                    // resource-backed PK.  The name is the entity's display label
-                    // in `{subject}.dropdown.list`.
-                    const ensureResourceRow = async (
-                        idStr: string,
-                        resourceKeyCol: string,
-                    ): Promise<void> => {
-                        const typeAlias = `${subject}.${object}`;
-                        const typeId = await ensureType(typeAlias);
-                        if (!typeId) return;
-                        const name =
-                            (typeof resourceName === 'string' && resourceName) ||
-                            nameColValue ||
-                            `${subject}.${object}.${resourceKeyCol}`;
-                        await qb('core_resource')
-                            .insert({
-                                resourceId: strToBinary(idStr),
-                                resourceName: name,
-                                typeId,
-                            })
-                            .onConflict()
-                            .ignore();
-                    };
-                    // 1) Literal 'uuid' / 'ulid' default markers on id columns.
-                    for (const colName of Object.keys(cols)) {
-                        if (cols[colName] !== 'uuid' && cols[colName] !== 'ulid') continue;
-                        const prop = properties?.[colName];
-                        const marker = cols[colName] as 'uuid' | 'ulid';
-                        if (!prop || propDefault(prop) !== marker) continue;
-                        const idStr = marker === 'ulid' ? ulid() : crypto.randomUUID();
-                        cols[colName] = strToBinary(idStr);
-                        generatedKey = idStr;
-                        if (foreignKeys?.[colName] === 'core.resource.resourceId') {
-                            await ensureResourceRow(idStr, colName);
-                        }
-                    }
-                    // 2) Resource-backed not-null PK (no default marker, e.g.
-                    //    `type.uidNotNull()`) with no key supplied by the caller.
-                    if (
-                        !generatedKey &&
-                        cols[keyName] == null &&
-                        foreignKeys?.[keyName] === 'core.resource.resourceId'
-                    ) {
-                        const pkProp = properties?.[keyName];
-                        if (!pkProp || !propDefault(pkProp)) {
-                            generatedKey = crypto.randomUUID();
-                            cols[keyName] = strToBinary(generatedKey);
-                            await ensureResourceRow(generatedKey, keyName);
-                        }
-                    }
-                    // Record-level ACL: `add` has no record key yet, so the scope
-                    // declared by `addScope` decides whether it may be created.
-                    await aclCheckAdd(opts, cols, rest);
-                    // Convert any string values for binary columns to Buffer
-                    const insertCols = prepareInputParams(cols, binaryCols, table);
-                    const inserted = await qb(table).insert(insertCols);
-                    // Select the inserted row back by the PK. Prefer the explicit
-                    // key value (post-conversion) when the caller supplied one
-                    // (e.g. a real ULID/UUID string) — `insertId` only works for
-                    // auto-increment PKs and is 0 for a binary-PK table.
-                    const masterKey =
-                        generatedKey
-                            ? strToBinary(generatedKey)
-                            : (insertCols[keyName] as Buffer | string | undefined) ?? inserted[0];
-                    const row = (await qb(table)
-                        .where({[keyName]: masterKey})
-                        .first()) as Record<string, unknown>;
-                    const result: Record<string, unknown> = {
-                        [object]: prepareResultRow(row, binaryCols, table),
-                    };
-                    // Master-detail: persist each sibling detail array (a param
-                    // whose key names a FK-constrained detail table) with the
-                    // master's key as the FK column, and return the created rows.
-                    for (const [detailName, detailRows] of Object.entries(rest)) {
-                        if (!Array.isArray(detailRows)) continue;
-                        const detail = detailTables(subject, object, keyName).find(
-                            d => d.table === `${subject}_${detailName}`,
-                        );
-                        if (!detail) continue;
-                        const detailBinaryCols = getBinaryCols(this.config.context);
-                        for (const detailRow of detailRows) {
-                            await qb(detail.table).insert(
-                                prepareInputParams(
-                                    {
-                                        ...(detailRow as Record<string, unknown>),
-                                        [detail.fkColumn]: masterKey,
-                                    },
-                                    detailBinaryCols,
-                                    detail.table,
-                                ),
-                            );
-                        }
-                        const createdRows = (await qb(detail.table).where({
-                            [detail.fkColumn]: masterKey,
-                        })) as Record<string, unknown>[];
-                        result[detailName] = prepareResultRows(
-                            createdRows,
-                            detailBinaryCols,
-                            detail.table,
-                        );
-                    }
-                    // Graph-edge master-detail: persist each declared edge from
-                    // its sibling array (filtering `granted !== false` when the
-                    // binding uses the pivot convention) and attach the rows.
-                    if (Buffer.isBuffer(masterKey)) {
-                        const opts = tableOptions(objectSchema, this.config, subject, object);
-                        for (const binding of opts.edges) {
-                            if (!binding.table) continue; // reverse-only cleanup binding
-                            const detailObject =
-                                binding.object ??
-                                binding.predicate.replace(/^has/, '').toLowerCase();
-                            const edgeRows = Array.isArray(rest[detailObject])
-                                ? (rest[detailObject] as Array<Record<string, unknown>>)
-                                : [];
-                            const objectKey = binding.objectKey ?? `${detailObject}Id`;
-                            const ids = edgeRows
-                                .filter(r => (binding.granted ? r.granted !== false : true))
-                                .map(r => {
-                                    const id = r[objectKey];
-                                    return typeof id === 'string'
-                                        ? strToBinary(id).toString('hex')
-                                        : undefined;
+                    // The whole create is ONE transaction: the type row and the
+                    // resource row it ensures, the entity row, its detail rows and its
+                    // graph edges (whose own sync already runs in one).  Split across
+                    // autocommit statements, a failure left a `core_resource` row with
+                    // no entity behind it — the ghost resource of T-102, whose name is
+                    // then taken for good — or a record the caller submitted without
+                    // the details and edges that were part of it.
+                    return await this.config.context.queryBuilder!.transaction(async trx => {
+                        const qb = trx;
+                        // Ensure a `core_type` row exists (mirrors core.resource.ensure)
+                        // so resource-backed inserts always get a type.
+                        const ensureType = async (
+                            typeAlias: string,
+                        ): Promise<number | undefined> => {
+                            const existing = await qb('core_type')
+                                .where({typeAlias})
+                                .first('typeId');
+                            if (existing) return existing.typeId as number;
+                            await qb('core_type').insert({typeAlias}).onConflict().ignore();
+                            const inserted = await qb('core_type')
+                                .where({typeAlias})
+                                .first('typeId');
+                            return inserted ? (inserted.typeId as number) : undefined;
+                        };
+                        // Create the matching `core_resource` row for a generated
+                        // resource-backed PK.  The name is the entity's display label
+                        // in `{subject}.dropdown.list`.
+                        const ensureResourceRow = async (
+                            idStr: string,
+                            resourceKeyCol: string,
+                        ): Promise<void> => {
+                            const typeAlias = `${subject}.${object}`;
+                            const typeId = await ensureType(typeAlias);
+                            if (!typeId) return;
+                            const name =
+                                (typeof resourceName === 'string' && resourceName) ||
+                                nameColValue ||
+                                `${subject}.${object}.${resourceKeyCol}`;
+                            await qb('core_resource')
+                                .insert({
+                                    resourceId: strToBinary(idStr),
+                                    resourceName: name,
+                                    typeId,
                                 })
-                                .filter((x): x is string => !!x);
-                            if (ids.length) {
-                                await syncGraphEdges(qb, masterKey, binding.predicate, ids);
+                                .onConflict()
+                                .ignore();
+                        };
+                        // 1) Literal 'uuid' / 'ulid' default markers on id columns.
+                        for (const colName of Object.keys(cols)) {
+                            if (cols[colName] !== 'uuid' && cols[colName] !== 'ulid') continue;
+                            const prop = properties?.[colName];
+                            const marker = cols[colName] as 'uuid' | 'ulid';
+                            if (!prop || propDefault(prop) !== marker) continue;
+                            const idStr = marker === 'ulid' ? ulid() : crypto.randomUUID();
+                            cols[colName] = strToBinary(idStr);
+                            generatedKey = idStr;
+                            if (foreignKeys?.[colName] === 'core.resource.resourceId') {
+                                await ensureResourceRow(idStr, colName);
                             }
-                            result[detailObject] = await attachEdgeRows(qb, masterKey, binding);
                         }
-                    }
-                    // Resource-backed: join the display name onto the master so
-                    // the caller sees `${object}Name` in the created row.
-                    if (opts.resource && !opts.nameColumn && Buffer.isBuffer(masterKey)) {
-                        const masterRow = result[object] as Record<string, unknown> | undefined;
-                        if (masterRow && typeof masterRow[`${object}Id`] === 'string') {
-                            const [joined] = await joinResourceNames(
-                                qb,
-                                [masterRow],
-                                `${object}Id`,
-                                `${object}Name`,
+                        // 2) Resource-backed not-null PK (no default marker, e.g.
+                        //    `type.uidNotNull()`) with no key supplied by the caller.
+                        if (
+                            !generatedKey &&
+                            cols[keyName] == null &&
+                            foreignKeys?.[keyName] === 'core.resource.resourceId'
+                        ) {
+                            const pkProp = properties?.[keyName];
+                            if (!pkProp || !propDefault(pkProp)) {
+                                generatedKey = crypto.randomUUID();
+                                cols[keyName] = strToBinary(generatedKey);
+                                await ensureResourceRow(generatedKey, keyName);
+                            }
+                        }
+                        // Record-level ACL: `add` has no record key yet, so the scope
+                        // declared by `addScope` decides whether it may be created.
+                        await aclCheckAdd(opts, cols, rest);
+                        // Convert any string values for binary columns to Buffer
+                        const insertCols = prepareInputParams(cols, binaryCols, table);
+                        const inserted = await qb(table).insert(insertCols);
+                        // Select the inserted row back by the PK. Prefer the explicit
+                        // key value (post-conversion) when the caller supplied one
+                        // (e.g. a real ULID/UUID string) — `insertId` only works for
+                        // auto-increment PKs and is 0 for a binary-PK table.
+                        const masterKey = generatedKey
+                            ? strToBinary(generatedKey)
+                            : ((insertCols[keyName] as Buffer | string | undefined) ?? inserted[0]);
+                        const row = (await qb(table)
+                            .where({[keyName]: masterKey})
+                            .first()) as Record<string, unknown>;
+                        const result: Record<string, unknown> = {
+                            [object]: prepareResultRow(row, binaryCols, table),
+                        };
+                        // Master-detail: persist each sibling detail array (a param
+                        // whose key names a FK-constrained detail table) with the
+                        // master's key as the FK column, and return the created rows.
+                        for (const [detailName, detailRows] of Object.entries(rest)) {
+                            if (!Array.isArray(detailRows)) continue;
+                            const detail = detailTables(subject, object, keyName).find(
+                                d => d.table === `${subject}_${detailName}`,
                             );
-                            result[object] = joined;
+                            if (!detail) continue;
+                            const detailBinaryCols = getBinaryCols(this.config.context);
+                            for (const detailRow of detailRows) {
+                                await qb(detail.table).insert(
+                                    prepareInputParams(
+                                        {
+                                            ...(detailRow as Record<string, unknown>),
+                                            [detail.fkColumn]: masterKey,
+                                        },
+                                        detailBinaryCols,
+                                        detail.table,
+                                    ),
+                                );
+                            }
+                            const createdRows = (await qb(detail.table).where({
+                                [detail.fkColumn]: masterKey,
+                            })) as Record<string, unknown>[];
+                            result[detailName] = prepareResultRows(
+                                createdRows,
+                                detailBinaryCols,
+                                detail.table,
+                            );
                         }
-                    }
-                    return result;
+                        // Graph-edge master-detail: persist each declared edge from
+                        // its sibling array (filtering `granted !== false` when the
+                        // binding uses the pivot convention) and attach the rows.
+                        if (Buffer.isBuffer(masterKey)) {
+                            const opts = tableOptions(objectSchema, this.config, subject, object);
+                            for (const binding of opts.edges) {
+                                if (!binding.table) continue; // reverse-only cleanup binding
+                                const detailObject =
+                                    binding.object ??
+                                    binding.predicate.replace(/^has/, '').toLowerCase();
+                                const edgeRows = Array.isArray(rest[detailObject])
+                                    ? (rest[detailObject] as Array<Record<string, unknown>>)
+                                    : [];
+                                const objectKey = binding.objectKey ?? `${detailObject}Id`;
+                                const ids = edgeRows
+                                    .filter(r => (binding.granted ? r.granted !== false : true))
+                                    .map(r => {
+                                        const id = r[objectKey];
+                                        return typeof id === 'string'
+                                            ? strToBinary(id).toString('hex')
+                                            : undefined;
+                                    })
+                                    .filter((x): x is string => !!x);
+                                if (ids.length) {
+                                    await syncGraphEdges(qb, masterKey, binding.predicate, ids);
+                                }
+                                result[detailObject] = await attachEdgeRows(qb, masterKey, binding);
+                            }
+                        }
+                        // Resource-backed: join the display name onto the master so
+                        // the caller sees `${object}Name` in the created row.
+                        if (opts.resource && !opts.nameColumn && Buffer.isBuffer(masterKey)) {
+                            const masterRow = result[object] as Record<string, unknown> | undefined;
+                            if (masterRow && typeof masterRow[`${object}Id`] === 'string') {
+                                const [joined] = await joinResourceNames(
+                                    qb,
+                                    [masterRow],
+                                    `${object}Id`,
+                                    `${object}Name`,
+                                );
+                                result[object] = joined;
+                            }
+                        }
+                        return result;
+                    });
                 }
                 case 'edit': {
                     const {key: keyName = `${object}Id`, [object]: columns, ...rest} = params;
-                    const qb = this.config.context.queryBuilder!;
                     const binaryCols = getBinaryCols(this.config.context);
                     const opts = tableOptions(objectSchema, this.config, subject, object);
                     const cols = columns as Record<string, unknown>;
@@ -983,97 +1067,114 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     if (opts.resource && !opts.nameColumn) {
                         delete update[`${object}Name`];
                     }
-                    // Record-level ACL: refuse an edit of a record the caller may
-                    // not act on, before anything is written.
-                    await aclCheckRecord(opts, 'edit', isBinaryKey ? strToBinary(key) : undefined);
-                    // Convert any string values for binary columns to Buffer (the
-                    // form round-trips them as base64 strings returned by `get`).
-                    const preparedUpdate = prepareInputParams(update, binaryCols, table);
-                    // Update using Buffer for binary keys
-                    if (isBinaryKey) {
-                        await qb(table).where(keyName, strToBinary(key)).update(preparedUpdate);
-                    } else {
-                        await qb(table)
-                            .where({[keyName]: key})
-                            .update(preparedUpdate);
-                    }
-                    if (
-                        opts.resource &&
-                        isBinaryKey &&
-                        typeof resourceName === 'string' &&
-                        resourceName
-                    ) {
-                        await qb('core_resource')
-                            .where('resourceId', strToBinary(key))
-                            .update({resourceName});
-                    }
-                    // Select back with Buffer → base64 conversion
-                    let editQuery = qb(table);
-                    if (isBinaryKey) {
-                        editQuery = editQuery.where(keyName, strToBinary(key));
-                    } else {
-                        editQuery = editQuery.where({[keyName]: key});
-                    }
-                    const editRow = (await editQuery.first()) as Record<string, unknown>;
-                    // Master-detail: replace each sibling detail array's rows for
-                    // this master (delete existing, re-insert the payload rows).
-                    const detailKey = isBinaryKey ? strToBinary(key) : key;
-                    for (const [detailName, detailRows] of Object.entries(rest)) {
-                        if (!Array.isArray(detailRows)) continue;
-                        const detail = detailTables(subject, object, keyName).find(
-                            d => d.table === `${subject}_${detailName}`,
+                    // The whole edit is ONE transaction: the entity row, the resource
+                    // rename, the detail rows and the graph edges (whose own sync
+                    // already runs in one).  A failure between those statements left
+                    // the caller's edit half-applied — a renamed record whose
+                    // assignments were never changed, or a detail array deleted and
+                    // never replaced.
+                    return await this.config.context.queryBuilder!.transaction(async trx => {
+                        const qb = trx;
+                        // Record-level ACL: refuse an edit of a record the caller may
+                        // not act on, before anything is written.
+                        await aclCheckRecord(
+                            opts,
+                            'edit',
+                            isBinaryKey ? strToBinary(key) : undefined,
                         );
-                        if (!detail) continue;
-                        const detailBinaryCols = getBinaryCols(this.config.context);
-                        await qb(detail.table)
-                            .where({[detail.fkColumn]: detailKey})
-                            .del();
-                        for (const detailRow of detailRows) {
-                            await qb(detail.table).insert(
-                                prepareInputParams(
-                                    {
-                                        ...(detailRow as Record<string, unknown>),
-                                        [detail.fkColumn]: detailKey,
-                                    },
-                                    detailBinaryCols,
-                                    detail.table,
-                                ),
+                        // Convert any string values for binary columns to Buffer (the
+                        // form round-trips them as base64 strings returned by `get`).
+                        const preparedUpdate = prepareInputParams(update, binaryCols, table);
+                        // Update using Buffer for binary keys
+                        if (isBinaryKey) {
+                            await qb(table).where(keyName, strToBinary(key)).update(preparedUpdate);
+                        } else {
+                            await qb(table)
+                                .where({[keyName]: key})
+                                .update(preparedUpdate);
+                        }
+                        if (
+                            opts.resource &&
+                            isBinaryKey &&
+                            typeof resourceName === 'string' &&
+                            resourceName
+                        ) {
+                            await qb('core_resource')
+                                .where('resourceId', strToBinary(key))
+                                .update({resourceName});
+                        }
+                        // Select back with Buffer → base64 conversion
+                        let editQuery = qb(table);
+                        if (isBinaryKey) {
+                            editQuery = editQuery.where(keyName, strToBinary(key));
+                        } else {
+                            editQuery = editQuery.where({[keyName]: key});
+                        }
+                        const editRow = (await editQuery.first()) as Record<string, unknown>;
+                        // Master-detail: replace each sibling detail array's rows for
+                        // this master (delete existing, re-insert the payload rows).
+                        const detailKey = isBinaryKey ? strToBinary(key) : key;
+                        for (const [detailName, detailRows] of Object.entries(rest)) {
+                            if (!Array.isArray(detailRows)) continue;
+                            const detail = detailTables(subject, object, keyName).find(
+                                d => d.table === `${subject}_${detailName}`,
                             );
-                        }
-                    }
-                    const result: Record<string, unknown> = {
-                        [object]: prepareResultRow(editRow, binaryCols, table),
-                    };
-                    // Graph-edge master-detail: bring each declared edge in line
-                    // with the submitted sibling array (when present) and re-attach
-                    // the fresh edge rows to the result.
-                    if (isBinaryKey) {
-                        const masterKeyBuf = strToBinary(key);
-                        for (const binding of opts.edges) {
-                            if (!binding.table) continue; // reverse-only cleanup binding
-                            const detailObject =
-                                binding.object ??
-                                binding.predicate.replace(/^has/, '').toLowerCase();
-                            const edgeRows = Array.isArray(rest[detailObject])
-                                ? (rest[detailObject] as Array<Record<string, unknown>>)
-                                : undefined;
-                            if (edgeRows !== undefined) {
-                                const objectKey = binding.objectKey ?? `${detailObject}Id`;
-                                const ids = edgeRows
-                                    .filter(r => (binding.granted ? r.granted !== false : true))
-                                    .map(r => {
-                                        const id = r[objectKey];
-                                        return typeof id === 'string'
-                                            ? strToBinary(id).toString('hex')
-                                            : undefined;
-                                    })
-                                    .filter((x): x is string => !!x);
-                                await syncGraphEdges(qb, masterKeyBuf, binding.predicate, ids);
+                            if (!detail) continue;
+                            const detailBinaryCols = getBinaryCols(this.config.context);
+                            await qb(detail.table)
+                                .where({[detail.fkColumn]: detailKey})
+                                .del();
+                            for (const detailRow of detailRows) {
+                                await qb(detail.table).insert(
+                                    prepareInputParams(
+                                        {
+                                            ...(detailRow as Record<string, unknown>),
+                                            [detail.fkColumn]: detailKey,
+                                        },
+                                        detailBinaryCols,
+                                        detail.table,
+                                    ),
+                                );
                             }
-                            result[detailObject] = await attachEdgeRows(qb, masterKeyBuf, binding);
                         }
-                    }
-                    return result;
+                        const result: Record<string, unknown> = {
+                            [object]: prepareResultRow(editRow, binaryCols, table),
+                        };
+                        // Graph-edge master-detail: bring each declared edge in line
+                        // with the submitted sibling array (when present) and re-attach
+                        // the fresh edge rows to the result.
+                        if (isBinaryKey) {
+                            const masterKeyBuf = strToBinary(key);
+                            for (const binding of opts.edges) {
+                                if (!binding.table) continue; // reverse-only cleanup binding
+                                const detailObject =
+                                    binding.object ??
+                                    binding.predicate.replace(/^has/, '').toLowerCase();
+                                const edgeRows = Array.isArray(rest[detailObject])
+                                    ? (rest[detailObject] as Array<Record<string, unknown>>)
+                                    : undefined;
+                                if (edgeRows !== undefined) {
+                                    const objectKey = binding.objectKey ?? `${detailObject}Id`;
+                                    const ids = edgeRows
+                                        .filter(r => (binding.granted ? r.granted !== false : true))
+                                        .map(r => {
+                                            const id = r[objectKey];
+                                            return typeof id === 'string'
+                                                ? strToBinary(id).toString('hex')
+                                                : undefined;
+                                        })
+                                        .filter((x): x is string => !!x);
+                                    await syncGraphEdges(qb, masterKeyBuf, binding.predicate, ids);
+                                }
+                                result[detailObject] = await attachEdgeRows(
+                                    qb,
+                                    masterKeyBuf,
+                                    binding,
+                                );
+                            }
+                        }
+                        return result;
+                    });
                 }
                 case 'remove': {
                     const {key: keyName = `${object}Id`, [keyName]: key} = params;
@@ -1096,113 +1197,134 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         'remove',
                         Buffer.isBuffer(masterKey) ? masterKey : undefined,
                     );
-                    // …then release the rules that reference the record, before
-                    // the entity row is deleted (see `aclReleaseResource`).
-                    if (Buffer.isBuffer(masterKey)) await aclReleaseResource(opts, masterKey);
-                    // Master-detail: delete each FK-constrained detail table's
-                    // rows for this master BEFORE deleting the master row, so a
-                    // non-cascading FK does not block the delete.
-                    for (const detail of detailTables(subject, object, keyName)) {
-                        await qb(detail.table)
-                            .where({[detail.fkColumn]: masterKey})
-                            .del();
-                    }
-                    // Graph edges: delete the subject's own edges and (when the
-                    // binding declares `reverse`) the edges pointing AT it.
-                    if (Buffer.isBuffer(masterKey)) {
-                        const subjectBuf = masterKey as Buffer;
-                        for (const binding of opts.edges) {
-                            await qb('core_triple')
-                                .where('subjectId', subjectBuf)
-                                .where('predicateName', binding.predicate)
+                    // The removal itself is ONE transaction, because a request must
+                    // not half-apply: the rules that reference the record, its
+                    // FK-constrained detail rows, its graph edges, the rebuild that
+                    // follows them, the entity row and at last the resource row.
+                    // Split across autocommit statements, a failure anywhere left the
+                    // flattened paths granting what the graph no longer held — the
+                    // entity row and the resource row disagreeing about whether the
+                    // record exists, with nothing recording the difference.
+                    return await qb.transaction(async trx => {
+                        // Release the rules that reference the record first, before the
+                        // entity row is deleted (see `aclReleaseResource`).
+                        if (Buffer.isBuffer(masterKey)) {
+                            await aclReleaseResource(opts, masterKey, trx);
+                        }
+                        // Master-detail: delete each FK-constrained detail table's
+                        // rows for this master BEFORE deleting the master row, so a
+                        // non-cascading FK does not block the delete.
+                        for (const detail of detailTables(subject, object, keyName)) {
+                            await trx(detail.table)
+                                .where({[detail.fkColumn]: masterKey})
                                 .del();
-                            if (binding.reverse) {
-                                await qb('core_triple')
-                                    .where('objectId', subjectBuf)
+                        }
+                        // Graph edges: delete the subject's own edges and (when the
+                        // binding declares `reverse`) the edges pointing AT it.
+                        if (Buffer.isBuffer(masterKey)) {
+                            const subjectBuf = masterKey as Buffer;
+                            for (const binding of opts.edges) {
+                                await trx('core_triple')
+                                    .where('subjectId', subjectBuf)
                                     .where('predicateName', binding.predicate)
                                     .del();
+                                if (binding.reverse) {
+                                    await trx('core_triple')
+                                        .where('objectId', subjectBuf)
+                                        .where('predicateName', binding.predicate)
+                                        .del();
+                                }
+                            }
+                            // The rebuild follows the edge deletes, and it has to run
+                            // before the resource row goes: `core_path` holds a
+                            // foreign key to `core_resource`, and the rebuild is what
+                            // drops the paths that pointed at this record.
+                            if (opts.edges.length) {
+                                await trx.raw('CALL access_pathRefresh()');
                             }
                         }
-                        if (opts.edges.length) {
-                            await qb.raw('CALL access_pathRefresh()');
+                        // Entity row first — its PK is a FK to `core_resource`, so
+                        // the resource row must be deleted only after the entity row.
+                        const removed = isBinaryKey
+                            ? await trx(table).where(keyName, masterKey).del()
+                            : await trx(table)
+                                  .where({[keyName]: key})
+                                  .del();
+                        // Resource-backed: delete the `core_resource` row last.
+                        if (Buffer.isBuffer(masterKey) && opts.resource) {
+                            await trx('core_resource').where('resourceId', masterKey).del();
                         }
-                    }
-                    // Entity row first — its PK is a FK to `core_resource`, so
-                    // the resource row must be deleted only after the entity row.
-                    const removed = isBinaryKey
-                        ? await qb(table).where(keyName, masterKey).del()
-                        : await qb(table)
-                              .where({[keyName]: key})
-                              .del();
-                    // Resource-backed: delete the `core_resource` row last.
-                    if (Buffer.isBuffer(masterKey) && opts.resource) {
-                        await qb('core_resource').where('resourceId', masterKey).del();
-                    }
-                    return removed;
+                        return removed;
+                    });
                 }
                 case 'merge': {
                     const {key = `${object}Id`, [object]: objectRows, resourceType} = params;
                     let rows = objectRows as Array<{[key]: string}>;
                     const binaryCols = getBinaryCols(this.config.context);
-                    if (resourceType) {
-                        // create or lookup resourceId for each row based on its `name` property
-                        const typeId = (
-                            await this.config.context.queryBuilder!('core_type')
-                                .where({typeAlias: resourceType})
-                                .first('typeId')
-                        )?.typeId;
-                        if (!typeId) {
-                            throw this.error(
-                                _errors['knex.notFound']({
-                                    message: `Resource type not found: ${resourceType}`,
-                                }),
-                                $meta,
+                    // One transaction, for the same reason the add and edit cases
+                    // have one: the resources this merge creates and the rows it
+                    // writes commit together or not at all.
+                    return await this.config.context.queryBuilder!.transaction(async trx => {
+                        const qb = trx;
+                        if (resourceType) {
+                            // create or lookup resourceId for each row based on its `name` property
+                            const typeId = (
+                                await qb('core_type')
+                                    .where({typeAlias: resourceType})
+                                    .first('typeId')
+                            )?.typeId;
+                            if (!typeId) {
+                                throw this.error(
+                                    _errors['knex.notFound']({
+                                        message: `Resource type not found: ${resourceType}`,
+                                    }),
+                                    $meta,
+                                );
+                            }
+                            const resources = (
+                                await qb('core_resource')
+                                    .join('core_type', 'core_resource.typeId', 'core_type.typeId')
+                                    .where('core_type.typeAlias', resourceType)
+                                    .whereIn(
+                                        'core_resource.resourceName',
+                                        rows.map(r => r.name).filter(Boolean),
+                                    )
+                                    .select('resourceId', 'resourceName')
+                            ).reduce(
+                                (acc, row) => {
+                                    acc[row.resourceName] = row.resourceId;
+                                    return acc;
+                                },
+                                {} as Record<string, string>,
                             );
-                        }
-                        const resources = (
-                            await this.config.context.queryBuilder!('core_resource')
-                                .join('core_type', 'core_resource.typeId', 'core_type.typeId')
-                                .where('core_type.typeAlias', resourceType)
-                                .whereIn(
-                                    'core_resource.resourceName',
-                                    rows.map(r => r.name).filter(Boolean),
-                                )
-                                .select('resourceId', 'resourceName')
-                        ).reduce(
-                            (acc, row) => {
-                                acc[row.resourceName] = row.resourceId;
-                                return acc;
-                            },
-                            {} as Record<string, string>,
-                        );
-                        const newResources = [];
-                        for (const row of rows) {
-                            if (row.name) {
-                                let resourceId = resources[row.name];
-                                if (!resourceId) {
-                                    resourceId = Buffer.alloc(16);
-                                    v4(undefined, resourceId);
-                                    newResources.push({resourceId, resourceName: row.name, typeId});
-                                    row[key] = resourceId;
-                                } else {
-                                    row[key] = resourceId;
+                            const newResources = [];
+                            for (const row of rows) {
+                                if (row.name) {
+                                    let resourceId = resources[row.name];
+                                    if (!resourceId) {
+                                        resourceId = Buffer.alloc(16);
+                                        v4(undefined, resourceId);
+                                        newResources.push({
+                                            resourceId,
+                                            resourceName: row.name,
+                                            typeId,
+                                        });
+                                        row[key] = resourceId;
+                                    } else {
+                                        row[key] = resourceId;
+                                    }
                                 }
                             }
+                            if (newResources.length > 0)
+                                await qb('core_resource').insert(newResources);
+                            rows = rows.map(({name: _, ...row}) => row);
                         }
-                        if (newResources.length > 0)
-                            await this.config.context.queryBuilder!('core_resource').insert(
-                                newResources,
-                            );
-                        rows = rows.map(({name: _, ...row}) => row);
-                    }
-                    // Convert string values for binary columns to Buffer before insert
-                    const preparedRows = rows.map(row =>
-                        prepareInputParams(row, binaryCols, table),
-                    );
-                    return this.config.context.queryBuilder!(table)
-                        .insert(preparedRows)
-                        .onConflict(key)
-                        .merge();
+                        // Convert string values for binary columns to Buffer before insert
+                        const preparedRows = rows.map(row =>
+                            prepareInputParams(row, binaryCols, table),
+                        );
+                        return qb(table).insert(preparedRows).onConflict(key).merge();
+                    });
                 }
                 case 'insert': {
                     const binaryCols = getBinaryCols(this.config.context);

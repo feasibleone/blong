@@ -30,9 +30,7 @@ export default handler(() => ({
                 ...capability,
                 capabilityId: model.bufToBase64(capability.capabilityId),
                 capabilityName:
-                    (await model.resourceNameFor(qb, hex)) ??
-                    capability.capabilityName ??
-                    null,
+                    (await model.resourceNameFor(qb, hex)) ?? capability.capabilityName ?? null,
             };
             const {action, otherAction} = await model.capabilityActionRows(qb, hex);
             result.action = action;

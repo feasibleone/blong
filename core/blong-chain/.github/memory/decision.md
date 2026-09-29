@@ -31,10 +31,10 @@ ms from the nominal delay and print the observed value.
 
 > _2026-09-23 · core/blong-chain · active_
 
-The chain marker is `snapshot` (`ILib.snapshot`, `SnapshotMarker`), a bare `[]` is a **sync
-barrier**, and `checkpoint` now means only the progress point a handler reports. No deprecated
-alias: an alias is a second name for one thing, which is how the word came to carry three meanings
-in the first place. Eleven call sites were `lib: {group, checkpoint}` destructures, and
+The chain marker is `snapshot` (`ILib.snapshot`, `SnapshotMarker`), a bare `[]` is
+a **sync barrier**, and `checkpoint` now means only the progress point a handler reports. No
+deprecated alias: an alias is a second name for one thing, which is how the word came to carry three
+meanings in the first place. Eleven call sites were `lib: {group, checkpoint}` destructures, and
 `snapshot-context.test.ts`'s test titles are golden snapshot keys, so retitling that file needed the
 matching keys renamed in the `.cjs`.
 

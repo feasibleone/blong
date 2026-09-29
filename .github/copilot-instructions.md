@@ -69,18 +69,29 @@ tooling.
   problems are otherwise only visible in the editor, so name the files explicitly when you change
   markdown. `memory check` additionally enforces the memory format's own rules.
 
-- **Write markdown the house way.** These conventions are enforced by the linter, so a violation
+- **Write markdown the house way.** These conventions are enforced by the tooling, so a violation
   costs a round trip rather than a review comment:
-    - **Emphasis is `_italic_`, not `*italic*`** (MD049) — a linter rewrites the asterisks, and a
-      write-then-rewrite cycle shows up as a diff you did not intend. Bold stays `**bold**`.
+    - **Emphasis is `_italic_`, not `*italic*`** (MD049). `blong-dev memory` now rewrites an
+      asterisk span when it writes the body, and `memory format` rewrites the ones already in a
+      file, so an asterisk body is repaired rather than reported as a diff you did not intend. Bold
+      stays `**bold**`, and a glob (`*.test.ts`, `**/*.ts`) is not emphasis and is left alone.
     - **Dashes are em dashes (`—`) in prose**, not hyphens used as punctuation.
     - **Wrap at 100 columns**, the prettier width. Prettier moves the text, so a paragraph written
       at any other width comes back reformatted.
     - **Never leave a bare `<angle-bracket>` token in prose** (MD033): markdownlint reads it as
       inline HTML. Backtick it, e.g. `` `<caller>.<method>` ``. This bites hardest in
       `blong-dev memory add --body`, which does no escaping of its own.
+    - **Backtick a token markdown would read as syntax; never escape it.** A colour literal
+      (`#ccc`), a glob, an identifier that starts with `_` (`_validations`): write the backticks
+      (`` `#ccc` ``, `` `*.test.ts` ``, `` `_validations` ``). A `\_` or `\*` survives every later
+      re-wrap as noise, and the wrapper cannot see it. The wrapper will not *start* a line with such
+      a token — that is MD018/MD031/MD032 and it moves a word rather than let the break land there —
+      but a paragraph that begins with one is the author's to fix.
     - **In a memory body, write prose, not lists.** `blong-dev memory` flattens a bullet list into
       one paragraph, so a list arrives as a run-on sentence (recorded as friction T-151).
+    - **`blong-dev memory check` covers this**, including the shapes a wrap used to produce
+      (MD018/MD037/MD038/MD049) — it no longer needs `blong-dev lint --files` to see them. Run
+      `blong-dev memory format` to have the CLI rewrite what it can, then fix what it reports.
 
 - **Correct an entry through the CLI.**
   `blong-dev memory edit <id> [--title] [--body|--body-file] [--status]` — never hand-edit a memory
@@ -94,7 +105,7 @@ Hard rules — apply first, never contradict.
   reordered, non-whitespace characters replaced, dictionary sorted, etc.
 - **Never import handlers directly.** Cross-handler deps via `handler()` proxy (`runtime.handler`);
   direct imports break IoC.
-- **Prefer library functions** when feasible for reusing logic across handlers (see blong-handler
+- **Prefer injected library functions** when feasible for reusing logic across handlers (see blong-handler
   skill).
 - **New realm or suite** - use the proper skills `blong-realm` or `blong-suite`.
 - **Semantic triple naming** `subjectObjectPredicate`; file = export = wire name; singular
@@ -109,6 +120,12 @@ Hard rules — apply first, never contradict.
 - **Realms reuse blong-server** subject orchestrator + db adapter — do NOT create a realm-local
   `adapter/db.ts` or a dispatch orchestrator; contribute `orchestrator/subject/init.ts`
   (namespace) + `adapter/db/*.ts` handlers (`queryBuilder`) + `meta/`.
+- **`core` and `blong-access` are library realms** — every process that calls them carries its own
+  copy, and their schema is created in each database such a process writes to. A call into them is
+  therefore local: reach their helpers with `super.<name>` (prototype-chain delegation), never by
+  importing the package and never through a `library()` binding, and hand over the caller's
+  transaction when the write must be atomic. The providing realm must be attached first — list it as
+  an **early child** (`srv`, `login`, `core`, `access`, …).
 - **Never enable `systemDebug` in production.**
 - **Never commit to `dev/`** (gitignored) — committed code lives in the category folders (`core/`,
   `realm/`, `suite/`, `demo/`, `test/`, `tools/`).
@@ -137,7 +154,8 @@ Hard rules — apply first, never contradict.
   RAD → DMMT → KISS.
 - **Reusable realms.** `realm/blong-core` (resource/party/access graph), `realm/blong-party`,
   `realm/blong-access` (RBAC: users, roles, capabilities, actions, authz — plus the opt-in
-  record-level ACL).
+  record-level ACL). `blong-core` and `blong-access` are **library realms** — see
+  `[CRITICAL_GUARDRAILS]` and the library-realms rationale doc.
 
 ## [CRITICAL_DEPENDENCY_PATHS]
 

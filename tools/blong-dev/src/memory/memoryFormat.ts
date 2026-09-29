@@ -14,11 +14,66 @@ import {INDEX_END, INDEX_START, MAX_LINE_LENGTH} from './memoryTypes.ts';
 /** Placeholder that keeps the spaces inside an inline span out of the wrapper. */
 const NO_SPACE = '\u0000';
 
-/** Atoms stay on one line: an inline code span or a markdown link is one word. */
+/** Placeholder that keeps an inline code span out of the emphasis normaliser. */
+const SHIELDED = '\u0001';
+
+/**
+ * Emphasis, as a single atom: `_two words_` wrapped across two lines is MD037,
+ * and the line break is the wrapper's choice, so the wrapper must not make it.
+ *
+ * The span is bounded to a phrase (at most six words). Unbounded, a stray
+ * underscore would pair with the next one anywhere in a paragraph and make the
+ * whole of it one atom that could not be wrapped at all — which is how a body
+ * ended up as a 322-character line.
+ */
+const EMPHASIS_WORDS = String.raw`[^\s*_]+(?:\s+[^\s*_]+){0,5}`;
+const EMPHASIS = new RegExp(
+    String.raw`(?<![\w*])(\*\*${EMPHASIS_WORDS}\*\*|\*${EMPHASIS_WORDS}\*|_${EMPHASIS_WORDS}_)(?![\w*])`,
+    'g',
+);
+
+/**
+ * Tokens markdown reads as block syntax when a line opens with them: `#fff` is a
+ * heading (MD018), `1)` and `1.` list items (MD031/MD032), `-`/`*`/`+` bullets,
+ * `>` a quote, `|` a table row. Prose arrives with all of them (a colour
+ * literal, a numbered option) and a wrap that lands one at the start of a line
+ * puts the file outside the gate the tool itself runs — so the wrap avoids it.
+ */
+const BLOCK_OPENER = /^(?:[-*+>|]|#{1,6}[^#\s]|\d+[.)])/;
+
+/**
+ * Single-asterisk emphasis, the one span the normaliser rewrites. `**bold**` is
+ * not a match (both of its markers have another asterisk beside them), and
+ * neither is a glob: `*.test.ts` has no closing marker.
+ */
+const ASTERISK_EMPHASIS = new RegExp(String.raw`(?<![\w*])\*(${EMPHASIS_WORDS})\*(?![\w*])`, 'g');
+
+/**
+ * Asterisk emphasis is not the emphasis this repository uses: markdownlint's
+ * MD049 rewrites it, so a body that arrives with it fails the gate the CLI itself
+ * runs. Only a real emphasis span is converted, and code spans are shielded first
+ * — `` `git log --xxx` `` must keep its own characters.
+ */
+function normalizeEmphasis(text: string): string {
+    const code: string[] = [];
+    const shielded = text.replace(
+        /`[^`]*`/g,
+        span => `${SHIELDED}${code.push(span) - 1}${SHIELDED}`,
+    );
+    return shielded
+        .replace(ASTERISK_EMPHASIS, '_$1_')
+        .replace(
+            new RegExp(`${SHIELDED}(\\d+)${SHIELDED}`, 'g'),
+            (_match, index: string) => code[Number(index)] ?? '',
+        );
+}
+
+/** Atoms stay on one line: an inline code span, a markdown link, emphasis. */
 function protectSpans(text: string): string {
-    return text
+    return normalizeEmphasis(text)
         .replace(/`[^`]*`/g, span => span.split(' ').join(NO_SPACE))
-        .replace(/\[[^\]]*\]\([^)]*\)/g, span => span.split(' ').join(NO_SPACE));
+        .replace(/\[[^\]]*\]\([^)]*\)/g, span => span.split(' ').join(NO_SPACE))
+        .replace(EMPHASIS, span => span.split(' ').join(NO_SPACE));
 }
 
 function restoreSpans(text: string): string {
@@ -51,9 +106,21 @@ export function wrapText(
         } else if (indent.length + current.length + 1 + word.length <= width) {
             current += ` ${word}`;
         } else {
+            // A continuation line may not open a block. When the next word would,
+            // the previous line's last word is pulled down with it — the wrap chose
+            // the break, so the wrap is what has to move it, and one word is enough
+            // (the marker is never the line's first word after that). A paragraph
+            // that *starts* with such a token cannot be helped here: the check
+            // reports it and the author backticks it.
+            let carry = '';
+            if (BLOCK_OPENER.test(word) && current.includes(' ')) {
+                const parts = current.split(' ');
+                carry = parts.pop() ?? '';
+                current = parts.join(' ');
+            }
             lines.push(restoreSpans(indent + current));
             indent = continuationIndent;
-            current = word;
+            current = carry === '' ? word : `${carry} ${word}`;
         }
     }
     lines.push(restoreSpans(indent + current));
@@ -82,6 +149,13 @@ function togglesFence(line: string): boolean {
     return /^\s*(?:```|~~~)/.test(line);
 }
 
+/**
+ * The one section the tool does not own: `## Manual` is the user's own list, and
+ * `checkMarkdown` exempts it — so the wrapper has to keep it verbatim instead of
+ * re-flowing the items into one paragraph, which is what a format pass did once.
+ */
+const MANUAL_HEADING = /^##\s+Manual\s*$/;
+
 /** True when a line opens an HTML comment that is not closed on the same line. */
 function opensComment(line: string): boolean {
     return /<!--/.test(line) && !/-->/.test(line);
@@ -106,6 +180,7 @@ export function formatLines(lines: readonly string[], width = MAX_LINE_LENGTH): 
     const out: string[] = [];
     let inFence = false;
     let inComment = false;
+    let inManual = false;
     let paragraph: string[] = [];
     let paragraphPrefix = '';
     let paragraphIndent = '';
@@ -120,6 +195,14 @@ export function formatLines(lines: readonly string[], width = MAX_LINE_LENGTH): 
     };
 
     for (const line of lines) {
+        if (MANUAL_HEADING.test(line)) inManual = true;
+        else if (inManual && /^##\s/.test(line)) inManual = false;
+        else if (inManual) {
+            if (paragraph.length > 0) flush();
+            if (togglesFence(line)) inFence = !inFence;
+            out.push(line);
+            continue;
+        }
         if (
             paragraph.length > 0 &&
             (line.trim() === '' || modeOf(line, inFence, inComment) === 'verbatim')

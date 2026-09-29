@@ -27,6 +27,8 @@ interface IDigestEntry {
     service?: string;
     template?: string;
     fingerprint?: string;
+    /** The change's own text (`data.signature ?? template`), resolved for the table. */
+    message?: string;
 }
 
 export function Digest() {
@@ -35,6 +37,15 @@ export function Digest() {
     });
     const entries = Array.isArray(digest.data) ? digest.data : (digest.data?.entries ?? []);
     const [filter, setFilter] = useState('');
+    // The service sends a change's fields flat on some records and nested under `data`
+    // on others, so the two the table shows are resolved once, here. A column and the
+    // filter have to agree on what a cell holds — a search that reads another field
+    // than the cell renders matches text nobody can see.
+    const rows = entries.map(entry => ({
+        ...entry,
+        service: entry.data?.service ?? entry.service ?? '',
+        message: entry.data?.signature ?? entry.template ?? '',
+    }));
     return (
         <div className="flex flex-column gap-3">
             <div className="flex justify-content-between gap-2">
@@ -56,10 +67,16 @@ export function Digest() {
             </div>
             {digest.error !== undefined && <small className="text-red-500">{digest.error}</small>}
             <DataTable
-                value={entries}
+                value={rows}
                 loading={digest.loading}
                 globalFilter={filter}
-                globalFilterFields={['kind']}
+                // Every column the table shows is filterable, because the kind alone
+                // cannot separate two changes of one kind: a reader who means the second
+                // newest change of a kind has no way to ask for it, and a capture that
+                // asks for "the newest of this kind" is a capture of whatever the run
+                // happened to observe last (a slow start logs a line an ordinary one
+                // does not).
+                globalFilterFields={['kind', 'service', 'message']}
                 emptyMessage={useText('Nothing changed yet')}
             >
                 <Column
@@ -94,12 +111,12 @@ export function Digest() {
                     header={useText('Change')}
                 />
                 <Column
+                    field="service"
                     header={useText('Service')}
-                    body={(row: IDigestEntry) => row.data?.service ?? row.service ?? ''}
                 />
                 <Column
+                    field="message"
                     header={useText('Message')}
-                    body={(row: IDigestEntry) => row.data?.signature ?? row.template ?? ''}
                 />
             </DataTable>
         </div>

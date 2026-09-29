@@ -37,7 +37,7 @@ import {
 } from '@feasibleone/blong-dev';
 import {test} from 'tap';
 
-import {createFixtureWorkspace} from './fixtureWorkspace.ts';
+import {createFixtureWorkspace, TRACE_FILE} from './fixtureWorkspace.ts';
 
 const fixtures = join(import.meta.dirname, 'fixtures');
 
@@ -594,6 +594,21 @@ test('renderCiReport merges metrics, coverage, deltas and links into one table',
             markdown,
             /\| fake-flaky \| fake-flaky\.tap\.test \| retries a transient failure \| 🟡 flaky \| intermittent \|/,
             'and a flaky one is not blamed on the branch',
+        );
+        t.match(
+            markdown,
+            new RegExp(
+                `\\| fake-fail \\| fake-fail\\.playwright\\.test \\| logs in as the seeded user \\| ` +
+                    `🔴 failed \\| recurring \\| \`[^\`]*\` \\| \\[trace\\]\\(https://trace\\.playwright\\.dev/` +
+                    `\\?trace=https%3A%2F%2Fexample\\.test%2Fblong-ci%2Ffake-fail%2FBuild%2F551%2Ftraces%2F` +
+                    `${TRACE_FILE.replace(/\./g, '\\.')}\\) \\|`,
+            ),
+            'a published playwright failure links its trace to the viewer',
+        );
+        t.match(
+            markdown,
+            /\| fake-both \(playwright\) \| fake-both\.playwright\.test \| opens the roles tab \| 🔴 failed \| new \| \`[^`]*\` \| `traces\//,
+            'and an unpublished one shows the archive name instead',
         );
         t.match(
             markdown,

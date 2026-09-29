@@ -17,45 +17,45 @@ type KnexQb = any;
  * imports `.dbTest` handler groups only under `dev` (never in production),
  * so this handler is never registered for production seeding.
  */
-export default handler(
-    ({handler: {'db/coreResourceEnsure': coreResourceEnsure}}) =>
-        async function partyTestProfileMerge(
-            params: {
-                userName: string;
-                firstName: string;
-                middleName?: string;
-                lastName: string;
-                birthDate?: string;
-                gender?: string;
-                nationality?: string;
-                occupation?: string;
-            },
-            $meta: IMeta,
-        ): Promise<{success: boolean; linked?: boolean}> {
-            const qb: KnexQb = this.config?.context?.queryBuilder;
-            if (!qb) throw new Error('Database not available');
+export default handler(() => ({
+    async partyTestProfileMerge(
+        params: {
+            userName: string;
+            firstName: string;
+            middleName?: string;
+            lastName: string;
+            birthDate?: string;
+            gender?: string;
+            nationality?: string;
+            occupation?: string;
+        },
+        $meta: IMeta,
+    ): Promise<{success: boolean; linked?: boolean}> {
+        const qb: KnexQb = this.config?.context?.queryBuilder;
+        if (!qb) throw new Error('Database not available');
 
-            // 1. Resolve the access user by resourceName.
-            const user = (await qb
-                .select('r.resourceId')
-                .from('core_resource as r')
-                .join('core_type as t', 't.typeId', 'r.typeId')
-                .where('r.resourceName', params.userName)
-                .where('t.typeAlias', 'access.user')
-                .first()) as {resourceId: Buffer} | undefined;
-            if (!user) return {success: false, linked: false};
+        // 1. Resolve the access user by resourceName.
+        const user = (await qb
+            .select('r.resourceId')
+            .from('core_resource as r')
+            .join('core_type as t', 't.typeId', 'r.typeId')
+            .where('r.resourceName', params.userName)
+            .where('t.typeAlias', 'access.user')
+            .first()) as {resourceId: Buffer} | undefined;
+        if (!user) return {success: false, linked: false};
 
-            const userIdBuf = Buffer.from(user.resourceId);
+        const userIdBuf = Buffer.from(user.resourceId);
 
-            // 2. Already linked? (idempotent across restarts).
-            const existing = (await qb('core_triple')
-                .where('subjectId', userIdBuf)
-                .where('predicateName', 'hasProfile')
-                .first()) as {objectId: Buffer} | undefined;
-            if (existing) return {success: true, linked: true};
+        // 2. Already linked? (idempotent across restarts).
+        const existing = (await qb('core_triple')
+            .where('subjectId', userIdBuf)
+            .where('predicateName', 'hasProfile')
+            .first()) as {objectId: Buffer} | undefined;
+        if (existing) return {success: true, linked: true};
 
-            // 3. Ensure a party.person resource + row.
-            const {resourceId: personId} = await coreResourceEnsure<{resourceId: string}>({
+        // 3. Ensure a party.person resource + row.
+        const {resourceId: personId} = (await super.coreResourceEnsure(
+            {
                 name: `${params.firstName} ${params.lastName}`.trim(),
                 typeAlias: 'party.person',
                 table: 'party_person',
@@ -69,18 +69,20 @@ export default handler(
                     occupation: params.occupation ?? null,
                 },
                 keyName: 'personId',
-            }, $meta);
+            },
+            $meta,
+        )) as {resourceId: string};
 
-            // 4. Link user → hasProfile → person.
-            await qb('core_triple')
-                .insert({
-                    subjectId: userIdBuf,
-                    predicateName: 'hasProfile',
-                    objectId: Buffer.from(personId.replace(/-/g, ''), 'hex'),
-                })
-                .onConflict()
-                .ignore();
+        // 4. Link user → hasProfile → person.
+        await qb('core_triple')
+            .insert({
+                subjectId: userIdBuf,
+                predicateName: 'hasProfile',
+                objectId: Buffer.from(personId.replace(/-/g, ''), 'hex'),
+            })
+            .onConflict()
+            .ignore();
 
-            return {success: true, linked: true};
-        },
-);
+        return {success: true, linked: true};
+    },
+}));

@@ -30,14 +30,10 @@ async function resourceByName(qb: KnexQb, name: string, typeAlias: string): Prom
 
 export default handler(
     ({
-        handler: {
-            'db/accessRoleEnsure': accessRoleEnsure,
-            'db/coreResourceEnsure': coreResourceEnsure,
-            'db/coreTripleMerge': coreTripleMerge,
-        },
+        handler: {'db/accessRoleEnsure': accessRoleEnsure},
         lib: {hashPassword, credentialPolicyParams, ulid, crockfordDecode},
-    }) =>
-        async function accessAuthorizationMerge(
+    }) => ({
+        async accessAuthorizationMerge(
             params: {
                 user?: Record<
                     string,
@@ -124,9 +120,7 @@ export default handler(
                 for (const [capabilityName, actionList] of Object.entries(params.capability)) {
                     const actionNames = account.splitNames(actionList);
                     for (const actionName of actionNames) {
-                        const {resourceId: actionId} = await coreResourceEnsure<{
-                            resourceId: string;
-                        }>(
+                        const {resourceId: actionId} = (await super.coreResourceEnsure(
                             {
                                 name: actionName,
                                 typeAlias: 'access.action',
@@ -135,10 +129,8 @@ export default handler(
                                 keyName: 'actionId',
                             },
                             $meta,
-                        );
-                        const {resourceId: capabilityId} = await coreResourceEnsure<{
-                            resourceId: string;
-                        }>(
+                        )) as {resourceId: string};
+                        const {resourceId: capabilityId} = (await super.coreResourceEnsure(
                             {
                                 name: capabilityName,
                                 typeAlias: 'access.capability',
@@ -147,7 +139,7 @@ export default handler(
                                 keyName: 'capabilityId',
                             },
                             $meta,
-                        );
+                        )) as {resourceId: string};
                         triples.push({
                             subjectId: capabilityId,
                             predicateName: 'hasAction',
@@ -169,9 +161,7 @@ export default handler(
                         $meta,
                     );
                     for (const capabilityName of capabilityNames) {
-                        const {resourceId: capabilityId} = await coreResourceEnsure<{
-                            resourceId: string;
-                        }>(
+                        const {resourceId: capabilityId} = (await super.coreResourceEnsure(
                             {
                                 name: capabilityName,
                                 typeAlias: 'access.capability',
@@ -180,7 +170,7 @@ export default handler(
                                 keyName: 'capabilityId',
                             },
                             $meta,
-                        );
+                        )) as {resourceId: string};
                         triples.push({
                             subjectId: ensuredRole.roleId,
                             predicateName: 'hasCapability',
@@ -193,7 +183,7 @@ export default handler(
             // 3. Process users with credentials and role assignments
             if (params.user) {
                 for (const [userName, userDef] of Object.entries(params.user)) {
-                    const {resourceId: userId} = await coreResourceEnsure<{resourceId: string}>(
+                    const {resourceId: userId} = (await super.coreResourceEnsure(
                         {
                             name: userName,
                             typeAlias: 'access.user',
@@ -202,7 +192,7 @@ export default handler(
                             keyName: 'userId',
                         },
                         $meta,
-                    );
+                    )) as {resourceId: string};
 
                     // Persist the display email even when the user already
                     // exists (coreResourceEnsure is insert-only on conflict), so
@@ -258,7 +248,7 @@ export default handler(
             // 4. Process credential policies (password hashing params etc.)
             if (params.policy) {
                 for (const [policyName, policyDef] of Object.entries(params.policy)) {
-                    await coreResourceEnsure<{resourceId: string}>(
+                    (await super.coreResourceEnsure(
                         {
                             name: policyName,
                             typeAlias: 'access.policy',
@@ -278,7 +268,7 @@ export default handler(
                             keyName: 'policyId',
                         },
                         $meta,
-                    );
+                    )) as {resourceId: string};
                 }
             }
 
@@ -310,7 +300,7 @@ export default handler(
 
             // 5. Write graph edges + refresh materialized paths via the shared
             //    `core.triple.merge` helper (P3).
-            await coreTripleMerge({triples, refreshPath: true}, $meta);
+            await super.coreTripleMerge({triples, refreshPath: true}, $meta);
             // 6. Record-level ACL rules.  Principals and targets are looked up
             //    (never created, except the wildcard sentinel below); the action is
             //    ensured like the RBAC steps above, so a seed may reference an
@@ -329,10 +319,10 @@ export default handler(
                     const wildcard = rule.targetKind === 'all' || rule.target === '*';
                     const targetId = wildcard
                         ? (
-                              await coreResourceEnsure<{resourceId: string}>(
+                              (await super.coreResourceEnsure(
                                   {name: ANY_TARGET_NAME, typeAlias: ANY_TARGET_TYPE},
                                   $meta,
-                              )
+                              )) as {resourceId: string}
                           ).resourceId
                         : await resourceByName(
                               qb,
@@ -344,9 +334,7 @@ export default handler(
                     for (const actionName of account.splitNames(
                         rule.actions ?? rule.action ?? '',
                     )) {
-                        const {resourceId: actionId} = await coreResourceEnsure<{
-                            resourceId: string;
-                        }>(
+                        const {resourceId: actionId} = (await super.coreResourceEnsure(
                             {
                                 name: actionName,
                                 typeAlias: 'access.action',
@@ -355,7 +343,7 @@ export default handler(
                                 keyName: 'actionId',
                             },
                             $meta,
-                        );
+                        )) as {resourceId: string};
                         await qb('access_acl')
                             .insert({
                                 aclId: Buffer.from(crockfordDecode(ulid())),
@@ -374,4 +362,5 @@ export default handler(
 
             return {success: true};
         },
+    }),
 );

@@ -11,6 +11,7 @@ import {
     existsSync,
     mkdirSync,
     mkdtempSync,
+    readFileSync,
     readdirSync,
     rmSync,
     utimesSync,
@@ -21,6 +22,7 @@ import {join} from 'node:path';
 import {test} from 'tap';
 
 import {ALLURE_PUBLISH_DIR, publishAllureReport} from './allurePublish.ts';
+import {packageName} from './reportPaths.ts';
 
 /** A package directory with the results one or more producers left behind. */
 function packageWith(resultsDirs: Record<string, string[]>): string {
@@ -143,5 +145,59 @@ test('publishAllureReport regenerates only for results written since the last re
     t.equal(third.published, true, 'fresh results are merged');
     t.equal(allure.calls.length, 2);
 
+    rmSync(cwd, {recursive: true, force: true});
+});
+
+test('a trace attachment is linked to the viewer through the published URL', async t => {
+    const cwd = packageWith({'allure-results': []});
+    const trace = 'aaaa1111-2222-3333-4444-555555555555-attachment.zip';
+    writeFileSync(
+        join(cwd, 'allure-results', 'aaaa-result.json'),
+        JSON.stringify({
+            name: 'opens the roles tab',
+            attachments: [
+                {name: 'trace', source: trace, type: 'application/vnd.allure.playwright-trace'},
+            ],
+        }),
+    );
+    writeFileSync(join(cwd, 'allure-results', trace), 'zip');
+
+    // The workflow resolves these before the tests run, which is what lets a package
+    // publish a link to where its own traces will land.
+    const previous = [process.env['GITHUB_WORKFLOW'], process.env['GITHUB_RUN_NUMBER']];
+    process.env['GITHUB_WORKFLOW'] = 'Build';
+    process.env['GITHUB_RUN_NUMBER'] = '551';
+    t.teardown(() => {
+        process.env['GITHUB_WORKFLOW'] = previous[0];
+        process.env['GITHUB_RUN_NUMBER'] = previous[1];
+    });
+
+    let linked: unknown;
+    await publishAllureReport(cwd, {
+        base: 'https://example.test/blong-ci',
+        run: async (_command, args) => {
+            const staged = JSON.parse(
+                readFileSync(join(args[args.length - 1], 'aaaa-result.json'), 'utf8'),
+            ) as {links?: unknown};
+            linked = staged.links;
+            return 0;
+        },
+    });
+
+    t.same(
+        linked,
+        [
+            {
+                name: 'Open in trace.playwright.dev',
+                type: 'trace',
+                url:
+                    'https://trace.playwright.dev/?trace=' +
+                    encodeURIComponent(
+                        `https://example.test/blong-ci/${packageName(cwd)}/Build/551/traces/${trace}`,
+                    ),
+            },
+        ],
+        'the staged result points at the viewer for the published archive',
+    );
     rmSync(cwd, {recursive: true, force: true});
 });

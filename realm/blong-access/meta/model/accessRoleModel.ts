@@ -66,6 +66,15 @@ export default model(
                                     capabilityName: {
                                         title: 'Capability',
                                         readOnly: true,
+                                        // Filterable so a caller that means one
+                                        // capability can narrow the grid to it: the
+                                        // pivot's rows are the whole dropdown in
+                                        // whatever order the database returns them,
+                                        // so an unfiltered capture shows whichever
+                                        // row happens to be first (T-173's defect,
+                                        // and the reason `user.play.ts` names its
+                                        // role).
+                                        filter: true,
                                     },
                                     granted: {
                                         title: 'Granted',

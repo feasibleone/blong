@@ -249,6 +249,11 @@ export interface RecordStore {
      * awaited is the *serialisation chain*, not a data buffer: each write is
      * awaited by its own caller, and this only guarantees that no write started
      * before it is still running.
+     *
+     * Housekeeping counts as a write here too: a reclaim a slow open started runs
+     * in the background and ends by dating itself in a file inside the directory,
+     * so it is awaited as well — a caller that removes the directory once this
+     * resolves must not race it.
      */
     close(): Promise<void>;
 }
@@ -400,8 +405,15 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
  */
 const DEFAULT_SLOW_MS = 1_000;
 
-/** Reclaims already running in this process, by directory, so two opens do not race. */
-const reclaiming = new Set<string>();
+/**
+ * Reclaims already running in this process, by directory, so two opens do not race.
+ *
+ * The pass itself is what a caller waits for, not just its presence: a reclaim
+ * writes to the directory it repairs (the state file that dates the next one),
+ * and a caller that removes the directory once `close()` resolves must not find
+ * a write landing in the empty path afterwards.
+ */
+const reclaiming = new Map<string, Promise<void>>();
 
 /**
  * How many index files are touched at once when removing or reclaiming them.
@@ -1179,35 +1191,43 @@ export async function openCache(options: CacheOptions): Promise<RecordCache> {
      * content worth that, so `removed === 0` stops there.
      */
     async function reclaim(): Promise<void> {
-        if (reclaiming.has(dir)) {
-            return;
+        const inFlight = reclaiming.get(dir);
+        if (inFlight) {
+            return inFlight;
         }
-        reclaiming.add(dir);
+        const pass = (async () => {
+            try {
+                const started = now();
+                const removed = await reclaimDeadIndexFiles(dir);
+                if (removed > 0) {
+                    log?.warn?.(
+                        `the log cache held ${removed} index file(s) left by pruned entries; removing` +
+                            ' them and collecting the content they orphaned',
+                        {dir, removed, elapsedMs: now() - started},
+                    );
+                    await cacache.verify(dir).catch(() => undefined);
+                }
+                writeReclaimState(statePath, {reclaimedAt: now(), removed});
+                if (removed > 0) {
+                    log?.info?.('the log cache was reclaimed', {
+                        dir,
+                        removed,
+                        elapsedMs: now() - started,
+                    });
+                }
+            } catch (error) {
+                // A reclaim is housekeeping: a directory that cannot be walked, or a
+                // content pass that fails, must not fail the logger that triggered it.
+                log?.warn?.('the log cache could not be reclaimed', {dir, error: String(error)});
+            }
+        })();
+        reclaiming.set(dir, pass);
         try {
-            const started = now();
-            const removed = await reclaimDeadIndexFiles(dir);
-            if (removed > 0) {
-                log?.warn?.(
-                    `the log cache held ${removed} index file(s) left by pruned entries; removing` +
-                        ' them and collecting the content they orphaned',
-                    {dir, removed, elapsedMs: now() - started},
-                );
-                await cacache.verify(dir).catch(() => undefined);
-            }
-            writeReclaimState(statePath, {reclaimedAt: now(), removed});
-            if (removed > 0) {
-                log?.info?.('the log cache was reclaimed', {
-                    dir,
-                    removed,
-                    elapsedMs: now() - started,
-                });
-            }
-        } catch (error) {
-            // A reclaim is housekeeping: a directory that cannot be walked, or a
-            // content pass that fails, must not fail the logger that triggered it.
-            log?.warn?.('the log cache could not be reclaimed', {dir, error: String(error)});
+            await pass;
         } finally {
-            reclaiming.delete(dir);
+            if (reclaiming.get(dir) === pass) {
+                reclaiming.delete(dir);
+            }
         }
     }
 
@@ -1510,6 +1530,11 @@ export async function openCache(options: CacheOptions): Promise<RecordCache> {
         payloadStats: () => ({size: payloads, dropped: droppedPayloads}),
         close: async (): Promise<void> => {
             await tail;
+            // Housekeeping this cache started is a write like any other: the
+            // reclaim ends by dating itself in a file inside the directory, so a
+            // caller that removes the directory once `close()` resolves would
+            // otherwise race it and fail with a path that is not empty yet.
+            await reclaiming.get(dir)?.catch(() => undefined);
         },
     };
 }

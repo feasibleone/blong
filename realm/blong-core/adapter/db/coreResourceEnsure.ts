@@ -57,8 +57,17 @@ export default handler(
             },
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             _$meta: IMeta,
+            /**
+             * The caller's transaction, when the ensure has to be part of one.
+             *
+             * `core` is a library realm — every process that calls it carries its
+             * own copy — so a caller reaches this through `super` (same process,
+             * same connection) and can hand over the transaction it is already in.
+             * Without one the ensure runs its own statements on the shared pool.
+             */
+            transaction?: KnexQb,
         ): Promise<{resourceId: string}> {
-            const qb: KnexQb = this.config?.context?.queryBuilder;
+            const qb: KnexQb = transaction ?? this.config?.context?.queryBuilder;
             if (!qb) throw new Error('Database not available');
 
             const byName = async (): Promise<string | undefined> => {

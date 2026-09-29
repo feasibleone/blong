@@ -51,7 +51,7 @@ expectation on `.blong-portal-menubar` expired — a time budget rather than a b
 ran with Playwright's 5s expect default while these specs assert after real round trips;
 `defineBlongConfig` now sets 15s there, and the Portal helpers keep failing fast because they pass
 their own `BLONG_ELEMENT_TIMEOUT` for the missing-element case they are about. The flaky one is
-worth remembering separately: the profile spec normalises the admin's name in the database *after*
+worth remembering separately: the profile spec normalises the admin's name in the database _after_
 the fixture has rendered the page, so the account menu kept the leftover initials — the trace's
 `Received string: "TE"` where the spec wants `TA` — and the retry passed because the failed
 attempt's own call had normalised the row by then; the spec now reloads after the normalisation,

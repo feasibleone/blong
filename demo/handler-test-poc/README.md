@@ -175,7 +175,7 @@ handler-test-poc/
     │   ├── orderDispatch.ts
     │   └── order/
     │       ├── error.ts                  # Typed errors
-    │       ├── calculateTotal.ts         # Library function
+    │       ├── calculateTotal.ts         # Injected library function
     │       ├── orderOrderCreate.ts       # Handler with checkpoints + optional assert
     │       ├── orderOrderConfirm.ts      # Handler with checkpoints + optional assert
     │       └── orderFlowExecute.ts       # Graduated handler (was a test)

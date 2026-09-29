@@ -47,9 +47,9 @@ default layout.
 `commander.node.get` only receives the leaf node, so `{parent.path}` / `{parent.namespace}`
 templates could never resolve — the vault viewer 404'd and the S3 bucket came up empty. Changing the
 RPC contract to carry the parent was rejected in favour of stamping each row with its direct
-parent's fields as `parent.<field>` (`withParentContext`, dropping inherited `parent.*` to avoid
-`parent.parent.*` accumulation); `cleanLeafNode` strips those and the `__*` fields again for viewer
-display. This stamping is the mechanism every leaf viewer relies on now.
+parent's fields as `parent.<field>` (`withParentContext`, dropping inherited
+`parent.*` to avoid `parent.parent.*` accumulation); `cleanLeafNode` strips those and the `__*`
+fields again for viewer display. This stamping is the mechanism every leaf viewer relies on now.
 
 ### D-025 — The S3 viewer keeps AWS-native Key instead of lowercasing it
 

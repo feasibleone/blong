@@ -138,9 +138,9 @@ A realm folder also needs a `package.json` beside its `server.ts` — the loader
 
 ## Three things that will bite
 
-**A library function reads `this`, so call it as a member.** A `library()` function gets the layer
-object as `this` (that is where `this.platform` and `this.registry` come from). Destructuring it
-into a local first strips the receiver:
+**An injected library function reads `this`, so call it as a member.** A `library()` function gets
+the layer object as `this` (that is where `this.platform` and `this.registry` come from).
+Destructuring it into a local first strips the receiver:
 
 ```ts
 const {textInput} = lib; // `this` is undefined inside — TypeError

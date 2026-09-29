@@ -39,6 +39,10 @@ description:
 - **Refresh `core.path` after RBAC graph edits** (`CALL access_pathRefresh()`) or effective queries
   go stale.
 - **Reference entities by name** in seeds/custom merges, never raw DB IDs.
+- **This realm is a library realm** — every process that calls it carries its own copy and creates
+  the `core_*` schema in its own database, so a `resourceId` is meaningful only there. Another realm
+  reaches the two graph operations with `super.<name>` (`core` attached as an early child) and may
+  hand over its transaction; never import this package from a realm.
 
 Canonical framework rules + archetype: `.github/skills/_shared/conventions.md` →
 `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: SCHEMA_TABLE]`. Siblings: **blong-schema** (tables/seeds),
@@ -78,6 +82,12 @@ graph LR
 FK to `core.resource.resourceId` and its readable name is `resourceName`; relationships are
 `core.triple` edges, not join tables. One uniform query surface for RBAC, hierarchies, and
 relations.
+
+`blong-core` and `blong-access` are **library realms**: every process that calls them carries its own
+copy of the realm, and their tables are created in each database that process writes to — a solution
+spanning several databases has several resource graphs, and an id from one is meaningless in
+another. `blong-party` is not a library realm: it holds business data that must not be copied per
+database. See the library-realms rationale in the docs site.
 
 ---
 

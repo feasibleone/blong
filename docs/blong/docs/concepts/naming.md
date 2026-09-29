@@ -20,8 +20,8 @@ entity the predicate acts on.
   `merge` for a single record; `insert`, `update`, `delete` for many.
 - **Two-word properties**: `userName`, not `name`; `customerId`, not `id`.
 - **One handler per file**, so `ctrl+p` plus the first letters of the triple finds it.
-- **Library functions** are named the same way but are not exposed: a function whose name is not a
-  valid triple is treated as a helper for its siblings.
+- **Injected library functions** are named the same way but are not exposed: a function whose name
+  is not a valid triple is treated as a helper for its siblings.
 
 ## What the invariant buys
 

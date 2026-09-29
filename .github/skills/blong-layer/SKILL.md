@@ -334,7 +334,7 @@ orchestrator/
 ├── dispatch.ts        # Self-contained orchestrator definition
 ├── entity1/           # Handler group: realmname.entity1
 │   ├── ~.schema.ts   # Auto-generated validation
-│   ├── helper.ts     # Library function
+│   ├── helper.ts     # Injected library function
 │   └── realmEntity1Action.ts
 └── entity2/           # Handler group: realmname.entity2
     ├── ~.schema.ts

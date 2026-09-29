@@ -396,8 +396,8 @@ export default class Registry extends Internal implements IRegistry {
             // carries only config/handler/errors/schema/gateway/apiSchema. And
             // the lib proxy returns an attached function **raw**, so `this`
             // inside it is this object — not the port, which is only bound in the
-            // proxy's not-yet-attached fallback path. Without these keys a
-            // library function therefore cannot reach the platform or registry at
+            // proxy's not-yet-attached fallback path. Without these keys an
+            // injected library function therefore cannot reach the platform or registry at
             // all, which is what a library needs to be reusable outside a
             // request.
             platform: this.#platform,

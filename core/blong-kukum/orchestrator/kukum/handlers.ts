@@ -21,7 +21,7 @@ import {PRIMITIVES} from '../../primitives/index.ts';
  */
 
 /**
- * A registered method name → the library function implementing it.
+ * A registered method name → the injected library function implementing it.
  *
  * `kukum` is the namespace, not part of the endpoint's path, so the library
  * drops it: `kukum.source.get` is implemented by `lib.sourceGet`.

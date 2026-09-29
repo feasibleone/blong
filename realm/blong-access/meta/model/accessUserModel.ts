@@ -85,9 +85,15 @@ export default model(
                             items: {
                                 properties: {
                                     roleId: {},
+                                    // Filterable because the pivot's rows are every
+                                    // role in the graph, in the order the rows were
+                                    // created: a spec that means to grant one role
+                                    // would otherwise toggle whichever role happens
+                                    // to be listed first (see `user.play.ts`).
                                     roleName: {
                                         title: 'Role',
                                         readOnly: true,
+                                        filter: true,
                                     },
                                     granted: {
                                         title: 'Granted',

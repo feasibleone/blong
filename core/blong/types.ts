@@ -75,7 +75,78 @@ export type ServerContext = {
         connect(): Promise<unknown>;
         quit(): Promise<unknown>;
     };
+    /**
+     * The shared materialized-path rebuild, when the schema declares one (see the
+     * runtime's `pathRefresh.ts`).  Edge writers defer the rebuild through it, and
+     * it is what keeps the rebuild behind the last write.
+     */
+    pathRefresh?: IPathRefresh;
 };
+
+/**
+ * Coordinates the materialized-path rebuild shared by every graph-edge writer.
+ *
+ * The rebuild (`access_pathRefresh()` for the access realm) is a full rebuild of
+ * the flattened paths from `core_triple`, and it is expensive and lock-hungry
+ * enough that the seed phase writes its edges with it deferred and runs one at
+ * the end.  A deferral is only safe while the rebuild really does follow the last
+ * write: a merge that entered the batch can commit after the batch rebuilt, and
+ * its edge then stays out of the paths until the next start — the caller is left
+ * without an action it was granted (T-174).
+ *
+ * So the writers are counted, and the rebuild follows them:
+ *
+ * - every writer registers through `enter()` **before** it reads `deferred`, so a
+ *   writer cannot slip in behind a drain unnoticed;
+ * - `drain()` waits for the count to reach zero and rebuilds while a rebuild is
+ * Two durable counters in `core_counter` are what make that safe across processes,
+ * because neither the deferral flag nor this object's memory is shared between
+ * them:
+ *
+ * - the **generation** counts every write that skipped its own rebuild. A writer
+ *   bumps it inside its own transaction, so it is visible exactly when that
+ *   writer's edges are, and a generation read never counts edges that have not
+ *   committed yet;
+ * - the **covered** value is published by a rebuild and holds the generation it
+ *   read at the start. A rebuild that read generation G has seen every edge those
+ *   writes committed, so `covered < generation` says the paths may be behind.
+ *
+ * That pair is the whole invariant, and it is what makes the guarantee survive a
+ * process boundary: a write committing while a rebuild runs bumps the generation
+ * *after* the rebuild read it, so it stays uncovered and owes another rebuild
+ * instead of being dropped when the rebuild publishes its coverage — which is
+ * exactly how a boolean "dirty" flag loses an update across processes.
+ *
+ * The object adds what the counters cannot: `enter()` counts this process's
+ * writers so `drain()` waits for them rather than rebuilding under them, and
+ * `defer()` is the scope that makes a writer skip its rebuild at all. Only the
+ * seeding process defers, and it drains before it serves, so the paths are whole
+ * when it starts answering (the CI case in T-174). A request may still be a
+ * millisecond behind a concurrent write, which is a property of a materialized
+ * read rather than of this coordination.
+ */
+export interface IPathRefresh {
+    /** The rebuild procedure this coordinator drives. */
+    readonly procedure: string;
+    /** The `core_counter` key counting the writes that skipped their rebuild. */
+    readonly generationKey: string;
+    /** The `core_counter` key holding the generation the last rebuild covered. */
+    readonly coveredKey: string;
+    /** True while a `defer()` scope is open, i.e. a writer must skip the rebuild. */
+    readonly deferred: boolean;
+    /** Whether the paths may be behind the graph. */
+    uncovered(qb: unknown): Promise<boolean>;
+    /** Register an edge write; the returned function settles it. */
+    enter(): () => Promise<void>;
+    /** Count a write that skipped its rebuild — inside the caller's transaction. */
+    bumpGeneration(qb: unknown): Promise<void>;
+    /** Rebuild now; the procedure publishes the generation it covered. */
+    refresh(qb: unknown): Promise<void>;
+    /** Await this process's writers, then rebuild while the paths are uncovered. */
+    drain(qb: unknown): Promise<void>;
+    /** Run `work` with the rebuild deferred, then drain. */
+    defer<T>(qb: unknown, work: () => Promise<T>): Promise<T>;
+}
 
 export type BrowserContext = {
     /** TanStack Query client instance (injected by the browser platform). */

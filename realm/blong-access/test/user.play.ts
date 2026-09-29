@@ -54,6 +54,15 @@ test.describe('Access User', () => {
             {
                 object: 'role',
                 pivot: true,
+                // Name the role this spec means to grant. The pivot lists every
+                // role in the graph — the order is the order the rows were
+                // created, which the concurrent seed merges decide — so toggling
+                // the first row would grant a different role from run to run,
+                // and the effective panel below would show *that* role's rules
+                // (17437 pixels of a 2% budget, in the run that caught it). The
+                // Manager role is the one this spec's baseline and its deny rule
+                // are about.
+                filters: {roleName: 'Manager'},
                 fields: {granted: true},
             },
             // Effective-ACL panel (view-only).  The Record Access matrix has its

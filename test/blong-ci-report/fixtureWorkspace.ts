@@ -190,7 +190,8 @@ const FIXTURE_HISTORY: Array<{pkg: string; run: number; tests: IFixtureTest[]}> 
 ];
 
 /** Playwright attachment uuid used by the failing fixture result. */
-const TRACE_FILE = 'aaaa1111-2222-3333-4444-555555555555-attachment.zip';
+/** The trace archive the fixture publishes, named as Playwright names one. */
+export const TRACE_FILE = 'aaaa1111-2222-3333-4444-555555555555-attachment.zip';
 
 /**
  * Allure's full name for a browser test of the fixture, written the way Playwright

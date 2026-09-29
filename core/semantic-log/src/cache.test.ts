@@ -557,13 +557,12 @@ t.test('a slow index scan is reported, and the directory is reclaimed', async t 
     t.match(warnings[0] as object, {elapsedMs: 5_000}, 'the report carries the measured time');
     t.match(warnings[0] as object, {message: /took 5000ms/}, 'and says what it cost');
 
-    // The reclaim itself is background work: wait for it to finish rather than
-    // for a fixed time.
-    for (let attempt = 0; attempt < 100 && (await indexFiles(dir)).length > 0; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 20));
-    }
-    t.equal((await indexFiles(dir)).length, 0, 'the dead index file was reclaimed');
+    // The reclaim itself is background work, and `close()` is what waits for it:
+    // asserting after the close is what makes this deterministic. Polling for the
+    // index file to disappear instead leaves the state file the pass dates itself
+    // with still in flight, and the teardown then races that write (ENOTEMPTY).
     await cache.close();
+    t.equal((await indexFiles(dir)).length, 0, 'the dead index file was reclaimed');
 });
 
 t.test('a read-only open never reclaims, however slow the scan', async t => {

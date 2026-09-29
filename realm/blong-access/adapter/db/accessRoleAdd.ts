@@ -1,7 +1,7 @@
 import {type IMeta, handler} from '@feasibleone/blong';
 
-import * as account from './account.ts';
 import * as model from './accessModel.ts';
+import * as account from './account.ts';
 
 type KnexQb = any;
 
@@ -15,13 +15,7 @@ type KnexQb = any;
  * `access_acl` rules of the new role are written by `syncAclMatrix`.
  */
 export default handler(
-    ({
-        handler: {
-            'db/accessRoleEnsure': accessRoleEnsure,
-            'db/coreResourceEnsure': coreResourceEnsure,
-        },
-        lib: {ulid, crockfordDecode},
-    }) => ({
+    ({handler: {'db/accessRoleEnsure': accessRoleEnsure}, lib: {ulid, crockfordDecode}}) => ({
         async accessRoleAdd(
             params: {
                 role?: {roleName?: string; roleBit?: number | string | null; description?: string};
@@ -44,7 +38,11 @@ export default handler(
                 await model.syncAclMatrix(
                     qb,
                     {
-                        coreResourceEnsure,
+                        // `core.resource.ensure` lives in `core`, a library realm this
+                        // process carries itself: `super` reaches it in the same process,
+                        // and the helper has no `super` of its own, so the binding is
+                        // closed over here.
+                        coreResourceEnsure: (p: any, m: IMeta) => super.coreResourceEnsure(p, m),
                         newAclId: () => Buffer.from(crockfordDecode(ulid())),
                     },
                     roleHex,

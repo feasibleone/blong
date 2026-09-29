@@ -171,7 +171,7 @@ written a report nobody uploads.
 
 > _2026-09-26 · tools/blong-dev · active_
 
-The Allure publish step is gated on a producer having written results *since* the published report,
+The Allure publish step is gated on a producer having written results _since_ the published report,
 rather than on results merely being present.
 
 Without the gate, every `blong-dev test` in a package that had ever run a browser suite regenerated

@@ -17,14 +17,10 @@ type KnexQb = any;
 export default handler(
     ({
         errors,
-        handler: {
-            'db/accessRoleEnsure': accessRoleEnsure,
-            'db/coreResourceEnsure': coreResourceEnsure,
-            'db/coreTripleMerge': coreTripleMerge,
-        },
+        handler: {'db/accessRoleEnsure': accessRoleEnsure},
         lib: {hashPassword, credentialPolicyParams},
-    }) =>
-        async function accessAccountAdd(
+    }) => ({
+        async accessAccountAdd(
             params: {
                 /** Resource name — the normalized email used as the login key. */
                 name: string;
@@ -57,7 +53,7 @@ export default handler(
                 throw errors.errorAccountExists({params: {emailAddress: email}});
             }
 
-            const {resourceId: userId} = await coreResourceEnsure<{resourceId: string}>(
+            const {resourceId: userId} = (await super.coreResourceEnsure(
                 {
                     name: params.name,
                     typeAlias: 'access.user',
@@ -66,7 +62,7 @@ export default handler(
                     keyName: 'userId',
                 },
                 $meta,
-            );
+            )) as {resourceId: string};
 
             // Credential — password (PBKDF2) or Google subject id
             if (params.password) {
@@ -119,8 +115,9 @@ export default handler(
                     });
                 }
             }
-            await coreTripleMerge({triples, refreshPath: true}, $meta);
+            await super.coreTripleMerge({triples, refreshPath: true}, $meta);
 
             return {userId};
         },
+    }),
 );

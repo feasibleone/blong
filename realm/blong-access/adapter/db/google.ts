@@ -33,7 +33,7 @@ export type GoogleConfig = {
  * the local mock in `dev`, real Google endpoints (or an override) elsewhere.
  */
 export default library(({config}) => {
-    const google = ((config?.google ?? {}) as GoogleConfig);
+    const google = (config?.google ?? {}) as GoogleConfig;
     return {
         /** Return the effective Google OAuth client config from the realm `db.google` slice. */
         googleConfig(): GoogleConfig {

@@ -11,6 +11,15 @@ generic insert — `core.resource.ensure` (find-or-create a resource by type and
 resource whose entity row is missing) and `core.triple.merge` (insert edges idempotently and refresh
 the materialized paths). Both live in `adapter/db/`; there are no orchestrators.
 
+`blong-core` is a **library realm**: every process that calls it carries its own copy of the realm,
+and the `core_*` schema is created in every database such a process writes to. A solution that uses
+more than one database therefore has more than one resource graph, and a `resourceId` is meaningful
+only inside the database that minted it. Another realm reaches the two helpers above through
+prototype-chain delegation (`super.coreResourceEnsure`, with `core` listed as an early child in the
+suite) rather than by importing this package, and may pass its transaction so the resource row
+commits together with the write that needs it. `blong-access` is a library realm for the same
+reason; `blong-party` is not.
+
 ## Data model
 
 | Table              | Purpose                                                                                                               |

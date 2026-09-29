@@ -2,7 +2,7 @@ import {handler} from '@feasibleone/blong';
 
 import type {TextParams} from './textInput.ts';
 
-/** The group's library functions, as the proxy attaches them. */
+/** The group's injected library functions, as the proxy attaches them. */
 type TextLib = {textInput: (params: TextParams) => string};
 
 /**
@@ -14,7 +14,7 @@ type TextLib = {textInput: (params: TextParams) => string};
  * `/rpc/text/slug/get` normalises to.
  *
  * Note the call is `(lib as …).textInput(params)` — a *member* call, not a
- * destructured one. A library function reads the platform off `this`, and
+ * destructured one. An injected library function reads the platform off `this`, and
  * assigning it to a local first would strip the receiver and leave `this`
  * undefined.
  */

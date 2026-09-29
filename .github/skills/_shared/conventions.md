@@ -33,6 +33,17 @@ Framework-level hard rules. Every skill assumes these. Apply first; never contra
   call, not a bypass (and `super.exec` is how a handler reuses the default behaviour); where a
   group's methods share a shape, a `send` / `receive` conversion states it once. See
   `[ARCHETYPE: CONVERSION]` and **blong-handler** → _Conversions_.
+- **[LIBRARY_REALM]** `blong-core` and `blong-access` are library realms: every process that calls
+  them carries its own copy, and their schema exists in each database a process writes to, so a
+  resource id is meaningful only inside the database that minted it. A call into them is therefore
+  local — reach their helpers with `super.<name>` (prototype-chain delegation to a group attached
+  earlier), not by importing the package and not through a `library()` binding (the `lib` object is
+  assembled per handler group and cannot cross realms), and hand over the caller's transaction when
+  the write has to be atomic. The providing realm must be attached first: list it as an **early
+  child** (`srv`, `login`, `core`, `access`, …). Two callers cannot delegate and keep the handler
+  proxy: a handler calling a member of its **own group** (siblings are not on the chain the literal
+  inherits) and a handler in **another port** — the test layer, whose handlers sit on their own
+  `testDispatch` port rather than the shared `srv.db` one.
 - **Never enable `systemDebug` in production.**
 - **Never commit to `dev/`** (gitignored).
 

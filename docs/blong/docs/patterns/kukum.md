@@ -105,8 +105,8 @@ files, like the `systemDebug` endpoints.
 
 ### In-process
 
-`@feasibleone/blong-kukum/operation.ts` exports the whole surface. The library functions read the
-platform and the live registry off `this`, so drive them the way the runtime does:
+`@feasibleone/blong-kukum/operation.ts` exports the whole surface. The injected library functions
+read the platform and the live registry off `this`, so drive them the way the runtime does:
 
 ```ts
 import type {PrimitiveHost} from '@feasibleone/blong-kukum/engine.ts';

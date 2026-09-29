@@ -38,7 +38,7 @@ index.test.ts                              the command's contract, asserted
 text/                                      the realm
   server.ts                                realm entry (layers auto-discovered)
   orchestrator/text.ts                     dispatch orchestrator — namespace `text`
-  orchestrator/text/textInput.ts           library function, shared by both handlers
+  orchestrator/text/textInput.ts           injected library function, shared by both handlers
   orchestrator/text/textSlugGet.ts         text.slug.get
   orchestrator/text/textStatisticsGet.ts   text.statistics.get
 ```

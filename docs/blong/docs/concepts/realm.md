@@ -20,3 +20,20 @@ A realm is scaffolded rather than hand-built: from the CLI with `blong realm <na
 API with `kukum.realm.add`. See the [realm pattern](../patterns/realm.md) for the folder layout and
 the [kukum pattern](../patterns/kukum.md) for the programmatic entry points. A realm that needs
 entities with relationships contributes its own tables to [the resource graph](resource-graph.md).
+
+## Library realms
+
+Most realms are business domains: a unit of work that a deployment is free to run as its own
+service. A **library realm** is the opposite contract — it is carried by every process that calls
+it, and its schema is created in every database those processes write to. `blong-core` (the resource
+graph) and `blong-access` (RBAC) are library realms; `blong-party` is not, because its data is
+business data that must not be copied per database.
+
+The consequence is that a resource id is meaningful only inside the database that minted it, and
+that a call into a library realm does not leave the process. That is what lets a realm reach the
+graph's helpers by prototype-chain delegation (`super.<method>`, with the library realm listed as an
+early child) and hand over the transaction it is already in, instead of importing the package or
+resolving the call through the dispatcher.
+
+See the [library realms rationale](../rationale/library-realms.md) for why, and the
+[handler pattern](../patterns/handler.md) for the call shape.

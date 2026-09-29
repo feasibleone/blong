@@ -111,8 +111,7 @@ export default handler(
                 userName: user?.resourceName ?? null,
                 emailAddress: user?.emailAddress ?? null,
                 isActive: user?.isActive ? Boolean(user.isActive) : false,
-                preferredLanguage:
-                    (pref?.propertyValue as string | undefined | null) ?? null,
+                preferredLanguage: (pref?.propertyValue as string | undefined | null) ?? null,
                 roles: (roles ?? []).map(r => ({
                     roleId: r.roleId as string,
                     roleName: r.roleName as string,

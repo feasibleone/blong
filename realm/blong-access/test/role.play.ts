@@ -34,7 +34,14 @@ test.describe('Access Role', () => {
         object: 'role',
         fields: {
             'role.roleName': 'ACC-PLAY-Role',
-            'role.roleBit': 999,
+            // Just above the six seeded roles (0-5).  A bit is a position in a
+            // token's permission mask, so the allocator never hands a freed value
+            // out again and it hands out `max(high-water mark, MAX(roleBit)) + 1`:
+            // a pin at 999 lifts that mark to 1000 the moment anything allocates
+            // while the row exists, which burns the space down to the 1023 ceiling
+            // in a few runs (F-298).  This one costs nothing the seeds have not
+            // already spent, and the role is deleted by the cleanup below.
+            'role.roleBit': 6,
             'role.description': 'ACC-PLAY role',
         },
         editFields: {
@@ -42,11 +49,18 @@ test.describe('Access Role', () => {
         },
         search: 'ACC-PLAY',
         // Capability pivot over the access.capability dropdown — assignment via
-        // the `granted` boolean cell; edit-on-detail unticks it.
+        // the `granted` boolean cell; edit-on-detail unticks it.  The rows are the
+        // whole dropdown in whatever order the database returns them, and the cell
+        // the spec ticks belongs to the *first* row: an unfiltered pivot granted
+        // `guestBasic` in one run and `accessModelAdmin` in the next, and the
+        // difference sat inside the diff tolerance, so the capture quietly showed
+        // the wrong row (T-173's defect, and the reason `user.play.ts` names its
+        // role).  Naming the capability keeps the row and the tick the same.
         details: [
             {
                 object: 'capability',
                 pivot: true,
+                filters: {capabilityName: 'guestBasic'},
                 fields: {granted: true},
                 editFields: {granted: false},
             },

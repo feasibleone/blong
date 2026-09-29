@@ -24,121 +24,112 @@ type KnexQb = any;
  * Lives in `adapter/dbTest/` because it is a TEST-ONLY seed: the db adapter
  * imports `.dbTest` handler groups only under `dev`, never in production.
  */
-export default handler(
-    ({
-        handler: {
-            'db/coreResourceEnsure': coreResourceEnsure,
-            'db/coreTripleMerge': coreTripleMerge,
+export default handler(({handler: {}}) => ({
+    async partyHierarchyMerge(
+        params: {
+            /** Organization names (short names — `legalName` is mirrored onto the resource). */
+            organizations?: string[];
+            units?: Array<{
+                name: string;
+                unitType?: string;
+                /** Owning organization name → `unit --belongsTo--> organization`. */
+                organization?: string;
+                /** Parent unit name → `unit --isPartOf--> parentUnit`. */
+                parentUnit?: string;
+            }>;
+            persons?: Array<{
+                /** Resource name (the display label). */
+                name: string;
+                firstName: string;
+                lastName: string;
+                /** Membership → `person --belongsTo--> unit`. */
+                unit?: string;
+            }>;
         },
-    }) =>
-        async function partyHierarchyMerge(
-            params: {
-                /** Organization names (short names — `legalName` is mirrored onto the resource). */
-                organizations?: string[];
-                units?: Array<{
-                    name: string;
-                    unitType?: string;
-                    /** Owning organization name → `unit --belongsTo--> organization`. */
-                    organization?: string;
-                    /** Parent unit name → `unit --isPartOf--> parentUnit`. */
-                    parentUnit?: string;
-                }>;
-                persons?: Array<{
-                    /** Resource name (the display label). */
-                    name: string;
-                    firstName: string;
-                    lastName: string;
-                    /** Membership → `person --belongsTo--> unit`. */
-                    unit?: string;
-                }>;
-            },
-            $meta: IMeta,
-        ): Promise<{success: boolean}> {
-            const qb: KnexQb = this.config?.context?.queryBuilder;
-            if (!qb) throw new Error('Database not available');
+        $meta: IMeta,
+    ): Promise<{success: boolean}> {
+        const qb: KnexQb = this.config?.context?.queryBuilder;
+        if (!qb) throw new Error('Database not available');
 
-            const triples: Array<{
-                subjectId: string;
-                predicateName: string;
-                objectId: string;
-            }> = [];
-            /** resource names are resolved per type so a name may repeat across types. */
-            const ids = new Map<string, string>();
-            const key = (typeAlias: string, name: string): string => `${typeAlias}:${name}`;
+        const triples: Array<{
+            subjectId: string;
+            predicateName: string;
+            objectId: string;
+        }> = [];
+        /** resource names are resolved per type so a name may repeat across types. */
+        const ids = new Map<string, string>();
+        const key = (typeAlias: string, name: string): string => `${typeAlias}:${name}`;
 
-            /** Ensure a resource + entity row and remember its id for the edges. */
-            const ensure = async (
-                typeAlias: string,
-                table: string,
-                keyName: string,
-                name: string,
-                extraColumns: Record<string, unknown>,
-            ): Promise<string> => {
-                const {resourceId} = await coreResourceEnsure<{resourceId: string}>(
-                    {name, typeAlias, table, extraColumns, keyName},
-                    $meta,
-                );
-                ids.set(key(typeAlias, name), resourceId);
-                return resourceId;
-            };
+        /** Ensure a resource + entity row and remember its id for the edges. */
+        const ensure = async (
+            typeAlias: string,
+            table: string,
+            keyName: string,
+            name: string,
+            extraColumns: Record<string, unknown>,
+        ): Promise<string> => {
+            const {resourceId} = (await super.coreResourceEnsure(
+                {name, typeAlias, table, extraColumns, keyName},
+                $meta,
+            )) as {resourceId: string};
+            ids.set(key(typeAlias, name), resourceId);
+            return resourceId;
+        };
 
-            /** The id of an entity ensured earlier in this seed. */
-            const idOf = (typeAlias: string, name: string): string => {
-                const id = ids.get(key(typeAlias, name));
-                if (!id) throw new Error(`ACL seed references an unknown ${typeAlias} "${name}"`);
-                return id;
-            };
+        /** The id of an entity ensured earlier in this seed. */
+        const idOf = (typeAlias: string, name: string): string => {
+            const id = ids.get(key(typeAlias, name));
+            if (!id) throw new Error(`ACL seed references an unknown ${typeAlias} "${name}"`);
+            return id;
+        };
 
-            for (const name of params.organizations ?? []) {
-                await ensure('party.organization', 'party_organization', 'organizationId', name, {
-                    legalName: name,
+        for (const name of params.organizations ?? []) {
+            await ensure('party.organization', 'party_organization', 'organizationId', name, {
+                legalName: name,
+            });
+        }
+
+        // Pass 1 — every unit, so a child may be declared before its parent.
+        for (const unit of params.units ?? []) {
+            await ensure('party.unit', 'party_unit', 'unitId', unit.name, {
+                unitName: unit.name,
+                unitType: unit.unitType ?? null,
+            });
+        }
+        // Pass 2 — the unit hierarchy.
+        for (const unit of params.units ?? []) {
+            if (unit.organization) {
+                triples.push({
+                    subjectId: idOf('party.unit', unit.name),
+                    predicateName: 'belongsTo',
+                    objectId: idOf('party.organization', unit.organization),
                 });
             }
-
-            // Pass 1 — every unit, so a child may be declared before its parent.
-            for (const unit of params.units ?? []) {
-                await ensure('party.unit', 'party_unit', 'unitId', unit.name, {
-                    unitName: unit.name,
-                    unitType: unit.unitType ?? null,
+            if (unit.parentUnit) {
+                triples.push({
+                    subjectId: idOf('party.unit', unit.name),
+                    predicateName: 'isPartOf',
+                    objectId: idOf('party.unit', unit.parentUnit),
                 });
             }
-            // Pass 2 — the unit hierarchy.
-            for (const unit of params.units ?? []) {
-                if (unit.organization) {
-                    triples.push({
-                        subjectId: idOf('party.unit', unit.name),
-                        predicateName: 'belongsTo',
-                        objectId: idOf('party.organization', unit.organization),
-                    });
-                }
-                if (unit.parentUnit) {
-                    triples.push({
-                        subjectId: idOf('party.unit', unit.name),
-                        predicateName: 'isPartOf',
-                        objectId: idOf('party.unit', unit.parentUnit),
-                    });
-                }
-            }
+        }
 
-            for (const person of params.persons ?? []) {
-                const personId = await ensure(
-                    'party.person',
-                    'party_person',
-                    'personId',
-                    person.name,
-                    {firstName: person.firstName, lastName: person.lastName},
-                );
-                if (person.unit) {
-                    triples.push({
-                        subjectId: personId,
-                        predicateName: 'belongsTo',
-                        objectId: idOf('party.unit', person.unit),
-                    });
-                }
+        for (const person of params.persons ?? []) {
+            const personId = await ensure('party.person', 'party_person', 'personId', person.name, {
+                firstName: person.firstName,
+                lastName: person.lastName,
+            });
+            if (person.unit) {
+                triples.push({
+                    subjectId: personId,
+                    predicateName: 'belongsTo',
+                    objectId: idOf('party.unit', person.unit),
+                });
             }
+        }
 
-            // One path refresh for the whole batch (deferred per merge).
-            await coreTripleMerge({triples, refreshPath: true}, $meta);
-            return {success: true};
-        },
-);
+        // One path refresh for the whole batch (deferred per merge).
+        await super.coreTripleMerge({triples, refreshPath: true}, $meta);
+        return {success: true};
+    },
+}));

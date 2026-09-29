@@ -40,8 +40,10 @@ test.describe('Access Role · Record Access matrix', () => {
             // by a seeded role: the insert would be silently ignored (MySQL
             // `INSERT IGNORE`) and the role row would never exist — a resource
             // without a role, which the browse cannot even show.  The role spec
-            // uses 999; the matrix takes the next free bit.
-            'role.roleBit': 998,
+            // pins 6, so the matrix takes the next one: both stay next to the
+            // seeded 0-5 instead of lifting the allocator's high-water mark
+            // towards the 1023 ceiling (F-298).
+            'role.roleBit': 7,
             'role.description': 'ACC-PLAY matrix role',
         },
         editFields: {

@@ -239,10 +239,10 @@ independent with a fixed `--glare-shift` of 50% ("starting at the middle"). A la
 top-most CARD rather than the header, at `ANCHOR_FRACTION` 0.5 — anchoring on the wide header
 stretches and over-lights the narrow cards. `glassReflection.ts` clusters non-header cards by
 centre-x (`COLUMN_GAP` 120 px), the header joins `columns[0]`, and `updateGlassReflections` re-runs
-on resize so the lanes follow reflow. Verified live at 1500 px by edge constants: left lane toolbar
-23.2 / edit 50 / morphology 35.3 / links 26.6 (C=340.7), right lane taxonomy 50 / reproduction 42.6
-/ habitat 36.3 (C=944), inspector 50; in single-column mode header 40.5 / edit 50 through habitat
-15.8 all sit on one line.
+on resize so the lanes follow reflow. Verified live at 1500 px by edge constants: left lane
+toolbar 23.2 / edit 50 / morphology 35.3 / links 26.6 (C=340.7), right lane taxonomy 50 /
+reproduction 42.6 / habitat 36.3 (C=944), inspector 50; in single-column mode header 40.5 / edit 50
+through habitat 15.8 all sit on one line.
 
 ### D-079 — Playwright ports are derived from the package's rush.json index
 

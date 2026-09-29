@@ -15,75 +15,73 @@ type KnexQb = any;
  * scope × CRUD grid of the Access tab, where an empty cell removes the rule and
  * therefore releases whatever the hierarchy granted implicitly.
  */
-export default handler(
-    ({
-        errors,
-        handler: {'db/coreResourceEnsure': coreResourceEnsure},
-        lib: {ulid, crockfordDecode},
-    }) => ({
-        async accessRoleEdit(
-            params: {
-                role?: {
-                    roleId?: string;
-                    roleName?: string;
-                    roleBit?: number | string | null;
-                    description?: string;
-                };
-                matrix?: model.AclMatrixRow[];
-            },
-            $meta: IMeta,
-        ): Promise<unknown> {
-            const qb: KnexQb = this.config?.context?.queryBuilder;
-            if (!qb) throw new Error('Database not available');
-            const {role = {}, matrix} = params;
-            const {roleName, ...roleColumns} = role;
-            // A bit never moves: it is the role's position in the permission mask
-            // of already-minted tokens, so re-pointing it would silently change
-            // what those tokens authorize.  A form that posts the loaded bit is
-            // fine; a different one is refused.
-            const hex = model.binHex(role.roleId);
-            if (!hex) throw new Error('Invalid role id');
-            const submitted = role.roleBit;
-            const blank = submitted === undefined || submitted === null || submitted === '';
-            if (!blank) {
-                const requested = Number(submitted);
-                const stored = (await qb('access_role')
-                    .where('roleId', Buffer.from(hex, 'hex'))
-                    .first('roleBit')) as {roleBit?: number} | undefined;
-                if (stored?.roleBit !== undefined && Number(stored.roleBit) !== requested) {
-                    throw errors.roleBitImmutable({
-                        params: {roleName: roleName ?? hex, roleBit: Number(stored.roleBit)},
-                    });
-                }
-            }
-            // The bit is not a writable column of the row: drop it either way
-            // (the stored value is the authority).
-            delete roleColumns.roleBit;
-            // A matrix-only save submits the PK alone — there is nothing to
-            // update on the row, and an empty `update()` is rejected by the
-            // adapter.
-            const touched = Object.keys(roleColumns).filter(key => key !== 'roleId');
-            const result = touched.length
-                ? await super.exec({...params, role: roleColumns}, $meta)
-                : {role: {roleId: role.roleId}};
-            if (typeof roleName === 'string') {
-                await qb('core_resource')
-                    .where('resourceId', Buffer.from(hex, 'hex'))
-                    .update({resourceName: roleName});
-            }
-            if (Array.isArray(matrix)) {
-                await model.syncAclMatrix(
-                    qb,
-                    {
-                        coreResourceEnsure,
-                        newAclId: () => Buffer.from(crockfordDecode(ulid())),
-                    },
-                    hex,
-                    matrix,
-                    $meta,
-                );
-            }
-            return result;
+export default handler(({errors, lib: {ulid, crockfordDecode}}) => ({
+    async accessRoleEdit(
+        params: {
+            role?: {
+                roleId?: string;
+                roleName?: string;
+                roleBit?: number | string | null;
+                description?: string;
+            };
+            matrix?: model.AclMatrixRow[];
         },
-    }),
-);
+        $meta: IMeta,
+    ): Promise<unknown> {
+        const qb: KnexQb = this.config?.context?.queryBuilder;
+        if (!qb) throw new Error('Database not available');
+        const {role = {}, matrix} = params;
+        const {roleName, ...roleColumns} = role;
+        // A bit never moves: it is the role's position in the permission mask
+        // of already-minted tokens, so re-pointing it would silently change
+        // what those tokens authorize.  A form that posts the loaded bit is
+        // fine; a different one is refused.
+        const hex = model.binHex(role.roleId);
+        if (!hex) throw new Error('Invalid role id');
+        const submitted = role.roleBit;
+        const blank = submitted === undefined || submitted === null || submitted === '';
+        if (!blank) {
+            const requested = Number(submitted);
+            const stored = (await qb('access_role')
+                .where('roleId', Buffer.from(hex, 'hex'))
+                .first('roleBit')) as {roleBit?: number} | undefined;
+            if (stored?.roleBit !== undefined && Number(stored.roleBit) !== requested) {
+                throw errors.roleBitImmutable({
+                    params: {roleName: roleName ?? hex, roleBit: Number(stored.roleBit)},
+                });
+            }
+        }
+        // The bit is not a writable column of the row: drop it either way
+        // (the stored value is the authority).
+        delete roleColumns.roleBit;
+        // A matrix-only save submits the PK alone — there is nothing to
+        // update on the row, and an empty `update()` is rejected by the
+        // adapter.
+        const touched = Object.keys(roleColumns).filter(key => key !== 'roleId');
+        const result = touched.length
+            ? await super.exec({...params, role: roleColumns}, $meta)
+            : {role: {roleId: role.roleId}};
+        if (typeof roleName === 'string') {
+            await qb('core_resource')
+                .where('resourceId', Buffer.from(hex, 'hex'))
+                .update({resourceName: roleName});
+        }
+        if (Array.isArray(matrix)) {
+            await model.syncAclMatrix(
+                qb,
+                {
+                    // `core.resource.ensure` lives in `core`, a library realm this
+                    // process carries itself: `super` reaches it in the same process,
+                    // and the helper has no `super` of its own, so the binding is
+                    // closed over here.
+                    coreResourceEnsure: (p: any, m: IMeta) => super.coreResourceEnsure(p, m),
+                    newAclId: () => Buffer.from(crockfordDecode(ulid())),
+                },
+                hex,
+                matrix,
+                $meta,
+            );
+        }
+        return result;
+    },
+}));

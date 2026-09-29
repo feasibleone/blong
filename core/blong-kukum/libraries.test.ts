@@ -15,7 +15,7 @@ import {PRIMITIVES} from './primitives/index.ts';
  * platform and the registry off `this` when they are called, and delegate.
  *
  * `Registry._createHandlers` seeds the layer's `lib` object with `platform` and
- * `registry`, and `layerProxy` hands an attached library function back **raw** —
+ * `registry`, and `layerProxy` hands an injected library function back **raw** —
  * so `this` inside it is that object, not the port. Driving the factory with a
  * stub api and the returned function with a fake `this` is the only way to prove
  * the binding is thin: a value captured in the factory would still pass an

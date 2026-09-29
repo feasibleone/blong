@@ -12,27 +12,30 @@ type KnexQb = any;
  * `core_resource` row.
  */
 export default handler(() => ({
-    async accessUserRemove(
-        params: {userId?: string},
-        $meta: IMeta,
-    ): Promise<{success: boolean}> {
+    async accessUserRemove(params: {userId?: string}, $meta: IMeta): Promise<{success: boolean}> {
         const qb: KnexQb = this.config?.context?.queryBuilder;
         if (!qb) throw new Error('Database not available');
         const hex = model.binHex(params.userId);
         if (!hex) return {success: true};
         const buf = Buffer.from(hex, 'hex');
         const roleIds = await model.listEdgeObjectIds(qb, hex, 'hasRole');
-        if (roleIds.length) {
-            await qb('core_triple')
-                .where('subjectId', buf)
-                .where('predicateName', 'hasRole')
-                .del();
-            await qb.raw('CALL access_pathRefresh()');
-        }
-        await qb('access_credential').where('userId', buf).del();
-        await qb('access_session').where('userId', buf).del();
-        await qb('access_user').where('userId', buf).del();
-        await qb('core_resource').where('resourceId', buf).del();
+        // One transaction, and one rebuild at the end of it: the paths lose the
+        // user only if its edges really are gone, and a failure leaves neither half
+        // applied.  The rebuild comes before the `core_resource` delete because
+        // `core_path` holds a foreign key to it.
+        await qb.transaction(async (trx: KnexQb) => {
+            if (roleIds.length) {
+                await trx('core_triple')
+                    .where('subjectId', buf)
+                    .where('predicateName', 'hasRole')
+                    .del();
+            }
+            await trx('access_credential').where('userId', buf).del();
+            await trx('access_session').where('userId', buf).del();
+            await trx('access_user').where('userId', buf).del();
+            if (roleIds.length) await trx.raw('CALL access_pathRefresh()');
+            await trx('core_resource').where('resourceId', buf).del();
+        });
         return {success: true};
     },
 }));

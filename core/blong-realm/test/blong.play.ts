@@ -66,10 +66,19 @@ openPages(test, expect, {
         {method: 'blong.search.browse', waitForTableData: false},
         {
             method: 'blong.digest.browse',
-            searchText: 'template',
-            // The digest grows while a run is in progress, so the number of rows is
-            // not stable even once the kind is pinned. The first row is: it is the
-            // newest change of that kind, which is the row the page exists to show.
+            // Pinned to *one* change rather than to the newest change of a kind.
+            // Filtering by the kind alone (`template`) selected `template-added`, whose
+            // newest row is whichever template the run learned last: the ApiSchema line
+            // that loads this suite's orchestrators when nothing is logged after it, and
+            // a warning about a slow adapter start in CI, where the same run takes
+            // longer. Two runs, two rows, one page — and neither row was pinned. This
+            // text is identical in every run (the service substitutes `<HOME>` for the
+            // workspace path) and unique to one row: the closing bracket keeps it off
+            // the `.dev` sibling of the same directory. The row it selects also pins the
+            // two cells that are not masked — `template-added`, `blong`.
+            searchText: 'core/blong-server/orchestrator/subject]',
+            // The digest grows while a run is in progress, so the number of rows is not
+            // stable; the row of the pinned change is, and it is what the page is for.
             region: '.p-datatable-tbody tr:first-child',
             mask: ['[data-testid="digest-when"]'],
         },

@@ -2,23 +2,15 @@
  * Shared persistence helpers for the access UI models (`access.db` group).
  *
  * Plain module (like `account.ts`) imported directly by the `access.db`
- * handlers. Handlers keep the `handler:`-proxy access to
- * `db/coreTripleMerge` / `db/coreResourceEnsure` and pass the merge function
- * into `syncEdges`; every other helper only needs the knex query builder.
+ * handlers. Handlers reach `core.resource.ensure` by delegation
+ * (`super.coreResourceEnsure`, which is how a library realm is called), pass the
+ * knex query builder in, and every helper works on that alone.
  */
 import {type IMeta} from '@feasibleone/blong';
 
 import * as account from './account.ts';
 
 type KnexQb = any;
-
-type TripleMerge = (
-    params: {
-        triples: Array<{subjectId: string; predicateName: string; objectId: string}>;
-        refreshPath?: boolean;
-    },
-    $meta: IMeta,
-) => Promise<{success: boolean}> | {success: boolean};
 
 /** The verdict of the adapter's record-level ACL evaluation. */
 export type AclCheckVerdict = {
@@ -389,17 +381,20 @@ export async function crudPivotActionIds(
 /**
  * Bring `subjectId -predicate-> objectId` edges in line with `objectHexIds`.
  *
- * Missing edges are added through the shared `core.triple.merge` helper with
- * the path refresh deferred; stale edges are deleted directly; a single
- * `access_pathRefresh()` rebuild runs afterwards inside one transaction.
+ * One transaction: the missing edges, the stale ones, and the single
+ * `access_pathRefresh()` that follows them. This is the path the access UI
+ * manages roles, users and capabilities through, so it must not be able to commit
+ * an edge without its rebuild — a write that landed while the rebuild did not
+ * would leave a caller's grants lagging until some later write happened to
+ * rebuild, and a crash between two transactions is exactly that. Rolling the whole
+ * change back on failure is the same guarantee the generic CRUD's own edge sync
+ * gives (`syncGraphEdges` in the knex adapter, which this mirrors).
  */
 export async function syncEdges(
     qb: KnexQb,
-    merge: TripleMerge,
     subjectId: Buffer | string,
     predicateName: string,
     objectHexIds: string[],
-    $meta: IMeta,
 ): Promise<void> {
     const subjectHex = binHex(subjectId);
     if (!subjectHex) return;
@@ -408,34 +403,35 @@ export async function syncEdges(
     const target = new Set(objectHexIds);
     const toAdd = objectHexIds.filter(id => !existingSet.has(id));
     const toRemove = existing.filter(id => !target.has(id));
-    if (toAdd.length) {
-        await merge(
-            {
-                triples: toAdd.map(objectId => ({
-                    subjectId: subjectHex,
-                    predicateName,
-                    objectId,
-                })),
-                refreshPath: false,
-            },
-            $meta,
-        );
-    }
-    if (toAdd.length || toRemove.length) {
-        await qb.transaction(async (trx: KnexQb) => {
-            if (toRemove.length) {
-                await trx('core_triple')
-                    .where('subjectId', Buffer.from(subjectHex, 'hex'))
-                    .where('predicateName', predicateName)
-                    .whereIn(
-                        'objectId',
-                        toRemove.map(id => Buffer.from(id, 'hex')),
-                    )
-                    .del();
-            }
-            await trx.raw('CALL access_pathRefresh()');
-        });
-    }
+    if (!toAdd.length && !toRemove.length) return;
+    await qb.transaction(async (trx: KnexQb) => {
+        if (toAdd.length) {
+            // One batched statement, and `ignore` rather than a duplicate-key
+            // error: two edits racing on the same subject compute the same
+            // missing set, and the loser's rows are already there.
+            await trx('core_triple')
+                .insert(
+                    toAdd.map(objectId => ({
+                        subjectId: Buffer.from(subjectHex, 'hex'),
+                        predicateName,
+                        objectId: Buffer.from(objectId, 'hex'),
+                    })),
+                )
+                .onConflict()
+                .ignore();
+        }
+        if (toRemove.length) {
+            await trx('core_triple')
+                .where('subjectId', Buffer.from(subjectHex, 'hex'))
+                .where('predicateName', predicateName)
+                .whereIn(
+                    'objectId',
+                    toRemove.map(id => Buffer.from(id, 'hex')),
+                )
+                .del();
+        }
+        await trx.raw('CALL access_pathRefresh()');
+    });
 }
 
 /**
@@ -547,10 +543,10 @@ type DesiredAclRule = {actionHex: string; targetHex: string; effect: string};
 /** Dependencies the ACL matrix sync needs from the calling handler. */
 export type AclMatrixDeps = {
     /**
-     * The bound `db/coreResourceEnsure` port handler.  Deliberately loose:
-     * the port is generic in its result (`<T>(params, $meta) => Promise<T>`),
-     * which is not assignable to a concrete function type — the params of a
-     * narrower handler are contravariant, and the result widens to `unknown`.
+     * `core.resource.ensure`, as the calling handler delegates it
+     * (`(p, m) => super.coreResourceEnsure(p, m, trx)`).  Deliberately loose: the
+     * delegated call is untyped, and a narrower concrete function type would not
+     * accept it — the params are contravariant and the result widens to `unknown`.
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     coreResourceEnsure: (params: any, $meta: IMeta) => Promise<any>;

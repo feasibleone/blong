@@ -86,7 +86,7 @@ export default handler(({lib: {error}}) => {
 
 ### 3. Library Error Definition
 
-Define errors in library functions for reusable error sets:
+Define errors in injected library functions for reusable error sets:
 
 ```typescript
 // realmname/adapter/protocol/_errors.ts

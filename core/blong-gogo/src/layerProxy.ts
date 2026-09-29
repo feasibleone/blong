@@ -156,12 +156,28 @@ function createHandlerClosure(
                         layerApi,
                         kind: kindOfWhat,
                     });
+                    // Each handler is stored under TWO keys, mirroring `attachHandlers`
+                    // in `adapter/schema/knex/schemaTable.ts`. The normalised one
+                    // (`methodId`: dots stripped, letters lower-cased) is what
+                    // `findHandler` resolves; the original-case one is what
+                    // `super.<name>` looks up, and only that spelling is reachable there
+                    // because JavaScript property lookup is case-sensitive. A group's
+                    // `local` is an ancestor of the object literal a handler returns,
+                    // which is how a handler delegates to a handler group attached
+                    // *before* it — `core` is an early child for exactly this reason.
+                    //
+                    // Validations keep the normalised key alone: they are collected by
+                    // iterating `local` (`Registry._validations`), and a second spelling
+                    // of every schema would register a second name for it that
+                    // `methodParts` cannot split.
+                    const forSuper = kindOfWhat !== 'validation';
                     if (typeof what === 'function') {
                         (local as Record<string, unknown>)[methodId(what.name)] = what;
+                        if (forSuper) (local as Record<string, unknown>)[what.name] = what;
                     } else {
                         literals.push(what);
-                        what = methodId(what);
-                        merge(local, what);
+                        if (forSuper) merge(local, what);
+                        merge(local, methodId(what));
                     }
                     Object.assign(local, methodId(created));
             }

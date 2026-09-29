@@ -118,7 +118,9 @@ export default handler(
             const profile = {...claims, ...(userInfo ?? {})};
 
             const sub = String(claims.sub ?? '');
-            const email = String(profile.email ?? claims.email ?? '').trim().toLowerCase();
+            const email = String(profile.email ?? claims.email ?? '')
+                .trim()
+                .toLowerCase();
             if (!sub) {
                 throw errors.errorAccountInvalidGoogleToken();
             }
@@ -177,10 +179,7 @@ export default handler(
                 roleBits: number[];
                 actions: string[];
                 permissionMap: string;
-            }>(
-                {userId: account.bufToUuid(userIdBuf)},
-                $meta,
-            );
+            }>({userId: account.bufToUuid(userIdBuf)}, $meta);
 
             return {userId: crockfordEncode(userIdBuf), permissionMap, actions, isNewUser};
         },

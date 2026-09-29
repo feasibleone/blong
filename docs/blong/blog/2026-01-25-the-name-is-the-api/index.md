@@ -75,8 +75,8 @@ The same idea reaches into the payloads: properties are two words, `userName` ra
 it is the difference between "Name" being obvious and being ambiguous in six places at once.
 
 Older conventions leak through, and the framework does not pretend otherwise: a function whose name
-is not a valid triple — `sum`, `hashPassword` — is treated as a library function, visible to its
-siblings and not published anywhere else. The rule is a gate, not a law of physics.
+is not a valid triple — `sum`, `hashPassword` — is treated as a injected library function, visible
+to its siblings and not published anywhere else. The rule is a gate, not a law of physics.
 
 ## The framework checks
 

@@ -91,19 +91,19 @@ imagine it has the following namespaces:
 
 :::
 
-## Library functions
+## Injected library functions
 
-The library functions implement some reusable functionality that is repeated across some of the
-handlers within the same realm. Any handler, that has a name that does not match the internal
-handlers or the API namespaces is considered to be a library function and is not exposed anywhere
-else, except to the sibling handlers.
+The injected library functions implement some reusable functionality that is repeated across some of
+the handlers within the same realm. Any handler, that has a name that does not match the internal
+handlers or the API namespaces is considered to be a injected library function and is not exposed
+anywhere else, except to the sibling handlers.
 
 ## Folder structure
 
-The handlers and library functions are grouped together and given a name. This happens by defining
-them in a subfolder within the realm folder. This folder is usually in another one, which is used
-for defining a layer. The most common approach is to create a separate file for each handler and use
-the handler name as file name. This serves multiple reasons:
+The handlers and the injected library functions are grouped together and given a name. This happens
+by defining them in a subfolder within the realm folder. This folder is usually in another one,
+which is used for defining a layer. The most common approach is to create a separate file for each
+handler and use the handler name as file name. This serves multiple reasons:
 
 - allow fast finding of handlers within code editors. For example, in VSCode ctrl+p and then typing
   the first letters of the semantic triple will bring the desired handler (i.e. `ctrl+p uua` is
@@ -136,13 +136,13 @@ The following structure is used:
 </pre>
 <!-- markdownlint-restore -->
 
-## Defining handlers and library functions
+## Defining handlers and injected library functions
 
-To enable interoperability between the handlers, library functions, orchestrators, adapters and the
-framework, a specific pattern is used to define them.
+To enable interoperability between the handlers, injected library functions, orchestrators, adapters
+and the framework, a specific pattern is used to define them.
 
-To define a library function, use the `library` function from the framework and pass a function that
-returns the desired library function with the appropriate name:
+To define an injected library function, use the `library` function from the framework and pass a
+function that returns the desired injected library function with the appropriate name:
 
 ```ts
 // example/orchestrator/math/sum.ts
@@ -197,7 +197,7 @@ following example, that explain their usage:
     );
     ```
 
-- `example/orchestrator/math/sum.ts` - defines the reusable library function `sum`.
+- `example/orchestrator/math/sum.ts` - defines the reusable injected library function `sum`.
 
     ```ts
     import {library} from '@feasibleone/blong';
@@ -221,7 +221,7 @@ following example, that explain their usage:
     export default handler(
         ({
             lib: {
-                sum, // user defined library function
+                sum, // injected library function
             },
         }) =>
             function mathNumberSum(params) {
@@ -315,12 +315,34 @@ export default handler(({lib: {precision}}) => ({
 }));
 ```
 
+`super` reaches the handler groups attached **before** this one, which is how a realm uses a
+[library realm](../rationale/library-realms.md) — `core` provides the resource graph and every
+process that calls it carries its own copy, so `core.resource.ensure` is a local call, and being
+local it accepts the caller's transaction:
+
+```ts
+// realm/blong-access/adapter/db/accessUserAdd.ts
+export default handler(() => ({
+    async accessUserAdd(params, $meta) {
+        const qb = this.config?.context?.queryBuilder;
+        return qb.transaction(async trx => {
+            const {resourceId} = await super.coreResourceEnsure({...}, $meta, trx);
+            // … the rest of the add, in the same transaction
+        });
+    },
+}));
+```
+
+Two conditions: the providing realm must be attached first (list it as an early child — `srv`,
+`login`, `core`, `access`), and the member is looked up in its **original spelling**
+(`super.coreResourceEnsure`, not the lower-cased form the dispatcher resolves).
+
 ### `super.exec` — reuse the automatic CRUD
 
 The generic knex adapter implements `find`/`get`/`add`/`edit`/`remove`/
 `merge`/`insert`/`update`/`delete` for every declared table (see
-[`adapter.knex`](./schema-sync.md#routed-crud-methods)). A custom persistence handler that must
-run business logic before or after the standard operation is named after the method (e.g.
+[`adapter.knex`](./schema-sync.md#routed-crud-methods)). A custom persistence handler that must run
+business logic before or after the standard operation is named after the method (e.g.
 `accessUserEdit` → `access.user.edit`) and delegates the generic part with `super.exec`:
 
 ```ts

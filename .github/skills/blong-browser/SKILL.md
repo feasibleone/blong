@@ -592,7 +592,7 @@ const {handler, config, lib, errors, schemaRegistry, queryClient, log} = useBlon
 | ---------------- | --------------------------------------------------------- | ----------------------------------------------------- |
 | `handler`        | `IRemoteHandler` (Proxy)                                  | Call any registered method: `handler[method]({}, {})` |
 | `config`         | `Record<string, unknown> & {portal?: IBlongPortalConfig}` | Runtime config (includes `portal.schemaUrl` etc.)     |
-| `lib`            | `ILib`                                                    | Library functions from the handler proxy              |
+| `lib`            | `ILib`                                                    | Injected library functions from the handler proxy     |
 | `errors`         | `object`                                                  | Typed domain errors                                   |
 | `schemaRegistry` | `ISchemaRegistry`                                         | Fetch + cache enriched OpenAPI schemas                |
 | `queryClient`    | `QueryClient`                                             | TanStack Query client                                 |

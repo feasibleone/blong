@@ -3,11 +3,7 @@ import {handler} from '@feasibleone/blong';
 import * as account from './account.ts';
 
 export default handler(
-    ({
-        errors,
-        lib: {crockfordEncode, verifyPassword},
-        handler: {accessPermissionList},
-    }) =>
+    ({errors, lib: {crockfordEncode, verifyPassword}, handler: {accessPermissionList}}) =>
         async function accessCredentialCheck(
             params: {username: string; password: string},
             $meta: Record<string, unknown>,
@@ -43,12 +39,7 @@ export default handler(
 
             // 2. Find the active password credential for this user
             const credential = await queryBuilder
-                .select(
-                    'credentialId',
-                    'credentialHash',
-                    'credentialSalt',
-                    'credentialParamsJSON',
-                )
+                .select('credentialId', 'credentialHash', 'credentialSalt', 'credentialParamsJSON')
                 .from('access_credential')
                 .where('userId', user.userId)
                 .where('credentialType', 'password')
@@ -81,10 +72,7 @@ export default handler(
                 roleBits: number[];
                 actions: string[];
                 permissionMap: string;
-            }>(
-                {userId: account.bufToUuid(user.userId)},
-                $meta,
-            );
+            }>({userId: account.bufToUuid(user.userId)}, $meta);
 
             return {
                 userId: crockfordEncode(user.userId),

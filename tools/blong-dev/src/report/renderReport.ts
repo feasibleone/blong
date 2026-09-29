@@ -210,6 +210,30 @@ function toolUrl(links: IRenderOptions['links'], tool: string): string | null {
     return `${links.base}/${tool}/${links.workflow}/${links.run}/`;
 }
 
+/**
+ * The `trace.playwright.dev` viewer for a published trace archive, or null.
+ *
+ * A Playwright trace is not readable as it stands: the viewer is how a reader opens
+ * one, and it takes the *absolute* URL of the archive, which exists only once the
+ * report is published — the archives are moved next to it (see `allurePublish`). A
+ * failure whose package was not published therefore has no viewer URL, and the plain
+ * archive name is shown instead.
+ */
+function traceViewerUrl(links: IRenderOptions['links'], tool: string, file: string): string | null {
+    if (!links?.packages?.includes(tool)) return null;
+    const base = toolUrl(links, tool);
+    return base
+        ? `https://trace.playwright.dev/?trace=${encodeURIComponent(`${base}traces/${file}`)}`
+        : null;
+}
+
+/** One failure's trace: the viewer link, the archive name, or nothing to show. */
+function traceCell(failure: IFailure, links: IRenderOptions['links']): string {
+    if (!failure.trace) return '—';
+    const url = traceViewerUrl(links, failure.package, failure.trace);
+    return url ? `[trace](${url})` : `\`traces/${failure.trace}\``;
+}
+
 /** One table row: a package's tests, coverage and published report. */
 interface IPackageRow {
     package: string;
@@ -448,10 +472,12 @@ export function renderCiReport(options: IRenderOptions): string {
             reports.filter(report => report.runs.length > 1).map(report => report.package),
         );
         const showHistory = failures.some(failure => failure.history);
+        const showTrace = failures.some(failure => failure.trace);
         lines.push(`### Failed suites (${failures.length} test(s))`, '');
         lines.push(
-            `| Package | Suite | Test | Status${showHistory ? ' | History' : ''} | Location |`,
-            `| --- | --- | --- | ---${showHistory ? ' | ---' : ''} | --- |`,
+            `| Package | Suite | Test | Status${showHistory ? ' | History' : ''} | Location` +
+                `${showTrace ? ' | Trace' : ''} |`,
+            `| --- | --- | --- | ---${showHistory ? ' | ---' : ''} | ---${showTrace ? ' | ---' : ''} |`,
         );
         for (const failure of failures.slice(0, MAX_FAILURE_ROWS)) {
             const icon = failure.status === 'flaky' ? '🟡' : '🔴';
@@ -463,12 +489,14 @@ export function renderCiReport(options: IRenderOptions): string {
                 : failure.package;
             lines.push(
                 `| ${owner} | ${failure.suite} | ${failure.name} | ${icon} ${failure.status}` +
-                    `${showHistory ? ` | ${historyCell(failure)}` : ''} | \`${location}\` |`,
+                    `${showHistory ? ` | ${historyCell(failure)}` : ''} | \`${location}\` |` +
+                    `${showTrace ? ` ${traceCell(failure, links)} |` : ''}`,
             );
         }
         if (failures.length > MAX_FAILURE_ROWS) {
             lines.push(
-                `| … | | ${failures.length - MAX_FAILURE_ROWS} more failing test(s) | | see the failure report |`,
+                `| … | | ${failures.length - MAX_FAILURE_ROWS} more failing test(s) | |` +
+                    `${showHistory ? ' |' : ''} | see the failure report |${showTrace ? ' |' : ''}`,
             );
         }
         lines.push('');

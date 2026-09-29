@@ -21,13 +21,23 @@
  * merges instead of replacing what is already there.
  */
 
-import {copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync} from 'node:fs';
-import {join} from 'node:path';
+import {
+    copyFileSync,
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    readdirSync,
+    renameSync,
+    rmSync,
+    statSync,
+    writeFileSync,
+} from 'node:fs';
+import {basename, join} from 'node:path';
 
-import {historyFile, readHistory, sliceForPackage, writeSlice} from './history.ts';
-import {PUBLISH_DIR, REPORT_DIR, packageName, repoRoot, reportDir} from './reportPaths.ts';
 import {runTool} from '../utils/runTool.ts';
 import {toolEnv} from '../utils/toolPath.ts';
+import {historyFile, readHistory, sliceForPackage, writeSlice} from './history.ts';
+import {PUBLISH_DIR, REPORT_DIR, packageName, repoRoot, reportDir} from './reportPaths.ts';
 
 /**
  * Results directories a package may have, by producer.
@@ -119,9 +129,73 @@ function publishGenerated(stagingOut: string, publishDir: string): void {
     }
 }
 
+/** The Allure attachment type of a Playwright trace archive. */
+const TRACE_ATTACHMENT = 'application/vnd.allure.playwright-trace';
+
+/** The part of a staged Allure result this tool reads and writes. */
+interface IStagedResult {
+    attachments?: Array<{source?: string; type?: string}>;
+    links?: Array<{name: string; url: string; type?: string}>;
+}
+
+/**
+ * Point every staged trace at the viewer that can open it.
+ *
+ * A trace archive is unreadable on its own: `trace.playwright.dev` is what opens one,
+ * and it takes the absolute URL the archive will have once published — which is why the
+ * link is added here, where the archives have just been moved into the published
+ * directory, and not by the producer that wrote them. Without a base URL nothing is
+ * added: a local run has no published copy to point at, and an attachment that fetches
+ * the file is all there is to offer.
+ */
+function linkTraces(
+    stagingResults: string,
+    base: string,
+    tool: string,
+    workflow: string,
+    run: number,
+): void {
+    if (!base || !workflow || !run) return;
+    for (const entry of readdirSync(stagingResults)) {
+        if (!entry.endsWith('.json')) continue;
+        const file = join(stagingResults, entry);
+        let result: IStagedResult;
+        try {
+            result = JSON.parse(readFileSync(file, 'utf8')) as IStagedResult;
+        } catch {
+            // A file this cannot read is not a reason to fail the report: the
+            // staged directory holds whatever the producers left there.
+            continue;
+        }
+        const traces = (result.attachments ?? []).filter(
+            attachment => attachment.type === TRACE_ATTACHMENT,
+        );
+        if (traces.length === 0) continue;
+        result.links = [
+            ...(result.links ?? []),
+            ...traces.map(attachment => ({
+                name: 'Open in trace.playwright.dev',
+                type: 'trace',
+                url:
+                    'https://trace.playwright.dev/?trace=' +
+                    encodeURIComponent(
+                        `${base}/${tool}/${workflow}/${run}/traces/${basename(attachment.source ?? '')}`,
+                    ),
+            })),
+        ];
+        writeFileSync(file, JSON.stringify(result));
+    }
+}
+
 export interface IPublishAllureOptions {
     /** Base-branch copy of the committed history, so a re-run does not stack on itself. */
     baseHistory?: string;
+    /**
+     * Published reports base URL, for the trace links. Defaults to `CI_REPORTS_BASE`,
+     * which the workflow resolves before the tests run so a package's own report can
+     * already point at where its traces will be published.
+     */
+    base?: string;
     /** Runs a tool, resolving its exit code. Defaults to the shared `runTool`. */
     run?: (command: string, args: string[], cwd: string) => Promise<number>;
 }
@@ -147,7 +221,9 @@ export async function publishAllureReport(
     const dirs = resultsDirsOf(cwd);
     if (dirs.length === 0) return {published: false, producers: 0};
 
-    const run = options.run ?? ((command, args, dir) => runTool(command, args, {cwd: dir, env: toolEnv(dir)}));
+    const run =
+        options.run ??
+        ((command, args, dir) => runTool(command, args, {cwd: dir, env: toolEnv(dir)}));
     const publishDir = join(reportDir(cwd, true), PUBLISH_DIR);
     const publishedAt = publishedMtime(publishDir);
     if (!dirs.some(dir => newestMtime(dir) > publishedAt)) {
@@ -160,16 +236,20 @@ export async function publishAllureReport(
 
     try {
         stageResults(cwd, join(staging, 'results'), join(publishDir, 'traces'));
+        linkTraces(
+            join(staging, 'results'),
+            (options.base ?? process.env['CI_REPORTS_BASE'] ?? '').replace(/\/+$/, ''),
+            packageName(cwd),
+            (process.env['GITHUB_WORKFLOW'] ?? '').replace(/\s+/g, '-'),
+            Number(process.env['GITHUB_RUN_NUMBER'] ?? 0),
+        );
 
         // The package's slice of the committed history, so Allure appends this run to it
         // and `blong-dev ci-report` can fold the result back into `.github/history.jsonl`.
         const base = options.baseHistory ?? '';
         const history = writeSlice(
             cwd,
-            sliceForPackage(
-                readHistory(base || historyFile(repoRoot(cwd))),
-                packageName(cwd),
-            ),
+            sliceForPackage(readHistory(base || historyFile(repoRoot(cwd))), packageName(cwd)),
         );
 
         const exitCode = await run(

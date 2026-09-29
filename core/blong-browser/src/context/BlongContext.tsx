@@ -74,7 +74,7 @@ export interface IBlongContextValue {
     handler: AnyHandlerProxy['handler'];
     /** Runtime configuration — portal UI settings in config.portal */
     config: Record<string, unknown> & {portal?: IBlongPortalConfig};
-    /** Library functions from the handler group */
+    /** Injected Library functions from the handler group */
     lib: AnyHandlerProxy['lib'];
     /** Typed errors from the realm's error layer */
     errors: AnyHandlerProxy['errors'];
@@ -149,9 +149,7 @@ function isAuthError(error: unknown): boolean {
         res?: {statusCode?: number};
     };
     return (
-        e?.res?.statusCode === 401 ||
-        e?.statusCode === 401 ||
-        AUTH_ERROR_TYPES.has(e?.type ?? '')
+        e?.res?.statusCode === 401 || e?.statusCode === 401 || AUTH_ERROR_TYPES.has(e?.type ?? '')
     );
 }
 
@@ -228,7 +226,10 @@ export function BlongProvider({
     // behind `config.portal.testHook` — a flag that is ONLY set by a test intent
     // (e.g. `playwright`), never in production, so a real deployment never
     // exposes the handler proxy or the store to page scripts.
-    if (typeof window !== 'undefined' && (config as {portal?: IBlongPortalConfig}).portal?.testHook) {
+    if (
+        typeof window !== 'undefined' &&
+        (config as {portal?: IBlongPortalConfig}).portal?.testHook
+    ) {
         const win = window as unknown as Record<string, unknown>;
         win.__blongHandler = wrappedHandler;
         win.__blongStore = useAppStore;
@@ -259,11 +260,7 @@ export function BlongProvider({
  * Useful in tests and Storybook where the full runtime is not available.
  */
 export function makeHandlerProxy(
-    dispatch: (
-        method: string,
-        params?: Record<string, unknown>,
-        $meta?: IMeta,
-    ) => Promise<unknown>,
+    dispatch: (method: string, params?: Record<string, unknown>, $meta?: IMeta) => Promise<unknown>,
     config: {portal?: IBlongPortalConfig} & Record<string, unknown> = {},
 ): IHandlerProxy<{portal?: IBlongPortalConfig} & Record<string, unknown>> {
     const handler = new Proxy({} as Record<string, unknown>, {

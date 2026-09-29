@@ -1,7 +1,7 @@
 import {handler} from '@feasibleone/blong';
 
 /**
- * Registers the HSM generate key library function as the handler for hsm.generateKey.
+ * Registers the HSM generate key injected library function as the handler for hsm.generateKey.
  * The lib.generateKey function performs all parameter transformation before calling
  * the Payshield TCP adapter.
  */

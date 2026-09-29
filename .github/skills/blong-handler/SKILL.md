@@ -1,7 +1,7 @@
 ---
 name: blong-handler
 description:
-    Create API handlers and library functions in Blong using semantic triple naming
+    Create API handlers and injected library functions in Blong using semantic triple naming
     (subjectObjectPredicate). Handlers implement business operations, protocol tasks, or reusable
     logic. Use this skill whenever you're writing any function in a Blong realm — API endpoints,
     library helpers, adapter logic, or test steps. Even if the user just says 'add a function' or
@@ -16,7 +16,7 @@ description:
 - **Never import other handlers.** Use `handler: {}` proxy (IoC). Direct imports break IoC + hot
   reload.
 - **Always forward `$meta`** as the 2nd arg on every downstream call.
-- **One handler per file.** Library functions get their own files too.
+- **One handler per file.** Injected library functions get their own files too.
 - **Standard predicates prioritized.** `get`/`find`/`add`/`edit`/`remove`/`merge`;
   `insert`/`update`/`delete`.
 - **Two-word properties.** `userName` not `name`; `customerId` not `id`.
@@ -166,7 +166,7 @@ under _Conversions_ above: read that before writing an adapter, or any call to a
 
 Business functionality using semantic triple naming
 
-### 3. Library Functions
+### 3. Injected Library Functions
 
 Reusable functions shared between handlers
 
@@ -253,7 +253,7 @@ Runtime destructure keys: `lib` (same-group fns), `errors` (realm error layer, s
 `{errorEntityNotFound}` → `entity.notFound`), `config` (component config slice), `log`, `handler`
 (IoC proxy to imported handlers).
 
-### Library Function
+### Injected Library Function
 
 ```typescript
 // realmname/orchestrator/entity/helperFunction.ts
@@ -351,7 +351,7 @@ handler(
             error, // Error factory
             type, // TypeBox (for manual validation)
             bitsyntax, // Binary protocol parser
-            sum, // User-defined library function
+            sum, // User-defined injected library function
             rename, // Rename test arrays
         },
 
@@ -399,7 +399,7 @@ handler(
 
 - File name = handler name
 - `userUserAdd.ts` exports `userUserAdd` handler
-- `validateEmail.ts` exports `validateEmail` library function
+- `validateEmail.ts` exports `validateEmail` injected library function
 
 ### Folder Structure
 
@@ -408,7 +408,7 @@ orchestrator/
 ├── dispatch.ts
 └── entity/
     ├── ~.schema.ts              # Auto-validation
-    ├── helperLib.ts             # Library function
+    ├── helperLib.ts             # Injected library function
     ├── realmEntityAction1.ts    # Handler
     ├── realmEntityAction2.ts    # Handler
     └── realmEntityAction3.ts    # Handler
@@ -445,8 +445,8 @@ exporting `splitNames`). The loader reports it at **error** level —
 `probably a generic source code was put in a handler group folder` — and imports still work, but the
 line is real output: it reaches whatever reads the log, and `core/blong-realm`'s observed-flows page
 listed it as a template row until the helper became a `library()`. Prefer the framework's own answer
-for anything with logic in it: a helper is a library function (same folder, `library()` default
-export reached through the `lib` proxy _without_ an import — see _Library Function_). For helpers
+for anything with logic in it: a helper is an injected library function (same folder, `library()` default
+export reached through the `lib` proxy _without_ an import — see _Injected Library Function_). For helpers
 shared across groups, prefer a `lib/` group exported through the framework (`library()` factory), or
 a clearly `_`/`.`-prefixed plain file; do not scatter shared helpers across handler folders.
 
@@ -536,6 +536,38 @@ export default handler(({lib: {helper}}) => ({
     },
 }));
 ```
+
+### Delegating into an earlier group — `super.<name>`
+
+`super` also resolves the **handler groups attached before the caller's**, which is how a realm uses
+a library realm's helper (`blong-core`, `blong-access`) without importing it. The call stays in the
+process, so it can carry a transaction the caller already holds:
+
+```typescript
+// realm/blong-access/adapter/db/accessUserAdd.ts
+export default handler(() => ({
+    async accessUserAdd(params, $meta) {
+        const qb = this.config?.context?.queryBuilder;
+        return qb.transaction(async (trx: KnexQb) => {
+            const {resourceId} = await super.coreResourceEnsure({...}, $meta, trx);
+            // … the rest of the add, in the same transaction
+        });
+    },
+}));
+```
+
+An exported `function` handler's name is on the chain in its **original spelling** (the runtime
+stores both that and the normalised, lower-cased one `findHandler` resolves) — write
+`super.coreResourceEnsure`, not the lower-cased form. The providing realm must be attached **first**:
+list it as an early child in the suite (`srv`, `login`, `core`, `access`, …), because attachment
+order is what the prototype chain follows.
+
+Delegation needs a handler whose group is attached **after** the provider, on the **same port**:
+that is why a handler must return an object literal (a plain `function` expression cannot reference
+`super`) and why the whole `adapter/db` layer of every realm shares one `srv.db` port. Two calls
+stay on the `handler:` proxy: a call to a member of the caller's **own group** (siblings are not on
+the literal's prototype chain — use the proxy for those) and a call from a handler in **another
+port** (the test layer sits on its own `testDispatch` port).
 
 ### `super.exec` — reuse automatic CRUD
 
@@ -778,7 +810,7 @@ export default handler(
 ## Examples from Codebase
 
 - **API handler:** `test/framework/demo/orchestrator/subject/subjectNumberSum.ts`
-- **Library function:** `test/framework/demo/orchestrator/subject/sum.ts`
+- **Injected Library function:** `test/framework/demo/orchestrator/subject/sum.ts`
 - **Adapter handler:** `test/framework/demo/adapter/http.ts`
 - **TCP codec:** `test/framework/payshield/adapter/tcp/encode.ts`
 - **Multiple handlers:** `ml/payment/orchestrator/transfer/`

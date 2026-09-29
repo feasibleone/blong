@@ -2,12 +2,12 @@
 
 ## Test handlers
 
-Writing tests is very similar to writing handlers and library functions. The main difference is that
-the files are in the `server/test/test` folder (server-side) or `browser/test/test` (browser-side),
-the first `test` being part of the layer name and the second `test` being part of the name of the
-handlers, which becomes `xxx.test`. The layer name is useful to activate tests only when needed,
-while the `xxx.test` is convenient way to find all test handlers and attach them to the orchestrator
-where they can run.
+Writing tests is very similar to writing handlers and injected library functions. The main
+difference is that the files are in the `server/test/test` folder (server-side) or
+`browser/test/test` (browser-side), the first `test` being part of the layer name and the second
+`test` being part of the name of the handlers, which becomes `xxx.test`. The layer name is useful to
+activate tests only when needed, while the `xxx.test` is convenient way to find all test handlers
+and attach them to the orchestrator where they can run.
 
 **Key Features:**
 

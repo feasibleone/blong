@@ -59,8 +59,40 @@ test('checkDoc names a wrong title and a missing index', async t => {
         'title reported',
     );
     t.ok(
-        found.some(message => message.includes('exactly one index block')),
+        found.some(message => message.includes('expected exactly one index block')),
         'missing index reported',
+    );
+    t.end();
+});
+
+test('checkDoc reports the shapes a wrapped body used to produce (T-175)', async t => {
+    // Each of these was in a committed memory file and neither this checker nor a
+    // package lint reported it: MD049 from a body's asterisk emphasis, MD018 from a
+    // wrap that left a colour literal at the start of a line, MD038 from a code span
+    // written with its own trailing space.
+    const doc = docFrom(`# Frictions
+
+## Open
+
+### F-001 — a body that trips the markdown gate
+
+> _2026-01-01 · cross-cutting · open_
+
+The goal is met in *identity* and the text to the dark theme's
+#ccc measured 1.44:1 for a reader. A span says \`- \` and stays.
+`);
+    const found = messages(doc);
+    t.ok(
+        found.some(message => message.includes('MD049')),
+        'asterisk emphasis reported',
+    );
+    t.ok(
+        found.some(message => message.includes('MD018')),
+        'a hash-prefixed token at the start of a line reported',
+    );
+    t.ok(
+        found.some(message => message.includes('MD038')),
+        'a code span with a space inside reported',
     );
     t.end();
 });

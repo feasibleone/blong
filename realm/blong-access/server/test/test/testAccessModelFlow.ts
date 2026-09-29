@@ -67,7 +67,14 @@ export default handler(
                         {
                             role: {
                                 roleName: `MODEL-TEST-ROLE-${Date.now()}`,
-                                roleBit: 998,
+                                // A pin next to the seeded 0-5 rather than one at
+                                // 998: the allocation below starts from
+                                // `max(high-water mark, MAX(roleBit)) + 1`, so a high
+                                // pin lifts the mark to 999+ and the space walks to
+                                // the 1023 ceiling (F-298).  This one is above the
+                                // specs' pins (6 and 7) and below what this file
+                                // allocates (9 onwards), so the two never collide.
+                                roleBit: 8,
                                 description: 'model flow test role',
                             },
                         },
@@ -172,6 +179,8 @@ export default handler(
                     const created = await role;
                     let failure = '';
                     try {
+                        // 997 is only ever *asked for*, never stored: the edit is
+                        // refused, so this value cannot spend a bit of the space.
                         await accessRoleEdit(
                             {role: {roleId: created.roleId, roleBit: 997}},
                             {...$meta, expect: ['role.bitImmutable']},
@@ -286,6 +295,37 @@ export default handler(
                     return result.user;
                 },
 
+                // 3b. A failure inside the transaction leaves nothing behind — the
+                //     `core_resource` row, the `access_user` row and the credentials
+                //     all go back together.  The failure is a real one rather than an
+                //     injected stub: `credentialType` is wider than its column, so
+                //     MySQL refuses the credential insert after `core.resource.ensure`
+                //     has already created the resource *in the same transaction*.
+                //     Before the resource row moved inside, this left a user row
+                //     nobody could reuse the name of (the ghost shape of T-102).
+                async function refusedAddRollsBack(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                    const emailAddress = `model-test-rollback-${Date.now()}@example.com`;
+                    let refused = false;
+                    try {
+                        await accessUserAdd(
+                            {
+                                user: {emailAddress, isActive: true},
+                                credential: [{credentialType: 'x'.repeat(300), password: 'secret'}],
+                            },
+                            $meta,
+                        );
+                    } catch {
+                        refused = true;
+                    }
+                    assert.ok(refused, 'the add is refused when a credential cannot be stored');
+                    const found = await accessUserFind<Array<{userId: string}>>(
+                        {filterBy: {emailAddress}, paging: {pageNumber: 1, pageSize: 10}},
+                        $meta,
+                    );
+                    assert.equal(found.length, 0, 'nothing of the refused add was kept');
+                    return true;
+                },
+
                 async function getUserDetails(
                     assert: IAssert,
                     {
@@ -359,7 +399,7 @@ export default handler(
                     return created;
                 },
 
-                // 4. Session close — revokes a (fabricated) session id.  The target is
+                // 5. Session close — revokes a (fabricated) session id.  The target is
                 //    not the caller's own, so the `access.session.close` action is
                 //    required (granted on the meta below).
                 async function closeSession(assert: IAssert, {$meta}: {$meta: IMeta}) {
@@ -371,7 +411,7 @@ export default handler(
                     return result;
                 },
 
-                // 5. Clean up the created entities.
+                // 6. Clean up the created entities.
                 async function cleanup(
                     assert: IAssert,
                     {

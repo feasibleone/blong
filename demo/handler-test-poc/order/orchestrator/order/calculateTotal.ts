@@ -1,9 +1,9 @@
 import {library} from '@feasibleone/blong';
 
 /**
- * Library function: calculates the total price for an array of order items.
+ * Injected library function: calculates the total price for an array of order items.
  *
- * Demonstrates how library functions can use optional assertions
+ * Demonstrates how injected library functions can use optional assertions
  * to validate invariants without production overhead.
  */
 export default library(

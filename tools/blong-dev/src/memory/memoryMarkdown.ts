@@ -6,6 +6,13 @@
  * this file format can actually break — not the whole of markdownlint — checked
  * here so the CLI (and CI) can see them too.
  *
+ * The wrapper used to break three of them itself: it wrapped inside an emphasis
+ * span (MD037), started a continuation line with a token markdown reads as block
+ * syntax — a colour literal, a numbered option (MD018, MD031/MD032) — and left a
+ * body's `*asterisk emphasis*` as it arrived (MD049). The wrapper no longer
+ * produces them, and they are checked here because a body can still arrive with
+ * one, and because a hand edit can reintroduce them.
+ *
  * The rules the format deliberately does *not* follow are settled in the
  * repository's `.markdownlint.json` (line length 100, to match prettier).
  */
@@ -26,6 +33,13 @@ const ORDERED = /^\s*\d+[.)]\s/;
 const TABLE = /^\s*\|/;
 const HTML = /<\/?[a-zA-Z][^>]*>/;
 const EMPHASIS_ONLY = /^\s*(?:\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)\s*$/;
+const CODE_SPAN = /`[^`]*`/g;
+/** `#fff` at the start of a line is a heading with no space after the hash. */
+const ATX_NO_SPACE = /^#{1,6}[^#\s]/;
+/** A real asterisk emphasis span (at most a phrase), not `**bold**` and not a glob. */
+const ASTERISK_EMPHASIS = /(?<![\w*])\*[^\s*_]+(?:\s+[^\s*_]+){0,5}\*(?![\w*])/;
+/** `* spaced *` — markdownlint's MD037 shape. */
+const SPACED_EMPHASIS = /(?:^|\s)[*_]\s+[^*_\n]*\s+[*_](?:$|\s)/;
 
 /**
  * Check the markdown shape of a document's lines.
@@ -70,6 +84,26 @@ export function checkMarkdown(
             }
             if (EMPHASIS_ONLY.test(line))
                 report(index, 'MD036', 'emphasis used instead of a heading');
+
+            // The four shapes a wrapped body produced and neither this checker nor
+            // `lint` reported (T-175). Code spans are removed before the emphasis
+            // rules, so `git log --abbrev=12` is never read as emphasis.
+            if (ATX_NO_SPACE.test(line)) {
+                report(
+                    index,
+                    'MD018',
+                    'no space after hash on atx style heading — backtick the token (`#ccc`)',
+                );
+            }
+            for (const span of line.match(CODE_SPAN) ?? []) {
+                if (span.slice(1, -1) !== span.slice(1, -1).trim())
+                    report(index, 'MD038', 'spaces inside a code span');
+            }
+            const bare = line.replace(CODE_SPAN, '');
+            if (ASTERISK_EMPHASIS.test(bare))
+                report(index, 'MD049', 'emphasis style: use underscores, not asterisks');
+            if (SPACED_EMPHASIS.test(line))
+                report(index, 'MD037', 'spaces inside emphasis markers');
 
             const heading = HEADING.exec(line);
             if (heading) {
