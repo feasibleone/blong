@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/feasibleone/blong/compare/blong-chain-v1.11.0...blong-chain-v1.11.1) (2026-09-29)
+
+
+### Bug Fixes
+
+* failed tests ([108caf5](https://github.com/feasibleone/blong/commit/108caf5f3e92151f8b929115e0a8f6b2acdd3d23))
+
 ## [1.11.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.10.0...blong-chain-v1.11.0) (2026-09-26)
 
 

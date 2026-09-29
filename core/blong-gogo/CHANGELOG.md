@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.38.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.37.0...blong-gogo-v1.38.0) (2026-09-29)
+
+
+### Features
+
+* improve storybook scaffold ([cc66ab4](https://github.com/feasibleone/blong/commit/cc66ab480eb9af2def562873cac12d06591c0de4))
+
+
+### Bug Fixes
+
+* failed tests ([108caf5](https://github.com/feasibleone/blong/commit/108caf5f3e92151f8b929115e0a8f6b2acdd3d23))
+* gaps ([19beb7d](https://github.com/feasibleone/blong/commit/19beb7d191e853c8182409256c97af7a1e413d57))
+
 ## [1.37.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.36.0...blong-gogo-v1.37.0) (2026-09-26)
 
 
