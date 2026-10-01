@@ -27,11 +27,14 @@ import {createConnection} from 'mysql2/promise';
 import {readFileSync} from 'node:fs';
 import {userInfo} from 'node:os';
 import {join} from 'node:path';
-import stripJsonComments from 'strip-json-comments';
-import yaml from 'yaml';
-import {findUp} from '../utils/findConfig.ts';
+import {findUp, getPath, parseDevRc} from '../devrc.ts';
 import {formatTable} from '../utils/table.ts';
 import {parseArgs} from './log.ts';
+
+// Re-exported: `parseDevRc` and `getPath` were defined here before they moved to
+// `../devrc.ts`, and `sql.test.ts` (plus the sql command itself) reads them from
+// this module.
+export {getPath, parseDevRc};
 
 const ANSI = {cyan: '\x1b[36m', dim: '\x1b[2m', reset: '\x1b[0m'} as const;
 
@@ -65,23 +68,6 @@ export interface IAdminConnection {
 
 /** A `mysql2`-style connection factory (injectable for tests). */
 export type IConnect = (config: IConnectionInfo) => Promise<IAdminConnection>;
-
-/** Parse `.blong_devrc` content (JSON-with-comments or YAML), mirroring blong-config. */
-export function parseDevRc(content: string): Record<string, unknown> {
-    if (/^\s*{/.test(content)) {
-        return JSON.parse(stripJsonComments(content)) as Record<string, unknown>;
-    }
-    const result = yaml.parse(content);
-    return result && typeof result === 'object' ? (result as Record<string, unknown>) : {};
-}
-
-/** Resolve a dot path (e.g. `srv.db`) on the parsed config. */
-export function getPath(config: Record<string, unknown>, path: string): unknown {
-    return path.split('.').reduce<unknown>((acc, key) => {
-        if (acc && typeof acc === 'object') return (acc as Record<string, unknown>)[key];
-        return undefined;
-    }, config);
-}
 
 /**
  * The dev database naming pattern, mirroring the `dev` block of the shared

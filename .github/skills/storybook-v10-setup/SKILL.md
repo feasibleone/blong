@@ -32,8 +32,10 @@ package outside Blong; in a realm only the following are realm-specific:
 
 - **`.storybook/main.ts`** — `defineBlongStorybookMain({importMetaDirname: __dirname})`; stories
   default to `src/**`.
-- **`.storybook/preview.tsx`** — `withBlong(browser)`, the default export of
-  `@feasibleone/blong-browser/storybook.tsx`, over the composed entry (below).
+- **`.storybook/preview.tsx`** — `defineBlongStorybookPreview(browser, {backend: true})`, the
+  preview factory exported by `@feasibleone/blong-browser/storybook.tsx`, over the composed entry
+  (below). It installs the story toolbar and the decorators that apply it; pass `{decorators}`
+  instead of a browser entry for stories that have no platform (component stories).
 - **`src/stories/*.stories.tsx`** —
   `page('{subject}.{object}.browse' | '.open' | '.new' | '.report')` from
   `@feasibleone/blong-browser/storyHelper` for a model page, and `portal()` for the whole shell.
@@ -51,17 +53,24 @@ Also note the export paths: they are `.../storyHelper`, `.../storybookMain` and 
 appending `.ts`/`.tsx` to those (e.g. `.../storyHelper.tsx`) does not resolve, because they are
 declared without an extension in `blong-browser`'s `exports`.
 
-Every story renders against the **browser mock adapter** (the `storybook` intent, activated by
-`withBlong`), fed by `meta/fixture`; nothing is fetched from a server, so a story needs the realm's
-`browser.ts` to glob `meta/fixture/**/*.ts` or it renders empty. `kukum storybook add --kind=story`
-does that for you — it splices the folder into both `browser.ts` children lists — and says so in the
-result when the entry cannot be read or lists no `./meta` folder; only then add it by hand. Those
-rows are Storybook's data: the app's Vite config stubs every `meta/fixture` module and this factory
-removes that stub, so a Storybook gets the fixture and an app build does not — keep both halves, and
-do not "fix" a missing fixture by adding the glob to `.storybook/`. Toggling a story between that
-mock and a **real** backend is not implemented yet — see the todo on `withBlong` in
-`core/blong-browser`'s memory, which also names the per-model `config.mock` switch in
-`meta/db/db.ts` that lets a dev server serve a realm without a database.
+Every story renders against the **browser mock adapter** by default (the `storybook` intent,
+activated by `withBlong`), fed by `meta/fixture`; nothing is fetched from a server, so a story needs
+the realm's `browser.ts` to glob `meta/fixture/**/*.ts` or it renders empty.
+`kukum storybook add --kind=story` does that for you — it splices the folder into both `browser.ts`
+children lists — and says so in the result when the entry cannot be read or lists no `./meta`
+folder; only then add it by hand. Those rows are Storybook's data: the app's Vite config stubs every
+`meta/fixture` module and this factory removes that stub, so a Storybook gets the fixture and an app
+build does not — keep both halves, and do not "fix" a missing fixture by adding the glob to
+`.storybook/`.
+
+A story can also be switched to a **real** gateway from the toolbar:
+`defineBlongStorybookPreview(browser, {backend: true})` adds Backend (Mock / Live JSON-RPC / Live
+MLE) and Role items, backed by the `storybookJsonrpc` / `storybookMle` intents and a dev-server
+plugin that mints a token for the role (`.blong_devrc`'s `storybook:` section, or the seeded test
+users). See the pattern doc's
+[story toolbar](../../../docs/blong/docs/patterns/blong-browser.md#the-story-toolbar) for the
+configuration and the transports; a component preview with no platform passes `{decorators}` instead
+and gets only the theme/language/direction items.
 
 A model that declares `layouts` earns one story per layout, because the layout is what a reviewer
 comes to the story to see: `demo/blong-marine/src/stories/Coral.stories.tsx` is the reference, with
@@ -139,7 +148,7 @@ Add to `package.json`:
         "storybook": "storybook dev -p 6006",
         "storybook:build": "storybook build -o storybook-static",
         "storybook:test": "test-storybook",
-        "storybook:test:ci": "storybook build && http-server storybook-static --port 6006 --silent & npx wait-on http://127.0.0.1:6006 && test-storybook && kill $(lsof -t -i:6006)",
+        "storybook:test:ci": "storybook dev --ci --port 6006 & SERVER=$!; for i in $(seq 1 120); do curl -sf -o /dev/null http://127.0.0.1:6006 && break; sleep 1; done; npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill $SERVER 2>/dev/null; exit $EXIT",
         "visual:update": "npm run storybook:test -- --updateSnapshot"
     }
 }

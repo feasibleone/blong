@@ -121,6 +121,11 @@ story, so the story always renders the variant it names. The checkout contains p
 from the same page — `editor--glass` and `editor--wood`, plus a toolbar and a tilt pair — which is
 the cheapest way to confirm that a change to one variant did not disturb the other.
 
+A reviewer can also switch theme, palette and text direction from the story toolbar (see
+[the story toolbar](./blong-browser.md#the-story-toolbar)), which writes the same app-store
+selection the portal's own theme switcher writes. A hero story that sets `parameters.theme` keeps
+its variant until the toolbar is used — only a changed choice is applied.
+
 Tests worth knowing about: `themeRegistry.test.ts` asserts that option ids are unique and that every
 referenced PrimeReact folder has a loader (the failure mode being a theme option that silently loads
 nothing); `Theme.test.tsx` and `ThemeSwitcher.test.tsx` cover variant selection, the palette toggle

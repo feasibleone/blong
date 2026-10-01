@@ -243,11 +243,15 @@ t.test('storybook and model templates keep their two-factory contract', t => {
     const preview = fileOf('storybook', 'preview', '.storybook/preview.tsx');
     t.match(
         preview,
-        /import withBlong from '@feasibleone\/blong-browser\/storybook\.tsx'/,
-        'preview default-imports withBlong from storybook.tsx',
+        /import \{defineBlongStorybookPreview\} from '@feasibleone\/blong-browser\/storybook\.tsx'/,
+        'preview imports the preview factory from storybook.tsx',
     );
-    t.notMatch(preview, /storyHelper/, 'preview does not take withBlong from storyHelper');
-    t.match(preview, /withBlong\(browser\)/, 'preview decorates with the composed entry');
+    t.notMatch(preview, /storyHelper/, 'preview does not take its decorator from storyHelper');
+    t.match(
+        preview,
+        /defineBlongStorybookPreview\(browser, \{backend: true\}\)/,
+        'preview decorates with the composed entry and switches the backend item on',
+    );
     t.match(
         preview,
         /from '\.\.\/index\.browser\.ts'/,
@@ -257,7 +261,7 @@ t.test('storybook and model templates keep their two-factory contract', t => {
     const story = fileOf('storybook', 'story', 'src/stories/Item.stories.tsx');
     t.match(story, /from '@feasibleone\/blong-browser\/storyHelper'/, 'story uses storyHelper');
     t.match(story, /page\('test\.item\.browse'\)/, 'story renders the model browse page');
-    t.match(story, /page\('test\.item\.open', 1\)/, 'story renders an open page');
+    t.match(story, /page\('test\.item\.open', 101\)/, 'story renders an open page');
     t.notMatch(story, /\.\.\/components\//, 'story does not import a component nobody generates');
     t.ok(
         (getPrimitive('storybook')?.files({...context, kind: 'story'})[0]?.notices ?? []).some(
@@ -267,7 +271,7 @@ t.test('storybook and model templates keep their two-factory contract', t => {
     );
     t.ok(
         (getPrimitive('storybook')?.files({...context, kind: 'story'})[0]?.notices ?? []).some(
-            notice => /fixture's first row/.test(notice),
+            notice => /same ids as the/.test(notice),
         ),
         'story tells the caller the Open record must exist in the fixture',
     );

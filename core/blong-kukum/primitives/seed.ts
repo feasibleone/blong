@@ -69,19 +69,37 @@ const seed: PrimitiveDescriptor = {
         if (context.kind !== 'test') return files;
         const rbac = readPlainSource(host, root, RBAC_SEED);
         if (!rbac) return files;
-        const capability = `${context.subject}Manage`;
-        const actions = ['add', 'find', 'get', 'edit', 'remove'].map(action =>
-            tripleName(context.subject, context.object, action),
-        );
-        const merged = appendCommaListValue(rbac, capability, actions);
-        if (merged === undefined) {
+        /**
+         * Every realm's test seed declares the three capabilities the Storybook
+         * toolbar's Role item demonstrates — full access, read + edit, read-only —
+         * so a new entity joins all three, or switching to Manager or Guest in a
+         * story would show an empty (403) page instead of a narrower one.
+         */
+        const grants: [string, string[]][] = [
+            [`${context.subject}Manage`, ['add', 'find', 'get', 'edit', 'remove']],
+            [`${context.subject}Maintain`, ['add', 'find', 'get', 'edit']],
+            [`${context.subject}View`, ['find', 'get']],
+        ];
+        let merged = rbac;
+        const missing: string[] = [];
+        for (const [capability, actions] of grants) {
+            const next = appendCommaListValue(
+                merged,
+                capability,
+                actions.map(action => tripleName(context.subject, context.object, action)),
+            );
+            if (next === undefined) missing.push(capability);
+            else merged = next;
+        }
+        if (missing.length) {
             return [
                 {
                     ...files[0],
                     notices: [
-                        `${RBAC_SEED} does not declare a '${capability}' capability; add the ` +
-                            `${context.object} actions to it by hand or every call will be ` +
-                            'denied through the gateway.',
+                        `${RBAC_SEED} does not declare ${missing
+                            .map(capability => `'${capability}'`)
+                            .join(' or ')}; add the ${context.object} actions to them by hand ` +
+                            'or every call will be denied through the gateway.',
                     ],
                 },
             ];

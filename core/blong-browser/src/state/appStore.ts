@@ -38,6 +38,13 @@ export interface IThemeSelection {
     themeId?: string;
     /** Selected palette for themes that offer both light and dark variants. */
     palette?: 'light' | 'dark';
+    /**
+     * Text direction. Set by the Storybook toolbar (the portal itself offers no
+     * direction control), so it lives beside the user's theme choice and shares
+     * its persistence — `Theme` reads it in preference to its `direction` prop,
+     * which is how a toolbar toggle reaches a story whose container owns `Theme`.
+     */
+    direction?: 'ltr' | 'rtl';
 }
 
 const THEME_STORAGE_KEY = 'blong.theme';
@@ -47,10 +54,18 @@ function readThemeSelection(): IThemeSelection {
     try {
         const raw = localStorage.getItem(THEME_STORAGE_KEY);
         if (!raw) return {};
-        const parsed = JSON.parse(raw) as {themeId?: unknown; palette?: unknown};
+        const parsed = JSON.parse(raw) as {
+            themeId?: unknown;
+            palette?: unknown;
+            direction?: unknown;
+        };
         const selection: IThemeSelection = {};
         if (typeof parsed.themeId === 'string') selection.themeId = parsed.themeId;
-        if (parsed.palette === 'light' || parsed.palette === 'dark') selection.palette = parsed.palette;
+        if (parsed.palette === 'light' || parsed.palette === 'dark')
+            selection.palette = parsed.palette;
+        if (parsed.direction === 'ltr' || parsed.direction === 'rtl') {
+            selection.direction = parsed.direction;
+        }
         return selection;
     } catch {
         return {};
@@ -60,7 +75,7 @@ function readThemeSelection(): IThemeSelection {
 function writeThemeSelection(selection: IThemeSelection): void {
     if (typeof localStorage === 'undefined') return;
     try {
-        if (!selection.themeId && !selection.palette) {
+        if (!selection.themeId && !selection.palette && !selection.direction) {
             localStorage.removeItem(THEME_STORAGE_KEY);
         } else {
             localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(selection));
@@ -141,6 +156,12 @@ export interface IAppActions {
     // Theme
     /** Replace the explicit theme selection (persisted to localStorage). */
     setTheme: (selection: IThemeSelection) => void;
+    /**
+     * Merge a text direction into the theme selection. Separate from `setTheme`
+     * because that one replaces: a caller that only knows the direction (the
+     * Storybook toolbar) must not discard the theme and palette beside it.
+     */
+    setDirection: (direction: 'ltr' | 'rtl') => void;
 
     // Login prompt
     setLoginPrompt: (visible: boolean) => void;
@@ -284,9 +305,7 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
             // Re-apply the current language's dictionary immediately so the UI
             // reflects it even if the language was set before the dicts loaded.
             translations:
-                Object.keys(dicts).length > 0
-                    ? (dicts[state.language] ?? {})
-                    : state.translations,
+                Object.keys(dicts).length > 0 ? (dicts[state.language] ?? {}) : state.translations,
         })),
     setLanguage: language =>
         set(state => ({
@@ -316,6 +335,13 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
         writeThemeSelection(selection);
         set({theme: selection});
     },
+    setDirection: direction =>
+        set(state => {
+            if (state.theme.direction === direction) return {};
+            const theme = {...state.theme, direction};
+            writeThemeSelection(theme);
+            return {theme};
+        }),
 
     // Login prompt
     setLoginPrompt: visible => set({loginPrompt: visible}),

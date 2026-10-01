@@ -7,6 +7,13 @@ user:
     password: testPassword
     emailAddress: testAdmin@example.com
     roles: Admin
+  # The Storybook toolbar's Manager option logs in as this user; `Manager` is a
+  # seeded production role (meta/db/1-accessRoleMerge.yaml) that would otherwise
+  # have no capabilities and therefore be denied every call.
+  testManager:
+    password: testPassword
+    emailAddress: testManager@example.com
+    roles: Manager
   testViewer:
     password: testPassword
     emailAddress: testViewer@example.com
@@ -23,6 +30,7 @@ user:
     roles: NoLogin
 role:
   Admin: testManagement,accessModelAdmin,loginCapability,blongRealmRead
+  Manager: loginCapability
   Customer: loginCapability
   Guest: guestBasic,loginCapability
   # No `login` capability → the user cannot establish/renew a session

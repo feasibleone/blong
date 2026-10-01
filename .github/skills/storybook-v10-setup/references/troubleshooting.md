@@ -19,7 +19,7 @@ pkill -f "python3 -m http.server"
 **RIGHT:**
 
 ```bash
-npm run storybook:test:ci  # Uses http-server NPM package (already in scripts)
+npm run storybook:test:ci  # storybook dev --ci, polls the port, then test-storybook
 ```
 
 ### ❌ Anti-Pattern 2: Missing Interaction Tests
@@ -221,7 +221,7 @@ viteFinal(config) {
 
 **Symptom**: Browser console shows `403 Forbidden` for a font or asset URL like:
 
-```
+```text
 http://localhost:6006/@fs/home/.../common/temp/node_modules/.pnpm/primeicons@6.0.1/node_modules/primeicons/fonts/primeicons.woff
 ```
 
@@ -264,6 +264,28 @@ viteFinal(config) {
 
 So from `.storybook/main.ts`, `../../../common/temp/node_modules` reaches
 `<monorepo-root>/common/temp/node_modules`. Adjust if your package is nested differently.
+
+**The same 403, for an asset that belongs to another workspace package**: a realm's story renders
+`blong-browser` components, and a component's CSS can reference an image that lives in
+`blong-browser` (`/@fs/.../core/blong-browser/src/components/Theme/assets/wood-edge.webp`). A
+hand-written list built from the served package — `'..'` plus the virtual store — does not include
+it, and the failure reads as a broken theme rather than a config gap. Either add every package you
+render from, or allow the monorepo root:
+
+```typescript
+fs: {
+    allow: [
+        ...(config.server?.fs?.allow ?? []), // whatever the project config allowed
+        '..',                                 // the package being served
+        resolve(__dirname, '../../..'),       // monorepo root: every workspace package's assets
+        resolve(__dirname, '../../../common/temp/node_modules'),
+    ],
+},
+```
+
+`defineBlongStorybookMain` does exactly that, so a realm that uses the factory needs no list of its
+own. Keep the spread: setting `allow` replaces Vite's default (the workspace root), which is why a
+narrow list is worse than no list at all.
 
 ---
 

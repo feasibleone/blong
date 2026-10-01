@@ -62,7 +62,10 @@ The template writes a complete realm: `server.ts`, `browser.ts` and their entrie
 portal stories, `orchestrator/subject/init.ts`, `server/test/`, a Playwright spec, the toolchain
 files and a `package.json`. The scaffolded realm contributes only what is its own — the namespace in
 `orchestrator/subject/init.ts`, the schema and the model spec — and reuses `blong-server`'s subject
-orchestrator and its `db` adapter, which is the same rule every hand-written realm follows.
+orchestrator and its `db` adapter, which is the same rule every hand-written realm follows. Its
+`.storybook/preview.tsx` is one line, `defineBlongStorybookPreview(browser, {backend: true})`, which
+brings the story toolbar (mock or live backend, role, theme, language, direction) with it; the
+fixture it ships mirrors the test seed's record ids, so the Open story loads in both backend modes.
 
 Generated _output_ is not part of the template: `node_modules`, `dist`, `.tap`, `coverage`,
 `.ci-report`, `allure-*`, `.playwright`, `storybook-static`, `*-snapshots` and the template's own

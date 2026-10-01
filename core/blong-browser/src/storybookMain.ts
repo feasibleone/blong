@@ -26,6 +26,7 @@
 import type {StorybookConfig} from '@storybook/react-vite';
 import {createRequire} from 'node:module';
 import {dirname, resolve} from 'node:path';
+import {storybookBackend, storybookBackendDefine} from './storybookBackend.ts';
 
 /**
  * Name of the app-only plugin that stubs a realm's `meta/fixture` modules.
@@ -107,6 +108,16 @@ export function defineBlongStorybookMain(options: IBlongStorybookMainOptions): S
         }
     });
 
+    // Storybook dev servers reach assets by absolute path (`/@fs/<path>`), and a
+    // path outside `server.fs.allow` is refused with 403 — which reads as a broken
+    // theme rather than a config gap.  The list cannot be assembled from the
+    // consumer package alone: a realm's stories import from blong-browser (which
+    // owns the theme images), and a suite's from any realm it composes, none of
+    // which is under `<package>/.storybook`.  So the monorepo root is allowed
+    // too — the same reach Vite's own default (the workspace root) would give,
+    // which setting `allow` at all otherwise discards.
+    const monorepoRoot = resolve(importMetaDirname, '../../..');
+
     return {
         stories: [...localStories, ...realmStories],
         addons: [
@@ -133,10 +144,15 @@ export function defineBlongStorybookMain(options: IBlongStorybookMainOptions): S
                 // hand and watching the fixture leave the Storybook bundle too.
                 plugins: (config.plugins ?? [])
                     .flat()
-                    .filter(plugin => (plugin as {name?: string})?.name !== DROP_FIXTURES),
+                    .filter(plugin => (plugin as {name?: string})?.name !== DROP_FIXTURES)
+                    // The live-backend toolbar: mints a token per role and, in the
+                    // JSON-RPC mode, terminates `/rpc` for the page.  Inert in a
+                    // build, where `configureServer` never runs.
+                    .concat(storybookBackend()),
                 define: {
                     ...config.define,
                     'process.env': {},
+                    ...storybookBackendDefine(),
                 },
                 resolve: {
                     ...config.resolve,
@@ -146,8 +162,12 @@ export function defineBlongStorybookMain(options: IBlongStorybookMainOptions): S
                 server: {
                     ...config.server,
                     fs: {
+                        ...config.server?.fs,
                         allow: [
+                            // Whatever the project's own vite config already allows.
+                            ...(config.server?.fs?.allow ?? []),
                             resolve(importMetaDirname, '..'),
+                            monorepoRoot,
                             monorepoNodeModules,
                             ...realmRoots,
                         ],

@@ -54,11 +54,11 @@ open (36)
 - F-306
 - F-308
 - F-303
-- T-172
 - playwright webp
 - exclusion groups
 - ACL test in cucumber
-- local table order
+- local table creation order
+- test reports missing for many of the packages
 - check login.expire.deleteAfter, access.session.close
 - generate .http files
 - decisions as tests and code reference
@@ -70,26 +70,10 @@ open (36)
 - align semantic-log and unified-handler-test.md
 - editor features visual content
 - gate the console calls in the browser
-- agents struggle with coverage, create a tool/skill for tap - add screenshots and diagrams to the
-  docs - agents frequently cause bash error `event not found` when they run `grep` with a pattern
-  containing `!` (e.g. `!route`) Example:
-
-    ```bash
-    cd /home/kalin/work/blong/blong/core/semantic-log && echo "=== hubA.ts ===";
-    grep -n "localRate\|localStatus\|crossed\|withhold\|settled.status\|const local" flow/hubA.ts;
-    echo "=== proxy.ts ===";
-    grep -n "reachable\|decide\|route\|if (!route" flow/proxy.ts;
-    echo "=== flows.ts ===";
-    grep -n "basePort\|level: options.level\|retries\|participants.push\|kind === 'single'" flow/flows.ts;
-    echo "=== hub.ts ===";
-    grep -n "?? 1\|?? 'unknown'\|withhold" flow/hub.ts;
-    echo "=== payer.ts ===";
-    grep -n "?? 1\|rateLimit =\|quote.body" flow/payer.ts
-    ```
-
+- agents struggle with coverage, create a tool/skill for tap
+- add screenshots and diagrams to the docs
 - lib unit tests - allow easy testing of library() functions
 - skills as tools
-- flow diagram for method calls
 - component diagram for a suite
 - https://github.com/tt-a1i/archify
 - https://github.com/trailhq/Graft
@@ -105,13 +89,11 @@ open (36)
   https://github.com/kubernetes-sigs/kustomize/blob/master/examples/remoteBuild.md
 - same queries are repeated in multiple places, they should be refactored into a single function
 - avatar photo upload (initials-only for now — per user decision)
-- allow multi statement in blong-dev sql
 - commander ui enhancements for admin tasks
 - cross-reference all docs and critical source code
 - tests are doing too many assertions instead of snapshotting
 - compile queries to procedures
 - combined storybook
-- backend for the storybook
 - translations from the DB
 - report hanging handlers after tests
 
@@ -390,12 +372,12 @@ sweep them deliberately with a run of each suite after a baseline regeneration.
 > _2026-09-22 · docs · open_
 
 blong-dev docs check is side-effect-free for artefacts whose generator only writes the registered
-destination, but not for the two produced by Playwright specs: writing their markdown
-needs --update-snapshots, which also rewrites that package's committed _.play.ts-snapshots
-baselines, and check does not snapshot or restore those. So a full docs check can leave modified
-baselines. Both artefacts are already guarded by their own packages (ci-ui runs the same spec, which
-compares the artefact and fails when it is stale), so the workaround is to run check filtered to
-flows._ and png.\*. The proper fix is a second, compare-only command per artefact in
+destination, but not for the two produced by Playwright specs: writing their markdown needs
+--update-snapshots, which also rewrites that package's committed _.play.ts-snapshots baselines, and
+check does not snapshot or restore those. So a full docs check can leave modified baselines. Both
+artefacts are already guarded by their own packages (ci-ui runs the same spec, which compares the
+artefact and fails when it is stale), so the workaround is to run check filtered to flows._ and
+png.\*. The proper fix is a second, compare-only command per artefact in
 docs/blong/docs-artifacts.json. Recorded as item 5 in the Further considerations of
 plans/docs/VISUAL_DOCS_PLAN.md.
 

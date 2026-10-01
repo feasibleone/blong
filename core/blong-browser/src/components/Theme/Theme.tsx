@@ -176,6 +176,10 @@ export function Theme({theme, children}: IThemeProps) {
     const type = theme.type ?? 'compact';
     const selection = useAppStore(s => s.theme);
     const setTheme = useAppStore(s => s.setTheme);
+    // The store's direction (Storybook toolbar) outranks the config prop, the
+    // same way the store's theme choice outranks `theme.name` below: the
+    // toolbar has no prop to write to when the platform owns this component.
+    const direction = selection.direction ?? theme.direction;
 
     // Base theme from the config: the legacy type/palette mapping, optionally
     // overridden by an explicit `name` (theme-option id or folder name).
@@ -273,8 +277,8 @@ export function Theme({theme, children}: IThemeProps) {
         const fontSize = theme.fontSize ?? PALETTE_FONT_SIZES[type];
 
         // Apply direction
-        document.documentElement.dir = theme.direction ?? 'ltr';
-        document.documentElement.lang = theme.direction === 'rtl' ? 'ar' : 'en';
+        document.documentElement.dir = direction ?? 'ltr';
+        document.documentElement.lang = direction === 'rtl' ? 'ar' : 'en';
 
         // Apply font size
         document.documentElement.style.fontSize = `${fontSize}px`;
@@ -283,7 +287,7 @@ export function Theme({theme, children}: IThemeProps) {
         if (theme.primary) {
             document.documentElement.style.setProperty('--p-primary-color', theme.primary);
         }
-    }, [theme.direction, theme.fontSize, theme.primary, type]);
+    }, [direction, theme.fontSize, theme.primary, type]);
 
     // Load the active PrimeReact theme into a single <style> element. Writing
     // the CSS in place keeps exactly one theme active — a side-effect CSS import
@@ -313,7 +317,7 @@ export function Theme({theme, children}: IThemeProps) {
     }, [folder]);
 
     const contextValue: IThemeContextValue = {
-        config: {...theme, palette: activePalette, variant},
+        config: {...theme, palette: activePalette, variant, direction},
         optionId: option.id,
         option,
         palette: activePalette,
@@ -332,11 +336,11 @@ export function Theme({theme, children}: IThemeProps) {
                     `blong-app-${activePalette}`,
                     `blong-app-${type}`,
                     variant !== 'standard' ? VARIANT_CSS_CLASS[variant] : '',
-                    theme.direction === 'rtl' ? 'blong-app-rtl' : '',
+                    direction === 'rtl' ? 'blong-app-rtl' : '',
                 ]
                     .filter(Boolean)
                     .join(' ')}
-                dir={theme.direction ?? 'ltr'}
+                dir={direction ?? 'ltr'}
             >
                 {children}
             </div>

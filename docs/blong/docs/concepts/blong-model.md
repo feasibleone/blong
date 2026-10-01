@@ -145,8 +145,9 @@ from `.model` and `.fixture` handlers. No manual mock setup is needed — add a 
 `{subject}Fixture` that returns sample data keyed by `'{subject}.{object}'`.
 
 The `Model` React component (exported from `@feasibleone/blong-browser`) is the canonical way to
-render model pages in Storybook stories. It uses the full blong platform (loaded via
-`withBlong(browser)` in `.storybook/preview.tsx`) so all handlers are available.
+render model pages in Storybook stories. It uses the full blong platform (loaded by
+`defineBlongStorybookPreview` in `.storybook/preview.tsx`) so all handlers are available — from the
+realm's fixture, or from a live gateway when the story toolbar's Backend item says so.
 
 See `demo/blong-marine/` for a working Storybook example using the marine biology realm. Stories
 live in `demo/blong-marine/src/stories/` and use `page()` / `portal()` helpers from

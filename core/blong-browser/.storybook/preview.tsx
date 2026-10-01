@@ -3,7 +3,9 @@ import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
 import 'primereact/resources/primereact.min.css';
 import 'primereact/resources/themes/vela-blue/theme.css';
-import {withDispatch, type Handler} from './dispatch.js';
+import {bgLocale, useAppStore} from '../src/index.ts';
+import {defineBlongStorybookPreview} from '../storybook.tsx';
+import {bgTranslations, withDispatch, type Handler} from './dispatch.js';
 
 // Ensure proper height propagation for fullscreen stories
 const style = document.createElement('style');
@@ -35,19 +37,28 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-export const makePreview = ({overrides}: {overrides?: Record<string, Handler>}) => ({
-    decorators: [withDispatch(overrides)],
-    parameters: {
-        actions: {argTypesRegex: '^on[A-Z].*'},
-        layout: 'fullscreen',
-        controls: {
-            matchers: {
-                color: /(background|color)$/i,
-                date: /Date$/,
-            },
-        },
-    },
-});
+// The toolbar's Language item swaps the active dictionary through the app
+// store, so the one dictionary this package ships has to be registered up
+// front — a story's own `lang` arg only ever set it for that render.
+useAppStore.getState().setTranslationsByLanguage({bg: bgTranslations});
+
+/**
+ * The preview for the component library's own stories.
+ *
+ * Unlike a realm's preview these stories have no platform and no backend
+ * adapter: `withDispatch` answers every method from in-file fixtures, so the
+ * factory is given the decorator instead of a browser entry and the toolbar
+ * offers the presentation choices only (no `backend` item).
+ *
+ * `parameters.theme.languages` registers the bundled Bulgarian PrimeReact
+ * locale for every story, so the toolbar's Language item has widget strings to
+ * switch as well as app ones.
+ */
+export const makePreview = ({overrides}: {overrides?: Record<string, Handler>} = {}) =>
+    defineBlongStorybookPreview(
+        {decorators: [withDispatch(overrides)]},
+        {parameters: {theme: {languages: {bg: bgLocale}}}},
+    );
 
 const preview: Preview = makePreview({});
 export default preview;

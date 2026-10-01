@@ -319,10 +319,10 @@ The following are areas where the model system has known gaps:
    before adding new override keys.
 
 5. **Storybook stories for model pages in realm packages** — The model pages are exercised via the
-   realm's own `.storybook/` setup (e.g. `demo/blong-marine/.storybook/`, using `withBlong(browser)`
-    - the full blong platform loaded), not via `blong-browser/.storybook/` per-component stories.
-      The `page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper` generate
-      story objects with minimal boilerplate.
+   realm's own `.storybook/` setup (e.g. `demo/blong-marine/.storybook/`, using
+   `defineBlongStorybookPreview` — the full blong platform loaded, with the story toolbar), not via
+   `blong-browser/.storybook/` per-component stories. The `page()` and `portal()` helpers from
+   `@feasibleone/blong-browser/storyHelper` generate story objects with minimal boilerplate.
 
 ---
 

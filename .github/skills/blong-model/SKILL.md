@@ -253,8 +253,8 @@ handlers automatically from the model spec and fixture data.
 
 **No `setupModelMock()` call is needed** — the mock adapter in blong-browser activates automatically
 in `storybook` and `integration` environments when the `ui.mock` config key is present (set in
-`.storybook/preview.tsx` via the `withBlong(browser)` decorator which passes `{ui: {mock: {}}}` as
-config).
+`.storybook/preview.tsx` by the `defineBlongStorybookPreview` factory, which passes
+`{ui: {mock: {}}}` as config).
 
 ### Server-side model mocks — `config.mock` in `meta/db/db.ts`
 
@@ -316,21 +316,18 @@ export const CoralReport = page('marine.coral.report');
 export const CoralOpenSplit = page('marine.coral.open', 1, {layout: 'editSplit'});
 ```
 
-The `.storybook/preview.tsx` must use `withBlong(browser)` from
+The `.storybook/preview.tsx` must use `defineBlongStorybookPreview(browser, {backend: true})` from
 `@feasibleone/blong-browser/storybook.tsx`, and it must compose the realm's **composed** browser
 entry (`index.browser.ts`) rather than the realm entry `browser.ts`:
 
 ```typescript
 // .storybook/preview.tsx
-import withBlong from '@feasibleone/blong-browser/storybook.tsx';
+import {defineBlongStorybookPreview} from '@feasibleone/blong-browser/storybook.tsx';
 // The composed entry carries the portal port (blong-browser); through the realm
 // entry alone a model story would render against an undefined portal.
 import browser from '../index.browser.ts';
 
-export default {
-    decorators: [withBlong(browser)],
-    parameters: {layout: 'fullscreen'},
-};
+export default defineBlongStorybookPreview(browser, {backend: true});
 ```
 
 This loads the full blong platform (including the mock adapter) in the browser, so stories work

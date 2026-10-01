@@ -1,3 +1,4 @@
+import {resolve} from 'node:path';
 import {describe, expect, it} from 'vitest';
 import {defineBlongStorybookMain} from './storybookMain.js';
 import {DROP_FIXTURES} from './vite.js';
@@ -27,13 +28,46 @@ describe('defineBlongStorybookMain', () => {
             {name: 'react'},
             {name: 'blong-drop-fixtures-elsewhere'},
         ]);
-        expect(plugins.map(plugin => plugin.name)).toEqual([
+        expect(plugins.map(plugin => plugin.name).slice(0, 2)).toEqual([
             'react',
             'blong-drop-fixtures-elsewhere',
         ]);
     });
 
-    it('tolerates a config with no plugins', () => {
-        expect(pluginsOf([])).toEqual([]);
+    it('appends the live-backend plugin the toolbar needs', () => {
+        expect(pluginsOf([]).map(plugin => plugin.name)).toEqual(['blong-storybook-backend']);
+    });
+
+    /**
+     * A Storybook dev server reaches an asset by absolute path, and a path outside
+     * `server.fs.allow` is answered with 403 — which shows up as a theme whose
+     * images are missing, not as a config gap. The list has to cover more than the
+     * package being served: a realm's stories import blong-browser's theme images,
+     * and they live outside the realm.
+     */
+    describe('server.fs.allow', () => {
+        // A real `.storybook/` sits one level below the package root, so the
+        // monorepo root is two levels above it (packages are at category/package).
+        const allowOf = (config: unknown): string[] => {
+            const main = defineBlongStorybookMain({
+                importMetaDirname: resolve(process.cwd(), '.storybook'),
+            });
+            return (main.viteFinal as (c: unknown) => {server: {fs: {allow: string[]}}})(config)
+                .server.fs.allow;
+        };
+
+        it('covers the served package, the monorepo and the shared node_modules', () => {
+            const allow = allowOf({});
+            expect(allow).toContain(process.cwd());
+            expect(allow).toContain(resolve(process.cwd(), '../..'));
+            expect(allow).toContain(
+                resolve(process.cwd(), '.storybook/../../../common/temp/node_modules'),
+            );
+        });
+
+        it('keeps whatever the project vite config already allowed', () => {
+            const allow = allowOf({server: {fs: {allow: ['/custom/root']}}});
+            expect(allow).toContain('/custom/root');
+        });
     });
 });

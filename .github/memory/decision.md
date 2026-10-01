@@ -47,12 +47,13 @@ active (35)
 - `D-232` · cross-cutting — The dev shortcuts run package scripts, and t/p complete the package's
   test files
 
-superseded (3)
+superseded (4)
 
 - `D-171` · ci — The metrics commit carries skip ci
 - `D-318` · cross-cutting — The rebuild follows the last write, and a lagging read falls back
 - `D-323` · cross-cutting — Atomicity stops at the handler boundary, and that boundary is the
   topology
+- `D-336` · cross-cutting — The bank embedding model is the one irreversible choice
 
 <!-- /memory:index -->
 
@@ -638,3 +639,26 @@ the graph they are built on. core is a library realm, so the ensure is a local c
 caller's transaction.
 
 Superseded by `D-324`.
+
+### D-336 — The bank embedding model is the one irreversible choice
+
+> _2026-09-30 · cross-cutting · superseded_
+
+The running Hindsight container predates the embeddings configuration now in
+`plans/memory-index/hindsight.sh`, so it used the built-in `local` provider
+(`BAAI/bge-small-en-v1.5`, 384 dimensions), and the 48 entries ingested while verifying this feature
+are embedded with it. Adopting `nomic-embed-text` (768 dimensions) as the plan intends needs the
+container recreated from the script, the documents wiped and the backfill re-run, because stored
+vectors cannot be re-dimensioned in place. Nothing is lost by wiping: the markdown tree is the
+source of truth and `blong-dev memory index --semantic` rebuilds the bank in about a minute. Either
+switch the model now or keep the container as it is — but decide before the bank is filled with real
+entries, because the cost of changing grows with the tree.
+
+Answered by measurement: with reranking on, local (384), nomic-embed-text (768) and
+mxbai-embed-large (1024) rank all 36 benchmark queries identically (92% hit@1, MRR .929, zero rank
+differences); with reranking off they differ by noise only (39-44% hit@1, MRR .554-.560). A stronger
+embedding model buys nothing observable, so the built-in local model is kept and no wipe or
+re-embedding is owed.
+
+Evidence in plans/memory-index/embedding-model-comparison.md, harness and results in
+plans/memory-index/eval/.

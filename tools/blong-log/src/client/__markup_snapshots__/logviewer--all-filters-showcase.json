@@ -394,7 +394,7 @@
               "flexShrink": "1",
               "flexDirection": "row",
               "overflow": "hidden",
-              "childCount": 3,
+              "childCount": 2,
               "children": [
                 {
                   "tag": "div",
@@ -433,21 +433,6 @@
                       "childCount": 1
                     }
                   ]
-                },
-                {
-                  "tag": "link",
-                  "depth": 4,
-                  "classes": [],
-                  "id": null,
-                  "display": "none",
-                  "position": "static",
-                  "width": "auto",
-                  "height": "auto",
-                  "flexGrow": "0",
-                  "flexShrink": "1",
-                  "flexDirection": "row",
-                  "overflow": "visible",
-                  "childCount": 0
                 },
                 {
                   "tag": "link",

@@ -141,13 +141,8 @@ jobs:
 
             - run: npm install
 
-            # Build Storybook static site
-            - run: npm run storybook:build
-
-            # Run visual regression tests
-            - run: npx --yes http-server storybook-static --port 6006 --silent &
-            - run: sleep 2
-            - run: npm run storybook:test
+            # Run the interaction/visual tests (serves the storybook itself)
+            - run: npm run storybook:test:ci
 
             # Upload diff images if tests fail
             - if: failure()
@@ -252,7 +247,7 @@ export default config;
         "storybook": "storybook dev -p 6006",
         "storybook:build": "storybook build -o storybook-static",
         "storybook:test": "test-storybook",
-        "storybook:test:ci": "storybook build -o storybook-static && test-storybook --url http://127.0.0.1:6006",
+        "storybook:test:ci": "storybook dev --ci --port 6006 & SERVER=$!; for i in $(seq 1 120); do curl -sf -o /dev/null http://127.0.0.1:6006 && break; sleep 1; done; npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill $SERVER 2>/dev/null; exit $EXIT",
         "visual:update": "npm run storybook:test -- --updateSnapshot"
     }
 }

@@ -1,11 +1,18 @@
 ---
 name: blong-docs
 description:
-    Understand, create, and maintain documentation in the Blong docs site (docs/blong/docs/). Docs
-    are split into three tiers — rationale, concept, and pattern — with a strict separation of
-    concerns between them. Use this skill whenever writing a new doc, splitting an existing one, or
-    reviewing a doc to decide what tier it belongs to.
+    Understand, create, and maintain documentation and blog articles in the Blong docs site
+    (docs/blong/docs/). Docs are split into three tiers — rationale, concept, and pattern — with a
+    strict separation of concerns between them. Use this skill whenever writing a new doc, splitting
+    an existing one, or reviewing a doc to decide what tier it belongs to.
 ---
+
+# Blong Blog Maintenance
+
+When a new important feature is developed, a blog entry can be prepared in `docs/blong/blog/` The
+blog entries are 1-2 pages long with a brief pitch at the beginning and some visual content like
+mermaid diagrams, screenshots or tables. They include references to the full documentation. For
+example see the `2026-09-24-draw-the-sequence-diagram-from-what-actually-ran` post.
 
 # Blong Documentation Maintenance
 

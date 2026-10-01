@@ -158,8 +158,16 @@ Two Storybook setups exist:
 in isolation.
 
 **`demo/blong-marine/src/stories/`** — End-to-end model page stories using the `Model` component.
-Uses `withBlong(browser)` from `@feasibleone/blong-browser/storybook.tsx` which loads the full blong
-platform (including the mock adapter). Stories use the `page()` and `portal()` helpers from
+Uses `defineBlongStorybookPreview(browser, {backend: true})` from
+`@feasibleone/blong-browser/storybook.tsx`, which loads the full blong platform (including the mock
+adapter). Stories use the `page()` and `portal()` helpers from
 `@feasibleone/blong-browser/storyHelper`. Best for verifying complete CRUD flows for a realm. The
 canonical domain is **marine biology** (corals, habitats, fish families, species). Realm packages
 include their own `.storybook/` folder configured with `defineBlongStorybookMain()`.
+
+Either setup carries the same **story toolbar**: where the data comes from (the realm fixture or a
+live gateway, optionally as a chosen role), the theme, the language and the text direction. The
+three presentation items exist because no story renders the portal menubar that holds those
+switchers, and the backend/role items exist because a model page is the same page whether its rows
+came from `meta/fixture` or from a database. See
+[the story toolbar](../patterns/blong-browser.md#the-story-toolbar).

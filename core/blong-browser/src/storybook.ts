@@ -5,11 +5,11 @@
  * and story helpers that should not be in the production bundle.
  */
 export * from './index.js';
+export * from './storybookToolbar.js';
 
 // Design mode components used in stories
-export { ComponentPalette } from './design/ComponentPalette.js';
-export { DesignHandle } from './design/DesignHandle.js';
-export { DropZone } from './design/DropZone.js';
-export { PropertyEditor } from './design/PropertyEditor.js';
-export { SelectionIndicator } from './design/SelectionIndicator.js';
-
+export {ComponentPalette} from './design/ComponentPalette.js';
+export {DesignHandle} from './design/DesignHandle.js';
+export {DropZone} from './design/DropZone.js';
+export {PropertyEditor} from './design/PropertyEditor.js';
+export {SelectionIndicator} from './design/SelectionIndicator.js';

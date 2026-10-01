@@ -9,8 +9,10 @@ export default meta;
 
 /** Browse — the $Object list with its toolbar. */
 export const Browse = page('$subject.$object.browse');
-/** Open — record 1, which meta/fixture/$subjectFixture.ts carries. */
-export const Open = page('$subject.$object.open', 1);
+/** Open — record 101, the first row `meta/dbTest/$subject$ObjectMerge.yaml`
+ *  seeds and `meta/fixture/$subjectFixture.ts` mirrors, so it loads in both the
+ *  mock and the live backend mode. */
+export const Open = page('$subject.$object.open', 101);
 /** New — the empty create form. */
 export const New = page('$subject.$object.new');
 /** Report — the read-only view. */

@@ -82,7 +82,7 @@ kukum.<cross-cutting endpoint>      see the table below
 | `test`         | `blong-test`          | `server`, `browser`, `playwright`                                        |
 | `gateway`      | `blong-rest`          | `validation`, `openapi`                                                  |
 | `component`    | `blong-browser`       | `component`, `actions`, `portal`                                         |
-| `storybook`    | `storybook-v10-setup` | `main`, `preview`, `story`                                               |
+| `storybook`    | `storybook-v10-setup` | `main`, `preview`, `story`, `portal`                                     |
 
 `kukum primitive find` returns this table plus each primitive's summary and default kind, so an
 agent can discover the surface at runtime instead of being fed it.

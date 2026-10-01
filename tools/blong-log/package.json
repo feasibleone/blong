@@ -27,10 +27,10 @@
         "ci-chromatic": "../../common/chromatic.sh",
         "ci-lint": "blong-dev lint",
         "ci-storybook": "npm run build-storybook",
-        "ci-test": "blong-dev test",
+        "ci-test": "blong-dev test;node --run storybook:test:ci",
         "storybook": "storybook dev -p 6006",
         "storybook:test": "test-storybook",
-        "storybook:test:ci": "storybook build -o storybook-static && npx --yes http-server storybook-static --port 6006 --silent & sleep 3 && npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill %1 2>/dev/null; exit $EXIT",
+        "storybook:test:ci": "storybook dev --ci --port 6006 & SERVER=$!; for i in $(seq 1 120); do curl -sf -o /dev/null http://127.0.0.1:6006 && break; sleep 1; done; npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill $SERVER 2>/dev/null; exit $EXIT",
         "test": "blong-dev test",
         "visual:update": "npm run storybook:test -- --updateSnapshot"
     },

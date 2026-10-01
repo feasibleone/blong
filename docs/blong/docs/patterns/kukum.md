@@ -30,7 +30,7 @@ kukum.<cross-cutting endpoint>
 | `test`         | `blong-test`          | `server`, `browser`, `playwright`                                        |
 | `gateway`      | `blong-rest`          | `validation`, `openapi`                                                  |
 | `component`    | `blong-browser`       | `component`, `actions`, `portal`                                         |
-| `storybook`    | `storybook-v10-setup` | `main`, `preview`, `story`                                               |
+| `storybook`    | `storybook-v10-setup` | `main`, `preview`, `story`, `portal`                                     |
 
 | Cross-cutting endpoint   | Answers                                                    |
 | ------------------------ | ---------------------------------------------------------- |

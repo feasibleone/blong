@@ -1,4 +1,5 @@
 import {capitalize, checkObject, checkSubject, type PrimitiveDescriptor} from '../engine.ts';
+import {seedRowName} from './shared.ts';
 
 /** `model` — the IModelSpec that drives the generated CRUD pages. */
 
@@ -34,7 +35,12 @@ generated
         // and a scaffolded realm receives that copy verbatim. `engine.test.ts` compares the two
         // structurally — handler name, the keyed object, and the row fields this descriptor
         // declares — because the template's rows are its own sample data (they mirror its test
-        // seed, and its Open story opens record 1); the comments differ on purpose.
+        // seed, and its Open story opens record 101); the comments differ on purpose.
+        //
+        // The rows carry the same ids and names as the seed template, plus a `(fixture)`
+        // marker: the Storybook toolbar serves the same stories from either source, so the
+        // Open story has to find its record in both, and the marker is what makes the
+        // Backend item's effect visible.
         if (ctx.kind === 'fixture') {
             return [
                 {
@@ -52,13 +58,27 @@ generated
  *
  * \`browser.ts\` has to glob \`meta/fixture/**/*.ts\`, or the handler never
  * reaches the adapter and every story renders empty.
+ *
+ * The rows mirror \`meta/dbTest/${ctx.subject}${Entity}Merge.yaml\` — same ids, same
+ * names plus a \`(fixture)\` marker — because a story must load in both modes: this
+ * file feeds the Storybook mock path and the seed feeds the database path, and the
+ * marker is what makes the toolbar's Backend item visibly do something.
  */
 export default handler(
     () =>
         async function ${ctx.subject}Fixture() {
             return {
                 '${ctx.subject}.${ctx.object}': [
-                    {${ctx.object}Id: '1', ${ctx.object}Name: 'Example'},
+                    {
+                        ${ctx.object}Id: 101,
+                        ${ctx.object}Name: '${seedRowName(ctx.object)} (fixture)',
+                        ${ctx.object}Status: 'draft',
+                    },
+                    {
+                        ${ctx.object}Id: 102,
+                        ${ctx.object}Name: 'Sample ${Entity} Two (fixture)',
+                        ${ctx.object}Status: 'sent',
+                    },
                 ],
             };
         },

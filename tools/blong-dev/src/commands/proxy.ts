@@ -23,7 +23,7 @@
  *   curl -s -X POST http://localhost:8099/gateway/bundle/find \
  *        -H 'content-type: application/json' -d '{"params":{"paging":{}}}'
  */
-import {createMleClient, type IMleAuth, type IMleCallOptions} from '@feasibleone/blong-mle';
+import {createMleSession, type IMleAuth, type IMleCallOptions} from '@feasibleone/blong-mle';
 import {createServer, type IncomingMessage, type ServerResponse} from 'node:http';
 
 function arg(args: string[], name: string, fallback: string): string {
@@ -58,7 +58,7 @@ export async function proxy(args: string[]): Promise<void> {
     const username = arg(args, 'username', 'testAdmin');
     const password = arg(args, 'password', 'testPassword');
 
-    const client = await createMleClient({
+    const session = await createMleSession({
         url: target,
         ...(manualLogin ? {} : {username, password}),
     });
@@ -102,13 +102,14 @@ export async function proxy(args: string[]): Promise<void> {
             // Login methods travel as public (handshake keys, no bearer); the
             // returned token is captured so later calls authenticate.
             const publicCall = isLoginMethod(method);
-            const result = await client.call(method, body.params ?? {}, {
+            await session.ensureFresh();
+            const result = await session.call(method, body.params ?? {}, {
                 public: publicCall,
             } as IMleCallOptions);
             if (isTokenMethod(method) && result && typeof result === 'object') {
                 const auth = result as Partial<IMleAuth>;
                 if (typeof auth.access_token === 'string') {
-                    client.setAuth(auth as IMleAuth);
+                    session.setAuth(auth as IMleAuth);
                     process.stdout.write(
                         `[blong-dev proxy] ${method} → session captured (authenticated)\n`,
                     );

@@ -21,6 +21,10 @@ export default defineConfig({
                 'src/index.ts',
                 'src/types/**',
                 'src/storybook.ts',
+                // Node-only dev-server plugin: its middleware needs a running
+                // Storybook dev server, so only its config resolution is unit
+                // tested (src/storybookBackend.test.ts).
+                'src/storybookBackend.ts',
             ],
             thresholds: {
                 lines: 80,

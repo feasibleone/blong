@@ -161,6 +161,9 @@ importers:
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
         version: link:../blong-gogo
+      '@feasibleone/blong-mle':
+        specifier: workspace:^1.0.0
+        version: link:../blong-mle
       '@feasibleone/marine-data':
         specifier: workspace:^1.0.0
         version: link:../../demo/marine-data

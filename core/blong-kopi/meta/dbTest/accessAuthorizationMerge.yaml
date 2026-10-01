@@ -1,9 +1,12 @@
-# RBAC test seed — grants `$subject` capabilities to the existing `Admin` role.
+# RBAC test seed — grants `$subject` capabilities to the seeded roles.
 #
-# `testAdmin` / `testUser` (seeded by blong-access/meta/dbTest) hold the `Admin`
-# role, so adding the `$subjectManage` capability to `Admin` grants them every
-# `$subject` action. `testViewer` (role `Customer`) and `testGuest` (role
-# `Guest`) get none, which lets access-control tests assert 403 for them.
+# `testAdmin` / `testUser` hold the `Admin` role, so the `$subjectManage`
+# capability gives them every `$subject` action; `testManager` (role `Manager`)
+# gets read + edit but not remove; `testViewer` (role `Customer`) and
+# `testGuest` (role `Guest`) get read-only — which is what lets the Storybook
+# toolbar's Role item show a permission difference rather than three identical
+# screens, and what the access-control test relies on for its 403 (it calls
+# `add`, which none of the read-only roles holds).
 #
 # The file name is deliberately `accessAuthorizationMerge.yaml` (NOT
 # `$subject`-prefixed): the seed method is derived from the file name, so this
@@ -16,6 +19,11 @@
 # Capability names are the NON-dotted handler names (the default convention).
 role:
   Admin: $subjectManage
+  Manager: $subjectMaintain
+  Customer: $subjectView
+  Guest: $subjectView
 capability:
-  $subjectManage: $subject$ObjectAdd,$subject$ObjectFind,$subject$ObjectGet,$subject$ObjectEdit,$subject$ObjectRemove
+  $subjectManage: $subject$ObjectAdd,$subject$ObjectFind,$subject$ObjectGet,$subject$ObjectEdit,$subject$ObjectRemove,subject.object.schema
+  $subjectMaintain: $subject$ObjectAdd,$subject$ObjectFind,$subject$ObjectGet,$subject$ObjectEdit,subject.object.schema
+  $subjectView: $subject$ObjectFind,$subject$ObjectGet,subject.object.schema
 

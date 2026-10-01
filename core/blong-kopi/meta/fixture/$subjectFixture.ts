@@ -9,12 +9,13 @@ import {handler} from '@feasibleone/blong';
  * that one describes mock OpenAPI subjects/dropdowns, a different shape.
  *
  * `browser.ts` globs this folder; a fixture the browser platform never loads
- * leaves every story empty. The sample names and statuses mirror
- * meta/dbTest/$subject$ObjectMerge.yaml, but the ids are this file's own: the
- * fixture feeds the Storybook mock path and the seed feeds the database path,
- * and the two are independent sources for the same sample records. The Open
- * story in src/stories/$Object.stories.tsx opens record 1, so keep a row whose
- * key is 1 here.
+ * leaves every story empty. The sample records mirror
+ * meta/dbTest/$subject$ObjectMerge.yaml — same ids, same names plus a
+ * `(fixture)` marker — because a story must load in both modes: the fixture
+ * feeds the Storybook mock path and the seed feeds the database path, and the
+ * marker is what makes the toolbar's Backend item visibly do something. The
+ * Open story in src/stories/$Object.stories.tsx opens record 101, so keep a
+ * row whose key is 101 here.
  */
 export default handler(
     () =>
@@ -22,13 +23,13 @@ export default handler(
             return {
                 '$subject.$object': [
                     {
-                        $objectId: 1,
-                        $objectName: 'Sample $Object One',
+                        $objectId: 101,
+                        $objectName: 'Sample $Object One (fixture)',
                         $objectStatus: 'draft',
                     },
                     {
-                        $objectId: 2,
-                        $objectName: 'Sample $Object Two',
+                        $objectId: 102,
+                        $objectName: 'Sample $Object Two (fixture)',
                         $objectStatus: 'sent',
                     },
                 ],

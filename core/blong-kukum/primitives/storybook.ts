@@ -13,8 +13,9 @@ import {appendChildFolder, readPlainSource} from '../merge.ts';
  *
  * Four kinds, one per artifact:
  *  - `main`    — `.storybook/main.ts`, via the shared `defineBlongStorybookMain` factory.
- *  - `preview` — `.storybook/preview.tsx`, the `withBlong(browser)` decorator that loads the
- *                browser platform (and the mock adapter) around every story.
+ *  - `preview` — `.storybook/preview.tsx`, the one-line `defineBlongStorybookPreview(browser,
+ *                {backend: true})` factory call that loads the browser platform (and the mock
+ *                adapter) around every story and installs the story toolbar.
  *  - `story`   — `src/stories/<Object>.stories.tsx`, Browse/Open/New/Report stories for the
  *                entity's model pages, via the shared `page()` helper.
  *  - `portal`  — `src/stories/<Subject>.stories.tsx`, the whole portal shell via `portal()`.
@@ -82,25 +83,19 @@ export default defineBlongStorybookMain({importMetaDirname: __dirname});
             return [
                 {
                     path: '.storybook/preview.tsx',
-                    content: `import withBlong from '@feasibleone/blong-browser/storybook.tsx';
+                    content: `import {defineBlongStorybookPreview} from '@feasibleone/blong-browser/storybook.tsx';
 // The composed entry, not \`../browser.ts\`: a model story needs the portal port
 // (blong-browser), which only the composed entry carries. A realm's composed
 // entry is \`index.browser.ts\`; a suite's \`browser.ts\` already is one.
 import browser from '../index.browser.ts';
 
-export default {
-    decorators: [withBlong(browser)],
-    parameters: {
-        actions: {argTypesRegex: '^on[A-Z].*'},
-        layout: 'fullscreen',
-        controls: {
-            matchers: {
-                color: /(background|color)$/i,
-                date: /Date$/,
-            },
-        },
-    },
-};
+// One line on purpose.  The factory owns the toolbar — backend (mock / live
+// JSON-RPC / live MLE), role, theme, language, direction — plus its persistence
+// and the decorators that apply them, so every realm's preview (and the kukum
+// template that generates it) is this same line.  \`backend: true\` adds the
+// Backend and Role items: these stories run on the loaded platform, so there is
+// a backend adapter to point at a gateway.
+export default defineBlongStorybookPreview(browser, {backend: true});
 `,
                 },
             ];
@@ -137,8 +132,10 @@ export default meta;
 
 /** Browse — the ${Entity} list with its toolbar. */
 export const Browse = page('${ctx.subject}.${ctx.object}.browse');
-/** Open — record 1, which meta/fixture/${ctx.subject}Fixture.ts carries. */
-export const Open = page('${ctx.subject}.${ctx.object}.open', 1);
+/** Open — record 101, the first row \`meta/dbTest/${ctx.subject}${Entity}Merge.yaml\`
+ *  seeds and \`meta/fixture/${ctx.subject}Fixture.ts\` mirrors, so it loads in both the
+ *  mock and the live backend mode. */
+export const Open = page('${ctx.subject}.${ctx.object}.open', 101);
 /** New — the empty create form. */
 export const New = page('${ctx.subject}.${ctx.object}.new');
 /** Report — the read-only view. */
@@ -150,7 +147,8 @@ export const Report = page('${ctx.subject}.${ctx.object}.report');
                         `the stories read sample data from a '${ctx.subject}Fixture' handler: ` +
                             `generate one with \`kukum model add --subject=${ctx.subject} ` +
                             `--object=${ctx.object} --kind=fixture\`. The Open story opens ` +
-                            `record 1, so the fixture's first row must carry that key.`,
+                            `record 101, so the fixture must carry the same ids as the ` +
+                            `'${ctx.subject}${Entity}Merge' test seed.`,
                     ],
                 },
             ];

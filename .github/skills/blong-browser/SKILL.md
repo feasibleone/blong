@@ -58,7 +58,9 @@ scalar-array, vector-array) · Blong-native (adapters/orchestrators + Zustand, n
 ```
 core/blong-browser/
   browser.ts              ← realm entry point (import in suite's browser.ts)
-  storybook.tsx           ← withBlong(browser) decorator for model page Storybooks
+  storybook.tsx           ← withBlong(browser, options) decorator + defineBlongStorybookPreview() factory
+  src/storybookToolbar.ts ← the toolbar globals (backend, role, theme, language, direction)
+  src/storybookBackend.ts ← dev-server plugin: mints a token per role, routes /rpc for the live modes
   src/
     storyHelper.tsx       ← page() / portal() story factory helpers for any realm
     vite.ts               ← defineBlongViteConfig() — reusable Vite config factory
@@ -539,7 +541,10 @@ Navigation uses the **action system** — clicking a menu item calls `openTab({a
   auto-generates `find`, `get`, `add`, `edit`, `remove`, `report`, `schema`, and
   `{subject}.dropdown.list` handlers for each model. The suite config must include
   `{ui: {mock: {}}}` to activate this. Mock is usually activated in Storybook, to avoid the need of
-  a backend.
+  a backend. Two further activations serve the story toolbar's live modes — `storybookJsonrpc`
+  (`mock: false`, `codec.jsonrpc` only: the dev-server plugin terminates the MLE) and `storybookMle`
+  (`mock: false`, the page keeps `codec.mle`) — see the pattern doc's
+  [story toolbar](../../../docs/blong/docs/patterns/blong-browser.md#the-story-toolbar).
 - **`adapter/storage.ts`** (`storage` namespace) — browser storage via `adapter.dispatch`.
 - **`orchestrator/portal.ts`** (`portal.*`, `component.*`, `action.*`) — imports handlers matching
   `/\.model$/`, `/\.component$/`, `/\.portal$/`, `/\.action?$/`. Realms contribute pages and actions
@@ -684,9 +689,11 @@ Named handlers in `dispatch.tsx` follow the pattern `{entity}{Entity}{Verb}`:
 
 ### Realm model page stories (e.g. `demo/blong-marine/src/stories/`)
 
-Uses `withBlong(browser)` from `@feasibleone/blong-browser/storybook.tsx` which loads the full blong
-platform (including the mock adapter) so model pages work without a running server. Stories use the
-`page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper`:
+Uses `defineBlongStorybookPreview(browser, {backend: true})` from
+`@feasibleone/blong-browser/storybook.tsx` which loads the full blong platform (including the mock
+adapter) so model pages work without a running server — and adds the story toolbar (mock or live
+backend, role, theme, language, direction). Stories use the `page()` and `portal()` helpers from
+`@feasibleone/blong-browser/storyHelper`:
 
 ```tsx
 import {page, portal} from '@feasibleone/blong-browser/storyHelper';

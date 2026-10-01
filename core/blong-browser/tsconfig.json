@@ -4,6 +4,13 @@
         "moduleResolution": "Bundler",
         "esModuleInterop": true,
         "module": "ESNext",
+        /* `allowImportingTsExtensions` is required because this package compiles
+           the raw sources of `@feasibleone/blong-mle` and `@feasibleone/blong-dev`
+           (their `exports` point at `.ts` files, and their own local imports carry
+           the `.ts` extension).  It must be paired with `emitDeclarationOnly`,
+           which is what the `build` script asks for anyway. */
+        "allowImportingTsExtensions": true,
+        "emitDeclarationOnly": true,
         "sourceMap": true,
         "jsx": "react-jsx",
         "outDir": "dist",
@@ -16,6 +23,6 @@
         "skipLibCheck": true,
         "lib": ["ES2022", "DOM", "DOM.Iterable"]
     },
-    "include": ["src/**/*.ts", "src/**/*.tsx"],
+    "include": ["src/**/*.ts", "src/**/*.tsx", "storybook.tsx"],
     "exclude": ["node_modules", "dist", "stories", ".storybook"]
 }
