@@ -116,6 +116,7 @@ blong-dev docs list            # the register of generated artefacts
 blong-dev docs check           # regenerate, compare, restore — non-zero when stale
 blong-dev docs verify          # build/serve the site and load every page in Chromium
 blong-dev memory add friction --title "…" --area core/blong-browser --body "…"
+blong-dev memory search "why do agents edit memory files by hand"
 blong-dev memory check
 ```
 
@@ -129,6 +130,10 @@ expected against those that rendered.
 `memory` is the writer and validator of the agent memory files: it owns the identifiers, the section
 an entry belongs to, the wrapping and the generated index, and `check` is the gate — it is wired
 into the staged-file lint, so a malformed memory file fails a commit rather than a review comment.
+Every write also pushes the entry it touched into a local Hindsight index, which is what
+`memory search` reads; the markdown stays the source of truth, so an unreachable server costs a
+warning and `memory index --semantic` rebuilds. See the
+[memory pattern](./memory#searching-by-meaning) for the settings and the backfill.
 
 ## Why agents and people use the same commands
 

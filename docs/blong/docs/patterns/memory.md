@@ -64,6 +64,74 @@ blong-dev memory audit                                      # dangling reference
 Start with the index block at the top of a file: it lists every entry once, grouped by status. Only
 read further when an entry looks relevant — that is the whole point of the index.
 
+`list --search` matches the text of an entry. It is always available, it is exact, and it needs
+nothing running — when you know a word the entry uses, it is the shortest path. When you know only
+the _meaning_, use the [semantic search](#searching-by-meaning) below.
+
+## Searching by meaning
+
+`search` asks a local Hindsight server which entries are close to a question, so a paraphrase finds
+the entry that uses different words.
+
+```bash
+blong-dev memory search "why do agents keep editing memory files by hand"
+blong-dev memory search "coverage thresholds" --kind friction --area core/blong-browser --limit 5
+blong-dev memory search "the union is no longer debounced" --json
+```
+
+Each hit prints a rule, the entry's id, kind, status and similarity, the file it lives in, and the
+entry text as it stands in that file. The number is the cosine similarity of the embedding. The
+server also reports a ranking score, but it is not comparable between queries — a relevant match can
+rank first at `0.0006` — so it is carried in `--json` rather than shown.
+
+Treat an empty result as "nothing close", not as "not written down", and fall back to
+`list --search` — the two read the same tree, one by text and one by meaning.
+
+### What the index holds, and when
+
+Every entry is one document, keyed by its id, so re-ingesting an edited entry replaces it rather
+than duplicating it. The dimensions a search can filter on — kind, area, status, id, file path — are
+written as tags, and mirrored into the document's metadata for the server's own UI.
+
+The index is **derived**: the markdown is the source of truth, and the bank can be dropped and
+rebuilt at any time.
+
+| Command                                  | What it does to the index                                                                     |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `add`, `edit`, `close`, `reopen`, `move` | Queues the entries the command touched (one call, not one per entry).                         |
+| `prune`                                  | Deletes the pruned entries' documents, so a search cannot find what the tree no longer holds. |
+| `index --semantic`                       | Ingests every entry of the selected files — the first fill, and the repair.                   |
+| `index --semantic --dry-run`             | Reports how many entries would be ingested, without touching the server.                      |
+
+A write never fails because of the index: if the server is unreachable, the command prints one
+warning on stderr and the entry is written anyway. The backfill is the repair for whatever was
+skipped, and re-running it is safe.
+
+```bash
+blong-dev memory index --semantic                        # every file
+blong-dev memory index --semantic --files .github/memory/friction.md
+blong-dev memory index --semantic --dry-run              # count only
+```
+
+### Pointing the CLI at a server
+
+| Setting              | Default                 | Meaning                                                                |
+| -------------------- | ----------------------- | ---------------------------------------------------------------------- |
+| `HINDSIGHT_API_URL`  | `http://localhost:8888` | The server; `.blong_devrc` may hold it as `hindsight.url`.             |
+| `HINDSIGHT_BANK`     | `blong`                 | Which bank to read and write; `.blong_devrc` `hindsight.bank`.         |
+| `HINDSIGHT_DISABLED` | unset                   | `1`, `true`, `on` or `yes` turns the feature off, write hook included. |
+
+The server is deployed by `plans/memory-index/hindsight.sh`, which carries the two settings that
+cannot be changed later without wiping the bank: the embedding model, and therefore the vector
+width, and the bank's `retain_extraction_mode: chunks` — entries are stored verbatim and ingestion
+calls no LLM at all.
+
+The embedding model is the built-in `BAAI/bge-small-en-v1.5` on purpose. Measured over the whole
+tree, it and two Ollama models three times its width rank every benchmark query identically while
+the cross-encoder reranker runs, and differ by noise without it — so a bigger model buys nothing
+observable against a LAN dependency. `EMBED_MODEL` on the script still selects an Ollama model for
+anyone re-measuring; the numbers are in `plans/memory-index/embedding-model-comparison.md`.
+
 ## Writing a batch (migration, or an agent's work)
 
 A batch is JSON, authored outside the CLI and written by it:

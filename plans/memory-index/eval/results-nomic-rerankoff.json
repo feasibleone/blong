@@ -1,0 +1,509 @@
+{
+    "label": "nomic",
+    "url": "http://localhost:8888",
+    "bank": "blong",
+    "rerank": "off",
+    "queries": 36,
+    "summaries": [
+        {
+            "name": "all",
+            "count": 36,
+            "hit1": 0.3888888888888889,
+            "hit3": 0.6666666666666666,
+            "hit5": 0.7777777777777778,
+            "hit10": 0.9722222222222222,
+            "mrr": 0.5552910052910053,
+            "meanLatencyMs": 89
+        },
+        {
+            "name": "paraphrase",
+            "count": 32,
+            "hit1": 0.34375,
+            "hit3": 0.65625,
+            "hit5": 0.78125,
+            "hit10": 0.96875,
+            "mrr": 0.5264880952380953,
+            "meanLatencyMs": 89
+        },
+        {
+            "name": "lexical",
+            "count": 4,
+            "hit1": 0.75,
+            "hit3": 0.75,
+            "hit5": 0.75,
+            "hit10": 1,
+            "mrr": 0.7857142857142857,
+            "meanLatencyMs": 87
+        }
+    ],
+    "rows": [
+        {
+            "query": "A migration ledger's rows do not add up to what actually landed in the tree, so diffing them reports entries as missing that are present.",
+            "expect": "F-160",
+            "group": "paraphrase",
+            "rank": 7,
+            "top": [
+                "D-285",
+                "D-307",
+                "T-046"
+            ],
+            "similarity": 0.6255712136286051,
+            "latency": 139
+        },
+        {
+            "query": "A consolidated report page used to open the recorded browser run in a viewer, and now it only offers the bare file name.",
+            "expect": "F-311",
+            "group": "paraphrase",
+            "rank": 5,
+            "top": [
+                "D-273",
+                "F-273",
+                "D-285"
+            ],
+            "similarity": 0.713663552562772,
+            "latency": 122
+        },
+        {
+            "query": "I assumed what a file looked like instead of opening it, so my edits failed to match.",
+            "expect": "F-145",
+            "group": "paraphrase",
+            "rank": 5,
+            "top": [
+                "F-265",
+                "F-306",
+                "D-309"
+            ],
+            "similarity": 0.6198626840360233,
+            "latency": 122
+        },
+        {
+            "query": "Where does a package put the machine-readable result that CI aggregates, and what else writes it?",
+            "expect": "D-156",
+            "group": "paraphrase",
+            "rank": 3,
+            "top": [
+                "F-279",
+                "D-274",
+                "D-156"
+            ],
+            "similarity": 0.6680502687499456,
+            "latency": 111
+        },
+        {
+            "query": "Two persistent counters keep the materialised views coherent, because a boolean marker could not be cleared reliably.",
+            "expect": "D-320",
+            "group": "paraphrase",
+            "rank": 1,
+            "top": [
+                "D-320",
+                "F-254",
+                "D-264"
+            ],
+            "similarity": 0.6183213136579567,
+            "latency": 133
+        },
+        {
+            "query": "What does a bare empty array mean in a chain, and what is the progress point called now?",
+            "expect": "D-255",
+            "group": "paraphrase",
+            "rank": 2,
+            "top": [
+                "D-266",
+                "D-255",
+                "T-131"
+            ],
+            "similarity": 0.6474438554182811,
+            "latency": 118
+        },
+        {
+            "query": "A summary endpoint kept reporting work as outstanding for half a minute after the log said it had finished.",
+            "expect": "F-325",
+            "group": "paraphrase",
+            "rank": 14,
+            "top": [
+                "D-280",
+                "D-170",
+                "D-273"
+            ],
+            "similarity": 0.584993551372979,
+            "latency": 102
+        },
+        {
+            "query": "The notes grew until nobody could search them and every cross-reference rotted when the file was edited.",
+            "expect": "D-001",
+            "group": "paraphrase",
+            "rank": 3,
+            "top": [
+                "F-265",
+                "F-083",
+                "D-001"
+            ],
+            "similarity": 0.6529852796846045,
+            "latency": 95
+        },
+        {
+            "query": "The browser build failed because a module both platforms share reached a Node-only module through an import chain.",
+            "expect": "F-197",
+            "group": "paraphrase",
+            "rank": 6,
+            "top": [
+                "F-272",
+                "T-153",
+                "F-195"
+            ],
+            "similarity": 0.7297558284970355,
+            "latency": 122
+        },
+        {
+            "query": "Reading an environment variable in code that the browser also loads made every browser test time out.",
+            "expect": "F-139",
+            "group": "paraphrase",
+            "rank": 1,
+            "top": [
+                "F-139",
+                "F-243",
+                "D-288"
+            ],
+            "similarity": 0.681496820628264,
+            "latency": 109
+        },
+        {
+            "query": "A watchdog timer killed long-running servers thirty seconds after they started.",
+            "expect": "D-045",
+            "group": "paraphrase",
+            "rank": 5,
+            "top": [
+                "F-314",
+                "D-237",
+                "D-278"
+            ],
+            "similarity": 0.7572188828719086,
+            "latency": 81
+        },
+        {
+            "query": "A table offered no choices at all because nothing ever populated its dropdown options.",
+            "expect": "F-087",
+            "group": "paraphrase",
+            "rank": 5,
+            "top": [
+                "T-098",
+                "F-255",
+                "F-174"
+            ],
+            "similarity": 0.6936134864654006,
+            "latency": 76
+        },
+        {
+            "query": "The option list for a very large universe needs paging and a way to search it.",
+            "expect": "T-098",
+            "group": "paraphrase",
+            "rank": 1,
+            "top": [
+                "T-098",
+                "D-243",
+                "F-163"
+            ],
+            "similarity": 0.6143338446322832,
+            "latency": 79
+        },
+        {
+            "query": "Changing the language from the menu bar does not survive the next login.",
+            "expect": "D-033",
+            "group": "paraphrase",
+            "rank": 6,
+            "top": [
+                "F-261",
+                "D-235",
+                "D-020"
+            ],
+            "similarity": 0.7763643797959596,
+            "latency": 65
+        },
+        {
+            "query": "What happens when more than one realm answers the same configuration call?",
+            "expect": "D-208",
+            "group": "paraphrase",
+            "rank": 3,
+            "top": [
+                "F-262",
+                "F-193",
+                "D-208"
+            ],
+            "similarity": 0.6761056570881254,
+            "latency": 78
+        },
+        {
+            "query": "A search and replace in the generator renamed a word that happened to appear inside a generated comment.",
+            "expect": "F-302",
+            "group": "paraphrase",
+            "rank": 1,
+            "top": [
+                "F-302",
+                "F-308",
+                "T-148"
+            ],
+            "similarity": 0.6707629357859021,
+            "latency": 71
+        },
+        {
+            "query": "The object listing key has to keep the casing the service returns, or the snapshots break.",
+            "expect": "D-025",
+            "group": "paraphrase",
+            "rank": 6,
+            "top": [
+                "D-281",
+                "F-212",
+                "D-282"
+            ],
+            "similarity": 0.6045348644256635,
+            "latency": 81
+        },
+        {
+            "query": "A test seed could not look up a role from another realm because the batches run in an unexpected order.",
+            "expect": "F-167",
+            "group": "paraphrase",
+            "rank": 1,
+            "top": [
+                "F-167",
+                "D-163",
+                "D-319"
+            ],
+            "similarity": 0.7478382431978725,
+            "latency": 74
+        },
+        {
+            "query": "An assertion counting exactly one matching row failed on data another suite had left in the shared database.",
+            "expect": "F-171",
+            "group": "paraphrase",
+            "rank": 1,
+            "top": [
+                "F-171",
+                "F-298",
+                "F-134"
+            ],
+            "similarity": 0.7562086727495451,
+            "latency": 70
+        },
+        {
+            "query": "The generated route table collapsed into a single key because the key was taken from the function name.",
+            "expect": "F-122",
+            "group": "paraphrase",
+            "rank": 3,
+            "top": [
+                "D-262",
+                "D-281",
+                "F-122"
+            ],
+            "similarity": 0.7319801056444967,
+            "latency": 71
+        },
+        {
+            "query": "Why does the tool ship as its own binary rather than as a subcommand of the development CLI?",
+            "expect": "D-084",
+            "group": "paraphrase",
+            "rank": 1,
+            "top": [
+                "D-084",
+                "D-117",
+                "D-071"
+            ],
+            "similarity": 0.6841989347816257,
+            "latency": 87
+        },
+        {
+            "query": "How must a handler file be named relative to the endpoint path it answers?",
+            "expect": "D-136",
+            "group": "paraphrase",
+            "rank": 2,
+            "top": [
+                "D-312",
+                "D-136",
+                "T-076"
+            ],
+            "similarity": 0.689384892133505,
+            "latency": 79
+        },
+        {
+            "query": "A budget meant to bound how long a run may take was counting the wrong thing entirely.",
+            "expect": "F-218",
+            "group": "paraphrase",
+            "rank": 3,
+            "top": [
+                "D-246",
+                "D-273",
+                "F-218"
+            ],
+            "similarity": 0.569715023398266,
+            "latency": 77
+        },
+        {
+            "query": "The scaffolding command never returned and left an empty directory behind.",
+            "expect": "F-181",
+            "group": "paraphrase",
+            "rank": 2,
+            "top": [
+                "F-184",
+                "F-181",
+                "D-308"
+            ],
+            "similarity": 0.7275271198890629,
+            "latency": 80
+        },
+        {
+            "query": "The six reads sit behind a named port, and the namespace forwards to that port by name.",
+            "expect": "D-202",
+            "group": "paraphrase",
+            "rank": 1,
+            "top": [
+                "D-202",
+                "F-182",
+                "D-219"
+            ],
+            "similarity": 0.616594809788333,
+            "latency": 74
+        },
+        {
+            "query": "The chain is loaded lazily so that a browser link can survive it.",
+            "expect": "D-288",
+            "group": "paraphrase",
+            "rank": 1,
+            "top": [
+                "D-288",
+                "D-283",
+                "D-284"
+            ],
+            "similarity": 0.7380956411362166,
+            "latency": 72
+        },
+        {
+            "query": "Which package owns the per-execution gate and the channel that records calls?",
+            "expect": "D-226",
+            "group": "paraphrase",
+            "rank": 1,
+            "top": [
+                "D-226",
+                "D-223",
+                "F-218"
+            ],
+            "similarity": 0.6789478287886052,
+            "latency": 73
+        },
+        {
+            "query": "The argument parsing and entry detection moved into the framework package, but the log levels did not follow.",
+            "expect": "D-139",
+            "group": "paraphrase",
+            "rank": 6,
+            "top": [
+                "F-277",
+                "F-198",
+                "T-079"
+            ],
+            "similarity": 0.6362592929988274,
+            "latency": 80
+        },
+        {
+            "query": "Parallel CI runs with heavier contention are deliberately left out of the retry workaround.",
+            "expect": "T-057",
+            "group": "paraphrase",
+            "rank": 3,
+            "top": [
+                "F-280",
+                "F-162",
+                "T-057"
+            ],
+            "similarity": 0.8119446523157723,
+            "latency": 72
+        },
+        {
+            "query": "Which packages already fail their own test script, before my change?",
+            "expect": "T-115",
+            "group": "paraphrase",
+            "rank": 6,
+            "top": [
+                "F-243",
+                "F-283",
+                "F-158"
+            ],
+            "similarity": 0.7340083898924472,
+            "latency": 72
+        },
+        {
+            "query": "A plain data file sitting inside a layer folder makes the loader log an error about a handler group.",
+            "expect": "T-068",
+            "group": "paraphrase",
+            "rank": 2,
+            "top": [
+                "D-219",
+                "T-068",
+                "F-166"
+            ],
+            "similarity": 0.7189252209022786,
+            "latency": 79
+        },
+        {
+            "query": "The portal renames a node when two providers disagree, and keeps the first provider's answer.",
+            "expect": "D-208",
+            "group": "paraphrase",
+            "rank": 1,
+            "top": [
+                "D-208",
+                "F-193",
+                "D-210"
+            ],
+            "similarity": 0.7396781534436514,
+            "latency": 79
+        },
+        {
+            "query": "self-destructed any long-running server 30 seconds after start",
+            "expect": "D-045",
+            "group": "lexical",
+            "rank": 7,
+            "top": [
+                "F-314",
+                "D-237",
+                "F-307"
+            ],
+            "similarity": 0.7422718559343112,
+            "latency": 69
+        },
+        {
+            "query": "the object token replaced the word inside a generated comment",
+            "expect": "F-302",
+            "group": "lexical",
+            "rank": 1,
+            "top": [
+                "F-302",
+                "F-308",
+                "D-272"
+            ],
+            "similarity": 0.7050631993933728,
+            "latency": 97
+        },
+        {
+            "query": "Registry._validations takes the route key from the function name",
+            "expect": "F-122",
+            "group": "lexical",
+            "rank": 1,
+            "top": [
+                "F-122",
+                "D-210",
+                "F-189"
+            ],
+            "similarity": 0.7687221534450821,
+            "latency": 86
+        },
+        {
+            "query": "a dbTest seed may only depend on schemas the earlier phases created",
+            "expect": "F-167",
+            "group": "lexical",
+            "rank": 1,
+            "top": [
+                "F-167",
+                "T-101",
+                "D-331"
+            ],
+            "similarity": 0.7383157042705173,
+            "latency": 94
+        }
+    ]
+}

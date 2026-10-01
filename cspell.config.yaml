@@ -29,8 +29,10 @@ words:
   - autonumber
   - avvio
   - azooxanthellate
+  - BAAI
   - behavior
   - behaviour
+  - bge
   - binhex
   - Bislama
   - bitsyntax
@@ -169,6 +171,7 @@ words:
   - mojaloop
   - mongosh
   - mousedown
+  - mxbai
   - MPVV
   - MSISDN
   - mtid
@@ -176,6 +179,10 @@ words:
   - mysqladmin
   - nematocysts
   - networkpolicies
+  - nomic
+  - rerank
+  - reranker
+  - reranking
   - nosniff
   - npmjs
   - nscfg
@@ -183,6 +190,7 @@ words:
   - Nunito
   - ocellaris
   - oidc
+  - ollama
   - onprem
   - onsessioninitialized
   - OpenAPIV2
@@ -204,6 +212,7 @@ words:
   - persistentvolumes
   - pino
   - pkce
+  - pkill
   - pnpmfile
   - Poppins
   - Pred

@@ -1,0 +1,185 @@
+{
+    "comment": "Retrieval benchmark for the memory semantic index. 'paraphrase' queries describe an entry's situation in words the entry does not use, so the embedding model is what has to find it; 'lexical' queries quote the body and should be found by the keyword arm alone, whatever the embedding model is. Authored 2026-09-30 from the entry bodies by reading them, not from titles.",
+    "queries": [
+        {
+            "q": "A migration ledger's rows do not add up to what actually landed in the tree, so diffing them reports entries as missing that are present.",
+            "expect": "F-160",
+            "group": "paraphrase"
+        },
+        {
+            "q": "A consolidated report page used to open the recorded browser run in a viewer, and now it only offers the bare file name.",
+            "expect": "F-311",
+            "group": "paraphrase"
+        },
+        {
+            "q": "I assumed what a file looked like instead of opening it, so my edits failed to match.",
+            "expect": "F-145",
+            "group": "paraphrase"
+        },
+        {
+            "q": "Where does a package put the machine-readable result that CI aggregates, and what else writes it?",
+            "expect": "D-156",
+            "group": "paraphrase"
+        },
+        {
+            "q": "Two persistent counters keep the materialised views coherent, because a boolean marker could not be cleared reliably.",
+            "expect": "D-320",
+            "group": "paraphrase"
+        },
+        {
+            "q": "What does a bare empty array mean in a chain, and what is the progress point called now?",
+            "expect": "D-255",
+            "group": "paraphrase"
+        },
+        {
+            "q": "A summary endpoint kept reporting work as outstanding for half a minute after the log said it had finished.",
+            "expect": "F-325",
+            "group": "paraphrase"
+        },
+        {
+            "q": "The notes grew until nobody could search them and every cross-reference rotted when the file was edited.",
+            "expect": "D-001",
+            "group": "paraphrase"
+        },
+        {
+            "q": "The browser build failed because a module both platforms share reached a Node-only module through an import chain.",
+            "expect": "F-197",
+            "group": "paraphrase"
+        },
+        {
+            "q": "Reading an environment variable in code that the browser also loads made every browser test time out.",
+            "expect": "F-139",
+            "group": "paraphrase"
+        },
+        {
+            "q": "A watchdog timer killed long-running servers thirty seconds after they started.",
+            "expect": "D-045",
+            "group": "paraphrase"
+        },
+        {
+            "q": "A table offered no choices at all because nothing ever populated its dropdown options.",
+            "expect": "F-087",
+            "group": "paraphrase"
+        },
+        {
+            "q": "The option list for a very large universe needs paging and a way to search it.",
+            "expect": "T-098",
+            "group": "paraphrase"
+        },
+        {
+            "q": "Changing the language from the menu bar does not survive the next login.",
+            "expect": "D-033",
+            "group": "paraphrase"
+        },
+        {
+            "q": "What happens when more than one realm answers the same configuration call?",
+            "expect": "D-208",
+            "group": "paraphrase"
+        },
+        {
+            "q": "A search and replace in the generator renamed a word that happened to appear inside a generated comment.",
+            "expect": "F-302",
+            "group": "paraphrase"
+        },
+        {
+            "q": "The object listing key has to keep the casing the service returns, or the snapshots break.",
+            "expect": "D-025",
+            "group": "paraphrase"
+        },
+        {
+            "q": "A test seed could not look up a role from another realm because the batches run in an unexpected order.",
+            "expect": "F-167",
+            "group": "paraphrase"
+        },
+        {
+            "q": "An assertion counting exactly one matching row failed on data another suite had left in the shared database.",
+            "expect": "F-171",
+            "group": "paraphrase"
+        },
+        {
+            "q": "The generated route table collapsed into a single key because the key was taken from the function name.",
+            "expect": "F-122",
+            "group": "paraphrase"
+        },
+        {
+            "q": "Why does the tool ship as its own binary rather than as a subcommand of the development CLI?",
+            "expect": "D-084",
+            "group": "paraphrase"
+        },
+        {
+            "q": "How must a handler file be named relative to the endpoint path it answers?",
+            "expect": "D-136",
+            "group": "paraphrase"
+        },
+        {
+            "q": "A budget meant to bound how long a run may take was counting the wrong thing entirely.",
+            "expect": "F-218",
+            "group": "paraphrase"
+        },
+        {
+            "q": "The scaffolding command never returned and left an empty directory behind.",
+            "expect": "F-181",
+            "group": "paraphrase"
+        },
+        {
+            "q": "The six reads sit behind a named port, and the namespace forwards to that port by name.",
+            "expect": "D-202",
+            "group": "paraphrase"
+        },
+        {
+            "q": "The chain is loaded lazily so that a browser link can survive it.",
+            "expect": "D-288",
+            "group": "paraphrase"
+        },
+        {
+            "q": "Which package owns the per-execution gate and the channel that records calls?",
+            "expect": "D-226",
+            "group": "paraphrase"
+        },
+        {
+            "q": "The argument parsing and entry detection moved into the framework package, but the log levels did not follow.",
+            "expect": "D-139",
+            "group": "paraphrase"
+        },
+        {
+            "q": "Parallel CI runs with heavier contention are deliberately left out of the retry workaround.",
+            "expect": "T-057",
+            "group": "paraphrase"
+        },
+        {
+            "q": "Which packages already fail their own test script, before my change?",
+            "expect": "T-115",
+            "group": "paraphrase"
+        },
+        {
+            "q": "A plain data file sitting inside a layer folder makes the loader log an error about a handler group.",
+            "expect": "T-068",
+            "group": "paraphrase"
+        },
+        {
+            "q": "The portal renames a node when two providers disagree, and keeps the first provider's answer.",
+            "expect": "D-208",
+            "group": "paraphrase"
+        },
+        {
+            "q": "self-destructed any long-running server 30 seconds after start",
+            "expect": "D-045",
+            "group": "lexical"
+        },
+        {
+            "q": "the object token replaced the word inside a generated comment",
+            "expect": "F-302",
+            "group": "lexical"
+        },
+        {
+            "q": "Registry._validations takes the route key from the function name",
+            "expect": "F-122",
+            "group": "lexical"
+        },
+        {
+            "q": "a dbTest seed may only depend on schemas the earlier phases created",
+            "expect": "F-167",
+            "group": "lexical"
+        }
+    ]
+}

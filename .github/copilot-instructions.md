@@ -19,10 +19,12 @@ Read them the cheap way: every file opens with a generated index (one line per e
 ~40 lines, or `blong-dev memory list --kind friction --area core/blong-browser --json`, show
 everything already recorded. Never read a whole file to find one entry —
 `blong-dev memory show <id>` prints exactly one, and `blong-dev memory audit` finds dangling
-references. The `## Manual` section of the root `todo.md` is the user's own list: agents never add
-to it, edit it or tidy it up. If you encounter markdown lint issues when using `blong-dev memory`,
-add blong-dev memory todo to address it permanently either by better instructions or improved
-tooling.
+references. When you do not know the words an entry uses, ask for it by meaning:
+`blong-dev memory search "<question>"` — a write also pushes the entries it touched into the local
+Hindsight index, and `blong-dev memory index --semantic` refills it. The `## Manual` section of the
+root `todo.md` is the user's own list: agents never add to it, edit it or tidy it up. If you
+encounter markdown lint issues when using `blong-dev memory`, add blong-dev memory todo to address
+it permanently either by better instructions or improved tooling.
 
 - **Output todo metrics explicitly**. Emit the marker **immediately after the switch/pivot**, before
   during reasoning and right before starting the next task from the list. Emit at least once per
@@ -84,7 +86,7 @@ tooling.
     - **Backtick a token markdown would read as syntax; never escape it.** A colour literal
       (`#ccc`), a glob, an identifier that starts with `_` (`_validations`): write the backticks
       (`` `#ccc` ``, `` `*.test.ts` ``, `` `_validations` ``). A `\_` or `\*` survives every later
-      re-wrap as noise, and the wrapper cannot see it. The wrapper will not *start* a line with such
+      re-wrap as noise, and the wrapper cannot see it. The wrapper will not _start_ a line with such
       a token — that is MD018/MD031/MD032 and it moves a word rather than let the break land there —
       but a paragraph that begins with one is the author's to fix.
     - **In a memory body, write prose, not lists.** `blong-dev memory` flattens a bullet list into
@@ -105,8 +107,8 @@ Hard rules — apply first, never contradict.
   reordered, non-whitespace characters replaced, dictionary sorted, etc.
 - **Never import handlers directly.** Cross-handler deps via `handler()` proxy (`runtime.handler`);
   direct imports break IoC.
-- **Prefer injected library functions** when feasible for reusing logic across handlers (see blong-handler
-  skill).
+- **Prefer injected library functions** when feasible for reusing logic across handlers (see
+  blong-handler skill).
 - **New realm or suite** - use the proper skills `blong-realm` or `blong-suite`.
 - **Semantic triple naming** `subjectObjectPredicate`; file = export = wire name; singular
   subject/object, present-tense predicate. Flag violations before proceeding.
@@ -415,10 +417,9 @@ the full reference.
 
 - `server` — always present on the server platform
 - `browser` — always present on the browser platform
-- `ci` — present when the process runs on CI (`isCI()` in the loader). It is the
-  captured-run configuration (colours off, Allure results written, connection resilience
-  in the db adapter), so a package's report no longer depends on its entry remembering to
-  pass the intent.
+- `ci` — present when the process runs on CI (`isCI()` in the loader). It is the captured-run
+  configuration (colours off, Allure results written, connection resilience in the db adapter), so a
+  package's report no longer depends on its entry remembering to pass the intent.
 
 **Default intents:** Running `blong` with no arguments activates `dev + microservice + integration`.
 This default provides a fast feedback loop — file saves trigger hot-reload and integration tests

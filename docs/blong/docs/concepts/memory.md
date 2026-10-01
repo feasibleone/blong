@@ -15,13 +15,18 @@ command owns the ids, the date/area/status line, the 100-column wrapping and the
 Each entry has a stable id (`F-014`, `T-003`, `D-081`), so a note can cite another one without a
 line number that rots.
 
+Each entry is also pushed into a local **semantic index** as it is written, so the notes can be
+searched by meaning rather than by the words an entry happens to use. That index is derived and
+disposable: the markdown stays the source of truth, an unreachable server never fails a write, and
+`blong-dev memory index --semantic` rebuilds the whole thing.
+
 Entries are filed by **area**: a package folder from `rush.json` (`core/blong-browser`) or one of
 the reserved cross-cutting labels `cross-cutting`, `ci`, `docs`, `skills`. A package's entries live
 in that package's own file; the root file keeps only what concerns the workspace as a whole.
 
-- [Pattern guide](../patterns/memory) — the commands, the entry shape, the checks.
+- [Pattern guide](../patterns/memory) — the commands, the entry shape, the checks, semantic search.
 - [Rationale](../rationale/memory) — why the notes are files with ids instead of prose and a
-  tracker.
+  tracker, and why the index over them is disposable.
 
 ```mermaid
 flowchart LR

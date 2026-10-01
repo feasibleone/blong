@@ -4,7 +4,8 @@
     "private": true,
     "type": "module",
     "exports": {
-        ".": "./src/index.ts"
+        ".": "./src/index.ts",
+        "./devrc": "./src/devrc.ts"
     },
     "bin": {
         "blong-dev": "bin/blong-dev.ts"
@@ -19,6 +20,7 @@
         "@feasibleone/blong-lint": "workspace:*",
         "@feasibleone/blong-mle": "workspace:^1.0.0",
         "@playwright/test": "^1.63.0",
+        "@vectorize-io/hindsight-client": "^0.10.2",
         "allure": "^3.17.0",
         "cacache": "^20.0.4",
         "cspell": "^10.0.0",

@@ -7,6 +7,11 @@
  * the staged-file lint), `list --json` and `show` are how an agent reads them
  * without loading a whole file.
  *
+ * Every write also pushes the entry it touched into a Hindsight bank, which is what
+ * `search` reads, and `prune` takes the entry out again. The markdown stays the
+ * source of truth — the index is derived and disposable — so an unreachable
+ * server costs a warning and nothing else, and `index --semantic` rebuilds.
+ *
  * Usage:
  *   blong-dev memory add <friction|todo|decision> --title <title> [--area <area>]
  *                        [--body <text> | --body-file <file>] [--status <status>] [--id <id>]
@@ -15,7 +20,8 @@
  *   blong-dev memory close <id> [--note <text>] [--keep] [--by <id>] [--reason <text>]
  *   blong-dev memory reopen <id>
  *   blong-dev memory move <id> --area <area>
- *   blong-dev memory index [--check] [--files a.md,b.md]
+ *   blong-dev memory index [--check] [--files a.md,b.md] [--semantic] [--dry-run]
+ *   blong-dev memory search <query> [--kind <kind>] [--area <area>] [--status <status>] [--limit <n>] [--json]
  *   blong-dev memory format [--check] [--files a.md,b.md]
  *   blong-dev memory check [--files a.md,b.md] [--json] [--no-spell]
  *   blong-dev memory manual <list|add <text>|done <n|text>>
@@ -28,6 +34,22 @@ import {execFileSync} from 'node:child_process';
 import {existsSync, readFileSync} from 'node:fs';
 import {relative, resolve} from 'node:path';
 
+import {resolveHindsightConfig} from '../memory/hindsight/hindsightConfig.ts';
+import {
+    MEMORY_TAG,
+    areaTag,
+    entryDocument,
+    entryDocuments,
+    kindTag,
+    statusTag,
+    type IHindsightDocument,
+} from '../memory/hindsight/hindsightDocument.ts';
+import {formatSearchResults} from '../memory/hindsight/hindsightOutput.ts';
+import {
+    BACKFILL_BATCH_SIZE,
+    createHindsightStore,
+    type IHindsightStore,
+} from '../memory/hindsight/hindsightStore.ts';
 import {
     checkDoc,
     describeProblem,
@@ -55,7 +77,7 @@ import {
     writeDoc,
 } from '../memory/memoryEdit.ts';
 import {formatLines, renderLines, wrapText} from '../memory/memoryFormat.ts';
-import {mergePlans, duplicateEntries, parseImport} from '../memory/memoryImport.ts';
+import {duplicateEntries, mergePlans, parseImport} from '../memory/memoryImport.ts';
 import {migrateLegacy, parseBlameDates, parseDropList} from '../memory/memoryMigrate.ts';
 import {parseDoc, readDoc, splitLines} from '../memory/memoryParse.ts';
 import {
@@ -94,12 +116,17 @@ const USAGE = [
     'blong-dev memory reopen <id>',
     'blong-dev memory move <id> --area <area>',
     'blong-dev memory index|format|check [--files a.md,b.md]',
+    'blong-dev memory index --semantic [--dry-run]   Ingest every entry into the Hindsight index',
+    'blong-dev memory search <query> [--kind <kind>] [--area <area>] [--limit <n>] [--json]',
     'blong-dev memory manual <list|add <text>|done <n|text>>',
     'blong-dev memory audit [--json]',
     'blong-dev memory migrate <file> --kind <kind> [--default-area <area>] [--drop <file>] [--apply]',
     'blong-dev memory import <file.json> [...] [--kind <kind>] [--apply] [--force]',
     'blong-dev memory prune <id,id> --reason "<why>"',
 ].join('\n');
+
+/** Results a search prints unless `--limit` says otherwise. */
+const DEFAULT_SEARCH_LIMIT = 8;
 
 const KIND_ALIAS: Record<string, MemoryKind> = {
     f: 'friction',
@@ -222,6 +249,46 @@ function setStatus(
 }
 
 /**
+ * Push entries a write has just changed into the semantic index.
+ *
+ * The file on disk is the source of truth and the index is derived, so nothing
+ * here may fail the command: an unreachable server is reported once on stderr and
+ * the next `memory index --semantic` repairs whatever was missed. Entries are
+ * re-read from the document rather than passed in, because the lines are the only
+ * description of an entry that survives a write.
+ */
+async function ingest(
+    root: string,
+    touched: ReadonlyArray<{doc: IMemoryDoc; id: string}>,
+): Promise<void> {
+    const store = createHindsightStore(resolveHindsightConfig());
+    if (!store || touched.length === 0) return;
+
+    const documents = touched
+        .map(({doc, id}) => {
+            const entry = parseDoc(doc.lines).entries.find(candidate => candidate.id === id);
+            return entry ? entryDocument(root, doc, entry) : null;
+        })
+        .filter((document): document is IHindsightDocument => document !== null);
+
+    const outcome = await store.retain(documents);
+    if (!outcome.ok) warnIndex(store, outcome.reason);
+}
+
+/** Drop documents whose entries are gone from disk, so a search cannot find them. */
+async function forget(ids: readonly string[]): Promise<void> {
+    const store = createHindsightStore(resolveHindsightConfig());
+    if (!store || ids.length === 0) return;
+    const outcome = await store.remove(ids);
+    if (!outcome.ok) warnIndex(store, outcome.reason);
+}
+
+/** Report a skipped index update without failing the command that made it. */
+function warnIndex(store: IHindsightStore, reason: string): void {
+    process.stderr.write(`blong-dev: hindsight index skipped (${store.url}): ${reason}\n`);
+}
+
+/**
  * Append paragraphs to a body, each separated by a blank line.
  *
  * Without the blank line markdown treats the appended text as a continuation of
@@ -288,6 +355,7 @@ async function add(root: string, args: string[], options: Options): Promise<void
 
     process.stdout.write(`# ${id} ${status} · ${area}\n`);
     process.stdout.write(`# ${relative(root, doc.path)}\n`);
+    await ingest(root, [{doc, id}]);
 }
 
 /**
@@ -297,7 +365,7 @@ async function add(root: string, args: string[], options: Options): Promise<void
  * that reads badly), and rewriting it by hand would break the format the CLI
  * owns, so the entry is re-rendered from its parsed parts.
  */
-function edit(root: string, id: string | undefined, options: Options): void {
+async function edit(root: string, id: string | undefined, options: Options): Promise<void> {
     if (!id)
         fail(
             'memory edit <id> [--title <title>] [--body <text>|--body-file <file>] [--status <status>]',
@@ -333,6 +401,7 @@ function edit(root: string, id: string | undefined, options: Options): void {
     refreshIndex(doc);
     writeDoc(doc);
     process.stdout.write(`# ${entry.id} edited · ${title}\n# ${relative(root, doc.path)}\n`);
+    await ingest(root, [{doc, id: entry.id}]);
 }
 
 function list(root: string, options: Options, flags: Set<string>): void {
@@ -402,7 +471,12 @@ function show(root: string, id: string | undefined, flags: Set<string>): void {
     process.stdout.write(`${block.join('\n')}\n`);
 }
 
-function close(root: string, id: string | undefined, options: Options, flags: Set<string>): void {
+async function close(
+    root: string,
+    id: string | undefined,
+    options: Options,
+    flags: Set<string>,
+): Promise<void> {
     if (!id) fail('memory close needs an id');
     const found = findEntry(root, id);
     if (!found) fail(`no entry with id ${id}`);
@@ -415,6 +489,7 @@ function close(root: string, id: string | undefined, options: Options, flags: Se
         refreshIndex(doc);
         writeDoc(doc);
         process.stdout.write(`# ${entry.id} done and removed\n# ${entry.title}\n`);
+        await forget([entry.id]);
         return;
     }
 
@@ -432,9 +507,10 @@ function close(root: string, id: string | undefined, options: Options, flags: Se
 
     setStatus(doc, entry, status, appendParagraphs(entry.body, additions));
     process.stdout.write(`# ${entry.id} ${status}\n# ${entry.title}\n`);
+    await ingest(root, [{doc, id: entry.id}]);
 }
 
-function reopen(root: string, id: string | undefined): void {
+async function reopen(root: string, id: string | undefined): Promise<void> {
     if (!id) fail('memory reopen needs an id');
     const found = findEntry(root, id);
     if (!found) fail(`no entry with id ${id}`);
@@ -443,9 +519,10 @@ function reopen(root: string, id: string | undefined): void {
     const status = doc.kind === 'decision' ? 'active' : 'open';
     setStatus(doc, entry, status, entry.body);
     process.stdout.write(`# ${entry.id} ${status}\n`);
+    await ingest(root, [{doc, id: entry.id}]);
 }
 
-function move(root: string, id: string | undefined, options: Options): void {
+async function move(root: string, id: string | undefined, options: Options): Promise<void> {
     if (!id) fail('memory move needs an id');
     const area = options.get('area')?.trim();
     if (!area) fail('memory move needs --area <area>');
@@ -466,6 +543,7 @@ function move(root: string, id: string | undefined, options: Options): void {
         refreshIndex(doc);
         writeDoc(doc);
         process.stdout.write(`# ${entry.id} area ${area}\n`);
+        await ingest(root, [{doc, id: entry.id}]);
         return;
     }
 
@@ -482,9 +560,10 @@ function move(root: string, id: string | undefined, options: Options): void {
     writeDoc(doc);
 
     process.stdout.write(`# ${entry.id} moved to ${relative(root, target.path)}\n`);
+    await ingest(root, [{doc: target, id: entry.id}]);
 }
 
-function index(root: string, options: Options, flags: Set<string>): void {
+async function index(root: string, options: Options, flags: Set<string>): Promise<void> {
     const docs = docsOf(root, options);
     let stale = 0;
     for (const doc of docs) {
@@ -501,6 +580,130 @@ function index(root: string, options: Options, flags: Set<string>): void {
             : `# memory index: ${docs.length} file(s), ${stale} updated\n`,
     );
     if (flags.has('check') && stale > 0) process.exitCode = 1;
+    if (flags.has('semantic')) await backfill(root, docs, flags);
+}
+
+/**
+ * Push every entry of the selected files into the semantic index, in batches.
+ *
+ * This is the repair path as much as the first-time one: documents are keyed by
+ * entry id, so a second run replaces what is there rather than doubling it, and
+ * anything a write could not reach earlier is picked up now. `--dry-run` reports
+ * the size of the job without touching the server.
+ */
+async function backfill(
+    root: string,
+    docs: readonly IMemoryDoc[],
+    flags: Set<string>,
+): Promise<void> {
+    const config = resolveHindsightConfig();
+    const documents = entryDocuments(root, docs);
+
+    if (flags.has('dry-run')) {
+        process.stdout.write(
+            `# memory index --semantic: would ingest ${documents.length} entries ` +
+                `from ${docs.length} file(s)\n`,
+        );
+        return;
+    }
+
+    const store = createHindsightStore(config);
+    if (!store) {
+        process.stderr.write(
+            '# memory index --semantic: the semantic index is switched off (HINDSIGHT_DISABLED)\n',
+        );
+        process.exitCode = 1;
+        return;
+    }
+
+    let ingested = 0;
+    for (let start = 0; start < documents.length; start += BACKFILL_BATCH_SIZE) {
+        const batch = documents.slice(start, start + BACKFILL_BATCH_SIZE);
+        const outcome = await store.retain(batch);
+        if (!outcome.ok) {
+            warnIndex(store, outcome.reason);
+            break;
+        }
+        ingested += batch.length;
+        process.stdout.write(`# indexed ${ingested}/${documents.length}\n`);
+    }
+
+    const missed = documents.length - ingested;
+    process.stdout.write(
+        `# memory index --semantic: ${ingested} of ${documents.length} entries ingested, ` +
+            `${missed} not — bank ${config.bank} at ${config.url}\n`,
+    );
+    if (missed > 0) process.exitCode = 1;
+}
+
+/**
+ * Ask the semantic index what the repository already knows.
+ *
+ * This is a read the caller explicitly asked for, so unlike the write hook it
+ * fails loudly: an unreachable server is an error naming the URL and how to start
+ * it, never an empty result set that reads as "nothing matched".
+ */
+async function search(args: string[], options: Options, flags: Set<string>): Promise<void> {
+    const query = args.join(' ').trim();
+    if (!query) {
+        fail(
+            'memory search <query> [--kind <kind>] [--area <area>] [--status <status>] [--limit <n>] [--json]',
+        );
+    }
+
+    const config = resolveHindsightConfig();
+    const store = createHindsightStore(config);
+    if (!store) {
+        process.stderr.write(
+            'blong-dev: the semantic index is switched off (HINDSIGHT_DISABLED)\n',
+        );
+        process.exitCode = 1;
+        return;
+    }
+
+    const tags = [MEMORY_TAG];
+    const kind = options.get('kind') ? kindOf(options.get('kind')) : null;
+    if (options.get('kind') && !kind) fail(`unknown kind "${options.get('kind')}"`);
+    if (kind) tags.push(kindTag(kind));
+
+    const area = options.get('area')?.trim();
+    if (area) tags.push(areaTag(area));
+
+    const status = options.get('status')?.trim();
+    if (status) tags.push(statusTag(status));
+
+    const rawLimit = options.get('limit')?.trim();
+    const limit = rawLimit === undefined ? DEFAULT_SEARCH_LIMIT : Number(rawLimit);
+    if (!Number.isInteger(limit) || limit < 1) {
+        fail(`--limit must be a positive integer, not "${rawLimit}"`);
+    }
+
+    const outcome = await store.recall(query, {tags, limit});
+    if (!outcome.ok) {
+        process.stderr.write(
+            `blong-dev: cannot reach the Hindsight index at ${config.url} — ${outcome.reason}\n` +
+                'blong-dev: start it with plans/memory-index/hindsight.sh\n',
+        );
+        process.exitCode = 1;
+        return;
+    }
+
+    if (flags.has('json')) {
+        process.stdout.write(
+            `${JSON.stringify(
+                {query, bank: config.bank, url: config.url, results: outcome.hits},
+                null,
+                2,
+            )}\n`,
+        );
+        return;
+    }
+
+    const lines = formatSearchResults(outcome.hits, query, {
+        bank: config.bank,
+        url: config.url,
+    });
+    process.stdout.write(`${lines.join('\n')}\n`);
 }
 
 function format(root: string, options: Options, flags: Set<string>): void {
@@ -933,7 +1136,12 @@ function migrate(root: string, args: string[], options: Options, flags: Set<stri
 }
 
 /** Remove entries by id, for a reviewed prune. */
-function prune(root: string, args: string[], options: Options, flags: Set<string>): void {
+async function prune(
+    root: string,
+    args: string[],
+    options: Options,
+    flags: Set<string>,
+): Promise<void> {
     const reason = options.get('reason');
     if (!reason)
         fail('memory prune <id,id,...> --reason "<why>" (the reason is recorded nowhere else)');
@@ -953,6 +1161,10 @@ function prune(root: string, args: string[], options: Options, flags: Set<string
         writeDoc(found.doc);
         removed.push(`${id} ${found.entry.title}`);
     }
+
+    // The entries are gone from disk, so they must be gone from the index too:
+    // a search that still returns a pruned entry is worse than one that misses it.
+    await forget(ids);
 
     if (flags.has('json')) {
         process.stdout.write(`${JSON.stringify({reason, removed}, null, 2)}\n`);
@@ -1035,15 +1247,17 @@ export async function memory(args: string[]): Promise<void> {
             case 'show':
                 return show(root, positionals[1], flags);
             case 'edit':
-                return edit(root, positionals[1], options);
+                return await edit(root, positionals[1], options);
             case 'close':
-                return close(root, positionals[1], options, flags);
+                return await close(root, positionals[1], options, flags);
             case 'reopen':
-                return reopen(root, positionals[1]);
+                return await reopen(root, positionals[1]);
             case 'move':
-                return move(root, positionals[1], options);
+                return await move(root, positionals[1], options);
             case 'index':
-                return index(root, options, flags);
+                return await index(root, options, flags);
+            case 'search':
+                return await search(positionals.slice(1), options, flags);
             case 'format':
                 return format(root, options, flags);
             case 'check':
@@ -1057,7 +1271,7 @@ export async function memory(args: string[]): Promise<void> {
             case 'import':
                 return importBatch(root, positionals.slice(1), options, flags);
             case 'prune':
-                return prune(root, rest, options, flags);
+                return await prune(root, rest, options, flags);
             default:
                 process.stderr.write(`blong-dev: unknown memory verb "${verb ?? ''}"\n${USAGE}\n`);
                 process.exitCode = 1;

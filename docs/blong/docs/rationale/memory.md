@@ -38,6 +38,31 @@ Markdown, in the repository, with enough structure for a machine to navigate:
   `memory audit` reports the leftovers of edits: references to ids that no longer exist, two entries
   with the same title, entries that have been open for months.
 
+## Why the index over the notes is disposable
+
+Free-text search over the notes matches strings. An agent that has the _question_ — "what did we
+learn about coverage aggregation?" — but not the vocabulary the entry used (`F-160` says "the batch
+files cannot be used as the coverage map") has two options: grep for words it is guessing at, or
+read the tree. Both waste the thing the notes exist to save.
+
+The notes are therefore also indexed by meaning, in a local memory service that answers a question
+with the entries closest to it. Each entry is one document keyed by its id, so re-ingesting a
+corrected entry replaces it; the dimensions a search filters on (kind, area, status, path) travel as
+tags, because tags are the only thing the service can filter on.
+
+The index is deliberately _not_ a second source of truth. Three consequences follow, and they are
+the reason for the design rather than accidents of it:
+
+- **A write never depends on it.** The file is written first and the index is told afterwards, with
+  a bounded timeout; an unreachable service costs one warning, not a lost entry. A note that fails
+  to save is a lost finding, while an index that misses one is a re-run of the backfill.
+- **It is rebuilt, not repaired.** Entries are keyed by id, so ingestion is an upsert: the backfill
+  can be run over everything at any time, and the cheap way to recover from any doubt is to run it
+  again.
+- **It holds the entry, not a summary of it.** The bank runs in `chunks` mode, so ingestion calls no
+  model at all and a search returns the text that is in the file — the note as its author wrote it,
+  not a paraphrase produced by whichever model happened to be configured.
+
 ## Design principles
 
 1. The file is the source of truth; the index is derived and regenerated.
