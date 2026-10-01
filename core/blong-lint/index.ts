@@ -1,6 +1,6 @@
 import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
-import {dirname, join} from 'node:path';
+import {dirname, isAbsolute, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 /**
@@ -65,6 +65,30 @@ const TS_EXT = /\.[cm]?tsx?$/i;
 const SPELL_EXT = /\.([cm]?tsx?|md)$/i;
 const LINT_EXT = /\.[cm]?[jt]sx?$/i;
 const MD_EXT = /\.md$/i;
+
+/** Extensions prettier is willing to write. */
+const FORMAT_EXT = /\.[cm]?[jt]sx?$|\.(md|markdown|json|jsonc|ya?ml|css|scss|less|html?)$/i;
+
+/**
+ * True when at least one tool would read this path.
+ *
+ * A path that no tool matches is the other half of the silent-pass bug: the run
+ * skips every tool, finds nothing to report and exits 0, which reads exactly like
+ * a clean package.
+ */
+export function checkable(file: string): boolean {
+    return SPELL_EXT.test(file) || LINT_EXT.test(file) || TS_EXT.test(file) || MD_EXT.test(file);
+}
+
+/**
+ * The named files that do not exist, relative to `cwd`.
+ *
+ * A caller-supplied path is checked before anything runs, so a run that would have
+ * examined nothing refuses the argument instead of reporting success.
+ */
+export function missingFiles(cwd: string, files: readonly string[]): string[] {
+    return files.filter(file => !existsSync(isAbsolute(file) ? file : join(cwd, file)));
+}
 
 /** The binary is not named after the tool, so a name can be linted by a package. */
 const TOOL_BIN: Partial<Record<LintTool, string>> = {markdown: 'markdownlint-cli2'};
@@ -313,14 +337,19 @@ interface MarkdownlintIssue {
 }
 
 /**
- * `path:line:col error MD013/line-length message` — markdownlint's default
+ * `path:line[:col] error MD013/rule/rule message` — markdownlint's default
  * (non-JSON) reporter, one issue per line.
+ *
+ * The rule is matched loosely on purpose: markdownlint ids carry a variable number
+ * of segments (`MD041/first-line-heading/first-line-h1`), and a pattern that
+ * expected exactly two dropped the whole diagnostic — leaving the run printing a
+ * green tick with a non-zero exit code behind it.
  */
 const MARKDOWNLINT_LINE =
-    /^(?<file>\S+?):(?<line>\d+)(?::(?<column>\d+))?\s+(?<severity>error|warning)\s+(?<rule>MD\d+\/[\w-]+)\s+(?<message>.+)$/;
+    /^(?<file>\S+?):(?<line>\d+)(?::(?<column>\d+))?\s+(?<severity>error|warning)\s+(?<rule>\S+)\s+(?<message>.+)$/;
 
-/** Parse markdownlint-cli2 output. */
-function parseMarkdownlint(text: string): Diagnostic[] {
+/** Parse markdownlint-cli2 output. Exported so its own rules are unit-tested. */
+export function parseMarkdownlint(text: string): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
     for (const raw of text.split('\n')) {
         const match = MARKDOWNLINT_LINE.exec(raw.trim());
@@ -442,6 +471,92 @@ export async function lintCollect(
     }
 
     return {diagnostics, exitCode, ran};
+}
+
+/** Options for {@link lintFix}. */
+export interface LintFixOptions {
+    /** Extra `node_modules/.bin` directories, searched before the defaults. */
+    binPaths?: string[];
+    /**
+     * Absolute path of the pinned prettier, omitted when it is not installed.
+     *
+     * The repository pins prettier v3 in a rush autoinstaller while packages carry
+     * their own (v2) copy, and the wrong major rewrites list markers and prose
+     * wraps — so the caller resolves it and this never guesses.
+     */
+    prettierBin?: string;
+    /** Per-tool timeout in milliseconds. Defaults to 180000. */
+    timeoutMs?: number;
+}
+
+/** What a repair pass did. */
+export interface LintFixResult {
+    /** Tools that ran, in order. */
+    ran: string[];
+    /** Notes for the reader — a tool that could not be found is not a failure. */
+    notes: string[];
+}
+
+/**
+ * Repair the named files, in the order that leaves them lint-clean.
+ *
+ * Prettier runs first and last: it is what aligns a table and re-wraps prose to the
+ * configured width, while markdownlint's own fixes are not written to that width.
+ * Without the final pass the next `lint` reports the file as still unformatted, and
+ * without the first one markdownlint reports alignment prettier would have fixed —
+ * which is exactly the manual `edit, prettier, lint` order F-241 described.
+ *
+ * Never throws and never decides the exit code: the report that follows is what a
+ * caller reads.
+ */
+export async function lintFix(
+    cwd: string,
+    files: readonly string[],
+    options: LintFixOptions = {},
+): Promise<LintFixResult> {
+    const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT;
+    const binPaths = options.binPaths ?? [];
+    const env: NodeJS.ProcessEnv = {
+        ...process.env,
+        PATH: [ownBin, join(cwd, 'node_modules', '.bin'), process.env['PATH'] ?? ''].join(PATH_SEP),
+    };
+    const formattable = files.filter(file => FORMAT_EXT.test(file));
+    const markdown = files.filter(file => MD_EXT.test(file));
+    const ran: string[] = [];
+    const notes: string[] = [];
+
+    const prettier = async (): Promise<void> => {
+        if (!options.prettierBin || formattable.length === 0) return;
+        await run(options.prettierBin, ['--write', ...formattable], cwd, timeoutMs, env);
+        if (!ran.includes('prettier')) ran.push('prettier');
+    };
+
+    if (!options.prettierBin) {
+        notes.push(
+            'prettier was not found (the rush-prettier autoinstaller is not installed) — ' +
+                'table alignment may still be reported',
+        );
+    }
+
+    await prettier();
+
+    if (markdown.length > 0) {
+        const bin = resolveBin('markdown', cwd, binPaths);
+        if (bin) {
+            const config = findUp(cwd, '.markdownlint.jsonc') ?? findUp(cwd, '.markdownlint.json');
+            const args = ['--fix', '--no-globs'];
+            if (config) args.push('--config', config);
+            args.push(...markdown);
+            await run(bin, args, cwd, timeoutMs, env);
+            ran.push('markdownlint --fix');
+        } else {
+            notes.push('markdownlint was not found — markdown rules were not repaired');
+        }
+    }
+
+    await prettier();
+
+    return {ran, notes};
 }
 
 /** Convenience: true when {@link lintCollect} found neither errors nor warnings. */

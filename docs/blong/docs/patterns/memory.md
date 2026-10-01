@@ -52,6 +52,13 @@ blong-dev memory prune F-101,F-102 --reason "duplicated by F-090"
 nor a reserved label. For a long body use `--body-file`; `--date` and `--status` override the
 defaults (today, and the first status of the kind).
 
+`close` treats the three kinds differently, because their ids mean different things. A friction and
+a decision keep their entry — under `Resolved` and `Superseded`, still searchable, the resolution or
+the successor named in the body — because the lesson outlives the status and the id is never reused.
+A todo is _removed_ from the file and its document is deleted from the index: the work is done and
+the record of it is the commit. `--keep` writes it to `## Done` instead, which keeps it findable at
+the cost of a file that grows forever.
+
 ## Reading them
 
 ```bash
@@ -77,7 +84,14 @@ the entry that uses different words.
 blong-dev memory search "why do agents keep editing memory files by hand"
 blong-dev memory search "coverage thresholds" --kind friction --area core/blong-browser --limit 5
 blong-dev memory search "the union is no longer debounced" --json
+blong-dev memory search "how do the notes work" --source docs
+blong-dev memory search "handler naming" --source entry,docs   # both streams in one query
 ```
+
+`--source` selects the stream: `entry` (the default), `docs` or `skill`, comma-joined for several. A
+search defaults to the entries, so adding the documentation to the bank never changed what an
+existing query returns. `--kind`, `--area` and `--status` describe entries only, so asking for them
+beside a page source is refused rather than answered with nothing.
 
 Each hit prints a rule, the entry's id, kind, status and similarity, the file it lives in, and the
 entry text as it stands in that file. The number is the cosine similarity of the embedding. The
@@ -93,6 +107,27 @@ Every entry is one document, keyed by its id, so re-ingesting an edited entry re
 than duplicating it. The dimensions a search can filter on — kind, area, status, id, file path — are
 written as tags, and mirrored into the document's metadata for the server's own UI.
 
+The bank holds three streams, told apart by a tag rather than by a second bank, so one query can
+span them:
+
+| Stream  | What it is                                                   | Id                     | Tags                                   |
+| ------- | ------------------------------------------------------------ | ---------------------- | -------------------------------------- |
+| `entry` | one document per memory entry                                | the entry id (`F-316`) | `memory`, `kind:`, `area:`, `status:`  |
+| `docs`  | one document per published page in `docs/blong/docs/<tier>/` | `doc-<tier>-<name>`    | `type:documentation`, `tier:`, `path:` |
+| `skill` | one document per `.github/skills/*/SKILL.md`                 | `skill-<name>`         | `type:agent-skill`, `scope:`, `path:`  |
+
+A page or a skill is stable state rather than an event, so its id comes from its path: an edit
+replaces the document instead of adding a second fragment, which is what makes re-ingesting a whole
+tier cheap and safe. `--sources docs,skill` ingests them; the default is `entry`, so nothing about
+an existing query changes.
+
+An agent that wants Hindsight's own documentation as a skill can pull it in beside the local ones
+(Blong discovers skills from `.github/skills/*/SKILL.md` and has no installer of its own):
+
+```bash
+npx skills add https://github.com/vectorize-io/hindsight --skill hindsight-docs
+```
+
 The index is **derived**: the markdown is the source of truth, and the bank can be dropped and
 rebuilt at any time.
 
@@ -102,6 +137,8 @@ rebuilt at any time.
 | `prune`                                  | Deletes the pruned entries' documents, so a search cannot find what the tree no longer holds. |
 | `index --semantic`                       | Ingests every entry of the selected files — the first fill, and the repair.                   |
 | `index --semantic --dry-run`             | Reports how many entries would be ingested, without touching the server.                      |
+| `index --semantic --stats`               | Also compares the bank with the tree and names what drifted.                                  |
+| `index --semantic --prune`               | Deletes the bank documents the tree no longer holds.                                          |
 
 A write never fails because of the index: if the server is unreachable, the command prints one
 warning on stderr and the entry is written anyway. The backfill is the repair for whatever was
@@ -111,6 +148,9 @@ skipped, and re-running it is safe.
 blong-dev memory index --semantic                        # every file
 blong-dev memory index --semantic --files .github/memory/friction.md
 blong-dev memory index --semantic --dry-run              # count only
+blong-dev memory index --semantic --sources docs,skill   # the docs site and the skills
+blong-dev memory index --semantic --stats                # what the bank holds, and what drifted
+blong-dev memory index --semantic --prune                # drop what the tree no longer holds
 ```
 
 ### Pointing the CLI at a server
@@ -131,6 +171,10 @@ tree, it and two Ollama models three times its width rank every benchmark query 
 the cross-encoder reranker runs, and differ by noise without it — so a bigger model buys nothing
 observable against a LAN dependency. `EMBED_MODEL` on the script still selects an Ollama model for
 anyone re-measuring; the numbers are in `plans/memory-index/embedding-model-comparison.md`.
+
+One bank means one embedding model for everything in it: the entries, the documentation pages and
+the skills are chunked and embedded by the same settings, so a query compares them on equal terms.
+The width is fixed by the first write, which is why the model is chosen once, at the script.
 
 ## Writing a batch (migration, or an agent's work)
 

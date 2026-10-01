@@ -13,11 +13,11 @@ open (8)
   still
 - `T-046` · tools/blong-dev — Demote headings embedded in migrated entry bodies
 - `T-152` · tools/blong-dev — Playwright failures have no location in the report
-- `T-155` · tools/blong-dev — Unit-only packages have no Allure report to link
 - `T-168` · tools/blong-dev — A closed todo id can be re-issued, re-pointing references at another
   entry
 - `T-151` · tools/blong-dev — Memory bodies silently flatten bullet lists
 - `T-180` · tools/blong-dev — Eleven memory entries escape emphasis markers
+- `T-190` · tools/blong-dev — --since cannot filter a Hindsight recall by date
 
 <!-- /memory:index -->
 
@@ -60,23 +60,6 @@ disambiguate a test name that several specs of one package share, which today fa
 The tap leg already has locations, because tap reports them in its own diagnostics, so this is only
 the browser leg.
 
-### T-155 — Unit-only packages have no Allure report to link
-
-> _2026-09-26 · tools/blong-dev · open_
-
-The Report column in the CI summary is still `—` for packages whose tests never run through the
-framework — the plain unit-test packages (blong-lib, blong-chain, semantic-log, blong-template,
-blong-ttk, blong-dev and the rest). They have no `allure-results*` directory at all, because Allure
-results are written by the framework's watch (the `ci` intent turns that on), and
-`publishAllureReport` returns early when no producer left results; a link for them would need the
-tap runner itself to become a producer. It has the material:
-`tools/blong-dev/src/report/tapReport.ts` already parses tap's JSON into suites, cases, durations
-and statuses, so `blong-dev test` could write one Allure result file per test into
-`allure-results-tap` (before `publishAllureReport` merges the producers) and every package with
-tests would have a report. Decide first whether that is wanted: it would put thousands of unit-test
-results through the single-file report on every run, and the browser leg's report is what the realm
-packages are watched for.
-
 ### T-168 — A closed todo id can be re-issued, re-pointing references at another entry
 
 > _2026-09-28 · tools/blong-dev · open_
@@ -111,3 +94,17 @@ emphasis (Registry.\_validations(), \_shared*, \*.spec.ts). It renders, but it i
 cannot see and the house style uses backticks, and a check for it was left out of the T-175 fix
 because it would fail eleven entries at once. Sweep them with blong-dev memory edit, writing the
 token in backticks instead, and then add the rule to checkMarkdown so the escape cannot come back.
+
+### T-190 — --since cannot filter a Hindsight recall by date
+
+> _2026-10-01 · tools/blong-dev · open_
+
+A search cannot be filtered by date: Hindsight's recall() takes query_timestamp only as a scoring
+anchor for relative expressions, and temporal_window ranks rather than filters, so --since was
+skipped instead of faked. Three designs were checked against the SDK. Rank recent by passing
+temporal_window and then drop the hits older than the boundary client-side, using a new date: tag as
+the cheap source of a document's date. Pass only query_timestamp and accept that older material
+still surfaces, weighted down. Or pre-filter with listDocuments({timeField: 'updated_at',
+startDate}) and keep only those document ids, which is the one native date filter and costs an extra
+call. Whichever is chosen, the result header must print the date, and changing the default filter
+would invalidate the benchmark in plans/memory-index/eval.

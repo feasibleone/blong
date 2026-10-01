@@ -21,7 +21,9 @@
  *   blong-dev memory reopen <id>
  *   blong-dev memory move <id> --area <area>
  *   blong-dev memory index [--check] [--files a.md,b.md] [--semantic] [--dry-run]
- *   blong-dev memory search <query> [--kind <kind>] [--area <area>] [--status <status>] [--limit <n>] [--json]
+ *                        [--sources entry,docs,skill] [--stats] [--prune]
+ *   blong-dev memory search <query> [--source entry|docs|skill] [--kind <kind>] [--area <area>]
+ *                             [--status <status>] [--limit <n>] [--json]
  *   blong-dev memory format [--check] [--files a.md,b.md]
  *   blong-dev memory check [--files a.md,b.md] [--json] [--no-spell]
  *   blong-dev memory manual <list|add <text>|done <n|text>>
@@ -34,20 +36,30 @@ import {execFileSync} from 'node:child_process';
 import {existsSync, readFileSync} from 'node:fs';
 import {relative, resolve} from 'node:path';
 
-import {resolveHindsightConfig} from '../memory/hindsight/hindsightConfig.ts';
 import {
-    MEMORY_TAG,
     areaTag,
     entryDocument,
     entryDocuments,
     kindTag,
     statusTag,
+    tagValue,
     type IHindsightDocument,
 } from '../memory/hindsight/hindsightDocument.ts';
 import {formatSearchResults} from '../memory/hindsight/hindsightOutput.ts';
+import {pageDocuments, type IPageSource} from '../memory/hindsight/hindsightPage.ts';
+import {resolveHindsight} from '../memory/hindsight/hindsightRuntime.ts';
+import {
+    SOURCE_TAG,
+    discoverPages,
+    pageSourceOf,
+    parseSources,
+    sourceTags,
+    type MemorySource,
+} from '../memory/hindsight/hindsightSources.ts';
 import {
     BACKFILL_BATCH_SIZE,
-    createHindsightStore,
+    BACKFILL_TIMEOUT_MS,
+    type IHindsightDocumentRef,
     type IHindsightStore,
 } from '../memory/hindsight/hindsightStore.ts';
 import {
@@ -116,8 +128,8 @@ const USAGE = [
     'blong-dev memory reopen <id>',
     'blong-dev memory move <id> --area <area>',
     'blong-dev memory index|format|check [--files a.md,b.md]',
-    'blong-dev memory index --semantic [--dry-run]   Ingest every entry into the Hindsight index',
-    'blong-dev memory search <query> [--kind <kind>] [--area <area>] [--limit <n>] [--json]',
+    'blong-dev memory index --semantic [--sources entry,docs,skill] [--dry-run] [--stats] [--prune]',
+    'blong-dev memory search <query> [--source entry|docs|skill] [--kind <kind>] [--area <area>] [--limit <n>] [--json]',
     'blong-dev memory manual <list|add <text>|done <n|text>>',
     'blong-dev memory audit [--json]',
     'blong-dev memory migrate <file> --kind <kind> [--default-area <area>] [--drop <file>] [--apply]',
@@ -261,7 +273,7 @@ async function ingest(
     root: string,
     touched: ReadonlyArray<{doc: IMemoryDoc; id: string}>,
 ): Promise<void> {
-    const store = createHindsightStore(resolveHindsightConfig());
+    const {store} = resolveHindsight();
     if (!store || touched.length === 0) return;
 
     const documents = touched
@@ -277,7 +289,7 @@ async function ingest(
 
 /** Drop documents whose entries are gone from disk, so a search cannot find them. */
 async function forget(ids: readonly string[]): Promise<void> {
-    const store = createHindsightStore(resolveHindsightConfig());
+    const {store} = resolveHindsight();
     if (!store || ids.length === 0) return;
     const outcome = await store.remove(ids);
     if (!outcome.ok) warnIndex(store, outcome.reason);
@@ -510,6 +522,31 @@ async function close(
     await ingest(root, [{doc, id: entry.id}]);
 }
 
+/** The paragraph `close` writes when a decision is superseded by another. */
+const SUPERSEDED_BY = /^Superseded by `[A-Z]-\d{3}`\.$/;
+
+/**
+ * Drop the machine-written supersession line from a body.
+ *
+ * Reopening a decision used to leave `Superseded by ...` behind, so an active entry
+ * kept pointing at a choice that no longer replaced it. Only the line `close` writes
+ * itself is removed: everything else in a body is prose an author wrote, and deleting
+ * that silently would lose more than it fixes — a `--note` about a fix that later
+ * regressed is worth keeping.
+ */
+function withoutSupersession(body: readonly string[]): string[] {
+    const kept: string[] = [];
+    for (const line of body) {
+        if (SUPERSEDED_BY.test(line.trim())) {
+            // The line arrived as its own paragraph, so its blank separator goes too.
+            if (kept.length > 0 && kept[kept.length - 1]!.trim() === '') kept.pop();
+            continue;
+        }
+        kept.push(line);
+    }
+    return kept;
+}
+
 async function reopen(root: string, id: string | undefined): Promise<void> {
     if (!id) fail('memory reopen needs an id');
     const found = findEntry(root, id);
@@ -517,8 +554,12 @@ async function reopen(root: string, id: string | undefined): Promise<void> {
     const {doc, entry} = found;
     assertMigrated(doc);
     const status = doc.kind === 'decision' ? 'active' : 'open';
-    setStatus(doc, entry, status, entry.body);
+    const body = withoutSupersession(entry.body);
+    setStatus(doc, entry, status, body);
     process.stdout.write(`# ${entry.id} ${status}\n`);
+    if (body.length !== entry.body.length) {
+        process.stdout.write(`# ${entry.id} no longer claims a successor\n`);
+    }
     await ingest(root, [{doc, id: entry.id}]);
 }
 
@@ -563,7 +604,78 @@ async function move(root: string, id: string | undefined, options: Options): Pro
     await ingest(root, [{doc: target, id: entry.id}]);
 }
 
+/** The switches and the selection a `memory index` run was given. */
+interface IIndexFlags {
+    /** Report the generated index drift only; write nothing. */
+    check: boolean;
+    /** Also push the selected documents into the bank. */
+    semantic: boolean;
+    /** Report what a semantic run would send, touching nothing. */
+    dryRun: boolean;
+    /** List the bank documents the tree no longer holds. */
+    stats: boolean;
+    /** Delete the bank documents the tree no longer holds. */
+    prune: boolean;
+    /** The streams this run owns. */
+    sources: MemorySource[];
+    /**
+     * The page files those streams hold.
+     *
+     * Discovered once, because the run both counts them and then re-reads them:
+     * two walks of the tree could disagree if anything changed in between.
+     */
+    pages: IPageSource[];
+}
+
+/**
+ * True when a valueless flag was given.
+ *
+ * `parseArgs` takes the token after `--flag` as its value whenever that token is
+ * not another flag, so `index --prune friction.md` arrives as an option rather
+ * than a flag — and a prune that silently does not happen is worse than one that
+ * refuses the argument.
+ */
+function flagOn(flags: Set<string>, options: Options, name: string): boolean {
+    return flags.has(name) || options.has(name);
+}
+
+/**
+ * The page files a run owns.
+ *
+ * Normally the whole tree under the selected sources. A caller that names files
+ * with `--files` gets exactly those, but only when the run is page-only: with
+ * `entry` selected the same flag has always meant memory files, and one flag
+ * cannot mean two things at once.
+ */
+function pagesOf(root: string, sources: readonly MemorySource[], options: Options): IPageSource[] {
+    const discovered = discoverPages(root, sources);
+    const named = options.get('files');
+    if (!named || sources.includes('entry')) return discovered;
+
+    const pages = named
+        .split(',')
+        .map(file => resolve(file.trim()))
+        .map(file => pageSourceOf(root, file))
+        .filter((page): page is IPageSource => page !== null);
+    if (pages.length === 0) {
+        fail('none of the named files is a documentation page or a skill — nothing to ingest');
+    }
+    return pages;
+}
+
 async function index(root: string, options: Options, flags: Set<string>): Promise<void> {
+    const wanted = parseSources(options.get('sources') ?? 'entry');
+    for (const problem of wanted.problems) fail(problem);
+
+    const run: IIndexFlags = {
+        check: flagOn(flags, options, 'check'),
+        semantic: flagOn(flags, options, 'semantic'),
+        dryRun: flagOn(flags, options, 'dry-run'),
+        stats: flagOn(flags, options, 'stats'),
+        prune: flagOn(flags, options, 'prune'),
+        sources: wanted.sources,
+        pages: pagesOf(root, wanted.sources, options),
+    };
     const docs = docsOf(root, options);
     let stale = 0;
     for (const doc of docs) {
@@ -572,15 +684,15 @@ async function index(root: string, options: Options, flags: Set<string>): Promis
         refreshIndex(doc);
         const after = renderLines(doc.lines);
         if (before !== after) stale += 1;
-        if (!flags.has('check')) writeDoc(doc);
+        if (!run.check) writeDoc(doc);
     }
     process.stdout.write(
-        flags.has('check')
+        run.check
             ? `# memory index: ${stale} of ${docs.length} file(s) out of date\n`
             : `# memory index: ${docs.length} file(s), ${stale} updated\n`,
     );
-    if (flags.has('check') && stale > 0) process.exitCode = 1;
-    if (flags.has('semantic')) await backfill(root, docs, flags);
+    if (run.check && stale > 0) process.exitCode = 1;
+    if (run.semantic) await backfill(root, docs, run);
 }
 
 /**
@@ -589,25 +701,33 @@ async function index(root: string, options: Options, flags: Set<string>): Promis
  * This is the repair path as much as the first-time one: documents are keyed by
  * entry id, so a second run replaces what is there rather than doubling it, and
  * anything a write could not reach earlier is picked up now. `--dry-run` reports
- * the size of the job without touching the server.
+ * the size of the job without touching the server, and the run finishes by
+ * comparing the bank with the tree (see {@link reconcile}).
  */
 async function backfill(
     root: string,
     docs: readonly IMemoryDoc[],
-    flags: Set<string>,
+    run: IIndexFlags,
 ): Promise<void> {
-    const config = resolveHindsightConfig();
-    const documents = entryDocuments(root, docs);
+    const entries = run.sources.includes('entry') ? entryDocuments(root, docs) : [];
+    const documents = [...entries, ...pageDocuments(root, run.pages)];
 
-    if (flags.has('dry-run')) {
+    if (run.dryRun) {
+        const breakdown = [
+            ...(run.sources.includes('entry') ? [`${entries.length} entries`] : []),
+            ...(run.sources.includes('docs')
+                ? [`${pageCount(run, 'docs')} documentation pages`]
+                : []),
+            ...(run.sources.includes('skill') ? [`${pageCount(run, 'skill')} skills`] : []),
+        ].join(', ');
         process.stdout.write(
-            `# memory index --semantic: would ingest ${documents.length} entries ` +
-                `from ${docs.length} file(s)\n`,
+            `# memory index --semantic: would ingest ${documents.length} document(s) — ` +
+                `${breakdown}\n`,
         );
         return;
     }
 
-    const store = createHindsightStore(config);
+    const {config, store} = resolveHindsight();
     if (!store) {
         process.stderr.write(
             '# memory index --semantic: the semantic index is switched off (HINDSIGHT_DISABLED)\n',
@@ -619,7 +739,12 @@ async function backfill(
     let ingested = 0;
     for (let start = 0; start < documents.length; start += BACKFILL_BATCH_SIZE) {
         const batch = documents.slice(start, start + BACKFILL_BATCH_SIZE);
-        const outcome = await store.retain(batch);
+        // Waiting is the point of a backfill: the coverage check that follows reads
+        // the bank, and a queued batch would not be in it yet.
+        const outcome = await store.retain(batch, {
+            wait: true,
+            timeoutMs: BACKFILL_TIMEOUT_MS,
+        });
         if (!outcome.ok) {
             warnIndex(store, outcome.reason);
             break;
@@ -630,10 +755,106 @@ async function backfill(
 
     const missed = documents.length - ingested;
     process.stdout.write(
-        `# memory index --semantic: ${ingested} of ${documents.length} entries ingested, ` +
+        `# memory index --semantic: ${ingested} of ${documents.length} document(s) ingested, ` +
             `${missed} not — bank ${config.bank} at ${config.url}\n`,
     );
     if (missed > 0) process.exitCode = 1;
+
+    await reconcile(store, documents, run);
+}
+
+/** How many of a run's pages belong to one stream. */
+function pageCount(run: IIndexFlags, kind: 'docs' | 'skill'): number {
+    return run.pages.filter(page => page.kind === kind).length;
+}
+
+/**
+ * Compare the bank with the tree, and optionally repair the difference.
+ *
+ * What the backfill sent says nothing about what the bank holds: an index covering
+ * a fraction of the tree looks exactly like a complete one, and the observation
+ * that produced this step was a bank reporting 54 documents while the tree held
+ * 591. Reading the bank's own listing closes that gap and is the only way to notice
+ * a document whose entry vanished — a hand edit, a checkout of an older branch, a
+ * file deleted wholesale — because nothing calls `forget` for those.
+ */
+async function reconcile(
+    store: IHindsightStore,
+    documents: readonly IHindsightDocument[],
+    run: IIndexFlags,
+): Promise<void> {
+    const listing = await store.list();
+    if (!listing.ok) {
+        warnIndex(store, listing.reason);
+        // A repair the caller asked for and did not get is a failure; a count that
+        // could not be read is only a report, and the ingest line already stands.
+        if (run.prune) process.exitCode = 1;
+        return;
+    }
+
+    const tags = sourceTags(run.sources);
+    const owned = listing.documents.filter(candidate =>
+        candidate.tags.some(tag => tags.includes(tag)),
+    );
+    const wanted = new Set(documents.map(document => document.documentId));
+    const orphaned = owned.filter(candidate => !wanted.has(candidate.id));
+    const present = new Set(owned.map(candidate => candidate.id));
+    const missing = documents.filter(document => !present.has(document.documentId));
+
+    const drift: string[] = [];
+    if (orphaned.length > 0) drift.push(`${orphaned.length} in the bank but not the tree`);
+    if (missing.length > 0) drift.push(`${missing.length} in the tree but not the bank`);
+    process.stdout.write(
+        `# memory index --semantic: bank holds ${owned.length} document(s) of this source, ` +
+            `tree holds ${documents.length}` +
+            (drift.length > 0 ? ` — ${drift.join(', ')}\n` : '\n'),
+    );
+
+    if (run.stats) {
+        printIds(
+            'stale',
+            orphaned.map(orphan => describeOrphan(orphan)),
+        );
+        printIds(
+            'not in the bank',
+            missing.map(document => document.documentId),
+        );
+    }
+
+    if (!run.prune) return;
+
+    if (orphaned.length === 0) {
+        process.stdout.write('# memory index --semantic: nothing to prune\n');
+        return;
+    }
+
+    const outcome = await store.remove(orphaned.map(orphan => orphan.id));
+    if (!outcome.ok) {
+        warnIndex(store, outcome.reason);
+        process.exitCode = 1;
+        return;
+    }
+    for (const orphan of orphaned) process.stdout.write(`# pruned ${describeOrphan(orphan)}\n`);
+    process.stdout.write(`# memory index --semantic: ${orphaned.length} document(s) removed\n`);
+}
+
+/** Ids a `--stats` line names before it summarises the rest. */
+const STATS_SAMPLE = 20;
+
+/** Print a list of document ids, naming at most {@link STATS_SAMPLE} of them. */
+function printIds(label: string, ids: readonly string[]): void {
+    if (ids.length === 0) return;
+    const shown = ids.slice(0, STATS_SAMPLE).join(', ');
+    const rest = ids.length > STATS_SAMPLE ? ` … and ${ids.length - STATS_SAMPLE} more` : '';
+    process.stdout.write(`# ${label}: ${shown}${rest}\n`);
+}
+
+/** `F-101 (2026-09-15, friction)` — enough to tell which document is meant. */
+function describeOrphan(orphan: IHindsightDocumentRef): string {
+    const kind = tagValue(orphan.tags, 'kind');
+    const date = orphan.updatedAt?.slice(0, 10);
+    const details = [date, kind].filter((part): part is string => Boolean(part));
+    return details.length > 0 ? `${orphan.id} (${details.join(', ')})` : orphan.id;
 }
 
 /**
@@ -651,8 +872,7 @@ async function search(args: string[], options: Options, flags: Set<string>): Pro
         );
     }
 
-    const config = resolveHindsightConfig();
-    const store = createHindsightStore(config);
+    const {config, store} = resolveHindsight();
     if (!store) {
         process.stderr.write(
             'blong-dev: the semantic index is switched off (HINDSIGHT_DISABLED)\n',
@@ -661,16 +881,43 @@ async function search(args: string[], options: Options, flags: Set<string>): Pro
         return;
     }
 
-    const tags = [MEMORY_TAG];
+    const wanted = parseSources(options.get('source') ?? 'entry');
+    for (const problem of wanted.problems) fail(problem);
+
     const kind = options.get('kind') ? kindOf(options.get('kind')) : null;
     if (options.get('kind') && !kind) fail(`unknown kind "${options.get('kind')}"`);
-    if (kind) tags.push(kindTag(kind));
 
     const area = options.get('area')?.trim();
-    if (area) tags.push(areaTag(area));
-
     const status = options.get('status')?.trim();
-    if (status) tags.push(statusTag(status));
+
+    // Kind, area and status are dimensions of an entry. Asking for them beside a
+    // page source would silently exclude every page, whose tags do not carry them,
+    // so the combination is refused rather than answered with an empty set.
+    if (wanted.sources.some(source => source !== 'entry') && (kind || area || status)) {
+        fail(
+            '--kind, --area and --status describe entries — drop them, or search the entries ' +
+                'with the default --source entry',
+        );
+    }
+
+    const dimensions = [
+        ...(kind ? [kindTag(kind)] : []),
+        ...(area ? [areaTag(area)] : []),
+        ...(status ? [statusTag(status)] : []),
+    ];
+
+    // One source keeps the flat form, which is what the server has always been
+    // given. Several sources need a group tree: their tags are alternatives, and a
+    // flat list is an AND — which would match nothing at all.
+    const filter =
+        wanted.sources.length === 1
+            ? {tags: [SOURCE_TAG[wanted.sources[0]!], ...dimensions]}
+            : {
+                  tagGroups: [
+                      {or: wanted.sources.map(source => ({tags: [SOURCE_TAG[source]]}))},
+                      ...dimensions.map(tag => ({tags: [tag]})),
+                  ],
+              };
 
     const rawLimit = options.get('limit')?.trim();
     const limit = rawLimit === undefined ? DEFAULT_SEARCH_LIMIT : Number(rawLimit);
@@ -678,7 +925,7 @@ async function search(args: string[], options: Options, flags: Set<string>): Pro
         fail(`--limit must be a positive integer, not "${rawLimit}"`);
     }
 
-    const outcome = await store.recall(query, {tags, limit});
+    const outcome = await store.recall(query, {...filter, limit});
     if (!outcome.ok) {
         process.stderr.write(
             `blong-dev: cannot reach the Hindsight index at ${config.url} — ${outcome.reason}\n` +

@@ -38,7 +38,10 @@ function snippet(text: string): string[] {
 /** The identifying line over a snippet: `F-316 · friction · open · similarity 0.642`. */
 function describeHit(hit: IHindsightHit): string {
     const id = tagValue(hit.tags, 'id') ?? hit.documentId;
-    const kind = tagValue(hit.tags, 'kind') ?? hit.type;
+    // An entry's kind, else a page's own `type:` tag, and only then the server's
+    // memory-unit type — which is a fact type (`world`) and reads as a kind that
+    // does not exist.
+    const kind = tagValue(hit.tags, 'kind') ?? tagValue(hit.tags, 'type') ?? hit.type;
     const status = tagValue(hit.tags, 'status');
     // Cosine similarity, not the ranking score: 0.642 means something to a reader,
     // while the ranking score is not calibrated across queries. A keyword-only hit has

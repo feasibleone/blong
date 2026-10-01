@@ -23,6 +23,9 @@ export type HindsightClientLike = InstanceType<Sdk['HindsightClient']>;
 /** How a client is obtained — injectable so tests never touch the network. */
 export type ClientLoader = (url: string) => Promise<HindsightClientLike>;
 
+/** The option object `recall` accepts, as the SDK types it. */
+type RecallOptions = NonNullable<Parameters<HindsightClientLike['recall']>[2]>;
+
 /** Longest a memory write waits on the index before giving up on it. */
 export const WRITE_TIMEOUT_MS = 5_000;
 
@@ -31,6 +34,19 @@ export const READ_TIMEOUT_MS = 30_000;
 
 /** Entries per retain call during a backfill, so one call is never unbounded. */
 export const BACKFILL_BATCH_SIZE = 50;
+
+/**
+ * Longest a backfill waits for a batch it asked the server to finish.
+ *
+ * The write hook queues its work (`async: true`) because a command that edits a file
+ * must not wait on an index. A backfill is the opposite: it exists to repair the
+ * index and then report what the bank holds, so it waits — and this is the budget
+ * for embedding and storing a batch, not for accepting one.
+ */
+export const BACKFILL_TIMEOUT_MS = 120_000;
+
+/** Documents per page when listing the bank, so a listing is never unbounded. */
+export const LIST_PAGE_SIZE = 200;
 
 /** One search result, flattened to what the CLI prints. */
 export interface IHindsightHit {
@@ -61,10 +77,52 @@ export type IHindsightOutcome = {ok: true} | {ok: false; reason: string};
 /** A search that may fail without failing the command that made it. */
 export type IHindsightRecall = {ok: true; hits: IHindsightHit[]} | {ok: false; reason: string};
 
+/** How a leaf tag filter combines its tags. */
+export type TagGroupMatch = 'any' | 'all' | 'any_strict' | 'all_strict' | 'exact';
+
+/** A leaf tag filter: these tags, combined this way. */
+export interface ITagGroupLeaf {
+    tags: string[];
+    match?: TagGroupMatch;
+}
+
+/**
+ * A tag filter tree, passed to the server verbatim.
+ *
+ * `recall` takes either a flat `tags` + `tagsMatch` pair or a group tree, never
+ * both. A tree is what lets one search span several sources: the memory entries
+ * and the documentation pages carry different tags, and an OR over them has no
+ * flat equivalent.
+ */
+export type TagGroup = ITagGroupLeaf | {and: TagGroup[]} | {or: TagGroup[]} | {not: TagGroup};
+
+/** One document the bank holds, as `list` reports it. */
+export interface IHindsightDocumentRef {
+    /** The upsert key: an entry id or a generated page id. */
+    id: string;
+    /** The dimensions the ingest step wrote. */
+    tags: string[];
+    /** When the document was last written, when the server says. */
+    updatedAt: string | null;
+    /** The same dimensions as plain values, for a reader. */
+    metadata: Record<string, unknown> | null;
+}
+
+/** A listing that may fail without failing the command that made it. */
+export type IHindsightList =
+    | {ok: true; documents: IHindsightDocumentRef[]; total: number}
+    | {ok: false; reason: string};
+
 /** Filtering and budget for a search. */
 export interface IRecallOptions {
     /** Tags every result must carry; recall can filter by nothing else. */
     tags?: readonly string[];
+    /**
+     * A tag group tree, for the filters a flat list cannot express — several
+     * sources at once. Mutually exclusive with {@link tags}, exactly as the server
+     * treats them: sending both is refused.
+     */
+    tagGroups?: TagGroup[];
     /** Results to print, trimmed client-side — the server budgets by tokens. */
     limit?: number;
     timeoutMs?: number;
@@ -79,10 +137,12 @@ export interface IHindsightStore {
     /** Queue documents for ingestion; existing ids are replaced. */
     retain(
         documents: readonly IHindsightDocument[],
-        options?: {timeoutMs?: number},
+        options?: {timeoutMs?: number; wait?: boolean},
     ): Promise<IHindsightOutcome>;
     /** Search the bank, newest relevance first. */
     recall(query: string, options?: IRecallOptions): Promise<IHindsightRecall>;
+    /** Every document the bank holds, paged through, with the server's own total. */
+    list(options?: {timeoutMs?: number}): Promise<IHindsightList>;
     /** Forget documents whose entries no longer exist on disk. */
     remove(
         documentIds: readonly string[],
@@ -155,6 +215,21 @@ export function recallHit(result: {
     };
 }
 
+/** Flatten one listed document into the shape the CLI reports. */
+export function documentRef(item: {
+    id: string;
+    tags?: string[] | null;
+    updated_at?: string | null;
+    document_metadata?: {[key: string]: unknown} | null;
+}): IHindsightDocumentRef {
+    return {
+        id: item.id,
+        tags: item.tags ?? [],
+        updatedAt: item.updated_at ?? null,
+        metadata: item.document_metadata ?? null,
+    };
+}
+
 /** A short, human-readable reason for a failed call. */
 export function failureReason(error: unknown, timeoutMs: number): string {
     const name = (error as {name?: string} | null)?.name;
@@ -200,10 +275,13 @@ class HindsightStore implements IHindsightStore {
 
     async retain(
         documents: readonly IHindsightDocument[],
-        options: {timeoutMs?: number} = {},
+        options: {timeoutMs?: number; wait?: boolean} = {},
     ): Promise<IHindsightOutcome> {
         if (documents.length === 0) return {ok: true};
         const timeoutMs = options.timeoutMs ?? WRITE_TIMEOUT_MS;
+        // `wait` is the caller's word; `async` is the server's, and it means the
+        // opposite — a queued call returns before the work is done.
+        const queued = !(options.wait ?? false);
 
         let client: HindsightClientLike;
         try {
@@ -214,7 +292,7 @@ class HindsightStore implements IHindsightStore {
 
         try {
             await client.retainBatch(this.bank, documents.map(retainItem), {
-                async: true,
+                async: queued,
                 signal: AbortSignal.timeout(timeoutMs),
             });
             return {ok: true};
@@ -225,6 +303,18 @@ class HindsightStore implements IHindsightStore {
 
     async recall(query: string, options: IRecallOptions = {}): Promise<IHindsightRecall> {
         const timeoutMs = options.timeoutMs ?? READ_TIMEOUT_MS;
+        // One of the two forms is built and the other is never sent, because the
+        // server refuses them together. On the flat form `all_strict` means every
+        // listed tag must be present and untagged memories are excluded, so a
+        // foreign document in the bank cannot surface in a search of this
+        // repository's memory.
+        const filter: RecallOptions = {};
+        if (options.tagGroups && options.tagGroups.length > 0) {
+            filter.tagGroups = options.tagGroups;
+        } else if (options.tags && options.tags.length > 0) {
+            filter.tags = [...options.tags];
+            filter.tagsMatch = 'all_strict';
+        }
 
         let client: HindsightClientLike;
         try {
@@ -235,16 +325,53 @@ class HindsightStore implements IHindsightStore {
 
         try {
             const response = await client.recall(this.bank, query, {
-                ...(options.tags && options.tags.length > 0
-                    ? // `all_strict`: every listed tag must be present and untagged
-                      // memories are excluded, so a foreign document in the bank can
-                      // never surface in a search of this repository's memory.
-                      {tags: [...options.tags], tagsMatch: 'all_strict' as const}
-                    : {}),
+                ...filter,
                 signal: AbortSignal.timeout(timeoutMs),
             });
             const hits = (response.results ?? []).map(recallHit);
             return {ok: true, hits: options.limit ? hits.slice(0, options.limit) : hits};
+        } catch (error) {
+            return {ok: false, reason: failureReason(error, timeoutMs)};
+        }
+    }
+
+    /**
+     * Page through every document the bank holds.
+     *
+     * The server reports `total` per page, and that number — not the length of the
+     * page — is what a coverage check compares with the tree, so it is carried out
+     * to the caller rather than recomputed from what happened to be listed.
+     */
+    async list(options: {timeoutMs?: number} = {}): Promise<IHindsightList> {
+        const timeoutMs = options.timeoutMs ?? READ_TIMEOUT_MS;
+
+        let client: HindsightClientLike;
+        try {
+            client = await this.connect(timeoutMs);
+        } catch {
+            return {ok: false, reason: this.loadError ?? 'client unavailable'};
+        }
+
+        try {
+            const documents: IHindsightDocumentRef[] = [];
+            let total = 0;
+            let offset = 0;
+            for (;;) {
+                const page = await client.listDocuments(this.bank, {
+                    limit: LIST_PAGE_SIZE,
+                    offset,
+                    signal: AbortSignal.timeout(timeoutMs),
+                });
+                total = page.total ?? documents.length + (page.items?.length ?? 0);
+                const items = page.items ?? [];
+                for (const item of items) documents.push(documentRef(item));
+                // Advance by what the server actually returned, not by what was asked
+                // for: a server that caps a page below the limit would otherwise be
+                // asked for offsets it can never reach.
+                if (items.length === 0 || documents.length >= total) break;
+                offset += items.length;
+            }
+            return {ok: true, documents, total};
         } catch (error) {
             return {ok: false, reason: failureReason(error, timeoutMs)};
         }

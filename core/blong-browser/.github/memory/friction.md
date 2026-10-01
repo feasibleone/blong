@@ -137,10 +137,10 @@ curling /rpc from the Storybook port and seeing Storybook's own 404 rather than 
 
 Bringing up a backend for the Storybook live modes needed the port to be known to the plugin, and
 the gateway logs it only when it picked a random one, at a level dev suppresses (see the todo in
-core/blong-gogo). The cost was a stalled boot that looked like a hang, a restart with
---gateway.port=8080 --resolution.portGateway=8080, and polling ss to confirm. The lesson for feature
-work that needs a running server: pass an explicit port, and verify the listener rather than the
-log.
+core/blong-gogo). The cost was a stalled boot that looked like a hang, a restart
+with --gateway.port=8080 --resolution.portGateway=8080, and polling ss to confirm. The lesson for
+feature work that needs a running server: pass an explicit port, and verify the listener rather than
+the log.
 
 ### F-322 — A read-only role renders a blank page without subject.object.schema
 

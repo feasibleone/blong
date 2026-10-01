@@ -18,7 +18,9 @@ line number that rots.
 Each entry is also pushed into a local **semantic index** as it is written, so the notes can be
 searched by meaning rather than by the words an entry happens to use. That index is derived and
 disposable: the markdown stays the source of truth, an unreachable server never fails a write, and
-`blong-dev memory index --semantic` rebuilds the whole thing.
+`blong-dev memory index --semantic` rebuilds the whole thing. The same bank also holds the published
+documentation pages and the agent skills, each keyed by its path so an edit replaces rather than
+duplicates — a search asks for the entries unless it names another stream.
 
 Entries are filed by **area**: a package folder from `rush.json` (`core/blong-browser`) or one of
 the reserved cross-cutting labels `cross-cutting`, `ci`, `docs`, `skills`. A package's entries live

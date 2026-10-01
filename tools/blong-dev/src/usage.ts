@@ -7,7 +7,7 @@
  */
 
 export const USAGE_LINES: readonly string[] = [
-    '  blong-dev lint [files...]    Run tsc + cspell + eslint in current package',
+    '  blong-dev lint [files...]    Run tsc + cspell + eslint + markdownlint (--files a,b, --fix)',
     '  blong-dev lint-staged        Lint git staged files across all affected packages',
     '  blong-dev test               Run tap tests in current package',
     '  blong-dev report vitest      Convert coverage/vitest.json into .ci-report/ (--input <file>)',

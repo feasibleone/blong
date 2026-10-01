@@ -16,6 +16,7 @@ import {
     type ClientLoader,
     type HindsightClientLike,
     createHindsightStore,
+    documentRef,
     failureReason,
     recallHit,
     retainItem,
@@ -26,6 +27,7 @@ const CONFIG: IHindsightConfig = {enabled: true, url: 'http://hindsight:8888', b
 interface ICalls {
     retain: Array<{bank: string; items: Array<Record<string, unknown>>; options: unknown}>;
     recall: Array<{bank: string; query: string; options: Record<string, unknown>}>;
+    listed: Array<{bank: string; options: Record<string, unknown>}>;
     deleted: string[];
 }
 
@@ -41,10 +43,7 @@ function document(id = 'F-001'): IHindsightDocument {
 }
 
 /** A client that records what it was asked to do. */
-function fakeClient(
-    calls: ICalls,
-    behaviour: {results?: unknown[]; fail?: Error} = {},
-): HindsightClientLike {
+function fakeClient(calls: ICalls, behaviour: IBehaviour = {}): HindsightClientLike {
     return {
         retainBatch: async (
             bank: string,
@@ -60,6 +59,17 @@ function fakeClient(
             calls.recall.push({bank, query, options});
             return {results: behaviour.results ?? []};
         },
+        listDocuments: async (bank: string, options: Record<string, unknown>) => {
+            if (behaviour.fail) throw behaviour.fail;
+            calls.listed.push({bank, options});
+            const all = behaviour.documents ?? [];
+            const requested = Number(options['limit'] ?? all.length);
+            // `pageSize` models a server that returns less than it was asked for, which
+            // is the only way a paging loop is exercised.
+            const limit = Math.min(requested, behaviour.pageSize ?? requested);
+            const offset = Number(options['offset'] ?? 0);
+            return {items: all.slice(offset, offset + limit), total: all.length};
+        },
         deleteDocument: async (_bank: string, documentId: string) => {
             if (behaviour.fail) throw behaviour.fail;
             calls.deleted.push(documentId);
@@ -68,11 +78,23 @@ function fakeClient(
     } as unknown as HindsightClientLike;
 }
 
-function recorder(behaviour: {results?: unknown[]; fail?: Error} = {}): {
+interface IBehaviour {
+    results?: unknown[];
+    fail?: Error;
+    documents?: Array<{
+        id: string;
+        tags?: string[];
+        updated_at?: string;
+        document_metadata?: Record<string, string>;
+    }>;
+    pageSize?: number;
+}
+
+function recorder(behaviour: IBehaviour = {}): {
     calls: ICalls;
     load: ClientLoader;
 } {
-    const calls: ICalls = {retain: [], recall: [], deleted: []};
+    const calls: ICalls = {retain: [], recall: [], listed: [], deleted: []};
     return {calls, load: async () => fakeClient(calls, behaviour)};
 }
 
@@ -164,6 +186,84 @@ test('a search with no filter asks for everything', async t => {
     const {calls, load} = recorder();
     await createHindsightStore(CONFIG, load)!.recall('anything');
     t.notOk('tags' in calls.recall[0]!.options, 'no tag filter is sent');
+    t.end();
+});
+
+test('a search over several sources sends a tag group, never a flat list', async t => {
+    const {calls, load} = recorder();
+    await createHindsightStore(CONFIG, load)!.recall('anything', {
+        tagGroups: [{or: [{tags: ['memory']}, {tags: ['type:documentation']}]}],
+    });
+    t.same(
+        calls.recall[0]!.options['tagGroups'],
+        [{or: [{tags: ['memory']}, {tags: ['type:documentation']}]}],
+        'the group tree reaches the server verbatim',
+    );
+    t.notOk('tags' in calls.recall[0]!.options, 'the flat form is not also sent');
+    t.notOk(
+        'tagsMatch' in calls.recall[0]!.options,
+        'nor its match mode — the server refuses both',
+    );
+    t.end();
+});
+
+test('a tag group wins over a flat filter when a caller supplies both', async t => {
+    const {calls, load} = recorder();
+    await createHindsightStore(CONFIG, load)!.recall('anything', {
+        tags: ['memory'],
+        tagGroups: [{tags: ['memory']}],
+    });
+    t.ok(calls.recall[0]!.options['tagGroups'], 'the tree is sent');
+    t.notOk(
+        'tags' in calls.recall[0]!.options,
+        'the flat list is dropped rather than sent beside it',
+    );
+    t.end();
+});
+
+test('list pages through the bank and reports the server total', async t => {
+    const documents = Array.from({length: 5}, (_, index) => ({
+        id: `F-00${index}`,
+        tags: ['memory'],
+        updated_at: '2026-09-30T00:00:00Z',
+        document_metadata: {id: `F-00${index}`},
+    }));
+    const {calls, load} = recorder({documents, pageSize: 2});
+    const outcome = await createHindsightStore(CONFIG, load)!.list();
+
+    t.equal(outcome.ok, true, 'the listing succeeded');
+    if (outcome.ok) {
+        t.equal(outcome.total, 5, "the server's own count, not the length of a page");
+        t.same(
+            outcome.documents.map(document => document.id),
+            ['F-000', 'F-001', 'F-002', 'F-003', 'F-004'],
+            'every document, in order',
+        );
+        t.equal(
+            outcome.documents[0]!.updatedAt,
+            '2026-09-30T00:00:00Z',
+            'the write time is carried',
+        );
+        t.equal(outcome.documents[0]!.metadata?.['id'], 'F-000', 'the metadata is carried');
+    }
+    t.equal(calls.listed.length, 3, 'paged until the total was reached');
+    t.end();
+});
+
+test('a listing failure is a reason, not a crash', async t => {
+    const {load} = recorder({fail: new Error('connect ECONNREFUSED 127.0.0.1:8888')});
+    const outcome = await createHindsightStore(CONFIG, load)!.list();
+    t.equal(outcome.ok, false, 'reported as a failure');
+    if (!outcome.ok) t.match(outcome.reason, /ECONNREFUSED/);
+    t.end();
+});
+
+test('documentRef defaults what the server omits', async t => {
+    t.same(
+        documentRef({id: 'D-001'}),
+        {id: 'D-001', tags: [], updatedAt: null, metadata: null},
+        'a bare document still has a shape',
+    );
     t.end();
 });
 

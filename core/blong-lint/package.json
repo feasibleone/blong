@@ -10,13 +10,15 @@
     },
     "scripts": {
         "build": "true",
-        "ci-lint": "node ./bin/lint.ts"
+        "ci-lint": "node ./bin/lint.ts",
+        "ci-test": "node ./bin/test.ts",
+        "test": "node ./bin/test.ts"
     },
     "dependencies": {
         "cspell": "^10.0.0",
         "eslint": "^10.4.0",
-        "typescript": "^6.0.3",
-        "markdownlint-cli2": "~0.23.2"
+        "markdownlint-cli2": "~0.23.2",
+        "typescript": "^6.0.3"
     },
     "devDependencies": {
         "@types/node": "^24",

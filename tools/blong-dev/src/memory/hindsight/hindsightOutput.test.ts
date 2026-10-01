@@ -58,6 +58,31 @@ test('a missing similarity is omitted rather than printed as null', async t => {
     t.end();
 });
 
+test('a documentation page is identified by its own type, not the unit type', async t => {
+    const lines = formatSearchResults(
+        [
+            hit({
+                documentId: 'doc-patterns-memory',
+                tags: [
+                    'type:documentation',
+                    'stability:stable',
+                    'tier:patterns',
+                    'path:docs/blong/docs/patterns/memory.md',
+                ],
+            }),
+        ],
+        'memory files',
+        CONTEXT,
+    );
+    t.equal(
+        lines[1],
+        'doc-patterns-memory · documentation · similarity 0.642',
+        'the page id and its type, with no kind and no status',
+    );
+    t.equal(lines[2], 'docs/blong/docs/patterns/memory.md', 'and the file it came from');
+    t.end();
+});
+
 test('a result the CLI cannot identify still renders', async t => {
     const lines = formatSearchResults(
         [hit({tags: [], documentId: null, type: null, score: null, similarity: null})],
