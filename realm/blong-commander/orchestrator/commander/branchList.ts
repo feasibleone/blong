@@ -1,6 +1,6 @@
 import {type IMeta, handler} from '@feasibleone/blong';
 import {sources as defaultSources} from '../../config/sources.ts';
-import type {ICommanderSource} from '../../types.ts';
+import type {ICommanderLevel, ICommanderSource} from '../../types.ts';
 
 function getPath(obj: Record<string, unknown> | undefined, path: string): unknown {
     if (!obj) return undefined;
@@ -53,6 +53,30 @@ function resolve(text: string, parent: Record<string, unknown> | null): string {
                 ? literal
                 : getPath(parent ?? undefined, path);
         return value === undefined || value === null ? '' : String(value);
+    });
+}
+
+/**
+ * Order one level's rows deterministically by the field the level displays —
+ * `labelField`, falling back to `keyField` (both may be dot paths, e.g.
+ * `metadata.name`). Backends such as Keycloak return collections in an
+ * unspecified order that can differ between two calls, so the navigator tree
+ * and the table would otherwise list the same rows in a different order from
+ * one run to the next and a screenshot would never be stable. Sorting here, in
+ * the single place every source's children come through, makes the response —
+ * and therefore both views — reproducible; ties keep the backend's order.
+ */
+function sortRows(level: ICommanderLevel, rows: unknown[]): unknown[] {
+    const field = level.labelField || level.keyField;
+    if (!field) return rows;
+    const valueOf = (row: unknown): string => {
+        const raw = getPath(row as Record<string, unknown> | undefined, field);
+        return raw === undefined || raw === null ? '' : String(raw);
+    };
+    return [...rows].sort((left, right) => {
+        const a = valueOf(left);
+        const b = valueOf(right);
+        return a < b ? -1 : a > b ? 1 : 0;
     });
 }
 
@@ -137,6 +161,6 @@ export default handler(
                 return {items: []};
             }
             $meta.checkpoint?.('rows-listed', {rows: rows.length});
-            return {items: rows.map(flattenItem)};
+            return {items: sortRows(level, rows).map(flattenItem)};
         },
 );
