@@ -23,6 +23,9 @@ switch (command) {
     case 'playwright':
         await (await import('./commands/playwright.ts')).playwright(args);
         break;
+    case 'browsers':
+        await (await import('./commands/browsers.ts')).browsers(args);
+        break;
     case 'proxy':
         await (await import('./commands/proxy.ts')).proxy(args);
         break;

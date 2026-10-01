@@ -1,5 +1,6 @@
 import {act} from '@testing-library/react';
 import {beforeEach, describe, expect, it} from 'vitest';
+import {muteErrorMirrors} from '../test/setup.js';
 import {useAppStore} from './appStore.js';
 
 // Reset store state before each test
@@ -105,12 +106,15 @@ describe('appStore — toasts', () => {
         expect(useAppStore.getState().toasts).toHaveLength(0);
     });
 
-    it('clears all toasts', () => {
-        useAppStore.getState().showToast({severity: 'success', summary: 'A'});
-        useAppStore.getState().showToast({severity: 'error', summary: 'B'});
-        useAppStore.getState().clearAllToasts();
-        expect(useAppStore.getState().toasts).toHaveLength(0);
-    });
+    it(
+        'clears all toasts',
+        muteErrorMirrors(() => {
+            useAppStore.getState().showToast({severity: 'success', summary: 'A'});
+            useAppStore.getState().showToast({severity: 'error', summary: 'B'});
+            useAppStore.getState().clearAllToasts();
+            expect(useAppStore.getState().toasts).toHaveLength(0);
+        }, 'error toast B'),
+    );
 });
 
 describe('appStore — loader', () => {
@@ -136,16 +140,22 @@ describe('appStore — translations', () => {
 });
 
 describe('appStore — errors', () => {
-    it('shows an error', () => {
-        useAppStore.getState().showError({type: 'err.test', message: 'Test error'});
-        expect(useAppStore.getState().error?.type).toBe('err.test');
-    });
+    it(
+        'shows an error',
+        muteErrorMirrors(() => {
+            useAppStore.getState().showError({type: 'err.test', message: 'Test error'});
+            expect(useAppStore.getState().error?.type).toBe('err.test');
+        }, 'error dialog err.test'),
+    );
 
-    it('clears the error', () => {
-        useAppStore.getState().showError({type: 'err.test', message: 'Test error'});
-        useAppStore.getState().clearError();
-        expect(useAppStore.getState().error).toBeNull();
-    });
+    it(
+        'clears the error',
+        muteErrorMirrors(() => {
+            useAppStore.getState().showError({type: 'err.test', message: 'Test error'});
+            useAppStore.getState().clearError();
+            expect(useAppStore.getState().error).toBeNull();
+        }, 'error dialog err.test'),
+    );
 });
 
 describe('appStore — actions', () => {

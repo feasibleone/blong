@@ -132,6 +132,16 @@
      * PNPM documentation: https://pnpm.io/package_json#pnpmoverrides
      */
     "globalOverrides": {
+        // One Playwright for the whole workspace. Every Playwright copy downloads its
+        // own Chromium revision into the shared `~/.cache/ms-playwright`, and CI installs
+        // the browsers of exactly one of them: a transitive copy left on an older release
+        // (`@storybook/test-runner` resolves `playwright: ^1.14.0` and kept a pinned 1.60.0
+        // until this override) then asks for a revision the run never installed and dies
+        // with "Executable doesn't exist at …/chromium_headless_shell-<revision>". Pinning
+        // both halves here makes every leg — Playwright specs, `blong-dev playwright` and
+        // the Storybook test runner — launch the same browser build.
+        "playwright": "1.63.0",
+        "playwright-core": "1.63.0"
         // "example1": "^1.0.0",
         // "example2": "npm:@company/example2@^1.0.0"
     },

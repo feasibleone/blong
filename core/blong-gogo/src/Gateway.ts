@@ -14,7 +14,12 @@ import type {
     IPlatformApi,
 } from '@feasibleone/blong/types';
 import {Internal} from '@feasibleone/blong/types';
-import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from 'fastify';
+import fastify, {
+    LogController,
+    type FastifyReply,
+    type FastifyRequest,
+    type RouteOptions,
+} from 'fastify';
 import os from 'os';
 import type {LevelWithSilent} from 'pino';
 import {Type, type TSchema} from 'typebox';
@@ -706,7 +711,12 @@ export default class Gateway extends Internal implements IGateway {
                 // both more than a reader needs and less than the flow records say.
                 // Nothing else depends on those two lines: the request has a flow, the
                 // flow has its calls, and both are recorded where they belong.
-                disableRequestLogging: true,
+                //
+                // Passed as a `LogController` instance rather than as fastify's own
+                // top-level `disableRequestLogging`, which is deprecated and warned
+                // about a line per process — one line per package in a CI run — for a
+                // flag whose replacement does exactly the same thing.
+                logController: new LogController({disableRequestLogging: true}),
                 ajv: {
                     customOptions: {
                         allErrors: true,

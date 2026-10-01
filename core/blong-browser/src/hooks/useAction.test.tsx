@@ -3,6 +3,7 @@ import React from 'react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {BlongProvider, makeHandlerProxy} from '../context/BlongContext.js';
 import {useAppStore} from '../state/appStore.js';
+import {muteErrorMirrors} from '../test/setup.js';
 import {useAction} from './useAction.js';
 
 function makeWrapper(
@@ -10,13 +11,7 @@ function makeWrapper(
 ) {
     // eslint-disable-next-line @eslint-react/component-hook-factories
     return function Wrapper({children}: {children: React.ReactNode}) {
-        return (
-            <BlongProvider
-                handlerProxy={makeHandlerProxy(dispatch)}
-            >
-                {children}
-            </BlongProvider>
-        );
+        return <BlongProvider handlerProxy={makeHandlerProxy(dispatch)}>{children}</BlongProvider>;
     };
 }
 
@@ -126,24 +121,27 @@ describe('useAction — page action', () => {
         expect(tabs[0].title).toBe('Test Page');
     });
 
-    it('shows error when component factory throws', async () => {
-        const dispatch = vi.fn().mockResolvedValue({});
-        act(() => {
-            useAppStore.getState().registerActions({
-                brokenPage: {
-                    component: vi.fn().mockRejectedValue(new Error('Load failed')),
-                    title: 'Broken Page',
-                } as never,
+    it(
+        'shows error when component factory throws',
+        muteErrorMirrors(async () => {
+            const dispatch = vi.fn().mockResolvedValue({});
+            act(() => {
+                useAppStore.getState().registerActions({
+                    brokenPage: {
+                        component: vi.fn().mockRejectedValue(new Error('Load failed')),
+                        title: 'Broken Page',
+                    } as never,
+                });
             });
-        });
-        const wrapper = makeWrapper(dispatch);
-        const {result} = renderHook(() => useAction('brokenPage'), {wrapper});
-        await act(async () => {
-            await result.current.open({});
-        });
-        // After error, dispatch was NOT called, but store may have an error
-        expect(dispatch).not.toHaveBeenCalled();
-    });
+            const wrapper = makeWrapper(dispatch);
+            const {result} = renderHook(() => useAction('brokenPage'), {wrapper});
+            await act(async () => {
+                await result.current.open({});
+            });
+            // After error, dispatch was NOT called, but store may have an error
+            expect(dispatch).not.toHaveBeenCalled();
+        }, 'error.component.load'),
+    );
 
     it('dispatches directly when no action is registered', async () => {
         const dispatch = vi.fn().mockResolvedValue({component: 'data'});
@@ -203,16 +201,19 @@ describe('useAction — with static params', () => {
 });
 
 describe('useAction — query error handling', () => {
-    it('returns error state when query fails', async () => {
-        const dispatch = vi.fn().mockRejectedValue(new Error('Network error'));
-        act(() => {
-            useAppStore.getState().registerActions({
-                failingQuery: {method: 'broken.broken.find'} as never,
+    it(
+        'returns error state when query fails',
+        muteErrorMirrors(async () => {
+            const dispatch = vi.fn().mockRejectedValue(new Error('Network error'));
+            act(() => {
+                useAppStore.getState().registerActions({
+                    failingQuery: {method: 'broken.broken.find'} as never,
+                });
             });
-        });
-        const wrapper = makeWrapper(dispatch);
-        const {result} = renderHook(() => useAction('failingQuery'), {wrapper});
-        // Wait for the query to settle (retry once then give up)
-        await waitFor(() => expect(result.current.loading).toBe(false), {timeout: 3000});
-    });
+            const wrapper = makeWrapper(dispatch);
+            const {result} = renderHook(() => useAction('failingQuery'), {wrapper});
+            // Wait for the query to settle (retry once then give up)
+            await waitFor(() => expect(result.current.loading).toBe(false), {timeout: 3000});
+        }, ['broken.broken.find failed', 'Network error']),
+    );
 });

@@ -67,6 +67,32 @@ export interface IBlongTestOptions {
     blongPassword: string;
     /** Grant all permissions after login. Defaults to `false`; set to `true` in suites that need it. */
     blongPermissions: boolean;
+    /**
+     * Browser messages this spec provokes on purpose, so the run does not print them.
+     *
+     * A spec that asserts a refusal (a role without the capability) or exercises the
+     * renewal path (a revoked session) knows which lines the browser will report;
+     * declaring them here keeps the evidence — the message is still collected in
+     * `Portal.browserErrors` and still attached to a failure — while leaving it out of
+     * the run's log, which is otherwise a wall of lines every reader learns to skip.
+     *
+     * **Substrings, not regular expressions.** A fixture option crosses Playwright's
+     * worker boundary and arrives as plain JSON, where a `RegExp` is an empty object —
+     * `patterns.some is not a function`, thrown the first time the page said anything.
+     * The line a pattern is matched against is the whole note, URL and line number
+     * included, so `'rpc/blong/flow/find'` finds a message whose own text names no URL.
+     *
+     * Hooked to the spec rather than to the message: "this spec expects this" is a
+     * statement the author makes and a reviewer can check, where a global ignore list
+     * would hide the same line in the spec that does *not* expect it.
+     */
+    blongExpectedBrowserErrors?: readonly string[];
+}
+
+/** How a spec declares the browser messages it provokes on purpose. */
+export interface IPortalOptions {
+    /** Messages not to echo; recorded and reported exactly as the others are. */
+    expected?: readonly string[];
 }
 
 /**
@@ -88,12 +114,16 @@ export class Portal {
     /** The first uncaught exception, if the page threw — the app is dead after it. */
     fatalError: Error | undefined;
 
+    /** Messages not to echo, from the spec that knows it caused them. */
+    readonly #expected: readonly string[];
+
     /** Rejects as soon as the page throws, so no wait outlives the application. */
     readonly #fatalWait: Promise<never>;
     #rejectFatal!: (error: Error) => void;
 
-    constructor(page: Page) {
+    constructor(page: Page, options: IPortalOptions = {}) {
         this.page = page;
+        this.#expected = options.expected ?? [];
         this.#fatalWait = new Promise<never>((_resolve, reject) => {
             this.#rejectFatal = reject;
         });
@@ -116,9 +146,15 @@ export class Portal {
         });
     }
 
-    /** Record a browser message and echo it, so it is visible while the run goes on. */
+    /**
+     * Record a browser message, and echo it unless the spec declared it expected.
+     *
+     * The echo is what makes a broken page visible while the run goes on, so it stays
+     * the default: silence is what a spec asks for, per message.
+     */
     #note(line: string): void {
         this.browserErrors.push(line);
+        if (this.#expected.some(pattern => line.includes(pattern))) return;
         console.error(`[browser] ${line}`);
     }
 
@@ -368,14 +404,18 @@ export const test = coverageFixture(
         blongUsername: ['admin', {option: true}],
         blongPassword: ['admin', {option: true}],
         blongPermissions: [false, {option: true}],
+        blongExpectedBrowserErrors: [[], {option: true}],
 
-        portal: async ({page, blongUsername, blongPassword, blongPermissions}, use) => {
+        portal: async (
+            {page, blongUsername, blongPassword, blongPermissions, blongExpectedBrowserErrors},
+            use,
+        ) => {
             // Constructed before navigating so the boot itself is watched: a page that
             // throws while it loads is exactly the case this fixture exists to report.
             // `Portal` echoes browser console errors/warnings to the runner's stderr
             // (prefixed `[browser]`) and gives up a wait the moment the page throws,
             // instead of letting every later element wait out its full timeout.
-            const portal = new Portal(page);
+            const portal = new Portal(page, {expected: blongExpectedBrowserErrors});
 
             // Navigate to the app root. Relative (`./`), not `/`: the dev server serves
             // the app under the framework base path (`/s/`, see `defineBlongViteConfig`),

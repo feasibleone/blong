@@ -241,7 +241,15 @@ test('every run of a kind is drawn together', async ({portal}) => {
 // calling `portal.login` again looks for a login form a logged-in portal no longer
 // shows — which is what a first attempt at this test did.
 test.describe('a role without the capability', () => {
-    test.use({blongUsername: 'testViewer', blongPassword: 'testPassword'});
+    // The refusal is this spec's subject, so the two lines the browser reports for it —
+    // the 403 on the request and the console mirror of the denial — are declared
+    // expected: they stay in `portal.browserErrors` (which the assertion below reads)
+    // without being echoed as if they were news.
+    test.use({
+        blongUsername: 'testViewer',
+        blongPassword: 'testPassword',
+        blongExpectedBrowserErrors: ['rpc/blong/flow/find', 'Authorization denied'],
+    });
 
     test('is refused, not shown an empty page', async ({portal}) => {
         await portal.menuClick('blong.flow.browse');

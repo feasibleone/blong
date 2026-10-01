@@ -138,6 +138,9 @@ exactly like a login form that never appeared.
   waiting out its timeout.
 - App-level call failures are logged by the handler proxy as `[blong] <method> failed`, which also
   covers validation failures that show no popup at all.
+- A spec that **provokes** a line declares it: `test.use({blongExpectedBrowserErrors: ['…']})` keeps
+  the line collected and out of the log. Patterns are substrings (a `RegExp` does not survive the
+  fixture boundary) matched against the whole recorded line, URL included.
 - `realm/blong-gateway/test/errors.play.ts` is the proof spec for this path: one test asserts what
   was collected, and one is marked `test.fail(true, …)` so the failing path is exercised while the
   run stays green.

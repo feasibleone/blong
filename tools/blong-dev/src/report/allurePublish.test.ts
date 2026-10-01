@@ -118,6 +118,48 @@ test('publishAllureReport leaves a package with no results alone', async t => {
     rmSync(cwd, {recursive: true, force: true});
 });
 
+test('publishAllureReport publishes the page of a package that never reached Allure', async t => {
+    // The ordinary shape of a plain unit-test package: tap wrote the report, no
+    // producer wrote Allure results, and the CI summary still links its row.
+    const cwd = packageWith({});
+    mkdirSync(join(cwd, '.ci-report'), {recursive: true});
+    writeFileSync(
+        join(cwd, '.ci-report', 'report.json'),
+        JSON.stringify({
+            schema: 1,
+            package: packageName(cwd),
+            path: 'tools/blong-dev',
+            status: 'passed',
+            counts: {total: 1, passed: 1, failed: 0, flaky: 0, skipped: 0, todo: 0},
+            generatedAt: '2026-10-01T10:00:00.000Z',
+            runs: [
+                {
+                    runner: 'tap',
+                    status: 'passed',
+                    counts: {total: 1, passed: 1, failed: 0, flaky: 0, skipped: 0, todo: 0},
+                    generatedAt: '2026-10-01T10:00:00.000Z',
+                    suites: [],
+                },
+            ],
+        }),
+    );
+    const allure = stubAllure();
+
+    const published = await publishAllureReport(cwd, {run: allure.run});
+
+    t.equal(published.published, false, 'there is no Allure report');
+    t.equal(allure.calls.length, 0, 'Allure is not invoked');
+    t.equal(
+        published.page,
+        join('.ci-report', 'publish', 'index.html'),
+        'the page is the published report',
+    );
+    const page = readFileSync(join(cwd, '.ci-report', 'publish', 'index.html'), 'utf8');
+    t.match(page, /1 passed, 0 failed \(1 total\)/, 'and carries the report it was rendered from');
+
+    rmSync(cwd, {recursive: true, force: true});
+});
+
 test('publishAllureReport regenerates only for results written since the last report', async t => {
     const cwd = packageWith({'allure-results': ['browser-result.json']});
     const allure = stubAllure();

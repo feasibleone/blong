@@ -37,6 +37,7 @@ import {basename, join} from 'node:path';
 import {runTool} from '../utils/runTool.ts';
 import {toolEnv} from '../utils/toolPath.ts';
 import {historyFile, readHistory, sliceForPackage, writeSlice} from './history.ts';
+import {writePackagePage} from './packagePage.ts';
 import {PUBLISH_DIR, REPORT_DIR, packageName, repoRoot, reportDir} from './reportPaths.ts';
 
 /**
@@ -52,12 +53,17 @@ export const ALLURE_RESULTS_DIRS = ['allure-results', 'allure-results-tap'] as c
 const STAGING_DIR = '.allure-merge';
 
 export interface IAllurePublishResult {
-    /** Whether a report was generated. */
+    /** Whether an Allure report was generated. */
     published: boolean;
     /** How many producer directories went into it. */
     producers: number;
     /** Where the report was written, package-relative. */
     reportDir?: string;
+    /**
+     * Package-relative path of the page published instead of an Allure report, for a
+     * package whose runners never reported to Allure (see {@link writePackagePage}).
+     */
+    page?: string;
 }
 
 /** Every results directory of this package that holds something, in producer order. */
@@ -213,13 +219,22 @@ export interface IPublishAllureOptions {
  * merged is every producer that has results, because the two producers of one cycle are
  * not written at the same moment: a handler-test run publishes first and the browser run
  * that follows it has to merge what is already there.
+ *
+ * A package with no Allure results at all — a plain unit-test package, whose only runner
+ * is tap — has no Allure report to publish, and publishing nothing left the CI summary
+ * with no link for its row. Such a package gets {@link writePackagePage} instead: the same
+ * report data, rendered as a page, at the same published path. It is written from the
+ * report the runner already left, so this is a rendering step and not a second producer.
  */
 export async function publishAllureReport(
     cwd: string,
     options: IPublishAllureOptions = {},
 ): Promise<IAllurePublishResult> {
     const dirs = resultsDirsOf(cwd);
-    if (dirs.length === 0) return {published: false, producers: 0};
+    if (dirs.length === 0) {
+        const page = writePackagePage(cwd);
+        return {published: false, producers: 0, ...(page.written ? {page: page.path} : {})};
+    }
 
     const run =
         options.run ??

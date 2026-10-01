@@ -11,6 +11,7 @@ import {
     type TestStatus,
 } from '../report/reportTypes.ts';
 import {clearRun, writeRun} from '../report/reportWrite.ts';
+import {ensureBrowsers} from '../utils/browsers.ts';
 import {runTool, type RunOptions} from '../utils/runTool.ts';
 import {toolEnv} from '../utils/toolPath.ts';
 
@@ -76,11 +77,18 @@ export async function playwright(args: string[]): Promise<void> {
     const run = (cmd: string, runArgs: string[]) =>
         runTool(cmd, runArgs, {cwd, env} satisfies RunOptions);
 
-    // In CI, ensure browsers and system deps are available.
-    // The rush.yaml workflow pre-installs and caches browsers, so this is typically a no-op.
-    // Skip when PLAYWRIGHT_SKIP_INSTALL is set to avoid parallel dpkg lock contention.
-    if (process.env.CI && !process.env.PLAYWRIGHT_SKIP_INSTALL) {
-        await run('playwright', ['install', '--with-deps']);
+    // Preflight the browsers this package's Playwright launches. `playwright install`
+    // is silent and instant when the revision is already cached, which is the common
+    // case; when it is not, this is the difference between a red run and a download.
+    // Only `--with-deps` (system libraries, root, apt/dpkg) is gated: CI installs the
+    // system libraries once for the whole run, and running it here in parallel would
+    // fight over the package-manager lock (PLAYWRIGHT_SKIP_INSTALL says so).
+    const browsersCode = await ensureBrowsers(cwd, {
+        withDeps: Boolean(process.env.CI) && !process.env.PLAYWRIGHT_SKIP_INSTALL,
+    });
+    if (browsersCode !== 0) {
+        process.exitCode = browsersCode;
+        return;
     }
 
     // Clear stale results from previous runs
@@ -109,6 +117,8 @@ export async function playwright(args: string[]): Promise<void> {
             console.log(
                 `Allure report: ${published.reportDir} (${published.producers} producer(s))`,
             );
+        } else if (published.page) {
+            console.log(`Report page: ${published.page} (no Allure results)`);
         }
 
         const parsed = parseResults(resultsDir, traceFiles);

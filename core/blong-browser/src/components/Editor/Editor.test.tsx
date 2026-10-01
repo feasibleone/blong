@@ -6,6 +6,7 @@ import {afterAll, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest'
 import {bgTranslations} from '../../../.storybook/dispatch.js';
 import {useAppStore} from '../../state/appStore.js';
 import {flushEffects, render} from '../../test/render.js';
+import {muteErrorMirrors} from '../../test/setup.js';
 import {widgetRegistry} from '../../widgets/index.js';
 import {Editor, resolveTabTitle} from './Editor.js';
 
@@ -235,18 +236,23 @@ describe('<Editor />', () => {
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
-    it('Validation render equals snapshot', async () => {
-        // Apply story args explicitly — Template.bind({}) doesn't forward .args in JSX render.
-        const {findByTestId, container} = render(Validation(Validation.args ?? {}), {dispatch});
-        if (Validation.play) {
-            await flushEffects();
-            await act(() =>
-                Validation.play!({canvas: within(container), userEvent: userEvent.setup()}),
-            );
-            await flushEffects();
-        }
-        expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
-    });
+    it(
+        'Validation render equals snapshot',
+        muteErrorMirrors(async () => {
+            // Apply story args explicitly — Template.bind({}) doesn't forward .args in JSX render.
+            const {findByTestId, container} = render(Validation(Validation.args ?? {}), {
+                dispatch,
+            });
+            if (Validation.play) {
+                await flushEffects();
+                await act(() =>
+                    Validation.play!({canvas: within(container), userEvent: userEvent.setup()}),
+                );
+                await flushEffects();
+            }
+            expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
+        }, 'error toast Validation error'),
+    );
 
     /**
      * ValidationBG render equals snapshot
@@ -254,30 +260,36 @@ describe('<Editor />', () => {
      * field labels and button text are in Bulgarian, matching the Storybook story.
      * Cleaned up to English after the test.
      */
-    it('ValidationBG render equals snapshot', async () => {
-        await act(async () => {
-            useAppStore.getState().setTranslations(bgTranslations);
-            useAppStore.getState().setLanguage('bg');
-        });
-        try {
-            const {findByTestId, container} = render(ValidationBG(ValidationBG.args ?? {}), {
-                dispatch,
-            });
-            if (ValidationBG.play) {
-                await flushEffects();
-                await act(() =>
-                    ValidationBG.play!({canvas: within(container), userEvent: userEvent.setup()}),
-                );
-                await flushEffects();
-            }
-            expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
-        } finally {
+    it(
+        'ValidationBG render equals snapshot',
+        muteErrorMirrors(async () => {
             await act(async () => {
-                useAppStore.getState().setTranslations({});
-                useAppStore.getState().setLanguage('en');
+                useAppStore.getState().setTranslations(bgTranslations);
+                useAppStore.getState().setLanguage('bg');
             });
-        }
-    });
+            try {
+                const {findByTestId, container} = render(ValidationBG(ValidationBG.args ?? {}), {
+                    dispatch,
+                });
+                if (ValidationBG.play) {
+                    await flushEffects();
+                    await act(() =>
+                        ValidationBG.play!({
+                            canvas: within(container),
+                            userEvent: userEvent.setup(),
+                        }),
+                    );
+                    await flushEffects();
+                }
+                expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
+            } finally {
+                await act(async () => {
+                    useAppStore.getState().setTranslations({});
+                    useAppStore.getState().setLanguage('en');
+                });
+            }
+        }, 'error toast Validation error'),
+    );
 
     it('Server validation render equals snapshot', async () => {
         // Apply story args explicitly — Template.bind({}) doesn't forward .args in JSX render.
@@ -944,9 +956,12 @@ describe('createAction / saveAction separation', () => {
 
         // ── First save (create) ──────────────────────────────────────────────
         await act(async () => {
-            fireEvent.change(document.querySelector('input[name="coralName"]') as HTMLInputElement, {
-                target: {value: 'Brain Coral'},
-            });
+            fireEvent.change(
+                document.querySelector('input[name="coralName"]') as HTMLInputElement,
+                {
+                    target: {value: 'Brain Coral'},
+                },
+            );
         });
         await waitFor(() => expect(screen.getByRole('button', {name: 'Save'})).not.toBeDisabled());
 
@@ -961,9 +976,12 @@ describe('createAction / saveAction separation', () => {
 
         // ── Second save (edit) ───────────────────────────────────────────────
         await act(async () => {
-            fireEvent.change(document.querySelector('input[name="coralName"]') as HTMLInputElement, {
-                target: {value: 'Brain Coral II'},
-            });
+            fireEvent.change(
+                document.querySelector('input[name="coralName"]') as HTMLInputElement,
+                {
+                    target: {value: 'Brain Coral II'},
+                },
+            );
         });
         await waitFor(() => expect(screen.getByRole('button', {name: 'Save'})).not.toBeDisabled());
 

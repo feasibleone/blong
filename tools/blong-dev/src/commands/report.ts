@@ -1,5 +1,6 @@
 import {resolve} from 'node:path';
 
+import {publishAllureReport} from '../report/allurePublish.ts';
 import {packageName} from '../report/reportPaths.ts';
 import {clearRun, writeRun} from '../report/reportWrite.ts';
 import {VITEST_JSON, buildVitestRun, readVitestJson} from '../report/vitestReport.ts';
@@ -55,4 +56,20 @@ export async function report(args: string[]): Promise<void> {
             `${run.counts.skipped > 0 ? `, ${run.counts.skipped} skipped` : ''} ` +
             `(${run.counts.total} total)\n`,
     );
+
+    // A vitest-only package (blong-browser) has no Allure producer behind its report,
+    // so this is the last step of its run and the moment its published page is written
+    // — the same call the tap and Playwright runners make, so the rule for what a
+    // package publishes (an Allure report when a producer left results, its rendered
+    // page otherwise) lives in one place rather than per package.
+    const published = await publishAllureReport(cwd, {
+        baseHistory: process.env['CI_BASE_HISTORY'],
+    });
+    if (published.published) {
+        process.stdout.write(
+            `# allure report: ${published.reportDir} (${published.producers} producer(s))\n`,
+        );
+    } else if (published.page) {
+        process.stdout.write(`# report page: ${published.page} (no Allure results)\n`);
+    }
 }

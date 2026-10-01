@@ -2,18 +2,13 @@ import {act, renderHook, waitFor} from '@testing-library/react';
 import React from 'react';
 import {describe, expect, it, vi} from 'vitest';
 import {BlongProvider, makeHandlerProxy} from '../context/BlongContext.js';
+import {muteErrorMirrors} from '../test/setup.js';
 import {useHandler, useHandlerCall, useHandlerMutation} from './useHandler.js';
 
 function makeWrapper(dispatch: (m: string, p?: Record<string, unknown>) => Promise<unknown>) {
     // eslint-disable-next-line @eslint-react/component-hook-factories
     return function Wrapper({children}: {children: React.ReactNode}) {
-        return (
-            <BlongProvider
-                handlerProxy={makeHandlerProxy(dispatch)}
-            >
-                {children}
-            </BlongProvider>
-        );
+        return <BlongProvider handlerProxy={makeHandlerProxy(dispatch)}>{children}</BlongProvider>;
     };
 }
 
@@ -38,13 +33,16 @@ describe('useHandler', () => {
         expect(dispatch).not.toHaveBeenCalled();
     });
 
-    it('returns error state when dispatch rejects', async () => {
-        const dispatch = vi.fn().mockRejectedValue(new Error('Query failed'));
-        const {result} = renderHook(() => useHandler('fail.method'), {
-            wrapper: makeWrapper(dispatch),
-        });
-        await waitFor(() => expect(result.current.isError).toBe(true), {timeout: 5000});
-    });
+    it(
+        'returns error state when dispatch rejects',
+        muteErrorMirrors(async () => {
+            const dispatch = vi.fn().mockRejectedValue(new Error('Query failed'));
+            const {result} = renderHook(() => useHandler('fail.method'), {
+                wrapper: makeWrapper(dispatch),
+            });
+            await waitFor(() => expect(result.current.isError).toBe(true), {timeout: 5000});
+        }, ['fail.method failed', 'Query failed']),
+    );
 });
 
 describe('useHandlerMutation', () => {

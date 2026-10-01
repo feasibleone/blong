@@ -20,8 +20,8 @@
         "ci-examples": "npm run test:examples",
         "ci-lint": "blong-dev lint",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
-        "ci-test": "blong-dev test '*.test.ts';./test-examples-ci.sh",
-        "test": "blong-dev test '*.test.ts';./test-examples-ci.sh",
+        "ci-test": "rc=0; blong-dev test '*.test.ts' || rc=$?; ./test-examples-ci.sh || rc=$?; exit $rc",
+        "test": "rc=0; blong-dev test '*.test.ts' || rc=$?; ./test-examples-ci.sh || rc=$?; exit $rc",
         "test:examples": "node --test examples/*.test.ts"
     },
     "dependencies": {

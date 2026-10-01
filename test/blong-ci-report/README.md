@@ -132,6 +132,11 @@ The printed paths mirror exactly what CI produces, including the rebuilt `.githu
   handler tests write `allure-results-tap`. `publishAllureReport` merges whatever producers left
   results into the one report a package publishes, with that package's history slice — so a second
   producer adds a results directory rather than a second report link and a second trend line.
+- A package with **no** Allure results still publishes a report: the same call renders its
+  `.ci-report/report.json` into `.ci-report/publish/index.html`, which is what the summary's Report
+  cell links and what keeps a plain unit-test package (`semantic-log`, `blong-lib`, `blong-ttk`)
+  from showing `—`. Only `index.html` is written, so the directory stays "one report per package" —
+  an Allure report written later replaces the page rather than sitting beside a stale copy of it.
 - Keep history writes **idempotent**: the committed files are always rebuilt as "base branch + this
   run", never appended to (see `rebuildHistory` and `rebuildMetrics`), otherwise repeated runs of
   one pull request accumulate data.

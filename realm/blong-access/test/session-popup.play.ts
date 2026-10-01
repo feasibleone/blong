@@ -15,13 +15,16 @@
  */
 import {expect, test} from '@feasibleone/blong-browser/playwright';
 
-test.use({blongPermissions: true});
+// The spec revokes the session on purpose, so the renewal it then attempts is meant to
+// be refused: the 401 on `login/token/refresh` and the console mirror of the call that
+// carried it are expected here, and the assertions below are what prove the path works.
+test.use({
+    blongPermissions: true,
+    blongExpectedBrowserErrors: ['token/refresh', 'Token refresh failed'],
+});
 
 test.describe('Access session login popup', () => {
-    test('expired session shows the login popup and re-login recovers', async ({
-        page,
-        portal,
-    }) => {
+    test('expired session shows the login popup and re-login recovers', async ({page, portal}) => {
         test.setTimeout(120_000);
 
         // The portal fixture has logged in (session created + cookie set).
@@ -33,10 +36,7 @@ test.describe('Access session login popup', () => {
         await page.evaluate(async () => {
             const handler = (window as unknown as {__blongHandler?: Record<string, unknown>})
                 .__blongHandler;
-            await (handler?.loginTokenRevoke as (p: object, m: object) => Promise<unknown>)(
-                {},
-                {},
-            );
+            await (handler?.loginTokenRevoke as (p: object, m: object) => Promise<unknown>)({}, {});
         });
 
         // Let the access token expire — the codec renews a few seconds before
@@ -71,10 +71,10 @@ test.describe('Access session login popup', () => {
         const result = await page.evaluate(async () => {
             const handler = (window as unknown as {__blongHandler?: Record<string, unknown>})
                 .__blongHandler;
-            return (await (handler?.accessUserFind as (
-                p: object,
-                m: object,
-            ) => Promise<unknown>)({paging: {}}, {})) as unknown;
+            return (await (handler?.accessUserFind as (p: object, m: object) => Promise<unknown>)(
+                {paging: {}},
+                {},
+            )) as unknown;
         });
         expect(Array.isArray(result), 'protected call succeeds after re-login').toBe(true);
         await expect(page).toHaveScreenshot('re-login-save.png');

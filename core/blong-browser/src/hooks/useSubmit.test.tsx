@@ -3,14 +3,11 @@ import React from 'react';
 import {describe, expect, it, vi} from 'vitest';
 import {BlongProvider, makeHandlerProxy} from '../context/BlongContext.js';
 import {useAppStore} from '../state/appStore.js';
+import {muteErrorMirrors} from '../test/setup.js';
 import {useSubmit} from './useSubmit.js';
 
 const wrapper = ({children}: {children: React.ReactNode}) => (
-    <BlongProvider
-        handlerProxy={makeHandlerProxy(vi.fn())}
-    >
-        {children}
-    </BlongProvider>
+    <BlongProvider handlerProxy={makeHandlerProxy(vi.fn())}>{children}</BlongProvider>
 );
 
 describe('useSubmit', () => {
@@ -33,23 +30,26 @@ describe('useSubmit', () => {
         });
     });
 
-    it('shows error toast when fn rejects', async () => {
-        act(() => {
-            useAppStore.getState().clearAllToasts();
-        });
-        const fn = vi.fn().mockRejectedValue(new Error('Server error'));
-        const {result} = renderHook(() => useSubmit(fn), {wrapper});
+    it(
+        'shows error toast when fn rejects',
+        muteErrorMirrors(async () => {
+            act(() => {
+                useAppStore.getState().clearAllToasts();
+            });
+            const fn = vi.fn().mockRejectedValue(new Error('Server error'));
+            const {result} = renderHook(() => useSubmit(fn), {wrapper});
 
-        await act(async () => {
-            await result.current.submit({}).catch(() => {});
-        });
+            await act(async () => {
+                await result.current.submit({}).catch(() => {});
+            });
 
-        const toasts = useAppStore.getState().toasts;
-        expect(toasts.some(t => t.severity === 'error')).toBe(true);
-        act(() => {
-            useAppStore.getState().clearAllToasts();
-        });
-    });
+            const toasts = useAppStore.getState().toasts;
+            expect(toasts.some(t => t.severity === 'error')).toBe(true);
+            act(() => {
+                useAppStore.getState().clearAllToasts();
+            });
+        }, 'error toast An error occurred'),
+    );
 
     it('sets submitting=true during execution and false after', async () => {
         let resolveFn!: () => void;
@@ -91,18 +91,21 @@ describe('useSubmit', () => {
         });
     });
 
-    it('calls onError callback on failure', async () => {
-        const fn = vi.fn().mockRejectedValue(new Error('fail'));
-        const onError = vi.fn();
-        const {result} = renderHook(() => useSubmit(fn, {onError}), {wrapper});
-        await act(async () => {
-            await result.current.submit({}).catch(() => {});
-        });
-        expect(onError).toHaveBeenCalled();
-        act(() => {
-            useAppStore.getState().clearAllToasts();
-        });
-    });
+    it(
+        'calls onError callback on failure',
+        muteErrorMirrors(async () => {
+            const fn = vi.fn().mockRejectedValue(new Error('fail'));
+            const onError = vi.fn();
+            const {result} = renderHook(() => useSubmit(fn, {onError}), {wrapper});
+            await act(async () => {
+                await result.current.submit({}).catch(() => {});
+            });
+            expect(onError).toHaveBeenCalled();
+            act(() => {
+                useAppStore.getState().clearAllToasts();
+            });
+        }, 'error toast An error occurred'),
+    );
 
     it('uses custom success and error messages', async () => {
         act(() => {

@@ -71,6 +71,8 @@ export async function test(args: string[]): Promise<void> {
         process.stdout.write(
             `# allure report: ${published.reportDir} (${published.producers} producer(s))\n`,
         );
+    } else if (published.page) {
+        process.stdout.write(`# report page: ${published.page} (no Allure results)\n`);
     }
 
     process.exitCode = exitCode;

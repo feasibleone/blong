@@ -3,14 +3,11 @@ import React from 'react';
 import {describe, expect, it, vi} from 'vitest';
 import {BlongProvider, makeHandlerProxy} from '../context/BlongContext.js';
 import {useAppStore} from '../state/appStore.js';
+import {muteErrorMirrors} from '../test/setup.js';
 import {useToast} from './useToast.js';
 
 const wrapper = ({children}: {children: React.ReactNode}) => (
-    <BlongProvider
-        handlerProxy={makeHandlerProxy(vi.fn())}
-    >
-        {children}
-    </BlongProvider>
+    <BlongProvider handlerProxy={makeHandlerProxy(vi.fn())}>{children}</BlongProvider>
 );
 
 describe('useToast', () => {
@@ -29,20 +26,23 @@ describe('useToast', () => {
         });
     });
 
-    it('shows an error toast', () => {
-        act(() => {
-            useAppStore.getState().clearAllToasts();
-        });
-        const {result} = renderHook(() => useToast(), {wrapper});
-        act(() => {
-            result.current.error('Error!', 'Detail info');
-        });
-        const toasts = useAppStore.getState().toasts;
-        expect(toasts.some(t => t.severity === 'error')).toBe(true);
-        act(() => {
-            useAppStore.getState().clearAllToasts();
-        });
-    });
+    it(
+        'shows an error toast',
+        muteErrorMirrors(() => {
+            act(() => {
+                useAppStore.getState().clearAllToasts();
+            });
+            const {result} = renderHook(() => useToast(), {wrapper});
+            act(() => {
+                result.current.error('Error!', 'Detail info');
+            });
+            const toasts = useAppStore.getState().toasts;
+            expect(toasts.some(t => t.severity === 'error')).toBe(true);
+            act(() => {
+                useAppStore.getState().clearAllToasts();
+            });
+        }, 'error toast Error!'),
+    );
 
     it('shows an info toast', () => {
         act(() => {
@@ -74,17 +74,20 @@ describe('useToast', () => {
         });
     });
 
-    it('clears all toasts', () => {
-        const {result} = renderHook(() => useToast(), {wrapper});
-        act(() => {
-            result.current.success('A');
-            result.current.error('B');
-        });
-        act(() => {
-            result.current.clearAll();
-        });
-        expect(useAppStore.getState().toasts).toHaveLength(0);
-    });
+    it(
+        'clears all toasts',
+        muteErrorMirrors(() => {
+            const {result} = renderHook(() => useToast(), {wrapper});
+            act(() => {
+                result.current.success('A');
+                result.current.error('B');
+            });
+            act(() => {
+                result.current.clearAll();
+            });
+            expect(useAppStore.getState().toasts).toHaveLength(0);
+        }, 'error toast B'),
+    );
 
     it('shows a custom toast via show()', () => {
         act(() => {

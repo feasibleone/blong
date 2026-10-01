@@ -115,6 +115,27 @@ The `portal` fixture does **not** grant permissions by default (`blongPermission
 `false`). Suites that need full CRUD access must opt in per test file or describe block with
 `test.use({blongPermissions: true})`.
 
+## Expected Browser Messages
+
+The fixture echoes every console error, console warning and uncaught exception the page produces to
+the runner's output — prefixed `[browser]` — and keeps the same lines in `portal.browserErrors`. A
+spec that provokes one of them on purpose declares it, so the run does not print a line the spec
+asked for as if it were news:
+
+```typescript
+test.use({blongExpectedBrowserErrors: ['rpc/blong/flow/find', 'Authorization denied']});
+```
+
+The message is still collected and still attached to the failure a broken page reports; only the
+echo is dropped. Patterns are substrings, not regular expressions — a fixture option crosses
+Playwright's worker boundary, where a `RegExp` arrives as an empty object — and each is matched
+against the whole recorded line, so a browser message that names no URL in its own text can still be
+matched by one. The option belongs to the spec that caused the line rather than to a global ignore
+list: "this spec expects this" is a claim a reviewer can check.
+
+An uncaught page error is not a candidate: the fixture fails the spec over it, so declaring the
+message would hide the failure rather than quiet the log.
+
 ## Shared Configuration
 
 The `defineBlongConfig()` helper from `@feasibleone/blong-browser/playwright/config` provides

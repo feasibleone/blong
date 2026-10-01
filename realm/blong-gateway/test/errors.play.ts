@@ -14,6 +14,14 @@ import {expect, test} from '@feasibleone/blong-browser/playwright';
  * fail, because a reporting path that is never exercised on a failure is a claim,
  * not a mechanism.
  */
+test.use({
+    // The first spec below provokes these two lines on purpose and then asserts they
+    // were collected. Declaring them keeps them out of the run's log; the failure path
+    // of the second spec — a page error — is deliberately *not* declared, because
+    // printing it is that spec's whole point.
+    blongExpectedBrowserErrors: ['[test] deliberate console error', 'unreachable-probe'],
+});
+
 test('browser errors are collected with enough context to place them', async ({portal}) => {
     await portal.page.evaluate(() => {
         console.error('[test] deliberate console error');
