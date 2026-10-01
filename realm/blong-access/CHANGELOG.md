@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.0](https://github.com/feasibleone/blong/compare/blong-access-v1.8.1...blong-access-v1.9.0) (2026-10-01)
+
+
+### Features
+
+* storybook backend ([8a1adaa](https://github.com/feasibleone/blong/commit/8a1adaa047f7ef4ee28c70e271327cd1e6f76157))
+
+
+### Bug Fixes
+
+* error handling ([fc1af53](https://github.com/feasibleone/blong/commit/fc1af536ae814a88a661341936bd9f9c519b38d1))
+
 ## [1.8.1](https://github.com/feasibleone/blong/compare/blong-access-v1.8.0...blong-access-v1.8.1) (2026-09-29)
 
 

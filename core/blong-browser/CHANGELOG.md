@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.23.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.22.0...blong-browser-v1.23.0) (2026-10-01)
+
+
+### Features
+
+* skills and docs embedding ([01b8acc](https://github.com/feasibleone/blong/commit/01b8acc1c0e209e168af38b319eb4ff2581cbc4d))
+* storybook backend ([8a1adaa](https://github.com/feasibleone/blong/commit/8a1adaa047f7ef4ee28c70e271327cd1e6f76157))
+
+
+### Bug Fixes
+
+* error handling ([fc1af53](https://github.com/feasibleone/blong/commit/fc1af536ae814a88a661341936bd9f9c519b38d1))
+
 ## [1.22.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.21.0...blong-browser-v1.22.0) (2026-09-29)
 
 

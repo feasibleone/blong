@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/feasibleone/blong/compare/blong-commander-v1.2.1...blong-commander-v1.2.2) (2026-10-01)
+
+
+### Bug Fixes
+
+* blong-commander determinism ([92bc657](https://github.com/feasibleone/blong/commit/92bc6573c0fd1fccab9908ccabf64b4e6e6738ca))
+
 ## [1.2.1](https://github.com/feasibleone/blong/compare/blong-commander-v1.2.0...blong-commander-v1.2.1) (2026-09-29)
 
 
