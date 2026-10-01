@@ -1,5 +1,6 @@
 // Public API for programmatic usage of blong-dev
 export {ciReport} from './commands/ciReport.ts';
+export {cspell} from './commands/cspell.ts';
 export {lint} from './commands/lint.ts';
 export {lintStaged} from './commands/lintStaged.ts';
 export {log} from './commands/log.ts';
@@ -8,6 +9,7 @@ export {proxy} from './commands/proxy.ts';
 export {report} from './commands/report.ts';
 export {sql} from './commands/sql.ts';
 export {trace} from './commands/trace.ts';
+export * from './cspell/cspellConfig.ts';
 export * from './memory/memoryCheck.ts';
 export * from './memory/memoryEdit.ts';
 export * from './memory/memoryFormat.ts';

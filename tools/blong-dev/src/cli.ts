@@ -38,6 +38,9 @@ switch (command) {
     case 'sql':
         await (await import('./commands/sql.ts')).sql(args);
         break;
+    case 'cspell':
+        await (await import('./commands/cspell.ts')).cspell(args);
+        break;
     case 'memory':
         await (await import('./commands/memory.ts')).memory(args);
         break;

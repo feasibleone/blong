@@ -19,6 +19,7 @@ test('USAGE_LINES lists every subcommand including sql', async t => {
         'trace',
         'log',
         'sql',
+        'cspell',
         'report',
         'ci-report',
         'memory',

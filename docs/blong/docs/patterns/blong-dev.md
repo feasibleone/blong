@@ -5,7 +5,7 @@ coding agents through the same binary. It exists because the loop around the fra
 small jobs that each used to be a paragraph of shell in someone's notes: query the development
 database, read back a log from a run that has finished, open a Playwright trace, put plain JSON in
 front of an encrypted gateway, run the tests, turn their output into the one report CI consumes,
-check the generated documentation and keep the memory files.
+check the generated documentation, keep the dictionary sorted and keep the memory files.
 
 ```bash
 node tools/blong-dev/bin/blong-dev.ts <command> [args]
@@ -13,7 +13,7 @@ node tools/blong-dev/bin/blong-dev.ts <command> [args]
 
 It is a workspace package (`@feasibleone/blong-dev`, binary `blong-dev`) and not a published tool:
 the commands assume they are running inside a checkout, and several of them read the repository's
-own configuration (`.blong_devrc`, `rush.json`, the memory files).
+own configuration (`.blong_devrc`, `rush.json`, `cspell.config.yaml`, the memory files).
 
 ## The commands
 
@@ -29,6 +29,7 @@ own configuration (`.blong_devrc`, `rush.json`, the memory files).
 | `trace <trace.zip>` | Unzipping a Playwright trace and reading JSON lines to find out which step failed.            |
 | `log [ulid]`        | Log lines that only existed live, in a terminal that has been closed.                         |
 | `sql [query]`       | Reaching into a pod with a MySQL client to look at development data.                          |
+| `cspell <verb>`     | A word list that has to be sorted by hand, and the insertion point that goes with it.         |
 | `memory <verb>`     | Agents hand-editing the memory format, and forgetting its index and wrapping.                 |
 | `docs <verb>`       | Refreshing a generated diagram or screenshot and proving it is not stale.                     |
 
@@ -51,6 +52,27 @@ view — enough that a failing suite is readable without reaching for `--reporte
 the browser runner and builds the Allure report; `report vitest` exists so a package that runs
 vitest (such as `blong-browser`) feeds the _same_ `.ci-report/` contract, which is what lets
 `ci-report` aggregate a monorepo whose packages do not share a runner.
+
+## The dictionary
+
+```bash
+blong-dev cspell add kukum mxbai                    # words, inserted where they belong
+blong-dev cspell add --section ignorePaths "core/**/fixture/**"
+blong-dev cspell check                              # non-zero when a list is not sorted
+blong-dev cspell sort                               # put a drifted list back in order
+blong-dev cspell list --section words | grep -x kukum
+```
+
+`cspell.config.yaml` holds two lists a person appends to — `words` and `ignorePaths` — and cspell
+reads them in any order, so the order is only ever maintained by hand. That makes the insertion
+point the whole cost of the edit, and an insertion one word off invisible in review.
+
+`cspell` owns that decision. `add` places the value where it belongs, reports one the list already
+has instead of repeating it, and quotes a glob the way YAML needs it; `sort` normalises a list that
+has already drifted and drops an exact duplicate; `check` reports one that is not sorted and exits
+non-zero, which is the gate for a hand edit. Everything else in the file — comments, blank lines,
+the keys around the lists — is left byte for byte as it was, and a run that changes nothing does not
+write the file at all.
 
 ## The proxy: curl cannot speak MLE
 
@@ -142,7 +164,7 @@ the agent loop have the same shape. An agent asked to fix a failing test needs t
 a person needs: the test's output, the persisted log, the query against the development database,
 and the memory file that records what was learned. When those are commands, both callers can run
 them — and the repositories' own instructions say so, pointing agents at `blong-dev memory`,
-`blong-dev sql` and `blong-dev lint` by name.
+`blong-dev sql`, `blong-dev cspell` and `blong-dev lint` by name.
 
 Two small conventions keep that honest. Anything with output gets a machine mode (`--output json`,
 `list --json`) beside its human one. And anything that would otherwise be a one-off shell

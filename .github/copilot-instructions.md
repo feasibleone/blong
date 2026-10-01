@@ -71,6 +71,12 @@ it permanently either by better instructions or improved tooling.
   problems are otherwise only visible in the editor, so name the files explicitly when you change
   markdown. `memory check` additionally enforces the memory format's own rules.
 
+- **Add a dictionary word with the tool, never by hand.** `blong-dev cspell add <word>` writes the
+  word into `cspell.config.yaml` in its sorted position (`--section ignorePaths` for a path), and
+  `blong-dev cspell check` is the gate that notices a hand edit. Finding the insertion point is the
+  whole cost of editing the list by hand, and the command already knows it — `remove`, `sort` and
+  `list` are there too.
+
 - **Write markdown the house way.** These conventions are enforced by the tooling, so a violation
   costs a round trip rather than a review comment:
     - **Emphasis is `_italic_`, not `*italic*`** (MD049). `blong-dev memory` now rewrites an
@@ -228,7 +234,8 @@ API definition as the primary source of truth and apply the conflict priority in
   `blong-realm`. Do not hand-build the folder structure.
 - **Lint changed files.** Use vscode error reporting or `node --run ci-lint -- [files...]` per
   affected package. For spell errors prefer proper words / snake-case / camelCase over dictionary
-  additions.
+  additions, and add a word that belongs in the dictionary with `blong-dev cspell add <word>` rather
+  than by editing `cspell.config.yaml`.
 - **Search before read.** Prefer `grep_search` / `file_search` over linear `read_file` for targeted
   exploration.
 - **TypeScript is not compiled**, unless strictly necessary. We run on latest Node.js which can
@@ -567,10 +574,10 @@ ss -tlnp | grep -E ':8180|:9092|:27017|:3306|:9000|:8200|:6379'
 
 Any port not listed in the output means that service is not yet started.
 
-### dev tooling (blong-dev proxy / trace / log / sql)
+### dev tooling (blong-dev proxy / trace / log / sql / cspell)
 
-The `blong-dev` CLI ships two helpers for talking to a running gateway without re-implementing the
-MLE codec:
+The `blong-dev` CLI ships helpers for talking to a running gateway and for maintaining the
+repository's own configuration files:
 
 - **`blong-dev proxy`** — curl-friendly HTTP proxy in front of a gateway's MLE-encrypted RPC
   endpoint. Start it in the realm/suite that owns the gateway, then curl plain JSON:
@@ -604,6 +611,13 @@ MLE codec:
   the dev database name (`${suite}-${user}`, e.g. `blong-access-kalin`) when none is configured.
   `--output json` is the agent-friendly default for non-TTY. Implemented in
   `tools/blong-dev/src/commands/sql.ts`. Example: `blong-dev sql "SELECT * FROM access_role"`.
+
+- **`blong-dev cspell`** — the writer and the gate for `cspell.config.yaml`. `add <word>` and
+  `remove <word>` edit `words` (or `ignorePaths` with `--section ignorePaths`), `sort` orders an
+  already-drifted list, `check` reports a list that is not sorted, `list` prints one. Nothing else
+  in the file is touched: comments stay on their entries and a run that changes nothing writes
+  nothing. Implemented in `tools/blong-dev/src/commands/cspell.ts` on
+  `tools/blong-dev/src/cspell/cspellConfig.ts`. Example: `blong-dev cspell add kukum mxbai`.
 
 ## Architecture & Design Documents
 

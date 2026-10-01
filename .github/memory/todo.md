@@ -52,29 +52,22 @@ open (39)
 
 ## Manual
 
-- F-241 - `blong-dev memory` auto-format
-- F-244
 - F-306
 - F-308
 - F-303
-- playwright webp
+- F-244
+- playwright webp, strict tolerance
 - exclusion groups
 - ACL test in cucumber
 - local table creation order
-- test reports missing for many of the packages
 - check login.expire.deleteAfter, access.session.close
 - generate .http files
 - decisions as tests and code reference
-- cspell edit tool
-- meta `checkpoints` and `decisions` should be in a single array `progress`
 - implement implicit and explicit metrics
 - set default checkpointMode in blong-gogo
-- todos must be written as instructions
-- align semantic-log and unified-handler-test.md
 - editor features visual content
 - gate the console calls in the browser
 - agents struggle with coverage, create a tool/skill for tap
-- add screenshots and diagrams to the docs
 - lib unit tests - allow easy testing of library() functions
 - skills as tools
 - component diagram for a suite
@@ -375,12 +368,12 @@ sweep them deliberately with a run of each suite after a baseline regeneration.
 > _2026-09-22 · docs · open_
 
 blong-dev docs check is side-effect-free for artefacts whose generator only writes the registered
-destination, but not for the two produced by Playwright specs: writing their markdown
-needs --update-snapshots, which also rewrites that package's committed _.play.ts-snapshots
-baselines, and check does not snapshot or restore those. So a full docs check can leave modified
-baselines. Both artefacts are already guarded by their own packages (ci-ui runs the same spec, which
-compares the artefact and fails when it is stale), so the workaround is to run check filtered to
-flows._ and png.\*. The proper fix is a second, compare-only command per artefact in
+destination, but not for the two produced by Playwright specs: writing their markdown needs
+--update-snapshots, which also rewrites that package's committed _.play.ts-snapshots baselines, and
+check does not snapshot or restore those. So a full docs check can leave modified baselines. Both
+artefacts are already guarded by their own packages (ci-ui runs the same spec, which compares the
+artefact and fails when it is stale), so the workaround is to run check filtered to flows._ and
+png.\*. The proper fix is a second, compare-only command per artefact in
 docs/blong/docs-artifacts.json. Recorded as item 5 in the Further considerations of
 plans/docs/VISUAL_DOCS_PLAN.md.
 

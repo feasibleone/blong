@@ -75,7 +75,6 @@ words:
   - Dendrophylliidae
   - denoise
   - destructures
-  - emptymessage
   - detritivore
   - devrc
   - dfsp
@@ -92,6 +91,7 @@ words:
   - ECDH
   - EEST
   - elkhorn
+  - emptymessage
   - endregion
   - ENOENT
   - ERRORRELEASEJOBTRIGGER
@@ -174,18 +174,15 @@ words:
   - mojaloop
   - mongosh
   - mousedown
-  - mxbai
   - MPVV
   - MSISDN
   - mtid
+  - mxbai
   - mydas
   - mysqladmin
   - nematocysts
   - networkpolicies
   - nomic
-  - rerank
-  - reranker
-  - reranking
   - nosniff
   - npmjs
   - nscfg
@@ -248,6 +245,9 @@ words:
   - replicasets
   - repro
   - repros
+  - rerank
+  - reranker
+  - reranking
   - resequencer
   - restfs
   - rgba
@@ -386,21 +386,21 @@ words:
   - тест
   - Фамилия
 ignorePaths:
-  - package-lock.json
-  - node_modules
-  - .git
-  - pnpm-lock.yaml
-  - rush.json
   - "**/*.json"
-  - common/temp/**
-  - "**/~.schema.ts"
+  - "**/*.play.ts"
   - "**/*.test.ts"
   - "**/*.test.tsx"
-  - "**/*.play.ts"
+  - "**/.playwright/**"
+  - "**/allure-results/**"
   - "**/dist/**"
   - "**/storybook-static/**"
-  - "**/allure-results/**"
-  - "**/.playwright/**"
+  - "**/~.schema.ts"
+  - .git
+  - common/temp/**
   # The kukum end-to-end fixture is generated output, committed so its Playwright
   # baselines live in git.
   - core/blong-kukum/test/fixture/**
+  - node_modules
+  - package-lock.json
+  - pnpm-lock.yaml
+  - rush.json
