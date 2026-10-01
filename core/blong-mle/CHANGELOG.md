@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-mle-v1.0.0...blong-mle-v1.1.0) (2026-10-01)
+
+
+### Features
+
+* storybook backend ([8a1adaa](https://github.com/feasibleone/blong/commit/8a1adaa047f7ef4ee28c70e271327cd1e6f76157))
+
 ## 1.0.0 (2026-08-19)
 
 

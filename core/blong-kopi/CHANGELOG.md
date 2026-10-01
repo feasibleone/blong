@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.17.0...blong-kopi-v1.18.0) (2026-10-01)
+
+
+### Features
+
+* storybook backend ([8a1adaa](https://github.com/feasibleone/blong/commit/8a1adaa047f7ef4ee28c70e271327cd1e6f76157))
+
 ## [1.17.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.16.0...blong-kopi-v1.17.0) (2026-09-29)
 
 

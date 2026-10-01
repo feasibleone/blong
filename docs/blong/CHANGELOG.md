@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.29.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.28.0...blong-docs-v1.29.0) (2026-10-01)
+
+
+### Features
+
+* blong-dev cspell ([fba1e26](https://github.com/feasibleone/blong/commit/fba1e26614946baaa922cb670ee13b6ac0977211))
+* memory embedding ([a8350b1](https://github.com/feasibleone/blong/commit/a8350b1503be9f0d06a336a1f3245a6d4d923502))
+* skills and docs embedding ([01b8acc](https://github.com/feasibleone/blong/commit/01b8acc1c0e209e168af38b319eb4ff2581cbc4d))
+* storybook backend ([8a1adaa](https://github.com/feasibleone/blong/commit/8a1adaa047f7ef4ee28c70e271327cd1e6f76157))
+
+
+### Bug Fixes
+
+* error handling ([fc1af53](https://github.com/feasibleone/blong/commit/fc1af536ae814a88a661341936bd9f9c519b38d1))
+
 ## [1.28.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.27.0...blong-docs-v1.28.0) (2026-09-29)
 
 
