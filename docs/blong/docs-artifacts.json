@@ -147,6 +147,94 @@
             "doc": "concepts/editor-features.md"
         },
         {
+            "id": "png.editor-toolbar",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-toolbar.png",
+            "package": "core/blong-browser",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.editor-validation",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-validation.png",
+            "package": "core/blong-browser",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.editor-tabs",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-tabs.png",
+            "package": "core/blong-browser",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.editor-custom-editors",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-custom-editors.png",
+            "package": "core/blong-browser",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.editor-loading",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-loading.png",
+            "package": "core/blong-browser",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.editor-design",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-design.png",
+            "package": "core/blong-browser",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.editor-master-detail",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-master-detail.png",
+            "package": "core/blong-browser",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.editor-cascaded-dropdowns",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-cascaded-dropdowns.png",
+            "package": "core/blong-browser",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.editor-cascaded-tables",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-cascaded-tables.png",
+            "package": "core/blong-browser",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.editor-pivot",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-pivot.png",
+            "package": "core/blong-browser",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
+            "id": "png.editor-explorer",
+            "kind": "png",
+            "destination": "docs/blong/docs/concepts/img/editor-explorer.png",
+            "package": "core/blong-browser",
+            "command": "BLONG_CAPTURE_DOCS=1 node --run playwright -- test/docs.play.ts",
+            "doc": "concepts/editor-features.md"
+        },
+        {
             "id": "png.portal-shell",
             "kind": "png",
             "destination": "docs/blong/docs/concepts/img/portal-shell.png",

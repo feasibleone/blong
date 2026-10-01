@@ -8,10 +8,11 @@ use cases.
 This document is a **feature guide**: one section per capability, each with the goal it serves, the
 props and schema keys that drive it, and — where one exists — the Storybook story that shows it
 running. The interactive examples live in the `Editor/…` story group under
-`core/blong-browser/src/components/Editor/stories/`. The pictures on this page come from the
-`demo/blong-marine` Coral entity and are captured by `demo/blong-marine/test/docs.play.ts`.
+`core/blong-browser/src/components/Editor/stories/`, and the pictures of them are captured by
+`core/blong-browser/test/docs.play.ts`; the loaded and empty forms at the top of the page are the
+`demo/blong-marine` Coral entity, captured by `demo/blong-marine/test/docs.play.ts`.
 
-The stories are runnable: `cd demo/blong-marine && npm run storybook` serves them on port 6007 (the
+The stories are runnable: `cd core/blong-browser && npm run storybook` serves them on port 6006 (the
 conventions are in the [Storybook pattern](../patterns/blong-browser.md#storybook-pattern)).
 
 The Editor with a record loaded — a tabbed portal, the toolbar, and a form whose widgets are all
@@ -67,7 +68,9 @@ Key behaviours:
 
 The `Editor` and `Editor/TableToolbar` stories cover the toolbar states: the Edit button in read
 mode, the Save / Reset pair in both enabled and untouched states, and the extra left and right
-button slots.
+button slots. The `Toolbar` story fills the left slot with four realm actions beside Save and Reset:
+
+![The editor toolbar with four realm actions in its left-hand slot](./img/editor-toolbar.png)
 
 ---
 
@@ -88,6 +91,11 @@ Sub-features:
 The `Editor/Validation` story exercises both halves: submitting an empty required field shows the
 client-side rule, and a failing save shows a `{validation: [{field, message}]}` response pushed back
 under the offending field with `error.print` in the popover.
+
+The client half, photographed from that story: the required Name was cleared and the form submitted,
+so the rule appears beneath the field and the app raises its own summary toast:
+
+![A required field showing its inline error and the validation toast](./img/editor-validation.png)
 
 ---
 
@@ -128,6 +136,11 @@ an `Explorer`) instead of a list of cards.
 Each layout has a story: `Editor/TabbedLayout`, `Editor/ThumbIndexLayout` (tab orientation),
 `Editor/Explorer` (the split layout, with an `Explorer` injected into a panel),
 `Editor/ResponsiveLayout` and `Editor/PortalComponent`.
+
+The tab layout on the Coral entity, from the `Tabs` story — `layouts.edit` is an object carrying
+`items` here, where the flat layout is an array:
+
+![A form under a horizontal tab bar with three tabs](./img/editor-tabs.png)
 
 ---
 
@@ -178,7 +191,9 @@ silently ignored.
 A realm can supply its own widget through the `editors` prop of `Form` or `Editor`: a component that
 receives `Input`, `Label` and `ErrorLabel` factories and declares the fields it owns in a static
 `properties` array, so the layout treats those fields as one row. The `Editor/CustomEditors` story
-shows the smallest real one — a period and a unit rendered together.
+shows the smallest real one — a period and a unit rendered together:
+
+![A custom editor rendering a number and a unit side by side in one row](./img/editor-custom-editors.png)
 
 A widget talks back to the form with a method name rather than an emitter. `methods` on the form
 maps a name to a function, and a field's `widget.onChange: 'handleA'` (or the form's `onFieldChange`
@@ -199,8 +214,10 @@ something is happening and does not interact with stale data.
 While the `loadAction` is pending, each field renders an animated `<Skeleton>` placeholder at the
 same size as the real input. The toolbar is disabled during loading.
 
-No picture of this state has been captured yet. The skeleton is rendered for as long as `loadAction`
-is pending, and the toolbar is disabled for the same period.
+The `Editor/Loading` story holds that state still — its `coralCoralLoad` never resolves — so the
+skeletons are the whole picture, in the layout the fields will have:
+
+![Every field of the form replaced by a skeleton placeholder](./img/editor-loading.png)
 
 ---
 
@@ -223,8 +240,10 @@ The persistence is the host's job, and **nothing is persisted today**: `Editor` 
 `DesignModeProvider` without an `onSave`, so `saveConfig()` returns immediately and the edits live
 only in the provider's state for the lifetime of the page.
 
-No walkthrough has been captured yet; `Editor/Explorer` is the story that runs design mode over a
-real layout.
+The `Design` story opens in design mode over the Coral entity — the card grips, the design toolbar
+in place of Save, and the `PropertyEditor` on the right for the field the play function selected:
+
+![Design mode: gripped cards and a property panel open beside the form](./img/editor-design.png)
 
 ---
 
@@ -241,6 +260,10 @@ Polymorphic variant: multiple detail cards each with a `match` condition on the 
 the matching card is shown at a time.
 
 See the `Editor/MasterDetail` story, and `Editor/MasterDetailPolymorphic` for the `match` variant.
+The picture is the first of those with its first row selected, so the detail card holds the row a
+reader would otherwise have to imagine:
+
+![A table and a detail card editing the selected row](./img/editor-master-detail.png)
 
 ## 8b. Declared master-detail
 
@@ -274,7 +297,10 @@ A child dropdown widget declares `widget.parent: 'parentFieldName'`. When the pa
 the child dropdown filters its options to entries whose `parent` property matches the new parent
 value.
 
-See the `Editor/CascadedDropdowns` story.
+See the `Editor/CascadedDropdowns` story. Its three fields are the continent → country → city chain,
+and the open city list holds the one city of the selected country rather than all ten:
+
+![Cascaded dropdowns with the city list filtered to the selected country](./img/editor-cascaded-dropdowns.png)
 
 ---
 
@@ -287,7 +313,11 @@ The child table widget declares `widget.parent: '$.selected.parentTable'` and
 `widget.master: {childKey: 'parentKey'}`. Rows in the child table are filtered to those matching the
 selected parent row.
 
-See `Editor/CascadedTables`, and `Editor/CascadedTablesVariant` for the three-level case.
+See `Editor/CascadedTables`, and `Editor/CascadedTablesVariant` for the three-level case. In the
+first, the document table holds the selected person's three documents and the attachment table that
+document's two pages:
+
+![Three tables, each filtered by the selection in the one before it](./img/editor-cascaded-tables.png)
 
 ---
 
@@ -330,7 +360,9 @@ registry, so rows are as fresh as that load. And writing a pivot needs a handler
 whole array: the generic CRUD adapter does not do it.
 
 See the `Editor/Pivot` story, which shows both halves — a weekday schedule built from
-`pivot.examples`, and a permissions matrix whose rows come from `pivot.dropdown`.
+`pivot.examples`, and a permissions matrix whose rows come from `pivot.dropdown`:
+
+![A weekday schedule and a permissions matrix, each seeded from a different source](./img/editor-pivot.png)
 
 ---
 
@@ -374,6 +406,8 @@ table with a `listAction` in the middle, a detail panel on the right, and action
 editor's toolbar. The `Editor/Explorer` stories are that composition written out by hand, and they
 supersede the older standalone `Explorer` component's stories for generated pages: the standalone
 component is still there for a page that wants a table and filters without an editor around them.
+
+![The explorer: a category tree, a table and a detail panel under the editor toolbar](./img/editor-explorer.png)
 
 ## 16. What made it usable
 
