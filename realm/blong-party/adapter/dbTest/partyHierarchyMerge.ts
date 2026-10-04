@@ -11,6 +11,12 @@ type KnexQb = any;
  * in those units.  The ACL grants themselves live in
  * `accessAuthorizationMerge.yaml`, which also creates the role they mention.
  *
+ * It also creates the **consent records** of the explicit-mode matrix
+ * (`test.acl.matrix`), each owned by one of those persons.  They are seeded here
+ * rather than in their own file because the rules that admit them name the
+ * records by name, and `20-` runs before the authorization merge that resolves
+ * those names.
+ *
  * Every entity is created through `core_resource.ensure` (idempotent — an
  * existing row is returned untouched), and the hierarchy is written as
  * `core.triple` edges in one batch with a single `access_pathRefresh()`, so the
@@ -45,6 +51,15 @@ export default handler(({handler: {}}) => ({
                 /** Membership → `person --belongsTo--> unit`. */
                 unit?: string;
             }>;
+            consents?: Array<{
+                /** Resource name (the display label). */
+                name: string;
+                consentType: string;
+                /** Defaults to granted — the matrix reads, it never checks the flag. */
+                isGranted?: boolean;
+                /** Owner → `consent --belongsTo--> person`. */
+                belongsTo?: string;
+            }>;
         },
         $meta: IMeta,
     ): Promise<{success: boolean}> {
@@ -59,6 +74,9 @@ export default handler(({handler: {}}) => ({
         /** resource names are resolved per type so a name may repeat across types. */
         const ids = new Map<string, string>();
         const key = (typeAlias: string, name: string): string => `${typeAlias}:${name}`;
+
+        /** The binary form of a resource id, for the edge cleanup below. */
+        const bufferOf = (id: string): Buffer => Buffer.from(id.replace(/-/g, ''), 'hex');
 
         /** Ensure a resource + entity row and remember its id for the edges. */
         const ensure = async (
@@ -126,6 +144,40 @@ export default handler(({handler: {}}) => ({
                     objectId: idOf('party.unit', person.unit),
                 });
             }
+        }
+
+        // Consents last: their `belongsTo` edge names a person ensured above.
+        for (const consent of params.consents ?? []) {
+            const consentId = await ensure(
+                'party.consent',
+                'party_consent',
+                'consentId',
+                consent.name,
+                {
+                    consentName: consent.name,
+                    consentType: consent.consentType,
+                    isGranted: consent.isGranted ?? true,
+                },
+            );
+            if (consent.belongsTo) {
+                triples.push({
+                    subjectId: consentId,
+                    predicateName: 'belongsTo',
+                    objectId: idOf('party.person', consent.belongsTo),
+                });
+            }
+        }
+
+        // The seed is AUTHORITATIVE for the entities it names.  The triple merge
+        // inserts with `onConflict` ignore, so an edge this fixture no longer
+        // declares would survive — a person moved to another unit would keep
+        // belonging to the old one and its scope set would never narrow again.
+        const subjectIds = [...ids.values()].map(bufferOf);
+        if (subjectIds.length) {
+            await qb('core_triple')
+                .whereIn('subjectId', subjectIds)
+                .whereIn('predicateName', ['belongsTo', 'isPartOf'])
+                .del();
         }
 
         // One path refresh for the whole batch (deferred per merge).

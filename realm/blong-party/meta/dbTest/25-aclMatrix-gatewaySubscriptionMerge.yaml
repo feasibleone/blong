@@ -1,0 +1,33 @@
+# ACL matrix fixture — one subscription per application, binding it to its bundle.
+#
+# The subscription writes `application --hasRole--> bundleRole` (and refreshes
+# `access_path`), which is what turns the bundle into the application's effective
+# roles — the same path a user's role assignment takes.
+#
+# `none-app` is deliberately absent: an application with no subscription has no
+# role, so RBAC refuses every read and the matrix shows the `🚫` row.
+#
+# Dispatched by the last `-` segment: `gatewaySubscriptionMerge` →
+# `gateway.subscription.merge`.
+subscription:
+  axis-app:
+    application: axis-app
+    bundle: bundleAxisOrg
+  axis-hq-app:
+    application: axis-hq-app
+    bundle: bundleAxisHq
+  north-app:
+    application: north-app
+    bundle: bundleNorth
+  south-app:
+    application: south-app
+    bundle: bundleSouth
+  beta-app:
+    application: beta-app
+    bundle: bundleBetaOrg
+  east-app:
+    application: east-app
+    bundle: bundleEast
+  any-app:
+    application: any-app
+    bundle: bundleAll

@@ -73,6 +73,8 @@ export default handler(
                 ) {
                     const {email, password} = await registerHttp;
                     try {
+                        // The duplicate is the case under test, so the refusal is
+                        // declared: it is logged at debug instead of error.
                         await accessRegistrationAdd(
                             {
                                 emailAddress: email,
@@ -80,7 +82,7 @@ export default handler(
                                 firstName: 'Http',
                                 lastName: 'Guest',
                             },
-                            $meta,
+                            {...$meta, expect: 'account.exists'},
                         );
                         assert.fail('Duplicate HTTP registration should have thrown');
                     } catch (err: unknown) {
@@ -143,7 +145,9 @@ export default handler(
                 ) {
                     await guestActionHttp;
                     try {
-                        await accessTestPrivate({}, $meta);
+                        // The 403 is the case under test (RBAC), declared so the
+                        // refusal does not read as an unexpected error.
+                        await accessTestPrivate({}, {...$meta, expect: 'gateway.notAllowed'});
                         assert.fail('Guest should not be able to call accessTestPrivate');
                     } catch (err: unknown) {
                         const status = getHttpStatus(err);
@@ -225,7 +229,10 @@ export default handler(
                         isNewUser?: boolean;
                         permissions?: string[];
                     }>({provider: 'google', code: 'mock-google-code', flow: 'oauth'}, $meta);
-                    assert.ok(result.access_token?.length > 0, 'Google OAuth exchange returns a token');
+                    assert.ok(
+                        result.access_token?.length > 0,
+                        'Google OAuth exchange returns a token',
+                    );
                     assert.equal(
                         typeof result.isNewUser,
                         'boolean',

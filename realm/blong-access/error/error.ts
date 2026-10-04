@@ -5,6 +5,8 @@ export default {
     'profile.wrongPassword': {message: 'Current password is incorrect', statusCode: 401},
     'user.notFound': 'User not found',
     'user.inactive': 'User account is inactive',
+    // A service account's client id is unique across the realm.
+    'user.clientIdTaken': 'Client id {clientId} is already used by another user',
     'credential.notFound': 'Active credential not found for user',
     'application.notFound': 'Application not found',
     'application.inactive': 'Application is inactive',

@@ -612,20 +612,20 @@ export class TestExecutor extends EventEmitter {
 
                 const nestedGroupPath = [...groupPath, step.name || `group-${groupPath.length}`];
 
-                // If we have a test context, use it to create nested test scope
+                // If we have a test context, use it to create nested test scope.
+                // The scope being nested *into* owns the `test` method: calling the
+                // root context's method with the child as `this` reaches for a private
+                // field that object's class does not declare, and tap throws (the
+                // failure the old code swallowed).
                 if (this.testContext && parentTestContext) {
                     const nestedName = step.name || `group-${groupPath.length}`;
-                    await this.testContext.test.call(
-                        parentTestContext,
-                        nestedName,
-                        async (nestedContext: unknown) => {
-                            await this._executeSteps(
-                                step,
-                                nestedGroupPath,
-                                nestedContext as ITestFrameworkContext,
-                            );
-                        },
-                    );
+                    await parentTestContext.test(nestedName, async (nestedContext: unknown) => {
+                        await this._executeSteps(
+                            step,
+                            nestedGroupPath,
+                            nestedContext as ITestFrameworkContext,
+                        );
+                    });
                 } else if (this.testContext && groupPath.length === 0) {
                     // Top-level nested array
                     const nestedName = step.name || `group-${groupPath.length}`;
@@ -696,7 +696,7 @@ export class TestExecutor extends EventEmitter {
     private async _executeStep(
         fn: StepFunction,
         groupPath: string[],
-        parentTestContext?: unknown,
+        parentTestContext?: ITestFrameworkContext,
     ): Promise<void> {
         const stepName = fn.name || 'anonymous';
 
@@ -947,37 +947,51 @@ export class TestExecutor extends EventEmitter {
             }
         };
 
-        // If we have test context, wrap in nested test
-        if (this.testContext && parentTestContext) {
-            await this.queue.add(async () => {
-                try {
-                    await this.testContext!.test.call(
-                        parentTestContext,
-                        stepName,
-                        async (stepT: unknown) => {
-                            await executeStepFn(stepT as ITestFrameworkContext);
-                        },
-                    );
-                } catch {
-                    // Error already handled in executeStepFn, don't rethrow to break the queue
-                    // The test framework will report it
-                }
-            });
-        } else if (this.testContext && groupPath.length === 0) {
-            // Top-level step with test context
-            await this.queue.add(async () => {
-                try {
-                    await this.testContext!.test(stepName, async (stepT: unknown) => {
-                        await executeStepFn(stepT as ITestFrameworkContext);
-                    });
-                } catch {
-                    // Error already handled in executeStepFn, don't rethrow to break the queue
-                }
-            });
+        // If we have test context, wrap in nested test.  The enclosing scope owns the
+        // `test` method — the step is a sub-test of *it*, not of the run's root
+        // context — and the call is made through `runInScope`, so a failure to nest
+        // one cannot make the step disappear.
+        const scope = this.testContext
+            ? (parentTestContext ?? (groupPath.length === 0 ? this.testContext : undefined))
+            : undefined;
+        if (scope) {
+            await this.queue.add(() =>
+                this.runInScope(scope, stepName, stepTestContext =>
+                    executeStepFn(stepTestContext),
+                ),
+            );
         } else {
-            // No test context or not at top level
+            // No test context, or a nested step whose scope cannot nest one
             await this.queue.add(executeStepFn as () => Promise<void>);
         }
+    }
+
+    /**
+     * Run a step as a sub-test of `scope`, falling back to a direct run when the
+     * scope cannot nest one.
+     *
+     * The fallback is the point: `test()` can throw before the callback ever runs
+     * — tap does exactly that when its `this` is not the test the method belongs
+     * to — and swallowing that error silently dropped the step (a cucumber
+     * scenario reported as a passing test that executed nothing).  A failure
+     * *inside* the sub-test is still the framework's to report, so it is not
+     * re-thrown here.
+     */
+    private async runInScope(
+        scope: ITestFrameworkContext,
+        name: string,
+        run: (stepTestContext: ITestFrameworkContext | undefined) => Promise<void>,
+    ): Promise<void> {
+        let started = false;
+        try {
+            await scope.test(name, async (sub: unknown) => {
+                started = true;
+                await run(sub as ITestFrameworkContext);
+            });
+        } catch {
+            // A failure inside the sub-test is reported by the framework itself.
+        }
+        if (!started) await run(undefined);
     }
 
     /**

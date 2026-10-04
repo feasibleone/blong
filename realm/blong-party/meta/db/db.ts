@@ -78,6 +78,27 @@ export default handler(() => ({
                 'party.contact': 303,
                 'party.address': 304,
                 'party.identifier': 305,
+                // The explicit-mode table of the ACL matrix.  `mode: 'explicit'`
+                // means a rule is the only way in: no `hasScope` grant is
+                // consulted, so the fixture can show — side by side — a record
+                // rule that admits exactly one row, a scope rule that admits
+                // nothing at all and a wildcard rule that admits every row.  The
+                // `belongsTo` edge is still declared: the models manage it as a
+                // pivot, and the fixture asserts the ownership.
+                'party.consent': {
+                    order: 306,
+                    resource: {nameColumn: 'consentName'},
+                    edges: [
+                        {
+                            predicate: 'belongsTo',
+                            table: 'party_person',
+                            object: 'person',
+                            objectKey: 'personId',
+                            nameField: 'lastName',
+                        },
+                    ],
+                    acl: {mode: 'explicit'},
+                },
             },
         },
         // No mock entries — all models use real DB tables (like marineCoralModel).

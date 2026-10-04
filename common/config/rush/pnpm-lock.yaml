@@ -1612,9 +1612,15 @@ importers:
       '@feasibleone/blong-core':
         specifier: workspace:^1.0.0
         version: link:../blong-core
+      '@feasibleone/blong-cucumber':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-cucumber
       '@feasibleone/blong-dev':
         specifier: workspace:*
         version: link:../../tools/blong-dev
+      '@feasibleone/blong-gateway':
+        specifier: workspace:^1.0.0
+        version: link:../blong-gateway
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
         version: link:../../core/blong-gogo

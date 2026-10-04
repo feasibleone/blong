@@ -18,6 +18,16 @@ export default server(() => ({
         async function access() {
             return import('@feasibleone/blong-access/server.ts');
         },
+        /**
+         * Gateway realm — OAuth applications, bundles and subscriptions.  The
+         * ACL matrix over service accounts probes party records, but the matrix
+         * over gateway applications needs this realm loaded: it owns the
+         * `gateway_application` table and the bundle/subscription merges that
+         * grant an application its scope.
+         */
+        async function gateway() {
+            return import('@feasibleone/blong-gateway/server.ts');
+        },
         /** Party management realm */
         async function party() {
             return import('./server.ts');
@@ -33,6 +43,7 @@ export default server(() => ({
             srv: {},
             core: {},
             access: {},
+            gateway: {},
             party: {},
             login: {},
         },

@@ -22,6 +22,36 @@ Use cucumber-style testing when:
 
 For pure handler-level tests, the regular blong test pattern is simpler (see [test.md](./test.md)).
 
+### When the table is the test
+
+The format earns its cost in one situation: when the artifact a person needs to read **is a table**,
+and the assertion is a comparison against it. The ACL matrices in `realm/blong-party` are the worked
+example — a row per viewer, a column per record, a verdict per cell — and what they buy is worth
+naming, because it is not "tests in English":
+
+- **The scenario is the specification, the report and the test.** Nobody has to read the step
+  definitions to know what access is expected; the Data Table says it, the step asserts it and a red
+  run prints it back.
+- **A failing cell is located, not described.** The step asserts once, with the redrawn table as its
+  message: the offending cell reads `expected≠actual`, every mismatch is named (row, column, both
+  values) underneath, and the reader finds it without reading code. That contract is itself a
+  feature — `test.acl.diagnostics` drives the helpers with a deliberately wrong table, so a report
+  that stopped marking cells fails a test instead of rotting.
+- **The fixture can be asserted too.** A `Background` of Data Tables, one column per predicate
+  (`belongsTo`, `hasScope`, …), states the records the matrix is derived from and checks them
+  against the graph — so the feature file is self-contained, and a seed that drifts from it fails.
+- **Repetition is cheap and the logic is shared.** The same fixture block appears in four features
+  on purpose (each reads on its own); the step definitions are two factories, so the repetition
+  carries no code.
+
+Two costs, both measured rather than guessed. Every cell is a real call through the gateway — the
+application matrix takes about ninety seconds — so a table should assert a shape, not re-probe what
+a unit test already covers; and the runner labels steps by the step function's name plus a per-step
+suffix, so four fixture steps built by one factory need four distinct names (see
+[Background sections](#background-sections)). The [`realm/blong-party` matrices](./acl.md) are the
+full example, including how the probes declare the refusals they expect so a green run does not fill
+the log with errors.
+
 ## Feature file format
 
 Feature files are exported as template-literal strings:
@@ -82,6 +112,34 @@ Step parameter types:
 | `{string}` | `"..."` (quoted)   | `string` (without quotes)                    |
 | `{}`       | `.+`               | `string`                                     |
 | RegExp     | any                | string captures (use array-of-tuples format) |
+
+### Step context — Data Tables and Doc Strings
+
+Every step definition receives the parsed Gherkin step as its **last** argument, after any captured
+parameters:
+
+```typescript
+import {featureToSteps, type IStepContext} from '@feasibleone/blong-cucumber';
+
+featureToSteps(
+    feature,
+    {
+        'the allowance matrix is': (step: IStepContext) =>
+            async function matrix(assert, {$meta}) {
+                // step.keyword   — 'Then'
+                // step.text      — 'the allowance matrix is'
+                // step.dataTable — string[][] (one entry per row, one per cell)
+                // step.docString — the Doc String content, without the fences
+                assert.ok(step.dataTable?.length, 'the table has rows');
+            },
+    },
+    {name, group},
+);
+```
+
+A definition that declares only its captures keeps working — the context is simply an extra argument
+it ignores. That is the whole extension: a Data Table step is a step whose only argument is the
+context, so a table is read as data rather than folded into the step text.
 
 ### Using RegExp patterns
 
@@ -184,6 +242,15 @@ Feature: Secure calculator
 ```
 
 The `Given I am logged in as admin` step runs before each scenario's steps.
+
+Two consequences of that "before each scenario" are worth knowing. A `Background` is the right place
+for a fixture a feature asserts once but every scenario depends on — a Data Table there is written
+once and checked before each scenario, which is how the ACL matrices declare the records their cells
+are derived from (see [the ACL pattern](./acl.md)). And because the runner labels each step with the
+step function's name plus a per-step suffix, **two steps of one scenario must not share a function
+name**: four fixture steps defined by one factory would all report as `assertAclFixture_s0`, `_s1`,
+… and the run fails with "Duplicate step name detected". Name the function after the table it
+asserts (a small `Object.defineProperty(fn, 'name', …)` helper in the factory is enough).
 
 ## Running cucumber tests
 

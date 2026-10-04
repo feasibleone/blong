@@ -74,8 +74,11 @@ export default browser(blong => ({
         integration: {
             testClient: {
                 backend: {
-                    // Namespaces the browser backend adapter proxies to the server
-                    namespace: ['access', 'login'],
+                    // Namespaces the browser backend adapter proxies to the server.
+                    // `party` carries the ACL matrix probes, which must reach the
+                    // gateway so its RBAC check runs, and `core` the unguarded-table
+                    // matrix, which reads the same records through `core.resource`.
+                    namespace: ['access', 'login', 'party'],
                 },
             },
             login: {},
@@ -84,7 +87,15 @@ export default browser(blong => ({
             // Disable blong-party's React browser layers for this tap run.
             'browser/orchestrator': false,
             watch: {
-                test: ['test.registration.flow'],
+                test: [
+                    'test.registration.flow',
+                    'test.acl.matrix',
+                    'test.acl.matrix.service',
+                    'test.acl.matrix.application',
+                    // The failure contract of the two helpers above: a red run has
+                    // to mark the cell it failed on (see the feature for why).
+                    'test.acl.diagnostics',
+                ],
             },
         },
     },

@@ -10,7 +10,12 @@ export {
     type IGherkinBackground,
 } from './library/parseGherkin.ts';
 export {compileCucumberExpression, coerceMatchParam, matchStep} from './library/matchStep.ts';
-export {featureToSteps, type IStepDefinitions, type IFeatureToStepsOptions} from './library/featureToSteps.ts';
+export {
+    featureToSteps,
+    type IStepDefinitions,
+    type IStepContext,
+    type IFeatureToStepsOptions,
+} from './library/featureToSteps.ts';
 
 type Load = (...params: unknown[]) => Promise<{
     start: () => Promise<unknown>;

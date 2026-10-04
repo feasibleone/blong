@@ -1,9 +1,9 @@
 # @feasibleone/blong-gateway
 
-API Gateway realm — OAuth applications, metered bundles (rate + monthly credits), and
-subscriptions, backed by Redis metering and a Fastify plugin. Applications authenticate with
-client credentials, subscribe to API bundles, and every metered request is rate-limited and
-charged against a shared monthly credit bucket in one atomic Redis operation.
+API Gateway realm — OAuth applications, metered bundles (rate + monthly credits), and subscriptions,
+backed by Redis metering and a Fastify plugin. Applications authenticate with client credentials,
+subscribe to API bundles, and every metered request is rate-limited and charged against a shared
+monthly credit bucket in one atomic Redis operation.
 
 The realm builds on `@feasibleone/blong-core` (resource graph) and `@feasibleone/blong-access`
 (RBAC: roles/capabilities/actions + credentials). It contributes:
@@ -18,11 +18,11 @@ The realm builds on `@feasibleone/blong-core` (resource graph) and `@feasibleone
 
 ## Data model
 
-| Table | PK | Notes |
-| ----- | -- | ----- |
-| `gateway.application` | `applicationId` → `core.resource.resourceId` | the `clientId` is the `core_resource.resourceName`; ownerUserId, applicationType, description, isActive |
-| `gateway.bundle` | `bundleId` → `core.resource.resourceId` | **bundleId === roleId** (the bundle is also an `access.role`); baseMonthlyCredits, rateLimit, rateWindowSec, isActive, description |
-| `gateway.subscription` | `subscriptionId` (uuid) | applicationId + bundleId, status (`active`/`suspended`/`cancelled`), startsAt, endsAt, createdAt; unique on `(applicationId, bundleId)` |
+| Table                  | PK                                           | Notes                                                                                                                                   |
+| ---------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `gateway.application`  | `applicationId` → `core.resource.resourceId` | the `clientId` is the `core_resource.resourceName`; ownerUserId, applicationType, description, isActive                                 |
+| `gateway.bundle`       | `bundleId` → `core.resource.resourceId`      | **bundleId === roleId** (the bundle is also an `access.role`); baseMonthlyCredits, rateLimit, rateWindowSec, isActive, description      |
+| `gateway.subscription` | `subscriptionId` (uuid)                      | applicationId + bundleId, status (`active`/`suspended`/`cancelled`), startsAt, endsAt, createdAt; unique on `(applicationId, bundleId)` |
 
 A bundle wraps an `access.role`: `gateway_bundle.bundleId` equals the role's `roleId`, and the
 bundle's scopes are the role's capabilities/actions. Subscribing writes
@@ -49,40 +49,39 @@ The flow:
 1. **Validation objects declare metering.** A gateway validation wrapper declares the bundle and
    per-call credit cost:
 
-   ```ts
-   // gateway/vision.dev/visionCompute.ts
-   export default validation(
-       async ({lib: {type}}) =>
-           function visionCompute() {
-               return {
-                   params: type.Object({imageUrl: type.Optional(type.String())}),
-                   result: type.Object({success: type.Boolean(), vision: type.String()}),
-                   bundle: 'Vision AI', // metered by this bundle
-                   creditCost: 5,       // deducted from the monthly credit bucket
-               };
-           },
-   );
-   ```
+    ```ts
+    // gateway/vision.dev/visionCompute.ts
+    export default validation(
+        async ({lib: {type}}) =>
+            function visionCompute() {
+                return {
+                    params: type.Object({imageUrl: type.Optional(type.String())}),
+                    result: type.Object({success: type.Boolean(), vision: type.String()}),
+                    bundle: 'Vision AI', // metered by this bundle
+                    creditCost: 5, // deducted from the monthly credit bucket
+                };
+            },
+    );
+    ```
 
 2. **`Gateway.route()` threads them into the route config.** When a validation object carries
-   `bundle`, `creditCost`, or `meter`, they are copied verbatim onto the Fastify route's
-   `config` (see `core/blong-gogo/src/Gateway.ts`).
+   `bundle`, `creditCost`, or `meter`, they are copied verbatim onto the Fastify route's `config`
+   (see `core/blong-gogo/src/Gateway.ts`).
 
-3. **The ApiGateway plugin meters the request.** It registers a Fastify plugin (`name:
-   'api-gateway'`) with a `preHandler` hook that runs **after** the jwt plugin (auth + authorize)
-   and is the last gate before the route handler — it does **not** authorize:
-
-   - If the route has no `bundle` in its config, or `meter: false`, the hook returns immediately.
-   - Otherwise it resolves the configured `meterHandler` (`gateway.meter.check`) via
-     `ports.<subject>.request` and calls it with `{bundle, creditCost}` and the request's auth
-     credentials.
-   - On success it sets `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-Credits-Remaining`
-     response headers.
-   - If the decision blocks (`allowed: false`), it replies with the configured status per reason:
-     `rate`/`credits` → **429**, `subscription` → **403** (with `Retry-After` when a reset time is
-     known).
-   - **Fail-closed**: any metering error (e.g. Redis down, handler unavailable) blocks the request
-     with **503**.
+3. **The ApiGateway plugin meters the request.** It registers a Fastify plugin
+   (`name: 'api-gateway'`) with a `preHandler` hook that runs **after** the jwt plugin (auth +
+   authorize) and is the last gate before the route handler — it does **not** authorize:
+    - If the route has no `bundle` in its config, or `meter: false`, the hook returns immediately.
+    - Otherwise it resolves the configured `meterHandler` (`gateway.meter.check`) via
+      `ports.<subject>.request` and calls it with `{bundle, creditCost}` and the request's auth
+      credentials.
+    - On success it sets `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-Credits-Remaining`
+      response headers.
+    - If the decision blocks (`allowed: false`), it replies with the configured status per reason:
+      `rate`/`credits` → **429**, `subscription` → **403** (with `Retry-After` when a reset time is
+      known).
+    - **Fail-closed**: any metering error (e.g. Redis down, handler unavailable) blocks the request
+      with **503**.
 
 Enable the plugin in the suite's server config:
 
@@ -114,32 +113,32 @@ overridden in the `apiGateway` config.
 All keys for one application share the `{app:<id>}` hash tag (the crockford application id) so the
 script stays atomic on a single Redis Cluster slot:
 
-| Key | Type | Purpose |
-| --- | --- | -------- |
-| `{app:<id>}:cfg:<bundle>` | HASH | `baseMonthlyCredits`, `rateLimit`, `rateWindowSec` |
-| `{app:<id>}:credits:YYYY-MM` | HASH | monthly credit bucket (`balance`, `base`, `updatedAt`), auto-initialised on the first request of a new month |
-| `{app:<id>}:rate:<bundle>:<window>` | STRING | fixed-window rate counter with TTL |
+| Key                                 | Type   | Purpose                                                                                                      |
+| ----------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------ |
+| `{app:<id>}:cfg:<bundle>`           | HASH   | `baseMonthlyCredits`, `rateLimit`, `rateWindowSec`                                                           |
+| `{app:<id>}:credits:YYYY-MM`        | HASH   | monthly credit bucket (`balance`, `base`, `updatedAt`), auto-initialised on the first request of a new month |
+| `{app:<id>}:rate:<bundle>:<window>` | STRING | fixed-window rate counter with TTL                                                                           |
 
 Mid-month credit adjustments go through `gateway.credit.adjust` (a thin wrapper over the Redis
 `HINCRBY`), or directly via `HINCRBY {app:X}:credits:YYYY-MM balance <delta>`.
 
 ## Key handlers
 
-| Handler | Wire method | Purpose |
-| ------- | ----------- | ------- |
-| `gatewayApplicationRegister` | `gateway.application.register` | register an OAuth app + `clientSecret` credential (rotates prior active credential) |
-| `gatewayBundleAdd` | `gateway.bundle.add` | create a bundle: ensure a fresh `access.role` (unique name + allocated roleBit) and insert the bundle row (bundleId = roleId) |
-| `gatewaySubscriptionMerge` | `gateway.subscription.merge` | upsert subscriptions (unique app+bundle) + `hasRole` edge + `access_pathRefresh` |
-| `gatewayMeterCheck` | `gateway.meter.check` | per-request metering decision (called by the ApiGateway plugin) |
-| `gatewayCreditAdjust` | `gateway.credit.adjust` | mid-month credit balance adjustment |
-| — (auto-bound) | `gateway.dropdown.list` | application/bundle dropdowns for the management UI — served by the knex adapter's `{subject}.dropdown.list` (P2), configured via the `dropdown` table spec |
-| `gatewayApplication/Bundle/SubscriptionModel` | `gateway.{application,bundle,subscription}.find/get/add/edit/remove/report` | auto-generated generic CRUD via `subject.validation` |
-| `visionCompute` / `customerGet` | `vision.compute` / `customer.get` | demo metered APIs (bundles `Vision AI` / `Customer API`) — the handlers live in `adapter/dbTest/` (loaded only under `dev` via the db adapter's import regex) and the gateway validations + orchestrator namespaces live in `gateway/*.dev/` / `orchestrator/*.dev/` handler groups, which the framework loads only under the `dev` intent |
+| Handler                                       | Wire method                                                                 | Purpose                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `gatewayApplicationRegister`                  | `gateway.application.register`                                              | register an OAuth app + `clientSecret` credential (rotates prior active credential)                                                                                                                                                                                                                                                        |
+| `gatewayApplicationMerge`                     | `gateway.application.merge`                                                 | test seed: create applications with a **pinned** secret (register generates a random one) — `adapter/dbTest/`, loaded only under `dev`                                                                                                                                                                                                     |
+| `gatewayBundleAdd`                            | `gateway.bundle.add`                                                        | create a bundle: ensure a fresh `access.role` (unique name + allocated roleBit) and insert the bundle row (bundleId = roleId)                                                                                                                                                                                                              |
+| `gatewaySubscriptionMerge`                    | `gateway.subscription.merge`                                                | upsert subscriptions (unique app+bundle) + `hasRole` edge + `access_pathRefresh`                                                                                                                                                                                                                                                           |
+| `gatewayMeterCheck`                           | `gateway.meter.check`                                                       | per-request metering decision (called by the ApiGateway plugin)                                                                                                                                                                                                                                                                            |
+| `gatewayCreditAdjust`                         | `gateway.credit.adjust`                                                     | mid-month credit balance adjustment                                                                                                                                                                                                                                                                                                        |
+| — (auto-bound)                                | `gateway.dropdown.list`                                                     | application/bundle dropdowns for the management UI — served by the knex adapter's `{subject}.dropdown.list` (P2), configured via the `dropdown` table spec                                                                                                                                                                                 |
+| `gatewayApplication/Bundle/SubscriptionModel` | `gateway.{application,bundle,subscription}.find/get/add/edit/remove/report` | auto-generated generic CRUD via `subject.validation`                                                                                                                                                                                                                                                                                       |
+| `visionCompute` / `customerGet`               | `vision.compute` / `customer.get`                                           | demo metered APIs (bundles `Vision AI` / `Customer API`) — the handlers live in `adapter/dbTest/` (loaded only under `dev` via the db adapter's import regex) and the gateway validations + orchestrator namespaces live in `gateway/*.dev/` / `orchestrator/*.dev/` handler groups, which the framework loads only under the `dev` intent |
 
 ## Usage
 
-Include the realm as a child of your suite's server entry and configure RBAC + the metering
-plugin:
+Include the realm as a child of your suite's server entry and configure RBAC + the metering plugin:
 
 ```ts
 // index.ts / server.ts
@@ -191,10 +190,10 @@ target).
   `gateway`); for a **dev-only** namespace give it its own `orchestrator/<ns>.dev/init.ts` dispatch
   orchestrator (like `vision`/`customer`/`meterprobe`) so it never exists outside `dev`.
 - **New bundle**: seed via `gatewayBundleMerge.yaml` (name + capabilities/actions + rate/credit
-  limits) or call `gateway.bundle.add`.  The wrapped role's bit is allocated by
-  `access.role.ensure`, so nothing has to be coordinated across realms; a seed may still declare one
-  (the metered fixtures keep 100+), and a clash is refused (`role.bitTaken`) rather than silently
-  skipped — which used to leave a role resource with no role row.
+  limits) or call `gateway.bundle.add`. The wrapped role's bit is allocated by `access.role.ensure`,
+  so nothing has to be coordinated across realms; a seed may still declare one (the metered fixtures
+  keep 100+), and a clash is refused (`role.bitTaken`) rather than silently skipped — which used to
+  leave a role resource with no role row.
 - **New application / subscription**: `gateway.application.register` + `gateway.subscription.merge`
   (or the management UI).
 
@@ -209,18 +208,17 @@ npm run ci-test    # waits for MySQL, then blong-dev test (tap) + blong-dev play
   `client_credentials` token, and asserts metering (rate limits, credit deduction, cross-bundle
   blocking, adjustment). Idempotent — no DB reset needed between runs.
 - **Tap meter HTTP flow** (`index.test.ts` → `browser/test/test/testMeterHttpFlow.ts`) runs on the
-  **browser platform over real HTTP** (MLE backend adapter → server gateway, real MySQL + Redis,
-  no mocks). It registers two unique apps, merges the dev-only `meterprobe` fixture bundles
+  **browser platform over real HTTP** (MLE backend adapter → server gateway, real MySQL + Redis, no
+  mocks). It registers two unique apps, merges the dev-only `meterprobe` fixture bundles
   (`meterprobe.rate` / `meterprobe.credit`), subscribes, mints `client_credentials` tokens, then
   asserts the plugin-only **429 (rate)** and **429 (credits)** blocks — proving the ApiGateway
-  Fastify plugin is on the request path — plus the `vision.compute` happy path. (The rate and
-  credit fixtures need separate apps because the monthly credit bucket is shared per application
-  across bundles.)
-- **Playwright** (`test/*.play.ts`) drives the management UI: each file is
-  `cleanupModel` + `browseModel` + `createAndEditModel` (12 tests). `cleanupModel` deletes
-  previous runs' test rows via the browse filter (searchable "Playwright"/"suspended" markers), so
-  the suite is idempotent without recreating the DB, and the browse screenshots filter to seeded
-  rows.
+  Fastify plugin is on the request path — plus the `vision.compute` happy path. (The rate and credit
+  fixtures need separate apps because the monthly credit bucket is shared per application across
+  bundles.)
+- **Playwright** (`test/*.play.ts`) drives the management UI: each file is `cleanupModel` +
+  `browseModel` + `createAndEditModel` (12 tests). `cleanupModel` deletes previous runs' test rows
+  via the browse filter (searchable "Playwright"/"suspended" markers), so the suite is idempotent
+  without recreating the DB, and the browse screenshots filter to seeded rows.
 - **ApiGateway plugin unit test** (`core/blong-gogo/src/ApiGateway.test.ts`) covers header
   injection, 429/403/503 blocking, and pass-through via Fastify `inject`.
 
@@ -228,5 +226,6 @@ npm run ci-test    # waits for MySQL, then blong-dev test (tap) + blong-dev play
 
 - [blong-core skill](../../.github/skills/blong-core/SKILL.md) — resource graph, RBAC, credentials
 - [blong-schema skill](../../.github/skills/blong-schema/SKILL.md) — declarative schema management
-- [blong-validation skill](../../.github/skills/blong-validation/SKILL.md) — gateway validation wrappers
+- [blong-validation skill](../../.github/skills/blong-validation/SKILL.md) — gateway validation
+  wrappers
 - [blong-model skill](../../.github/skills/blong-model/SKILL.md) — model pages for the management UI

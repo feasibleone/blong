@@ -1,0 +1,61 @@
+# ACL matrix fixture — API bundles for the application matrix.
+#
+# A bundle IS an `access.role`: `gateway.subscription.merge` writes
+# `application --hasRole--> bundleRole`, and the bundle's scope (`26-...`)
+# narrows what the application can read.  The capability lists the six read
+# actions the matrix probes, so RBAC admits every app that holds a bundle and the
+# scope decides each cell.
+#
+# Dispatched by the last `-` segment: `gatewayBundleMerge` → `gateway.bundle.merge`.
+#
+# Rate/credit values are nominal: the matrix probes party reads, which are not
+# metered, so the metering config only has to be present, not meaningful.
+capability:
+  gatewayMatrixRead: >-
+    party.person.find,party.person.get,
+    party.unit.find,party.unit.get,
+    party.organization.find,party.organization.get
+bundle:
+  bundleAxisOrg:
+    capability: gatewayMatrixRead
+    rateLimit: 1000
+    rateWindowSec: 60
+    baseMonthlyCredits: 1000000
+    description: Axis organization scope (test)
+  bundleAxisHq:
+    capability: gatewayMatrixRead
+    rateLimit: 1000
+    rateWindowSec: 60
+    baseMonthlyCredits: 1000000
+    description: Axis HQ unit scope (test)
+  bundleNorth:
+    capability: gatewayMatrixRead
+    rateLimit: 1000
+    rateWindowSec: 60
+    baseMonthlyCredits: 1000000
+    description: North branch scope (test)
+  bundleSouth:
+    capability: gatewayMatrixRead
+    rateLimit: 1000
+    rateWindowSec: 60
+    baseMonthlyCredits: 1000000
+    description: South branch scope (test)
+  bundleBetaOrg:
+    capability: gatewayMatrixRead
+    rateLimit: 1000
+    rateWindowSec: 60
+    baseMonthlyCredits: 1000000
+    description: Beta organization scope (test)
+  bundleEast:
+    capability: gatewayMatrixRead
+    rateLimit: 1000
+    rateWindowSec: 60
+    baseMonthlyCredits: 1000000
+    description: East branch scope (test)
+  # No scope: admitted everywhere by the wildcard allow rule in `26-...`.
+  bundleAll:
+    capability: gatewayMatrixRead
+    rateLimit: 1000
+    rateWindowSec: 60
+    baseMonthlyCredits: 1000000
+    description: Allow-all bundle (test)

@@ -19,8 +19,14 @@ import {toolEnv} from '../utils/toolPath.ts';
  * per-test timeout, so this is the ceiling for a genuine hang rather than a budget a
  * suite is expected to approach (D-247, F-225). Override per run with an explicit
  * `--timeout`, which this default never shadows.
+ *
+ * Raised from 180s when the party suite's ACL matrices grew: the matrix probes the
+ * gateway once per cell *after signing in as the row's viewer*, and a sign-in costs
+ * about 2.4s, so a table of eight viewers is minutes of legitimate work rather than a
+ * hang (D-362). The probes within a row already run concurrently — the ceiling tracks
+ * the rows, which are serial by design.
  */
-const TAP_TIMEOUT_SECONDS = 180;
+const TAP_TIMEOUT_SECONDS = 240;
 
 /**
  * Run tap tests in the current working directory.

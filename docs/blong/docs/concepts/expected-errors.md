@@ -97,6 +97,32 @@ flag only controls whether the **public API** accepts the `expect` field from ex
 | Error type does not match `expect` | `error`   |
 | `expect` not set                   | `error`   |
 
+## When the failure is the assertion
+
+The feature earns its keep when a test asserts a _matrix_ of outcomes rather than one call. The ACL
+matrices in `realm/blong-party` probe `party.person.get` for every viewer and every record, so a
+feature that reads "Amy cannot read Cam" _is_ a refused call — several hundred of them per run. Left
+undeclared, the party suite wrote **467 error-level entries** for its green run, and the entries a
+reader actually needed were lost among them. Declaring the refusals the cells expect took that to
+zero, without weakening a single assertion — the refusals are still thrown, still asserted on and
+still visible at `debug` (see [Log Behaviour](#log-behaviour)).
+
+Three things have to line up for that to work, and each was a gap worth knowing about:
+
+- **The error must be typed.** Matching is on `error.type`, so a plain `Error` with a status code
+  can never be declared. The RBAC refusal ("Authorization denied: method … not allowed") was exactly
+  that; it now carries `gateway.notAllowed`, which is also what makes the refusal describable in a
+  feature file.
+- **The declaration must survive the transport.** Through the public API the field arrives in the
+  JSON-RPC body, so the body schema has to declare it — otherwise validation strips it before the
+  route resolves it, and the gateway behaves as if nothing had been declared.
+- **Both halves must honour it.** A refusal raised in a hook (authentication, RBAC) never reaches
+  the route handler that resolves `expect` for `$meta`, so the gateway's error handler reads the
+  declaration from the request body as well; the adapters demote on `$meta.expect` directly.
+
+A refused call is still thrown, still asserted on and still visible at `debug`; only its level
+changes. That is the point: the error stream should name the failures nobody asked for.
+
 ## Matching Rules
 
 | `expect` value           | Matches                                                 |

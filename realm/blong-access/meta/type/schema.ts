@@ -12,11 +12,26 @@ export default schema(async ({lib: {type}}) => ({
         {
             userId: type.uidNotNull(),
             emailAddress: type.stringNull(),
+            /**
+             * OAuth client id this subject authenticates with.
+             *
+             * Normally NULL — an application's clientId is its resource name.  A
+             * service account (a profile attached to a unit or an organization)
+             * needs one because its resource name belongs to the party hierarchy,
+             * so `access.user.merge` stores the client id here and
+             * `access.credential.checkClient` resolves the subject by it.
+             */
+            clientId: type.stringNull(),
             isActive: type.booleanNotNull(),
         },
         {
             constraints: {
                 primaryKey: 'userId',
+                // MySQL allows many NULLs in a unique index, so ordinary users
+                // (clientId NULL) are unaffected.
+                unique: {
+                    clientId: {},
+                },
                 foreign: {
                     userId: 'core.resource.resourceId',
                 },

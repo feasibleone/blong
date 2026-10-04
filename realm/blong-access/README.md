@@ -10,7 +10,7 @@ into `core.path`.
 
 | Table               | PK                                          | Notes                                                                                                                                      |
 | ------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `access.user`       | `userId` → `core.resource.resourceId`       | emailAddress, isActive                                                                                                                     |
+| `access.user`       | `userId` → `core.resource.resourceId`       | emailAddress, clientId (unique; set when the subject is a service account), isActive                                                       |
 | `access.credential` | `credentialId` (increment)                  | FK userId; credentialType (`password`/`clientSecret`), secret hash + salt, `credentialParamsJSON` (function + params), isActive, expiresAt |
 | `access.role`       | `roleId` → `core.resource.resourceId`       | roleBit (0–1023, unique; **allocated** as `MAX + 1`), description                                                                          |
 | `access.capability` | `capabilityId` → `core.resource.resourceId` | bundles actions into a "what"                                                                                                              |
@@ -167,6 +167,14 @@ The refusals are `acl.denied` (403), `acl.scopeDenied` (403), `acl.notFound` (40
    compares the requested method's methodId against the list — missing → **403**, no/invalid token →
    **401**.
 
+A **service account** takes the `client_credentials` grant instead (`access.credential.checkClient`,
+used by `login.token.create` with `grantType: 'client_credentials'`). It resolves the subject by
+`access_user.clientId` first — set by `access.user.merge` on an existing resource, so an
+organization or unit can be the subject — and then by a `gateway.application` whose resource name is
+the clientId. Verification and authorization are otherwise identical, and the minted token's `sub`
+is the subject's resource id, so the record-level ACL narrows a service account exactly as it
+narrows a user. No session is created — machine credentials are long-lived.
+
 ### Google identity exchange (OIDC & OAuth)
 
 The Google login (`access.identity.check`, via `login.token.exchange`) supports **both** flows
@@ -256,6 +264,7 @@ See `docs/blong/docs/concepts/sessions.md` for the full model and security ratio
 | `accessAuditRecord`        | `access.audit.record`        | append audit entries (gateway access-check hook + login flow)                                                                                                                                      |
 | `accessAuthorizationList`  | `access.authorization.list`  | permissionMap → allowed action methodIds (TTL-cached); used by the gateway `authorize` hook                                                                                                        |
 | `accessAuthorizationMerge` | `access.authorization.merge` | idempotent upsert of users/roles/capabilities/actions + `CALL access_pathRefresh()`                                                                                                                |
+| `accessUserMerge`          | `access.user.merge`          | attach/update the `access_user` profile of an EXISTING resource (emailAddress, clientId, isActive) — how a unit or organization becomes a service account                                          |
 | `accessGoogleGet`          | `access.google.get`          | public (`auth: false`) client-safe Google OAuth config (base URL, resolved authorization endpoint, client id — never the secret)                                                                   |
 | `accessTestPrivate`        | `access.test.private`        | protected reference endpoint (`{success: true}`)                                                                                                                                                   |
 | `accessTestPublic`         | `access.test.public`         | public reference endpoint (`auth: false`)                                                                                                                                                          |

@@ -66,6 +66,17 @@ type GatewayRequest = FastifyRequest;
 
 const errorMap: IErrorMap = {
     'gateway.jwtMissingHeader': {message: 'Missing bearer authorization header', statusCode: 401},
+    // The method-level refusal of RBAC.  Typed because a test that probes a denial
+    // on purpose declares it in `expect`, and the demotion matches on the type —
+    // an untyped `Error` is always logged at error level.
+    'gateway.notAllowed': {
+        message: 'Authorization denied: method "{methodName}" not allowed',
+        statusCode: 403,
+    },
+    'gateway.noActions': {
+        message: 'Authorization denied: no actions resolved',
+        statusCode: 403,
+    },
 };
 
 declare module 'fastify' {
@@ -441,6 +452,15 @@ export default class Gateway extends Internal implements IGateway {
                                     id: Type.Optional(Type.Union([Type.String(), Type.Number()])),
                                     method: isWildcard ? Type.String() : Type.Literal(method),
                                     params: value.params,
+                                    // A caller may declare the errors it expects.  The
+                                    // gateway only *honours* it when configured to
+                                    // (`expectedErrors`), but the field has to survive
+                                    // validation for the body to reach the route at all —
+                                    // without it the declaration was silently dropped and
+                                    // every expected failure was logged as a surprise.
+                                    expect: Type.Optional(
+                                        Type.Union([Type.String(), Type.Array(Type.String())]),
+                                    ),
                                 }),
                             }
                           : undefined),
@@ -749,7 +769,19 @@ export default class Gateway extends Internal implements IGateway {
 
             this.#server.setErrorHandler(
                 (error: Record<string, unknown>, request: FastifyRequest, reply: FastifyReply) => {
-                    request.log.error({err: error}, 'gateway unhandled error');
+                    // A hook that refuses before the route runs (authentication, RBAC)
+                    // never reaches the handler that resolves `expect` for `$meta`, so
+                    // the declaration is read from the request body here: the caller
+                    // asked for this failure and the error stream is for the ones it did
+                    // not ask for.
+                    const expected = this.#config.expectedErrors
+                        ? (request.body as {expect?: string | string[]} | undefined)?.expect
+                        : undefined;
+                    if (isExpectedError(error.type as string | undefined, expected)) {
+                        request.log.debug?.({err: error}, 'gateway expected error');
+                    } else {
+                        request.log.error({err: error}, 'gateway unhandled error');
+                    }
                     return reply.status((error as {statusCode?: number}).statusCode || 500).send({
                         jsonrpc: '2.0',
                         id: (request.body as {id?: unknown})?.id,

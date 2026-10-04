@@ -1,0 +1,36 @@
+# ACL matrix fixture — the applications whose access the matrix measures.
+#
+# The production register generates a random client secret, so a fixture cannot
+# use it; `gateway.application.merge` (a dbTest handler in blong-gateway) takes
+# the secret as input instead.  The clientId is also the application resource's
+# name, which is how `gateway.subscription.merge` finds it.
+#
+# Dispatched by the last `-` segment: `gatewayApplicationMerge` →
+# `gateway.application.merge`.
+application:
+  - clientId: axis-app
+    secret: testAppSecret
+    description: Axis organization consumer (test)
+  - clientId: axis-hq-app
+    secret: testAppSecret
+    description: Axis HQ consumer (test)
+  - clientId: north-app
+    secret: testAppSecret
+    description: North branch consumer (test)
+  - clientId: south-app
+    secret: testAppSecret
+    description: South branch consumer (test)
+  - clientId: beta-app
+    secret: testAppSecret
+    description: Beta organization consumer (test)
+  - clientId: east-app
+    secret: testAppSecret
+    description: East branch consumer (test)
+  - clientId: any-app
+    secret: testAppSecret
+    description: Allow-all consumer (test)
+  # Subscribed to nothing: no role, no capability, so every read is refused by
+  # RBAC (the `🚫` row).
+  - clientId: none-app
+    secret: testAppSecret
+    description: Unsubscribed consumer (test)

@@ -38,7 +38,11 @@ export default handler(
                     );
                     assert.ok(result.userId, 'Registration returns a userId');
                     assert.ok(result.personId, 'Registration returns a personId');
-                    assert.equal(result.emailAddress, email, 'Email address is normalized (lowercased)');
+                    assert.equal(
+                        result.emailAddress,
+                        email,
+                        'Email address is normalized (lowercased)',
+                    );
                     return {email, password: 'testPassword'};
                 },
 
@@ -55,6 +59,8 @@ export default handler(
                 ) {
                     const {email, password} = await registerUser;
                     try {
+                        // The duplicate is the case under test, so the refusal is
+                        // declared: it is logged at debug instead of error.
                         await accessRegistrationAdd(
                             {
                                 emailAddress: email,
@@ -62,7 +68,7 @@ export default handler(
                                 firstName: 'Guest',
                                 lastName: 'User',
                             },
-                            $meta,
+                            {...$meta, expect: 'account.exists'},
                         );
                         assert.fail('Duplicate registration should have thrown');
                     } catch (err: unknown) {
@@ -154,7 +160,10 @@ export default handler(
                         isNewUser: boolean;
                     }>({provider: 'google', code: 'mock-google-code', flow: 'oauth'}, $meta);
                     assert.equal(result.isNewUser, false, 'Second Google login is not a new user');
-                    assert.ok(result.access_token?.length > 0, 'Second Google login returns a token');
+                    assert.ok(
+                        result.access_token?.length > 0,
+                        'Second Google login returns a token',
+                    );
                 },
             ]),
     }),

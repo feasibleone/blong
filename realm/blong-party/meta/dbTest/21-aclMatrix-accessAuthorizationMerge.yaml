@@ -1,0 +1,194 @@
+# ACL matrix fixture — users, roles, scopes and record rules for `test.acl.matrix`.
+#
+# Runs after `20-aclMatrix-partyHierarchyMerge.yaml` (the `21-` prefix), which
+# created the units and persons this file names.  Dispatched by the last `-`
+# segment of the basename: `accessAuthorizationMerge` → `access.authorization.merge`.
+#
+# `loginCapability` (→ `accessLogin`) and the `party.person.*` actions are seeded
+# by blong-access's production merge (`meta/db/`), so they already exist here.
+capability:
+  # The reads under test — persons, units and organizations, because the service
+  # accounts are measured against all three, plus the resource graph itself, which
+  # no ACL declaration guards (the `mode: 'none'` row of the decision matrix).
+  matrixView: >-
+    party.person.find,party.person.get,
+    party.unit.find,party.unit.get,
+    party.organization.find,party.organization.get,
+    party.consent.find,party.consent.get,
+    access.acl.find,access.acl.get
+  # The action of `party.fixture.get` — the test-only read the matrix tables
+  # use to assert the fixture itself.  Granted to `Admin` (testAdmin) below.
+  matrixFixtureRead: partyFixtureGet
+  # The matrix resolves its column names to record ids as `testAdmin` before any
+  # viewer signs in, so the harness role must hold the read on every probed
+  # table.  `party.consent` is the one the Admin role's own list does not cover.
+  matrixHarnessRead: party.consent.find,party.consent.get
+role:
+  # The harness role: `Admin` is seeded by blong-access's dbTest merge and is
+  # what `testAdmin` holds, so granting the fixture read here is what lets the
+  # matrix tables assert their own fixture over the gateway.
+  Admin: matrixFixtureRead,matrixHarnessRead
+  # Scoped at a single branch: covers only the persons whose unit is North.
+  matrixNorth: loginCapability,matrixView
+  # Scoped at the parent unit: covers every person under Axis HQ.
+  matrixAxis: loginCapability,matrixView
+  # Scoped at the other organization's unit.
+  matrixEast: loginCapability,matrixView
+  # No scope: admitted everywhere by the wildcard allow rule below.
+  matrixAll: loginCapability,matrixView
+  # Login only — no read capability, so every read is refused by RBAC.
+  matrixNone: loginCapability
+  # Scoped exactly like `matrixAxis`, and then denied on every record: the row
+  # that shows an explicit deny beating the implicit grant — except on a record
+  # that takes part in no scope, where the guard never applies (the hole).
+  matrixDenyAll: loginCapability,matrixView
+  # Service-account roles (the second matrix's viewers), scoped like the person
+  # roles above.  They are separate roles on purpose: a unit holding a role that
+  # its members also hold directly makes `access_effectiveRolePath` yield the
+  # same (subject, role) twice — once at depth 1, once at depth 2 — and
+  # `access_pathRefresh` then violates `core_path`'s primary key.
+  svcAxisOrg: loginCapability,matrixView
+  svcAxisHq: loginCapability,matrixView
+  svcNorth: loginCapability,matrixView
+  svcSouth: loginCapability,matrixView
+  svcEast: loginCapability,matrixView
+  svcBetaOrg: loginCapability,matrixView
+  # Beta's account is the RBAC-forbidden row: login only, no read capability.
+  # It has to be an account with no ancestor holding a role — a unit inherits
+  # the roles of the organization it belongs to, so a unit under a granted
+  # organization would still pass the gateway's action check.
+  svcNone: loginCapability
+# One user per person, so a matrix row can sign in as the person it names.
+#
+# The username is the person's name in LOWER CASE (`Amy` the person, `amy` the
+# user): they are different records — a `party.person` and an `access.user` — and
+# the case tells them apart at a glance in the fixture tables.  Nothing links
+# them in the graph, so the convention is the link.
+user:
+  amy:
+    password: testPassword
+    roles: matrixNorth
+  ben:
+    password: testPassword
+    roles: matrixNorth
+  cam:
+    password: testPassword
+    roles: matrixAxis
+  # Ivy holds the wildcard deny (`matrixDenyAll`); she is the fixture's
+  # `deny all` viewer.
+  ivy:
+    password: testPassword
+    roles: matrixDenyAll
+  dee:
+    password: testPassword
+    roles: matrixEast
+  fay:
+    password: testPassword
+    roles: matrixNone
+  gil:
+    password: testPassword
+    roles: matrixAll
+# Implicit grants — `<role> --hasScope--> <scope>`.
+scope:
+  - role: matrixNorth
+    scope: North
+  - role: matrixAxis
+    scope: Axis HQ
+  - role: matrixEast
+    scope: East
+  # Organizations are their own scope, so an organization account needs a grant
+  # naming it; a unit's scope set is the organization it belongs to, so a grant
+  # naming a unit reaches the persons in it and no unit record.
+  - role: svcAxisOrg
+    scope: Axis
+    scopeType: organization
+  - role: svcBetaOrg
+    scope: Beta
+    scopeType: organization
+  - role: svcAxisHq
+    scope: Axis HQ
+  - role: svcNorth
+    scope: North
+  - role: svcSouth
+    scope: South
+  - role: svcEast
+    scope: East
+  # Ivy's role is scoped like `matrixAxis` so the deny has a grant to beat: a
+  # deny on a caller with no scope conveys nothing the missing grant does not.
+  - role: matrixDenyAll
+    scope: Axis HQ
+# Explicit rules.
+acl:
+  # Cam reaches every Axis person through Axis HQ; a record rule takes Ben back.
+  - principal: matrixAxis
+    principalType: role
+    action: party.person.get
+    target: Ben
+    targetType: person
+    targetKind: record
+    effect: deny
+  # Amy and Ben name Hal — and it is ignored, because Hal takes part in no scope
+  # and the guard short-circuits to ALLOW for such a record (`verdict = unscoped
+  # ? ALLOW : guarded`).  Reachable in the product too: the ACL Rules page offers
+  # a record target without knowing the table's `scopes`.
+  - principal: matrixNorth
+    principalType: role
+    action: party.person.get
+    target: Hal
+    targetType: person
+    targetKind: record
+    effect: deny
+  # The wildcard deny: every record this caller could otherwise reach is refused.
+  # Hal is still readable, which is how the matrix shows that a `deny all` does not
+  # close the hole either.
+  - principal: matrixDenyAll
+    principalType: role
+    action: party.person.get
+    target: '*'
+    targetKind: all
+    effect: deny
+  # Gil is admitted everywhere by the wildcard allow rule.
+  - principal: matrixAll
+    principalType: role
+    target: '*'
+    targetKind: all
+    effect: allow
+    actions: >-
+      party.person.find,party.person.get,
+      party.unit.find,party.unit.get,
+      party.organization.find,party.organization.get,
+      party.consent.find,party.consent.get,
+      access.acl.find,access.acl.get
+  # Explicit mode (`party.consent`): a rule is the only way in, so this is the
+  # whole access of the two principals below.  matrixNorth is allowed exactly one
+  # record; matrixAxis is pointed at the unit it is scoped to, and the table
+  # declares no `scopes` at all — with no scope set to resolve, a `scope` target
+  # matches nothing, so that rule never admits a consent.
+  - principal: matrixNorth
+    principalType: role
+    action: party.consent.get
+    target: Amy marketing
+    # The full alias: the access realm's short-name map knows person/unit/
+    # organization, not a product table it has never seen, and an unmapped name
+    # is taken verbatim.
+    targetType: party.consent
+    targetKind: record
+    effect: allow
+  - principal: matrixAxis
+    principalType: role
+    action: party.consent.get
+    target: North
+    targetType: unit
+    targetKind: scope
+    effect: allow
+  # The harness user resolves the matrix columns to record ids before any viewer
+  # signs in, and `party.consent` is the one guarded table the Admin role's
+  # wildcard allow does not list.  A rule of the user's own rather than a second
+  # action on that role rule: the merge appends to an existing row, and the role's
+  # action list is the access realm's to keep.
+  - principal: testAdmin
+    principalType: user
+    target: '*'
+    targetKind: all
+    effect: allow
+    actions: party.consent.find,party.consent.get

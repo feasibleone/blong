@@ -1,0 +1,46 @@
+# ACL matrix fixture — the bundle scopes and the rules that name a bundle.
+#
+# A bundle IS an `access.role`, so granting it a scope is an ordinary role grant:
+# `bundle --hasScope--> scope`.  Runs after `23-...` created the bundles and after
+# `20-...` created the party nodes they name.
+#
+# Dispatched by the last `-` segment: `accessAuthorizationMerge` →
+# `access.authorization.merge`.
+scope:
+  - role: bundleAxisOrg
+    scope: Axis
+    scopeType: organization
+  - role: bundleAxisHq
+    scope: Axis HQ
+  - role: bundleNorth
+    scope: North
+  - role: bundleSouth
+    scope: South
+  - role: bundleBetaOrg
+    scope: Beta
+    scopeType: organization
+  - role: bundleEast
+    scope: East
+acl:
+  # A record rule names a bundle exactly as it names a role: this application
+  # loses one record even though its scope covers it — and, unlike the
+  # `matrixAxis` rule of the person matrix, only applications on this bundle are
+  # affected.
+  - principal: bundleAxisHq
+    principalType: role
+    action: party.person.get
+    target: Ben
+    targetType: person
+    targetKind: record
+    effect: deny
+  # The allow-all bundle: admitted everywhere, the same wildcard the person
+  # matrix's `matrixAll` role carries.
+  - principal: bundleAll
+    principalType: role
+    target: '*'
+    targetKind: all
+    effect: allow
+    actions: >-
+      party.person.find,party.person.get,
+      party.unit.find,party.unit.get,
+      party.organization.find,party.organization.get

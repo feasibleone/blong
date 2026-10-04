@@ -294,7 +294,7 @@ export default fp<{
                 }
                 const credentials = request.auth?.credentials;
                 if (!credentials?.actions) {
-                    throw new Error('Authorization denied: no actions resolved');
+                    throw errors['gateway.noActions']();
                 }
                 if (!methodName) {
                     return; // no method configured — allow (backward compat)
@@ -323,11 +323,7 @@ export default fp<{
                     }
                 }
                 if (!allowed) {
-                    const error = new Error(
-                        `Authorization denied: method "${methodName}" not allowed`,
-                    ) as Error & {statusCode: number};
-                    error.statusCode = 403;
-                    throw error;
+                    throw errors['gateway.notAllowed']({params: {methodName}});
                 }
             });
         }

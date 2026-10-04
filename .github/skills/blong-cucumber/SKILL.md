@@ -1,6 +1,12 @@
 ---
 name: blong-cucumber
-description: Implement BDD-style Cucumber/Gherkin tests in Blong using @cucumber/gherkin as the fully compliant parser. Converts .feature file strings into blong ChainStep[] arrays via featureToSteps. Step definitions map Gherkin patterns to handler calls. Supports Scenario Outline, Background, and all cucumber expression types. Use this skill whenever the user wants to write Gherkin feature files, define Given/When/Then steps, run BDD tests, or integrate cucumber-style testing with blong handlers.
+description:
+    Implement BDD-style Cucumber/Gherkin tests in Blong using @cucumber/gherkin as the fully
+    compliant parser. Converts .feature file strings into blong ChainStep[] arrays via
+    featureToSteps. Step definitions map Gherkin patterns to handler calls. Supports Scenario
+    Outline, Background, and all cucumber expression types. Use this skill whenever the user wants
+    to write Gherkin feature files, define Given/When/Then steps, run BDD tests, or integrate
+    cucumber-style testing with blong handlers.
 ---
 
 # Implementing Cucumber/Gherkin Tests
@@ -25,7 +31,7 @@ Add to `package.json`:
 
 ## File structure
 
-```
+```text
 realmname/
 └── test/
     ├── feature/             # Gherkin feature files as TS template literals
@@ -127,6 +133,31 @@ featureToSteps(
 );
 ```
 
+## Step context (Data Table / Doc String)
+
+A step definition receives the parsed Gherkin step as its **last** argument, after its captures:
+`{keyword, text, dataTable?, docString?}` (`IStepContext`). A definition that declares fewer
+parameters simply ignores it.
+
+```typescript
+import {featureToSteps, type IStepContext} from '@feasibleone/blong-cucumber';
+
+featureToSteps(
+    feature,
+    {
+        'the allowance matrix is': (step: IStepContext) =>
+            async function matrix(stepAssert, {$meta}) {
+                // step.dataTable — string[][] (one row per table row)
+                stepAssert.ok(step.dataTable?.length, 'the table has rows');
+            },
+    },
+    {name, group},
+);
+```
+
+Use a Data Table for a matrix (many cells, one scenario) and the cartesian `Examples:` table for one
+scenario per row; both run their steps as sub-tests of the scenario.
+
 ## Scenario Outline expansion
 
 Scenario Outlines are automatically expanded by `featureToSteps`:
@@ -169,6 +200,33 @@ duplicate-name errors in the blong-chain executor.
 
 Use **self-contained steps** (computation + assertion in one function) to keep step definitions
 simple and avoid inter-step context dependencies.
+
+### One factory, several steps
+
+A factory that returns a literal step function gives every step it builds the _same_ name, and the
+per-scenario suffix is **appended** to it — so four steps built by one factory inside one scenario
+all report as `assertX_s0`, `assertX_s1`, … and the run fails with `Duplicate step name detected`.
+Name the function after what the step asserts:
+
+```typescript
+function namedStep<F extends ChainStep>(name: string, step: F): F {
+    Object.defineProperty(step, 'name', {value: name});
+    return step;
+}
+```
+
+Shared step factories belong in a **library**, not in a plain module beside the handlers: the loader
+gives every file in a handler group the shape of a handler, and a module that is not one is reported
+as a load error (`probably a generic source code was put in a handler group folder`). As a library
+the factories are reached through `lib` like any other shared function (see `aclSteps` in
+`realm/blong-party/browser/test/test/`).
+
+## The failure output is part of the test
+
+When a scenario drives a table, the assertion message **is** the report a reader sees, so it is
+worth asserting too: a feature that runs the same step with a deliberately wrong table and checks
+that each mismatch is marked in the cell it belongs to keeps the diagnostic from rotting (see
+`test.acl.diagnostics` in `realm/blong-party`). A diagnostic nobody tests stops helping quietly.
 
 ## Low-level API
 

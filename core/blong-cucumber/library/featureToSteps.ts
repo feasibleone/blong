@@ -7,6 +7,31 @@ import {expandOutline, parseGherkin} from './parseGherkin.ts';
 type StepDefinitionFn = (...params: unknown[]) => ChainStep;
 type GroupFn = ILib['group'];
 
+/**
+ * The parsed Gherkin half of a step, handed to a step definition as its **last**
+ * argument — after any captured parameters.  A definition that declares only its
+ * captures keeps working (the extra argument is ignored); one that needs the
+ * `dataTable` or `docString` declares a trailing parameter for it.
+ *
+ * @example
+ * ```ts
+ * 'the access matrix is': (step: IStepContext) =>
+ *     async function matrix(assert, {$meta}) {
+ *         assert.ok(step.dataTable?.length, 'the table has rows');
+ *     },
+ * ```
+ */
+export interface IStepContext {
+    /** The step keyword as written, trimmed (`Given` / `When` / `Then` / `And` / `But`). */
+    keyword: string;
+    /** The step text after the keyword, with Scenario Outline placeholders substituted. */
+    text: string;
+    /** Data Table rows, when the step carries one — each row is a list of cells. */
+    dataTable?: string[][];
+    /** Doc String content, when the step carries one (without the fences). */
+    docString?: string;
+}
+
 /** Step definitions keyed by cucumber expression strings. */
 export type IStepDefinitions =
     | Record<string, StepDefinitionFn>
@@ -31,11 +56,17 @@ function buildCompiledPatterns(stepDefs: IStepDefinitions): CompiledPattern[] {
 }
 
 function resolveStep(step: IGherkinStep, compiled: CompiledPattern[]): ChainStep {
+    const context: IStepContext = {
+        keyword: step.keyword,
+        text: step.text,
+        dataTable: step.dataTable,
+        docString: step.docString,
+    };
     for (const [regex, , fn] of compiled) {
         const match = regex.exec(step.text);
         if (match) {
             const params = match.slice(1).map(coerceMatchParam);
-            return fn(...params);
+            return fn(...params, context);
         }
     }
     throw new Error(

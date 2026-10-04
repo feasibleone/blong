@@ -26,20 +26,31 @@ WHERE pathType IN (
     );
 -- Rebuild effective-action paths from the view that computes the
 -- user→action hierarchy via direct roles and org-unit-inherited roles.
+-- `MIN(pathDepth)` collapses the one route the view can report twice: a subject
+-- that holds a role directly AND inherits the same role from its unit yields the
+-- (subject, action) pair at depth 1 and at depth 2, and `core_path`'s primary
+-- key is (originId, destinationId, pathType) — so the second row cannot be
+-- inserted at all.  The shortest distance wins, as it does for scopes below.
 INSERT INTO core_path (originId, destinationId, pathType, pathDepth)
 SELECT originId,
     destinationId,
     pathType,
-    pathDepth
-FROM access_effectiveActionPath;
+    MIN(pathDepth)
+FROM access_effectiveActionPath
+GROUP BY originId,
+    destinationId,
+    pathType;
 -- Rebuild effective-role paths from the view that computes the
 -- user→role hierarchy via direct and org-unit-inherited role assignment.
 INSERT INTO core_path (originId, destinationId, pathType, pathDepth)
 SELECT originId,
     destinationId,
     pathType,
-    pathDepth
-FROM access_effectiveRolePath;
+    MIN(pathDepth)
+FROM access_effectiveRolePath
+GROUP BY originId,
+    destinationId,
+    pathType;
 -- Rebuild scope-ancestor paths: node → ancestor through `isPartOf`
 -- (child → parent), so a grant on a parent scope covers everything linked to
 -- its descendants.  A node's own scope rows come from the record's declared

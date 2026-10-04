@@ -365,7 +365,12 @@ export function aclCheckSql(options: IAclCheckOptions): IAclCheck {
             : {
                   sql: `(${alias}.targetKind = 'all'
             OR (${alias}.targetKind = 'record' AND ${alias}.targetId = ${recordRef ?? '?'}))`,
-                  bindings: recordRef ? [options.recordId] : [],
+                  // The SQL binds a placeholder only when there is no record
+                  // reference to inline — a correlated list filter passes a
+                  // column, and binding an id alongside it would put the
+                  // statement one parameter out.
+                  bindings:
+                      recordRef === undefined || recordRef === '?' ? [options.recordId] : [],
               };
 
     const explicit = (effect: 'allow' | 'deny', alias: string): IAclCheck => {

@@ -77,8 +77,19 @@ Three of the four shapes are declared in `realm/blong-party/meta/db/db.ts`:
     acl: {mode: 'scoped', scopes: ['belongsTo'], addScope: {predicate: 'belongsTo'}},
 },
 
-// Nothing in the repository declares this yet: the deny-by-default shape.
-'party.invoice': {acl: {mode: 'explicit'}},
+// A table with no scope edges at all: a rule is the only way in, and there is no
+// scope set for a `scope` target to match, so only `record` and `all` rules can
+// admit a row.
+'party.consent': {
+    order: 306,
+    resource: {nameColumn: 'consentName'},
+    edges: [{predicate: 'belongsTo', table: 'party_person', object: 'person'}],
+    acl: {mode: 'explicit'},
+},
+
+// Nothing in the repository declares this shape either: `mode: 'scoped'` with no
+// `scopes` list, which is scoped in name only — no implicit grant and no scope set.
+'party.invoice': {acl: {mode: 'scoped'}},
 ```
 
 ### The records the ACL flow seeds
@@ -137,22 +148,40 @@ So each record answers to this scope set:
 
 ### The same grants against the other tables
 
-| Table (declaration)                       | Record                 | Recorded for that record                        | Verdict                 | Why                                                                                                  |
-| ----------------------------------------- | ---------------------- | ----------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| `party.organization` (`selfScope`)        | Global Bank Corp       | `Admin --hasScope--> Global Bank Corp`          | allowed                 | the record is its own scope                                                                          |
-| `party.organization` (`selfScope`)        | FinServe Solutions Ltd | nothing                                         | **denied**              | no `unscoped` term and no fallback: an organization no grant names is invisible                      |
-| `party.unit` (`scopes: ['belongsTo']`)    | Head Office            | `Admin --hasScope--> Global Bank Corp`          | allowed                 | a unit's scope set is its organization                                                               |
-| `party.unit` (`scopes: ['belongsTo']`)    | FinServe Branch        | nothing                                         | **denied**              | its organization is not granted                                                                      |
-| `party.unit` (`scopes: ['belongsTo']`)    | Head Office            | `Admin --hasScope--> Head Office` **only**      | **denied**              | the grant on a unit covers the _persons_ in it, not the unit record, whose scope is its organization |
-| `party.organization` (`mode: 'explicit'`) | Global Bank Corp       | `allow` on the record, or `all`                 | allowed                 | deny-by-default: only a record-targeted or wildcard rule admits it                                   |
-| `party.organization` (`mode: 'explicit'`) | Global Bank Corp       | `allow` on the Head Office _scope_              | **denied**              | no scope set is built in `explicit` mode, so a `scope` target cannot match                           |
-| any table (`mode: 'none'`)                | any                    | anything                                        | allowed                 | the guard is not built; RBAC decides alone                                                           |
-| `party.person`, `add`                     | _(new person)_         | `addScope` reads the submitted `belongsTo` unit | allow/deny on that unit | the scope ids come from the payload, and there is no `unscoped` term                                 |
+| Table (declaration)                    | Record                 | Recorded for that record                        | Verdict                 | Why                                                                                                  |
+| -------------------------------------- | ---------------------- | ----------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `party.organization` (`selfScope`)     | Global Bank Corp       | `Admin --hasScope--> Global Bank Corp`          | allowed                 | the record is its own scope                                                                          |
+| `party.organization` (`selfScope`)     | FinServe Solutions Ltd | nothing                                         | **denied**              | no `unscoped` term and no fallback: an organization no grant names is invisible                      |
+| `party.unit` (`scopes: ['belongsTo']`) | Head Office            | `Admin --hasScope--> Global Bank Corp`          | allowed                 | a unit's scope set is its organization                                                               |
+| `party.unit` (`scopes: ['belongsTo']`) | FinServe Branch        | nothing                                         | **denied**              | its organization is not granted                                                                      |
+| `party.unit` (`scopes: ['belongsTo']`) | Head Office            | `Admin --hasScope--> Head Office` **only**      | **denied**              | the grant on a unit covers the _persons_ in it, not the unit record, whose scope is its organization |
+| `party.consent` (`mode: 'explicit'`)   | `Amy marketing`        | `allow` on the record, or `all`                 | allowed                 | deny-by-default: only a record-targeted or wildcard rule admits it                                   |
+| `party.consent` (`mode: 'explicit'`)   | `Amy marketing`        | `allow` on the `North` _scope_                  | **denied**              | the table declares no `scopes`, so no scope set is built and a `scope` target cannot match           |
+| any table (`mode: 'none'`)             | any                    | anything                                        | allowed                 | the guard is not built; RBAC decides alone                                                           |
+| `party.person`, `add`                  | _(new person)_         | `addScope` reads the submitted `belongsTo` unit | allow/deny on that unit | the scope ids come from the payload, and there is no `unscoped` term                                 |
 
 Two rows repay reading twice: a `record`-targeted deny on a record that participates in no scope is
 ignored — and it is reachable, because the ACL Rules page offers `targetKind: record` with a target
 list (`access.aclTarget`) that knows nothing about the table's `scopes` — and a `scope`-targeted
-rule is inert in `explicit` mode.
+rule matches nothing at all on a table that declares no `scopes`, because the record test then has
+no scope set to resolve (`aclCheckSql` falls back to the `record` and `all` shapes).
+
+### The same cases, as a matrix
+
+[The ACL pattern](../patterns/acl.md) carries the matrix form of this section — a row per viewer, a
+column per record, a verdict per cell — and two of the records in `realm/blong-party` exist only to
+show the hole above: `Hal`, who is in no unit at all, and `Ivy`, whose role carries a wildcard deny.
+Between them they make the three "no `belongsTo` row" rows visible in one table: every viewer that
+holds the read sees `Hal`, the record deny that names him is ignored, and `Ivy`'s `deny all` refuses
+every record _except_ his. That is what a matrix is for — the cells show what the rule-level
+expression means, in the place a reader looks for it.
+
+Three more matrices take the same viewers to the shapes that have no matrix of their own: the
+service-account and application principals, and then the two tables that bracket the whole section.
+`access.acl` — the rules table itself — declares no `acl` at all, so a matrix over it shows every
+viewer reading the rule that hides the row above; `party.consent` declares `mode: 'explicit'` with
+no `scopes`, so a matrix over it shows a table where one record rule admits one row and a scope rule
+admits nothing.
 
 See the [ACL pattern](../patterns/acl.md) to put the guard on a table and write rules, and the
 [ACL rationale](../rationale/acl.md) for why the narrowing sits next to RBAC instead of inside it.

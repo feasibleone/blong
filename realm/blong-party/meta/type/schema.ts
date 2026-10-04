@@ -85,6 +85,33 @@ export default schema(async ({lib: {type}}) => ({
     ),
 
     /**
+     * Consent records — the explicit-mode table of the ACL matrix.
+     *
+     * A consent is owned by a person (`consent --belongsTo--> person`) and the
+     * table declares `acl: {mode: 'explicit'}` in `meta/db/db.ts`: no scope grant
+     * and no scope edge is consulted, so a read is allowed only where a rule
+     * names the record, the person or every record.  The PK `consentId` is a UUID
+     * FK to core.resource.resourceId, like the other party entities.
+     */
+    consent: type.Object(
+        {
+            consentId: type.uuid(),
+            consentName: type.stringNotNull(),
+            consentType: type.stringNotNull({maxLength: 30}),
+            isGranted: type.booleanNotNull(),
+            notes: type.stringNull(),
+        },
+        {
+            constraints: {
+                primaryKey: 'consentId',
+                foreign: {
+                    consentId: 'core.resource.resourceId',
+                },
+            },
+        },
+    ),
+
+    /**
      * Contact details — email addresses, phone numbers, etc.
      *
      * Linked to any party resource (person, organization, unit) via

@@ -1,0 +1,92 @@
+# ACL matrix fixture — the org chart the browser flow `test.acl.matrix` asserts against.
+#
+# A deliberately SEPARATE hierarchy from `9-partyHierarchyMerge.yaml`: short names
+# only (`Axis`, `Beta`, `Amy`, …), its own grants (see
+# `21-aclMatrix-accessAuthorizationMerge.yaml`) and no overlap with the Global
+# Bank Corp / FinServe records, so the two fixtures never interfere.
+#
+# Dispatched by basename: the last `-` segment names the handler, so
+# `partyHierarchyMerge` → `party.hierarchy.merge`.  The `20-` prefix orders this
+# before the authorization merge below (seeds sort by basename), which resolves
+# the unit names this file creates.
+organizations:
+  - Axis
+  - Beta
+units:
+  # North and South hang off Axis HQ, so a grant on Axis HQ reaches persons in
+  # both branches (the `isPartOf` ancestry that `access.effectiveScope` carries).
+  - name: Axis HQ
+    unitType: branch
+    organization: Axis
+  - name: North
+    unitType: branch
+    organization: Axis
+    parentUnit: Axis HQ
+  - name: South
+    unitType: branch
+    organization: Axis
+    parentUnit: Axis HQ
+  # Beta stays a single unit in a second organization — the out-of-scope case.
+  - name: East
+    unitType: branch
+    organization: Beta
+# Every person is also a user (`21-aclMatrix-accessAuthorizationMerge.yaml`
+# creates a matching `access.user`), so the matrix rows and columns line up.
+persons:
+  - name: Amy
+    firstName: Amy
+    lastName: Amy
+    unit: North
+  - name: Ben
+    firstName: Ben
+    lastName: Ben
+    unit: North
+  # Ivy carries the fixture's wildcard deny (`matrixDenyAll`), so she sits where a
+  # grant reaches: an unscoped account could not show `deny` beating a grant.
+  - name: Ivy
+    firstName: Ivy
+    lastName: Ivy
+    unit: North
+  - name: Cam
+    firstName: Cam
+    lastName: Cam
+    unit: South
+  # Fay shares South's unit on purpose: the service-account matrix gives South a
+  # role with no read capability, and a unit's role is inherited by the persons
+  # in it (`access_effectiveRolePath`), so Fay must sit where that inheritance is
+  # a no-op — otherwise she would stop being the RBAC-forbidden row.
+  - name: Fay
+    firstName: Fay
+    lastName: Fay
+    unit: South
+  - name: Dee
+    firstName: Dee
+    lastName: Dee
+    unit: East
+  - name: Gil
+    firstName: Gil
+    lastName: Gil
+    unit: East
+  # Hal is deliberately in NO unit.  A record that takes part in no scope has an
+  # empty scope set, and the rule-level guard is `verdict = unscoped ? ALLOW :
+  # guarded`: every viewer who holds the read sees him, a deny naming him is
+  # ignored, and a wildcard deny does not close it either.  He is the "hole" of
+  # the decision matrix, and the only way to show it is to seed a record with no
+  # `belongsTo` edge at all.
+  - name: Hal
+    firstName: Hal
+    lastName: Hal
+# The explicit-mode records: `party.consent` declares `acl: {mode: 'explicit'}` in
+# `meta/db/db.ts`, so the matrix below it shows a table where a rule is the ONLY
+# way in — one record rule admits one of these rows, a scope rule would admit
+# none, and everything else falls to the default refusal.
+consents:
+  - name: Amy marketing
+    consentType: marketing
+    belongsTo: Amy
+  - name: Beta research
+    consentType: research
+    belongsTo: Dee
+  - name: Cam study
+    consentType: research
+    belongsTo: Cam
