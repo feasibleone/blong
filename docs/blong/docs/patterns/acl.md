@@ -408,8 +408,8 @@ unless the probe says otherwise. Every probe therefore declares what it is prepa
 `expect: ['acl.notFound', 'gateway.notAllowed']`, and `gateway.notAllowed` alone for the fixture
 read — which is what keeps the suite's error stream empty: `realm/blong-party` went from 467 entries
 per run to none, and the entries that remain are the failures nobody asked for. See
-[expected errors](../../concepts/expected-errors.md) for the matching rules and the three things
-that have to line up for a declaration to be honoured through the gateway.
+[expected errors](../concepts/expected-errors.md) for the matching rules and the three things that
+have to line up for a declaration to be honoured through the gateway.
 
 When a cell does not match, the step asserts once with the redrawn table as its message: the table
 is framed and padded, the offending cell reads `expected≠actual`, and every mismatch is also named —
