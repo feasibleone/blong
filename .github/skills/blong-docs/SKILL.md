@@ -14,6 +14,11 @@ blog entries are 1-2 pages long with a brief pitch at the beginning and some vis
 mermaid diagrams, screenshots or tables. They include references to the full documentation. For
 example see the `2026-09-24-draw-the-sequence-diagram-from-what-actually-ran` post.
 
+The purpose of the blog is to highlight innovative ideas in Blong or new substantial features it
+implemented. The entries should not discuss how Blong advances by resolving its own frictions but
+instead highlight the rationale of the advanced ideas that are implemented and their impact on the
+functionality or the developer or user experience.
+
 # Blong Documentation Maintenance
 
 ## Overview

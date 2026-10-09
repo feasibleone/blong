@@ -10,8 +10,9 @@ identifiers), but it is recommended to use single lowercase words.
 The following server-side layer folder names are **auto-discovered** by the framework — no
 `layer.server.ts` file is required:
 
-- `error` - domain-specific error definitions, auto-activated under the `integration` intent on the
-  server.
+- `error` - domain-specific error definitions. Activated by `microservice` and by `k8s`, the intents
+  that run a realm and plan its deployment, so any process that dispatches the realm's handlers has
+  them.
 
 - [adapter](./adapter.md) - the part of the functionality that implements functions related directly
   to communicating with external systems, often handling network protocols. This often relates
@@ -59,43 +60,45 @@ Read the diagram per intent, and the table per folder.
 flowchart LR
     subgraph SERVER["server platform"]
         direction TB
-        server-default-intent["default"] --- server-default-layers["api · init · meta · server/init"]
-        server-integration-intent["integration"] --- server-integration-layers["error · sim · adapter · orchestrator · gateway · server/api · server/test"]
-        server-cli-intent["cli"] --- server-cli-layers["error · adapter · orchestrator · server/api"]
+        server-default-intent["default"] --- server-default-layers["api · init · meta"]
+        server-microservice-intent["microservice"] --- server-microservice-layers["error · adapter · orchestrator · gateway · server/api"]
+        server-k8s-intent["k8s"] --- server-k8s-layers["error · adapter · orchestrator · gateway · server/api"]
+        server-upgrade-intent["upgrade"] --- server-upgrade-layers["error · adapter · orchestrator"]
+        server-integration-intent["integration"] --- server-integration-layers["sim · server/test"]
     end
     subgraph BROWSER["browser platform"]
         direction TB
-        browser-default-intent["default"] --- browser-default-layers["api · init · meta · browser/init"]
-        browser-integration-intent["integration"] --- browser-integration-layers["backend · component · action · actions · test · browser/api · browser/test · browser/orchestrator"]
+        browser-default-intent["default"] --- browser-default-layers["api · init · meta · backend · component · action · actions · browser/api · browser/init · browser/orchestrator"]
+        browser-integration-intent["integration"] --- browser-integration-layers["test · browser/test"]
     end
 ```
 
 A layer missing for a platform is simply not auto-discovered there. `default` means the layer loads
-regardless of intents; every other name is an intent that must be active, and `cli` is the intent
-that makes a realm’s handlers exist without serving them.
+regardless of intents, and every other name is an intent that must be active. `cli` appears in no
+entry here: a command names the layers it needs itself, in the `cli` block of the realm whose
+handlers it     dispatches (D-436).
 
-| Folder                 | Server active in | Browser active in |
-| ---------------------- | ---------------- | ----------------- |
-| `api`                  | default          | default           |
-| `init`                 | default          | default           |
-| `meta`                 | default          | default           |
-| `error`                | integration, cli | —                 |
-| `sim`                  | integration      | —                 |
-| `adapter`              | integration, cli | —                 |
-| `orchestrator`         | integration, cli | —                 |
-| `gateway`              | integration      | —                 |
-| `backend`              | —                | integration       |
-| `component`            | —                | integration       |
-| `action`               | —                | integration       |
-| `actions`              | —                | integration       |
-| `test`                 | —                | integration       |
-| `server/api`           | integration, cli | —                 |
-| `server/init`          | default          | —                 |
-| `server/test`          | integration      | —                 |
-| `browser/api`          | —                | integration       |
-| `browser/init`         | —                | default           |
-| `browser/test`         | —                | integration       |
-| `browser/orchestrator` | —                | integration       |
+| Folder                 | Server active in           | Browser active in |
+| ---------------------- | -------------------------- | ----------------- |
+| `api`                  | default                    | default           |
+| `init`                 | default                    | default           |
+| `meta`                 | default                    | default           |
+| `backend`              | —                          | default           |
+| `component`            | —                          | default           |
+| `action`               | —                          | default           |
+| `actions`              | —                          | default           |
+| `browser/api`          | —                          | default           |
+| `browser/init`         | —                          | default           |
+| `browser/orchestrator` | —                          | default           |
+| `error`                | microservice, k8s, upgrade | —                 |
+| `adapter`              | microservice, k8s, upgrade | —                 |
+| `orchestrator`         | microservice, k8s, upgrade | —                 |
+| `gateway`              | microservice, k8s          | —                 |
+| `server/api`           | microservice, k8s          | —                 |
+| `sim`                  | integration                | —                 |
+| `server/test`          | integration                | —                 |
+| `test`                 | —                          | integration       |
+| `browser/test`         | —                          | integration       |
 
 <!-- END LAYER ACTIVATION -->
 
@@ -103,7 +106,7 @@ that makes a realm’s handlers exist without serving them.
 
 A handler-group folder whose name ends in `.dev` (e.g. `gateway/vision.dev/`,
 `orchestrator/vision.dev/`) is loaded **only under the `dev` intent**. Under any other intent (e.g.
-`prod`), the folder is skipped entirely, so its validations, handlers and orchestrator namespaces
+`release`), the folder is skipped entirely, so its validations, handlers and orchestrator namespaces
 are not registered.
 
 This is the general convention for making specific handler groups dev-only, mirroring the
@@ -160,8 +163,8 @@ For folder names that are not in the well-known list above, add a `layer.server.
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    default: true, // active in all environments
-    microservice: true, // also active in microservice deployment
+    default: true, // active in every process, whatever the intents
+    microservice: true, // also active when the realm is *run* — a development server, a standalone service
 });
 ```
 

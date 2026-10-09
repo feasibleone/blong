@@ -21,6 +21,13 @@ import {denoiseHidesDetails} from './retention.ts';
 export interface RenderOptions {
     /** ANSI colour. Defaults to false so tests and pipes get plain text. */
     color?: boolean;
+    /**
+     * Print the `semlog://` reference group at the end of the human line. On by
+     * default — the group is what makes a printed record resolve against the
+     * store — and off in a released process, whose stdout nobody reads with a
+     * store open beside it.
+     */
+    refs?: boolean;
     /** Injectable clock for deterministic tests. */
     formatTime?: (time: number) => string;
     /**
@@ -204,7 +211,12 @@ function header(record: LogRecord, options: RenderOptions): string {
     if (options.details && record.version) parts.push(`version=${sanitise(record.version)}`);
     // A group with nothing in it is not printed at all: a record whose identity was
     // stripped (or assembled by hand) would otherwise end its line with a `[]`.
-    parts.push(paint(ANSI.gray, renderRefs(record)));
+    //
+    // The whole group is what a released process suppresses (Q8): a `semlog://`
+    // reference is a development aid, and resolving one needs a store open beside
+    // the terminal. JSON mode and the retained store always carry the refs — this
+    // hides them from the human line, it does not remove them from the record.
+    if (options.refs !== false) parts.push(paint(ANSI.gray, renderRefs(record)));
     return parts.filter(Boolean).join(' ');
 }
 
@@ -408,6 +420,10 @@ export function renderHuman(record: LogRecord, options: RenderOptions = {}): str
             color: options.color ?? false,
             formatTime: options.formatTime,
             details: options.details ?? false,
+            // Every option the header reads has to be forwarded here: the header
+            // gets this object, not the caller's, so an option left out of it is an
+            // option the caller cannot turn off.
+            refs: options.refs,
         };
         const lines = [header(record, resolved)];
 

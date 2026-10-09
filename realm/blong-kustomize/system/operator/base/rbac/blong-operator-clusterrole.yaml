@@ -1,0 +1,43 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-operator
+    app.kubernetes.io/part-of: blong-operator
+    app.kubernetes.io/version: 0.1.0
+    blong.feasible.one/spec-hash: 72025184e8509a8f
+  name: blong-operator
+rules:
+  - apiGroups:
+      - blong.feasible.one
+    resources:
+      - blongdeployments
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - blong.feasible.one
+    resources:
+      - blongdeployments/status
+    verbs:
+      - get
+      - update
+      - patch
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create

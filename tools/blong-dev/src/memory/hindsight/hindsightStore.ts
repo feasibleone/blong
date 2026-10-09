@@ -179,6 +179,7 @@ export interface IRetainItem {
     document_id: string;
     tags: string[];
     timestamp?: string;
+    observation_scopes: string[][];
 }
 
 /** One retain item: the entry text plus the key it is stored under. */
@@ -189,6 +190,7 @@ export function retainItem(document: IHindsightDocument): IRetainItem {
         metadata: document.metadata,
         document_id: document.documentId,
         tags: document.tags,
+        observation_scopes: document.observationScopes,
         ...(document.timestamp === undefined ? {} : {timestamp: document.timestamp}),
     };
 }

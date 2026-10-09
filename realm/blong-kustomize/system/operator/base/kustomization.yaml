@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/managed-by: blong-kustomize
+      app.kubernetes.io/name: blong-operator
+      app.kubernetes.io/part-of: blong-operator
+      app.kubernetes.io/version: 0.1.0
+namespace: blong-system
+resources:
+  - crd/blongdeployment-crd.yaml
+  - deployments/blong-operator.yaml
+  - ingresses/blong-operator-test.yaml
+  - namespaces/blong-system.yaml
+  - rbac/blong-operator-clusterrole.yaml
+  - rbac/blong-operator-clusterrolebinding.yaml
+  - rbac/blong-operator-role.yaml
+  - rbac/blong-operator-rolebinding.yaml
+  - rbac/blong-operator-service-account.yaml
+  - services/blong-operator.yaml
+  - volumes/blong-operator-artifacts.yaml

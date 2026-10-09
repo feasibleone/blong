@@ -93,6 +93,10 @@ export interface ILoginProps {
      * "Continue with Google" button is rendered below the login form.
      */
     googleLogin?: {onGoogle?: () => void; label?: string};
+    /** Username the form starts with; see the realm's `login.username` config. */
+    defaultUsername?: string;
+    /** What belongs in the password field, and how to get one. */
+    passwordHint?: {text?: string; command?: string};
 }
 
 export function Login({
@@ -113,11 +117,14 @@ export function Login({
     loading: externalLoading,
     initialStep = 'credentials',
     googleLogin,
+    defaultUsername,
+    passwordHint,
 }: ILoginProps) {
     const {handler} = useBlong();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [step, setStep] = useState<LoginStep>(initialStep);
-    const [username, setUsername] = useState('');
+    const [username, setUsername] = useState(defaultUsername ?? '');
+    const [hintOpen, setHintOpen] = useState(false);
     const [password, setPassword] = useState('');
     const [otp, setOtp] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -301,6 +308,18 @@ export function Login({
                                 className="blong-field__label"
                             >
                                 Password
+                                {passwordHint && (
+                                    <Button
+                                        type="button"
+                                        icon="pi pi-question-circle"
+                                        text
+                                        rounded
+                                        size="small"
+                                        aria-label="What belongs in this field"
+                                        aria-expanded={hintOpen}
+                                        onClick={() => setHintOpen(open => !open)}
+                                    />
+                                )}
                             </label>
                             <Password
                                 inputId="login-password"
@@ -312,6 +331,16 @@ export function Login({
                                 toggleMask
                                 disabled={isLoading}
                             />
+                            {passwordHint && hintOpen && (
+                                <div className="blong-login__hint">
+                                    {passwordHint.text && <p>{passwordHint.text}</p>}
+                                    {passwordHint.command && (
+                                        <code className="blong-login__hint-command">
+                                            {passwordHint.command}
+                                        </code>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <Button
                             type="submit"

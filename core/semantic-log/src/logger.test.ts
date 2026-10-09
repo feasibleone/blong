@@ -484,6 +484,34 @@ t.test(
             'json mode carries the value verbatim, with no lookup needed',
         );
 
+        // A process that renders no references — a released one, `log.refs: false` — must not mint
+        // one either. The stores are the framework's merged config, and a deployment's rc file can
+        // configure them for a suite that is otherwise released, so gating only the *rendering* left
+        // a line like `config: semlog://p/<id>` in a stdout nobody resolves a reference from; and
+        // the payload it names is a store the operator may never read. The value inlines instead,
+        // which is what a build with no store already does (T-243).
+        const retained = cache.payloadStats();
+        const quiet = capture();
+        const noRefs = createLogger({
+            service: 'hub',
+            writer: quiet.writer,
+            cache,
+            payloads: cache,
+            refs: false,
+        });
+        noRefs.info('configuration', {large: 'D'.repeat(PAYLOAD_THRESHOLD)});
+        await noRefs.flush();
+        t.notMatch(
+            quiet.lines[0],
+            /semlog:\/\/p\//,
+            'with refs off the large value is inlined rather than referenced',
+        );
+        t.same(
+            cache.payloadStats(),
+            retained,
+            'and nothing new was retained for a reference nobody renders',
+        );
+
         // Retention and rendering are one decision: with a store configured a
         // record that carries no large field mints no reference and retains
         // nothing, rather than pointing at a payload that was never written.

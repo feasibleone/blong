@@ -80,6 +80,23 @@ export interface SemanticLogConfig {
     format?: Format;
     /** ANSI colour in human format. Opt-in, as the emitter's own option is. */
     color?: boolean;
+    /**
+     * Put the `semlog://` reference group at the end of a human line. On by
+     * default, off in a released process (`log.refs: false`): a reference is a
+     * development aid, and resolving one needs a store open beside the terminal.
+     */
+    refs?: boolean;
+    /**
+     * The messages whose caller is worth naming — `log.callSite`.
+     *
+     * Each entry is a regular expression source, so a substring (`unauthorized`, `adapter.ready`)
+     * is written as one and `['']` names the caller of every record. A list rather than a switch,
+     * because the interesting line is usually one particular message: a record whose text matches
+     * none of the patterns is emitted exactly as it was, with no stack captured for it. A call in
+     * pino's printf shape is always named, whatever this says — the repository writes no such
+     * call, so one arriving is a dependency's.
+     */
+    callSite?: string | string[];
     /** The service name carried on every record; the framework's own by default. */
     service?: string;
     /**
@@ -139,6 +156,8 @@ export default class SemanticLog extends Internal implements ILog {
             level: thresholdOf(merged.level),
             format: merged.format,
             color: merged.color,
+            refs: merged.refs,
+            callSite: merged.callSite,
             cache: merged.cache,
             // Only the printing switch is the base's business; `enabled`/`off` are
             // the gate's, and are read where a flow is minted.
@@ -150,9 +169,10 @@ export default class SemanticLog extends Internal implements ILog {
             openCluster: async () =>
                 (await import('@feasibleone/semantic-log/service')).openCluster,
             // The framework's envelope, on the record and on the call site's own
-            // arguments: `{$meta: {mtid, method}}` is what its readers match on.
+            // arguments: `{$meta: {mtid, method}}` is what its readers match on — and the
+            // caller's frame, when the log configuration asks for it.
             envelope: ({leg, phase}) => callRecord(leg, phase),
-            translate: args => toLogCall(args),
+            translate: args => toLogCall(args, {callSite: merged.callSite}),
         });
     }
 

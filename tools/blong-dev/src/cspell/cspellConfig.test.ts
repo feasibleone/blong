@@ -53,6 +53,11 @@ function fixture(text: string): {file: string; dispose: () => void} {
 test('isCspellSection knows the maintained sections', t => {
     t.equal(isCspellSection('words'), true, 'words');
     t.equal(isCspellSection('ignorePaths'), true, 'ignorePaths');
+    t.equal(
+        isCspellSection('ignoreRegExpList'),
+        true,
+        'ignoreRegExpList is a list whose order does not matter either, and a hand edit misplaces it',
+    );
     t.equal(isCspellSection('flagWords'), false, 'flagWords is not maintained');
     t.end();
 });

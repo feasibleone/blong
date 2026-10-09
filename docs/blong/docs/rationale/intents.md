@@ -57,21 +57,26 @@ flowchart TD
     H --> I
 ```
 
-### Well-Known Intents and Their Process Behaviour
+### Well-Known Intents and What They Are For
 
-| Intent                 | Primary effect                                                                                                                                       | Process lifetime                                             |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `dev`                  | Resolution on, `systemDebug` exposes `/api/sys/*`, gateway debug and development keys, verbose log cache and cluster transport                       | Long-running                                                 |
-| `prod`                 | Production endpoints, strict config                                                                                                                  | Long-running                                                 |
-| `integration`          | Enables test layer and watch/test mode                                                                                                               | Long-running; reruns tests on change; exits when `CI` is set |
-| `microservice`         | Activates layers needed for standalone realm deployment                                                                                              | Long-running                                                 |
-| `db`                   | Database creation / seeding                                                                                                                          | **Short-lived** — exits after completion                     |
-| `cli`                  | Serves nothing: gateway, RPC server, API gateway, rest-fs, system debug and MCP are all off, watching is off, and every dispatch resolves in-process | **Short-lived** — exits after its work                       |
-| `playwright`           | Marker: the Playwright runner owns the process lifetime, so the platform must outlive the test command                                               | Long-running until the runner stops it                       |
-| `debug`                | Nothing on its own — the framework has no `debug` block; `/api/sys/*` comes from `dev` and stack traces from the gateway's `debug` flag              | No effect on lifetime                                        |
-| `server` _(implicit)_  | Always present on the server platform                                                                                                                | —                                                            |
-| `browser` _(implicit)_ | Always present on the browser platform                                                                                                               | —                                                            |
-| `ci` _(implicit)_      | Appended whenever the process runs on CI: colours off, Allure reporting on                                                                           | —                                                            |
+The rows say what each intent is _for_, which is the decision a suite makes; the config keys, layers
+and listeners it carries are the reference list in the `.github/skills/blong-intent/SKILL.md`, and
+they change more often than the reason for the intent does.
+
+| Intent                 | Purpose                                                        | Process lifetime                                             |
+| ---------------------- | -------------------------------------------------------------- | ------------------------------------------------------------ |
+| `dev`                  | develop: a developer's defaults for a run somebody is watching | Long-running                                                 |
+| `microservice`         | run the realm: the layers that make it work                    | Long-running                                                 |
+| `integration`          | test it: the layers a test needs, plus watch/test mode         | Long-running; reruns tests on change; exits when `CI` is set |
+| `release`              | be deployed: the one block uat, staging and production share   | Long-running                                                 |
+| `k8s`                  | plan a suite: write its deployment tree instead of serving     | **Short-lived** — exits after its work                       |
+| `upgrade`              | bring a database up to date: schema sync plus production seeds | **Short-lived** — exits when done                            |
+| `cli`                  | answer a command: serve nothing, dispatch in-process           | **Short-lived** — exits after its work                       |
+| `playwright`           | hand the lifetime to the runner                                | Long-running until the runner stops it                       |
+| `debug`                | ask for detail, where the environment can give it              | No effect on lifetime                                        |
+| `server` _(implicit)_  | injected by the server platform                                | —                                                            |
+| `browser` _(implicit)_ | injected by the browser platform                               | —                                                            |
+| `ci` _(implicit)_      | injected whenever the process runs on CI                       | —                                                            |
 
 ### The `microservice` Intent
 
@@ -128,11 +133,12 @@ are reserved first positionals of their own.
 
 ### Exclusion Groups
 
-Exclusion groups were designed to reject incompatible combinations, for example `dev` with `prod`,
-or `integration` with `prod`. **They are not implemented**: nothing reads an
-`intentsExclusionGroups` declaration and the framework warns about no combination. Passing two
-incompatible intents merges both configuration blocks in the order given, which means the later one
-silently wins where they overlap — a combination to avoid rather than one to rely on being caught.
+Exclusion groups reject incompatible combinations, for example `dev` with `release`, or
+`integration` with `release`. A suite declares them in its own `server()` definition as
+`intentsExclusionGroups`, and the loader tests the active intents against every group before it
+merges a single source — which is what makes a refusal cost one message and nothing else, and what
+keeps the check honest about its own limits: a group no entry declares is not checked, and those two
+intents still merge both blocks in the order given, the later one winning where they overlap.
 
 ### Platform Intents
 

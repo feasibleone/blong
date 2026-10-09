@@ -184,9 +184,9 @@ re-login in the middle of a run for no reason the author can see.
 The `dev` intent therefore supplies a static pair from `core/blong-gogo/src/devKeys.ts` (`ES384` to
 sign, `ECDH-ES+A256KW` to encrypt). The keys are committed and deliberately not secret; their job is
 that two processes started from the same checkout agree, so a session survives a restart and a token
-minted by `blong grant` is a token the running gateway accepts. A deployment replaces them with
-`GATEWAY_SIGN_KEY` / `GATEWAY_ENCRYPT_KEY`, or by configuring `sign` / `encrypt` in the gateway's
-config, and the module is never consulted when either is set.
+minted by `blong grant` is a token the running gateway accepts. A deployment replaces them by
+configuring `gateway.sign` / `gateway.encrypt` — an rc file is the usual channel — and the module is
+never consulted when either is set.
 
 Nothing in a suite's `server.ts` needs to mention keys: this is why a Playwright session survives a
 hot reload without anyone configuring anything.

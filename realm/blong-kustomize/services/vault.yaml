@@ -1,0 +1,8 @@
+# vault — the secret store a vault adapter points at (Phase 15 I).
+#
+# No claim: the integration matrix runs the dev server, whose storage is a file *inside* the container
+# and whose whole point is to be throwaway. A deployment that keeps secrets in it overrides `storage`.
+name: vault
+kinds: [vault]
+image: hashicorp/vault:1.16
+port: {name: vault, port: 8200}

@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-operator
+    app.kubernetes.io/part-of: blong-operator
+    app.kubernetes.io/version: 0.1.0
+    blong.feasible.one/spec-hash: acdfe2e9caec044f
+  name: blong-operator-test
+  namespace: blong-system
+spec:
+  rules:
+    - host: blong-operator.test
+      http:
+        paths:
+          - backend:
+              service:
+                name: blong-operator
+                port:
+                  number: 8080
+            path: /
+            pathType: Prefix

@@ -5,7 +5,8 @@ coding agents through the same binary. It exists because the loop around the fra
 small jobs that each used to be a paragraph of shell in someone's notes: query the development
 database, read back a log from a run that has finished, open a Playwright trace, put plain JSON in
 front of an encrypted gateway, run the tests, turn their output into the one report CI consumes,
-check the generated documentation, keep the dictionary sorted and keep the memory files.
+check the generated documentation, keep the dictionary sorted, keep the vocabulary in order and keep
+the memory files.
 
 ```bash
 node tools/blong-dev/bin/blong-dev.ts <command> [args]
@@ -30,6 +31,7 @@ own configuration (`.blong_devrc`, `rush.json`, `cspell.config.yaml`, the memory
 | `log [ulid]`        | Log lines that only existed live, in a terminal that has been closed.                         |
 | `sql [query]`       | Reaching into a pod with a MySQL client to look at development data.                          |
 | `cspell <verb>`     | A word list that has to be sorted by hand, and the insertion point that goes with it.         |
+| `glossary <verb>`   | A vocabulary that drifts out of order, or a link that points at a page that moved.            |
 | `memory <verb>`     | Agents hand-editing the memory format, and forgetting its index and wrapping.                 |
 | `docs <verb>`       | Refreshing a generated diagram or screenshot and proving it is not stale.                     |
 
@@ -73,6 +75,25 @@ has already drifted and drops an exact duplicate; `check` reports one that is no
 non-zero, which is the gate for a hand edit. Everything else in the file — comments, blank lines,
 the keys around the lists — is left byte for byte as it was, and a run that changes nothing does not
 write the file at all.
+
+## The glossary
+
+```bash
+blong-dev glossary add adapter --definition "A component that exposes an external system as a high-level handler API and hides the protocol it speaks. See [adapter](./adapter.md)."
+blong-dev glossary list
+blong-dev glossary show adapter
+blong-dev glossary check                             # non-zero on an unsorted entry or a dead link
+```
+
+The [glossary](../concepts/glossary.md) is the repository's vocabulary: one term, one sentence, one
+link to the page that explains it. A hand edit gets two things wrong — where the term belongs in an
+alphabetical list, and how long a "short" definition may grow — so `glossary` owns both. `add`
+inserts the term in sorted position and wraps the sentence to the repository width, replacing the
+definition when the term is already present; `list` and `show` read it back, with `--json` for a
+caller. `check` is the gate: it fails on a repeated or unsorted term, a definition over forty words,
+a paragraph inside the managed region that is not an entry, a missing marker pair, or a link that
+points at a file which does not exist. The region it owns is delimited by `<!-- BEGIN GLOSSARY -->`
+and `<!-- END GLOSSARY -->`, so the intro above it is never touched.
 
 ## The proxy: curl cannot speak MLE
 
@@ -175,4 +196,5 @@ incantation becomes a command, so it can be tested and documented.
 - [The log](log.md) and [the log viewer](semantic-log.md) — what `log` reads.
 - [Playwright](playwright.md) — the suite `playwright` runs and `trace` explains.
 - [Memory](memory.md) — the format `memory` writes.
+- [Glossary](../concepts/glossary.md) — the vocabulary `glossary` maintains.
 - [Integration tests in CI](test-int.md) — what `report` and `ci-report` produce.

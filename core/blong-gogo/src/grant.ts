@@ -16,7 +16,8 @@
  * - **One capability per token** (or a few, in `cap`), so granting one thing
  *   never implies another.
  * - **Signed with the gateway's own key** — the one it can verify with and a
- *   client cannot mint with. A deployment sets `GATEWAY_SIGN_KEY`; a checkout
+ *   client cannot mint with. A deployment supplies its own as configuration —
+ *   its rc file names `gateway.sign`; a checkout
  *   uses the committed development key, which is what makes the command work
  *   locally with no setup.
  *
@@ -76,8 +77,8 @@ function resolveKey(key: GrantKey | undefined): JWK | undefined {
     }
     if ('generate' in key) {
         // A generated key exists only in the process that made it: a gateway whose
-        // keys were generated (no `GATEWAY_SIGN_KEY`, no configured key) verifies no
-        // grant at all, and in particular does not fall back to the committed
+        // keys were generated — nothing configured one — verifies no grant at
+        // all, and in particular does not fall back to the committed
         // development key and start accepting tokens anybody could mint.
         return undefined;
     }
@@ -122,7 +123,7 @@ export async function mintGrant({
 }): Promise<string> {
     const jwk = resolveKey(key);
     if (!jwk) {
-        throw new Error('No grant key is configured (set GATEWAY_SIGN_KEY or pass --key)');
+        throw new Error('No grant key is configured (set gateway.sign or pass --key)');
     }
     if (jwk.d === undefined) {
         throw new Error('The grant key has no private half, so no grant can be minted with it');
@@ -262,9 +263,9 @@ export async function runGrantCommand(
 /**
  * Read `--key`: either an env var name holding the JWK, or the JWK itself.
  *
- * The name is the form a deployment uses (`--key=GATEWAY_SIGN_KEY`, beside the
- * variable the gateway reads), and the literal is the form an operator uses when
- * the key is not in the environment they are minting from.
+ * The name is the form a deployment uses (`--key=SIGN_KEY_JWK`, naming the
+ * environment variable that holds it), and the literal is the form an operator
+ * uses when the key is not in the environment they are minting from.
  */
 function parseKeyFlag(value: string): GrantKey {
     const text = value.trim();

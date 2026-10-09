@@ -12,14 +12,21 @@
  * source of truth — the index is derived and disposable — so an unreachable
  * server costs a warning and nothing else, and `index --semantic` rebuilds.
  *
+ * Ids are allocated per file, so a bare id can name an entry in the repository root
+ * and a different one in a package. A bare id held by several files resolves to the
+ * package the command is run from; anywhere else it is refused with the list of
+ * files that hold it, and qualifying the id (`id@<scope>`, a project folder or
+ * `root`) names one of them. See `memoryResolve.ts` for why the root scope is not a
+ * fallback.
+ *
  * Usage:
  *   blong-dev memory add <friction|todo|decision> --title <title> [--area <area>]
  *                        [--body <text> | --body-file <file>] [--status <status>] [--id <id>]
  *   blong-dev memory list [--kind <kind>] [--area <area>] [--status <status>] [--search <text>] [--json]
- *   blong-dev memory show <id> [--json]
- *   blong-dev memory close <id> [--note <text>] [--keep] [--by <id>] [--reason <text>]
- *   blong-dev memory reopen <id>
- *   blong-dev memory move <id> --area <area>
+ *   blong-dev memory show <id|id@scope> [--json]
+ *   blong-dev memory close <id|id@scope> [--note <text>] [--keep] [--by <id>] [--reason <text>]
+ *   blong-dev memory reopen <id|id@scope>
+ *   blong-dev memory move <id|id@scope> --area <area>
  *   blong-dev memory index [--check] [--files a.md,b.md] [--semantic] [--dry-run]
  *                        [--sources entry,docs,skill] [--stats] [--prune]
  *   blong-dev memory search <query> [--source entry|docs|skill] [--kind <kind>] [--area <area>]
@@ -29,7 +36,7 @@
  *   blong-dev memory manual <list|add <text>|done <n|text>>
  *   blong-dev memory audit [--json]
  *   blong-dev memory migrate <file> --kind <kind> [--drop <file>] [--apply]
- *   blong-dev memory prune <id,id> --reason "<why>"
+ *   blong-dev memory prune <id|id@scope,id|id@scope> --reason "<why>"
  */
 
 import {execFileSync} from 'node:child_process';
@@ -103,6 +110,7 @@ import {
     scopeOf,
     type IMemoryFileRef,
 } from '../memory/memoryPaths.ts';
+import {parseId, resolveId, scopeForCwd, type IIdHit} from '../memory/memoryResolve.ts';
 import {
     DEFAULT_STATUS,
     ENTRY_HEADING,
@@ -122,10 +130,10 @@ import {parseArgs} from './log.ts';
 const USAGE = [
     'blong-dev memory add <friction|todo|decision> --title <title> [--area <area>] [--body <text>]',
     'blong-dev memory list [--kind <kind>] [--area <area>] [--status <status>] [--search <text>] [--json]',
-    'blong-dev memory show <id> [--json]',
-    'blong-dev memory edit <id> [--title <title>] [--body <text>|--body-file <file>] [--status <status>]',
-    'blong-dev memory close <id> [--note <text>] [--keep] [--by <id>] [--reason <text>]',
-    'blong-dev memory reopen <id>',
+    'blong-dev memory show <id|id@scope> [--json]',
+    'blong-dev memory edit <id|id@scope> [--title <title>] [--body <text>|--body-file <file>] [--status <status>]',
+    'blong-dev memory close <id|id@scope> [--note <text>] [--keep] [--by <id>] [--reason <text>]',
+    'blong-dev memory reopen <id|id@scope>',
     'blong-dev memory move <id> --area <area>',
     'blong-dev memory index|format|check [--files a.md,b.md]',
     'blong-dev memory index --semantic [--sources entry,docs,skill] [--dry-run] [--stats] [--prune]',
@@ -232,15 +240,63 @@ function docsOf(root: string, options: Options): IMemoryDoc[] {
     return references.map(file => readDoc(file.path, file.kind, file.scope));
 }
 
-/** Find an entry by id across every memory file. */
-function findEntry(root: string, id: string): {doc: IMemoryDoc; entry: IMemoryEntry} | null {
-    const wanted = id.toUpperCase();
+/** An id's place, with the document it was read from. */
+interface IEntryHit extends IIdHit {
+    doc: IMemoryDoc;
+}
+
+/** Every place an id is written, in search order (root scope first). */
+function entriesWithId(root: string, wanted: string): IEntryHit[] {
+    const hits: IEntryHit[] = [];
     for (const file of listMemoryFiles(root)) {
         const doc = readDoc(file.path, file.kind, file.scope);
-        const entry = parseDoc(doc.lines).entries.find(candidate => candidate.id === wanted);
-        if (entry) return {doc, entry};
+        for (const entry of parseDoc(doc.lines).entries) {
+            if (entry.id === wanted) hits.push({file, entry, doc});
+        }
     }
-    return null;
+    return hits;
+}
+
+/** One line of an ambiguity report: the file that holds the id and the entry's title. */
+function describeHit(root: string, hit: IIdHit): string {
+    return `${relative(root, hit.file.path)} — ${hit.entry.title}`;
+}
+
+/**
+ * Find an entry by id across every memory file, refusing an ambiguous answer.
+ *
+ * A bare id can be held by several files, because the counter runs per file. The
+ * package the command is run from wins; anything else is refused with the list of
+ * files that hold the id, so the caller qualifies it (`<id>@<scope>`) instead of an
+ * edit landing on whichever file came first.
+ */
+function findEntry(root: string, id: string): {doc: IMemoryDoc; entry: IMemoryEntry} | null {
+    const parsed = parseId(id);
+    const resolution = resolveId(
+        parsed,
+        entriesWithId(root, parsed.id),
+        scopeForCwd(process.cwd(), root, ['root', ...packageAreas(root)]),
+    );
+    if (resolution.how === 'missing') return null;
+    if (resolution.how === 'scope-miss') {
+        const where =
+            resolution.hits.length === 0
+                ? 'no file holds it'
+                : `it is in ${resolution.hits
+                      .map(hit => `${hit.file.scope} (${relative(root, hit.file.path)})`)
+                      .join(', ')}`;
+        fail(`no entry with id ${parsed.id} in scope ${resolution.scope} — ${where}`);
+    }
+    if (resolution.how === 'ambiguous') {
+        fail(
+            `${id} names ${resolution.hits.length} entries — qualify it with the scope: ` +
+                resolution.hits
+                    .map(hit => `${parsed.id}@${hit.file.scope} (${describeHit(root, hit)})`)
+                    .join(', '),
+        );
+    }
+    const hit = resolution.hit as IEntryHit;
+    return {doc: hit.doc, entry: hit.entry};
 }
 
 /** Replace the status of an entry and move it to the matching section. */
@@ -1424,13 +1480,21 @@ async function prune(
 function audit(root: string, options: Options, flags: Set<string>): void {
     const docs = docsOf(root, options);
     const entries = docs.flatMap(doc => parseDoc(doc.lines).entries.map(entry => ({doc, entry})));
-    const known = new Set(
-        listMemoryFiles(root).flatMap(file =>
-            parseDoc(readDoc(file.path, file.kind, file.scope).lines).entries.map(
-                entry => entry.id,
-            ),
-        ),
-    );
+    // Ids are per file, so the same id in two files is an id a reference cannot
+    // resolve — reported alongside the missing ones, because that is what it is from
+    // a reader's point of view. A file that holds the id twice is one file, not two.
+    const holders = new Map<string, Set<string>>();
+    for (const file of listMemoryFiles(root)) {
+        for (const entry of parseDoc(readDoc(file.path, file.kind, file.scope).lines).entries) {
+            const seen = holders.get(entry.id) ?? new Set<string>();
+            seen.add(relative(root, file.path));
+            holders.set(entry.id, seen);
+        }
+    }
+    const known = new Set(holders.keys());
+    const ambiguous = Array.from(holders.entries())
+        .filter(([, files]) => files.size > 1)
+        .map(([id, files]) => ({id, files: [...files]}));
 
     const dangling: Array<{file: string; line: number; id: string}> = [];
     for (const doc of docs) {
@@ -1454,11 +1518,18 @@ function audit(root: string, options: Options, flags: Set<string>): void {
         .map(({entry}) => ({id: entry.id, date: entry.meta!.date, title: entry.title}));
 
     if (flags.has('json')) {
-        process.stdout.write(`${JSON.stringify({dangling, duplicates, stale}, null, 2)}\n`);
+        process.stdout.write(
+            `${JSON.stringify({dangling, ambiguous, duplicates, stale}, null, 2)}\n`,
+        );
         return;
     }
     for (const item of dangling) {
         process.stdout.write(`# ${item.file}:${item.line} references missing ${item.id}\n`);
+    }
+    for (const item of ambiguous) {
+        process.stdout.write(
+            `# ${item.id} is held by ${item.files.length} files — ${item.files.join(', ')}\n`,
+        );
     }
     for (const [title, ids] of duplicates) {
         process.stdout.write(`# duplicate title "${title}" — ${ids.join(', ')}\n`);
@@ -1469,8 +1540,8 @@ function audit(root: string, options: Options, flags: Set<string>): void {
         );
     }
     process.stdout.write(
-        `# memory audit: ${dangling.length} dangling reference(s), ${duplicates.length} duplicate title(s), ` +
-            `${stale.length} open older than 90 days\n`,
+        `# memory audit: ${dangling.length} dangling reference(s), ${ambiguous.length} ambiguous id(s), ` +
+            `${duplicates.length} duplicate title(s), ${stale.length} open older than 90 days\n`,
     );
 }
 

@@ -45,18 +45,61 @@ Intents flow through the entire framework:
 
 ## Well-Known Intents Reference
 
-| Intent                 | Layer / config activated                                                                                                                         | Process lifetime                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
-| `dev`                  | Verbose logs, hot-reload, debug-friendly config, **loads `.dev`-suffixed handler groups** (e.g. `gateway/vision.dev/`)                           | Long-running; restarts on file changes                       |
-| `prod`                 | Production endpoints, strict config                                                                                                              | Long-running; no restart                                     |
-| `integration`          | Test layer, watch mode, test-runner                                                                                                              | Long-running; reruns tests on change; exits when `CI` is set |
-| `microservice`         | Activates layers needed to run a realm as a standalone microservice                                                                              | Long-running; no restart                                     |
-| `db`                   | DB creation / seeding adapters                                                                                                                   | **Short-lived** — exits after completion                     |
-| `cli`                  | Serves nothing: gateway, RPC server, API gateway, rest-fs, system debug and MCP are all off, watching is off, every dispatch resolves in-process | **Short-lived** — exits after its work                       |
-| `playwright`           | Marker: the Playwright runner owns the process lifetime                                                                                          | Long-running until the runner stops it                       |
-| `debug`                | `/api/sys/*` endpoints, stack traces in errors                                                                                                   | No effect on lifetime                                        |
-| `server` _(implicit)_  | Always injected on server platform                                                                                                               | —                                                            |
-| `browser` _(implicit)_ | Always injected on browser platform                                                                                                              | —                                                            |
+This is the reference for what each intent carries, and the place to edit when a block changes: the
+concept page and the rationale keep a one-line purpose per intent and point here, so a reader can
+tell them apart without duplicating a list that moves.
+
+- **`dev`** — a watched run's defaults:
+    - `resolution` on,
+    - `systemDebug` exposing `/api/sys/*`
+    - gateway `debug`
+    - `expectedErrors`
+    - the generated development sign/encrypt keys
+    - error causes stack traces in replies,
+    - verbose log cache and cluster transport
+    - `.dev`-suffixed handler groups
+    - _Long-running; restarts on file changes_
+- **`release`** — the one block uat, staging and production share:
+    - the log service is off, so no `semlog://` reference reaches stdout
+    - service ids resolve through the cluster
+    - call into a namespace this process serves stays in-process
+    - It names **no layers** — a deployed process is activated by the `--<realm>.<layer>` flags its
+      plan wrote
+    - _long-running_
+- **`integration`** — the layers a test needs (`sim`, `server/test`, the browser test layers), the
+  realms under test:
+    - watch/test mode over the groups an entry lists in `integration.watch.test`
+    - in-process dispatch
+    - `exit: isCI()`
+    - _long-running; reruns tests on change; exits when `CI` is set_
+- **`microservice`** — the layers that make a realm _work_: `error`, `adapter`, `orchestrator`,
+  `gateway`, `server/api` when running a realm on its own:
+    - **not a deployment intent**
+    - _long-running_
+- **`upgrade`** — schema sync plus production seeds through the owning adapter (`schema.sync` /
+  `schema.seed`), with the layers those records belong to:
+    - _short-lived — exits after completion_
+- **`cli`** — tooling, serves nothing:
+    - `gateway`, `rpcServer`, `apiGateway`, `restFs`, `systemDebug`, `mcp` and `resolution` are off,
+    - watching is off
+    - every dispatch resolves in-process,
+    - logging is quietened to `warn`
+    - the cluster service off so stdout carries the result
+    - _short-lived — exits after its work_
+- **`k8s`** — the same shape as `cli`:
+    - the generator in place of the command: the realms the suite declares are introspected,
+    - `blong-kustomize` writes `system/kustomize/`
+    - _short-lived — exits after its work_
+- **`playwright`** — a marker: the Playwright runner owns the process lifetime, so the platform
+  outlives the test command:
+    - _long-running until the runner stops it_
+- **`debug`** — flags that enable debugging in **`release`** (TODO):
+    - _no effect on lifetime_
+- **`server`**, **`browser`**, **`ci`** _(implicit)_ — injected by the platform: `server` or
+  `browser` for the platform in use, and `ci` whenever the process runs on CI:
+    - colours off
+    - Allure results written and the report generated
+    - _no effect on lifetime_
 
 > **Default intents:** When no intents are provided, the framework uses
 > `dev + microservice + integration`. This default is designed to give developers an immediate
@@ -81,7 +124,7 @@ Document in the realm's README and in a comment in the activation block:
 
 | Behaviour                      | When to use                                                                         |
 | ------------------------------ | ----------------------------------------------------------------------------------- |
-| Process exits after completion | One-shot operations: `db`, `cli`, `seed`, `export`, `k8s`                           |
+| Process exits after completion | One-shot operations: `upgrade`, `cli`, `seed`, `export`, `k8s`                      |
 | Process keeps running          | Servers, watchers, test runners: `dev`, `integration`, `microservice`, `playwright` |
 | Process behaviour unchanged    | Feature flags: `debug`, `verbose`                                                   |
 
@@ -140,31 +183,35 @@ export default realm(blong => ({
 
 ## Exclusion Groups
 
-When two intents should not be used together, declare an exclusion group in `server.ts`:
+Two intents that must not be used together are declared as an exclusion group in `server.ts`, and
+the loader refuses the combination before it merges a single source: a group allows at most one of
+its members to be active.
 
 ```typescript
-export default server(blong => ({
+import {server} from '@feasibleone/blong';
+
+export default server(() => ({
     url: import.meta.url,
     intentsExclusionGroups: [
-        ['dev', 'prod'], // must not combine
+        ['dev', 'release'], // must not combine
         ['migrate', 'seed'], // run one at a time
     ],
 }));
 ```
 
-The framework will log a warning if incompatible intents are detected at startup.
-
-Default exclusion groups (no declaration needed):
-
-- `['dev', 'prod']`
-- `['server', 'browser']` (implicit — one process is one platform)
+The message names both intents, so the command line is the answer. Nothing else is checked: an
+intent pair no suite declares merges both blocks in the order given, the later one winning where
+they overlap. A generated command line is a separate matter — the kustomize realm's
+`deploymentIntents` (`realm/blong-kustomize/generator.ts`) _normalises_ a CR's intents rather than
+checking them, so a deployment never carries a developer's intent in the first place.
 
 ---
 
-## Example: the `k8s` Intent (Planned)
+## Example: the `k8s` Intent
 
-The `k8s` intent will instruct the framework to generate Kubernetes deployment manifests instead of
-(or in addition to) starting the server. Implementation pattern:
+The `k8s` intent instructs the framework to generate Kubernetes deployment manifests instead of
+starting the server. It is implemented: `realm/blong-kustomize` owns the intent block and the
+generator, and the `blong-kustomize` skill covers the pipeline. The pattern is shown below.
 
 ```typescript
 // gateway/layer.server.ts — suppress gateway when generating k8s manifests
@@ -238,6 +285,31 @@ export default async load => {
 The `intents` array is also automatically populated from the CLI arguments — the fourth parameter to
 `load()` overrides the CLI-provided intents for that particular platform. Use this to have different
 intents per platform.
+
+---
+
+## A CLI declares its own layers
+
+`cli` appears in no entry of `WELL_KNOWN_LAYERS`, so it activates nothing by itself: a package that
+ships a command names the layer folders the command runs with, in the `cli` block of the realm whose
+handlers it dispatches.
+
+```typescript
+// the realm's own server.ts — the realm says what its command needs (D-436)
+export default realm(() => ({
+    url: import.meta.url,
+    config: {
+        cli: {error: {}, adapter: {}, orchestrator: {}},
+    },
+}));
+```
+
+The value per folder is the folder's config for that intent, so `{}` is the ordinary "on, with no
+opinion of my own". A folder a command has no use for is left out rather than declared: compare what
+the realm actually serves through (`blong-kustomize` names no `gateway`, because no command answers
+HTTP) and remember that a command that delegates its real work to a child process — a tree generator
+re-running the framework with `k8s` — names only what _its own_ process loads. `CliOptions.intents`
+stays what it was: the intents every realm CLI runs under, defaulting to `['cli']`.
 
 ---
 

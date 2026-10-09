@@ -755,7 +755,15 @@ export class TestExecutor extends EventEmitter {
             const stepAssert = hasSnapshotTarget
                 ? new Proxy(assert, {
                       get(target, prop) {
-                          if (prop === 'matchSnapshot') return stepTestContext?.matchSnapshot;
+                          if (prop === 'matchSnapshot') {
+                              // Bound to the test context it came from: tap's matcher reads its own
+                              // state, so handing it out as a bare reference makes the caller invoke
+                              // it with the assert object as `this`, and it fails reading a private
+                              // field rather than reporting anything about the snapshot (T-205).
+                              return stepTestContext?.matchSnapshot
+                                  ? stepTestContext.matchSnapshot.bind(stepTestContext)
+                                  : undefined;
+                          }
                           if (prop === 'snapshot')
                               return (
                                   valueOrOpts?: unknown,
@@ -956,9 +964,7 @@ export class TestExecutor extends EventEmitter {
             : undefined;
         if (scope) {
             await this.queue.add(() =>
-                this.runInScope(scope, stepName, stepTestContext =>
-                    executeStepFn(stepTestContext),
-                ),
+                this.runInScope(scope, stepName, stepTestContext => executeStepFn(stepTestContext)),
             );
         } else {
             // No test context, or a nested step whose scope cannot nest one
@@ -1197,8 +1203,8 @@ export class TestExecutor extends EventEmitter {
 }
 
 // Export all types
-export type * from './test-types.js';
 export {progressTree, reportProgress} from './progress.ts';
+export type * from './test-types.js';
 
 /**
  * Whether a progress list still holds what it held, entry for entry and by identity.

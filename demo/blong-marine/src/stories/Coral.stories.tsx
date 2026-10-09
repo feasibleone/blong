@@ -8,8 +8,8 @@
  *   - `layout`   — editor layout variant: 'edit' (default) | 'editSplit' | 'editThumbIndex'
  *   - `value`    — initial form value, e.g. `{coral: {coralType: 'hard'}}` to pre-select type
  */
-import type {Meta, StoryObj} from '@storybook/react-vite';
 import {page} from '@feasibleone/blong-browser/storyHelper';
+import type {Meta, StoryObj} from '@storybook/react-vite';
 
 const meta: Meta = {
     title: 'Marine/Coral',

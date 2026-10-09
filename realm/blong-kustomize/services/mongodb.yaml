@@ -1,0 +1,8 @@
+# mongodb — the document store a mongodb adapter points at (Phase 15 I).
+#
+# See `mysql.yaml` for what a descriptor is and where the objects live.
+name: mongodb
+kinds: [mongodb]
+image: mongo:6.0.5
+port: {name: mongodb, port: 27017}
+storage: {size: 5Gi, mountPath: /data/db, accessMode: ReadWriteOnce}

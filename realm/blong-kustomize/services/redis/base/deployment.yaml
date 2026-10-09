@@ -1,0 +1,52 @@
+# redis/base/deployment.yaml — the workload, adapted from `test/integration/redis-deployment.yaml`.
+#
+# Redis keeps nothing here: its descriptor declares no storage and no credentials, so the base mounts
+# no claim and reads no Secret. What is here is what the image decides — the port, the arguments (a
+# cache that survives a restart is a different service), and the two probes, which are an `exec`
+# rather than a socket because a listening Redis that answers no command is not one to route to.
+#
+# Placeholders are the generator's, and one it does not know is a failure rather than a literal:
+# `${namespace}`, `${image}`, `${claimName}`, `${initConfigName}`, `${credentialsSecret}`.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: redis
+    namespace: ${namespace}
+    labels:
+        app: redis
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: redis
+    template:
+        metadata:
+            labels:
+                app: redis
+        spec:
+            containers:
+                - name: redis
+                  image: ${image}
+                  ports:
+                      - containerPort: 6379
+                        name: redis
+                  args: ['redis-server', '--appendonly', 'no']
+                  resources:
+                      limits:
+                          cpu: '0.5'
+                          memory: 256Mi
+                      requests:
+                          cpu: '0.25'
+                          memory: 128Mi
+                  readinessProbe:
+                      exec:
+                          command: ['redis-cli', 'ping']
+                      initialDelaySeconds: 5
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                  livenessProbe:
+                      exec:
+                          command: ['redis-cli', 'ping']
+                      initialDelaySeconds: 15
+                      periodSeconds: 15
+                      timeoutSeconds: 5

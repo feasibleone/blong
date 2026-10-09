@@ -1,0 +1,36 @@
+apiVersion: blong.feasible.one/v1alpha1
+kind: BlongDeployment
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-suite
+    app.kubernetes.io/part-of: blong-suite
+    app.kubernetes.io/version: 1.13.0
+    blong.feasible.one/spec-hash: f66f015d20d2f641
+  name: blong-suite
+  namespace: blong-suite
+spec:
+  entry: /opt/deploy/suite/suite/blong-suite/index.ts
+  externalServices:
+    db:
+      externalName: mysql.blong-integration.svc.cluster.local
+      ports:
+        - name: mysql
+          port: 3306
+  frameworkImage: docker.io/library/blong-gogo
+  minFrameworkVersion: "1"
+  portal:
+    web:
+      host: blong-suite.test
+      realm: core
+  profile: realm
+  services:
+    mysql: false
+  suiteVolume:
+    artifact:
+      source: url
+      url: http://blong-artifact.default.svc.cluster.local/suite.zip
+    attemptRetention: 5
+    backend: nodeLocal
+    retention: 3
+  version: 1.13.0

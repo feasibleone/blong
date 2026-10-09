@@ -1,6 +1,20 @@
 import {library} from '@feasibleone/blong';
 import {SignJWT, calculateJwkThumbprint, createLocalJWKSet, importJWK, type JWK} from 'jose';
 
+/** The private members of a JWK: RSA's primes, EC's scalar, an octet key and its other primes. */
+const PRIVATE_JWK_MEMBERS = ['d', 'p', 'q', 'dp', 'dq', 'qi', 'k', 'oth'];
+
+/**
+ * The public half of a JWK: what a client verifies the server with and encrypts to, and all it may
+ * have. The value published here is `gateway.public`, which `mle.ts` fills with `mle.keys` — public
+ * JWKs today — but that is a property of one producer rather than of this endpoint, and the private
+ * signing key behind this deployment mints the tokens the gateway verifies, so a `d` in this answer
+ * would hand the deployment to every caller who can log in (T-274). The same mapping the keystore
+ * below applies to its own keys, applied where the pair is published.
+ */
+const publicJwk = (jwk: object): object =>
+    Object.fromEntries(Object.entries(jwk).filter(([name]) => !PRIVATE_JWK_MEMBERS.includes(name)));
+
 export default library<{
     keys: {
         access: JWK;
@@ -24,7 +38,10 @@ export default library<{
             keys: [access, id].filter(Boolean).map(({d, p, q, dp, dq, qi, ...pub}) => pub),
         };
         const keyStore = createLocalJWKSet(jwks);
-        const {public: keys} = gateway.config();
+        // A process that serves nothing has no gateway to ask for its public keys — the `k8s` intent
+        // loads this realm for the plan's sake and serves no route at all — and the values are simply
+        // absent there rather than fatal. A process that signs tokens runs with a gateway.
+        const {public: keys} = gateway?.config?.() ?? {public: {sign: {}, encrypt: {}}};
         return {
             async jwks(
                 header: Parameters<typeof keyStore>[0] = {},
@@ -54,8 +71,8 @@ export default library<{
                 refresh = expire.never || refresh;
                 const access = expire.never || (expire.access > refresh ? refresh : expire.access);
                 return {
-                    encrypt: keys.encrypt,
-                    sign: keys.sign,
+                    encrypt: publicJwk(keys.encrypt),
+                    sign: publicJwk(keys.sign),
                     token_type: 'Bearer',
                     scope: 'openid',
                     session_id: sessionId,

@@ -18,10 +18,15 @@
  *   blong-dev cspell check               [--section <name>] [--file <path>] [--json]
  *   blong-dev cspell list                [--section <name>] [--file <path>] [--json]
  *
- * `--section` names one of `words` (the default for `add` and `remove`) and
- * `ignorePaths`; both are maintained by `sort` and `check` unless `--section`
- * narrows it. `--file` points at a config other than the nearest one found by
- * walking up from the working directory.
+ * `--section` names one of `words` (the default for `add` and `remove`),
+ * `ignorePaths` and `ignoreRegExpList`; all three are maintained by `sort` and `check`
+ * unless `--section` narrows it. `--file` points at a config other than the nearest one
+ * found by walking up from the working directory.
+ *
+ * `ignoreRegExpList` is the section to reach for when a finding is a *class* rather than a
+ * word — a ULID inside a `semlog://` reference, say, whose fragments every later id
+ * re-spells differently — because a dictionary entry per fragment is a guess that the next
+ * id does not share.
  */
 
 import {existsSync} from 'node:fs';
@@ -50,6 +55,8 @@ const USAGE = [
     '  blong-dev cspell sort             [--check] [--section <name>] [--file <path>] [--json]',
     '  blong-dev cspell check            [--section <name>] [--file <path>] [--json]',
     '  blong-dev cspell list             [--section <name>] [--file <path>] [--json]',
+    '',
+    '  --section: words (default for add/remove), ignorePaths, ignoreRegExpList',
     `\nSections: ${CSPELL_SECTIONS.join(', ')}`,
     `Config: ${CSPELL_CONFIG_FILE}, found from the working directory unless --file names one\n`,
 ].join('\n');

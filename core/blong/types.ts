@@ -470,6 +470,12 @@ export interface IGateway {
      * implementations stay valid; consumers must tolerate `undefined`.
      */
     describe?: () => IGatewayRoute[];
+    /**
+     * The browser build this process serves, as configuration resolved it — the same kind of answer
+     * `describe` gives for routes, and optional for the same reason. A process that serves no build
+     * answers `undefined` (T-246).
+     */
+    staticRoot?: () => string | undefined;
 }
 
 /** A registered gateway route, described as data. */
@@ -531,6 +537,16 @@ export interface IRegistry {
      * implementations stay valid; consumers must tolerate `undefined`.
      */
     describe?: () => IRegistryDescription;
+    /**
+     * Hand the realms' own config over by reference, once every realm has been recorded.
+     *
+     * By reference rather than by value, and published rather than merged into the config: the root's
+     * config is merged *before* its children load, so a copy taken while it is built holds the root
+     * and nothing else — every realm then read as absent, and a planner quietly fell back to "a
+     * service of its own" for realms that had declared themselves companions (D-433). Optional so
+     * existing implementations stay valid; `load()` always calls it on the registry it built.
+     */
+    setRealmConfig?: (realmConfig: Record<string, unknown>) => void;
 }
 
 /** A handler group (folder) discovered on disk. */
@@ -572,6 +588,15 @@ export interface IRegistryDescription {
     files: IHandlerFileInfo[];
     /** `layer.*.ts` activation files discovered from disk. */
     layerFiles: IHandlerFileInfo[];
+    /**
+     * What each realm declares about itself, keyed by realm name.
+     *
+     * Recorded by the loader from the realm's own config (its `k8s` block, for example) so a planner
+     * reads a realm's `k8sRealmRole` where the realm wrote it, rather than inferring it from the ports
+     * the realm happens to own — `blong-core` and `blong-access` contribute handlers to the shared
+     * `srv.db` adapter and own no port under their own name (D-433).
+     */
+    realmConfig?: Record<string, unknown>;
 }
 
 type BlongType = typeof Type & {
@@ -992,7 +1017,7 @@ export interface IBaseConfig extends TObject<{
     additionalProperties: false;
 }
 export interface IActivationConfig<T> {
-    default: T;
+    default?: T;
     integration?: T;
     deployment?: T;
     microservice?: T;
@@ -1014,6 +1039,15 @@ export interface IModuleConfig<T extends TSchema = TNever> {
         version: string;
     };
     url: string;
+    /**
+     * Intents that must not run together, declared by the entry that owns them.
+     *
+     * A group allows at most one of its members to be active — `dev` with `release` is the case
+     * that motivated the field. Two members merge their configuration blocks in the order given, so
+     * the later one silently wins where they overlap and the process is neither the one nor the
+     * other; the loader refuses the combination before a single source is merged.
+     */
+    intentsExclusionGroups?: readonly (readonly string[])[];
     config?: IActivationConfig<Partial<Static<T>> & Partial<Static<IBaseConfig>>>;
     validation?: T;
     children?:
@@ -1433,8 +1467,8 @@ export interface IHandlerProxy<T> {
     utBus: {
         info: () => {encrypt: object; sign: object};
     };
-    gateway: {
-        config: () => {public: {sign: object; encrypt: object}};
+    gateway?: {
+        config?: () => {public: {sign: object; encrypt: object}};
     };
     apiSchema: IApiSchema;
 }

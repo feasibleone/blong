@@ -17,6 +17,30 @@ interface IRpcServerWithInfo {
     info(): object;
 }
 
+/** The members a JWK uses for private material — what must never reach an introspection answer. */
+const PRIVATE_JWK_MEMBERS = ['d', 'p', 'q', 'dp', 'dq', 'qi', 'k', 'oth'];
+
+/**
+ * The configuration snapshot with private key material removed.
+ *
+ * `/api/sys/config` exists to show what a process was configured with, and the gateway's pair is part
+ * of that — but the pair the loader resolves carries the private half, and a reader of this endpoint
+ * must not receive a key that mints the tokens the gateway verifies. Only values that *are* JWKs are
+ * touched: an object with `kty` loses its private members, and everything else, including a property
+ * merely named `d`, is served as it is. This endpoint is dev-intent only, and that guardrail stands
+ * on its own: `systemDebug` must never be enabled in production (D-448).
+ */
+export const publicConfigSnapshot = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(publicConfigSnapshot);
+    if (!value || typeof value !== 'object') return value;
+    const entries = Object.entries(value as Record<string, unknown>);
+    const isJwk = typeof (value as {kty?: unknown}).kty === 'string';
+    const kept = isJwk
+        ? entries.filter(([name]) => !PRIVATE_JWK_MEMBERS.includes(name))
+        : entries;
+    return Object.fromEntries(kept.map(([name, member]) => [name, publicConfigSnapshot(member)]));
+};
+
 // The api object is captured by reference so that configRuntime — which is set
 // on it after infra items are constructed (load.ts) — is visible at request time.
 interface IApiRef {
@@ -55,12 +79,15 @@ export default class SystemDebug extends Internal {
 
         const plugin = fp(
             async (server: FastifyInstance) => {
-                // GET /api/sys/config — effective runtime configuration snapshot
+                // GET /api/sys/config — effective runtime configuration snapshot, with the private
+                // halves of any key pair removed: the resolved pair is configuration, and a reader of
+                // this endpoint must not be handed a key that signs what the gateway verifies.
                 server.route({
                     method: 'GET',
                     url: `${prefix}/config`,
                     config: {auth: authConfig},
-                    handler: async () => apiRef.configRuntime?.rawSnapshot ?? {},
+                    handler: async () =>
+                        publicConfigSnapshot(apiRef.configRuntime?.rawSnapshot ?? {}),
                 });
 
                 // GET /api/sys/ports — registered adapter/orchestrator port definitions

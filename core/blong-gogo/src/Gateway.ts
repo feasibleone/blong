@@ -28,6 +28,7 @@ import {v4} from 'uuid';
 
 import {TRACE_HEADER, withoutCapabilities} from '@feasibleone/semantic-log/capability';
 import {CALLS_CAPABILITY, GRANT_HEADER} from './callTrace.ts';
+import {GENERATED_KEY_SPEC, GENERATED_PAIR_WARNING} from './gatewayKeys.ts';
 import {grantedCalls, grantKeyFrom} from './grant.ts';
 import {
     callsFor,
@@ -245,6 +246,21 @@ export default class Gateway extends Internal implements IGateway {
             };
         });
     }
+
+    /**
+     * The browser build this process was configured to serve, as the merge resolved it.
+     *
+     * `config()` is protected on purpose: that subtree carries the key pair (`sign`, `encrypt`), the
+     * exposure D-448 keeps shut. *Which* static root arrived is a different question, and one a test
+     * could not ask anywhere — the plugin's own behaviour is covered (`static.test.ts`: it serves a
+     * bundle and tolerates a missing one), while nothing could see that a process's own block reaches
+     * this port at all. That leg is what a suite's `release` block naming the artifact's browser build
+     * depends on, and its failure is silent: the plugin is registered only when the config is there,
+     * so `/s` answers nothing while every other surface works (T-246).
+     */
+    public staticRoot(): string | undefined {
+        return this.#config.static?.root;
+    }
     #errorFields: [string, unknown][] = [];
     #plugins: {plugin: unknown; options: unknown}[] = [];
     #platform: IPlatformApi;
@@ -275,16 +291,22 @@ export default class Gateway extends Internal implements IGateway {
         this.#platform = platform!;
 
         this.merge(this.#config, config);
-        this.#config.sign ||= (
-            process.env.GATEWAY_SIGN_KEY
-                ? {env: 'GATEWAY_SIGN_KEY'}
-                : {generate: {alg: 'ES384', crv: 'P-384', use: 'sig'}}
-        ) as IConfig['sign'];
-        this.#config.encrypt ||= (
-            process.env.GATEWAY_ENCRYPT_KEY
-                ? {env: 'GATEWAY_ENCRYPT_KEY'}
-                : {generate: {alg: 'ECDH-ES+A256KW', crv: 'P-384', use: 'enc'}}
-        ) as IConfig['encrypt'];
+        // A pair reaches this config as ordinary configuration — the deployment's rc file
+        // (`gateway.sign` / `gateway.encrypt` under the pod's home), the `dev` block's committed
+        // literals, or a `--gateway.sign=…` flag — and a process given none generates its own. That
+        // last case is worth a warning rather than silence: two replicas of one suite would then
+        // mint tokens the other cannot verify, and the symptom is a rejected session somewhere else,
+        // long after the cause. A deployment that mounts the file never sees this line (D-441).
+        const generated = !this.#config.sign || !this.#config.encrypt;
+        this.#config.sign ||= GENERATED_KEY_SPEC.sign as IConfig['sign'];
+        this.#config.encrypt ||= GENERATED_KEY_SPEC.encrypt as IConfig['encrypt'];
+        if (generated) {
+            // The loader resolves the pair for every process that serves a gateway
+            // (`resolveGatewayPair`), so a missing half here means a gateway built *without* one — a
+            // component constructed directly by a test. Kept as the last resort it always was, with
+            // the same descriptors and the same sentence the loader uses.
+            this.#log?.logger('warn', {name: 'gateway'})?.warn?.({}, GENERATED_PAIR_WARNING);
+        }
         this.#errorFields = Object.entries({
             type: true,
             message: true,

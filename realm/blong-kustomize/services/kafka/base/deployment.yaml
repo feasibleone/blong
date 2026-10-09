@@ -1,0 +1,80 @@
+# kafka/base/deployment.yaml — the workload, adapted from `test/integration/kafka-deployment.yaml`.
+#
+# The environment is the image's contract, not decoration: this broker is a single node combining the
+# broker and controller roles in KRaft mode, and the listeners are what make it reachable both from its
+# own namespace (`kafka:29092`, the Service the generator writes) and from a client that dials the
+# published port. `enableServiceLinks` is off because the injected variables for every Service in the
+# namespace collide with the `KAFKA_*` names this image reads.
+#
+# The internal port is a literal rather than a placeholder: it is what the image and its listeners
+# agree on, not something the plan decides. The descriptor records it in `values.internalPort` for a
+# reader, and the Service the generator publishes carries the advertised one.
+#
+# Placeholders are the generator's, and one it does not know is a failure rather than a literal:
+# `${namespace}`, `${image}`, `${claimName}`, `${initConfigName}`, `${credentialsSecret}`.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: kafka
+    namespace: ${namespace}
+    labels:
+        app: kafka
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: kafka
+    template:
+        metadata:
+            labels:
+                app: kafka
+        spec:
+            enableServiceLinks: false
+            containers:
+                - name: kafka
+                  image: ${image}
+                  ports:
+                      - containerPort: 9092
+                        name: kafka
+                      - containerPort: 29092
+                        name: kafka-internal
+                  env:
+                      - name: KAFKA_NODE_ID
+                        value: '1'
+                      - name: KAFKA_PROCESS_ROLES
+                        value: 'broker,controller'
+                      - name: KAFKA_LISTENERS
+                        value: 'PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093'
+                      - name: KAFKA_ADVERTISED_LISTENERS
+                        value: 'PLAINTEXT://localhost:9092,INTERNAL://kafka:29092'
+                      - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+                        value: 'PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT'
+                      - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+                        value: '1@localhost:9093'
+                      - name: KAFKA_CONTROLLER_LISTENER_NAMES
+                        value: 'CONTROLLER'
+                      - name: KAFKA_INTER_BROKER_LISTENER_NAME
+                        value: 'INTERNAL'
+                      - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+                        value: '1'
+                      - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+                        value: '1'
+                      - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+                        value: '1'
+                      - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+                        value: '0'
+                      - name: CLUSTER_ID
+                        value: 'MkU3OEVBNTcwNTJENDM2Qk'
+                  resources:
+                      limits:
+                          cpu: '1.0'
+                          memory: 1Gi
+                      requests:
+                          cpu: '0.5'
+                          memory: 512Mi
+                  livenessProbe:
+                      tcpSocket:
+                          port: 9092
+                      initialDelaySeconds: 30
+                      periodSeconds: 10
+                      timeoutSeconds: 5

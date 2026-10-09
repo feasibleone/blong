@@ -29,8 +29,16 @@ export const CSPELL_CONFIG_FILE = 'cspell.config.yaml';
  * cspell accepts more list-valued keys (`flagWords`, `ignoreWords`, `dictionaries`),
  * and they are deliberately left alone: they are either ordered by meaning or owned
  * by a preset, and sorting them would be a change nobody asked for.
+ *
+ * `ignoreRegExpList` belongs here though, and it was missing until it bit someone: the
+ * list holds patterns a project adds to silence a *class* of finding that no dictionary
+ * word can express — a ULID inside a `semlog://` reference, whose fragments every later
+ * id re-spells differently — and a hand edit has the same two problems as a hand-added
+ * word: the entry has no obvious place, and nobody notices it landed in the wrong one.
+ * The order of a regexp list does not matter to cspell, for the same reason the order of
+ * `words` does not, so it is kept the same way.
  */
-export const CSPELL_SECTIONS = ['words', 'ignorePaths'] as const;
+export const CSPELL_SECTIONS = ['words', 'ignorePaths', 'ignoreRegExpList'] as const;
 
 /** A section the command maintains. */
 export type CspellSection = (typeof CSPELL_SECTIONS)[number];

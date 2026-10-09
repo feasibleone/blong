@@ -28,6 +28,7 @@
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/marine-data": "workspace:^1.0.0",
         "typebox": "^1.1.5"
     },
     "devDependencies": {
@@ -37,7 +38,6 @@
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
         "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-server": "workspace:^1.0.0",
-        "@feasibleone/marine-data": "workspace:^1.0.0",
         "@playwright/test": "^1.63.0",
         "@storybook/addon-a11y": "^10.3.6",
         "@storybook/react-vite": "^10.3.6",

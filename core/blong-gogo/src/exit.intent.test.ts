@@ -55,9 +55,9 @@ async function exitFor(intents: string[]): Promise<boolean | undefined> {
     }
 }
 
-test('cli and db are short-lived', async t => {
+test('cli and upgrade are short-lived', async t => {
     t.equal(await exitFor(['cli']), true, 'a CLI does its work and exits');
-    t.equal(await exitFor(['db']), true, 'schema creation / seeding exits');
+    t.equal(await exitFor(['upgrade']), true, 'a schema upgrade does its work and exits');
 });
 
 test('playwright is long-lived regardless of other intents', async t => {

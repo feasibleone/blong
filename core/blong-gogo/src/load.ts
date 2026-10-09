@@ -25,6 +25,7 @@ import merge from 'ut-function.merge';
 import {methodParts} from './lib.ts';
 
 import {devEncryptKey, devSignKey} from './devKeys.ts';
+import {GENERATED_PAIR_WARNING, resolveGatewayPair} from './gatewayKeys.ts';
 import layerProxy from './layerProxy.ts';
 import RealmImpl, {type IRealm} from './Realm.ts';
 import type {IWatch} from './Watch.ts';
@@ -362,6 +363,35 @@ function createManifestProxy(manifest: IManifest): IManifest {
     });
 }
 
+/**
+ * Refuse a combination the entry itself declared incompatible.
+ *
+ * `intentsExclusionGroups` on a `server()` definition names intents that must not run together: a
+ * group allows at most one of its members to be active, and `dev` with `release` is the case that
+ * motivated the field. Combining two of them is not a load error on its own — both configuration
+ * blocks merge, in the order given, and the later one wins where they overlap — so the process is
+ * neither the one nor the other and nothing says so. The check runs before a single source is
+ * merged, which is what keeps the refusal cheap and the message the whole cost of it.
+ */
+const assertIntentsExclusion = (
+    mod: unknown,
+    configNames: readonly string[],
+    name: string,
+): void => {
+    const groups = (mod as {intentsExclusionGroups?: readonly (readonly string[])[]} | undefined)
+        ?.intentsExclusionGroups;
+    if (!Array.isArray(groups)) return;
+    for (const group of groups) {
+        const active = (Array.isArray(group) ? group : []).filter(intent =>
+            configNames.includes(intent),
+        );
+        if (active.length > 1)
+            throw new Error(
+                `${name} declares the intents ${active.join(' and ')} exclusive: at most one of them may run`,
+            );
+    }
+};
+
 export default async function loadRealm<T extends TSchema>(
     platformApi: IPlatformApi,
     def: SolutionFactory<T> & {[symbol: Kind]: Kinds},
@@ -516,6 +546,7 @@ export default async function loadRealm<T extends TSchema>(
     }
     if (!('pkg' in mod) && platformApi.platform === 'server')
         mod.pkg = platformApi.createRequire?.(mod.url)('./package.json');
+    assertIntentsExclusion(mod, configNames, name);
     const loadedConfigs = [];
     /**
      * The framework's own intent blocks (`default` + the active intents),
@@ -705,10 +736,42 @@ export default async function loadRealm<T extends TSchema>(
                      * `log.cluster.url`. Left out, a process that happened to
                      * carry both this intent and a development one would start a
                      * second service per replica.
+                     *
+                     * `release` is the one block uat, staging and production
+                     * share (Q8): one name for one idea, and no alias for the
+                     * `prod` it replaces, because what a release runs has to be
+                     * the configuration that was tested. It is also where the
+                     * `semlog://` references stop: they are a development aid
+                     * rendered into the text of a record, and noise in the
+                     * stdout of a service nobody reads by hand. `log.impl` stays
+                     * unset here, so the semantic package is never imported — the
+                     * refs it renders are the ones being suppressed.
+                     *
+                     * It is also the *deployment* block, so it carries the two settings a deployed
+                     * process differs by, and nothing else: where a service id resolves (the
+                     * cluster's Services, not ports on this machine — the local resolver would
+                     * answer `ENOTFOUND rpc-subject` for the framework's own namespace) and that a
+                     * call answering for a namespace this very process serves is dispatched
+                     * in-process rather than over a socket to itself (`canSkipSocket`; a call to
+                     * another process still goes over the socket). A suite overrides either in its
+                     * own `release` block; the layers it activates are not decided here at all, and
+                     * `release` names none (`core/blong-lib/layers.ts`) — a released process takes
+                     * them from the `--<realm>.<layer>` flags its plan wrote.
                      */
-                    prod: {log: {cluster: {enabled: false}}},
-                    // Schema creation / seeding finishes, then exits.
-                    db: {exit: true},
+                    release: {
+                        log: {cluster: {enabled: false}, refs: false},
+                        resolution: {impl: 'kubernetes'},
+                        remote: {canSkipSocket: true},
+                    },
+                    /**
+                     * Brings an existing database up to date, then exits: a schema sync plus the
+                     * production seeds are what a *deployed* database needs, and no long-lived
+                     * process does that for it. What this block owns is when such a run is over;
+                     * what the run *does* is the owning adapter's — `schema.sync` and `schema.seed`
+                     * in the `blong-server` realm's `db` adapter — because the same intent may
+                     * activate the equivalent work on another adapter.
+                     */
+                    upgrade: {exit: true},
                     /**
                      * A CLI process does its work in-process and exits: it
                      * serves nothing, watches nothing, and resolves every
@@ -736,6 +799,37 @@ export default async function loadRealm<T extends TSchema>(
                         // command: nothing here is long enough to draw, and a
                         // short-lived process must not hold a socket open.
                         log: {level: 'warn', cluster: {enabled: false}},
+                        apiSchema: {logLevel: 'warn'},
+                        exit: true,
+                    },
+                    /**
+                     * Generating Kubernetes manifests has the `cli` shape: the
+                     * process introspects the loaded registry, writes the
+                     * artifacts and exits — it serves nothing, watches nothing
+                     * and resolves every dispatch in-process. The
+                     * `blong-kustomize` realm contributes the generator layer
+                     * under this intent (see its `k8s/layer.server.ts`).
+                     */
+                    k8s: {
+                        gateway: false,
+                        rpcServer: false,
+                        apiGateway: false,
+                        restFs: false,
+                        systemDebug: false,
+                        mcp: false,
+                        resolution: false,
+                        // `{enabled: false}`, NOT `false`: the load step that
+                        // records handler folders and files still runs (it is
+                        // what feeds `Registry.describe()`); only chokidar is
+                        // skipped.
+                        watch: {enabled: false, logLevel: 'warn'},
+                        // Dispatch in-process instead of over HTTP.
+                        remote: {canSkipSocket: true},
+                        // Generated output must stay parseable, so the
+                        // framework's own logging is quietened here and the
+                        // cluster service is off (nothing here is long enough to
+                        // draw, and a short-lived process must not hold a socket).
+                        log: {level: 'warn', cluster: {enabled: false}, color: true},
                         apiSchema: {logLevel: 'warn'},
                         exit: true,
                     },
@@ -792,7 +886,18 @@ export default async function loadRealm<T extends TSchema>(
             {
                 name: 'resolution',
                 deps: ['log'],
-                load: () => import('./ResolutionLocal.ts'),
+                // Two resolvers share one name: the default assumes every service
+                // is a port on this machine, the Kubernetes one resolves a service
+                // id to the Service of the same name in the suite's namespace. The
+                // suite picks with `resolution.impl: kubernetes`, the same way the
+                // `log` component above picks its implementation.
+                load: () => {
+                    const impl = (mergedConfig as {resolution?: {impl?: string}} | undefined)
+                        ?.resolution?.impl;
+                    return impl === 'kubernetes'
+                        ? import('./ResolutionK8s.ts')
+                        : import('./ResolutionLocal.ts');
+                },
             },
             ...(rootKind === 'browser'
                 ? [
@@ -931,6 +1036,17 @@ export default async function loadRealm<T extends TSchema>(
         configPromise,
         {slowMs: SLOW_STEP_MS},
     );
+    // This realm's own slice of the active config, recorded where a planner can reach it by name
+    // (`describe().realmConfig`). Per realm rather than merged flat, because realms disagree — one is
+    // a companion, another a service — and a flat key would keep only the last one's answer (D-433).
+    const apiState = (api ?? {}) as {realmConfig: Record<string, unknown>};
+    const realmConfig = (apiState.realmConfig ??= {});
+    realmConfig[name] = merge(
+        {},
+        ...activeConfigs(mod, configNames, platformApi.configs).filter(
+            (block): block is object => Boolean(block) && typeof block === 'object',
+        ),
+    );
 
     // Populate the manifest from config values (e.g. `--manifest.gatewayPort=8080`
     // parsed by blong-config into `mergedConfig.manifest.gatewayPort`).
@@ -949,6 +1065,43 @@ export default async function loadRealm<T extends TSchema>(
             if (value === false) (mergedConfig as Record<string, unknown>)[key] = false;
         }
     }
+
+    /**
+     * One identity per process: the pair is resolved *here*, once, and both readers are handed the
+     * material — the gateway that mints a bearer token and the rpc client that verifies it.
+     *
+     * Load time is what makes that possible at all. The client builds its MLE crypto when it is
+     * constructed, which is before the gateway registers its plugin, so a pair left as a descriptor
+     * for each reader to resolve would be resolved twice — and two readers of one `{generate}`
+     * descriptor hold two different pairs, which is the defect a value bridge used to patch (T-267).
+     * Resolving into both paths here removes the ordering question instead: the client reads material,
+     * and the gateway's plugin finds nothing left to resolve.
+     *
+     * The *raw* snapshot, not `mergedConfig`: reading an object through the config proxy hands back a
+     * path proxy rather than the value, and resolving one of those writes the path into itself, so
+     * the next read of it recurses until the stack is gone. Writes land on the same object the proxy
+     * delegates to, so a component reading through the proxy sees exactly what is resolved here.
+     */
+    if (
+        rootKind === 'server' &&
+        (await resolveGatewayPair(configRuntime?.rawSnapshot ?? mergedConfig))
+    ) {
+        // A generated pair is one a restart invalidates and a second replica does not share, so it is
+        // said out loud rather than left to be discovered elsewhere, much later. The `dev` intent's
+        // committed pair and a deployment's rc file both spare this line.
+        console.warn(GENERATED_PAIR_WARNING);
+    }
+
+    /**
+     * The realms' own slices of the active config are recorded per realm above and published on the
+     * registry at the end of the load, not merged into this config.
+     *
+     * They used to be copied in here, and that copy is the bug it looks like: the root's config is
+     * merged before its children load, so a snapshot taken at this point holds the root and nothing
+     * else — every realm then read as absent, and a planner quietly fell back to "a service of its
+     * own" for realms that had declared themselves companions (D-433). The map is handed over by
+     * reference instead, and asked for by name through `describe().realmConfig`.
+     */
 
     // Wire ConfigRuntime into Watch so config-file changes trigger in-process
     // reload via ConfigRuntime.reload() instead of restarting the process.
@@ -1180,16 +1333,39 @@ export default async function loadRealm<T extends TSchema>(
      *
      *     config: {default: {framework: {realms: {access: false}}}}
      *
+     * And a realm in this list may name the intents it is *meaningful* under, which is how the
+     * deployment realm stays out of the processes its own suite deploys: a suite declaring that
+     * package means "a `k8s` run needs this", not "every process carries it". `true` is the way a
+     * deployment that does want it in a serving process says so:
+     *
+     *     config: {default: {framework: {realms: {kustomize: true}}}}
+     *
      * Only the server platform is covered: the browser loader resolves children
      * through Vite, which has to see the specifier in the source to bundle it, so
      * a browser suite still names its browser realms itself.
      */
-    const frameworkRealms: ReadonlyArray<{name: string; specifier: string}> = [
+    const frameworkRealms: ReadonlyArray<{
+        name: string;
+        specifier: string;
+        /**
+         * The intents this realm is meaningful under; absent means every one of them.
+         *
+         * A realm in this list is loaded because a suite *depends* on it, and a dependency is
+         * not an intent: `blong-suite` declares the deployment realm so that a `k8s` run can
+         * write a tree, and the gate below then loaded it into every deployed process as well —
+         * a business pod carried the realm's layer folders and ports because the suite wanted
+         * it for one command line (T-254). A suite that wants it unconditionally names it as a
+         * child, which is what the realm's own entry and the operator's do, so narrowing here
+         * changes nothing for the two processes that are *about* the realm.
+         */
+        intents?: readonly string[];
+    }> = [
         {name: 'server', specifier: '@feasibleone/blong-server/server.ts'},
         {name: 'login', specifier: '@feasibleone/blong-login/server.ts'},
         {name: 'core', specifier: '@feasibleone/blong-core/server.ts'},
         {name: 'access', specifier: '@feasibleone/blong-access/server.ts'},
         {name: 'blong', specifier: '@feasibleone/blong-realm/server.ts'},
+        {name: 'kustomize', specifier: '@feasibleone/blong-kustomize/server.ts', intents: ['k8s']},
     ];
     // Without a base there is nothing to resolve from, and every framework realm is
     // silently absent — the symptom is a gateway that refuses every unauthenticated
@@ -1231,7 +1407,7 @@ export default async function loadRealm<T extends TSchema>(
     // this loader already asks that question with.
     const frameworkChildren =
         isPlatformRoot && rootKind === 'server'
-            ? frameworkRealms.map(({name, specifier}) => {
+            ? frameworkRealms.map(({name, specifier, intents}) => {
                   // The loop below looks a child's config up by its name and skips
                   // the child when there is none, so a realm loaded this way needs a
                   // block here. A suite that declares its own keeps it: this fills a
@@ -1243,6 +1419,16 @@ export default async function loadRealm<T extends TSchema>(
                               mergedConfig as {framework?: {realms?: Record<string, unknown>}}
                           ).framework?.realms;
                           if (realms?.[name] === false) return undefined;
+                          // The realm's own intents, unless the suite asks for it by name: `true`
+                          // is how a deployment that *does* want the deployment realm in a process
+                          // of its own says so, and it has to be able to.
+                          if (
+                              intents &&
+                              realms?.[name] !== true &&
+                              !intents.some(intent => configNames.includes(intent))
+                          ) {
+                              return undefined;
+                          }
                           const resolved = resolveFromSuite(specifier);
                           if (resolved === undefined) return undefined;
                           if (loadedRealmUrls.has(normaliseUrl(resolved))) return undefined;
@@ -1348,8 +1534,22 @@ export default async function loadRealm<T extends TSchema>(
                             );
                         }
                         // Auto-provision a testDispatch orchestrator when the test/ folder
-                        // has no testDispatch.ts and no layer.server.ts.
-                        if (itemName === 'test' && platformApi.platform === 'server' && base) {
+                        // has no testDispatch.ts and no layer.server.ts — but only where tests run,
+                        // because the registration below hands the port straight to the realm and so
+                        // bypasses the activation it declares: a serving process carried
+                        // `access.testDispatch` and `blong.testDispatch` among the ports it started,
+                        // which is what `default: {}` did here and the intent check now prevents.
+                        const testsActive =
+                            configNames.includes('integration') ||
+                            configNames.includes('playwright') ||
+                            platformApi.configs.includes('integration') ||
+                            platformApi.configs.includes('playwright');
+                        if (
+                            itemName === 'test' &&
+                            platformApi.platform === 'server' &&
+                            base &&
+                            testsActive
+                        ) {
                             const testDir = platformApi.join(base, item as string);
                             const hasTestDispatch = platformApi.existsSync(
                                 platformApi.join(testDir, 'testDispatch.ts'),
@@ -1361,9 +1561,17 @@ export default async function loadRealm<T extends TSchema>(
                                 const realmName = mergedConfig.name;
                                 const syntheticOrchestrator = orchestrator(() => ({
                                     extends: 'orchestrator.dispatch' as const,
+                                    // Only where tests run. The port exists to dispatch a realm's test
+                                    // groups, and a serving process that carries the realm should not
+                                    // register it at all — the deployed suite listed
+                                    // `access.testDispatch` and `blong.testDispatch` among its ports,
+                                    // which is what `default: {}` did here.
                                     activation: {
-                                        default: {},
                                         integration: {
+                                            namespace: ['test'],
+                                            imports: [/\.test$/],
+                                        },
+                                        playwright: {
                                             namespace: ['test'],
                                             imports: [/\.test$/],
                                         },
@@ -1510,6 +1718,13 @@ export default async function loadRealm<T extends TSchema>(
     }
     realm ||= new RealmImpl(mergedConfig, api!, rootKind);
     if (!api?.registry) throw new Error('Registry not found in loaded modules');
+    // What each realm declared about itself, handed to the registry by reference (D-433): a realm
+    // loads after the root's config has merged, so nothing that is copied while the config is built
+    // can hold the whole tree. By this point every realm has been recorded, and the object the
+    // registry now holds keeps growing with any realm a later load adds.
+    api.registry.setRealmConfig?.(
+        (api as {realmConfig?: Record<string, unknown>}).realmConfig ?? {},
+    );
     // Resolved from the active intents (see the `exit` keys in the synthetic
     // config above). The runner uses it to decide whether this process outlives
     // its work; absent means "keep running". Set here rather than in the

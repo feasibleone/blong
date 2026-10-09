@@ -24,6 +24,8 @@
         "@feasibleone/blong-dev": "workspace:*"
     },
     "devDependencies": {
-        "tap": "^21.6.3"
+        "@types/node": "^24",
+        "tap": "^21.6.3",
+        "typescript": "^6.0.3"
     }
 }

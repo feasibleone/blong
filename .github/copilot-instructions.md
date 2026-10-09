@@ -2,7 +2,8 @@
 
 Blong: TypeScript API framework — Rush.js monorepo (pnpm). Same codebase runs as modular monolith
 (dev) or microservices (prod) unchanged. This instruction is the **router** — providing rules and
-pointers to skills and details. Full detail lives in skills: invoke them via the `skill` tool.
+pointers to skills and details. Full detail lives in skills: invoke them via the `skill` tool, BUT
+IF THE TOOL FAILS TO LOAD IT, READ THE SKILL DIRECTLY from `.github/skills/<name>/SKILL.md`.
 
 ## [CRITICAL_OBSERVABILITY]
 
@@ -19,7 +20,10 @@ Read them the cheap way: every file opens with a generated index (one line per e
 ~40 lines, or `blong-dev memory list --kind friction --area core/blong-browser --json`, show
 everything already recorded. Never read a whole file to find one entry —
 `blong-dev memory show <id>` prints exactly one, and `blong-dev memory audit` finds dangling
-references. When you do not know the words an entry uses, ask for it by meaning:
+references and ids that more than one file holds. An id is scoped per file, so when two files hold
+the same one a bare `memory show <id>` resolves to the package you run it from and is refused
+anywhere else: qualify it as `<id>@<project-folder>` (`@root` for the repository root) to name one.
+When you do not know the words an entry uses, ask for it by meaning:
 `blong-dev memory search "<question>"` — a write also pushes the entries it touched into the local
 Hindsight index, and `blong-dev memory index --semantic` refills it. The `## Manual` section of the
 root `todo.md` is the user's own list: agents never add to it, edit it or tidy it up. If you
@@ -43,13 +47,12 @@ it permanently either by better instructions or improved tooling.
     - Tools: [Comma-separated list of tools used and how many times each]
     ```
 
-- **Record frictions** —
-  `blong-dev memory add friction --title "<short title>" --area <area> --body "<what cost the effort, and the lesson>"`
-  whenever a task needed unexpected effort or failed (also: long investigations, hard decisions,
-  lots of source read).
+- **Record frictions** — `blong-dev memory add friction` with `--title "<title>" --area <area>` and
+  `--body "<what cost the effort and the lesson>"`, whenever a task needed unexpected effort or
+  failed (also: long investigations, hard decisions, lots of source read).
 
-- **Track automatic decisions explicitly** —
-  `blong-dev memory add decision --title "<what was decided>" --area <area> --body "<the reasoning the code does not show>"`
+- **Track automatic decisions explicitly** — `blong-dev memory add decision` with
+  `--title "<what was decided>" --area <area>` and `--body "<the reasoning the code does not show>"`
   whenever you hesitated about what the user requested or you implied and made a choice. If this is
   a critical decision that is likely to take a lot of effort to reconsider, you MUST stop and point
   the user to that entry and state the decision needed. Make sure that you do not allow the
@@ -76,6 +79,12 @@ it permanently either by better instructions or improved tooling.
   `blong-dev cspell check` is the gate that notices a hand edit. Finding the insertion point is the
   whole cost of editing the list by hand, and the command already knows it — `remove`, `sort` and
   `list` are there too.
+
+- **Add vocabulary to the glossary with the tool.** `blong-dev glossary add` writes a term into
+  `docs/blong/docs/concepts/glossary.md` in sorted position and wraps its definition; `list` and
+  `show` read it back. `blong-dev glossary check` is the gate — an unsorted or repeated term, a
+  definition over forty words, or a link that does not resolve — and it runs over the staged
+  glossary through `blong-dev lint-staged`.
 
 - **Write markdown the house way.** These conventions are enforced by the tooling, so a violation
   costs a round trip rather than a review comment:
@@ -109,8 +118,15 @@ it permanently either by better instructions or improved tooling.
 
 Hard rules — apply first, never contradict.
 
-- Be aware of automatic formatting when editing, your changes may or may not get formatted, imports
-  reordered, non-whitespace characters replaced, dictionary sorted, etc.
+- **Be aware of automatic formatting** when editing, your changes may or may not get formatted,
+  imports reordered, non-whitespace characters replaced, dictionary sorted, etc.
+- **Prefer maps over arrays** for any structure that could benefit from merging and is not
+  benefiting from an order in an array - especially configuration structures. Prefer singular over
+  plural, when feasible: e.g. `portals:[]` => `portal:{}` - each portal gets an alias that can be
+  used to merge config overrides.
+- **Glossary** use focused high cardinality and unambiguous words or word combinations to refer to
+  the same concept across the codebase and the prose. Coin new ones when needed and avoid words that
+  mean too many things (blong-dev glossary).
 - **Never import handlers directly.** Cross-handler deps via `handler()` proxy (`runtime.handler`);
   direct imports break IoC.
 - **Prefer injected library functions** when feasible for reusing logic across handlers (see
@@ -243,11 +259,12 @@ API definition as the primary source of truth and apply the conflict priority in
 
 ## Architecture Hierarchy
 
-```
+```text
 Suite             — top-level entry point, glues realms, defines deployment config
   └── Realm       — business domain boundary (e.g. user, payment, marine)
         └── Layer — functional group within a realm (adapter, orchestrator, gateway, …)
               └── Handler Group  — folder of related handlers (AKA realm namespaces)
+                    ├── Injected Library Function - private to the handler group
                     └── Handler  — single function in a single file
 ```
 
@@ -292,17 +309,6 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Writing or reviewing documentation         | **blong-docs**                                        |
 | Parties, RBAC, users, auth, resource graph | **blong-core**                                        |
 
-**For understanding concepts — also call `skill`:**
-
-- Suite structure and test entry points: Call `skill` with **blong-suite**
-- Layer architecture and organization: Call `skill` with **blong-layer**
-- Protocol implementation details: Call `skill` with **blong-codec**
-- Realm deployment patterns: Call `skill` with **blong-realm**
-- CLI intents and activation system: Call `skill` with **blong-intent**
-- Party/access graph, RBAC, authorization: Call `skill` with **blong-core**
-- A flow's sequence diagram, checkpoint and branch drawings: Call `skill` with
-  **blong-flow-diagram**
-
 ## [KEY_PATTERNS]
 
 **One-line pointers only — invoke the skill for full patterns.**
@@ -327,6 +333,8 @@ Suite             — top-level entry point, glues realms, defines deployment co
 - **Service definition** — realms/layers via builder pattern; adapters/orchestrators self-contained
   (`activation` co-located in the layer file, not `server.ts`). See `blong-realm`, `blong-adapter`,
   `blong-orchestrator`.
+- **Handler group** — a folder with handlers
+- **Injected library functions** — functions reusable within a handler group
 - **Handler & runtime** — `handler()` factory; semantic triples;
   `runtime.{lib,errors,config,log,handler}` proxy (IoC, hot reload, mocking). See `blong-handler`.
 - **Adapter** — integration points; stream (TCP encode/decode) vs API (HTTP/SDK) based. See
@@ -360,9 +368,9 @@ The framework performs the following without explicit configuration:
   the `integration` intent — no need to add `remote: {canSkipSocket: true}` in realm/suite configs.
 - **`resolution: true` in dev:** Enabled by default for the `dev` intent — no need to set it per
   suite.
-- **Gateway static keys:** Development-time sign/encrypt JWK keys are generated automatically if no
-  keys are configured (env vars `GATEWAY_SIGN_KEY` / `GATEWAY_ENCRYPT_KEY` or explicit config). This
-  keeps Playwright sessions stable across server hot-reloads without any per-suite configuration.
+- **Gateway static keys:** Development-time sign/encrypt JWK keys are supplied by the `dev` intent
+  if no keys are configured (or an explicit `gateway.sign`/`gateway.encrypt`). This keeps Playwright
+  sessions stable across server hot-reloads without any per-suite configuration.
 - **Gateway defaults in integration:** `debug: true` and `expectedErrors: true` are set by default
   for the `integration` intent — no need to add them in suite/realm configs.
 
@@ -412,11 +420,12 @@ the full reference.
 | -------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `default`      | Base configuration (always active)                                                                                        | —                                                            |
 | `dev`          | Development — verbose logs, hot-reload                                                                                    | Long-running, restarts on file changes                       |
-| `prod`         | Production/UAT environments                                                                                               | Long-running                                                 |
+| `release`      | used for prod/UAT/staging and other environments after CI/CD                                                              | Long-running                                                 |
 | `integration`  | Integration testing — enables watch/test mode                                                                             | Long-running, reruns tests on change; exits when `CI` is set |
 | `microservice` | Activates the layers needed to run a realm as a standalone microservice                                                   | Long-running                                                 |
-| `db`           | Database creation / seeding                                                                                               | **Short-lived** — exits after completion                     |
+| `upgrade`      | Brings a deployed database up to date (schema sync plus production seeds) through the owning adapter                      | **Short-lived** — exits after completion                     |
 | `cli`          | Serves nothing (no gateway/RPC server/API gateway/rest-fs/debug/MCP), watches nothing, resolves every dispatch in-process | **Short-lived** — exits after its work                       |
+| `k8s`          | Writes a deployment tree instead of serving — every realm the suite declares                                              | **Short-lived** — exits after its work                       |
 | `playwright`   | Marker: the Playwright runner owns the process lifetime                                                                   | Long-running until the runner stops it                       |
 | `debug`        | Enable `/api/sys/*` introspection, stack traces                                                                           | No effect on lifetime                                        |
 
@@ -574,7 +583,7 @@ ss -tlnp | grep -E ':8180|:9092|:27017|:3306|:9000|:8200|:6379'
 
 Any port not listed in the output means that service is not yet started.
 
-### dev tooling (blong-dev proxy / trace / log / sql / cspell)
+### dev tooling (blong-dev proxy / trace / log / sql / cspell / glossary)
 
 The `blong-dev` CLI ships helpers for talking to a running gateway and for maintaining the
 repository's own configuration files:
@@ -618,6 +627,13 @@ repository's own configuration files:
   in the file is touched: comments stay on their entries and a run that changes nothing writes
   nothing. Implemented in `tools/blong-dev/src/commands/cspell.ts` on
   `tools/blong-dev/src/cspell/cspellConfig.ts`. Example: `blong-dev cspell add kukum mxbai`.
+
+- **`blong-dev glossary`** — the writer and the gate for `docs/blong/docs/concepts/glossary.md`.
+  `add <term> --definition "<sentence>"` inserts the term in sorted position and wraps the sentence,
+  replacing the definition when the term is already present; `remove`, `list` and `show` are the
+  reading side. `check` fails on an unsorted or repeated term, a definition over forty words, or a
+  link that does not resolve. Implemented in `tools/blong-dev/src/commands/glossary.ts` on
+  `tools/blong-dev/src/glossary/glossaryDoc.ts`. Example: `blong-dev glossary add adapter`.
 
 ## Architecture & Design Documents
 

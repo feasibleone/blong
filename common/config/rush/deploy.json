@@ -37,6 +37,16 @@
     // "includeNpmIgnoreFiles": true,
 
     /**
+     * The filter above is wrong for a deployment, so this repository turns it off. A package's .npmignore
+     * describes what an npm consumer needs, which is not what a running process imports: Rush's own template
+     * ignores every file and un-ignores a short list, so a module no entry point outside the package names —
+     * `@feasibleone/semantic-log/attachable.ts` was the first — is simply absent from the image, and nothing
+     * fails until the framework imports it. A suite's scenario sets the same flag
+     * (`common/config/rush/deploy-suite.json`), so an artifact and the image behave alike.
+     */
+    "includeNpmIgnoreFiles": true,
+
+    /**
      * To improve backwards compatibility with legacy packages, the PNPM package manager installs extra links in the
      * node_modules folder that enable packages to import undeclared dependencies.  In some cases this workaround may
      * double the number of links created.  If your deployment does not require this workaround, you can set

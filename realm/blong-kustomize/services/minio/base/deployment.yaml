@@ -1,0 +1,68 @@
+# minio/base/deployment.yaml — the workload, adapted from `test/integration/minio-deployment.yaml`.
+#
+# The console port is a literal and the API port is the descriptor's (`s3`, 9000): a bucket can be
+# reached by a client that knows the API, so that is the port the alias publishes, while the console is
+# the image's own extra. No claim is mounted — the descriptor declares no storage, so the objects this
+# serves live in the container's filesystem until something replaces it; a deployment that wants them
+# kept gives this service a claim by naming one.
+#
+# Placeholders are the generator's, and one it does not know is a failure rather than a literal:
+# `${namespace}`, `${image}`, `${claimName}`, `${initConfigName}`, `${credentialsSecret}`.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: minio
+    namespace: ${namespace}
+    labels:
+        app: minio
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: minio
+    template:
+        metadata:
+            labels:
+                app: minio
+        spec:
+            containers:
+                - name: minio
+                  image: ${image}
+                  args: ['server', '/data', '--console-address', ':9001']
+                  ports:
+                      - containerPort: 9000
+                        name: s3
+                      - containerPort: 9001
+                        name: console
+                  env:
+                      - name: MINIO_ROOT_USER
+                        valueFrom:
+                            secretKeyRef:
+                                name: ${credentialsSecret}
+                                key: MINIO_ROOT_USER
+                      - name: MINIO_ROOT_PASSWORD
+                        valueFrom:
+                            secretKeyRef:
+                                name: ${credentialsSecret}
+                                key: MINIO_ROOT_PASSWORD
+                  resources:
+                      limits:
+                          cpu: '0.5'
+                          memory: 512Mi
+                      requests:
+                          cpu: '0.1'
+                          memory: 128Mi
+                  livenessProbe:
+                      httpGet:
+                          path: /minio/health/live
+                          port: 9000
+                      initialDelaySeconds: 15
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                  readinessProbe:
+                      httpGet:
+                          path: /minio/health/ready
+                          port: 9000
+                      initialDelaySeconds: 5
+                      periodSeconds: 10
+                      timeoutSeconds: 5

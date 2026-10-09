@@ -1,0 +1,9 @@
+# kafka — the event log a kafka adapter points at (Phase 15 I).
+name: kafka
+kinds: [kafka]
+image: confluentinc/cp-kafka:7.6.0
+port: {name: kafka, port: 9092}
+values:
+    # The listener a broker advertises to its peers. The integration matrix binds it beside the client
+    # port, and a single-broker deployment still needs both named or the broker refuses to start.
+    internalPort: 29092

@@ -12,7 +12,10 @@ description:
 
 ## [CRITICAL_GUARDRAILS]
 
-- **Triple naming.** `subjectObjectPredicate`; file = export = wire name. Flag violations.
+- **Triple naming** `subjectObjectPredicate`; file = export = wire name. Flag violations.
+- **Multi segment naming**: uppercase letters can be used in `subject` and `Object` only after `-`
+  or `_`, e.g. `subject_NameObject_NamePredicateName` or use `.` explicitly
+  `subject_name.object_name.predicate`
 - **Never import other handlers.** Use `handler: {}` proxy (IoC). Direct imports break IoC + hot
   reload.
 - **Always forward `$meta`** as the 2nd arg on every downstream call.
@@ -445,10 +448,11 @@ exporting `splitNames`). The loader reports it at **error** level —
 `probably a generic source code was put in a handler group folder` — and imports still work, but the
 line is real output: it reaches whatever reads the log, and `core/blong-realm`'s observed-flows page
 listed it as a template row until the helper became a `library()`. Prefer the framework's own answer
-for anything with logic in it: a helper is an injected library function (same folder, `library()` default
-export reached through the `lib` proxy _without_ an import — see _Injected Library Function_). For helpers
-shared across groups, prefer a `lib/` group exported through the framework (`library()` factory), or
-a clearly `_`/`.`-prefixed plain file; do not scatter shared helpers across handler folders.
+for anything with logic in it: a helper is an injected library function (same folder, `library()`
+default export reached through the `lib` proxy _without_ an import — see _Injected Library
+Function_). For helpers shared across groups, prefer a `lib/` group exported through the framework
+(`library()` factory), or a clearly `_`/`.`-prefixed plain file; do not scatter shared helpers
+across handler folders.
 
 ## Calling Other Handlers
 
@@ -558,9 +562,9 @@ export default handler(() => ({
 
 An exported `function` handler's name is on the chain in its **original spelling** (the runtime
 stores both that and the normalised, lower-cased one `findHandler` resolves) — write
-`super.coreResourceEnsure`, not the lower-cased form. The providing realm must be attached **first**:
-list it as an early child in the suite (`srv`, `login`, `core`, `access`, …), because attachment
-order is what the prototype chain follows.
+`super.coreResourceEnsure`, not the lower-cased form. The providing realm must be attached
+**first**: list it as an early child in the suite (`srv`, `login`, `core`, `access`, …), because
+attachment order is what the prototype chain follows.
 
 Delegation needs a handler whose group is attached **after** the provider, on the **same port**:
 that is why a handler must return an object literal (a plain `function` expression cannot reference

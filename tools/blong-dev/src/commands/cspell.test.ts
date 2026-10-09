@@ -11,7 +11,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {test} from 'tap';
 
-import {CSPELL_CONFIG_FILE} from '../cspell/cspellConfig.ts';
+import {CSPELL_CONFIG_FILE, CSPELL_SECTIONS} from '../cspell/cspellConfig.ts';
 import {cspell} from './cspell.ts';
 
 const UNSORTED = [
@@ -234,7 +234,9 @@ test('a caller mistake reports usage and exits non-zero', async t => {
         [['remove'], /remove needs at least one word/],
         [['list', '--section', 'flagWords'], /unknown section "flagWords"/],
         [['check', '--file', join(dir, 'missing.yaml')], /no such file/],
-        [['check'], /none of words, ignorePaths is present/],
+        // Built from the list rather than spelled out: a section added to the command belongs in this
+        // message, and a test that names the sections by hand is how one was missed (T-255).
+        [['check'], new RegExp(`none of ${CSPELL_SECTIONS.join(', ')} is present`)],
     ];
     for (const [args, message] of cases) {
         const result = await capture(args);

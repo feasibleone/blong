@@ -59,7 +59,7 @@ export type KeySpec =
       }
     | {env: string};
 
-async function resolveKeySpec(
+export async function resolveKeySpec(
     spec: KeySpec | undefined,
 ): Promise<JWK | KeyLike | Uint8Array | undefined> {
     if (!spec) return undefined;

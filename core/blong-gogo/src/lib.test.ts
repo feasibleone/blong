@@ -14,7 +14,52 @@
 
 import {test} from 'tap';
 
-import {camelToSentence, parseAnnotatedKey} from './lib.ts';
+import {camelToSentence, methodParts, parseAnnotatedKey} from './lib.ts';
+
+// ---------------------------------------------------------------------------
+// methodParts — the name a handler is registered and dispatched under
+// ---------------------------------------------------------------------------
+
+test('methodParts splits the leading word group', async t => {
+    t.equal(methodParts('clusterPodFind'), 'cluster.pod.find');
+    t.equal(methodParts('partyAclFixtureGet'), 'party.acl.fixtureGet', 'the third part may go on');
+    t.equal(methodParts('access.role.merge'), 'access.role.merge', 'a wire name passes through');
+});
+
+test('a separator joins the words of one part and stays in the name', async t => {
+    // The four spellings a caller may reach for, and the two names they resolve to. `-` and `_`
+    // are kept as they were written, because the separator is what says the words are one part.
+    t.equal(methodParts('clusterToken_ReviewCreate'), 'cluster.token_review.create');
+    t.equal(methodParts('clusterToken-ReviewCreate'), 'cluster.token-review.create');
+    t.equal(methodParts('clusterToken_reviewCreate'), 'cluster.token_review.create');
+    t.equal(methodParts('clusterToken-reviewCreate'), 'cluster.token-review.create');
+});
+
+test('a compound part keeps every word it was written with', async t => {
+    t.equal(
+        methodParts('clusterPersistent_Volume_ClaimApply'),
+        'cluster.persistent_volume_claim.apply',
+        'the whole kind stays the middle part',
+    );
+    t.equal(
+        methodParts('clusterToken_ReviewCreate'),
+        'cluster.token_review.create',
+        'and a two-word kind does too',
+    );
+});
+
+test('a name with no separator is unchanged by the join', async t => {
+    t.equal(
+        methodParts('clusterPersistentVolumeClaimApply'),
+        'cluster.persistent.volumeClaimApply',
+        'which is why a compound kind has to carry the separator (F-379)',
+    );
+});
+
+test('methodParts keeps the `$` template behaviour', async t => {
+    t.equal(methodParts('$subject$ObjectMerge'), '$subject.$object.merge');
+    t.equal(methodParts('$subjectFixture'), '$subject.fixture');
+});
 
 // ---------------------------------------------------------------------------
 // parseAnnotatedKey — valid inputs

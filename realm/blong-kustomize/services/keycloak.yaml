@@ -1,0 +1,20 @@
+# keycloak — the identity provider a keycloak adapter points at (Phase 15 I).
+#
+# The one service whose init is a Job of its own: the realms, clients and users a suite authenticates
+# with are created by *calling* a running server, so the step cannot be a file the workload mounts the
+# way MySQL's database list is. What it creates is the suite's decision rather than this realm's — a
+# deployment supplies the script verbatim (`init.script` in its service config) and this realm writes
+# it into the ConfigMap the Job runs (D-466). With no script there is no Job, and the identity
+# provider comes up with its own master realm only.
+name: keycloak
+kinds: [keycloak]
+image: quay.io/keycloak/keycloak:23.0
+port: {name: http, port: 8180}
+storage: {size: 2Gi, mountPath: /opt/keycloak/data, accessMode: ReadWriteOnce}
+credentials:
+    secret: keycloak-credentials
+    keys: [KEYCLOAK_ADMIN, KEYCLOAK_ADMIN_PASSWORD]
+values:
+    # The init runs as a Job (`initJob`), and its script is a shell file rather than SQL.
+    initJob: true
+    initScriptKey: init.sh

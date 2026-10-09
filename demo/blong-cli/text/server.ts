@@ -9,4 +9,14 @@ import {realm} from '@feasibleone/blong';
  * none of that. Its handlers read their arguments, and the filesystem through
  * `this.platform`.
  */
-export default realm(() => ({url: import.meta.url}));
+export default realm(() => ({
+    url: import.meta.url,
+    config: {
+        // The layers the `blong-cli` command runs with (D-436): `cli` appears in no entry of
+        // `WELL_KNOWN_LAYERS`, so the package that ships a command names what the command needs.
+        // `orchestrator` is all of it — the handlers read their arguments and the filesystem and
+        // reach no adapter, no gateway and no database, which is why the realm declares nothing else.
+        cli: {orchestrator: {}},
+        default: {},
+    },
+}));

@@ -9,6 +9,19 @@ export type IConfig = Parameters<typeof jose>[0] & {public: {sign: unknown; encr
 export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, config: IConfig) {
     const mle = await jose(config);
     if (config) {
+        // Why these four lines are here, and why they are safe. `mle.keys` is the *public* half of the
+        // pair (`core/blong-mle/src/crypto.ts`: "`keys` exposes the PUBLIC JWKs (for handshakes);
+        // `signEncrypt`/`decryptVerify` are bound to this instance's private keys"), while the pair the
+        // loader resolves onto `gateway.sign`/`gateway.encrypt` carries the private half — so writing
+        // the public JWKs here is what keeps private material out of configuration as such, which a
+        // diagnostic, a `/api/sys/config` snapshot and a realm calling `gateway.config()` all read.
+        // Signing never needs a config path: this plugin's own crypto instance holds the private keys,
+        // so replacing the config's copy costs nothing (T-267, D-441). And the replacement is a
+        // property on the gateway's own `#config` — a class field the incoming config is merged into,
+        // not the merged snapshot — so a reload that rebuilds the gateway merges from the source and
+        // resolves the pair again; the write-back cannot leave a process unable to sign (D-448).
+        config.sign = mle.keys.sign;
+        config.encrypt = mle.keys.encrypt;
         config.public.sign = mle.keys.sign;
         config.public.encrypt = mle.keys.encrypt;
     }

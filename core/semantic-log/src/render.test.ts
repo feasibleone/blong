@@ -588,3 +588,21 @@ t.test('a field cannot forge a labelled block line', t => {
     t.equal(line.split('\n').length, 3, 'the injected newline did not add a line');
     t.end();
 });
+
+t.test('a released process prints no reference group', t => {
+    const line = renderHuman(base, {refs: false});
+    t.notMatch(line, /semlog:\/\//, 'the group is gone from the human line');
+    t.match(line, /quote accepted/, 'the record itself is still printed');
+    // The switch is a printing decision, not a retention one: a store, a JSON
+    // consumer and the cluster service all still see the references, which is what
+    // lets one process in a release print plainly while another resolves the same
+    // record against the store. JSON mode carries them as the data they are, which
+    // is why this looks for the id rather than for a `semlog://` link.
+    t.match(renderJson(base), /tpl_9f3a/, 'while JSON mode still carries them');
+    t.match(
+        renderHuman(base, {refs: true}),
+        /semlog:\/\/t\/tpl_9f3a/,
+        'and asking for them is enough',
+    );
+    t.end();
+});

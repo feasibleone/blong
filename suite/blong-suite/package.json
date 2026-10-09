@@ -21,7 +21,10 @@
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
         "@feasibleone/blong-access": "workspace:^1.0.0",
+        "@feasibleone/blong-browser": "workspace:^1.0.0",
         "@feasibleone/blong-core": "workspace:^1.0.0",
+        "@feasibleone/blong-kustomize": "workspace:^0.1.0",
+        "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-marine": "workspace:^1.0.0",
         "@feasibleone/blong-realm": "workspace:^1.0.0",
         "@feasibleone/blong-server": "workspace:^1.0.0",
@@ -29,10 +32,8 @@
         "react-dom": "^19.1.0"
     },
     "devDependencies": {
-        "@feasibleone/blong-browser": "workspace:^1.0.0",
         "@feasibleone/blong-dev": "workspace:*",
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
-        "@feasibleone/blong-login": "workspace:^1.0.0",
         "@playwright/test": "^1.63.0",
         "@storybook/addon-a11y": "^10.3.6",
         "@storybook/addon-docs": "^10.3.6",

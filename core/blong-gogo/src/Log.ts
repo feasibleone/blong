@@ -1,7 +1,8 @@
 import {withProgress} from '@feasibleone/blong-lib';
 import {Internal, type ICallLog, type ILog, type ILogger} from '@feasibleone/blong/types';
 import {createCallChannel} from '@feasibleone/semantic-log/capability';
-import {pino, type Logger, type LoggerOptions} from 'pino';
+import {callerSite, messageMatches} from '@feasibleone/semantic-log/emitter';
+import {pino, type Logger, type LoggerOptions, type TransportSingleOptions} from 'pino';
 import {monotonicFactory} from 'ulidx';
 import {callRecord, configureCallTrace, type CallTraceConfig} from './callTrace.ts';
 import type {CacacheTransportOptions} from './pino-cacache.js';
@@ -19,6 +20,23 @@ export interface LogConfig extends LoggerOptions {
     /** The semantic implementation's store. Not a pino option; stripped below. */
     cache?: unknown;
     /**
+     * Put the `semlog://` reference group at the end of a human line — the
+     * pretty printer renders it, and this implementation has no other way to
+     * show one. Not a pino option; stripped below. On by default, off in a
+     * released process (`log.refs: false`), whose stdout nobody resolves a
+     * reference from.
+     */
+    refs?: boolean;
+    /**
+     * The messages whose caller is worth naming — `log.callSite`.
+     *
+     * Each entry is a regular expression source, so a substring (`unauthorized`, `adapter.ready`)
+     * is written as one and `['']` names the caller of every record. The semantic implementation
+     * reads the same list, so one entry places an unexplained line whichever logger a process
+     * chose, and nothing is captured for a message that matches none of the patterns.
+     */
+    callSite?: string | string[];
+    /**
      * The call channel: whether a flow's calls are recorded, and whether they
      * are shown.
      *
@@ -33,6 +51,14 @@ export interface LogConfig extends LoggerOptions {
 }
 
 const ulid = monotonicFactory();
+
+/**
+ * The files a pino record's stack runs through before it reaches the call site.
+ *
+ * This module's own frames — the hook that asks for the site, since it runs inside pino's write
+ * path — and pino's, which are between that hook and the caller. Everything else is the call site.
+ */
+const PINO_FRAME = /[\\/](?:Log|semantic-log|pino|thread-stream)[\\/.]/;
 
 const ignoreArgPatterns = [
     '--tls-cipher-list=',
@@ -73,39 +99,37 @@ const WORKER_OPTS = {
     ),
 };
 
-const PRETTY_TRANSPORT = {
-    target: './pino-pretty.mjs',
+const PRETTY_TRANSPORT = (refs?: boolean): TransportSingleOptions<Record<string, unknown>> => ({
+    target: './pino-pretty.mjs' as const,
     worker: WORKER_OPTS,
     options: {
         singleLine: true,
         colorizeObjects: true,
-        ignore: [
-            'context',
-            'prefix',
-            'pid',
-            'hostname',
-            '$meta.mtid',
-            '$meta.method',
-            'req',
-            'res',
-            'config',
-            'configBase',
-            'id',
-        ].join(','),
+        // The reference group is the printer's to render, so the switch travels
+        // with the transport the process chose.
+        refs,
+        // No `ignore` here: what the header already printed is the printer's own knowledge, and it
+        // lives beside the header that prints it (`pino-pretty.ts` → `ALREADY_IN_HEADER`). It used to
+        // be a list in this file, and an entry per envelope member meant the emptied
+        // `{"$meta":{}}` was printed instead of the two members it had dropped.
     },
-};
+});
 
 export default class Log extends Internal implements ILog {
     #logger: Logger;
     #config: LogConfig = {
         level: 'info',
-        transport: PRETTY_TRANSPORT,
+        transport: PRETTY_TRANSPORT(),
     };
 
     public constructor(config: LogConfig) {
         super();
         this.merge(this.#config, config);
         configureCallTrace(this.#config.calls);
+        // The printer renders the reference group, so the switch has to be known
+        // before the transport is built — the default above is there for a caller
+        // that never merges a config at all.
+        this.#config.transport = PRETTY_TRANSPORT(this.#config.refs);
 
         // Inject a monotonic ULID `id` into every log entry before it reaches any transport
 
@@ -115,7 +139,7 @@ export default class Log extends Internal implements ILog {
             const cacacheOptions = this.#config.cacache;
             this.#config.transport = {
                 targets: [
-                    PRETTY_TRANSPORT,
+                    PRETTY_TRANSPORT(this.#config.refs),
                     {
                         target: './pino-cacache.mjs',
                         worker: WORKER_OPTS,
@@ -134,6 +158,8 @@ export default class Log extends Internal implements ILog {
             cacache: _cacacheConfig,
             impl: _impl,
             cache: _semanticCache,
+            refs: _refs,
+            callSite: _callSite,
             calls: _calls,
             ...pinoConfig
         } = this.#config;
@@ -158,6 +184,38 @@ export default class Log extends Internal implements ILog {
         bindings: object,
     ): ReturnType<ILog['logger']> {
         const child = this.#logger.child(bindings, {level});
+        // The caller of the messages `log.callSite` names. pino has no hook that sees a message:
+        // `logMethod` is not inherited by a child, and a formatter is handed the fields without
+        // the text — so the match is made here, where the framework builds the logger it hands
+        // out, and every component's logger is covered by construction.
+        const locations =
+            typeof this.#config.callSite === 'string'
+                ? [this.#config.callSite]
+                : this.#config.callSite;
+        const bind = <A extends unknown[]>(
+            method: (...args: A) => void,
+        ): ((...args: A) => void) => {
+            if (!locations?.length) return method;
+            return (...args: A) => {
+                const call = [...args] as unknown[];
+                // The message is whichever argument is text: pino's order is `(bag, message)` or
+                // `(message, values)`, and the text is the part both of those have.
+                const message = [...call].reverse().find(arg => typeof arg === 'string');
+                if (message !== undefined && messageMatches(locations, message)) {
+                    // The site has to sit where pino looks for fields, which is the *first*
+                    // argument: an object after the message is a printf value, and pino drops one
+                    // the message has no placeholder left for. A call that already leads with a
+                    // bag keeps it, and the site joins it.
+                    const leading = call[0];
+                    if (leading && typeof leading === 'object' && !Array.isArray(leading)) {
+                        call[0] = {...(leading as object), site: callerSite(PINO_FRAME)};
+                    } else {
+                        call.unshift({site: callerSite(PINO_FRAME)});
+                    }
+                }
+                return (method as (...args: unknown[]) => void)(...call);
+            };
+        };
         const result: ILogger = {
             trace: undefined,
             debug: undefined,
@@ -168,17 +226,17 @@ export default class Log extends Internal implements ILog {
         };
         switch (level) {
             case 'trace':
-                result.trace = child.trace.bind(child);
+                result.trace = bind(child.trace.bind(child));
             case 'debug':
-                result.debug = child.debug.bind(child);
+                result.debug = bind(child.debug.bind(child));
             case 'info':
-                result.info = child.info.bind(child);
+                result.info = bind(child.info.bind(child));
             case 'warn':
-                result.warn = child.warn.bind(child);
+                result.warn = bind(child.warn.bind(child));
             case 'error':
-                result.error = child.error.bind(child);
+                result.error = bind(child.error.bind(child));
             case 'fatal':
-                result.fatal = child.fatal.bind(child);
+                result.fatal = bind(child.fatal.bind(child));
         }
         return {
             ...result,

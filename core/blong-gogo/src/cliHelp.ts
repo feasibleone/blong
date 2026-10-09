@@ -21,13 +21,13 @@ Usage:
                                  (e.g. blong grant calls --ttl=15m)
 
 Well-known intents:
-  dev            Development — verbose logs, hot reload
-  integration    Integration testing — watch + test reruns (exits when CI is set)
-  microservice   Run a realm as a standalone microservice
-  prod           Production / UAT
-  cli            Run a command in-process and exit — no HTTP server, no watcher
-  db             Database creation / seeding (short-lived)
-  debug          Enable /api/sys/* introspection + stack traces
+  dev            Development features only — introspection, error detail, dev keys
+  microservice   Run a realm on its own — its adapters, orchestrators, listeners
+  integration    Integration testing — test layers, watch + test reruns (exits when CI is set)
+  release        The deployment block — cluster resolution, in-process self-dispatch, no dev refs
+  cli            Run a command in-process and exit
+  k8s            Write a deployment tree instead of serving and exit
+  upgrade        Database creation / seeding and exit
 
 Options:
   --help, -h     Show this help and exit

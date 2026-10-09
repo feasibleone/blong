@@ -13,31 +13,33 @@
  * with a `layer.<platform>.ts` file supplies its own activation instead.
  *
  * A layer missing for a platform is simply not auto-discovered there.
+ *
+ * The three intents an activation may name mean different things, which is what keeps a deployment
+ * explainable: `microservice` asks for the layers that make a realm work, `integration` for what a
+ * test needs on top of that, and `default` for what nothing decides (the plumbing every process has).
+ * `release` appears nowhere on purpose — a released process takes its layers from the flags its plan
+ * wrote, and only the configuration it reads from the `release` block of `core/blong-gogo/src/load.ts`.
  */
 export const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
     api: {server: {default: true}, browser: {default: true}},
     init: {server: {default: true}, browser: {default: true}},
     meta: {server: {default: true}, browser: {default: true}},
-    // `cli` activates the layers that make a realm's HANDLERS exist. It skips the
-    // listeners, the watcher and the test machinery, not the realm itself — a
-    // `cli` process that loaded no orchestrator would have nothing to dispatch to.
-    error: {server: {integration: true, cli: true}},
-    sim: {server: {integration: true}},
-    adapter: {server: {integration: true, cli: true}},
-    orchestrator: {server: {integration: true, cli: true}},
-    gateway: {server: {integration: true}},
-    backend: {browser: {integration: true}},
-    component: {browser: {integration: true}},
-    action: {browser: {integration: true}},
-    actions: {browser: {integration: true}},
-    test: {browser: {integration: true}},
-    'server/api': {server: {integration: true, cli: true}},
-    'server/init': {server: {default: true}},
-    'server/test': {server: {integration: true}},
-    'browser/api': {browser: {integration: true}},
+    backend: {browser: {default: true}},
+    component: {browser: {default: true}},
+    action: {browser: {default: true}},
+    actions: {browser: {default: true}},
+    'browser/api': {browser: {default: true}},
     'browser/init': {browser: {default: true}},
+    'browser/orchestrator': {browser: {default: true}},
+    error: {server: {microservice: true, k8s: true, upgrade: true}},
+    adapter: {server: {microservice: true, k8s: true, upgrade: true}},
+    orchestrator: {server: {microservice: true, k8s: true, upgrade: true}},
+    gateway: {server: {microservice: true, k8s: true}},
+    'server/api': {server: {microservice: true, k8s: true}},
+    sim: {server: {integration: true}},
+    'server/test': {server: {integration: true}},
+    test: {browser: {integration: true}},
     'browser/test': {browser: {integration: true}},
-    'browser/orchestrator': {browser: {integration: true}},
 };
 
 /** All well-known layer folder names, in declaration order. */

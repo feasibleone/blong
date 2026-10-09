@@ -1,0 +1,82 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app.kubernetes.io/instance: blong-operator-fill
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-operator
+    app.kubernetes.io/part-of: blong-operator
+    app.kubernetes.io/version: 0.1.0
+    blong.feasible.one/retention: "3"
+    blong.feasible.one/spec-hash: 06889f54377899d9
+    blong.feasible.one/suite-version: 0.1.0
+    blong.feasible.one/volume-identity: PLACEHOLDER
+  name: blong-operator-fill
+  namespace: blong-system
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: blong-operator-fill-PLACEHOLDER-PLACEHOLDER
+        app.kubernetes.io/managed-by: blong-kustomize
+        app.kubernetes.io/name: blong-operator
+        app.kubernetes.io/part-of: blong-operator
+        app.kubernetes.io/version: 0.1.0
+    spec:
+      containers:
+        - command:
+            - sh
+            - -c
+            - |-
+              set -eu
+              : "${BLONG_ARTIFACT_ROOT:?a root is required}" "${BLONG_ARTIFACT_IDENTITY:?an identity is required}" "${BLONG_ARTIFACT_KEEP:?a count is required}"
+              target="$BLONG_ARTIFACT_ROOT"/"$BLONG_ARTIFACT_IDENTITY"
+              staging="$BLONG_ARTIFACT_ROOT"/.staging-"$BLONG_ARTIFACT_IDENTITY"
+              mkdir -p "$BLONG_ARTIFACT_ROOT"
+              if [ -f "$target/.blong-artifact-ready" ]; then exit 0; fi
+              rm -rf "$staging"
+              mkdir -p "$staging"
+              if [ -n "${BLONG_ARTIFACT_PATH:-}" ]; then cp -R "$BLONG_ARTIFACT_PATH"/. "$staging"/
+              else curl -fsSL "$BLONG_ARTIFACT_URL" -o /tmp/suite.zip
+              unzip -oq /tmp/suite.zip -d "$staging"
+              fi
+              if [ -f "$staging"/create-links.js ]; then (cd "$staging" && node create-links.js create); fi
+              node -e 'const fs=require("fs"),path=require("path");const root=process.argv[1];let n=0;const walk=d=>{for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,e.name);if(e.isSymbolicLink()){const t=fs.readlinkSync(p);if(path.isAbsolute(t)){fs.unlinkSync(p);fs.symlinkSync(path.relative(d,t),p);n++}}else if(e.isDirectory())walk(p)}};walk(root);console.log("relative links: "+n)' "$staging"
+              rm -rf "$target"
+              mv "$staging" "$target"
+              touch "$target/.blong-artifact-ready"
+              cd "$BLONG_ARTIFACT_ROOT" && ls -1dt */ 2>/dev/null | tail -n +$(( $BLONG_ARTIFACT_KEEP + 1 )) | while read -r gone; do rm -rf "${gone}"; done
+              find "$BLONG_ARTIFACT_ROOT" -mindepth 1 -maxdepth 1 -type d -name '.staging-*' -mmin +60 -exec rm -rf {} + 2>/dev/null || true
+          env:
+            - name: BLONG_ARTIFACT_ROOT
+              value: /var/lib/blong/suites/blong-operator
+            - name: BLONG_ARTIFACT_IDENTITY
+              value: PLACEHOLDER
+            - name: BLONG_ARTIFACT_KEEP
+              value: "3"
+            - name: BLONG_ARTIFACT_URL
+              value: http://blong-artifact.default.svc.cluster.local/kustomize.zip
+          image: docker.io/library/blong-gogo:1
+          name: fill
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - mountPath: /var/lib/blong/suites/blong-operator
+              name: suite
+      nodeSelector:
+        kubernetes.io/hostname: PLACEHOLDER
+      restartPolicy: Never
+      serviceAccountName: blong-operator
+      volumes:
+        - hostPath:
+            path: /var/lib/blong/suites/blong-operator
+            type: DirectoryOrCreate
+          name: suite

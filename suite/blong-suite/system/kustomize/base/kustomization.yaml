@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/managed-by: blong-kustomize
+      app.kubernetes.io/name: blong-suite
+      app.kubernetes.io/part-of: blong-suite
+      app.kubernetes.io/version: 1.13.0
+namespace: blong-suite
+resources:
+  - blongdeployment.yaml
+  - deployments/access.yaml
+  - deployments/core.yaml
+  - deployments/login.yaml
+  - deployments/marine.yaml
+  - external-services/db.yaml
+  - ingresses/blong-suite-test.yaml
+  - namespaces/blong-suite.yaml
+  - rbac/auth-review-binding.yaml
+  - rbac/auth-review.yaml
+  - rbac/blong-operator-role.yaml
+  - rbac/blong-operator-rolebinding.yaml
+  - rbac/jobs-role.yaml
+  - rbac/jobs-rolebinding.yaml
+  - rbac/service-account.yaml
+  - services/access.yaml
+  - services/core.yaml
+  - services/login.yaml
+  - services/marine.yaml
+  - services/web-http.yaml

@@ -28,6 +28,16 @@ export default handler(
                     $meta,
                 )) as BackendResult | undefined;
 
+                // A response without a token is the failure mode that hides: the form stays up,
+                // nothing is thrown, and the caller renders no message. Warn with what came back so
+                // a missing binding, a rejected credential and a half-configured realm are told
+                // apart from the log rather than from the screen (F-371).
+                if (!result?.access_token)
+                    this.log?.warn?.({
+                        $meta: {mtid: 'event', method: 'auth.login'},
+                        message: `login response carried no access_token: ${JSON.stringify(result)?.slice(0, 300)}`,
+                    });
+
                 if (!result?.access_token) return {step: 'credentials', error: 'No token returned'};
 
                 await storageTokenSet({token: result.access_token}, $meta);
@@ -54,6 +64,12 @@ export default handler(
                 return {step: 'success', token: result.access_token};
             } catch (err: unknown) {
                 const typed = err as {type?: string; message?: string};
+                // A throw here is the other silent ending: the form keeps asking, so the reason has
+                // to reach the log at warn level (F-371).
+                this.log?.warn?.({
+                    $meta: {mtid: 'event', method: 'auth.login'},
+                    message: `login call failed: ${typed?.type ?? 'error'}: ${typed?.message ?? String(err)}`,
+                });
                 if (typed?.type === 'error.login.otp.required') return {step: 'otp'};
                 if (typed?.type === 'error.login.password.change') return {step: 'newPassword'};
                 return {step: 'credentials', error: typed?.message ?? 'Login failed'};

@@ -173,6 +173,21 @@ export interface LogBaseOptions {
     /** ANSI colour in human format. Opt-in, as the emitter's own option is. */
     color?: boolean;
     /**
+     * Put the `semlog://` reference group at the end of a human line. On by
+     * default; a released process turns it off, because resolving a reference
+     * needs a store open beside the terminal that printed it.
+     */
+    refs?: boolean;
+    /**
+     * The messages whose caller is worth naming, each a regular expression source.
+     *
+     * A list rather than a switch: the interesting line is usually one particular message, and
+     * naming the caller of every record buries it. Nothing is captured for a message that
+     * matches none of the patterns, so a process can leave this configured — the framework
+     * carries the same list as `log.callSite`.
+     */
+    callSite?: string | RegExp | readonly (string | RegExp)[];
+    /**
      * How long one of the log's own steps may take before it is reported at warn
      * level, in milliseconds. Measured in the store's steps (`cache.slowMs`
      * overrides it there) and in the framework's, which reads the same key when
@@ -388,6 +403,7 @@ export class LogBase {
             level: config.level,
             format: config.format,
             color: config.color,
+            refs: config.refs,
             cache: this.store,
             payloads: this.store,
             // Beside stdout, never instead of it: the rendered line is what a person
@@ -482,7 +498,13 @@ export class LogBase {
         const translate =
             (level: keyof Omit<LoggerFace, 'child' | 'calls'>) =>
             (...args: unknown[]): void => {
-                const {msg, fields} = (this.config.translate ?? dialect)(args);
+                // The runtime's own translation when it has one — it reads the envelope of its
+                // vocabulary — and the emitter's dialect otherwise, which is where `callSite`
+                // is honoured: a runtime that supplies a translation passes the option itself.
+                const {msg, fields} = (
+                    this.config.translate ??
+                    ((call: unknown[]) => dialect(call, {callSite: this.config.callSite}))
+                )(args);
                 methods[level].call(child, msg, fields);
             };
         return {

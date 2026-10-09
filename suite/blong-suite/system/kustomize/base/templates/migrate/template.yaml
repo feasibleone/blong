@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app.kubernetes.io/instance: blong-suite-migrate
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-suite
+    app.kubernetes.io/part-of: blong-suite
+    app.kubernetes.io/version: 1.13.0
+    blong.feasible.one/attempt-retention: "5"
+    blong.feasible.one/spec-hash: 65da9b8bcf6c6d98
+    blong.feasible.one/suite-version: 1.13.0
+    blong.feasible.one/volume-identity: PLACEHOLDER
+  name: blong-suite-migrate
+  namespace: blong-suite
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: blong-suite-migrate-PLACEHOLDER-af155368
+        app.kubernetes.io/managed-by: blong-kustomize
+        app.kubernetes.io/name: blong-suite
+        app.kubernetes.io/part-of: blong-suite
+        app.kubernetes.io/version: 1.13.0
+    spec:
+      containers:
+        - args:
+            - /opt/deploy/suite/suite/blong-suite/index.ts
+            - upgrade
+            - release
+          image: docker.io/library/blong-gogo:1
+          name: migrate
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          volumeMounts:
+            - mountPath: /opt/deploy/suite
+              name: suite
+              readOnly: true
+            - mountPath: /home/node/.blong_releaserc
+              name: releaserc-home
+              readOnly: true
+              subPath: .blong_releaserc
+            - mountPath: /etc/blong_releaserc
+              name: releaserc-site
+              readOnly: true
+              subPath: blong_releaserc
+      restartPolicy: Never
+      serviceAccountName: blong
+      volumes:
+        - hostPath:
+            path: /var/lib/blong/suites/blong-suite/PLACEHOLDER
+            type: Directory
+          name: suite
+        - name: releaserc-home
+          secret:
+            items:
+              - key: .blong_releaserc
+                path: .blong_releaserc
+            optional: true
+            secretName: blong-releaserc
+        - name: releaserc-site
+          secret:
+            items:
+              - key: blong_releaserc
+                path: blong_releaserc
+            optional: true
+            secretName: blong-releaserc-etc

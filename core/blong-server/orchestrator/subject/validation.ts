@@ -1,4 +1,5 @@
 import {validation, type IModelSpec} from '@feasibleone/blong';
+import {subjectModelFind} from '../../subjectModels.ts';
 
 /**
  * `subject.validation` — generate the default gateway validations for the
@@ -40,18 +41,44 @@ export default validation<{
     // Public models are exposed by default; a suite opts out only in rare
     // cases (e.g. `validations: false` until the DB schema is defined).
     const enabled = (validations ?? true) as boolean | Record<string, boolean | RegExp>;
-    const modelNames = await resolveModelHandlerNames(enabled, () =>
-        handler['subjectModelList']({}, {}),
-    );
+    // Read from the module the port writes rather than through the proxy: this definition is not
+    // attached to the `srv.subject` port, so the proxy it holds resolves `subjectModelList` against
+    // the *default* namespace — and a realm whose `orchestrator/subject/init.ts` answers under its
+    // own name (`core`, `access`, …) stops answering `subject` at all, so the call left the process
+    // and the boot ended with `getaddrinfo ENOTFOUND subject.<ns>.svc.cluster.local`. A module is one
+    // instance per process, so what the port collected is what this reads (F-435, D-459).
+    const modelNames = await resolveModelHandlerNames(enabled, () => subjectModelFind());
     if (modelNames.length === 0) return result;
+    // A model the list names and this process cannot answer is not a reason to refuse to start.
+    // The list is built from every realm that declares one, and which handler a process holds
+    // depends on the folders its intents load — the same suite under `dev` and under
+    // `microservice` answers a different set, and `microservice` is the one a pod runs. Skipping
+    // an unanswerable model matches the warning the list already emits for a name it cannot
+    // match; the alternative was a validation, and a process, that could not start — a TypeError
+    // raised from a `map` that named nothing, which is what stopped the first deployed suite
+    // (T-223). The skip is silent because a validation's context carries no logger; that hole is
+    // recorded with it.
+    const models = (
+        await Promise.all(
+            modelNames.map(async handlerName => {
+                const model = (await handler[handlerName]({}, {})) as IModelSpec | undefined;
+                if (!model || typeof model !== 'object' || !model.subject || !model.object) {
+                    return undefined;
+                }
+                if (!schema?.[model.subject]?.[model.object]) {
+                    // The spec is there but the schema to describe it is not, and a validation
+                    // built on it would describe nothing.
+                    return undefined;
+                }
+                return model;
+            }),
+        )
+    ).filter((model): model is IModelSpec => model !== undefined);
+    if (models.length === 0) return result;
     return {
         ...result,
         ...validation(
-            (
-                (await Promise.all(
-                    modelNames.map(handlerName => handler[handlerName]({}, {})),
-                )) as unknown as IModelSpec[]
-            ).map((model: IModelSpec) =>
+            models.map((model: IModelSpec) =>
                 mergeWithSymbols(
                     {
                         schema: type.Object({

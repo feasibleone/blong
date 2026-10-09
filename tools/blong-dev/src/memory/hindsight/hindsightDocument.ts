@@ -30,6 +30,7 @@ export interface IHindsightDocument {
     metadata: Record<string, string>;
     /** The entry's date as an ISO timestamp, when it has one. */
     timestamp?: string;
+    observationScopes: string[][];
 }
 
 /** Every memory document carries this tag, so a search can exclude foreign ones. */
@@ -86,15 +87,18 @@ export function entryDocument(
 ): IHindsightDocument {
     const path = relative(root, doc.path);
     const tags = [MEMORY_TAG, kindTag(doc.kind), idTag(entry.id), pathTag(path)];
+    const observationScopes = [kindTag(doc.kind)];
     const metadata: Record<string, string> = {id: entry.id, kind: doc.kind, path};
 
     const {area, status, date} = entry.meta ?? {};
     if (area) {
         tags.push(areaTag(area));
+        observationScopes.push(areaTag(area));
         metadata['area'] = area;
     }
     if (status) {
         tags.push(statusTag(status));
+        observationScopes.push(statusTag(status));
         metadata['status'] = status;
     }
     if (date) metadata['date'] = date;
@@ -105,6 +109,7 @@ export function entryDocument(
         context: `${doc.kind} entry ${entry.id} in ${path}`,
         tags,
         metadata,
+        observationScopes: [observationScopes],
     };
 
     const timestamp = isoDate(date);

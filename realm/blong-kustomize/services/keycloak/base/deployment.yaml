@@ -1,0 +1,83 @@
+# keycloak/base/deployment.yaml — the workload, adapted from `test/integration/keycloak-deployment.yaml`.
+#
+# `start-dev` with the dev-file store, which is the mode the integration matrix runs and the only one
+# that needs no database of its own: the credential tables live under the mounted data directory, which
+# is why the descriptor declares storage. The admin credentials come from the generated Secret rather
+# than the literals the integration manifest spells out — the two names below are the descriptor's
+# credential keys, so a deployment that already owns an admin account hands its own Secret instead.
+#
+# What is deliberately *not* here is the `keycloak-init` Job the integration matrix runs: realms, roles
+# and clients are suite-specific, and who owns a suite realm is an open question (D-433), so the
+# generated service is a Keycloak that starts and authenticates and no more.
+#
+# Placeholders are the generator's, and one it does not know is a failure rather than a literal:
+# `${namespace}`, `${image}`, `${claimName}`, `${initConfigName}`, `${credentialsSecret}`.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: keycloak
+    namespace: ${namespace}
+    labels:
+        app: keycloak
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: keycloak
+    template:
+        metadata:
+            labels:
+                app: keycloak
+        spec:
+            containers:
+                - name: keycloak
+                  image: ${image}
+                  args: ['start-dev', '--http-port=8180', '--hostname-debug=true']
+                  ports:
+                      - containerPort: 8180
+                        name: http
+                  env:
+                      - name: KC_HEALTH_ENABLED
+                        value: 'true'
+                      - name: KC_DB
+                        value: 'dev-file'
+                      - name: KEYCLOAK_ADMIN
+                        valueFrom:
+                            secretKeyRef:
+                                name: ${credentialsSecret}
+                                key: KEYCLOAK_ADMIN
+                      - name: KEYCLOAK_ADMIN_PASSWORD
+                        valueFrom:
+                            secretKeyRef:
+                                name: ${credentialsSecret}
+                                key: KEYCLOAK_ADMIN_PASSWORD
+                  volumeMounts:
+                      - name: keycloak-data
+                        mountPath: /opt/keycloak/data
+                  resources:
+                      limits:
+                          cpu: '1.0'
+                          memory: 1Gi
+                      requests:
+                          cpu: '0.2'
+                          memory: 512Mi
+                  # The image's own health endpoint, and it takes its time: Keycloak builds its
+                  # realm before it answers, which is why the delay is a minute rather than seconds.
+                  readinessProbe:
+                      httpGet:
+                          path: /health/ready
+                          port: 8180
+                      initialDelaySeconds: 60
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                  livenessProbe:
+                      httpGet:
+                          path: /health/ready
+                          port: 8180
+                      initialDelaySeconds: 60
+                      periodSeconds: 15
+                      timeoutSeconds: 5
+            volumes:
+                - name: keycloak-data
+                  persistentVolumeClaim:
+                      claimName: ${claimName}

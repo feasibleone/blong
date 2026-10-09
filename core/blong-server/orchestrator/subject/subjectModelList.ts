@@ -1,12 +1,8 @@
 import {handler} from '@feasibleone/blong';
+import {subjectModelFind} from '../../subjectModels.ts';
 
-export default handler<
-    object,
-    {
-        subjectModels?: object;
-    }
->(() => ({
+export default handler(() => ({
     subjectModelList() {
-        return this.config?.context?.subjectModels ?? {};
+        return subjectModelFind();
     },
 }));

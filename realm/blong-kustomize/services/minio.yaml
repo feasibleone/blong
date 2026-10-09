@@ -1,0 +1,13 @@
+# minio — the S3-compatible store an s3 adapter points at (Phase 15 I).
+#
+# The image is the hardened one the integration matrix pins (its own release, not `minio/minio`),
+# because a tag is what a deployment is reproducible by.
+name: minio
+kinds: [s3]
+image: ghcr.io/coollabsio/minio:2025-10-15T17-29-55Z
+port: {name: s3, port: 9000}
+credentials:
+    secret: minio-credentials
+    keys: [MINIO_ROOT_USER, MINIO_ROOT_PASSWORD]
+values:
+    consolePort: 9001

@@ -1,0 +1,64 @@
+{
+    "name": "@feasibleone/blong-kustomize",
+    "version": "0.1.0",
+    "description": "kustomize realm",
+    "repository": {
+        "url": "git+https://github.com/feasibleone/blong.git"
+    },
+    "type": "module",
+    "exports": {
+        "./server.ts": "./server.ts",
+        "./browser.ts": "./browser.ts",
+        "./browser.js": {
+            "development": "./browser.ts",
+            "import": "./browser.ts"
+        },
+        "./index.browser.ts": "./index.browser.ts",
+        "./package.json": "./package.json"
+    },
+    "bin": {
+        "blong-kustomize": "./bin/kustomize.ts"
+    },
+    "scripts": {
+        "blong": "blong",
+        "blong-watch": "blong-watch",
+        "build": "true",
+        "build-storybook": "storybook build",
+        "ci-lint": "blong-dev lint",
+        "ci-storybook": "npm run build-storybook",
+        "ci-test": "blong-dev test && blong-dev playwright --coverage",
+        "dev": "vite",
+        "playwright": "blong-dev playwright",
+        "playwright:update": "blong-dev playwright --update-snapshots",
+        "storybook": "storybook dev -p 6007",
+        "test": "blong-dev test",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "tinyglobby": "^0.2.16",
+        "typebox": "^1.1.5",
+        "yaml": "^2.8.3"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-browser": "workspace:^1.0.0",
+        "@feasibleone/blong-dev": "workspace:*",
+        "@feasibleone/blong-gogo": "workspace:^1.0.0",
+        "@feasibleone/blong-realm": "workspace:^1.0.0",
+        "@feasibleone/blong-test": "workspace:^1.0.0",
+        "@playwright/test": "^1.63.0",
+        "@storybook/addon-a11y": "^10.3.6",
+        "@storybook/react-vite": "^10.3.6",
+        "@swc/core": "^1.7.14",
+        "@types/node": "^24",
+        "@types/react": "^19.1.2",
+        "@types/react-dom": "^19.1.2",
+        "allure-playwright": "^3.12.1",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0",
+        "storybook": "^10.3.6",
+        "tap": "^21.6.3",
+        "typescript": "^6.0.3",
+        "vite": "^8.2.1"
+    }
+}

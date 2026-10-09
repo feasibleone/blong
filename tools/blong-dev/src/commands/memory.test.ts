@@ -75,9 +75,14 @@ function bankDocument(
 }
 
 /** A throwaway repository: `rush.json` is what makes the temp directory the root. */
-function tempRepo(): {dir: string; restore: () => void} {
+function tempRepo(projects: string[] = []): {dir: string; restore: () => void} {
     const dir = mkdtempSync(join(tmpdir(), 'blong-dev-memory-'));
-    writeFileSync(join(dir, 'rush.json'), '{"projects": []}');
+    writeFileSync(
+        join(dir, 'rush.json'),
+        JSON.stringify({
+            projects: projects.map(folder => ({packageName: folder, projectFolder: folder})),
+        }),
+    );
     const previous = process.cwd();
     process.chdir(dir);
     return {
@@ -509,4 +514,117 @@ t.test('the memory command layer', async t => {
             t.same(calls.removed, [], 'nothing was deleted on a partial read');
         },
     );
+
+    await t.test('a bare id two packages hold is refused, and answered by the scope', async t => {
+        const repo = tempRepo(['app/one', 'app/two']);
+        t.teardown(repo.restore);
+        setHindsightStoreFactory(null);
+        await capture(() =>
+            memory(['add', 'todo', '--title', 'The one task', '--area', 'app/one']),
+        );
+        // The counter is global, so a duplicate is what a pin or a migration leaves
+        // behind — exactly the state a bare id cannot answer for.
+        await capture(() =>
+            memory([
+                'add',
+                'todo',
+                '--title',
+                'The other task',
+                '--area',
+                'app/two',
+                '--id',
+                'T-001',
+            ]),
+        );
+
+        const refused = await capture(() => memory(['show', 'T-001']));
+
+        t.equal(refused.code, 1, 'an id held by two files is not answered');
+        t.match(refused.err, /T-001 names 2 entries/, 'and says how many it names');
+        t.match(refused.err, /T-001@app\/one/, 'naming the first file to qualify with');
+        t.match(refused.err, /T-001@app\/two/, 'and the second');
+
+        const qualified = await capture(() => memory(['show', 'T-001@app/two']));
+
+        t.equal(qualified.code, undefined, 'the qualified id resolves');
+        t.match(qualified.out, /app\/two\/\.github\/memory\/todo\.md/, 'to the file asked for');
+        t.match(qualified.out, /The other task/, 'and to that file\u2019s entry');
+
+        process.chdir(join(repo.dir, 'app/one'));
+        const local = await capture(() => memory(['show', 'T-001']));
+
+        t.equal(local.code, undefined, 'the package the command runs from answers for its own id');
+        t.match(local.out, /app\/one\/\.github\/memory\/todo\.md/, 'with its file');
+        t.match(local.out, /The one task/, 'and its entry');
+
+        process.chdir(repo.dir);
+        const missed = await capture(() => memory(['show', 'T-001@app\/nope']));
+
+        t.equal(missed.code, 1, 'an id that is not in the named scope is not found there');
+        t.match(missed.err, /no entry with id T-001 in scope app\/nope/, 'and says which scope');
+        t.match(missed.err, /app\/one/, 'while naming the files that do hold it');
+        t.end();
+    });
+
+    await t.test('an edit through a qualified id lands in the file that was named', async t => {
+        const repo = tempRepo(['app/one', 'app/two']);
+        t.teardown(repo.restore);
+        setHindsightStoreFactory(null);
+        await capture(() =>
+            memory(['add', 'todo', '--title', 'The one task', '--area', 'app/one']),
+        );
+        await capture(() =>
+            memory([
+                'add',
+                'todo',
+                '--title',
+                'The other task',
+                '--area',
+                'app/two',
+                '--id',
+                'T-001',
+            ]),
+        );
+
+        const {code} = await capture(() =>
+            memory(['edit', 'T-001@app/one', '--title', 'The one task, renamed']),
+        );
+
+        t.equal(code, undefined, 'the edit succeeded');
+        const one = readFileSync(join(repo.dir, 'app/one/.github/memory/todo.md'), 'utf8');
+        const two = readFileSync(join(repo.dir, 'app/two/.github/memory/todo.md'), 'utf8');
+        t.match(one, /The one task, renamed/, 'the named file changed');
+        t.match(two, /The other task/, 'and the other file was left alone');
+        t.notMatch(two, /renamed/, 'with no trace of the edit');
+        t.end();
+    });
+
+    await t.test('audit reports an id two files hold beside the dangling ones', async t => {
+        const repo = tempRepo(['app/one', 'app/two']);
+        t.teardown(repo.restore);
+        setHindsightStoreFactory(null);
+        await capture(() =>
+            memory(['add', 'todo', '--title', 'The one task', '--area', 'app/one']),
+        );
+        await capture(() =>
+            memory([
+                'add',
+                'todo',
+                '--title',
+                'The other task',
+                '--area',
+                'app/two',
+                '--id',
+                'T-001',
+            ]),
+        );
+
+        const {out, code} = await capture(() => memory(['audit']));
+
+        t.equal(code, undefined, 'audit is a report, not a failure');
+        t.match(out, /# T-001 is held by 2 files — /, 'an id in two files is named');
+        t.match(out, /app\/one\/\.github\/memory\/todo\.md/, 'with the files that hold it');
+        t.match(out, /1 ambiguous id\(s\)/, 'and the summary counts it');
+        t.end();
+    });
 });

@@ -12,6 +12,28 @@ test.sh
 **/CHANGELOG.md
 .github/
 .vscode/
-node_modules
+.git/
 common/temp/
 common/deploy/
+dev/
+
+###
+# Test-harness and local state.
+#
+# The deep patterns are deliberate: podman (buildah 4.9.3) matches a pattern **without a slash only
+# against the context root**, unlike gitignore, which matches such a name at any depth. Verified by
+# building a scratch context whose `.dockerignore` held the bare name `.vscode-test` and watching the
+# nested `ext/rest-fs/.vscode-test` arrive in the image anyway. These entries used to be written the
+# gitignore way, so `ext/rest-fs/.vscode-test` (fifteen downloaded VS Code builds, ~15 GB), every
+# package's `node_modules` (~9 GB), `.tap` (~2 GB) and `coverage` (~2 GB) all reached the builder: a
+# ~28 GB context, a 26 GB builder image per build, and a dangling image of that size left behind each
+# time (F-379, which the earlier fix did not actually cure; measured again as F-406).
+**/node_modules
+**/.vscode-test
+**/tap-snapshots
+**/.tap
+**/allure-results*
+**/allure-report
+**/rush-logs
+**/coverage
+**/*.tsbuildinfo

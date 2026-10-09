@@ -69,11 +69,38 @@ test('layersActivation', t => {
 
     t.test('carries the intents the table declares', t => {
         const block = layersActivation();
-        // `cli` is the case the hand-written table this replaced had lost: the intent that loads a
-        // realm's handlers without serving them.
-        t.match(block, /\| `adapter` +\| integration, cli +\| — +\|/, 'adapter is cli-active');
-        t.match(block, /\| `gateway` +\| integration +\| — +\|/, 'gateway is not');
-        t.match(block, /"error · adapter · orchestrator · server\/api"/, 'cli groups them');
+        // `microservice` is the intent that makes a realm work — its adapters, orchestrators,
+        // listeners and the error layer a handler throws through (T-237, D-428) — and `upgrade` names
+        // the layers that own the records a migration reads and writes, so a migration Job activates
+        // them itself instead of repeating the plan's selectors (T-268). `cli` is no longer a column
+        // here but still runs these layers, because the loader makes it imply `microservice`.
+        t.match(
+            block,
+            /\| `adapter` +\| microservice, k8s, upgrade +\| — +\|/,
+            'the adapter is a runtime layer',
+        );
+        t.match(
+            block,
+            /\| `gateway` +\| microservice, k8s +\| — +\|/,
+            'a listener is not a migration one',
+        );
+        t.match(
+            block,
+            /"error · adapter · orchestrator · gateway · server\/api"/,
+            'microservice groups them',
+        );
+        // The browser platform has no deployment split — the app is the process — so its layers ride
+        // whenever it loads, while the test layers stay `integration`-only.
+        t.match(
+            block,
+            /\| `backend` +\| — +\| default +\|/,
+            'a browser runtime layer is on by default',
+        );
+        t.match(
+            block,
+            /\| `browser\/test` +\| — +\| integration +\|/,
+            'a browser test layer is not',
+        );
         t.end();
     });
 

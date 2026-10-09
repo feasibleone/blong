@@ -15,7 +15,7 @@ export {
     type IMleClient,
     type IMleClientOptions,
 } from './src/client.ts';
-export {createMleCrypto, type IMleCrypto, type KeySpec} from './src/crypto.ts';
+export {createMleCrypto, resolveKeySpec, type IMleCrypto, type KeySpec} from './src/crypto.ts';
 export {createMleSession, type IMleSession, type IMleSessionOptions} from './src/session.ts';
 
 export default createMleCrypto;

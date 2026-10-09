@@ -1,0 +1,87 @@
+# mysql/base/deployment.yaml — the workload, adapted from `test/integration/mysql-deployment.yaml`.
+#
+# What a base is: the part of a service's objects that is *shape* rather than value. The claim, the
+# init ConfigMap, the Service, the credentials Secret and the namespace are derived from the
+# descriptor and the plan (`services.ts` plus the generator), so they are not here; what is here is
+# what only the image knows — the init container that hands the volume to uid 27, the environment the
+# server is configured by, the probe that decides it is up, and the resources it is given.
+#
+# Placeholders are the generator's, and one it does not know is a failure rather than a literal:
+# `${namespace}`, `${image}`, `${claimName}`, `${initConfigName}`, `${credentialsSecret}`.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: mysql
+    namespace: ${namespace}
+    labels:
+        app: mysql
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: mysql
+    template:
+        metadata:
+            labels:
+                app: mysql
+        spec:
+            initContainers:
+                # The data directory is the host's before it is the container's: the server runs as
+                # uid 27 and refuses to start on a directory it cannot write, which is what the
+                # integration matrix's busybox step fixes and why it is kept.
+                - name: volume-permissions
+                  image: busybox:1.36.1
+                  command: ['sh', '-c', 'chown -R 27:27 /var/lib/mysql']
+                  volumeMounts:
+                      - name: mysql-data
+                        mountPath: /var/lib/mysql
+            containers:
+                - name: mysql
+                  image: ${image}
+                  ports:
+                      - containerPort: 3306
+                        name: mysql
+                  env:
+                      # Generated once and kept: a password that changed with every pass would be a
+                      # database whose users stop matching the Secret beside it.
+                      - name: MYSQL_USER
+                        valueFrom:
+                            secretKeyRef:
+                                name: ${credentialsSecret}
+                                key: MYSQL_USER
+                      - name: MYSQL_PASSWORD
+                        valueFrom:
+                            secretKeyRef:
+                                name: ${credentialsSecret}
+                                key: MYSQL_PASSWORD
+                  volumeMounts:
+                      - name: mysql-data
+                        mountPath: /var/lib/mysql
+                      - name: mysql-init
+                        mountPath: /docker-entrypoint-initdb.d
+                  resources:
+                      limits:
+                          cpu: '1'
+                          memory: 768Mi
+                      requests:
+                          cpu: 50m
+                          memory: 512Mi
+                  livenessProbe:
+                      exec:
+                          command: ['mysqladmin', 'ping', '-h', '127.0.0.1']
+                      initialDelaySeconds: 40
+                      periodSeconds: 30
+                      timeoutSeconds: 20
+                      failureThreshold: 10
+                  readinessProbe:
+                      exec:
+                          command: ['mysqladmin', 'ping', '-h', '127.0.0.1']
+                      initialDelaySeconds: 20
+                      periodSeconds: 10
+            volumes:
+                - name: mysql-data
+                  persistentVolumeClaim:
+                      claimName: ${claimName}
+                - name: mysql-init
+                  configMap:
+                      name: ${initConfigName}

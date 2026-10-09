@@ -1,0 +1,21 @@
+# mysql — the relational database a knex adapter points at (Phase 15 I).
+#
+# One descriptor per service, read and validated at load (`services.ts`). It says what the service *is*
+# and which adapters imply it; the objects a cluster is given from it (the init ConfigMap, a claim, the
+# Deployment and its Service) live in the base beside it, which the generator copies into the tree.
+name: mysql
+# The adapter kinds that imply this service: a plan whose deployments activate one of them cannot run
+# without it, and a plan that activates none never generates it. The vocabulary is the framework's own
+# (`core/blong-gogo/src/adapter/server.ts`) — knex, mongodb, redis, kafka, vault, s3, keycloak, k8s.
+kinds: [knex]
+image: mysql/mysql-server:8.0.32
+port: {name: mysql, port: 3306}
+storage: {size: 10Gi, mountPath: /var/lib/mysql, accessMode: ReadWriteOnce}
+credentials:
+    secret: mysql-credentials
+    keys: [MYSQL_USER, MYSQL_PASSWORD]
+values:
+    # The script the service is initialised with, one line per database the plan names: the dialect is
+    # the service's, the names are the plan's, and `${db}` is what keeps the two apart. A service with
+    # no template gets no init ConfigMap, and its databases are the deployment's business.
+    initScript: CREATE DATABASE IF NOT EXISTS `${db}`;

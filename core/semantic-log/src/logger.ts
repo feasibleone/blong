@@ -31,6 +31,11 @@ export type Format = 'human' | 'json';
 
 export interface LoggerOptions {
     /**
+     * Put the `semlog://` reference group at the end of a human line. On by
+     * default; a released process turns it off.
+     */
+    refs?: boolean;
+    /**
      * Service name — required; every record carries it (PRD R20), and the human
      * line prints it when `details` is asked for.
      */
@@ -495,10 +500,20 @@ function create(
         // measured on the same text the renderer will measure, so the two halves
         // cannot disagree about which field became a reference.
         //
+        // The rendering switch gates this too, and that is not the same question
+        // as "is a store configured": the stores come from the framework's merged
+        // config, and a deployment's rc file can configure them for a process that
+        // otherwise renders no references (`log.refs: false`, the `release`
+        // intent). Gating only the renderer left `config: semlog://p/<id>` in the
+        // stdout of a released service — a reference nobody resolves, naming a
+        // payload a reader of that stream was never meant to read back (T-243).
+        // With the switch off the value inlines, which is what a build with no
+        // store already did.
+        //
         // Redaction has already run, so the retained payload is the redacted
         // value: the withheld plaintext is absent from the payload store exactly
         // as it is absent from the record store.
-        if (options.payloads) {
+        if (options.payloads && options.refs !== false) {
             const payloads = options.payloads;
             const index: Record<string, string> = {};
             // `emit` always constructs `fields` — at minimum the `pid`/`hostname`
@@ -585,7 +600,7 @@ function create(
             // (see `service/transport.ts`). That is a deliberate difference from
             // the lone-destination case above, where no isolation exists and the
             // failure is the caller's.
-            const line = `${format === 'json' ? renderJson(record) : renderHuman(record, {color: options.color ?? false, details: options.details ?? false})}\n`;
+            const line = `${format === 'json' ? renderJson(record) : renderHuman(record, {color: options.color ?? false, details: options.details ?? false, refs: options.refs})}\n`;
             writer.write(line, record);
         }
     };

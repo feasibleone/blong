@@ -44,6 +44,10 @@ export default browser(blong => ({
         async function blong() {
             return import('@feasibleone/blong-realm/browser.ts');
         },
+        /** Deployment realm: its Browse page over the suite's Deployments. */
+        async function kustomize() {
+            return import('@feasibleone/blong-kustomize/browser.ts');
+        },
     ],
     config: {
         default: {

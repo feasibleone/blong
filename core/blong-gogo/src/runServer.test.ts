@@ -7,9 +7,11 @@
  *   - DEFAULT_INTENTS matches the expected set
  */
 
+import {dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {test} from 'tap';
 
-import {DEFAULT_INTENTS} from './runServer.ts';
+import {DEFAULT_INTENTS, autoRun} from './runServer.ts';
 
 // ---------------------------------------------------------------------------
 // DEFAULT_INTENTS
@@ -19,6 +21,26 @@ test('DEFAULT_INTENTS contains the three baseline intents', async t => {
     t.same(
         [...DEFAULT_INTENTS],
         ['microservice', 'integration', 'dev', ...(process.env.CI ? ['ci'] : [])],
+    );
+});
+
+// ---------------------------------------------------------------------------
+// The optional target
+// ---------------------------------------------------------------------------
+
+test('autoRun loads a relative target from the folder the CLI ran in', async t => {
+    // The first positional of `blong` is an optional target, and it is *tested* with
+    // `existsSync(resolve(cwd, target))`. Handing the same unresolved string to `import()` made the
+    // resolution happen twice, differently: `blong ./index.ts k8s` from a suite folder reported
+    // `Cannot find module core/blong-gogo/src/index.ts` — a path the caller never typed, for a file
+    // `existsSync` had just proved was there (F-438). This module is the target because it exists and
+    // has no default export, so the failure that comes back is the one about the export — which is
+    // only reachable once the path resolved, and is a message rather than a running server.
+    const here = dirname(fileURLToPath(import.meta.url));
+    await t.rejects(
+        autoRun({cwd: here, target: './runServer.ts', intents: ['dev']}),
+        /has no default export/,
+        'the relative target is resolved against the working directory before it is imported',
     );
 });
 
@@ -103,9 +125,19 @@ test('resolveIntents — provided intents are used as-is', async t => {
 });
 
 test('resolveIntents — custom intent is passed through', async t => {
-    t.same(resolveIntents(['db']), ['db']);
+    t.same(resolveIntents(['upgrade']), ['upgrade']);
 });
 
 test('resolveIntents — multiple intents preserved in order', async t => {
     t.same(resolveIntents(['dev', 'debug']), ['dev', 'debug']);
 });
+
+// ---------------------------------------------------------------------------
+// A rejection nobody awaited is the firing site's to report
+// ---------------------------------------------------------------------------
+
+// The guard that used to be covered here is gone. It existed because a dispatch fired without a
+// caller had no `catch` to attach and Node's default ended the process (T-229), but a process-wide
+// listener reported a call nobody could name and let the failure repeat until something restarted the
+// process for it. The two places that fire one — the operator's watch and its controller loop — catch
+// and log their own failures now, which is asserted where they live.

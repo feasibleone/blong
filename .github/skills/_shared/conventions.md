@@ -200,45 +200,77 @@ Rule: browse/new/open/report pages auto-generate from one `IModelSpec`; see blon
 
 ---
 
+## [REMOTE_BOUNDARY]
+
+What may cross between two components, and what the call looks like on the way. It matters because
+the same code runs in one process (dev, monolith) and in several (microservice): a call that works
+locally for the wrong reason breaks only in the deployed shape.
+
+- **A component boundary is a packet boundary.** `Remote.dispatch` answers in-process only when
+  `canSkipSocket` is on _and_ `_findMethod` resolves the exact name it was given. Otherwise the call
+  goes to `#brokerRequest`, and `busGateway` answers `[result, {mtid: 'response'}]` — a packet, so
+  only data survives it. A stream, generator, function, class instance or symbol does not: the reply
+  arrives as `null`, which a caller reads as "nothing" rather than as a fault (T-225, T-227).
+- **Names decide locality, not the process layout.** The local registry is keyed by the _wire name_
+  — `handler['clusterCustomWatch']`, camelCase and one word per part. The dotted form
+  (`cluster.custom.watch`) is the RPC spelling and always goes over the bus. Two spellings, two
+  reply shapes; this is how a call inside one process is still serialised.
+- **A tuple reply is the tell.** `[value, {mtid: 'response'}]` means the call left the component; a
+  bare value means it was answered locally, so reading element 0 of a local reply is the same bug as
+  reading element 1 of a remote one.
+- **A caller that must hold a stream lives with the resource.** A watch, cursor or subscription
+  belongs in a handler of the component that owns the client, where the call is a plain function
+  call (`kustomize.watch.run` in `realm/blong-kustomize` is the worked example). Across components,
+  expose data instead: a bounded batch, or a claim check naming where the stream can be opened.
+
+---
+
 ## [LAYER_DEFAULTS_TABLE]
 
 Well-known folders auto-activate at their default intent — no `layer.*.ts` needed. This table
-mirrors `WELL_KNOWN_LAYERS` in `core/blong-gogo/src/load.ts` (the source of truth). `default` =
-always active; `integration` = active under the `integration` intent (the default CLI intents are
-`dev + microservice + integration`, so these are active in practice).
+mirrors `WELL_KNOWN_LAYERS` in `core/blong-lib/layers.ts` (the source of truth). `default` = always
+active; `microservice` = active when a process _runs_ the realm (a development server or a
+standalone service); `k8s` = active when a run _plans_ it, because a tree is written by reading the
+same ports and groups; `integration` = active when it _tests_ it; `upgrade` = active when a run
+brings a database up to date, which needs the layers that own the records — `error`, `adapter` and
+`orchestrator` — and no listener, so a migration neither serves nor answers. The realms such a run
+covers are the suite's `upgrade` config block, named there the way its `k8s` block names the realms
+a planning run sees. `release` and `cli` name nothing: a deployed process takes its layers from the
+`--<realm>.<layer>` flags its plan wrote, and a CLI names the layers it uses, because it may need
+one adapter rather than a realm's whole runtime set.
 
-| Folder                 | Server intent | Browser intent |
-| ---------------------- | ------------- | -------------- |
-| `api`                  | `default`     | `default`      |
-| `init`                 | `default`     | `default`      |
-| `meta`                 | `default`     | `default`      |
-| `error`                | `integration` | —              |
-| `sim`                  | `integration` | —              |
-| `adapter`              | `integration` | —              |
-| `orchestrator`         | `integration` | —              |
-| `gateway`              | `integration` | —              |
-| `backend`              | —             | `integration`  |
-| `component`            | —             | `integration`  |
-| `action` / `actions`   | —             | `integration`  |
-| `test`                 | —             | `integration`  |
-| `server/api`           | `integration` | —              |
-| `server/init`          | `default`     | —              |
-| `server/test`          | `integration` | —              |
-| `browser/api`          | —             | `integration`  |
-| `browser/init`         | —             | `default`      |
-| `browser/test`         | —             | `integration`  |
-| `browser/orchestrator` | —             | `integration`  |
+| Folder                 | Server intent                    | Browser intent |
+| ---------------------- | -------------------------------- | -------------- |
+| `api`                  | `default`                        | `default`      |
+| `init`                 | `default`                        | `default`      |
+| `meta`                 | `default`                        | `default`      |
+| `server/init`          | `default`                        | —              |
+| `browser/init`         | —                                | `default`      |
+| `browser/api`          | —                                | `default`      |
+| `browser/orchestrator` | —                                | `default`      |
+| `backend`              | —                                | `default`      |
+| `component`            | —                                | `default`      |
+| `action` / `actions`   | —                                | `default`      |
+| `error`                | `microservice`, `k8s`, `upgrade` | —              |
+| `adapter`              | `microservice`, `k8s`, `upgrade` | —              |
+| `orchestrator`         | `microservice`, `k8s`, `upgrade` | —              |
+| `gateway`              | `microservice`, `k8s`            | —              |
+| `server/api`           | `microservice`, `k8s`            | —              |
+| `sim`                  | `integration`                    | —              |
+| `server/test`          | `integration`                    | —              |
+| `test`                 | —                                | `integration`  |
+| `browser/test`         | —                                | `integration`  |
 
 > Server tap tests live in `server/test/`; browser tap tests in `browser/test/`; the top-level
 > `test/` folder is a browser layer holding Playwright `*.play.ts`.
 
 Custom folder names require a `layer.server.ts` / `layer.browser.ts`.
 
-> Intents that change **process lifetime** rather than layer activation: `db` and `cli` exit once
-> their work is done, `playwright` declares that the runner owns the lifetime, and `integration`
-> exits when `CI` is set. `cli` additionally switches the listeners off (gateway, RPC server, API
-> gateway, rest-fs, system debug, MCP) and resolves every dispatch in-process — it is what a
-> command-line tool built on a realm uses. See the **blong-intent** skill.
+> Intents that change **process lifetime** rather than layer activation: `upgrade` and `cli` exit
+> once their work is done, `playwright` declares that the runner owns the lifetime, and
+> `integration` exits when `CI` is set. `cli` additionally switches the listeners off (gateway, RPC
+> server, API gateway, rest-fs, system debug, MCP) and resolves every dispatch in-process — it is
+> what a command-line tool built on a realm uses. See the **blong-intent** skill.
 
 ---
 
@@ -254,6 +286,38 @@ export default layer({
 
 Rule: adapter/orchestrator `activation` config lives in the layer file, NOT the realm `server.ts`.
 Realm `server.ts` only for config shared across layers.
+
+---
+
+## [K8S_CONTRIB]
+
+A realm or adapter contributes Kubernetes resources by co-locating a `k8s` block in its component
+`activation` — the framework already merges activation config for the active intent, so there is no
+separate descriptor file to keep in step. `blong-kustomize` reads these keys from every application
+adapter/orchestrator and merges them into the deployment plan.
+
+```typescript
+// adapter/webhook.ts — a receiver that must be reachable from outside
+export default adapter(blong => ({
+    extends: 'adapter.webhook',
+    activation: {
+        default: {namespace: 'webhook'},
+        k8s: {
+            k8sReplicas: 2,
+            k8sResources: {requests: {cpu: '100m', memory: '128Mi'}},
+            k8sPorts: [{name: 'metrics', port: 9090}],
+            k8sIngresses: [{name: 'shop-webhook', path: '/webhook/shop', host: 'shop.example.com'}],
+            k8sEnv: [{name: 'SHOP_MODE', value: 'live'}],
+            k8sManifests: [{apiVersion: 'v1', kind: 'ConfigMap', metadata: {name: 'shop-extra'}}],
+        },
+    },
+}));
+```
+
+Keys: `k8sReplicas`, `k8sResources` (requests/limits), `k8sPorts`, `k8sIngresses`, `k8sEnv`,
+`k8sManifests`. Objects deep-merge across the realms that share a deployment; arrays concatenate. An
+ingress with no `serviceName` binds to the Service of the deployment that owns the contributing
+realm.
 
 ---
 

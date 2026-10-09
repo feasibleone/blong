@@ -14,14 +14,40 @@ export function methodId<T>(what: T): T {
     );
 }
 
+/**
+ * Split a handler or template name into its `subject.object.predicate` parts.
+ *
+ * A capital letter that follows a lower-case one starts a new part — that is how `clusterPodFind`
+ * reads as three words — and an `_` or a `-` **joins** the word after it to the one before. The
+ * join is what lets a part be several words while the name still reads as three:
+ * `clusterPersistent_Volume_ClaimApply` is `cluster.persistent_volume_claim.apply`, and the
+ * separator stays in the result, because it is the only record of where the words are. Without it
+ * a compound kind had to be written as one lump (`persistentvolumeclaim`), and nothing could tell
+ * the lump apart again — the k8s adapter strips the separator and capitalises each word to reach
+ * the client's own spelling (`PersistentVolumeClaim`). A name written the other way, with the
+ * capitals joined (`clusterPersistentVolumeClaimApply`), is read as four words and lands on a part
+ * that names nothing (F-379).
+ *
+ * Two shapes are inherited and deliberate. Without a `$` only the leading word group is split, so a
+ * name may carry a verb phrase in its third part: `partyAclFixtureGet` is `party.acl.fixtureGet`
+ * (F-347). A `$`-template splits every word, because its file name is built from the same parts
+ * (`$subject$ObjectMerge` is `$subject.$object.merge`) and the `$` stays glued to the word it
+ * prefixes (D-044).
+ */
 export function methodParts(what: string): string {
     if (what.includes('.')) return what;
-    if (!what.includes('$')) {
+    // Lower-case the word a separator joins, so it cannot read as a part boundary of its own.
+    // The separator itself is kept: it is what says the words belong together.
+    const glued = what.replace(
+        /([-_])([A-Z])/g,
+        (_, separator: string, letter: string) => separator + letter.toLowerCase(),
+    );
+    if (!glued.includes('$')) {
         // Existing behaviour: split the leading word group only.
         const lowercase = (match: string, word1: string, word2: string, letter: string): string =>
             `${word1}.${word2.toLowerCase()}${letter ? '.' + letter.toLowerCase() : ''}`;
         const capitalWords = /^([^A-Z]+)([A-Z][^A-Z]+)([A-Z])?/;
-        return what.replace(capitalWords, lowercase);
+        return glued.replace(capitalWords, lowercase);
     }
     // `$`-containing template names (e.g. the `$subject`/`$object` placeholders
     // in `core/blong-kopi`): split every camelCase word while keeping `$`
@@ -30,9 +56,9 @@ export function methodParts(what: string): string {
     // (not `$subject$.object.merge`, which would break table/param lookups).
     const words: string[] = [];
     let current = '';
-    for (let i = 0; i < what.length; i++) {
-        const ch = what[i];
-        const next = what[i + 1];
+    for (let i = 0; i < glued.length; i++) {
+        const ch = glued[i];
+        const next = glued[i + 1];
         if (ch === '$') {
             if (current && next && /[A-Z]/.test(next)) {
                 words.push(current);

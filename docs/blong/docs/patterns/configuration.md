@@ -32,20 +32,24 @@ trusted and a safe mode; see the [template pattern](./template.md).
 
 Environment variables are not a general merge layer in that chain: `BLONG_PLATFORM`, `BLONG_METHOD`
 and `BLONG_ENV` select the platform, the method and the intent list, and `BLONG_MASTER_KEY` switches
-on the template render. A component that needs a secret reads its own key instead — the gateway
-reads `GATEWAY_SIGN_KEY` and `GATEWAY_ENCRYPT_KEY` when no key is configured.
+on the template render. A component that needs a secret reads its own key instead — the gateway's
+pair is resolved once at load (`gateway.sign`/`gateway.encrypt`, from an rc file, an `{env}`, or a
+`{generate}`), handed to both the gateway and the rpc client that verifies with it, and generated
+with a warning only when nothing configured one.
 
-## Environments and use cases
+## Intents and use cases
 
-The configuration is usually split into several parts, which are activated based on the environment
-and the use case. There are some established names for the intents:
+The configuration is usually split into several parts, which are activated based on the intent.
+There are some established names for the intents:
 
 - `default`: the base configuration, active for all cases
-- `dev`: active in the development environment
-- `prod`: active in the user acceptance test and production environments
-- `test`: active during automated tests
-- `db`: active during database creation
-- `realm`: active when focusing the development on a single realm
+- `dev`: development features — hot reload, the introspection endpoints, error detail in RPC replies
+- `release`: the block every deployed stage shares (uat, staging, production)
+- `microservice`: run a realm on its own — its adapters, orchestrators and listeners
+- `integration`: the extra layers and behaviour a test needs
+- `upgrade`: active during database creation
+- `k8s`: write a deployment tree instead of serving
+- `cli`: run a command in-process and exit
 
 ## Source code configuration
 

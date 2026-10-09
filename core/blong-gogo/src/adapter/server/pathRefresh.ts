@@ -38,17 +38,41 @@ export function createPathRefresh(procedure = 'access_pathRefresh'): IPathRefres
     };
 
     /**
+     * True when the error says the counters table is not there.
+     *
+     * A database with no schema has no counters, so nothing owes a rebuild. A process that was only
+     * asked to *plan* — the `k8s` intent writes a tree and exits — still reads the deployment's
+     * configuration, and with it connects to the deployment's database, which in a first deployment
+     * or a CI run has not been migrated yet; there the startup drain must answer rather than die.
+     * The match is deliberately narrow: a broken connection is a different failure and still throws.
+     */
+    const missingCounters = (error: unknown): boolean => {
+        const {code, errno, sqlState} = (error ?? {}) as {
+            code?: string;
+            errno?: number;
+            sqlState?: string;
+        };
+        return errno === 1146 || sqlState === '42S02' || code === 'ER_NO_SUCH_TABLE';
+    };
+
+    /**
      * Whether the paths may be behind the graph: an edge was written without a
      * rebuild and no rebuild has covered it since. Both counters come back in one
      * round trip, and neither is this process's memory — that is the point.
      */
     const uncovered = async (qb: unknown): Promise<boolean> => {
-        const rows = (await (qb as KnexQb)('core_counter')
-            .select('counterName', 'counterValue')
-            .whereIn('counterName', [generationKey, coveredKey])) as Array<{
-            counterName: string;
-            counterValue: number | string;
-        }>;
+        let rows: Array<{counterName: string; counterValue: number | string}>;
+        try {
+            rows = (await (qb as KnexQb)('core_counter')
+                .select('counterName', 'counterValue')
+                .whereIn('counterName', [generationKey, coveredKey])) as Array<{
+                counterName: string;
+                counterValue: number | string;
+            }>;
+        } catch (error) {
+            if (missingCounters(error)) return false;
+            throw error;
+        }
         return counter(rows, generationKey) > counter(rows, coveredKey);
     };
 

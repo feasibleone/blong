@@ -1,0 +1,30 @@
+{
+    "name": "@feasibleone/blong-int-kustomize",
+    "version": "1.0.0",
+    "private": true,
+    "description": "the kustomize deployment realm's end-to-end runbook, and its assertions",
+    "type": "module",
+    "scripts": {
+        "build": "true",
+        "ci-lint": "blong-dev lint",
+        "ci-test": "blong-dev test",
+        "test": "blong-dev test"
+    },
+    "bin": {
+        "blong-int-kustomize": "./bin/blongIntKustomize.ts"
+    },
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-gogo": "workspace:^1.0.0"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
+        "@rushstack/heft": "^1.2.6",
+        "@rushstack/heft-lint-plugin": "^1.2.6",
+        "@rushstack/heft-typescript-plugin": "^1.3.1",
+        "@swc/core": "^1.7.14",
+        "@types/node": "^24",
+        "tap": "^21.6.3",
+        "typescript": "^6.0.3"
+    }
+}

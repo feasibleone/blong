@@ -1,0 +1,71 @@
+# vault/base/deployment.yaml — the workload, adapted from `test/integration/vault-deployment.yaml`.
+#
+# A development server in memory, which is what the integration matrix runs and what the descriptor
+# promises: `-dev` with a root token that is public knowledge, so this service is the one generated
+# without a credentials Secret — anything a deployment would protect is not protected here, and a real
+# Vault is configured rather than generated. The KV store is v1 because the drills read `secret/…`
+# paths rather than the v2 metadata split.
+#
+# Placeholders are the generator's, and one it does not know is a failure rather than a literal:
+# `${namespace}`, `${image}`, `${claimName}`, `${initConfigName}`, `${credentialsSecret}`.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: vault
+    namespace: ${namespace}
+    labels:
+        app: vault
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: vault
+    template:
+        metadata:
+            labels:
+                app: vault
+        spec:
+            containers:
+                - name: vault
+                  image: ${image}
+                  args:
+                      [
+                          'server',
+                          '-dev',
+                          '-dev-root-token-id=root',
+                          '-dev-listen-address=0.0.0.0:8200',
+                          '-dev-kv-v1',
+                      ]
+                  ports:
+                      - containerPort: 8200
+                        name: vault
+                  env:
+                      - name: VAULT_DEV_ROOT_TOKEN_ID
+                        value: 'root'
+                      - name: VAULT_DEV_LISTEN_ADDRESS
+                        value: '0.0.0.0:8200'
+                      - name: VAULT_ADDR
+                        value: 'http://0.0.0.0:8200'
+                      - name: VAULT_LOG_LEVEL
+                        value: 'info'
+                  resources:
+                      limits:
+                          cpu: '0.5'
+                          memory: 256Mi
+                      requests:
+                          cpu: '0.1'
+                          memory: 128Mi
+                  livenessProbe:
+                      httpGet:
+                          path: /v1/sys/health?standbyok=true
+                          port: 8200
+                      initialDelaySeconds: 15
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                  readinessProbe:
+                      httpGet:
+                          path: /v1/sys/health?standbyok=true
+                          port: 8200
+                      initialDelaySeconds: 5
+                      periodSeconds: 10
+                      timeoutSeconds: 5

@@ -41,6 +41,18 @@ export interface IBlongPortalConfig {
          * button is clicked on the Login screen.
          */
         registerPage?: string;
+        /**
+         * Value the username field starts with. A realm that authenticates against something other
+         * than a password store — a cluster identity, say — names the account here, because the
+         * form requires a name even when the secret is the whole credential.
+         */
+        username?: string;
+        /**
+         * Help about the password field, revealed by a question-mark button beside its label: what
+         * belongs there, and the command that produces one. Kept beside the field rather than as
+         * prose on the page, so it is there when someone needs it and out of the way otherwise.
+         */
+        tokenHint?: {text?: string; command?: string};
     };
     /** Google OAuth configuration for the "Continue with Google" flow. */
     google?: {

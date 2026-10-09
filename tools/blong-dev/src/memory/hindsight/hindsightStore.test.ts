@@ -39,6 +39,7 @@ function document(id = 'F-001'): IHindsightDocument {
         tags: ['memory', 'kind:friction', `id:${id}`],
         metadata: {id, kind: 'friction', path: '.github/memory/friction.md'},
         timestamp: '2026-01-02T00:00:00Z',
+        observationScopes: [],
     };
 }
 

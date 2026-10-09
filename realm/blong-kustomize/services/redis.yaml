@@ -1,0 +1,9 @@
+# redis — the cache and queue a redis adapter points at (Phase 15 I).
+#
+# Stateless on purpose: the integration matrix runs it without a claim, and what a cache holds is
+# rebuildable. A deployment that wants it durable overrides `storage` in its own config, which is the
+# one place that knows whether a restart may lose it.
+name: redis
+kinds: [redis]
+image: redis:7-alpine
+port: {name: redis, port: 6379}

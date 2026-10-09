@@ -41,6 +41,9 @@ switch (command) {
     case 'cspell':
         await (await import('./commands/cspell.ts')).cspell(args);
         break;
+    case 'glossary':
+        await (await import('./commands/glossary.ts')).glossary(args);
+        break;
     case 'memory':
         await (await import('./commands/memory.ts')).memory(args);
         break;

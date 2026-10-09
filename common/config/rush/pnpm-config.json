@@ -141,7 +141,8 @@
         // both halves here makes every leg — Playwright specs, `blong-dev playwright` and
         // the Storybook test runner — launch the same browser build.
         "playwright": "1.63.0",
-        "playwright-core": "1.63.0"
+        "playwright-core": "1.63.0",
+        "tap": "21.8.0"
         // "example1": "^1.0.0",
         // "example2": "npm:@company/example2@^1.0.0"
     },
@@ -204,9 +205,9 @@
      *
      * PNPM documentation: https://pnpm.io/package_json#pnpmneverbuiltdependencies
      */
-    "globalNeverBuiltDependencies": [
-        // "fsevents"
-    ],
+    // "globalNeverBuiltDependencies": [
+    //     // "fsevents"
+    // ],
 
     /**
      * The `globalAllowedDeprecatedVersions` setting suppresses installation warnings for package
@@ -253,5 +254,13 @@
         //   "do-something": "echo Also not a good practice"
         // },
         // "pnpm": { "futurePnpmFeature": true }
+    },
+    "globalAllowBuilds": {
+        "@swc/core": true,
+        "core-js": true,
+        "esbuild": true,
+        "node-rdkafka": true,
+        "oracledb": false,
+        "unrs-resolver": false
     }
 }

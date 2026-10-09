@@ -1,3 +1,4 @@
+// cspell:ignore subjectaccessreview subjectaccessreviews subresource tokenreview selfsubjectaccessreview tokenreviews selfsubjectaccessreviews
 import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import * as k8s from '@kubernetes/client-node';
 
@@ -22,8 +23,11 @@ export interface IConfig {
     context: {
         coreV1Api?: k8s.CoreV1Api;
         appsV1Api?: k8s.AppsV1Api;
+        batchV1Api?: k8s.BatchV1Api;
         networkingV1Api?: k8s.NetworkingV1Api;
         rbacV1Api?: k8s.RbacAuthorizationV1Api;
+        authV1Api?: k8s.AuthenticationV1Api;
+        authzV1Api?: k8s.AuthorizationV1Api;
         customObjectsApi?: k8s.CustomObjectsApi;
         watcher?: k8s.Watch;
     };
@@ -31,7 +35,13 @@ export interface IConfig {
 
 const errorMap: IErrorMap = {
     'k8s.generic': 'Kubernetes Error',
+    // The API's own description, kept: "Kubernetes Error" alone sends a reader to the client
+    // library to guess at what the request got wrong.
+    'k8s.failed': 'Kubernetes API error: {message} (status {status})',
     'k8s.invalid': 'Invalid Kubernetes Operation',
+    // The method it wanted, because the alternative is a reader opening the client library to
+    // find out which spelling a kind or a subresource needed.
+    'k8s.noMethod': 'The Kubernetes client has no method {method} for this request',
     'k8s.notFound': 'Kubernetes Resource Not Found',
     'k8s.exists': 'Kubernetes Resource Already Exists',
     'k8s.forbidden': 'Kubernetes Access Forbidden',
@@ -44,19 +54,164 @@ const errorMap: IErrorMap = {
 let _errors: Errors<typeof errorMap>;
 
 /**
+ * A resource type with its separators removed, as the tables below spell their keys.
+ *
+ * A method name may carry the words of a compound kind apart (`persistent_volume_claim`), so every
+ * lookup goes through the glued spelling the tables hold. The words make the kind; the separator
+ * only says where they are.
+ */
+const gluedType = (resourceType: string): string => resourceType.replace(/[-_]/g, '').toLowerCase();
+
+/**
+ * The client's own spelling of a resource type.
+ *
+ * The generated client capitalises every word — `readNamespacedPersistentVolumeClaim`,
+ * `createNamespacedDaemonSet`, `createTokenReview` — so joining the words a method name carries
+ * apart is exactly its spelling. A Blong method name is three parts (`subject.object.predicate`), so
+ * the middle one cannot be written as several words: it carries them with a separator
+ * (`cluster.persistent_volume_claim.apply`), and this is where they are joined. A compound kind
+ * written as one lump cannot be recovered — `persistentvolumeclaim` is read as the capitalised lump
+ * the client has no method for, which is why `clusterPersistentVolumeClaimApply` used to fail
+ * (`cluster.persistent.volumeClaimApply` names no API; F-379).
+ */
+export const kindOfResource = (resourceType: string): string =>
+    resourceType
+        .split(/[-_]/)
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join('');
+
+/**
+ * The group and version a resource type is read through.
+ *
+ * Mirrors the switch that picks the client (`getApiForResource`) on purpose: that switch chooses an
+ * *object* to call, and this is the string the API server puts in each item's `apiVersion`. They are
+ * two spellings of one fact, and the day they disagree is the day a list answer's identity is wrong
+ * in a way nothing checks — so if they are ever merged, this is the half to keep.
+ *
+ * Keyed by the canonical resource type — the one `getResourceType` answers with, separators and all.
+ */
+const API_OF_RESOURCE: Record<string, string> = {
+    pod: 'v1',
+    service: 'v1',
+    config_map: 'v1',
+    secret: 'v1',
+    namespace: 'v1',
+    node: 'v1',
+    persistent_volume: 'v1',
+    persistent_volume_claim: 'v1',
+    deployment: 'apps/v1',
+    daemon_set: 'apps/v1',
+    stateful_set: 'apps/v1',
+    replica_set: 'apps/v1',
+    job: 'batch/v1',
+    cron_job: 'batch/v1',
+    ingress: 'networking.k8s.io/v1',
+    network_policy: 'networking.k8s.io/v1',
+    role: 'rbac.authorization.k8s.io/v1',
+    role_binding: 'rbac.authorization.k8s.io/v1',
+    cluster_role: 'rbac.authorization.k8s.io/v1',
+    cluster_role_binding: 'rbac.authorization.k8s.io/v1',
+    token_review: 'authentication.k8s.io/v1',
+    subject_access_review: 'authorization.k8s.io/v1',
+    self_subject_access_review: 'authorization.k8s.io/v1',
+};
+
+/**
+ * The HTTP status an API failure carries.
+ *
+ * Three spellings, because the client reports it differently per call path and version: the
+ * generated `ApiException` this client throws carries `{code, body, headers}`, a transport-level
+ * failure carries `response.statusCode`, and the typed errors this adapter raises itself carry
+ * neither. Reading only `response.statusCode` — which is what the mapping below used to do — matched
+ * nothing at all, so every 404, 401, 403 and 409 reached a caller as `k8s.failed` with `status:
+ * "none"`, and an apply that could not tell "absent" from "unreadable" created an object that was
+ * already there (F-402).
+ */
+const statusOf = (error: unknown): number | undefined => {
+    const candidate = error as
+        | {code?: unknown; statusCode?: unknown; response?: {statusCode?: unknown}}
+        | undefined;
+    const code = candidate?.code ?? candidate?.statusCode ?? candidate?.response?.statusCode;
+    return typeof code === 'number' ? code : undefined;
+};
+
+/** The API server's own message, when the failure carries one. */
+const apiMessageOf = (error: unknown): string | undefined => {
+    const candidate = error as {body?: unknown; response?: {body?: {message?: unknown}}};
+    const direct = candidate?.response?.body?.message;
+    if (typeof direct === 'string') return direct;
+    // The generated client reports the API server's status body as a JSON string, and that text is
+    // where the reason lives ("jobs.batch \"x\" already exists"), while `String(error)` keeps the
+    // headers around it.
+    const body = candidate?.body;
+    if (typeof body !== 'string') return undefined;
+    try {
+        const parsed = JSON.parse(body) as {message?: unknown};
+        return typeof parsed?.message === 'string' ? parsed.message : undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+/**
+ * True when a read failed because the object is not there.
+ *
+ * Both spellings are recognised: the status the client reports, and the typed error this adapter
+ * maps it to (`k8s.notFound`), because a caller sees the second one and only the first is available
+ * inside the adapter's own try blocks.
+ */
+export const isAbsent = (error: unknown): boolean =>
+    statusOf(error) === 404 || (error as {type?: string} | undefined)?.type === 'k8s.notFound';
+
+/** True when a create failed because the object is already there. */
+export const isAlreadyThere = (error: unknown): boolean =>
+    statusOf(error) === 409 || (error as {type?: string} | undefined)?.type === 'k8s.exists';
+
+/**
+ * Put each listed item's identity back.
+ *
+ * The API server answers `{apiVersion, kind}` on every item of a list, and the generated client's
+ * typed serializer keeps only `metadata`, `spec` and `status` — so a list reaches its caller
+ * type-blind, and every consumer has to know the type from its own request. The cost is visible in
+ * this repository: a reconcile diff compared keys it could not build and read eighteen objects as
+ * eighteen creations beside eighteen deletions (T-226, T-228). The adapter knows the type from the
+ * request it just made, so it can say so, and a custom resource is left alone because the kind is not
+ * part of that request — the group, version and plural are, and none of them is the kind.
+ */
+export const withItemIdentity = (answer: unknown, resourceType: string): unknown => {
+    const apiVersion = API_OF_RESOURCE[resourceType];
+    const kind = kindOfResource(resourceType);
+    const list = answer as {items?: Array<Record<string, unknown>>} | undefined;
+    if (!list?.items?.length) return answer;
+    return {
+        ...list,
+        items: list.items.map(item => ({
+            ...(item.apiVersion === undefined && apiVersion ? {apiVersion} : {}),
+            ...(item.kind === undefined ? {kind} : {}),
+            ...item,
+        })),
+    };
+};
+
+/**
  * Commander explorer categories for namespaced resources. Each category groups
  * the resource types the adapter can list (`{ns}.<resource>.find`). The
  * category / resource levels are synthetic navigation (no cluster calls).
  */
-const CATEGORIES: Array<{name: string; label: string; resources: Array<{type: string; label: string}>}> = [
+const CATEGORIES: Array<{
+    name: string;
+    label: string;
+    resources: Array<{type: string; label: string}>;
+}> = [
     {
         name: 'workloads',
         label: 'Workloads',
         resources: [
             {type: 'deployment', label: 'Deployments'},
-            {type: 'replicaset', label: 'ReplicaSets'},
-            {type: 'daemonset', label: 'DaemonSets'},
-            {type: 'statefulset', label: 'StatefulSets'},
+            {type: 'replica_set', label: 'ReplicaSets'},
+            {type: 'daemon_set', label: 'DaemonSets'},
+            {type: 'stateful_set', label: 'StatefulSets'},
             {type: 'pod', label: 'Pods'},
         ],
     },
@@ -66,15 +221,15 @@ const CATEGORIES: Array<{name: string; label: string; resources: Array<{type: st
         resources: [
             {type: 'service', label: 'Services'},
             {type: 'ingress', label: 'Ingresses'},
-            {type: 'networkpolicy', label: 'NetworkPolicies'},
+            {type: 'network_policy', label: 'NetworkPolicies'},
         ],
     },
     {
         name: 'storage',
         label: 'Storage',
         resources: [
-            {type: 'persistentvolume', label: 'PersistentVolumes'},
-            {type: 'persistentvolumeclaim', label: 'PersistentVolumeClaims'},
+            {type: 'persistent_volume', label: 'PersistentVolumes'},
+            {type: 'persistent_volume_claim', label: 'PersistentVolumeClaims'},
             {type: 'storageclass', label: 'StorageClasses'},
         ],
     },
@@ -82,7 +237,7 @@ const CATEGORIES: Array<{name: string; label: string; resources: Array<{type: st
         name: 'configuration',
         label: 'Configuration',
         resources: [
-            {type: 'configmap', label: 'ConfigMaps'},
+            {type: 'config_map', label: 'ConfigMaps'},
             {type: 'secret', label: 'Secrets'},
         ],
     },
@@ -148,8 +303,11 @@ export default adapter<IConfig>(({utError}) => {
             this.config.context = {
                 coreV1Api: kc.makeApiClient(k8s.CoreV1Api),
                 appsV1Api: kc.makeApiClient(k8s.AppsV1Api),
+                batchV1Api: kc.makeApiClient(k8s.BatchV1Api),
                 networkingV1Api: kc.makeApiClient(k8s.NetworkingV1Api),
                 rbacV1Api: kc.makeApiClient(k8s.RbacAuthorizationV1Api),
+                authV1Api: kc.makeApiClient(k8s.AuthenticationV1Api),
+                authzV1Api: kc.makeApiClient(k8s.AuthorizationV1Api),
                 customObjectsApi: kc.makeApiClient(k8s.CustomObjectsApi),
                 watcher: new k8s.Watch(kc),
             };
@@ -198,134 +356,170 @@ export default adapter<IConfig>(({utError}) => {
             // Determine which API to use based on resource type
             const getApiForResource = (
                 resource: string,
-            ): k8s.CoreV1Api | k8s.AppsV1Api | k8s.NetworkingV1Api | k8s.RbacAuthorizationV1Api => {
-                switch (resource.toLowerCase()) {
+            ):
+                | k8s.CoreV1Api
+                | k8s.AppsV1Api
+                | k8s.BatchV1Api
+                | k8s.NetworkingV1Api
+                | k8s.RbacAuthorizationV1Api
+                | k8s.AuthenticationV1Api
+                | k8s.AuthorizationV1Api => {
+                switch (gluedType(resource)) {
                     case 'pod':
-                    case 'pods':
                     case 'service':
-                    case 'services':
                     case 'configmap':
-                    case 'configmaps':
                     case 'secret':
-                    case 'secrets':
                     case 'namespace':
-                    case 'namespaces':
                     case 'node':
-                    case 'nodes':
                     case 'persistentvolume':
-                    case 'persistentvolumes':
                     case 'persistentvolumeclaim':
-                    case 'persistentvolumeclaims':
                         return this.config.context.coreV1Api!;
                     case 'deployment':
-                    case 'deployments':
                     case 'replicaset':
-                    case 'replicasets':
                     case 'daemonset':
-                    case 'daemonsets':
                     case 'statefulset':
-                    case 'statefulsets':
                         return this.config.context.appsV1Api!;
+                    case 'job':
+                    case 'cronjob':
+                        return this.config.context.batchV1Api!;
                     case 'ingress':
-                    case 'ingresses':
                     case 'networkpolicy':
-                    case 'networkpolicies':
                         return this.config.context.networkingV1Api!;
                     case 'role':
-                    case 'roles':
                     case 'rolebinding':
-                    case 'rolebindings':
                     case 'clusterrole':
-                    case 'clusterroles':
                     case 'clusterrolebinding':
-                    case 'clusterrolebindings':
                         return this.config.context.rbacV1Api!;
+                    // Whose token is this, and may it do this? The two questions the cluster
+                    // answers on a caller's behalf, and the only two calls here that are about
+                    // identity rather than objects.
+                    case 'tokenreview':
+                        return this.config.context.authV1Api!;
+                    case 'subjectaccessreview':
+                    case 'selfsubjectaccessreview':
+                        return this.config.context.authzV1Api!;
                     default:
                         return this.config.context.coreV1Api!;
                 }
             };
-            const getResourceType = (resource: string): string => {
-                // Normalize resource type for method naming
-                switch (resource.toLowerCase()) {
-                    case 'pods':
-                        return 'pod';
-                    case 'services':
-                        return 'service';
-                    case 'configmaps':
-                        return 'configmap';
-                    case 'secrets':
-                        return 'secret';
-                    case 'namespaces':
-                        return 'namespace';
-                    case 'nodes':
-                        return 'node';
-                    case 'persistentvolumes':
-                        return 'persistentvolume';
-                    case 'persistentvolumeclaims':
-                        return 'persistentvolumeclaim';
-                    case 'deployments':
-                        return 'deployment';
-                    case 'replicasets':
-                        return 'replicaset';
-                    case 'daemonsets':
-                        return 'daemonset';
-                    case 'statefulsets':
-                        return 'statefulset';
-                    case 'ingresses':
-                        return 'ingress';
-                    case 'networkpolicies':
-                        return 'networkpolicy';
-                    case 'roles':
-                        return 'role';
-                    case 'rolebindings':
-                        return 'rolebinding';
-                    case 'clusterroles':
-                        return 'clusterrole';
-                    case 'clusterrolebindings':
-                        return 'clusterrolebinding';
-                    default:
-                        return resource;
-                }
+            /**
+             * The canonical spelling of a resource type: the words of the kind, with separators.
+             *
+             * A caller may send the singular or the plural and either separator; the canonical form is
+             * what the tables above are keyed by and what `kindOfResource` turns into the client's own
+             * spelling (`persistent_volume_claim` → `PersistentVolumeClaim`).
+             */
+            const RESOURCE_NAME: Record<string, string> = {
+                pod: 'pod',
+                pods: 'pod',
+                service: 'service',
+                services: 'service',
+                configmap: 'config_map',
+                configmaps: 'config_map',
+                secret: 'secret',
+                secrets: 'secret',
+                namespace: 'namespace',
+                namespaces: 'namespace',
+                node: 'node',
+                nodes: 'node',
+                persistentvolume: 'persistent_volume',
+                persistentvolumes: 'persistent_volume',
+                persistentvolumeclaim: 'persistent_volume_claim',
+                persistentvolumeclaims: 'persistent_volume_claim',
+                deployment: 'deployment',
+                deployments: 'deployment',
+                replicaset: 'replica_set',
+                replicasets: 'replica_set',
+                daemonset: 'daemon_set',
+                daemonsets: 'daemon_set',
+                statefulset: 'stateful_set',
+                statefulsets: 'stateful_set',
+                job: 'job',
+                jobs: 'job',
+                cronjob: 'cron_job',
+                cronjobs: 'cron_job',
+                ingress: 'ingress',
+                ingresses: 'ingress',
+                networkpolicy: 'network_policy',
+                networkpolicies: 'network_policy',
+                role: 'role',
+                roles: 'role',
+                rolebinding: 'role_binding',
+                rolebindings: 'role_binding',
+                clusterrole: 'cluster_role',
+                clusterroles: 'cluster_role',
+                clusterrolebinding: 'cluster_role_binding',
+                clusterrolebindings: 'cluster_role_binding',
+                tokenreview: 'token_review',
+                tokenreviews: 'token_review',
+                subjectaccessreview: 'subject_access_review',
+                subjectaccessreviews: 'subject_access_review',
+                selfsubjectaccessreview: 'self_subject_access_review',
+                selfsubjectaccessreviews: 'self_subject_access_review',
             };
+
+            const getResourceType = (resource: string): string =>
+                RESOURCE_NAME[gluedType(resource)] ?? gluedType(resource);
 
             const resourceType = getResourceType(_resourceType);
 
             // Check if this is a custom resource request (resourceType will be 'custom')
             const isCustomResource = resourceType === 'custom' && !Array.isArray(params);
 
+            // A subresource is a path of its own on the API, not a field of the request: a CRD's
+            // status is written through `patchNamespacedCustomObjectStatus`, and a patch to the
+            // object's own path cannot change it at all. Named here so `getMethodName` can build
+            // the method, and absent on every ordinary request.
+            const subresource =
+                !Array.isArray(params) && typeof params.subresource === 'string'
+                    ? params.subresource
+                    : undefined;
+
             // Validate custom resource params
             if (isCustomResource) {
                 if (!params.group || !params.version || !params.plural) {
-                    throw this.error(_errors['k8s.missingKey']({key: 'group, version, and plural for custom resources'}), $meta);
+                    throw this.error(
+                        _errors['k8s.missingKey']({
+                            key: 'group, version, and plural for custom resources',
+                        }),
+                        $meta,
+                    );
                 }
             }
 
             // Select API and build method name based on resource type
             const api = isCustomResource
                 ? this.config.context.customObjectsApi
-                : getApiForResource(_resourceType);
+                : getApiForResource(resourceType);
             const CLUSTER_SCOPED_RESOURCES = new Set([
                 'namespace',
                 'node',
-                'persistentvolume',
-                'clusterrole',
-                'clusterrolebinding',
+                'persistent_volume',
+                'cluster_role',
+                'cluster_role_binding',
                 'storageclass',
                 'priorityclass',
                 'ingressclass',
+                // Identity objects have no namespace to be scoped to: a TokenReview is about
+                // whoever holds the token, not about where they are.
+                'token_review',
+                'subject_access_review',
+                'self_subject_access_review',
             ]);
             const isNamespaced = isCustomResource
                 ? !Array.isArray(params) && params.namespaced !== false
                 : !!namespace && !CLUSTER_SCOPED_RESOURCES.has(resourceType);
 
             // Helper to build method name
-            const getMethodName = (verb: string): string => {
+            const getMethodName = (verb: string, sub?: string): string => {
+                const suffix = sub ? sub.charAt(0).toUpperCase() + sub.slice(1) : '';
                 if (isCustomResource) {
-                    return `${verb}${isNamespaced ? 'Namespaced' : 'Cluster'}CustomObject`;
+                    return `${verb}${isNamespaced ? 'Namespaced' : 'Cluster'}CustomObject${suffix}`;
                 }
                 const prefix = isNamespaced ? 'Namespaced' : '';
-                const resource = resourceType.charAt(0).toUpperCase() + resourceType.slice(1);
-                return `${verb}${prefix}${resource}`;
+                // The words the request carried apart, joined the way the client spells them.
+                const resource = kindOfResource(resourceType);
+                return `${verb}${prefix}${resource}${suffix}`;
             };
 
             // Helper to build options for API calls
@@ -351,15 +545,16 @@ export default adapter<IConfig>(({utError}) => {
             const callApi = async (
                 verb: string,
                 options: Record<string, unknown> = {},
+                sub?: string,
             ): Promise<unknown> => {
-                const methodName = getMethodName(verb);
+                const methodName = getMethodName(verb, sub);
                 const apiRecord = api as unknown as Record<string, unknown>;
                 if (typeof apiRecord[methodName] === 'function') {
                     return await (apiRecord[methodName] as (opts: unknown) => Promise<unknown>)(
                         buildOptions(options),
                     );
                 }
-                throw this.error(_errors['k8s.invalid'](), $meta);
+                throw this.error(_errors['k8s.noMethod']({method: methodName}), $meta);
             };
 
             try {
@@ -371,11 +566,18 @@ export default adapter<IConfig>(({utError}) => {
                         (!Array.isArray(params) && params.namespace) ||
                         this.config.k8s.namespace ||
                         'default';
-                    return {items: CATEGORIES.map(c => ({category: c.name, label: c.label, namespace: ns}))};
+                    return {
+                        items: CATEGORIES.map(c => ({
+                            category: c.name,
+                            label: c.label,
+                            namespace: ns,
+                        })),
+                    };
                 }
                 if (_resourceType === 'resource' && operation === 'list') {
-                    const category =
-                        !Array.isArray(params) ? (params.category as string | undefined) : undefined;
+                    const category = !Array.isArray(params)
+                        ? (params.category as string | undefined)
+                        : undefined;
                     const ns =
                         (!Array.isArray(params) && params.namespace) ||
                         this.config.k8s.namespace ||
@@ -383,7 +585,11 @@ export default adapter<IConfig>(({utError}) => {
                     const cat = CATEGORIES.find(c => c.name === category);
                     const resources = cat?.resources ?? [];
                     return {
-                        items: resources.map(r => ({resourceType: r.type, label: r.label, namespace: ns})),
+                        items: resources.map(r => ({
+                            resourceType: r.type,
+                            label: r.label,
+                            namespace: ns,
+                        })),
                     };
                 }
                 switch (operation) {
@@ -397,7 +603,11 @@ export default adapter<IConfig>(({utError}) => {
                             throw this.error(_errors['k8s.missingKey']({key: 'name'}), $meta);
                         }
 
-                        return await callApi(isCustomResource ? 'get' : 'read', {name});
+                        return await callApi(
+                            isCustomResource ? 'get' : 'read',
+                            {name},
+                            subresource,
+                        );
                     }
                     case 'list':
                     case 'find': {
@@ -412,12 +622,15 @@ export default adapter<IConfig>(({utError}) => {
                             continue: continueToken,
                         } = params;
 
-                        return await callApi('list', {
-                            ...(labelSelector && {labelSelector}),
-                            ...(fieldSelector && {fieldSelector}),
-                            ...(limit && {limit}),
-                            ...(continueToken && {continue: continueToken}),
-                        });
+                        return withItemIdentity(
+                            await callApi('list', {
+                                ...(labelSelector && {labelSelector}),
+                                ...(fieldSelector && {fieldSelector}),
+                                ...(limit && {limit}),
+                                ...(continueToken && {continue: continueToken}),
+                            }),
+                            resourceType,
+                        );
                     }
                     case 'log': {
                         // Read pod container logs (`{ns}.pod.log`)
@@ -450,7 +663,10 @@ export default adapter<IConfig>(({utError}) => {
                         const {manifest, body} = params;
                         const resourceBody = manifest || body;
                         if (!resourceBody) {
-                            throw this.error(_errors['k8s.missingKey']({key: 'manifest or body'}), $meta);
+                            throw this.error(
+                                _errors['k8s.missingKey']({key: 'manifest or body'}),
+                                $meta,
+                            );
                         }
 
                         return await callApi('create', {body: resourceBody});
@@ -467,10 +683,13 @@ export default adapter<IConfig>(({utError}) => {
                         }
                         const resourceBody = manifest || body;
                         if (!resourceBody) {
-                            throw this.error(_errors['k8s.missingKey']({key: 'manifest or body'}), $meta);
+                            throw this.error(
+                                _errors['k8s.missingKey']({key: 'manifest or body'}),
+                                $meta,
+                            );
                         }
 
-                        return await callApi('replace', {name, body: resourceBody});
+                        return await callApi('replace', {name, body: resourceBody}, subresource);
                     }
                     case 'patch': {
                         // Patch resource
@@ -485,17 +704,28 @@ export default adapter<IConfig>(({utError}) => {
                             throw this.error(_errors['k8s.missingKey']({key: 'body'}), $meta);
                         }
 
-                        return await callApi('patch', {
-                            name,
-                            body,
-                            ...(!isCustomResource && {
-                                options: {
-                                    headers: {
-                                        'Content-Type': 'application/strategic-merge-patch+json',
+                        // The patch content type is not ours to choose: the generated client picks
+                        // the first of json-patch, merge-patch and apply-patch it supports, which is
+                        // json-patch, so a body here is a list of operations and not an object. The
+                        // `options.headers` below is what the pre-1.0 client honoured; this one
+                        // ignores it, and setting a header that is dropped in silence is worse than
+                        // not setting it at all.
+                        return await callApi(
+                            'patch',
+                            {
+                                name,
+                                body,
+                                ...(!isCustomResource && {
+                                    options: {
+                                        headers: {
+                                            'Content-Type':
+                                                'application/strategic-merge-patch+json',
+                                        },
                                     },
-                                },
-                            }),
-                        });
+                                }),
+                            },
+                            subresource,
+                        );
                     }
                     case 'delete':
                     case 'remove': {
@@ -518,22 +748,55 @@ export default adapter<IConfig>(({utError}) => {
                         const {manifest, body} = params;
                         const resourceBody = manifest || body;
                         if (!resourceBody) {
-                            throw this.error(_errors['k8s.missingKey']({key: 'manifest or body'}), $meta);
+                            throw this.error(
+                                _errors['k8s.missingKey']({key: 'manifest or body'}),
+                                $meta,
+                            );
                         }
 
                         const name = (resourceBody as {metadata?: {name?: string}}).metadata?.name;
                         if (!name) {
-                            throw this.error(_errors['k8s.missingKey']({key: 'name in manifest'}), $meta);
+                            throw this.error(
+                                _errors['k8s.missingKey']({key: 'name in manifest'}),
+                                $meta,
+                            );
                         }
 
+                        // Read first, and only an *absent* answer means the object has to be created.
+                        // Every other read failure used to be read as absence, and the create that
+                        // followed answered `409 already exists` for an object that was there all
+                        // along: a pass reported it as a failed step, and the message named the
+                        // create rather than the read that had actually gone wrong (F-402).
+                        let exists = false;
                         try {
-                            // Try to get existing resource
                             await callApi(isCustomResource ? 'get' : 'read', {name});
-                            // Resource exists, update it
-                            return await callApi('replace', {name, body: resourceBody});
-                        } catch (_error) {
-                            // Resource doesn't exist, create it
+                            exists = true;
+                        } catch (error) {
+                            if (!isAbsent(error)) {
+                                throw this.error(
+                                    _errors['k8s.failed']({
+                                        params: {
+                                            message:
+                                                `reading ${resourceType}/${name} failed: ` +
+                                                `${(error as Error).message}`,
+                                            status: statusOf(error) ?? 'none',
+                                        },
+                                    }),
+                                    $meta,
+                                );
+                            }
+                        }
+                        if (exists) return await callApi('replace', {name, body: resourceBody});
+
+                        try {
                             return await callApi('create', {body: resourceBody});
+                        } catch (error) {
+                            // It appeared between the read and the create — another pass, or a
+                            // person. The desired state is still the desired state, so the answer
+                            // is the update the read would have produced, and an apply stays
+                            // idempotent (F-402).
+                            if (!isAlreadyThere(error)) throw error;
+                            return await callApi('replace', {name, body: resourceBody});
                         }
                     }
                     case 'scale': {
@@ -586,8 +849,22 @@ export default adapter<IConfig>(({utError}) => {
                         }
                         const {labelSelector, fieldSelector, timeout = 30000} = params;
 
-                        // Get existing resources using list
+                        // Get existing resources using list. The coordinates travel with it, the same
+                        // way every other verb needs them for a custom resource: without them the
+                        // initial list answers nothing, so a watch that starts correctly still
+                        // delivers no existing object — and a controller that acts on the list to
+                        // converge after a restart has nothing to act on.
                         const existing = await callApi('list', {
+                            ...(isCustomResource && !Array.isArray(params)
+                                ? {
+                                      group: params.group,
+                                      version: params.version,
+                                      plural: params.plural,
+                                      ...(params.namespaced !== undefined && {
+                                          namespaced: params.namespaced,
+                                      }),
+                                  }
+                                : {}),
                             ...(labelSelector && {labelSelector}),
                             ...(fieldSelector && {fieldSelector}),
                         });
@@ -603,7 +880,9 @@ export default adapter<IConfig>(({utError}) => {
                                 ? `/apis/${group}/${version}/namespaces/${namespace}/${plural}`
                                 : `/apis/${group}/${version}/${plural}`;
                         } else {
-                            watchPath = `/api/v1/namespaces/${namespace}/${_resourceType.toLowerCase()}`;
+                            // The URL names the resource, so the separators that keep a compound
+                            // kind readable in the method name do not belong in it.
+                            watchPath = `/api/v1/namespaces/${namespace}/${gluedType(_resourceType)}`;
                         }
 
                         let timer: NodeJS.Timeout | null;
@@ -670,25 +949,40 @@ export default adapter<IConfig>(({utError}) => {
             } catch (error: unknown) {
                 // Re-throw already-typed blong errors without wrapping
                 if (typeof (error as {type?: string}).type === 'string') throw error;
-                const k8sError = error as {
-                    response?: {statusCode?: number; body?: {message?: string}};
-                };
+                const status = statusOf(error);
                 let err;
-                if (k8sError.response?.statusCode === 404) {
+                if (status === 404) {
                     err = _errors['k8s.notFound'](error);
-                } else if (k8sError.response?.statusCode === 401) {
+                } else if (status === 401) {
                     err = _errors['k8s.unauthorized'](error);
-                } else if (k8sError.response?.statusCode === 403) {
+                } else if (status === 403) {
                     err = _errors['k8s.forbidden'](error);
-                } else if (k8sError.response?.statusCode === 409) {
+                } else if (status === 409) {
                     err = _errors['k8s.exists'](error);
                 } else {
-                    err = _errors['k8s.generic'](error);
+                    err = _errors['k8s.failed']({
+                        params: {
+                            message: apiMessageOf(error) ?? String(error),
+                            status: status ?? 'none',
+                        },
+                    });
                 }
                 throw this.error(err, $meta);
             }
 
-            throw this.error(_errors['k8s.generic']({}), $meta);
+            // Nothing above matched the verb. Say so, with the method: the name is the whole question
+            // here, because the adapter answers `<resource><verb>` and a custom resource reaches it
+            // as the resource type `custom` — so a plausible-looking `clusterBlongDeploymentFind`
+            // falls through to this line, which used to say only "Kubernetes Error" (F-380).
+            throw this.error(
+                _errors['k8s.failed']({
+                    params: {
+                        message: `no verb matched for ${String($meta?.method ?? 'this call')}`,
+                        status: 'none',
+                    },
+                }),
+                $meta,
+            );
         },
     };
 });

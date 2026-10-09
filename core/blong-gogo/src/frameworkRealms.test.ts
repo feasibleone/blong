@@ -1,9 +1,9 @@
-import {mkdtempSync, mkdirSync, rmSync, writeFileSync} from 'node:fs';
+import {server} from '@feasibleone/blong';
+import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import Module, {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
-import {server} from '@feasibleone/blong';
 import {test} from 'tap';
 
 import load from './loadServer.ts';
@@ -143,10 +143,7 @@ test('a realm the suite declares is loaded', async t => {
     try {
         await withAmbientResolution(dirname(fileURLToPath(url)), async () => {
             const registry = await load(suite(url) as never, 'declared', {}, ['cli']);
-            t.ok(
-                registry.describe?.().realms.includes('server'),
-                'the declared realm is loaded',
-            );
+            t.ok(registry.describe?.().realms.includes('server'), 'the declared realm is loaded');
         });
     } finally {
         dispose();
@@ -169,6 +166,77 @@ test('a trimmed manifest does not un-declare a realm', async t => {
             t.ok(
                 registry.describe?.().realms.includes('server'),
                 'the file beside the suite still counts',
+            );
+        });
+    } finally {
+        dispose();
+    }
+});
+
+/**
+ * A fixture whose suite declares the deployment realm, planted the same way.
+ *
+ * The realm in the framework's list that is *not* a runtime dependency of the suite that declares it
+ * is the deployment one: a `k8s` run loads it, introspects the registry and exits, while the
+ * processes that same suite deploys have no use for it (T-254). That is why its entry names the
+ * intents it is meaningful under, and the three cases below are that property: loaded under `k8s`,
+ * absent from a deployed process, and available to a process that asks for it by name.
+ */
+function intentsFixture(): {url: string; dispose: () => void} {
+    const dir = mkdtempSync(join(tmpdir(), 'blong-framework-intents-'));
+    const marker = join(dir, 'node_modules', '@feasibleone', 'blong-kustomize');
+    mkdirSync(marker, {recursive: true});
+    writeFileSync(
+        join(marker, 'package.json'),
+        JSON.stringify({name: 'blong-kustomize', exports: {'./server.ts': './server.cjs'}}),
+    );
+    writeFileSync(join(marker, 'server.cjs'), MARKER_REALM);
+    writeFileSync(join(dir, 'suite.ts'), '');
+    writeFileSync(
+        join(dir, 'package.json'),
+        JSON.stringify({
+            name: 'framework-intents-fixture',
+            version: '0.0.0',
+            dependencies: {'@feasibleone/blong-kustomize': '1.0.0'},
+        }),
+    );
+    return {
+        url: pathToFileURL(join(dir, 'suite.ts')).href,
+        dispose: () => rmSync(dir, {recursive: true, force: true}),
+    };
+}
+
+test('a realm that names its intents loads only under them', async t => {
+    const {url, dispose} = intentsFixture();
+    const withConfig = (url: string, _config: object) =>
+        server(() => ({url, children: [], config: {default: {}}}) as never) as never;
+    try {
+        await withAmbientResolution(dirname(fileURLToPath(url)), async () => {
+            const realmsUnder = async (configNames: string[], config?: object) => {
+                const registry = await load(
+                    withConfig(url, config ?? {}) as never,
+                    'intents',
+                    config ?? {},
+                    configNames,
+                );
+                return registry.describe?.().realms ?? [];
+            };
+
+            t.ok(
+                (await realmsUnder(['k8s'])).includes('kustomize'),
+                'the intent that writes a tree loads it, which is why the suite declares the package',
+            );
+            t.notOk(
+                (await realmsUnder(['microservice', 'release'])).includes('kustomize'),
+                'a deployed business process does not carry the deployment realm',
+            );
+            t.ok(
+                (
+                    await realmsUnder(['microservice'], {
+                        framework: {realms: {kustomize: true}},
+                    })
+                ).includes('kustomize'),
+                'and a process that wants it says so by name, which is the opt-in',
             );
         });
     } finally {

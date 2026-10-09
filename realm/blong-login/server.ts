@@ -78,7 +78,6 @@ export default realm(blong => {
                 }),
             }),
         }),
-        children: ['./orchestrator', './gateway'],
         config: {
             default: {
                 login: {
@@ -119,10 +118,6 @@ export default realm(blong => {
                 },
             },
             dev: {},
-            microservice: {
-                orchestrator: true,
-                gateway: true,
-            },
             integration: {},
         },
     };

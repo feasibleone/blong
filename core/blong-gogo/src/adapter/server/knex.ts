@@ -164,6 +164,49 @@ export function logKnexDeadlock(
  * This is the diagnostics breadcrumb for the intermittent CI connection drops:
  * it records which query failed and how the pool was doing at that moment.
  */
+/**
+ * Log a connection's own `error` event.
+ *
+ * Unconditionally, unlike {@link logKnexConnectionError}: an error on the *socket* is not a query the
+ * pool will retry, it is a connection that died, and it is quiet only when nobody is watching —
+ * which is exactly the case that cost a run its life (T-250).
+ */
+export function logKnexConnectionEvent(log: unknown, error: unknown): void {
+    const err = error as {message?: string; code?: string; errno?: number};
+    (log as {warn?: (...args: unknown[]) => void})?.warn?.(
+        {err: err?.message ?? String(error), code: err?.code, errno: err?.errno},
+        'a database connection failed; the pool opens another',
+    );
+}
+
+/**
+ * The pool options, with an `error` listener on every connection the pool creates.
+ *
+ * A connection's own `error` event belongs to the socket rather than to a call: mysql2 emits it
+ * there, no promise ever rejects, and with no listener Node ends the process. That is how a
+ * `getaddrinfo EAI_AGAIN` for a database name that did not resolve took a whole run down, from a
+ * path documented as warn-and-continue (`createDatabase`'s catch never saw it — the event was on the
+ * connection, not in the `await`). `afterCreate` is the one place that covers every connection the
+ * pool will ever open, replacements included, and it runs the pool's own hook when one is configured
+ * rather than replacing it.
+ */
+export const poolOptionsWithConnectionLogging = (
+    configured: Record<string, unknown> | undefined,
+    log: unknown,
+): Record<string, unknown> => ({
+    ...(configured ?? {}),
+    afterCreate: (connection: unknown, done: (error?: Error) => void): void => {
+        (connection as {on?: (event: string, listener: (error: unknown) => void) => void})?.on?.(
+            'error',
+            (error: unknown) => logKnexConnectionEvent(log, error),
+        );
+        const own = configured?.afterCreate;
+        if (typeof own === 'function')
+            (own as (c: unknown, d: (e?: Error) => void) => void)(connection, done);
+        else done();
+    },
+});
+
 export function logKnexConnectionError(
     config: {debug?: boolean; logLevel?: string},
     log: unknown,
@@ -231,7 +274,8 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
         },
         async start() {
             const knexConfig = this.config.knex;
-            if (knexConfig.createDatabase) {
+            // `connect: false` also covers this: `ensureDatabase` opens a connection of its own.
+            if (knexConfig.createDatabase && this.config.connect !== false) {
                 try {
                     const {created, database} = await ensureDatabase(knexConfig.connection ?? {});
                     if (created) {
@@ -248,12 +292,18 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 }
             }
             this.config.context = {
-                queryBuilder: wrapKnex(KnexLib(this.config.knex), {
-                    onDeadlock: error => logKnexDeadlock(this.config, this.log, error),
-                    onConnectionError: error =>
-                        logKnexConnectionError(this.config, this.log, error),
-                    retry: this.config.knex.retry,
-                }) as unknown as Knex,
+                queryBuilder: wrapKnex(
+                    KnexLib({
+                        ...this.config.knex,
+                        pool: poolOptionsWithConnectionLogging(this.config.knex.pool, this.log),
+                    } as IKnexConfig),
+                    {
+                        onDeadlock: error => logKnexDeadlock(this.config, this.log, error),
+                        onConnectionError: error =>
+                            logKnexConnectionError(this.config, this.log, error),
+                        retry: this.config.knex.retry,
+                    },
+                ) as unknown as Knex,
                 // The shared rebuild: every edge writer defers through it while the
                 // seed phase is open, which is what keeps the rebuild behind the
                 // last write (`pathRefresh.ts`, T-174). Only a schema that declares
@@ -286,9 +336,17 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
         async ready(this: Adapter<IConfig>) {
             const schema = this.config.schema;
             const knex = this.config.context?.queryBuilder;
+            // A detached adapter (`connect: false`) loads and registers without touching the
+            // database: the schema sync, the seeds, the procedure binding (which lists them from
+            // `information_schema`), the path drain and the binary-column discovery are all queries,
+            // and the key exists for a run that only plans — `k8s` derives a tree and exits, and the
+            // database it would connect to is the deployment's, which in a first deployment or a CI
+            // run does not exist yet (T-235). The *policy* is the owning realm's, not this adapter's:
+            // see the `k8s` block in `core/blong-server/adapter/db.ts`.
+            const connecting = this.config.connect !== false;
             const self = this as unknown as Record<string, unknown>;
 
-            if (schema?.sync && knex) {
+            if (schema?.sync && knex && connecting) {
                 // Sort tables by ascending `order` so FK dependencies are respected.
                 const tables = Object.entries(schema.tables ?? {}).sort(([, a], [, b]) => {
                     const orderOf = (spec: number | ISchemaTable | TObject): number =>
@@ -365,11 +423,11 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     );
             }
 
-            if (schema && knex) {
+            if (schema && knex && connecting) {
                 // Bind all DB procedures as synthetic handlers (skips `_`-prefixed).
                 await bindSyntheticHandlers(self, knex);
             }
-            if (schema?.seed) {
+            if (schema?.seed && connecting) {
                 // Seed merges write `core_triple` edges and skip the rebuild by
                 // default (see the deferral in `core.triple.merge`): each of them
                 // counts itself in a durable generation, and the batch ends with
@@ -411,7 +469,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 if (pathRefresh) await pathRefresh.defer(knex, seedPhase);
                 else await seedPhase();
             }
-            if (knex) {
+            if (knex && connecting) {
                 // Every start makes the flattened paths catch up, whatever left them
                 // behind: a writer in another process that counted its edges and died
                 // before the batch owed the rebuild, or a rebuild that could not
@@ -424,7 +482,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             }
 
             // Discover binary(16) columns for Buffer <-> string conversion.
-            if (knex) {
+            if (knex && connecting) {
                 setBinaryCols(this.config.context, await discoverBinaryColumns(knex));
             }
 

@@ -1,17 +1,15 @@
 /**
  * orchestrator/subject.ts — dispatch all configured subject.* calls to the backend.
  *
- * Also imports the realm's `*.model` files (like the browser portal does) so
- * `subject.validation` can enumerate the actual model handlers through
- * `subjectModelList` instead of probing every schema-derived name.
+ * Also imports the realm's `*.model` files (like the browser portal does) and records every model
+ * it collects in `../subjectModels.ts`, so `subject.validation` can enumerate the actual model
+ * handlers instead of probing every schema-derived name — and without a call through the handler
+ * proxy, which a loading process can only answer over the socket (F-435).
  */
 import {orchestrator, type IModelSpec} from '@feasibleone/blong';
+import {subjectModelAdd} from '../subjectModels.ts';
 
-export default orchestrator<{
-    context?: {
-        subjectModels?: Record<string, IModelSpec>;
-    };
-}>(() => ({
+export default orchestrator(() => ({
     extends: 'orchestrator.dispatch',
     activation: {
         default: {
@@ -25,10 +23,6 @@ export default orchestrator<{
     },
     async createHandlers({handlers, kind}: {handlers: object; layerApi: unknown; kind: string}) {
         if (kind !== 'model') return;
-        const config = this.config as {context?: {subjectModels?: Record<string, IModelSpec>}};
-        const context = config.context ?? {};
-        config.context = context;
-        context.subjectModels ??= {};
         // The model handlers arrive as a collection keyed by *position* — one
         // factory per call, under `0` — so their names are on the factories
         // themselves, which are the names the registry resolved when it registered
@@ -84,7 +78,7 @@ export default orchestrator<{
                         '.',
                 });
             }
-            context.subjectModels[handlerName] = model;
+            subjectModelAdd(handlerName, model);
         }
     },
 }));

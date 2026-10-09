@@ -19,6 +19,7 @@ export const USAGE_LINES: readonly string[] = [
     '  blong-dev log [ulid] [opts]  Fetch log entries from cacache (--output/--level/--search/...)',
     '  blong-dev sql [opts]         Run a SQL query via .blong_devrc (--output json|pretty)',
     '  blong-dev cspell <verb>      Add, remove, sort, check or list cspell.config.yaml entries',
+    '  blong-dev glossary <verb>    Add, remove, list, show, sort or check the documentation glossary',
     '  blong-dev memory <verb>      Add, list, show, close, move, format or check agent memory entries',
     '  blong-dev docs <verb>        List, generate, check or verify the docs site generated artefacts',
 ];

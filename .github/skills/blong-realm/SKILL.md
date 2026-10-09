@@ -121,6 +121,14 @@ The shape, for orientation only:
 Reference realms: `realm/blong-access`, `realm/blong-party`, `realm/blong-gateway` (canonical
 blong-server reuse); `suite/blong-suite` shows wiring multiple realms into one suite.
 
+## Contributing Kubernetes resources
+
+An adapter or orchestrator that must shape its own deployment declares a `k8s` activation block
+co-located in its layer file — `k8sReplicas`, `k8sResources`, `k8sPorts`, `k8sIngresses`, `k8sEnv`,
+`k8sManifests`. `blong-kustomize` merges them into the deployment plan; an ingress with no
+`serviceName` binds to the owning deployment's Service. See `[K8S_CONTRIB]` in
+`_shared/conventions.md`.
+
 ## Recommended skill set for creating a realm
 
 Load at least: **blong-realm**, **blong-schema**, **blong-handler**, **blong-error**,

@@ -7,7 +7,7 @@
  * framework's pino formatter printed beside the message.
  */
 
-import type {LogCall} from '@feasibleone/semantic-log/emitter';
+import type {LogCall, LogCallOptions} from '@feasibleone/semantic-log/emitter';
 import {toLogCall as translate} from '@feasibleone/semantic-log/emitter';
 
 export type {LogCall};
@@ -23,15 +23,17 @@ function text(value: unknown): string | undefined {
  * The shared translation runs first, so everything that is not the envelope — a
  * bare message, an `Error`, a bag on its own, the canonical `(bag, message)`
  * order — behaves here exactly as it does for any other emitter user. Then the
- * envelope's two fields become the record's own slots, which is what puts them in
- * the header instead of in the detail beneath it, and they win over the same keys
- * on the bag itself: the envelope is the newer, structured source.
+ * The envelope's two members become the record's own slots, which is what puts them in
+ * the header instead of in the detail beneath it, and they win over the same keys on
+ * the bag itself: the envelope is the newer, structured source.
  *
- * The envelope stays in the fields as well, so a reader still sees the request it
- * came from.
+ * What is *left* of the envelope stays in the fields — a `$meta.forward`, a checkpoint, an
+ * expected error — because those have no slot of their own. The two the slots took are removed: the
+ * header already prints them, and a `$meta` that repeats them printed the same two strings a second
+ * time, in the detail beneath every framework record.
  */
-export function toLogCall(args: unknown[]): LogCall {
-    const call = translate(args);
+export function toLogCall(args: unknown[], options?: LogCallOptions): LogCall {
+    const call = translate(args, options);
     const {fields} = call;
     const envelope = fields.$meta;
     if (envelope === undefined) {
@@ -49,6 +51,16 @@ export function toLogCall(args: unknown[]): LogCall {
     const messageId = text(meta?.mtid) ?? text(fields.messageId);
     if (messageId !== undefined) {
         fields.messageId = messageId;
+    }
+    // What the slots now hold is taken out of the envelope as well. Only a member that was actually
+    // lifted goes, and only when it *was* lifted: a `method` that is not a string never reached a
+    // slot, so it stays where a reader can still see what the request carried.
+    if (meta) {
+        const rest: Record<string, unknown> = {...meta};
+        if (text(meta.method) !== undefined) delete rest.method;
+        if (text(meta.mtid) !== undefined) delete rest.mtid;
+        if (Object.keys(rest).length > 0) fields.$meta = rest;
+        else delete fields.$meta;
     }
     return call;
 }

@@ -1,0 +1,25 @@
+/**
+ * Deploy scenario for a Blong suite: `rush deploy --scenario suite`.
+ *
+ * A deployment of the framework itself (`deploy.json`, `@feasibleone/blong-gogo`) carries the
+ * runtime and the framework realms. A suite is a different thing to deploy: the artifact a
+ * namespace mounts is the suite and the realms it loads, resolved so that no `node_modules` has to
+ * exist outside it — which is what a `deploymentProjectNames` entry makes possible.
+ *
+ * `linkCreation: script` matches the framework's own scenario, so a consumer that creates the links
+ * (the Dockerfile runs `create-links.js`) behaves the same way for both.
+ *
+ * `includeNpmIgnoreFiles: true` disables the `.npmignore` filter, contrary to what the name
+ * suggests: the option means "apply the npm ignore files", and its default already applies them.
+ * A deployment is not a publish — a package's ignore file describes what an npm consumer needs,
+ * while a running suite imports whatever its own modules import, and the difference is silent.
+ * The first artifact built one file short per package: `realm/blong-kustomize/plan.ts` and its
+ * siblings, `realm/blong-login/server.ts`, `core/blong/knex.ts` — every one of them a module no
+ * entry point outside the package names, so nothing failed until a pod imported it.
+ */
+{
+    "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/deploy-scenario.schema.json",
+    "deploymentProjectNames": ["@feasibleone/blong-suite"],
+    "linkCreation": "script",
+    "includeNpmIgnoreFiles": true
+}

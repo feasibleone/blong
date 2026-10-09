@@ -87,6 +87,14 @@ export default class Registry extends Internal implements IRegistry {
     #apiSchema: IApiSchema;
     #platform: IPlatformApi;
     #config: IConfig = {};
+    /**
+     * What each realm declares about itself, keyed by realm name.
+     *
+     * Handed over by {@link setRealmConfig} rather than read from this component's config, because
+     * a realm loads *after* the config of the realm whose child it is has merged: a copy taken while
+     * any config is built holds the realms loaded up to that moment and nothing more (D-433).
+     */
+    #realmConfig: Record<string, unknown> = {};
     #attachCheckpoint?: (meta: IMeta) => void;
 
     #manifest: IManifest | undefined;
@@ -518,7 +526,21 @@ export default class Registry extends Internal implements IRegistry {
             folders: disk?.folders ?? [],
             files: disk?.files ?? [],
             layerFiles: disk?.layerFiles ?? [],
+            // What each realm declares about itself, keyed by realm name: the loader records the
+            // slice and hands the map here, so a planner reads a realm's own `k8sRealmRole` rather
+            // than inferring it from the ports the realm happens to own (D-433).
+            realmConfig: this.#realmConfig,
         };
+    }
+
+    /**
+     * Publish the per-realm config map.
+     *
+     * The map is taken by reference, and the loader keeps adding to it as realms load, so a caller
+     * that asks later sees the realms that were not loaded yet when the registry was created.
+     */
+    public setRealmConfig(realmConfig: Record<string, unknown>): void {
+        this.#realmConfig = realmConfig;
     }
 
     public async stop(): Promise<IRegistry> {

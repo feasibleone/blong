@@ -133,6 +133,10 @@ export async function runPlatform(
         intents,
     );
     await platform.start!({});
+    // A call nobody awaits is the *site's* to report, not the runtime's: every place that fires one
+    // catches and logs it — the operator's watch and its controller loop are the two in this
+    // repository — because a process-wide listener swallowed the rejection, named no call, and let the
+    // failure repeat until something restarted the process for it (T-229). Nothing is installed here.
     const shutdown = gracefulShutdown(() => platform.stop!());
     await platform.test!(undefined);
     // Whether the process outlives its work is a config decision, declared per
@@ -185,8 +189,12 @@ export async function autoRun(options: {
     // Use CLI-supplied intents; fall back to defaults when the user passed none.
     const intents = cliIntents && cliIntents.length > 0 ? cliIntents : [...DEFAULT_INTENTS];
 
-    if (target && existsSync(target)) {
-        await runTarget(target, intents);
+    if (target && existsSync(resolve(cwd, target))) {
+        // Resolved against `cwd` before it is imported, the way it was just tested: a bare
+        // `./index.ts` is specifier-relative, so `import` would look for it beside *this* module
+        // rather than in the folder the CLI ran in, and fail with a path that names neither the file
+        // the caller typed nor the reason (F-438).
+        await runTarget(resolve(cwd, target), intents);
         return;
     }
 

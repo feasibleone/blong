@@ -127,11 +127,21 @@ t.test('the argument adapter lifts the framework envelope into the record slots'
     t.equal(envelope.fields.operation, 'subject.subjectModelList');
     t.equal(envelope.fields.messageId, 'request');
     t.equal(envelope.fields.extra, 1);
-    t.equal(
-        '$meta' in envelope.fields,
-        true,
-        'the envelope itself is carried through, not dropped',
+    t.same(
+        envelope.fields.$meta,
+        undefined,
+        'and the envelope is not repeated beside the slots that hold its members',
     );
+
+    // A member the slots did not take is still carried, which is what "a reader still sees the
+    // request it came from" means, and why the envelope is pruned rather than dropped.
+    const rest = toLogCall([{$meta: {mtid: 'event', method: 'a.b', expect: 'notFound'}}]);
+    t.same(rest.fields.$meta, {expect: 'notFound'}, 'the rest of the envelope stays');
+
+    // And a member that could not become a slot stays too, rather than vanishing: the header shows
+    // a `method` only when it is text, so a non-string one is nowhere else on the record.
+    const odd = toLogCall([{$meta: {mtid: 1, method: 2}}]);
+    t.same(odd.fields.$meta, {mtid: 1, method: 2}, 'a member that did not become a slot is kept');
 
     // The envelope wins over the same keys on the bag: it is the structured source.
     const overridden = toLogCall([

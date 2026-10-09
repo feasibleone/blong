@@ -1,0 +1,54 @@
+# mongodb/base/deployment.yaml — the workload, adapted from `test/integration/mongodb-deployment.yaml`.
+#
+# What a base is: the part of a service's objects that is *shape* rather than value. The claim, the
+# Service, the credentials Secret and the namespace are derived from the descriptor and the plan
+# (`services.ts` plus the generator), so they are not here; what is here is what only the image knows —
+# the port it listens on, the directory its data lives in, the probe that decides it is up, and the
+# resources it is given.
+#
+# Placeholders are the generator's, and one it does not know is a failure rather than a literal:
+# `${namespace}`, `${image}`, `${claimName}`, `${initConfigName}`, `${credentialsSecret}`.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: mongodb
+    namespace: ${namespace}
+    labels:
+        app: mongodb
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: mongodb
+    template:
+        metadata:
+            labels:
+                app: mongodb
+        spec:
+            containers:
+                - name: mongodb
+                  image: ${image}
+                  ports:
+                      - containerPort: 27017
+                        name: mongodb
+                  volumeMounts:
+                      - name: mongodb-data
+                        mountPath: /data/db
+                  resources:
+                      limits:
+                          cpu: '1.0'
+                          memory: 512Mi
+                      requests:
+                          cpu: '0.5'
+                          memory: 128Mi
+                  livenessProbe:
+                      tcpSocket:
+                          port: 27017
+                      initialDelaySeconds: 30
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                      failureThreshold: 5
+            volumes:
+                - name: mongodb-data
+                  persistentVolumeClaim:
+                      claimName: ${claimName}

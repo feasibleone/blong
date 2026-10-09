@@ -285,6 +285,31 @@ export default browser(blong => ({
 }));
 ```
 
+## Deploying a Suite
+
+A suite is also the unit that gets deployed. `realm/blong-kustomize` derives the Kubernetes objects
+from the suite as it loads — see the **blong-kustomize** skill — and three of the decisions it acts
+on belong to the suite author:
+
+- **The suite artifact.** The image carries the framework, not the suite. The suite's own files ship
+  as an artifact (a release archive) that the cluster unpacks onto a volume at `/opt/deploy/suite`,
+  and every process mounts it read-only. Name its source in the kustomize config's
+  `suiteVolume.artifact`; without one the plan stays on `nodeLocal` and reads the node's own cache
+  directory.
+- **The volume.** `shared` needs a `ReadWriteMany` storage class (or `rwxProvider: openebs` to have
+  one generated) and hands every process the same claim, seeded once by a Job. `nodeLocal` needs no
+  storage class at all: a DaemonSet pre-fetches the artifact onto each node and the pods read it
+  from a `hostPath`. It is the default, because it is the one a bare cluster can satisfy.
+- **Granularity.** `profile: 'namespace' | 'realm' | 'group' | 'monolith'` (or an explicit
+  `services` map) decides which realms and layers land in which process. The same source runs as one
+  pod or as several, and nothing in the realm code changes: this is the deployment decision the
+  framework promises to keep out of the code. Each process is activated by the `--<realm>.<layer>`
+  flags the plan writes into its container args, not by the intent it runs under.
+
+A realm that wants to contribute an Ingress, a replica count or a resource limit for its own process
+declares it in its own `activation.k8s` block, next to the layer it describes — see `[K8S_CONTRIB]`
+in `.github/skills/_shared/conventions.md`.
+
 ## Test Types
 
 ### API Tests

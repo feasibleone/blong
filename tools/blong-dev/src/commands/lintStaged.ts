@@ -3,6 +3,7 @@ import {readFileSync} from 'node:fs';
 import {dirname, join, relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import stripJsonComments from 'strip-json-comments';
+import {GLOSSARY_FILE} from '../glossary/glossaryDoc.ts';
 import {findUp} from '../utils/findConfig.ts';
 import {runTool} from '../utils/runTool.ts';
 
@@ -68,6 +69,10 @@ export async function lintStaged(): Promise<void> {
     const memoryFiles = staged.filter(isMemoryFile);
     const stagedSources = staged.filter(file => !isMemoryFile(file));
 
+    // The glossary has its own gate (order, definition length and resolvable links) on top of the
+    // docs package's markdown lint, so it is checked here as well as linted there.
+    const glossaryStaged = staged.includes(GLOSSARY_FILE);
+
     // Group staged files by their owning Rush project using longest-prefix match
     const byProject = new Map<string, string[]>();
     for (const file of stagedSources) {
@@ -82,7 +87,7 @@ export async function lintStaged(): Promise<void> {
         }
     }
 
-    if (byProject.size === 0 && memoryFiles.length === 0) return; // nothing we can check
+    if (byProject.size === 0 && memoryFiles.length === 0 && !glossaryStaged) return; // nothing to check
 
     // Path to this blong-dev CLI binary (resolved from the compiled file's
     // real location so it works correctly even when invoked via symlink).
@@ -102,6 +107,18 @@ export async function lintStaged(): Promise<void> {
         );
         if (code !== 0) {
             process.stderr.write(`blong-dev lint-staged: FAILED memory (exit ${code})\n`);
+            failed = true;
+        }
+    }
+
+    if (glossaryStaged) {
+        process.stderr.write('\nblong-dev lint-staged: glossary\n');
+        const code = await runTool(process.execPath, [blongDevCli, 'glossary', 'check'], {
+            cwd: repoRoot,
+            env: process.env,
+        });
+        if (code !== 0) {
+            process.stderr.write(`blong-dev lint-staged: FAILED glossary (exit ${code})\n`);
             failed = true;
         }
     }

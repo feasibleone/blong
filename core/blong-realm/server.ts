@@ -18,6 +18,9 @@ export default realm(() => ({
     config: {
         default: {
             blong: {},
+            // The semantic-log realm is an aid, not a workload: a deployment neither publishes it as a
+            // service nor carries it as a companion (D-433). `blong` is its name in the registry.
+            k8s: {k8sRealmRole: 'none'},
         },
     },
 }));

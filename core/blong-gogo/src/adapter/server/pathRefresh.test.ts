@@ -28,6 +28,32 @@ import t from 'tap';
 
 import {createPathRefresh} from './pathRefresh.ts';
 
+t.test('a database with no counters owes no rebuild', async t => {
+    // A process that was only asked to plan — the `k8s` intent writes a tree and exits — connects to
+    // the deployment's database to read its configuration, and on a first run or in CI that database
+    // has no schema. Nothing can owe a rebuild there, so the drain answers instead of dying, while a
+    // failure that is *not* a missing table (the case below) still fails. The three shapes are how
+    // mysql, postgres and knex report it, and each is matched on its own.
+    for (const shape of [{errno: 1146}, {sqlState: '42S02'}, {code: 'ER_NO_SUCH_TABLE'}]) {
+        const qb = (() => {
+            throw Object.assign(new Error("Table 'demo.core_counter' doesn't exist"), shape);
+        }) as unknown;
+        await createPathRefresh().drain(qb);
+        t.pass(`the missing counter table answers the drain (${JSON.stringify(shape)})`);
+    }
+});
+
+t.test('a broken connection is still a failure', async t => {
+    const qb = (() => {
+        throw new Error('connect ECONNREFUSED 127.0.0.1:3306');
+    }) as unknown;
+    await t.rejects(
+        createPathRefresh().drain(qb),
+        /ECONNREFUSED/,
+        'only the missing table is answered',
+    );
+});
+
 const GENERATION = 'access_pathRefresh.generation';
 const COVERED = 'access_pathRefresh.covered';
 

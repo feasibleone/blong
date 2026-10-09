@@ -4,8 +4,8 @@
  * Static, committed, and deliberately not secret: their job is that two
  * processes started from the same checkout agree on the same key material, so a
  * session survives a hot reload and a token minted by one command is the token a
- * running server accepts. A deployment supplies its own through
- * `GATEWAY_SIGN_KEY` / `GATEWAY_ENCRYPT_KEY` (see `Gateway.ts`), and this module
+ * running server accepts. A deployment supplies its own as configuration — its
+ * rc file names `gateway.sign` and `gateway.encrypt` — and this module
  * is never consulted when they are set.
  *
  * They live here rather than inline in the `dev` intent because more than the

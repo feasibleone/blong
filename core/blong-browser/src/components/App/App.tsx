@@ -133,7 +133,11 @@ function AppShell({
 
     const appConfig = config as {
         portal?: IBlongPortalConfig;
-        login?: {registerPage?: string};
+        login?: {
+            registerPage?: string;
+            username?: string;
+            tokenHint?: {text?: string; command?: string};
+        };
         google?: {baseUrl?: string; clientId?: string; redirectUri?: string; scope?: string};
     };
     // Register the app's per-language translation dictionaries so the UI can
@@ -192,6 +196,8 @@ function AppShell({
                 logoIcon="pi pi-globe"
                 title="Blong Portal"
                 registerPage={registerPage}
+                defaultUsername={appConfig.login?.username}
+                passwordHint={appConfig.login?.tokenHint}
                 googleLogin={googleEnabled ? {onGoogle} : undefined}
                 // titleComponent={}
                 // orgComponent={}

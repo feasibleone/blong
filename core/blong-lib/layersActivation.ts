@@ -160,9 +160,9 @@ export function layersActivation(
         '',
         wrap(
             'A layer missing for a platform is simply not auto-discovered there. `default` means the ' +
-                'layer loads regardless of intents; every other name is an intent that must be ' +
-                'active, and `cli` is the intent that makes a realm\u2019s handlers exist without ' +
-                'serving them.',
+                'layer loads regardless of intents, and every other name is an intent that must be ' +
+                'active. `cli` appears in no entry here: a command names the layers it needs itself, in ' +
+                'the `cli` block of the realm whose handlers it     dispatches (D-436).',
         ),
         '',
         activationTable(layers),

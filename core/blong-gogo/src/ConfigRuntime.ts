@@ -314,7 +314,14 @@ export default class ConfigRuntime implements IConfigRuntime {
     }
 
     private mergeConfigs(blongConfig: object): object {
-        const loaded = loadBlong(blongConfig);
+        // The intents travel into `blong-config`, which reads them out of `env`. They decide which
+        // rc files a process reads at all — the *trailing* one is the suffix both source names are
+        // built from, the framework's existing convention — so a config step that cannot see them
+        // leaves every process reading the `dev` file whatever it was asked to be (Phase 15 E).
+        const intents = (this.#baseConfig as {configNames?: string[]}).configNames;
+        const loaded = loadBlong(
+            intents?.length ? {env: intents.join(','), ...blongConfig} : blongConfig,
+        );
         return merge({}, this.#baseConfig, ...this.#configs, loaded);
     }
 

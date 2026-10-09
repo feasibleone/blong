@@ -23,10 +23,10 @@ import {basename, dirname, relative} from 'node:path';
 import type {IHindsightDocument} from './hindsightDocument.ts';
 
 /** The tag every documentation page carries. */
-export const DOCS_TAG = 'type:documentation';
+export const DOCS_TAG = 'kind:documentation';
 
 /** The tag every agent skill carries. */
-export const SKILL_TAG = 'type:agent-skill';
+export const SKILL_TAG = 'kind:agent-skill';
 
 /** A file to ingest as a stable page. */
 export interface IPageSource {
@@ -90,14 +90,17 @@ export function pageDocument(root: string, source: IPageSource): IHindsightDocum
     const tags = isDocs
         ? [DOCS_TAG, 'stability:stable', `tier:${source.tier ?? 'unknown'}`, `path:${path}`]
         : [SKILL_TAG, 'scope:behavioral-instruction', 'execution:procedural', `path:${path}`];
+    const observationScopes = [];
 
     const metadata: Record<string, string> = {id, path};
     if (isDocs) {
         metadata['type'] = 'documentation';
         metadata['tier'] = source.tier ?? 'unknown';
+        observationScopes.push([`kind:documentation`]);
     } else {
         metadata['type'] = 'agent-skill';
         metadata['scope'] = 'behavioral-instruction';
+        observationScopes.push([`kind:skill`]);
     }
 
     return {
@@ -109,6 +112,7 @@ export function pageDocument(root: string, source: IPageSource): IHindsightDocum
         tags,
         metadata,
         timestamp: statSync(source.path).mtime.toISOString(),
+        observationScopes,
     };
 }
 

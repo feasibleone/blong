@@ -1,0 +1,18 @@
+<!doctype html>
+<!--
+    The browser build the gateway-static group configures in `index.ts`. It exists so the root a
+    process names is a directory a build could be served from — the check the static plugin itself
+    makes before mounting `/s` — rather than a path that only happens to be spelled right (T-246).
+-->
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>gateway static fixture</title>
+</head>
+
+<body>
+    <p>Not a build. A directory for the static plugin to mount.</p>
+</body>
+
+</html>

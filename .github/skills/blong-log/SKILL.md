@@ -167,6 +167,26 @@ Find log entries that contain HTTP information:
 curl -s 'http://127.0.0.1:9998/api/search?search=statusCode' | jq '.entries[] | {msg, req: .req.method + " " + .req.url, status: .res.statusCode, time: .res.responseTime}'
 ```
 
+### 8. Find Which Code Logged a Line
+
+An unexplained line — an odd message, one nothing in the tree seems to write — is placed by naming
+the caller of the messages that match a pattern. Each pattern is a regular expression source, so a
+substring (`unauthorized`, `adapter.ready`) is written as one and `''` names the caller of every
+record; the frame appears on the record as `site`.
+
+```bash
+# One process, while an unexplained line turns up in it
+blong ./suite/blong-suite/index.ts dev --log.callSite=unauthorized --log.callSite=adapter.ready
+
+# In a deployment, beside the other log settings
+# config: {release: {log: {callSite: ['unauthorized']}}}
+```
+
+Nothing is captured for a message that matches none of the patterns, so leaving it configured costs
+what the matched records cost. A call in pino's printf shape (`('unauthorized: %s', reason)`) is
+always named, whatever the patterns say: no call site in this repository writes that shape, so one
+arriving is a dependency's — which is how `@fastify/bearer-auth`'s refusal was found.
+
 ## Fetching Persisted Log Entries
 
 Beyond the live log server, Blong's `pino-cacache` transport stores every log entry **on disk**

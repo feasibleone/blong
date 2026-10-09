@@ -161,6 +161,18 @@
     font-size: 0.875rem;
 }
 
+/* The command that produces the credential, inside the hint panel */
+.blong-login__hint-command {
+    display: block;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
+    background: var(--surface-ground);
+    border-radius: 4px;
+}
+
 /* ── Org brand area (below card) ───────────────────────────────────── */
 /* Content start-aligned so it sits flush against the card */
 .blong-login__bottom {

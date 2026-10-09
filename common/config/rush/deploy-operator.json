@@ -1,0 +1,23 @@
+/**
+ * Deploy scenario for the deployment realm itself: `rush deploy --scenario operator`.
+ *
+ * The operator runs *this* realm and nothing else (D-396), and it fetches its own artifact the way
+ * every process fetches its suite's — from a URL, into a cache on the claim its install tree
+ * declares. In CI that URL is the GitHub release (`blong-kustomize.zip`, which is what the committed
+ * install tree names); locally there is no egress, so the runbook takes this scenario's output, zips
+ * it, serves it beside the suite's artifact and passes `OPERATOR_ARTIFACT_URL` when it generates the
+ * install tree. Without it the operator's pods fail on their init container, which is what a cluster
+ * with no route to github.com does.
+ *
+ * The options mirror `deploy-suite.json` on purpose: the same link step (the Dockerfile's
+ * `create-links.js`), and the same disabled `.npmignore` filter — which, contrary to the name,
+ * means the filter is *applied*, and a deployment is not a publish. One package shipped a module
+ * short because of it (F-376), and there is no reason for the operator's artifact to take that risk
+ * differently.
+ */
+{
+    "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/deploy-scenario.schema.json",
+    "deploymentProjectNames": ["@feasibleone/blong-kustomize"],
+    "linkCreation": "script",
+    "includeNpmIgnoreFiles": true
+}

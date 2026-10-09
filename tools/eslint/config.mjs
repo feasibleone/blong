@@ -43,7 +43,18 @@ export default defineConfig([
         ...eslintReact.configs.recommended,
         files: ['**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}'],
     },
-    // Allow _ prefix convention for intentionally unused variables/parameters
+    // Allow _ prefix convention for intentionally unused variables/parameters,
+    // plus the `unchanged` marker the `blong-kopi` scaffolder prefixes to every
+    // generated source (`import unchanged from '@feasibleone/blong';`) so a
+    // re-scaffold can tell an untouched file from a hand-edited one. The marker
+    // is an import the file never uses, so it is ignored by name here rather
+    // than stripped from every scaffolded file.
+    //
+    // The prefix covers *variables* as well as arguments, and it has to: the
+    // idiom it marks is dropping a property through the rest of a destructuring
+    // (`const {d: _d, p: _p, ...rest} = jwk`), where every dropped name needs to
+    // be distinct and so cannot be `_` alone. Without this the idiom is
+    // unwritable, which is how the rule was first read — as a rule against it.
     {
         files: ['**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
         rules: {
@@ -51,7 +62,7 @@ export default defineConfig([
                 'error',
                 {
                     argsIgnorePattern: '^_',
-                    varsIgnorePattern: '^_',
+                    varsIgnorePattern: '^_|^unchanged$',
                     caughtErrorsIgnorePattern: '^_',
                 },
             ],

@@ -7,10 +7,8 @@ export default handler(
             _$meta: Record<string, unknown>,
         ): Promise<{
             userId: string;
-            /** Base64 of the raw binary(16) user key — for session creation. */
-            userKey: string;
-            /** Active credential id — for session creation. */
-            credentialId: number;
+            userKey: string; // Base64 of the raw binary(16) user key — for session creation
+            credentialId: number; // Active credential id — for session creation
             permissionMap: string;
             actions: string[];
         }> {

@@ -4,6 +4,9 @@ export default realm(() => ({
     url: import.meta.url,
     config: {
         default: {
+            // Carried in-process by every process *and* published as an admin API, so `both` —
+            // declared by the realm itself rather than by the suite that deploys it (D-433).
+            k8s: {k8sRealmRole: 'both'},
             // Fallback credential-function parameters for newly created
             // credentials.  The active `access.policy` for the credential
             // type overrides these; these defaults only apply when no

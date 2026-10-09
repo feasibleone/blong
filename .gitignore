@@ -131,3 +131,9 @@ report-data
 ci-failures
 /metrics.json
 /ci-report.md
+
+# A generated kustomize tree is a committed base beside a local overlay: the base holds what every
+# deploy shares, and the overlay carries the artifact's identity and the node names — the two values
+# that differ per cluster and per deploy, and the reason the layout is split at all (D-475).
+/suite/*/system/kustomize/local/
+/realm/*/system/operator/local/

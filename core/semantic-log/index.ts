@@ -77,7 +77,7 @@ export type {
     LoggerFace,
     RetentionOptions,
 } from './src/logBase.ts';
-export {toLogCall} from './src/logCall.ts';
+export {callerSite, messageMatches, toLogCall} from './src/logCall.ts';
 export type {LogCall} from './src/logCall.ts';
 export {captureProcessFailures, createLogger} from './src/logger.ts';
 export type {Format, Logger, LoggerOptions} from './src/logger.ts';

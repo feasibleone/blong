@@ -275,6 +275,24 @@ export interface IKnexConfig {
 
 export interface IConfig {
     knex: IKnexConfig;
+    /**
+     * When `false`, the adapter loads and registers but never connects: no
+     * `CREATE DATABASE`, no schema sync, no seeds, no procedure binding, no path
+     * drain and no binary-column discovery.
+     *
+     * A run that only *plans* is what this is for — `k8s` loads a suite, derives
+     * its tree, writes it and exits — and the reason it is a config key rather than
+     * something the adapter decides for itself is that the decision belongs to
+     * whoever knows whether the database is needed: the realm that owns the shared
+     * adapter says it for the intent (see the `k8s` block in
+     * `core/blong-server/adapter/db.ts`), and a realm whose generator really does
+     * read the database sets `true` for that intent instead.
+     *
+     * The port still registers, which matters more than it looks: a suite plan owes
+     * the suite a migration step because the *registry* says it has a database, so
+     * an adapter that never loaded would take the step away in silence.
+     */
+    connect?: boolean;
     context: {
         queryBuilder?: Knex;
     };
