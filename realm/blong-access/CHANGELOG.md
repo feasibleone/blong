@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.10.0](https://github.com/feasibleone/blong/compare/blong-access-v1.9.0...blong-access-v1.10.0) (2026-10-10)
+
+
+### Features
+
+* blong-kustomize ([0ad6915](https://github.com/feasibleone/blong/commit/0ad6915af0d3c300a8741a509232aec7649999a1))
+
+
+### Bug Fixes
+
+* address CI issues ([d32fbb1](https://github.com/feasibleone/blong/commit/d32fbb10cc945db43eb492606792f63bfb848ae6))
+* address CI issues ([bea0f62](https://github.com/feasibleone/blong/commit/bea0f62aba2dcef95cc4363b02c4ee3e05c620b1))
+* address latency issue ([7504310](https://github.com/feasibleone/blong/commit/750431029b7345100e4124675f36404b6e1693fa))
+* test ACL with cucumber ([3a84be9](https://github.com/feasibleone/blong/commit/3a84be99a1544dd7ae599cdd976191cf21cabba9))
+
 ## [1.9.0](https://github.com/feasibleone/blong/compare/blong-access-v1.8.1...blong-access-v1.9.0) (2026-10-01)
 
 
