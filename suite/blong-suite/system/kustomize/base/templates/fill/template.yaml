@@ -6,10 +6,10 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
-    app.kubernetes.io/version: 1.13.0
+    app.kubernetes.io/version: PLACEHOLDER
     blong.feasible.one/retention: "3"
-    blong.feasible.one/spec-hash: 14416e8a31c88f1d
-    blong.feasible.one/suite-version: 1.13.0
+    blong.feasible.one/spec-hash: 441f64d5379b1ac1
+    blong.feasible.one/suite-version: PLACEHOLDER
     blong.feasible.one/volume-identity: PLACEHOLDER
   name: blong-suite-fill
   namespace: blong-suite
@@ -22,7 +22,7 @@ spec:
         app.kubernetes.io/managed-by: blong-kustomize
         app.kubernetes.io/name: blong-suite
         app.kubernetes.io/part-of: blong-suite
-        app.kubernetes.io/version: 1.13.0
+        app.kubernetes.io/version: PLACEHOLDER
     spec:
       containers:
         - command:

@@ -1,10 +1,11 @@
 import {handler, type IMeta} from '@feasibleone/blong';
 import {execFile} from 'node:child_process';
-import {mkdirSync, writeFileSync} from 'node:fs';
+import {cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import {homedir} from 'node:os';
-import {join} from 'node:path';
+import {dirname, join} from 'node:path';
 import {promisify} from 'node:util';
 import {artifactEntry, readKustomizeTree, type KustomizeTree} from '../../generator.ts';
+import {materializeSplitTree} from '../../materialize.ts';
 import {OPERATOR_ENV} from '../../operator.ts';
 import {DEFAULT_RETENTION, type IBlongDeploymentSpec, type IPlanConfig} from '../../plan.ts';
 const run = promisify(execFile);
@@ -15,6 +16,26 @@ const GENERATE_TIMEOUT_MILLIS = 180_000;
 /** Where generated trees live: a directory per suite (the realm config's `generationRoot` wins). */
 const generationRoot = (configured?: string): string =>
     configured ?? join(homedir(), '.blong', 'generations');
+
+/**
+ * The base a deploy shipped, when its artifact carries one: the tree's repository half, generated in dev or
+ * CI and packaged with the suite it belongs to.
+ *
+ * Beside the suite's entry point is where the deploy layout puts a package's own files, so that is asked
+ * first; the suite's name is what a CR calls it, so that is asked second; and one bounded walk answers for
+ * a layout neither guess knows. Absent is a real answer: an artifact packaged before anything generated a
+ * tree has none, and the pass then writes the tree whole as it always did (T-298).
+ */
+const shippedBase = (artifact: string, entry: string, suite: string): string | undefined => {
+    const beside = join(dirname(entry), 'system', 'kustomize', 'base');
+    if (existsSync(join(beside, 'kustomization.yaml'))) return beside;
+    const named = join(artifact, 'suite', suite, 'system', 'kustomize', 'base');
+    if (existsSync(join(named, 'kustomization.yaml'))) return named;
+    const marker = readdirSync(artifact, {recursive: true})
+        .map(path => String(path))
+        .find(path => path.endsWith('system/kustomize/base/kustomization.yaml'));
+    return marker ? join(artifact, dirname(marker)) : undefined;
+};
 
 /**
  * kustomize.suite.generate — write the tree for a CR, by loading that suite's artifact.
@@ -38,8 +59,53 @@ const generationRoot = (configured?: string): string =>
  * usage text, so a pass run through `blong-kustomize reconcile --from=cr` fetched its artifact and
  * then died in the child. Hence the override: the CLI names the framework bin it is built on, and
  * everything else keeps the version it was launched with.
+ *
+ * Since the artifact carries the tree's *base* — the half generated in dev or CI, holding nothing this
+ * deploy owns — the child writes only the overlay: the base is copied into the output directory first, the
+ * child runs with `layout=local`, and the two halves are materialized into the objects the pass compares
+ * with the cluster (D-488, T-298). That is what makes the design that runs the one that was deployed
+ * rather than the one this image's generator would have written. An artifact with no base falls back to the
+ * child writing the tree whole, which is what every pass did before — and that fallback *names* `flat`
+ * rather than taking a default: a pass applies what the child wrote, while the default a repository wants is
+ * the half a pass cannot apply (D-490).
  */
 export const CHILD_ENTRY_ENV = 'KUSTOMIZE_CHILD_ENTRY';
+
+/**
+ * The command line the child is run with.
+ *
+ * Exported because the one argument that differs between the two paths decides whether a pass applies a tree
+ * or a design half: an artifact that ships the base gets the overlay written beside it, one that does not
+ * gets the tree whole, and neither path leaves that to a default — the layout a repository wants is the
+ * half a pass cannot apply (D-490).
+ */
+export const suiteGenerateArgs = ({
+    entry,
+    specFile,
+    outputDir,
+    base,
+    namespace,
+    name,
+}: {
+    entry: string;
+    /** The CR the child plans from, written beside the tree. */
+    specFile: string;
+    outputDir: string;
+    /** Whether the artifact shipped the base this deploy's overlay is written beside. */
+    base: boolean;
+    namespace?: string;
+    name?: string;
+}): string[] => [
+    // The artifact's own entry point, the intent that writes a tree and exits, and the two settings
+    // that reach `IPlanConfig`: the spec to plan from and where to put the result.
+    entry,
+    'k8s',
+    `--kustomize.deploy.specFile=${specFile}`,
+    `--kustomize.deploy.outputDir=${outputDir}`,
+    `--kustomize.deploy.layout=${base ? 'local' : 'flat'}`,
+    ...(namespace ? [`--kustomize.deploy.suite.namespace=${namespace}`] : []),
+    ...(name ? [`--kustomize.deploy.suite.name=${name}`] : []),
+];
 
 export default handler(({handler}) => ({
     async kustomizeSuiteGenerate(
@@ -84,23 +150,31 @@ export default handler(({handler}) => ({
             $meta,
         )) as {dir: string};
 
+        const entry = artifactEntry(fetched.dir, spec.entry);
+        // The half the artifact ships, and the half only this deploy knows. A base present means the child
+        // writes the overlay alone; a base absent means the artifact predates the split and the child writes
+        // the tree whole (T-298).
+        const base = shippedBase(fetched.dir, entry, suite);
+        if (base) {
+            // Replaced rather than merged: the output directory is per *suite* while a base belongs to one
+            // *artifact*, so a base left by an earlier version must not survive into this pass.
+            rmSync(outputDir, {recursive: true, force: true});
+            cpSync(base, join(outputDir, 'base'), {recursive: true});
+        }
         mkdirSync(outputDir, {recursive: true});
         // Beside the tree, not inside it: the child replaces its output directory when it writes, and
         // a spec living there would be deleted by the very run that is reading it.
         const specFile = `${outputDir}-spec.json`;
         writeFileSync(specFile, JSON.stringify(spec, null, 4));
 
-        const entry = artifactEntry(fetched.dir, spec.entry);
-        // The artifact's own entry point, the intent that writes a tree and exits, and the two
-        // settings that reach `IPlanConfig`: the spec to plan from and where to put the result.
-        const args = [
+        const args = suiteGenerateArgs({
             entry,
-            'k8s',
-            `--kustomize.deploy.specFile=${specFile}`,
-            `--kustomize.deploy.outputDir=${outputDir}`,
-            ...(params.namespace ? [`--kustomize.deploy.suite.namespace=${params.namespace}`] : []),
-            ...(params.name ? [`--kustomize.deploy.suite.name=${params.name}`] : []),
-        ];
+            specFile,
+            outputDir,
+            base: Boolean(base),
+            namespace: params.namespace,
+            name: params.name,
+        });
         try {
             // The child is a *generation* run, so it must not inherit the loop. This process is the
             // operator, and the environment that switched its loop on would switch one on in the
@@ -128,7 +202,12 @@ export default handler(({handler}) => ({
                     `\n${(failure.stdout ?? '').split('\n').slice(-5).join('\n')}`,
             );
         }
-        const tree = readKustomizeTree(outputDir);
+        const tree = base
+            ? materializeSplitTree(
+                  readKustomizeTree(join(outputDir, 'base')),
+                  readKustomizeTree(join(outputDir, 'local')),
+              )
+            : readKustomizeTree(outputDir);
         return {outputDir, tree, artifact: fetched.dir, files: [...tree.keys()]};
     },
 }));

@@ -255,43 +255,53 @@ export default adapter<IConfig>(({utError}) => {
         async start() {
             const kc = new k8s.KubeConfig();
             const k8sConfig = this.config.k8s || {};
-            // Load kubeconfig based on configuration
-            if (k8sConfig.kubeconfig) {
-                kc.loadFromFile(k8sConfig.kubeconfig);
-            } else if (k8sConfig.cluster && k8sConfig.user) {
-                // Manual configuration
-                kc.loadFromOptions({
-                    clusters: [
-                        {
-                            name: 'cluster',
-                            server: k8sConfig.cluster.server,
-                            skipTLSVerify: k8sConfig.cluster.skipTLSVerify,
-                            caData: k8sConfig.cluster.caData,
-                        },
-                    ],
-                    users: [
-                        {
-                            name: 'user',
-                            token: k8sConfig.user.token,
-                            username: k8sConfig.user.username,
-                            password: k8sConfig.user.password,
-                            certData: k8sConfig.user.certData,
-                            keyData: k8sConfig.user.keyData,
-                        },
-                    ],
-                    contexts: [
-                        {
-                            name: 'context',
-                            cluster: 'cluster',
-                            user: 'user',
-                            namespace: k8sConfig.namespace,
-                        },
-                    ],
-                    currentContext: 'context',
-                });
-            } else {
-                // Try default locations
-                kc.loadFromDefault();
+            // Load kubeconfig based on configuration.
+            //
+            // A path the process cannot read is an absence rather than a mistake: a run that only turns a
+            // plan into manifests — a base generated in dev or CI — never reaches the cluster, and the job
+            // that generates one has no kubeconfig to point at. Skipping the load leaves the clients
+            // without a server, which is what a call would then report; a file that is there but is not a
+            // configuration still stops the process, because that is a mistake (T-297).
+            try {
+                if (k8sConfig.kubeconfig) {
+                    kc.loadFromFile(k8sConfig.kubeconfig);
+                } else if (k8sConfig.cluster && k8sConfig.user) {
+                    // Manual configuration
+                    kc.loadFromOptions({
+                        clusters: [
+                            {
+                                name: 'cluster',
+                                server: k8sConfig.cluster.server,
+                                skipTLSVerify: k8sConfig.cluster.skipTLSVerify,
+                                caData: k8sConfig.cluster.caData,
+                            },
+                        ],
+                        users: [
+                            {
+                                name: 'user',
+                                token: k8sConfig.user.token,
+                                username: k8sConfig.user.username,
+                                password: k8sConfig.user.password,
+                                certData: k8sConfig.user.certData,
+                                keyData: k8sConfig.user.keyData,
+                            },
+                        ],
+                        contexts: [
+                            {
+                                name: 'context',
+                                cluster: 'cluster',
+                                user: 'user',
+                                namespace: k8sConfig.namespace,
+                            },
+                        ],
+                        currentContext: 'context',
+                    });
+                } else {
+                    // Try default locations
+                    kc.loadFromDefault();
+                }
+            } catch (error) {
+                if ((error as {code?: string}).code !== 'ENOENT') throw error;
             }
 
             // Set context if specified
@@ -299,18 +309,28 @@ export default adapter<IConfig>(({utError}) => {
                 kc.setCurrentContext(k8sConfig.context);
             }
 
-            // Initialize API clients
-            this.config.context = {
-                coreV1Api: kc.makeApiClient(k8s.CoreV1Api),
-                appsV1Api: kc.makeApiClient(k8s.AppsV1Api),
-                batchV1Api: kc.makeApiClient(k8s.BatchV1Api),
-                networkingV1Api: kc.makeApiClient(k8s.NetworkingV1Api),
-                rbacV1Api: kc.makeApiClient(k8s.RbacAuthorizationV1Api),
-                authV1Api: kc.makeApiClient(k8s.AuthenticationV1Api),
-                authzV1Api: kc.makeApiClient(k8s.AuthorizationV1Api),
-                customObjectsApi: kc.makeApiClient(k8s.CustomObjectsApi),
-                watcher: new k8s.Watch(kc),
-            };
+            // Initialize API clients — unless the configuration named nothing usable, which is the one case
+            // `start` tolerates: the client library raises `No active cluster!` for an empty configuration,
+            // and a run that only turns a plan into manifests (the base a CI job generates) never calls the
+            // cluster. The context is left empty, exactly as it is after `stop`, and a call that does need a
+            // cluster fails where it is made rather than refusing to start (T-297).
+            let clients: IConfig['context'] = {};
+            try {
+                clients = {
+                    coreV1Api: kc.makeApiClient(k8s.CoreV1Api),
+                    appsV1Api: kc.makeApiClient(k8s.AppsV1Api),
+                    batchV1Api: kc.makeApiClient(k8s.BatchV1Api),
+                    networkingV1Api: kc.makeApiClient(k8s.NetworkingV1Api),
+                    rbacV1Api: kc.makeApiClient(k8s.RbacAuthorizationV1Api),
+                    authV1Api: kc.makeApiClient(k8s.AuthenticationV1Api),
+                    authzV1Api: kc.makeApiClient(k8s.AuthorizationV1Api),
+                    customObjectsApi: kc.makeApiClient(k8s.CustomObjectsApi),
+                    watcher: new k8s.Watch(kc),
+                };
+            } catch (error) {
+                if (/No active cluster/.test((error as Error).message) === false) throw error;
+            }
+            this.config.context = clients;
 
             super.connect();
             return super.start();
@@ -733,12 +753,25 @@ export default adapter<IConfig>(({utError}) => {
                         if (Array.isArray(params)) {
                             throw this.error(_errors['k8s.invalid'](), $meta);
                         }
-                        const {name} = params;
+                        const {name, propagationPolicy} = params;
                         if (!name) {
                             throw this.error(_errors['k8s.missingKey']({key: 'name'}), $meta);
                         }
 
-                        return await callApi('delete', {name});
+                        // Name the cascade, because leaving it to the API server leaves a Job's pods
+                        // behind. They are not dependents by finalizer: the deletion orphans them, so
+                        // they lose their owner reference and no collector ever picks them up — a
+                        // suite's namespace held 37 ownerless pods against 7 Jobs (D-492). `Background`
+                        // is what `kubectl delete` uses: the Job goes, its pods follow, and the caller
+                        // is not kept waiting for them (which `Foreground` would do inside a pass).
+                        // A caller that wants another policy can name it in the params.
+                        return await callApi('delete', {
+                            name,
+                            propagationPolicy:
+                                typeof propagationPolicy === 'string'
+                                    ? propagationPolicy
+                                    : 'Background',
+                        });
                     }
                     case 'apply': {
                         // Apply resource (create or update)

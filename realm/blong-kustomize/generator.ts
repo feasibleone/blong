@@ -12,7 +12,15 @@
  * is byte-identical and reviewable in git.
  */
 import {createHash} from 'node:crypto';
-import {mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync} from 'node:fs';
+import {
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    readdirSync,
+    rmSync,
+    statSync,
+    writeFileSync,
+} from 'node:fs';
 import {basename, dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parse, stringify} from 'yaml';
@@ -68,7 +76,7 @@ export type KustomizeTree = Map<string, KustomizeResource>;
  *
  * The processes the suite *serves* take the plan's own value, because a realm may raise it with
  * `k8sResources`. The containers the generator emits around them — the seed and migration Jobs, the
- * node prefetch and the placeholder that keeps its pod, and the operator — take the default, because
+ * fill Job for each node, and the operator — take the default, because
  * nothing knows better how much a step needs, and an unpinned step beside pinned processes is the
  * one that gets evicted first. None of them carried a value until they were asked for: the migration
  * Job shipped BestEffort from the day it existed, and only a running pod said so (F-432).
@@ -172,7 +180,7 @@ export const SUITE_ROOT = '/var/lib/blong/suites';
  */
 export const CR_PATH = 'blongdeployment.yaml';
 
-/** The file a template's folder carries, and the name an instance includes it by. */
+/** The file a template's folder carries: the object an instance's kustomization includes. */
 export const TEMPLATE_FILE = 'template.yaml';
 
 /**
@@ -951,29 +959,57 @@ const operatorServiceAccountResource = (plan: IDeploymentPlan): Record<string, u
 });
 
 /**
+ * The namespaces a reconcile pass touches: the suite's own, and every namespace the suite's
+ * workloads are generated into.
+ *
+ * The tree holds objects in both — a generated workload runs beside its backing service, and a
+ * service sits in a namespace of its own by default (`blong-services`) — and a pass discovers what
+ * the suite owns by its labels, so it *reads* objects there whether or not the active profile still
+ * generates them. Rights limited to the suite's namespace therefore fail on the read rather than on
+ * the apply: the pass reported five failures and never converged. The requested namespace joins the
+ * list because a profile that leaves a service to an installation of its own still leaves that
+ * service's objects behind for the pass to find.
+ */
+const tenantNamespaces = (plan: IDeploymentPlan): string[] => [
+    ...new Set([
+        plan.suite.namespace,
+        ...plan.backingServices.map(backingService => backingService.namespace),
+        ...(plan.backingServiceRequest.servicesNamespace
+            ? [plan.backingServiceRequest.servicesNamespace]
+            : []),
+    ]),
+];
+
+/**
  * What the operator may do inside a tenant: the kinds the tree holds, and nothing cluster-scoped.
  *
- * A `Role` rather than a `ClusterRole`, bound in the tenant's own namespace: the operator applies a
+ * A `Role` rather than a `ClusterRole`, bound in the tenant's own namespaces: the operator applies a
  * suite where that suite was declared, so its rights are per tenant and granted by the tenant's own
- * tree (D-396). The pair ships with the suite because the suite is what knows its namespace.
+ * tree (D-396). The pair ships with the suite because the suite is what knows its namespaces.
  */
-const operatorTenantRoleResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
+const operatorTenantRoleResource = (
+    plan: IDeploymentPlan,
+    namespace: string,
+): Record<string, unknown> => ({
     apiVersion: 'rbac.authorization.k8s.io/v1',
     kind: 'Role',
     metadata: {
         name: OPERATOR_NAME,
-        namespace: plan.suite.namespace,
+        namespace,
         labels: suiteLabels(plan),
     },
     rules: OPERATOR_NAMESPACED_RULES,
 });
 
-const operatorTenantRoleBindingResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
+const operatorTenantRoleBindingResource = (
+    plan: IDeploymentPlan,
+    namespace: string,
+): Record<string, unknown> => ({
     apiVersion: 'rbac.authorization.k8s.io/v1',
     kind: 'RoleBinding',
     metadata: {
         name: OPERATOR_NAME,
-        namespace: plan.suite.namespace,
+        namespace,
         labels: suiteLabels(plan),
     },
     roleRef: {apiGroup: 'rbac.authorization.k8s.io', kind: 'Role', name: OPERATOR_NAME},
@@ -989,8 +1025,8 @@ const operatorNamespaceResource = (plan: IDeploymentPlan): Record<string, unknow
 
 /** Where the operator caches the artifacts it plans from (D-398): one claim, mounted at `/cache`. */
 const OPERATOR_CACHE_MOUNT = '/cache';
-/** The claim the operator's artifact cache sits on. Distinct from the prefetch DaemonSet, which
- * carries the *realm's* artifact and is named after the operator too. */
+/** The claim the operator's artifact cache sits on. Distinct from the install's fill Jobs, which
+ * carry the *realm's* artifact and are named after the operator too. */
 const OPERATOR_CACHE_CLAIM = `${OPERATOR_NAME}-artifacts`;
 
 const operatorCacheClaimResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
@@ -1363,9 +1399,9 @@ const pvcResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
  *
  * Two mechanisms, because the two backends fail differently. A PVC is prepared by the kubelet, so
  * `fsGroup` is enough: it hands the mounted volume to that group. A `hostPath` is not — the kubelet
- * ignores `fsGroup` there, and a directory the node's provisioner made is root-owned, so the
- * prefetch's first `mkdir` fails with `Permission denied` and the DaemonSet retries forever. That one
- * needs to run as root, which the first live deployment proved.
+ * ignores `fsGroup` there, and a directory the node's provisioner made is root-owned, so the fill's
+ * first `mkdir` fails with `Permission denied` and no retry gets past it. That one needs to run as
+ * root, which the first live deployment proved.
  */
 const SUITE_GID = 1000;
 
@@ -2537,12 +2573,22 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
     tree.set('rbac/service-account.yaml', serviceAccountResource(plan));
     tree.set('rbac/jobs-role.yaml', roleResource(plan));
     tree.set('rbac/jobs-rolebinding.yaml', roleBindingResource(plan));
-    // The operator's rights *in this suite's namespace*, granted by the suite's own tree: the
+    // The operator's rights *in this suite's namespaces*, granted by the suite's own tree: the
     // operator is installed once for the cluster, and which suites it may converge is a property of
     // each tenant rather than of the install (D-396). One pair per namespace, named after the
-    // operator so a reader can tell what holds it.
-    tree.set(`rbac/${OPERATOR_NAME}-role.yaml`, operatorTenantRoleResource(plan));
-    tree.set(`rbac/${OPERATOR_NAME}-rolebinding.yaml`, operatorTenantRoleBindingResource(plan));
+    // operator so a reader can tell what holds it; the pair beyond the suite's own carries the
+    // namespace in its name, because the file names have to differ.
+    for (const namespace of tenantNamespaces(plan)) {
+        const suffix = namespace === plan.suite.namespace ? '' : `-${namespace}`;
+        tree.set(
+            `rbac/${OPERATOR_NAME}-role${suffix}.yaml`,
+            operatorTenantRoleResource(plan, namespace),
+        );
+        tree.set(
+            `rbac/${OPERATOR_NAME}-rolebinding${suffix}.yaml`,
+            operatorTenantRoleBindingResource(plan, namespace),
+        );
+    }
     // The UI's right to ask the cluster about a caller (D-376). The role is one object for the whole
     // cluster because its rules are the same for every suite; the binding is not, because its subject
     // is this suite's identity — which is exactly the rule the naming table states (Phase 15 A2).
@@ -2588,13 +2634,52 @@ export const serializeKustomizeTree = (tree: KustomizeTree): Map<string, string>
         ]),
     );
 
-/** How a tree is written: one directory of manifests, or a committed base with a local overlay. */
-export type TreeLayout = 'flat' | 'split';
+/**
+ * How a tree is written: a directory of manifests (`flat`), a committed base with a local overlay
+ * (`split`), or one half of that pair — `base` where the design is known, `local` where the deploy is.
+ *
+ * The four values answer two questions, and only one of them is about files. *Who knows what*: which
+ * objects exist, and what they are, is a property of the design — knowable in a dev or CI run with no
+ * cluster — while the artifact's identity and the node names are the deploy's own: knowable only
+ * where the deploy happens, and not worth committing. *Is one generation enough*: a caller that knows
+ * both writes the halves together, and a caller that knows only the deploy writes its half beside a
+ * base somebody else produced.
+ *
+ * `flat` is one directory with nothing left to resolve, which is the shape a consumer reads back: the
+ * operator compares the objects it reads with the cluster, so a tree carrying patches would be
+ * misapplied in silence (D-395). It is what the writer below falls back on when no source names a
+ * layout — the `k8s` intent names `base` — and the reference a split is measured against.
+ *
+ * `split` writes both halves from one tree in one pass, which is what makes them one generation *by
+ * construction* rather than by two writers agreeing. A caller writes it when a single process knows
+ * the design and the deploy: the developer's cycle, and the operator's own install tree.
+ *
+ * `base` writes the design half alone, and it is the only value a cluster-free run can write — one
+ * stand-in node derives the fill template and its name never reaches a file, which is also why this is
+ * the one value that skips the node lookup (T-294). It is what a suite commits, and what its artifact
+ * ships.
+ *
+ * `local` writes the deploy half alone, *beside* a base it did not produce, and that is why it
+ * verifies the base rather than trusting it: the templates it instantiates and the objects it patches
+ * have to be there, and a base from another generation is refused instead of being composed into
+ * something nobody wrote (T-295). The operator's CR pass writes this half, over the base its artifact
+ * carries (D-488).
+ *
+ * A pair is held together by one equality: a base and its overlay compose to exactly the tree `flat`
+ * would have written, object for object (D-473, D-475, T-296). Two consumers compose the pair, so the
+ * equality is pinned twice — `materializeSplitTree` in TypeScript, because the operator has no
+ * kustomize binary, and `kubectl kustomize` for a cluster's own apply. The same four names are the
+ * values of `--kustomize.deploy.layout`, so the flag and this union cannot drift.
+ */
+export type TreeLayout = 'flat' | 'split' | 'base' | 'local';
 
 /** What a writer needs beyond the tree itself: the layout, and the plan a split needs for its base. */
 export interface IWriteTreeOptions {
     layout?: TreeLayout;
-    /** The plan the tree was built from. Required by a split, which holds the artifact as a placeholder. */
+    /**
+     * The plan the tree was built from. Required by a split and by a base, which hold the artifact and
+     * the node names as placeholders.
+     */
     plan?: IDeploymentPlan;
 }
 
@@ -2610,22 +2695,42 @@ export interface IWriteTreeOptions {
  * the job attempts named after it, and one fill Job per node. Consumers apply the overlay with kustomize
  * (`kubectl apply -k …/local`), which is what keeps a dev cluster's node names and a deploy's digest out
  * of the repository (D-473, D-475).
+ *
+ * `base` writes the first of those halves and stops. It names no node and no artifact, which is what lets
+ * dev or CI generate it without a cluster — the generation needs one stand-in node to derive the fill
+ * template from, and its name never reaches a file (T-294). The overlay is then written where the deploy
+ * is known.
  */
 export const writeKustomizeTree = (
     tree: KustomizeTree,
     dir: string,
     options: IWriteTreeOptions = {},
 ): string[] => {
-    rmSync(dir, {recursive: true, force: true});
-    if (options.layout === 'split') {
+    const layout = options.layout ?? 'flat';
+    if (layout === 'split' || layout === 'base' || layout === 'local') {
         if (!options.plan) {
             throw new Error(
-                'a split tree needs the plan it was built from: its base carries a placeholder for ' +
-                    'the artifact, and the overlay is what replaces it',
+                'a split, base or local tree needs the plan it was built from: the base carries a ' +
+                    'placeholder for the artifact and the node names, and the overlay replaces them',
             );
         }
-        return writeSplitTree(tree, options.plan, dir);
+        if (layout === 'local') {
+            // The overlay is written *beside* a base somebody else wrote — committed, or fetched with
+            // the artifact — so only it is replaced, and a directory without a base beside it is
+            // refused rather than half-written.
+            if (!existsSync(join(dir, 'base'))) {
+                throw new Error(
+                    `a local tree is written beside a base: ${join(dir, 'base')} is not there — ` +
+                        'generate the base first, or point the output at the tree that holds it',
+                );
+            }
+            rmSync(join(dir, 'local'), {recursive: true, force: true});
+        } else {
+            rmSync(dir, {recursive: true, force: true});
+        }
+        return writeSplitTree(tree, options.plan, dir, layout);
     }
+    rmSync(dir, {recursive: true, force: true});
     const written: string[] = [];
     for (const [path, content] of serializeKustomizeTree(tree)) {
         const full = join(dir, path);
@@ -2761,7 +2866,12 @@ const splitWorkload = (
     plan: IDeploymentPlan,
     object: Record<string, unknown>,
 ): {base: Record<string, unknown>; patch: Record<string, unknown>} => {
-    const metadata = object.metadata as {name: string; labels?: Record<string, string>};
+    const metadata = object.metadata as {
+        name: string;
+        /** The object's own namespace, when it carries one: a service workload is not in the suite's. */
+        namespace?: string;
+        labels?: Record<string, string>;
+    };
     const real = suiteVolumeOf(object);
     return {
         // Re-stamped: the placeholder is what this file holds, and its fingerprint should say so.
@@ -2771,10 +2881,11 @@ const splitWorkload = (
             kind: object.kind,
             metadata: {
                 name: metadata.name,
-                // Named, because the base's kustomization sets a namespace and kustomize then matches a
-                // patch against a qualified object: a patch without one targets `[noNs]` and matches
-                // nothing.
-                namespace: plan.suite.namespace,
+                // Named, because kustomize matches a patch against a qualified object and a patch without
+                // one targets `[noNs]`, which matches nothing. The object's own namespace wins — a service
+                // workload lives in the services namespace, not the suite's — and the plan supplies one
+                // only for the objects that carry none (T-293).
+                namespace: metadata.namespace ?? plan.suite.namespace,
                 ...(metadata.labels?.[SPEC_HASH_LABEL]
                     ? {labels: {[SPEC_HASH_LABEL]: metadata.labels[SPEC_HASH_LABEL]}}
                     : {}),
@@ -2854,6 +2965,8 @@ const instantiate = (
 ): IInstantiation => {
     const metadata = object.metadata as {
         name: string;
+        /** The object's own namespace, when it carries one: a service workload is not in the suite's. */
+        namespace?: string;
         labels?: Record<string, string>;
     };
     const pod = (
@@ -2885,29 +2998,24 @@ const instantiate = (
         kind: object.kind,
         metadata: {
             name: template,
-            // Named, because the base's kustomization sets a namespace and kustomize then matches a patch
-            // against a qualified object: a patch without one targets `[noNs]` and matches nothing.
-            namespace: plan.suite.namespace,
-            labels: {
-                ...(metadata.labels?.['app.kubernetes.io/instance']
-                    ? {'app.kubernetes.io/instance': metadata.name}
-                    : {}),
-                ...(metadata.labels?.['blong.feasible.one/volume-identity']
-                    ? {'blong.feasible.one/volume-identity': identity}
-                    : {}),
-                ...(metadata.labels?.[SPEC_HASH_LABEL]
-                    ? {[SPEC_HASH_LABEL]: metadata.labels[SPEC_HASH_LABEL]}
-                    : {}),
-            },
+            // Named, because kustomize matches a patch against a qualified object and a patch without one
+            // targets `[noNs]`, which matches nothing. The object's own namespace wins — a service
+            // workload is not in the suite's — and the plan supplies one only for objects that carry none
+            // (T-293).
+            namespace: metadata.namespace ?? plan.suite.namespace,
+            // The object's labels, *all* of them. A placeholder replacement is a value substitution, so a
+            // label that merely *read* the identity — the suite's version, say — was destroyed by it, and
+            // only the object itself says what such a label should read. Merged over the template's, so
+            // every label the base kept is kept.
+            labels: {...metadata.labels},
         },
     };
     if (kind !== 'claim') {
         patch.spec = {
             template: {
                 metadata: {
-                    ...(pod?.metadata?.labels?.['app.kubernetes.io/instance']
-                        ? {labels: {'app.kubernetes.io/instance': metadata.name}}
-                        : {}),
+                    // The pod's labels too, for the same reason: the identity ran through them.
+                    ...(pod?.metadata?.labels ? {labels: {...pod.metadata.labels}} : {}),
                 },
                 spec: {
                     // The *whole* volume list is not needed and not given: the generator always writes the
@@ -3026,14 +3134,26 @@ const kustomizationFolder = (path: string): string => path.slice(0, -'/kustomiza
  * The two roots list files rather than folders, because the folders are what the split takes apart.
  * Deterministic like the flat writer — sorted, unfolded YAML — so two runs of one plan produce the same
  * bytes, which is what makes a committed base reviewable.
+ *
+ * `layout` is `base` for a caller that wants the base alone, and `local` for one that wants the overlay
+ * alone: the derivation runs the same way, and only the writes of the missing half are left out.
  */
-const writeSplitTree = (tree: KustomizeTree, plan: IDeploymentPlan, dir: string): string[] => {
+const writeSplitTree = (
+    tree: KustomizeTree,
+    plan: IDeploymentPlan,
+    dir: string,
+    layout: TreeLayout = 'split',
+): string[] => {
+    const withBase = layout !== 'local';
+    const withOverlay = layout !== 'base';
     const base = new Map<string, KustomizeResource>();
     /** The templates the overlay instantiates, by kind: written under the base's `templates/`. */
     const templates = new Map<string, Record<string, unknown>>();
     /** One kustomization per instance: the overlay directory it lives in, and what it holds. */
     const instances = new Map<string, Record<string, unknown>>();
     const patches = new Map<string, KustomizeResource>();
+    /** The base objects the overlay patches, by their path in the base — what a local run checks against. */
+    const patchedPaths = new Set<string>();
     // Folder kustomizations to keep verbatim, and the folders whose files they already list: a folder that
     // brought one is not taken apart, so its files must not also be listed by the root.
     const brought: string[] = [];
@@ -3079,6 +3199,7 @@ const writeSplitTree = (tree: KustomizeTree, plan: IDeploymentPlan, dir: string)
             });
             templates.set(instance.key, instance.object);
             const at = `${dirname(path)}/${basename(path, '.yaml')}`;
+            if (!withOverlay) continue;
             instances.set(at, {
                 apiVersion: KUSTOMIZE_API,
                 kind: 'Kustomization',
@@ -3096,21 +3217,35 @@ const writeSplitTree = (tree: KustomizeTree, plan: IDeploymentPlan, dir: string)
         if (placement === 'patched' && isClusterResource(resource)) {
             const {base: placeholder, patch} = splitDeclaration(plan, resource);
             base.set(path, placeholder);
-            if (patch) patches.set(`patches/${basename(path)}`, patch);
+            if (patch) {
+                patches.set(`patches/${basename(path)}`, patch);
+                patchedPaths.add(path);
+            }
             continue;
         }
-        if (isClusterResource(resource) && resource.kind === 'Deployment') {
+        // Only a workload that reads the suite volume has something the overlay must put back: patching
+        // one that has no volume to replace writes a patch with nothing in it — a `volumes` list holding
+        // a null — and takes a service's own Deployment out of the base for no reason.
+        if (
+            isClusterResource(resource) &&
+            resource.kind === 'Deployment' &&
+            suiteVolumeOf(resource)
+        ) {
             const {base: placeholder, patch} = splitWorkload(plan, resource);
             base.set(path, placeholder);
             patches.set(`patches/${basename(path)}`, patch);
+            patchedPaths.add(path);
             continue;
         }
         base.set(path, resource);
     }
     const filesOf = (entries: Map<string, KustomizeResource>): string[] =>
         [...entries.keys()].filter(path => path.endsWith('/kustomization.yaml') === false).sort();
-    const roots: Array<[string, KustomizeResource]> = [
-        [
+    const roots: Array<[string, KustomizeResource]> = [];
+    // Each half is written where the other one already is: a base-only run stops before the overlay, and
+    // a local-only run has no base to write (T-294, T-295).
+    if (withBase) {
+        roots.push([
             'base/kustomization.yaml',
             {
                 ...rootKustomization(plan, [], []),
@@ -3119,8 +3254,10 @@ const writeSplitTree = (tree: KustomizeTree, plan: IDeploymentPlan, dir: string)
                 // finds it in `templates/`, and what *this* deploy's fill Jobs are in `local/`.
                 resources: [...brought, ...filesOf(base)].sort(),
             },
-        ],
-        [
+        ]);
+    }
+    if (withOverlay) {
+        roots.push([
             'local/kustomization.yaml',
             {
                 apiVersion: KUSTOMIZE_API,
@@ -3128,8 +3265,25 @@ const writeSplitTree = (tree: KustomizeTree, plan: IDeploymentPlan, dir: string)
                 resources: ['../base', ...[...instances.keys()].sort()],
                 patches: [...patches.keys()].sort().map(path => ({path})),
             },
-        ],
-    ];
+        ]);
+    }
+    // A local-only run is applied beside a base somebody else wrote — committed, or fetched with the
+    // artifact — so the two have to be one generation: an instance referencing a template the base does
+    // not hold, or a patch whose object is not there, composes into something nobody wrote. Say it here
+    // rather than let kustomize report a missing target later (T-295).
+    if (layout === 'local') {
+        const absent = [
+            ...[...templates.keys()].map(key => `base/templates/${key}/${TEMPLATE_FILE}`),
+            ...[...patchedPaths].map(path => `base/${path}`),
+        ].filter(path => !existsSync(join(dir, path)));
+        if (absent.length) {
+            throw new Error(
+                'the base beside this overlay is not the one this plan generates: ' +
+                    `${absent.slice(0, 3).join(', ')} ${absent.length === 1 ? 'is' : 'are'} not there — ` +
+                    'regenerate the base, or write both halves together (layout split)',
+            );
+        }
+    }
     const written: string[] = [];
     const write = (path: string, content: string): void => {
         const full = join(dir, path);
@@ -3137,17 +3291,16 @@ const writeSplitTree = (tree: KustomizeTree, plan: IDeploymentPlan, dir: string)
         writeFileSync(full, content.endsWith('\n') ? content : `${content}\n`);
         written.push(path);
     };
-    const sides: Array<[string, Map<string, KustomizeResource>]> = [
-        ['base', base],
-        ['local', patches],
-    ];
+    const sides: Array<[string, Map<string, KustomizeResource>]> = [];
+    if (withBase) sides.push(['base', base]);
+    if (withOverlay) sides.push(['local', patches]);
     for (const [side, entries] of sides) {
         for (const [path, content] of serializeKustomizeTree(entries))
             write(`${side}/${path}`, content);
     }
     // A template is a directory with a kustomization, because that is what an instance includes: the file
     // alone would be a reference kustomize refuses to resolve from outside the overlay's root.
-    for (const [key, content] of templates) {
+    for (const [key, content] of withBase ? templates : []) {
         write(
             `base/templates/${key}/kustomization.yaml`,
             stringify(
@@ -3164,7 +3317,7 @@ const writeSplitTree = (tree: KustomizeTree, plan: IDeploymentPlan, dir: string)
             stringify(content, {lineWidth: 0, sortMapEntries: true}),
         );
     }
-    for (const [at, content] of instances) {
+    for (const [at, content] of withOverlay ? instances : []) {
         write(
             `local/${at}/kustomization.yaml`,
             stringify(content, {lineWidth: 0, sortMapEntries: true}),

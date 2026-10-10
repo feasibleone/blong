@@ -45,17 +45,21 @@ export const suiteTreeGenerate = async (
     await io.run('rm', ['-rf', tree]);
     if (serviceOff) io.log(`the deployment runs ${serviceOff} itself`);
     const digestArgs = digest ? [`--kustomize.deploy.suiteVolume.artifact.digest=${digest}`] : [];
-    await io.run('node', [
-        '--conditions=development',
-        frameworkEntry(root),
-        resolve(entry),
-        'k8s',
-        // Split, because this tree is the one the *repository* keeps: a base that holds nothing this
-        // deploy owns, and a gitignored overlay beside it that holds the rest (D-475).
-        '--kustomize.deploy.layout=split',
-        ...serviceOffArguments(serviceOff),
-        ...digestArgs,
-    ]);
+    const generate = async (layout: string): Promise<void> =>
+        io.run('node', [
+            '--conditions=development',
+            frameworkEntry(root),
+            resolve(entry),
+            'k8s',
+            `--kustomize.deploy.layout=${layout}`,
+            ...serviceOffArguments(serviceOff),
+            ...digestArgs,
+        ]);
+    // Two runs, because a split tree is two generations: the base is what the *repository* keeps — it
+    // names no node and no artifact, so it can be generated anywhere, a cluster or not — and the overlay
+    // is what this run knows, applied beside that base (D-475, T-294). They compose object for object.
+    await generate('base');
+    await generate('local');
 };
 
 /**
@@ -67,7 +71,7 @@ export const suiteTreeGenerate = async (
  * `artifactUrl` overrides where the operator's own artifact comes from, because the operator runs this
  * realm and fetches what it runs the way every process does. It is passed as
  * `suiteVolume.artifact.url` — a sibling of `suite` in the plan's config rather than a member of it —
- * because the cache DaemonSet the install tree writes fetches whatever that names, and a nested
+ * because the fill Job the install tree writes fetches whatever that names, and a nested
  * spelling is dropped without a word (F-396, F-404).
  */
 export const operatorTreeGenerate = async (

@@ -1,0 +1,46 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-suite
+    app.kubernetes.io/part-of: blong-suite
+    app.kubernetes.io/version: 1.13.0
+    blong.feasible.one/spec-hash: beee06a537d2afcc
+  name: blong-operator
+  namespace: blong-services
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - configmaps
+      - secrets
+      - persistentvolumeclaims
+    verbs: &a1
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - daemonsets
+      - statefulsets
+    verbs: *a1
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs: *a1
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - ingresses
+      - networkpolicies
+    verbs: *a1

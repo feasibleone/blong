@@ -6,7 +6,7 @@
  * leaves the operator planning with the code it already had (D-438's neighbourhood — the two are
  * published separately and both matter).
  *
- * Both arrive the same way a released deployment gets them: a URL the prefetch DaemonSet `curl`s from
+ * Both arrive the same way a released deployment gets them: a URL the fill Job `curl`s from
  * inside a pod. That is why a local run needs a file server at all, and why it is the smallest thing
  * that works — a deployment, a Service, and two `kubectl cp` calls.
  */

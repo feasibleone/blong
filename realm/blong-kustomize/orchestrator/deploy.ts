@@ -84,6 +84,9 @@ export default orchestrator<IPlanConfig>(blong => {
             {
                 outputDir: blong.type.Optional(blong.type.String()),
                 generateManifests: blong.type.Optional(blong.type.Boolean()),
+                // Named for the reason above: a command line may set it, and the four values are the
+                // layouts `writeKustomizeTree` knows (`flat`, `split`, `base`, `local`).
+                layout: blong.type.Optional(blong.type.String()),
             },
             {additionalProperties: true},
         ),
@@ -95,8 +98,12 @@ export default orchestrator<IPlanConfig>(blong => {
                 imports: [/\.generate$/, /\.deployment$/, /\.gitops$/, /\.controller$/],
             },
             // Only the `k8s` intent asks for manifests; in a serving process the
-            // port exists for the read API and must not write anything.
-            k8s: {generateManifests: true},
+            // port exists for the read API and must not write anything. The layout default belongs
+            // here rather than in a suite, because a generation is a `k8s` run in *any* repository:
+            // what one writes by default is the design half, the tree a repository keeps, while the
+            // composed form is what a caller asks for (`layout=flat`) and a deploy writes `local`
+            // beside the base it found (D-475, D-490).
+            k8s: {generateManifests: true, layout: 'base'},
         },
         start() {
             super.connect();

@@ -46,6 +46,10 @@ export default server(() => ({
         default: {
             kustomize: {
                 deploy: {
+                    // No `layout` here, on purpose: the realm's `k8s` activation names the repository
+                    // half (`base`, in `realm/blong-kustomize/orchestrator/deploy.ts`), so a bare run
+                    // writes the tree a repository keeps and the deploy names `local` beside it
+                    // (D-475, D-490).
                     // No `realmRoles` here: a realm declares what it *is* in its own `server.ts`
                     // config (`k8sRealmRole`), which is both closer to the truth — `core` and `access`
                     // know they are carried *and* published, `server` knows every microservice repeats
@@ -107,7 +111,7 @@ export default server(() => ({
                         backend: 'nodeLocal',
                         artifact: {
                             source: 'url',
-                            // A file server in the cluster: the prefetch DaemonSet runs `curl` inside
+                            // A file server in the cluster: the fill Job runs `curl` inside
                             // a pod, so the artifact has to be reachable from the nodes by name. Its
                             // own namespace is not required — the suite namespace resolves the
                             // fully-qualified name.
@@ -179,7 +183,7 @@ export default server(() => ({
         },
         // `blong <entry> k8s` needs no block of its own now: the deploy settings above are what the
         // generator reads, and the realm's own `k8s` activation block is what tells it to write. The
-        // artifact is fetched by the prefetch DaemonSet, so its URL has to be one the nodes can
+        // artifact is fetched by the fill Job, so its URL has to be one the nodes can
         // reach, and the image is built and imported into the cluster.
         // What the deployed pods run, and the settings a release shares with every other release, is
         // the `release` block above. There is deliberately no `microservice` block left: the resolver

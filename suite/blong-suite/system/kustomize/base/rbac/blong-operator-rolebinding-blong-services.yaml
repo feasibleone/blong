@@ -1,0 +1,19 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-suite
+    app.kubernetes.io/part-of: blong-suite
+    app.kubernetes.io/version: 1.13.0
+    blong.feasible.one/spec-hash: a86d9fe4d17f3933
+  name: blong-operator
+  namespace: blong-services
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: blong-operator
+subjects:
+  - kind: ServiceAccount
+    name: blong-operator
+    namespace: blong-system

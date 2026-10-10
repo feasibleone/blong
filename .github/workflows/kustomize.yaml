@@ -12,253 +12,263 @@ name: Kustomize E2E
 # ever fails for blong's reasons belongs beside blong's other workflows (`build.yaml`, `release.yaml`,
 # `baselines.yaml`), which is where this one sits.
 on:
-    pull_request:
-        branches: [main]
-    # A branch that needs this job without a pull request — a release branch, or a run after a change
-    # to the cluster's own manifests.
-    workflow_dispatch:
+  pull_request:
+    branches: [main]
+  # A branch that needs this job without a pull request — a release branch, or a run after a change
+  # to the cluster's own manifests.
+  workflow_dispatch:
 
 permissions:
-    contents: read
-    # `paths-filter` reads the pull request's changed files, and without this the filter cannot see
-    # anything: the job below would then be skipped for the wrong reason.
-    pull-requests: read
+  contents: read
+  # `paths-filter` reads the pull request's changed files, and without this the filter cannot see
+  # anything: the job below would then be skipped for the wrong reason.
+  pull-requests: read
 
 jobs:
-    paths:
-        runs-on: ubuntu-26.04
-        outputs:
-            run: ${{ steps.filter.outputs.kustomize }}
-        steps:
-            - uses: actions/checkout@v6
-            - uses: dorny/paths-filter@v3
-              id: filter
-              with:
-                  filters: |
-                      kustomize:
-                        - 'realm/blong-kustomize/**'
-                        - 'core/blong-gogo/src/adapter/server/k8s.ts'
-                        - 'core/blong-gogo/src/adapter/server/knex.ts'
-                        - 'core/blong-gogo/src/load.ts'
-                        - 'core/blong-gogo/docker/**'
-                        # The realms `blong-suite` deploys, and the companion they all carry: a change here is
-                        # a change to what the cluster runs, which is the only place this job's subjects can
-                        # fail. `core/blong-server` earned its line — the subject port's validation read its
-                        # models through the handler proxy and every tenant pod crash-looped on a namespace no
-                        # process answered (F-435), which is exactly the class of defect only this job sees.
-                        - 'core/blong-server/**'
-                        - 'realm/blong-core/**'
-                        - 'realm/blong-access/**'
-                        - 'realm/blong-login/**'
-                        - 'demo/blong-marine/**'
-                        - 'suite/blong-suite/**'
-                        - 'test/integration/**'
-                        - '.github/workflows/kustomize.yaml'
+  paths:
+    runs-on: ubuntu-26.04
+    outputs:
+      run: ${{ steps.filter.outputs.kustomize }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            kustomize:
+              - 'realm/blong-kustomize/**'
+              - 'core/blong-gogo/src/adapter/server/k8s.ts'
+              - 'core/blong-gogo/src/adapter/server/knex.ts'
+              - 'core/blong-gogo/src/load.ts'
+              - 'core/blong-gogo/docker/**'
+              # The realms `blong-suite` deploys, and the companion they all carry: a change here is
+              # a change to what the cluster runs, which is the only place this job's subjects can
+              # fail. `core/blong-server` earned its line — the subject port's validation read its
+              # models through the handler proxy and every tenant pod crash-looped on a namespace no
+              # process answered (F-435), which is exactly the class of defect only this job sees.
+              - 'core/blong-server/**'
+              - 'realm/blong-core/**'
+              - 'realm/blong-access/**'
+              - 'realm/blong-login/**'
+              - 'demo/blong-marine/**'
+              - 'suite/blong-suite/**'
+              - 'test/integration/**'
+              # The runbook every step below runs, and the trees it generates: its image import and
+              # its two generations per tree are what put the suite on the cluster, so a change
+              # here is a change to the subject of the job rather than to one of its inputs
+              # (D-475).
+              - 'test/blong-int-kustomize/**'
+              - '.github/workflows/kustomize.yaml'
 
-    e2e:
-        needs: paths
-        if: needs.paths.outputs.run == 'true'
-        runs-on: ubuntu-26.04
-        # An image build, a cluster, two runbooks and four operator waits; the ceiling is for a runner
-        # that wedges, not for the run.
-        timeout-minutes: 90
-        steps:
-            - uses: actions/checkout@v6
-            - name: Use Node.js 24.x
-              uses: actions/setup-node@v6
-              with:
-                  node-version: "24.x"
-            - name: Rush install
-              # Enough to run what follows: the trees are generated from sources (Node strips the types),
-              # the artifacts are built by `rush deploy`, and the only build this job needs is the suite's
-              # own — which the step below does, with its dependency chain.
-              run: node common/scripts/install-run-rush.js install
-            - name: Build the framework image
-              run: docker build -f core/blong-gogo/docker/blong-gogo.Dockerfile -t docker.io/library/blong-gogo:1 .
-            - uses: AbsaOSS/k3d-action@v2
-              with:
-                  cluster-name: kustomize
-                  k3d-version: v5.8.3
-                  args: >-
-                      --agents 1
-                      --no-lb
-                      --k3s-arg "--disable=traefik,servicelb,metrics-server@server:*"
-            - name: Import the image into the cluster
-              # The suite's Deployment asks for `docker.io/library/blong-gogo:1` (the generator appends
-              # the version to `frameworkImage`), so that is the reference to import. An image tagged
-              # `blong-gogo:1` alone would be pulled from the network by the kubelet and fail here.
-              run: k3d image import docker.io/library/blong-gogo:1 -c kustomize
-            - name: Start the integration backends
-              # The suite's `db` is an ExternalName to this MySQL, and the manifest creates the
-              # `blong-integration` database and the `blong-test` user that the suite's config names.
-              run: |
-                  kubectl apply -k test/integration/
-                  kubectl -n blong-integration wait --for=condition=Available deployment/mysql --timeout=300s
-            - name: Build the suite's browser bundle
-              # The suite's `build` script is `vite build`, and a deploy copies each package whole, so the
-              # bundle has to exist *before* the deploy or the artifact carries sources and no page — which
-              # is what the deployment Ingress would then front. Built here rather than in the image: the
-              # image is the framework, and a page belongs to the suite that ships it.
-              run: node common/scripts/install-run-rush.js build --to @feasibleone/blong-suite
-            - name: Build and publish the suite and realm artifacts
-              # Built the way a release builds it, served the way the prefetch expects to fetch it: over
-              # HTTP, by name, from inside the cluster. Two artifacts, because the operator runs the
-              # deployment realm and fetches what it runs the way every process does — and a CI run has no
-              # egress, so the URL its install tree names has to be served from here (T-240).
-              run: |
-                  node common/scripts/install-run-rush.js deploy --scenario suite --target-folder "$RUNNER_TEMP/deploy-suite" --overwrite
-                  (cd "$RUNNER_TEMP/deploy-suite" && zip -qr "$RUNNER_TEMP/suite.zip" .)
-                  node common/scripts/install-run-rush.js deploy --scenario operator --target-folder "$RUNNER_TEMP/deploy-operator" --overwrite
-                  (cd "$RUNNER_TEMP/deploy-operator" && zip -qr "$RUNNER_TEMP/kustomize.zip" .)
-                  kubectl create deployment artifact --image=nginx:alpine
-                  kubectl expose deployment artifact --name=blong-artifact --port=80
-                  kubectl wait --for=condition=Available deployment/artifact --timeout=180s
-                  pod="$(kubectl get pod -l app=artifact -o jsonpath='{.items[0].metadata.name}')"
-                  kubectl cp "$RUNNER_TEMP/suite.zip" "default/$pod:/usr/share/nginx/html/suite.zip"
-                  kubectl cp "$RUNNER_TEMP/kustomize.zip" "default/$pod:/usr/share/nginx/html/kustomize.zip"
-            - name: Generate, apply and wait
-              # The runbook: generate the tree from the suite, apply it, wait for the workloads, and
-              # report where each pod landed and where the volume was unpacked.
-              working-directory: suite/blong-suite
-              env:
-                  CLUSTER: kustomize
-                  ARTIFACT_URL: http://blong-artifact.default.svc.cluster.local/suite.zip
-                  # The operator is installed by the same runbook, and it runs this realm: without this the
-                  # install tree names the realm's published release URL, which a runner with no egress
-                  # cannot fetch (T-240).
-                  OPERATOR_ARTIFACT_URL: http://blong-artifact.default.svc.cluster.local/kustomize.zip
-              # No `CREATE_CLUSTER`: the action above owns the cluster, and a runbook allowed to create one
-              # would answer a cluster that failed to come up by building a second beside it (F-446).
-              run: node --conditions=development ../../test/blong-int-kustomize/bin/blongIntKustomize.ts suite deploy
-            - name: Wait for the operator to report Ready
-              # The assertion that makes this job worth its minutes: the operator watches the CR, a pass
-              # reconciles the plan, the migration Job runs, and the status carries the result back.
-              run: |
-                  for _ in $(seq 1 60); do
-                    phase="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.phase}' 2>/dev/null || true)"
-                    if [ "$phase" = "Ready" ]; then
-                      echo "the operator reports Ready"
-                      kubectl -n blong-suite get bdep
-                      exit 0
-                    fi
-                    sleep 5
-                  done
-                  echo "the operator never reported Ready" >&2
-                  kubectl -n blong-suite get bdep blong-suite -o yaml || true
-                  kubectl -n blong-suite logs deployment/blong-suite-operator --tail=80 || true
-                  exit 1
-            - name: Notify the cluster of the release
-              # The release flow's second half, and the caller `kustomize.release.notify` never had: the
-              # realm's own CLI loads the realm, dispatches against the cluster the kubeconfig names, and
-              # patches the CR — which is how a release tells a running suite what it published (T-247).
-              #
-              # The *same* bytes are published under a second name on purpose: the patch has to be a real
-              # write to be worth asserting, and the suite must not change behaviour because a release
-              # happened. What follows is the loop this job exists to exercise — the operator reads the
-              # changed declaration, regenerates the tree and reports Ready again.
-              run: |
-                  pod="$(kubectl get pod -l app=artifact -o jsonpath='{.items[0].metadata.name}')"
-                  kubectl exec "default/$pod" -- cp /usr/share/nginx/html/suite.zip /usr/share/nginx/html/suite-2.zip
-                  # The version the CR declares is the one the runbook generated the tree from, so the only
-                  # thing this call changes is the artifact — which is the honest shape of a release that
-                  # republishes without a version change.
-                  version="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.spec.version}')"
-                  node --conditions=development realm/blong-kustomize/bin/kustomize.ts release-notify \
-                      --suite=blong-suite --version="$version" \
-                      --artifact-url=http://blong-artifact.default.svc.cluster.local/suite-2.zip \
-                      --namespace=blong-suite
-                  published="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.spec.suiteVolume.artifact.url}')"
-                  test "$published" = 'http://blong-artifact.default.svc.cluster.local/suite-2.zip'
-                  echo "the CR names what the release published: $published"
-            - name: Wait for the operator to converge on the announcement
-              # A release changes the declaration, and the operator is what turns a declaration into a
-              # running suite: the second Ready is the assertion that the write above reached it. The
-              # artifact behind the new name is the same bytes, so nothing about the workloads changes
-              # except the cache's fetch command.
-              run: |
-                  for _ in $(seq 1 60); do
-                    phase="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.phase}' 2>/dev/null || true)"
-                    if [ "$phase" = "Ready" ]; then
-                      echo "the operator converged on the released declaration"
-                      exit 0
-                    fi
-                    sleep 5
-                  done
-                  echo "the operator never converged after the announcement" >&2
-                  kubectl -n blong-suite get bdep blong-suite -o yaml || true
-                  exit 1
-            - name: Run the runbook with a service switched off
-              # The variant: `SERVICE_OFF=mysql` adds the switch to the generation, and the runbook is the
-              # same one — one variable, because what differs is a field on the declaration, not a step.
-              working-directory: suite/blong-suite
-              env:
-                  CLUSTER: kustomize
-                  SERVICE_OFF: mysql
-                  ARTIFACT_URL: http://blong-artifact.default.svc.cluster.local/suite.zip
-                  OPERATOR_ARTIFACT_URL: http://blong-artifact.default.svc.cluster.local/kustomize.zip
-              run: node --conditions=development ../../test/blong-int-kustomize/bin/blongIntKustomize.ts suite deploy
-            - name: Wait for the operator to converge on the switch
-              # The CR is what the operator regenerates from, so this is the pass that decides whether the
-              # switch reached the declaration or was pruned on the way in (T-279).
-              run: |
-                  phase=""
-                  for _ in $(seq 1 60); do
-                    phase="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.phase}' 2>/dev/null || true)"
-                    if [ "$phase" = "Ready" ]; then
-                      echo "the operator reports Ready with the service switched off"
-                      exit 0
-                    fi
-                    sleep 5
-                  done
-                  echo "the operator never reported Ready after the switch (last phase: ${phase})" >&2
-                  kubectl -n blong-suite get bdep blong-suite -o yaml || true
-                  kubectl -n blong-suite logs deployment/blong-suite-operator --tail=80 || true
-                  exit 1
-            - name: Assert what a prune reaches and what it leaves
-              # The decision, asserted as it was decided (D-461): a pass removes the objects its
-              # declaration stopped naming *inside the suite's namespace*, and reports the ones outside it.
-              # So the alias — which lives in the suite's namespace because that is where a realm's config
-              # dials it — goes with the switch, while the workload, its Service and its claim keep running
-              # in `blong-services`, where a shared service the suite stopped generating is somebody else's
-              # to retire. The second half of each check is the one that would have hidden a bug: an alias
-              # left behind resolves to a workload that nothing regenerates, and a workload deleted across
-              # namespaces takes a database down with a config edit.
-              run: |
-                  switch="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.spec.services}')"
-                  test "$switch" = '{"mysql":false}'
-                  echo "the declaration carries the switch: ${switch}"
-                  if kubectl -n blong-suite get service/mysql >/dev/null 2>&1; then
-                    echo 'FAIL: the alias is still in blong-suite, so the pass did not remove what it owns' >&2
-                    exit 1
-                  fi
-                  echo "the alias was deleted with the switch"
-                  # The credentials copy lives in the suite's namespace too, because that is where the pod
-                  # reads it (D-462), so the same pass owns it: leaving it behind would be a password a
-                  # rotation never reaches. The workload's own copy is the contrast — it stays where it is.
-                  if kubectl -n blong-suite get secret/mysql-credentials >/dev/null 2>&1; then
-                    echo 'FAIL: the credentials copy survived in blong-suite' >&2
-                    exit 1
-                  fi
-                  echo "the credentials copy went with the alias"
-                  kubectl -n blong-services get secret/mysql-credentials >/dev/null
-                  echo "while the workload keeps its own"
-                  for object in 'deployment/mysql' 'persistentvolumeclaim/mysql-data' 'service/mysql'; do
-                    if ! kubectl -n blong-services get "$object" >/dev/null 2>&1; then
-                      echo "FAIL: ${object} was deleted outside the suite's namespace" >&2
-                      exit 1
-                    fi
-                  done
-                  echo "the workload in blong-services is untouched, and reported obsolete"
-                  obsolete="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.lastResult.obsolete}')"
-                  test "${obsolete:-0}" -ge 1
-                  echo "the pass reports ${obsolete} object(s) it no longer owns, and deleted $(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.lastResult.deleted}')"
-            - name: Collect CI failure diagnostics (k8s + MySQL)
-              if: ${{ failure() }}
-              run: bash test/integration/ci-diagnostics.sh
-            - name: Upload CI failure diagnostics
-              if: ${{ failure() }}
-              uses: actions/upload-artifact@v7
-              with:
-                  name: kustomize-diagnostics
-                  path: ci-debug/
-                  if-no-files-found: ignore
+  e2e:
+    needs: paths
+    if: needs.paths.outputs.run == 'true'
+    runs-on: ubuntu-26.04
+    # An image build, a cluster, two runbooks and four operator waits; the ceiling is for a runner
+    # that wedges, not for the run.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+      - name: Rush install
+        # Enough to run what follows: the trees are generated from sources (Node strips the types),
+        # the artifacts are built by `rush deploy`, and the only build this job needs is the suite's
+        # own — which the step below does, with its dependency chain.
+        run: node common/scripts/install-run-rush.js install
+      - name: Build the framework image
+        run: docker build -f core/blong-gogo/docker/blong-gogo.Dockerfile -t docker.io/library/blong-gogo:1 .
+      - uses: AbsaOSS/k3d-action@v2
+        with:
+          cluster-name: kustomize
+          k3d-version: v5.8.3
+          args: >-
+            --agents 1
+            --no-lb
+            --k3s-arg "--disable=traefik,servicelb,metrics-server@server:*"
+      - name: Import the image into the cluster
+        # The suite's Deployment asks for `docker.io/library/blong-gogo:1` (the generator appends
+        # the version to `frameworkImage`), so that is the reference to import. An image tagged
+        # `blong-gogo:1` alone would be pulled from the network by the kubelet and fail here.
+        run: k3d image import docker.io/library/blong-gogo:1 -c kustomize
+      - name: Start the integration backends
+        # The suite's `db` is an ExternalName to this MySQL, and the manifest creates the
+        # `blong-integration` database and the `blong-test` user that the suite's config names.
+        run: |
+          kubectl apply -k test/integration/
+          kubectl -n blong-integration wait --for=condition=Available deployment/mysql --timeout=300s
+      - name: Build the suite's browser bundle
+        # The suite's `build` script is `vite build`, and a deploy copies each package whole, so the
+        # bundle has to exist *before* the deploy or the artifact carries sources and no page — which
+        # is what the deployment Ingress would then front. Built here rather than in the image: the
+        # image is the framework, and a page belongs to the suite that ships it.
+        run: node common/scripts/install-run-rush.js build --to @feasibleone/blong-suite
+      - name: Build and publish the suite and realm artifacts
+        # Built the way a release builds it, served the way the prefetch expects to fetch it: over
+        # HTTP, by name, from inside the cluster. Two artifacts, because the operator runs the
+        # deployment realm and fetches what it runs the way every process does — and a CI run has no
+        # egress, so the URL its install tree names has to be served from here (T-240).
+        run: |
+          node common/scripts/install-run-rush.js deploy --scenario suite --target-folder "$RUNNER_TEMP/deploy-suite" --overwrite
+          (cd "$RUNNER_TEMP/deploy-suite" && zip -qr "$RUNNER_TEMP/suite.zip" .)
+          node common/scripts/install-run-rush.js deploy --scenario operator --target-folder "$RUNNER_TEMP/deploy-operator" --overwrite
+          (cd "$RUNNER_TEMP/deploy-operator" && zip -qr "$RUNNER_TEMP/kustomize.zip" .)
+          kubectl create deployment artifact --image=nginx:alpine
+          kubectl expose deployment artifact --name=blong-artifact --port=80
+          kubectl wait --for=condition=Available deployment/artifact --timeout=180s
+          pod="$(kubectl get pod -l app=artifact -o jsonpath='{.items[0].metadata.name}')"
+          kubectl cp "$RUNNER_TEMP/suite.zip" "default/$pod:/usr/share/nginx/html/suite.zip"
+          kubectl cp "$RUNNER_TEMP/kustomize.zip" "default/$pod:/usr/share/nginx/html/kustomize.zip"
+      - name: Generate, apply and wait
+        # The runbook: generate the tree from the suite, apply it, wait for the workloads, and
+        # report where each pod landed and where the volume was unpacked.
+        working-directory: suite/blong-suite
+        env:
+          CLUSTER: kustomize
+          ARTIFACT_URL: http://blong-artifact.default.svc.cluster.local/suite.zip
+          # The operator is installed by the same runbook, and it runs this realm: without this the
+          # install tree names the realm's published release URL, which a runner with no egress
+          # cannot fetch (T-240).
+          OPERATOR_ARTIFACT_URL: http://blong-artifact.default.svc.cluster.local/kustomize.zip
+        # No `CREATE_CLUSTER`: the action above owns the cluster, and a runbook allowed to create one
+        # would answer a cluster that failed to come up by building a second beside it (F-446).
+        run: node --conditions=development ../../test/blong-int-kustomize/bin/blongIntKustomize.ts suite deploy
+      - name: Wait for the operator to report Ready
+        # The assertion that makes this job worth its minutes: the operator watches the CR, a pass
+        # reconciles the plan, the migration Job runs, and the status carries the result back.
+        run: |
+          for _ in $(seq 1 60); do
+            phase="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+            if [ "$phase" = "Ready" ]; then
+              echo "the operator reports Ready"
+              kubectl -n blong-suite get bdep
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "the operator never reported Ready" >&2
+          kubectl -n blong-suite get bdep blong-suite -o yaml || true
+          # The operator is installed in its own namespace, not beside the suite it reconciles
+          # (Phase 15 A, D-396), so its log — and the Jobs it sweeps behind itself there — are
+          # what a reader needs when a pass never reaches Ready.
+          kubectl -n blong-system logs deployment/blong-operator --tail=80 || true
+          kubectl -n blong-system get jobs,pods || true
+          exit 1
+      - name: Notify the cluster of the release
+        # The release flow's second half, and the caller `kustomize.release.notify` never had: the
+        # realm's own CLI loads the realm, dispatches against the cluster the kubeconfig names, and
+        # patches the CR — which is how a release tells a running suite what it published (T-247).
+        #
+        # The *same* bytes are published under a second name on purpose: the patch has to be a real
+        # write to be worth asserting, and the suite must not change behaviour because a release
+        # happened. What follows is the loop this job exists to exercise — the operator reads the
+        # changed declaration, regenerates the tree and reports Ready again.
+        run: |
+          pod="$(kubectl get pod -l app=artifact -o jsonpath='{.items[0].metadata.name}')"
+          kubectl exec "default/$pod" -- cp /usr/share/nginx/html/suite.zip /usr/share/nginx/html/suite-2.zip
+          # The version the CR declares is the one the runbook generated the tree from, so the only
+          # thing this call changes is the artifact — which is the honest shape of a release that
+          # republishes without a version change.
+          version="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.spec.version}')"
+          node --conditions=development realm/blong-kustomize/bin/kustomize.ts release-notify \
+              --suite=blong-suite --version="$version" \
+              --artifact-url=http://blong-artifact.default.svc.cluster.local/suite-2.zip \
+              --namespace=blong-suite
+          published="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.spec.suiteVolume.artifact.url}')"
+          test "$published" = 'http://blong-artifact.default.svc.cluster.local/suite-2.zip'
+          echo "the CR names what the release published: $published"
+      - name: Wait for the operator to converge on the announcement
+        # A release changes the declaration, and the operator is what turns a declaration into a
+        # running suite: the second Ready is the assertion that the write above reached it. The
+        # artifact behind the new name is the same bytes, so nothing about the workloads changes
+        # except the cache's fetch command.
+        run: |
+          for _ in $(seq 1 60); do
+            phase="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+            if [ "$phase" = "Ready" ]; then
+              echo "the operator converged on the released declaration"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "the operator never converged after the announcement" >&2
+          kubectl -n blong-suite get bdep blong-suite -o yaml || true
+          exit 1
+      - name: Run the runbook with a service switched off
+        # The variant: `SERVICE_OFF=mysql` adds the switch to the generation, and the runbook is the
+        # same one — one variable, because what differs is a field on the declaration, not a step.
+        working-directory: suite/blong-suite
+        env:
+          CLUSTER: kustomize
+          SERVICE_OFF: mysql
+          ARTIFACT_URL: http://blong-artifact.default.svc.cluster.local/suite.zip
+          OPERATOR_ARTIFACT_URL: http://blong-artifact.default.svc.cluster.local/kustomize.zip
+        run: node --conditions=development ../../test/blong-int-kustomize/bin/blongIntKustomize.ts suite deploy
+      - name: Wait for the operator to converge on the switch
+        # The CR is what the operator regenerates from, so this is the pass that decides whether the
+        # switch reached the declaration or was pruned on the way in (T-279).
+        run: |
+          phase=""
+          for _ in $(seq 1 60); do
+            phase="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+            if [ "$phase" = "Ready" ]; then
+              echo "the operator reports Ready with the service switched off"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "the operator never reported Ready after the switch (last phase: ${phase})" >&2
+          kubectl -n blong-suite get bdep blong-suite -o yaml || true
+          kubectl -n blong-system logs deployment/blong-operator --tail=80 || true
+          kubectl -n blong-system get jobs,pods || true
+          exit 1
+      - name: Assert what a prune reaches and what it leaves
+        # The decision, asserted as it was decided (D-461): a pass removes the objects its
+        # declaration stopped naming *inside the suite's namespace*, and reports the ones outside it.
+        # So the alias — which lives in the suite's namespace because that is where a realm's config
+        # dials it — goes with the switch, while the workload, its Service and its claim keep running
+        # in `blong-services`, where a shared service the suite stopped generating is somebody else's
+        # to retire. The second half of each check is the one that would have hidden a bug: an alias
+        # left behind resolves to a workload that nothing regenerates, and a workload deleted across
+        # namespaces takes a database down with a config edit.
+        run: |
+          switch="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.spec.services}')"
+          test "$switch" = '{"mysql":false}'
+          echo "the declaration carries the switch: ${switch}"
+          if kubectl -n blong-suite get service/mysql >/dev/null 2>&1; then
+            echo 'FAIL: the alias is still in blong-suite, so the pass did not remove what it owns' >&2
+            exit 1
+          fi
+          echo "the alias was deleted with the switch"
+          # The credentials copy lives in the suite's namespace too, because that is where the pod
+          # reads it (D-462), so the same pass owns it: leaving it behind would be a password a
+          # rotation never reaches. The workload's own copy is the contrast — it stays where it is.
+          if kubectl -n blong-suite get secret/mysql-credentials >/dev/null 2>&1; then
+            echo 'FAIL: the credentials copy survived in blong-suite' >&2
+            exit 1
+          fi
+          echo "the credentials copy went with the alias"
+          kubectl -n blong-services get secret/mysql-credentials >/dev/null
+          echo "while the workload keeps its own"
+          for object in 'deployment/mysql' 'persistentvolumeclaim/mysql-data' 'service/mysql'; do
+            if ! kubectl -n blong-services get "$object" >/dev/null 2>&1; then
+              echo "FAIL: ${object} was deleted outside the suite's namespace" >&2
+              exit 1
+            fi
+          done
+          echo "the workload in blong-services is untouched, and reported obsolete"
+          obsolete="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.lastResult.obsolete}')"
+          test "${obsolete:-0}" -ge 1
+          echo "the pass reports ${obsolete} object(s) it no longer owns, and deleted $(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.lastResult.deleted}')"
+      - name: Collect CI failure diagnostics (k8s + MySQL)
+        if: ${{ failure() }}
+        run: bash test/integration/ci-diagnostics.sh
+      - name: Upload CI failure diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: kustomize-diagnostics
+          path: ci-debug/
+          if-no-files-found: ignore

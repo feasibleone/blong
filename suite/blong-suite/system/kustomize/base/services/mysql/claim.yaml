@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: mysql
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-suite
+    app.kubernetes.io/part-of: blong-suite
+    app.kubernetes.io/version: 1.13.0
+    blong.feasible.one/spec-hash: 6b0b87205ecacf2a
+  name: mysql-data
+  namespace: blong-services
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

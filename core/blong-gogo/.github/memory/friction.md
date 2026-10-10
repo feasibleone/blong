@@ -30,7 +30,6 @@ open (33)
 - `F-351` · core/blong-gogo — A declared expect was stripped by the JSON-RPC body schema
 - `F-352` · core/blong-gogo — An untyped error cannot be declared expected
 - `F-356` · core/blong-gogo — The ACL SQL builder threw for a table with no scope edges
-- `F-358` · core/blong-gogo — resource: true names cannot be filtered, only matched
 - `F-360` · core/blong-gogo — bin/blong.ts passes a relative run target unresolved
 - `F-361` · core/blong-gogo — a custom top-level layer folder is silently never loaded
 - `F-366` · core/blong-gogo — The k8s adapter had no batch API, so a generated Job could not be
@@ -51,6 +50,7 @@ open (33)
   either
 - `F-372` · core/blong-gogo — Error parameters need the params wrapper, and the adapter does not use
   it
+- `F-358` · core/blong-gogo — resource: true names cannot be filtered, only matched
 
 resolved (31)
 
@@ -326,19 +326,6 @@ by binding the record id only when there is a placeholder to bind, and pinned in
 core/blong-gogo/src/acl.test.ts, which is the file's only unit test: the integration suites cannot
 tell a mismatched bind list from a refusal.
 
-### F-358 — resource: true names cannot be filtered, only matched
-
-> _2026-10-04 · core/blong-gogo · open_
-
-The unguarded case needed a table whose records could be identified by name, and two candidates
-failed in ways worth remembering. core.resource has no model, so declaring it in meta/db/db.ts
-creates the table but not the API and every call answers 404 Not Found. access.capability and
-access.acl have models, but their names live in core_resource.resourceName and are attached after
-the query: the access realm's own Browse page searches description for exactly that reason, so
-filterBy on capabilityName or targetName returns nothing. The way through is to read the rows and
-match the joined display name in code, which is what the matrix target's nameColumn does. The model,
-not the schema declaration, is what exposes the CRUD over RPC.
-
 ### F-360 — bin/blong.ts passes a relative run target unresolved
 
 > _2026-10-05 · core/blong-gogo · open_
@@ -543,6 +530,19 @@ so `errors['x']({reason: 'y'})` prints 'could not be verified: ?reason?' while
 way, and the k8s adapter still calls its own errors the flat way, which is why messages like Missing
 key value for a key have always read as placeholders. The adapter's API-error path now uses the
 wrapper, and the rest of its calls are recorded as a follow-up.
+
+### F-358 — resource: true names cannot be filtered, only matched
+
+> _2026-10-04 · core/blong-gogo · open_
+
+The unguarded case needed a table whose records could be identified by name, and two candidates
+failed in ways worth remembering. core.resource has no model, so declaring it in meta/db/db.ts
+creates the table but not the API and every call answers 404 Not Found. access.capability and
+access.acl have models, but their names live in core_resource.resourceName and are attached after
+the query: the access realm's own Browse page searches description for exactly that reason, so
+filterBy on capabilityName or targetName returns nothing. The way through is to read the rows and
+match the joined display name in code, which is what the matrix target's nameColumn does. The model,
+not the schema declaration, is what exposes the CRUD over RPC.
 
 ## Resolved
 

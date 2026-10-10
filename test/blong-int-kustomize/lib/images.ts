@@ -3,8 +3,8 @@
  *
  * A k3d node is a container: it has no path to the host's image store and, on a machine that built the
  * image a moment ago, no need for a registry either. So the image is built (or pulled), saved, copied
- * into every node and imported there by hand — every node, because a DaemonSet schedules one pod per
- * node and a kubelet uses what it has locally.
+ * into every node and imported there by hand — every node, because the fill runs one Job per node
+ * and a kubelet uses what it has locally.
  *
  * The two traps this file exists to keep in one place are in the header of the shell runbook it
  * replaces: `podman save` writes exactly the reference it was given, so the import lands beside the
@@ -15,9 +15,7 @@
 import type {IStepIo} from './exec.ts';
 
 export const podmanImageExists = async (reference: string, io: IStepIo): Promise<boolean> =>
-    (
-        await io.capture('podman', ['image', 'exists', reference], {allowFailure: true})
-    ).length > 0;
+    (await io.capture('podman', ['image', 'exists', reference], {allowFailure: true})).length > 0;
 
 export const podmanPull = async (reference: string, io: IStepIo): Promise<void> => {
     await io.run('podman', ['pull', reference]);
@@ -87,7 +85,15 @@ export const imagePruneOlderThan = async (
 
 /** The framework image a tree names, built here and imported into every node. */
 export const frameworkImagePublish = async (
-    {root, dockerfile, localImage, frameworkImage, version, nodes, archive}: {
+    {
+        root,
+        dockerfile,
+        localImage,
+        frameworkImage,
+        version,
+        nodes,
+        archive,
+    }: {
         root: string;
         dockerfile: string;
         /** The host reference the build produces (`localhost/…`). */

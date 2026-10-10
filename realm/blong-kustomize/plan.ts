@@ -1133,13 +1133,17 @@ export interface IPlanConfig {
     /** Directory the generated tree is written to (default `system/kustomize`). */
     outputDir?: string;
     /**
-     * How the tree is written: one directory of manifests (`flat`, the default), or a committed `base/`
-     * beside a `local/` overlay that carries the artifact and the node names.
+     * How the tree is written: the design half under `base/`, one directory of composed manifests
+     * (`flat`), or a `base/` beside a `local/` overlay that carries the artifact and the node names.
      *
-     * The operator asks for `flat`, because it reads the tree back and compares objects with the cluster;
-     * a repository tree is generated with `split` and applied with `kubectl apply -k …/local` (D-475).
+     * The realm's own `k8s` activation names `base` (`orchestrator/deploy.ts`), because it is the
+     * half a repository keeps: it names no node and no artifact, so dev or CI can generate it without
+     * a cluster. A caller that wants the composed objects in one directory asks for `flat`, which is
+     * also the generator's fallback when no source names a layout at all. `local` writes
+     * the overlay for a deploy's nodes and artifact beside a base that is already there, and `split`
+     * writes both halves from one tree (D-475, D-490, T-294, T-295).
      */
-    layout?: 'flat' | 'split';
+    layout?: 'flat' | 'split' | 'base' | 'local';
     /**
      * A `BlongDeployment` spec, as a JSON file, when this process generates for a CR rather than for
      * itself: the operator loads the target suite's artifact and has to tell it what to plan (T-234).

@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: mysql
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-suite
+    app.kubernetes.io/part-of: blong-suite
+    app.kubernetes.io/version: 1.13.0
+    blong.feasible.one/spec-hash: 9ac58ed038850175
+  name: mysql
+  namespace: blong-services
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - env:
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  key: MYSQL_USER
+                  name: mysql-credentials
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: MYSQL_PASSWORD
+                  name: mysql-credentials
+          image: mysql/mysql-server:8.0.32
+          livenessProbe:
+            exec:
+              command:
+                - mysqladmin
+                - ping
+                - -h
+                - 127.0.0.1
+            failureThreshold: 10
+            initialDelaySeconds: 40
+            periodSeconds: 30
+            timeoutSeconds: 20
+          name: mysql
+          ports:
+            - containerPort: 3306
+              name: mysql
+          readinessProbe:
+            exec:
+              command:
+                - mysqladmin
+                - ping
+                - -h
+                - 127.0.0.1
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: "1"
+              memory: 768Mi
+            requests:
+              cpu: 50m
+              memory: 512Mi
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: mysql-data
+            - mountPath: /docker-entrypoint-initdb.d
+              name: mysql-init
+      initContainers:
+        - command:
+            - sh
+            - -c
+            - chown -R 27:27 /var/lib/mysql
+          image: busybox:1.36.1
+          name: volume-permissions
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: mysql-data
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql-data
+        - configMap:
+            name: mysql-init-config
+          name: mysql-init

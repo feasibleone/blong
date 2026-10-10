@@ -15,7 +15,10 @@ blong ./suite/blong-suite/index.ts k8s
 
 `k8s` is a short-lived intent (like `cli` and `db`): the process serves nothing, introspects the
 registry, writes the tree and exits. A throw during generation exits non-zero, so a broken tree
-fails the build rather than being committed.
+fails the build rather than being committed. The tree it writes is the design half
+(`system/kustomize/base/`) unless the caller names a layout, because that half is what a repository
+keeps: `--kustomize.deploy.layout=flat` asks for one directory of composed objects, `local` for the
+deploy's half beside a base that is already there, and `split` for both (D-490).
 
 There is no flag for "am I generating": the realm writes only when the `k8s` activation block set
 `generateManifests`, so a process that loads the realm for its read API never generates while one
@@ -79,9 +82,9 @@ that operator is granted inside this suite's namespace, and its own CR.
 
 The output is deterministic — deep-sorted keys, no line folding, the tree is replaced rather than
 merged — so a regenerated `base/` is byte-identical across runs, which is what makes it reviewable
-in git. The operator reads trees back rather than applying them with kustomize, so it asks for the
-flat layout (`kustomize.deploy.layout=flat`, the default) and gets the composed objects in one
-directory.
+in git. The operator does not hand a tree to kustomize: it reads one back and compares its objects
+with the cluster, so it asks for the composed form (`kustomize.deploy.layout=flat`) rather than a
+base whose values stand in for a deploy's.
 
 ## How the plan is derived
 
@@ -253,13 +256,16 @@ per service:
 ## Serving more than one suite
 
 One operator can reconcile several `BlongDeployment`s, and each one needs its tenant's permission
-first: the generated `Role` and `RoleBinding` cover the namespace the suite was installed into, so a
-second namespace copies those two objects, changes the metadata namespace, and names the
-**installer's** ServiceAccount as the subject (`<suite>-operator` in the installer's namespace,
-never a second copy of it). The generated `ClusterRole` already lists `blongdeployments` and
-`blongdeployments/status`, so a tenant adds no cluster-scoped object of its own. The rules are one
-decision with the kinds the realm applies (`OPERATOR_NAMESPACED_RULES` in `operator.ts`), and a kind
-added to one without the other fails at apply time with a 403 rather than at review.
+first: the generated `Role` and `RoleBinding` cover every namespace a pass touches — the tenant's
+own, each backing service's, and the namespace the deployment asked for — so a second namespace
+copies those objects, changes the metadata namespace, and names the **installer's** ServiceAccount
+as the subject (`<suite>-operator` in the installer's namespace, never a second copy of it). A
+suite's own tree already carries a pair per namespace it generates into, so a tenant adds one only
+for a backing service that lives outside the deployment entirely. The generated `ClusterRole`
+already lists `blongdeployments` and `blongdeployments/status`, so a tenant adds no cluster-scoped
+object of its own. The rules are one decision with the kinds the realm applies
+(`OPERATOR_NAMESPACED_RULES` in `operator.ts`), and a kind added to one without the other fails at
+apply time with a 403 rather than at review.
 
 ## Try it: the end-to-end cycle
 

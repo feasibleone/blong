@@ -1,10 +1,11 @@
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
+import {execFileSync} from 'node:child_process';
 import {existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, relative, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {parse} from 'yaml';
-import {danglingReferences, sweptResourceTypes} from '../../../apply.ts';
+import {parse, parseAllDocuments} from 'yaml';
+import {danglingReferences, isClusterResource, sweptResourceTypes} from '../../../apply.ts';
 import {
     type KustomizeResource,
     artifactEntry,
@@ -20,14 +21,21 @@ import {
     volumeIdentity,
     writeKustomizeTree,
 } from '../../../generator.ts';
+import {materializeSplitTree} from '../../../materialize.ts';
 import {
     appliesUpdate,
     attemptRetentionOf,
+    ATTEMPT_RETENTION_LABEL,
+    fillJobsPastRetention,
+    hasRetentionLabel,
     jobAttemptsPastRetention,
+    jobsPastRetention,
     prunable,
     prunableByObsolescence,
     retentionOf,
+    VOLUME_RETENTION_LABEL,
 } from '../../../orchestrator/controller/kustomizeReconcileRun.ts';
+import {suiteGenerateArgs} from '../../../orchestrator/generate/kustomizeSuiteGenerate.ts';
 import {
     type IDeploymentPlan,
     DEFAULT_PROFILE,
@@ -395,6 +403,142 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     );
                 } finally {
                     rmSync(dir, {recursive: true, force: true});
+                }
+            },
+
+            async function aBaseAndItsOverlayMaterializeToTheFlatTree(
+                assert: IAssert,
+                {$meta}: {$meta: IMeta},
+            ) {
+                // The operator has no kustomize binary, so it composes the two halves itself (D-488): a
+                // materialized pair has to be the tree the generator would have written flat, object for
+                // object. That equality is the whole contract of the split, and the reason the base can
+                // be committed and the overlay generated in the cluster (D-473, D-475, T-296).
+                const flatDir = mkdtempSync(join(tmpdir(), 'kustomize-flat-'));
+                const treeDir = mkdtempSync(join(tmpdir(), 'kustomize-halves-'));
+                try {
+                    const plan = (await kustomizePlanFind(
+                        {nodes: NODES},
+                        $meta,
+                    )) as IDeploymentPlan;
+                    const built = buildKustomizeTree(plan);
+                    writeKustomizeTree(built, flatDir);
+                    writeKustomizeTree(built, treeDir, {layout: 'base', plan});
+                    writeKustomizeTree(built, treeDir, {layout: 'local', plan});
+                    const materialized = materializeSplitTree(
+                        readKustomizeTree(join(treeDir, 'base')),
+                        readKustomizeTree(join(treeDir, 'local')),
+                    );
+                    // Only the objects count: a base carries templates and kustomizations beside them,
+                    // which the materializer either instantiates or leaves out.
+                    const objects = (tree: Map<string, unknown>): Record<string, unknown> =>
+                        Object.fromEntries(
+                            [...tree]
+                                .filter(([, resource]) =>
+                                    isClusterResource(resource as KustomizeResource),
+                                )
+                                .map(([path, resource]) => [
+                                    path,
+                                    typeof resource === 'string'
+                                        ? (parse(resource) as unknown)
+                                        : resource,
+                                ]),
+                        );
+                    assert.deepEqual(
+                        objects(materialized),
+                        objects(readKustomizeTree(flatDir)),
+                        'a base and its overlay materialize into the flat tree, object for object',
+                    );
+                } finally {
+                    rmSync(flatDir, {recursive: true, force: true});
+                    rmSync(treeDir, {recursive: true, force: true});
+                }
+            },
+
+            async function aSplitTreeComposesToTheFlatTree(
+                assert: IAssert,
+                {$meta}: {$meta: IMeta},
+            ) {
+                // The other half of the contract, and the one the cluster's own apply uses: kustomize has
+                // to render the overlay into the same objects the generator writes flat. The round trip
+                // above checks the JS composer; nothing checked kustomize before this step, and the gap
+                // between the two is exactly where a patch that no longer matches a target hides.
+                try {
+                    execFileSync('kubectl', ['kustomize', '--help'], {stdio: 'ignore'});
+                } catch {
+                    return {
+                        skipped:
+                            'no kubectl on PATH: this step composes the split tree with kustomize and ' +
+                            'compares the result with the flat tree',
+                    };
+                }
+                const flatDir = mkdtempSync(join(tmpdir(), 'kustomize-flat-'));
+                const treeDir = mkdtempSync(join(tmpdir(), 'kustomize-compose-'));
+                try {
+                    const plan = (await kustomizePlanFind(
+                        {nodes: NODES},
+                        $meta,
+                    )) as IDeploymentPlan;
+                    const built = buildKustomizeTree(plan);
+                    writeKustomizeTree(built, flatDir);
+                    writeKustomizeTree(built, treeDir, {layout: 'base', plan});
+                    writeKustomizeTree(built, treeDir, {layout: 'local', plan});
+                    const rendered = execFileSync(
+                        'kubectl',
+                        ['kustomize', join(treeDir, 'local')],
+                        {encoding: 'utf8'},
+                    );
+                    // Compared by identity rather than by path: a rendered stream carries no paths, and a
+                    // path is not an identity anyway — a realm's `deployments/access.yaml` and its
+                    // `services/access.yaml` share a basename. Null-valued keys are dropped because
+                    // kustomize's own emission adds them for typed objects and the generator does not.
+                    const withoutNulls = (value: unknown): unknown =>
+                        Array.isArray(value)
+                            ? value.map(withoutNulls)
+                            : value && typeof value === 'object'
+                              ? Object.fromEntries(
+                                    Object.entries(value as Record<string, unknown>)
+                                        .filter(([, entry]) => entry !== null)
+                                        .map(([key, entry]) => [key, withoutNulls(entry)]),
+                                )
+                              : value;
+                    const identityOf = (object: KustomizeResource): string => {
+                        const meta = object as {
+                            apiVersion?: string;
+                            kind?: string;
+                            metadata?: {name?: string; namespace?: string};
+                        };
+                        return [
+                            meta.apiVersion ?? '',
+                            meta.kind ?? '',
+                            meta.metadata?.namespace ?? '',
+                            meta.metadata?.name ?? '',
+                        ].join('/');
+                    };
+                    const byIdentity = (objects: KustomizeResource[]): Record<string, unknown> =>
+                        Object.fromEntries(
+                            objects.map(object => [identityOf(object), withoutNulls(object)]),
+                        );
+                    const flat = [...readKustomizeTree(flatDir)]
+                        .map(([, resource]) => resource)
+                        .filter(resource => isClusterResource(resource as KustomizeResource))
+                        .map(
+                            resource =>
+                                (typeof resource === 'string'
+                                    ? parse(resource)
+                                    : resource) as KustomizeResource,
+                        );
+                    const composed = parseAllDocuments(rendered)
+                        .map(document => document.toJSON() as KustomizeResource)
+                        .filter(object => isClusterResource(object));
+                    assert.deepEqual(
+                        byIdentity(composed),
+                        byIdentity(flat),
+                        'kustomize composes the overlay into the flat tree, object for object',
+                    );
+                } finally {
+                    rmSync(flatDir, {recursive: true, force: true});
+                    rmSync(treeDir, {recursive: true, force: true});
                 }
             },
 
@@ -931,8 +1075,8 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
 
                 // Every container the tree ships is sized, not only the ones a suite serves: a
                 // container with no `resources` is BestEffort, and the steps around the processes —
-                // the seed and migration Jobs, the node prefetch and the placeholder that keeps its
-                // pod — had none while the processes beside them had the plan's default. The
+                // the fill, seed and migration Jobs — had none while the processes beside them had
+                // the plan's default. The
                 // migration Job shipped that way from the day it existed (F-432), so the check is
                 // over every pod spec a tree declares rather than over the one that was reported.
                 const unsized = (tree: Map<string, unknown>): string[] => {
@@ -969,7 +1113,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 assert.deepEqual(
                     unsized(plan({})),
                     [],
-                    'the nodeLocal tree sizes the prefetch, its placeholder and the migration step',
+                    'the nodeLocal tree sizes its fill and migration steps',
                 );
                 assert.deepEqual(
                     unsized(plan({}, 'shared')),
@@ -1814,6 +1958,142 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     Array.isArray(columns) &&
                         columns.some(column => asRecord(column).jsonPath === '.status.phase'),
                     'the phase is a printer column',
+                );
+            },
+
+            async function theChildIsAskedForATreeAPassCanApply(assert: IAssert) {
+                // The two paths a CR pass takes, and the one argument that differs: an artifact that
+                // ships the base gets the overlay written beside it, and one that does not gets the
+                // tree whole. Neither leaves that to a default, because the default a repository
+                // wants is a design half and a pass applies what it reads back (D-490).
+                const args = (base: boolean): string[] =>
+                    suiteGenerateArgs({
+                        entry: '/cache/blong-suite/index.ts',
+                        specFile: '/tmp/blong-suite-spec.json',
+                        outputDir: '/tmp/blong-suite',
+                        base,
+                    });
+                assert.ok(
+                    args(true).includes('--kustomize.deploy.layout=local'),
+                    'an artifact with a base is asked for the overlay alone',
+                );
+                assert.ok(
+                    args(false).includes('--kustomize.deploy.layout=flat'),
+                    'an artifact without one is asked for the tree whole, never a default',
+                );
+                assert.ok(
+                    args(true).includes('--kustomize.deploy.specFile=/tmp/blong-suite-spec.json') &&
+                        args(true).includes('--kustomize.deploy.outputDir=/tmp/blong-suite'),
+                    'and both paths carry the spec to plan from and the directory to write',
+                );
+            },
+
+            async function theRetentionCountsVolumeJobsPerNode(assert: IAssert) {
+                // Two numbers, two rules (D-471): a fill Job carries the *volume* retention and is
+                // counted per node, because the directory it fills is a node's own — three means three
+                // identities on that node, the current one included — while an attempt carries its own
+                // and is counted with the attempts of its step.
+                const agent = 'k3d-dev-cluster-agent-0';
+                const server = 'k3d-dev-cluster-server-0';
+                const fillJob = (identity: string, node: string, at: string) => ({
+                    kind: 'Job',
+                    metadata: {
+                        name: `blong-suite-fill-1.13.0-${identity}-${node}`,
+                        namespace: 'blong-suite',
+                        creationTimestamp: at,
+                        labels: {'blong.feasible.one/retention': '3'},
+                    },
+                    // The node the count is per: read off the selector, because the name cannot be
+                    // split — both the identity and a hostname carry hyphens.
+                    spec: {template: {spec: {nodeSelector: {'kubernetes.io/hostname': node}}}},
+                });
+                const obsolete = [
+                    // Four identities on the agent node and three on the server, oldest first.
+                    fillJob('aaaaaaaa', agent, '2026-10-10T10:00:00Z'),
+                    fillJob('bbbbbbbb', agent, '2026-10-10T11:00:00Z'),
+                    fillJob('cccccccc', agent, '2026-10-10T12:00:00Z'),
+                    fillJob('dddddddd', agent, '2026-10-10T13:00:00Z'),
+                    fillJob('aaaaaaaa', server, '2026-10-10T10:00:00Z'),
+                    fillJob('bbbbbbbb', server, '2026-10-10T11:00:00Z'),
+                    fillJob('cccccccc', server, '2026-10-10T12:00:00Z'),
+                ];
+                const doomed = fillJobsPastRetention(obsolete as never, 3).map(
+                    object => object.metadata?.name,
+                );
+                assert.deepEqual(
+                    doomed.sort(),
+                    [
+                        `blong-suite-fill-1.13.0-aaaaaaaa-${agent}`,
+                        `blong-suite-fill-1.13.0-aaaaaaaa-${server}`,
+                        `blong-suite-fill-1.13.0-bbbbbbbb-${agent}`,
+                    ],
+                    'the volume retention is kept per node, three identities on each',
+                );
+                const oneAttempt = {
+                    kind: 'Job',
+                    metadata: {
+                        name: 'blong-suite-migrate-1.13.0-12345678-abcdef01',
+                        namespace: 'blong-suite',
+                        creationTimestamp: '2026-10-10T09:00:00Z',
+                        labels: {'blong.feasible.one/attempt-retention': '2'},
+                    },
+                };
+                const both = jobsPastRetention([oneAttempt as never, ...(obsolete as never[])]).map(
+                    object => object.metadata?.name,
+                );
+                assert.ok(
+                    both.includes('blong-suite-migrate-1.13.0-12345678-abcdef01') === false,
+                    'an attempt two-deep is inside its own retention and is left alone',
+                );
+                assert.deepEqual(
+                    both.sort(),
+                    doomed.sort(),
+                    'while the fill Jobs are retired by their label, not by the attempt number',
+                );
+            },
+
+            async function theInstallSweepSelectsOnTheRetentionLabels(assert: IAssert) {
+                // The install namespace is the one place a pass deletes outside the suite's own
+                // (D-491), and it holds objects the operator may not touch: its own RBAC, its
+                // Deployment, the Service in front of it. What keeps the sweep off them is that it
+                // selects on the retention labels and nothing else — no name, no kind, no position in
+                // a list — so an object that does not say how long to keep it is never a candidate.
+                const volume = {
+                    kind: 'Job',
+                    metadata: {
+                        name: 'blong-operator-fill-1.13.0-aaaaaaaa-k3d-dev-cluster-server-0',
+                        namespace: 'blong-system',
+                        labels: {[VOLUME_RETENTION_LABEL]: '3'},
+                    },
+                };
+                const attempt = {
+                    kind: 'Job',
+                    metadata: {
+                        name: 'blong-operator-migrate-1.13.0-12345678-abcdef01',
+                        namespace: 'blong-system',
+                        labels: {[ATTEMPT_RETENTION_LABEL]: '2'},
+                    },
+                };
+                const installOwned = {
+                    kind: 'Role',
+                    metadata: {
+                        name: 'blong-operator',
+                        namespace: 'blong-system',
+                        labels: {app: 'blong-operator'},
+                    },
+                };
+
+                assert.ok(
+                    hasRetentionLabel(volume as never),
+                    'a fill Job says how many volume directories to keep',
+                );
+                assert.ok(
+                    hasRetentionLabel(attempt as never),
+                    'and an attempt says how many attempts to keep',
+                );
+                assert.ok(
+                    hasRetentionLabel(installOwned as never) === false,
+                    'while an object that keeps no count is left where the install put it',
                 );
             },
         ]),

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: mysql
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-suite
+    app.kubernetes.io/part-of: blong-suite
+    app.kubernetes.io/version: 1.13.0
+    blong.feasible.one/spec-hash: 276e47f0e995fdb2
+  name: mysql
+  namespace: blong-services
+spec:
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306
+  selector:
+    app: mysql

@@ -63,8 +63,8 @@ export default server(() => ({
                         entry: `${SUITE_MOUNT}/realm/blong-kustomize/operator-entry.ts`,
                     },
                     // The artifact the operator process itself runs from: the deployment realm,
-                    // released like any other package, and read from the volume the tree's cache
-                    // DaemonSet or seed Job fills.
+                    // released like any other package, and read from the volume this tree's own
+                    // fill Jobs fill.
                     //
                     // A sibling of `suite` rather than a member of it, and that is not a detail: the
                     // plan's config declares the volume at this level (`IPlanConfig.suiteVolume`),

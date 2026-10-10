@@ -1,0 +1,15 @@
+apiVersion: v1
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS `blong-integration`;
+kind: ConfigMap
+metadata:
+  labels:
+    app: mysql
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-suite
+    app.kubernetes.io/part-of: blong-suite
+    app.kubernetes.io/version: 1.13.0
+    blong.feasible.one/spec-hash: ee53868076d3f4e7
+  name: mysql-init-config
+  namespace: blong-services

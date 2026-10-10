@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
     app.kubernetes.io/version: 1.13.0
-    blong.feasible.one/spec-hash: f66f015d20d2f641
+    blong.feasible.one/spec-hash: 4213988fe2e752c0
   name: blong-suite
   namespace: blong-suite
 spec:
@@ -25,7 +25,9 @@ spec:
       realm: core
   profile: realm
   services:
-    mysql: false
+    mysql:
+      databases:
+        - blong-integration
   suiteVolume:
     artifact:
       source: url

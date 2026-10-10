@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: 0.1.0
-    blong.feasible.one/spec-hash: 72025184e8509a8f
+    blong.feasible.one/spec-hash: 4877b2b5cf45b169
   name: blong-operator
 rules:
   - apiGroups:
@@ -29,6 +29,13 @@ rules:
       - get
       - update
       - patch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
   - apiGroups:
       - authentication.k8s.io
     resources:

@@ -14,17 +14,19 @@ path, so running the same command from the repository root writes a second, stra
 than into the suite. Override with `kustomize.deploy.outputDir`, the realm's `deploy` orchestrator
 owning the plan. The directory is replaced, not merged.
 
-The tree is written in two halves: a committed `base/` that holds what every deploy shares, and an
-ignored `local/` beside it that holds what this deploy and this cluster own — the artifact's
-identity and one fill Job per node (`layout: split`, D-475). An object whose _name_ names the
-artifact cannot be patched into place, so the base carries it as a **template**
-(`base/templates/<kind>/`, with `PLACEHOLDER` where the deploy's values go) and the overlay
-instantiates it once per node, appending the identity with `nameSuffix`. The fill Job's script
-travels in that template: it is the same text for every node because it reads its artifact, its root
-and its count from the environment, so it needs neither a ConfigMap nor a mount. Deployments and the
-suite's declaration stay in the base and are patched, because what they carry is a value rather than
-a name. The operator asks for `flat` instead, one directory of composed objects, because it reads a
-tree back and compares it with the cluster. Commit the base: the diff is the review.
+The tree is written in halves, and a bare run writes the first of them: a committed `base/` that
+holds what every deploy shares, and an ignored `local/` beside it that holds what this deploy and
+this cluster own — the artifact's identity and one fill Job per node (`layout=split` writes both,
+D-475, D-490). An object whose _name_ names the artifact cannot be patched into place, so the base
+carries it as a **template** (`base/templates/<kind>/`, with `PLACEHOLDER` where the deploy's values
+go) and the overlay instantiates it once per node, appending the identity with `nameSuffix`. The
+fill Job's script travels in that template: it is the same text for every node because it reads its
+artifact, its root and its count from the environment, so it needs neither a ConfigMap nor a mount.
+Deployments and the suite's declaration stay in the base and are patched, because what they carry is
+a value rather than a name. The operator asks for `flat` instead, one directory of composed objects,
+because it reads a tree back and compares it with the cluster — and it names it rather than taking a
+default, since a pass applies what a child wrote while the default a repository wants is the half it
+cannot apply (D-490). Commit the base: the diff is the review.
 
 ## Configure the suite
 
@@ -359,14 +361,15 @@ subjects:
       namespace: blong-suite # where it was installed
 ```
 
-The ClusterRole is installed once and lists `blongdeployments` and `blongdeployments/status`: a
-namespace-scoped custom resource is still read through the cluster role that covers its group, so a
-tenant adds no cluster-scoped object of its own. None of these objects is reconciled: the four RBAC
-kinds are install-owned, because a pass that could write them could widen its own rights (the
-cluster refuses it for the ServiceAccount the operator runs as). `OPERATOR_NAMESPACED_RULES` in
-`realm/blong-kustomize/operator.ts` is the same list the generated `Role` holds — a kind the realm
-may apply is a kind the operator may write, and a kind added to one without the other fails at apply
-time with a 403 rather than at review.
+The ClusterRole is installed once and lists `blongdeployments`, `blongdeployments/status`, and the
+cluster-scoped reads a pass needs: the node list, because a plan is made per node, and the two
+identity reviews the operator answers for its own UI. A namespace-scoped custom resource is still
+read through the cluster role that covers its group, so a tenant adds no cluster-scoped object of
+its own. None of these objects is reconciled: the four RBAC kinds are install-owned, because a pass
+that could write them could widen its own rights (the cluster refuses it for the ServiceAccount the
+operator runs as). `OPERATOR_NAMESPACED_RULES` in `realm/blong-kustomize/operator.ts` is the same
+list the generated `Role` holds — a kind the realm may apply is a kind the operator may write, and a
+kind added to one without the other fails at apply time with a 403 rather than at review.
 
 ## Reference
 

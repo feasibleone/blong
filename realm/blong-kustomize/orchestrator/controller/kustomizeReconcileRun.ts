@@ -13,6 +13,7 @@ import {
 import {buildKustomizeTree, type KustomizeTree} from '../../generator.ts';
 import {
     OPERATOR_GROUP,
+    OPERATOR_NAMESPACE,
     OPERATOR_PLURAL,
     OPERATOR_VERSION,
     type StatusPhase,
@@ -74,8 +75,24 @@ export const jobAttemptsPastRetention = (
 export const prunable = (obsolete: IClusterObject[], namespace: string): IClusterObject[] =>
     obsolete.filter(object => object.metadata?.namespace === namespace);
 
+/** The label a fill Job carries: how many volume directories — one per identity — a node keeps. */
+export const VOLUME_RETENTION_LABEL = 'blong.feasible.one/retention';
+
+/** The label an attempt Job carries: how many attempts of one step a suite keeps (D-471). */
+export const ATTEMPT_RETENTION_LABEL = 'blong.feasible.one/attempt-retention';
+
 /** The labels a retention step reads, and therefore the objects obsolescence leaves alone. */
-const RETENTION_LABELS = ['blong.feasible.one/retention', 'blong.feasible.one/attempt-retention'];
+const RETENTION_LABELS = [VOLUME_RETENTION_LABEL, ATTEMPT_RETENTION_LABEL];
+
+/**
+ * Whether an object is one a retention step keeps a count of.
+ *
+ * The test behind `prunableByObsolescence`, and the one the install sweep filters with, which is why
+ * it is written out once: an object counts as retired by retention only when it says so itself, and
+ * everything else in a namespace is nobody's to delete by that rule.
+ */
+export const hasRetentionLabel = (object: IClusterObject): boolean =>
+    RETENTION_LABELS.some(label => object.metadata?.labels?.[label] !== undefined);
 
 /**
  * The obsolete objects a pass may remove by obsolescence on its own.
@@ -88,9 +105,7 @@ const RETENTION_LABELS = ['blong.feasible.one/retention', 'blong.feasible.one/at
  * decides are removed here (T-282, D-464, D-471).
  */
 export const prunableByObsolescence = (obsolete: IClusterObject[]): IClusterObject[] =>
-    obsolete.filter(object =>
-        RETENTION_LABELS.every(label => object.metadata?.labels?.[label] === undefined),
-    );
+    obsolete.filter(object => !hasRetentionLabel(object));
 
 const timestampOf = (object: IClusterObject): string =>
     String((object.metadata as {creationTimestamp?: string} | undefined)?.creationTimestamp ?? '');
@@ -111,12 +126,12 @@ export const appliesUpdate = (resourceType: string): boolean => resourceType !==
  * The retention the objects declare about themselves.
  *
  * Read off a Job rather than taken from the plan, because a CR-driven pass never sees the plan its
- * tree was generated from — it applies what a child wrote — while every object the generator emits
- * carries `blong.feasible.one/retention` for exactly this kind of reader.
+ * tree was generated from — it applies the tree a child composed — while every object the generator
+ * emits carries `blong.feasible.one/retention` for exactly this kind of reader.
  */
 export const retentionOf = (objects: IClusterObject[], fallback = 3): number => {
     const declared = objects
-        .map(object => Number(object.metadata?.labels?.['blong.feasible.one/retention']))
+        .map(object => Number(object.metadata?.labels?.[VOLUME_RETENTION_LABEL]))
         .find(value => Number.isFinite(value) && value >= 1);
     return declared ?? fallback;
 };
@@ -134,9 +149,69 @@ export const attemptRetentionOf = (
     fallback = DEFAULT_ATTEMPT_RETENTION,
 ): number => {
     const declared = objects
-        .map(object => Number(object.metadata?.labels?.['blong.feasible.one/attempt-retention']))
+        .map(object => Number(object.metadata?.labels?.[ATTEMPT_RETENTION_LABEL]))
         .find(value => Number.isFinite(value) && value >= 1);
     return declared ?? fallback;
+};
+
+/**
+ * The node a fill Job is pinned to, read off the selector the generator wrote.
+ *
+ * Not parsed out of the name: the name carries the artifact identity, which is a version and a token
+ * (`1.13.0-8bb99e44`), and the node is a hostname — both contain hyphens, so no split of the name can
+ * tell where one ends. The selector is what the generator itself uses to pin the Job to the node whose
+ * directory it fills, and the directory is a node's own, so the node is the only key the count can use.
+ */
+const fillNodeOf = (object: IClusterObject): string => {
+    const spec = object.spec as
+        | {template?: {spec?: {nodeSelector?: Record<string, string>}}}
+        | undefined;
+    return String(spec?.template?.spec?.nodeSelector?.['kubernetes.io/hostname'] ?? '');
+};
+
+/**
+ * Which of a suite's older fill Jobs a prune may remove (D-471).
+ *
+ * The rule the volume retention states, and the one the attempt rule cannot express: one fill Job per
+ * node, so the number is kept *per node* — three means three identities' Jobs on that node, the current
+ * identity included — while a pair may legitimately be uneven, because a node that missed a deploy fills
+ * its directory the next time the suite runs there. Newest first by creation time, and `retention - 1` of
+ * the obsolete ones stay, for the reason the attempts' rule gives: the current identity counts too.
+ */
+export const fillJobsPastRetention = (
+    obsolete: IClusterObject[],
+    retention: number,
+): IClusterObject[] => {
+    const keep = Math.max(0, Math.max(1, retention) - 1);
+    const byNode = new Map<string, IClusterObject[]>();
+    for (const object of obsolete) {
+        const node = fillNodeOf(object);
+        byNode.set(node, [...(byNode.get(node) ?? []), object]);
+    }
+    return [...byNode.values()].flatMap(perNode =>
+        [...perNode]
+            .sort((left, right) => timestampOf(right).localeCompare(timestampOf(left)))
+            .slice(keep),
+    );
+};
+
+/**
+ * Which of a group's obsolete Jobs the pass may remove.
+ *
+ * Two numbers and two rules, told apart by the label the generator wrote rather than by the name: an
+ * attempt carries `attempt-retention` and is counted with the other attempts of its step, a fill Job
+ * carries `retention` and is counted per node, and a Job carrying neither — every Job before the two
+ * numbers existed — is retired as an attempt, which is what the pass did for all of them (D-471).
+ */
+export const jobsPastRetention = (obsolete: IClusterObject[]): IClusterObject[] => {
+    const carries = (object: IClusterObject, label: string): boolean =>
+        object.metadata?.labels?.[label] !== undefined;
+    const fill = obsolete.filter(object => carries(object, VOLUME_RETENTION_LABEL));
+    const rest = obsolete.filter(object => !carries(object, VOLUME_RETENTION_LABEL));
+    return [
+        ...fillJobsPastRetention(fill, retentionOf(fill)),
+        ...jobAttemptsPastRetention(rest, attemptRetentionOf(rest)),
+    ];
 };
 
 /**
@@ -161,11 +236,14 @@ const wireName = (resourceType: string, verb: string): string =>
 /**
  * kustomize.reconcile.run — one pass of the operator's loop.
  *
- * The plan is derived again here, from the registry this process loaded, and the tree it
- * builds is compared against the cluster: what is missing is created, what differs is
- * updated, what matches is left alone. Deriving rather than reading the written tree
- * keeps the operator honest about its own state — the files on disk are an artefact for
- * review, not the source of truth.
+ * The objects a pass compares with the cluster come from one of two origins, and each is the right one for
+ * what the process knows. A CR pass is not running the suite it reconciles: the tree comes from
+ * `kustomize.suite.generate`, whose short-lived child loads that suite's artifact and writes this deploy's
+ * overlay beside the base the artifact carries, and the pair is materialized into the objects the pass
+ * applies. So a CR pass converges on the design that was *deployed*, rather than the one this image's
+ * generator would have written, which is what makes a committed base the source of truth (D-488, T-298).
+ * A pass of a suite's own realm is running it, so it has the registry and derives the tree itself; there
+ * the files on disk stay an artefact for review rather than the source of truth.
  *
  * Two words guard the destructive half. Without `apply` this is a read: it lists the
  * kinds the plan mentions and reports the difference it would make, which is the half
@@ -579,7 +657,7 @@ export default handler(({handler}) => {
                 // retention the objects carry themselves.
                 const pastRetention =
                     group.resourceType === 'job'
-                        ? jobAttemptsPastRetention(diff.obsolete, attemptRetentionOf(diff.obsolete))
+                        ? jobsPastRetention(diff.obsolete)
                         : prunableByObsolescence(diff.obsolete);
                 for (const object of prunable(pastRetention, suiteNamespace)) {
                     const remove = call(wireName(group.resourceType, 'Remove'));
@@ -595,6 +673,46 @@ export default handler(({handler}) => {
                         deleted += 1;
                     } catch (error) {
                         failures.push({key: resourceKey(object), message: message(error)});
+                    }
+                }
+            }
+
+            // The install tree piles up the same way the tenant's namespace does, and nothing swept
+            // it (D-491): an operator image is an identity, so every rollout leaves another fill Job
+            // per node in the namespace the operator is installed in — 28 Jobs across 14 identities
+            // were sitting there against a retention of three. Swept here, by the same rule and with
+            // the same cascade, and only over Jobs that name a retention label themselves, so the
+            // install-owned RBAC, Deployment and Service beside them stay out of reach (D-461).
+            //
+            // Only a pass triggered by a CR does this, because that pass is the operator and the
+            // namespace is the operator's own. A tenant's pass runs this same code and would be
+            // refused there — a failure per pass, over objects it has no business reading.
+            if (params.prune && !readOnly && origin === 'cr') {
+                const findJob = call(wireName('job', 'Find'));
+                const removeJob = call(wireName('job', 'Remove'));
+                if (findJob && removeJob) {
+                    try {
+                        const found = (await findJob({namespace: OPERATOR_NAMESPACE}, meta)) as {
+                            items?: IClusterObject[];
+                        };
+                        const retired = jobsPastRetention(
+                            (found.items ?? []).filter(hasRetentionLabel),
+                        );
+                        for (const object of retired) {
+                            await removeJob(
+                                {
+                                    name: object.metadata?.name,
+                                    namespace: object.metadata?.namespace,
+                                },
+                                meta,
+                            );
+                            deleted += 1;
+                        }
+                    } catch (error) {
+                        failures.push({
+                            key: `${OPERATOR_NAMESPACE}/job`,
+                            message: message(error),
+                        });
                     }
                 }
             }

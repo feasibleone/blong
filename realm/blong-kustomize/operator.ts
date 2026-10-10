@@ -4,8 +4,8 @@
  * The realm applies manifests on the suite's behalf, so it needs write verbs that the
  * deployment UI deliberately does not have. That is two identities rather than one
  * widened one (D-373): the `rbac/` objects in `generator.ts` stay read-only and belong to
- * the UI, and the operator gets its own ServiceAccount, Role, RoleBinding, ClusterRole
- * and ClusterRoleBinding from here.
+ * the UI, and the operator gets its own ServiceAccount, its Role and RoleBinding in each namespace
+ * it converges, and its ClusterRole and ClusterRoleBinding, from here.
  *
  * This module holds the policy only — the permission lists and the names they bind to —
  * because that is the part worth reading on its own. The object shapes are built in
@@ -133,6 +133,11 @@ export const AUTH_REVIEW_RULES: IPolicyRule[] = [
  * `k8s.forbidden` while every other part of the install works (F-430). The operator's
  * ClusterRoleBinding already names its service account, so the rights arrive with an install the
  * cluster has anyway.
+ *
+ * The node list joins them because the plan is made per node — one fill Job each, over the
+ * node-local volume behind it — so a pass handed a CR whose spec names no `nodes` has to list them,
+ * and nodes are cluster-scoped. Without the rule every generation answered `nodes is forbidden`, so
+ * no pass could converge, while the CR went on reading `Ready` from the pass that last succeeded.
  */
 export const OPERATOR_CLUSTER_RULES: IPolicyRule[] = [
     {apiGroups: [OPERATOR_GROUP], resources: [OPERATOR_PLURAL], verbs: WRITE},
@@ -141,6 +146,7 @@ export const OPERATOR_CLUSTER_RULES: IPolicyRule[] = [
         resources: [`${OPERATOR_PLURAL}/status`],
         verbs: ['get', 'update', 'patch'],
     },
+    {apiGroups: [''], resources: ['nodes'], verbs: ['get', 'list']},
     ...AUTH_REVIEW_RULES,
 ];
 
