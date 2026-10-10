@@ -31,7 +31,7 @@ jobs:
       run: ${{ steps.filter.outputs.kustomize }}
     steps:
       - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -149,12 +149,6 @@ jobs:
             sleep 5
           done
           echo "the operator never reported Ready" >&2
-          kubectl -n blong-suite get bdep blong-suite -o yaml || true
-          # The operator is installed in its own namespace, not beside the suite it reconciles
-          # (Phase 15 A, D-396), so its log — and the Jobs it sweeps behind itself there — are
-          # what a reader needs when a pass never reaches Ready.
-          kubectl -n blong-system logs deployment/blong-operator --tail=80 || true
-          kubectl -n blong-system get jobs,pods || true
           exit 1
       - name: Notify the cluster of the release
         # The release flow's second half, and the caller `kustomize.release.notify` never had: the
@@ -220,9 +214,6 @@ jobs:
             sleep 5
           done
           echo "the operator never reported Ready after the switch (last phase: ${phase})" >&2
-          kubectl -n blong-suite get bdep blong-suite -o yaml || true
-          kubectl -n blong-system logs deployment/blong-operator --tail=80 || true
-          kubectl -n blong-system get jobs,pods || true
           exit 1
       - name: Assert what a prune reaches and what it leaves
         # The decision, asserted as it was decided (D-461): a pass removes the objects its
@@ -262,6 +253,41 @@ jobs:
           obsolete="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.lastResult.obsolete}')"
           test "${obsolete:-0}" -ge 1
           echo "the pass reports ${obsolete} object(s) it no longer owns, and deleted $(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.lastResult.deleted}')"
+      - name: Collect the cluster state when a step failed
+        # What a stalled deployment needs and what a wait cannot show: whether the pods exist, what
+        # the fill and migrate Jobs wrote, whether the backing service the suite dials has endpoints,
+        # and what the nodes say about themselves. A pod that never schedules and a node that stopped
+        # reporting look identical from the CR, and the first failure of this job collected the MySQL
+        # namespace only while the workloads that stalled sit in blong-suite and blong-services.
+        if: ${{ failure() }}
+        run: |
+          mkdir -p ci-debug
+          {
+            echo '=== the custom resource ==='
+            kubectl -n blong-suite get bdep blong-suite -o yaml
+            echo '=== blong-suite ==='
+            kubectl -n blong-suite get pods,jobs -o wide
+            kubectl -n blong-suite get events --sort-by=.lastTimestamp | tail -40
+            echo '=== what the Jobs said ==='
+            for job in $(kubectl -n blong-suite get jobs -o name); do
+              echo "--- ${job}"
+              kubectl -n blong-suite logs "${job}" --tail=30
+            done
+            echo '=== blong-services ==='
+            kubectl -n blong-services get pods,deployments,services,endpoints,persistentvolumeclaims -o wide
+            echo '=== blong-system ==='
+            kubectl -n blong-system get pods,jobs
+            kubectl -n blong-system logs deployment/blong-operator --tail=80
+            echo '=== nodes ==='
+            kubectl get nodes -o wide
+            kubectl describe nodes | grep -E '^Name:|  Ready |MemoryPressure|DiskPressure|PIDPressure' | head -40
+          } > ci-debug/cluster-state.txt 2>&1 || true
+          # The tenant state is the line a reader needs without fetching the artifact; the rest is
+          # beside it for the same reason the MySQL dump exists.
+          kubectl -n blong-suite get pods,jobs -o wide || true
+          kubectl -n blong-services get endpoints || true
+          wc -l ci-debug/cluster-state.txt
+
       - name: Collect CI failure diagnostics (k8s + MySQL)
         if: ${{ failure() }}
         run: bash test/integration/ci-diagnostics.sh
