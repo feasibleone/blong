@@ -115,12 +115,20 @@ jobs:
           (cd "$RUNNER_TEMP/deploy-suite" && zip -qr "$RUNNER_TEMP/suite.zip" .)
           node common/scripts/install-run-rush.js deploy --scenario operator --target-folder "$RUNNER_TEMP/deploy-operator" --overwrite
           (cd "$RUNNER_TEMP/deploy-operator" && zip -qr "$RUNNER_TEMP/kustomize.zip" .)
-          kubectl create deployment artifact --image=nginx:alpine
-          kubectl expose deployment artifact --name=blong-artifact --port=80
-          kubectl wait --for=condition=Available deployment/artifact --timeout=180s
-          pod="$(kubectl get pod -l app=artifact -o jsonpath='{.items[0].metadata.name}')"
-          kubectl cp "$RUNNER_TEMP/suite.zip" "default/$pod:/usr/share/nginx/html/suite.zip"
-          kubectl cp "$RUNNER_TEMP/kustomize.zip" "default/$pod:/usr/share/nginx/html/kustomize.zip"
+          # Every artifact command names `default` rather than trusting the kubeconfig's current
+          # namespace, which is shared mutable state across a job's steps: the local cluster's
+          # context names `blong-suite`, where a lookup without `-n` finds no pod at all (F-473).
+          kubectl -n default create deployment artifact --image=nginx:alpine
+          kubectl -n default expose deployment artifact --name=blong-artifact --port=80
+          kubectl -n default wait --for=condition=Available deployment/artifact --timeout=180s
+          pod="$(kubectl -n default get pod -l app=artifact -o jsonpath='{.items[0].metadata.name}')"
+          if [ -z "$pod" ]; then
+            echo "no pod carries app=artifact, so nothing can be published" >&2
+            kubectl -n default get pods,deployments -o wide >&2
+            exit 1
+          fi
+          kubectl -n default cp "$RUNNER_TEMP/suite.zip" "$pod:/usr/share/nginx/html/suite.zip"
+          kubectl -n default cp "$RUNNER_TEMP/kustomize.zip" "$pod:/usr/share/nginx/html/kustomize.zip"
       - name: Generate, apply and wait
         # The runbook: generate the tree from the suite, apply it, wait for the workloads, and
         # report where each pod landed and where the volume was unpacked.
@@ -155,8 +163,19 @@ jobs:
         # happened. What follows is the loop this job exists to exercise — the operator reads the
         # changed declaration, regenerates the tree and reports Ready again.
         run: |
-          pod="$(kubectl get pod -l app=artifact -o jsonpath='{.items[0].metadata.name}')"
-          kubectl exec "default/$pod" -- cp /usr/share/nginx/html/suite.zip /usr/share/nginx/html/suite-2.zip
+          pod="$(kubectl -n default get pod -l app=artifact -o jsonpath='{.items[0].metadata.name}')"
+          # `kubectl exec` takes a pod name, not the `namespace/pod` form `kubectl cp` takes — the
+          # step above used that form for `cp`, and this line copied it: kubectl read `default` as
+          # a resource *type* and answered `the server doesn't have a resource type "default"`
+          # (F-473), which names neither the pod nor the command that was wrong. The namespace is
+          # named for the same reason the lookup is, and the guard says what is missing when the
+          # pod is not there at all, because an empty `$pod` produced that same message.
+          if [ -z "$pod" ]; then
+            echo "no pod carries app=artifact, so the release cannot be published" >&2
+            kubectl -n default get pods,deployments -o wide >&2
+            exit 1
+          fi
+          kubectl -n default exec "$pod" -- cp /usr/share/nginx/html/suite.zip /usr/share/nginx/html/suite-2.zip
           # The version the CR declares is the one the runbook generated the tree from, so the only
           # thing this call changes is the artifact — which is the honest shape of a release that
           # republishes without a version change.
@@ -251,6 +270,11 @@ jobs:
             echo '=== blong-system ==='
             kubectl -n blong-system get pods,jobs
             kubectl -n blong-system logs deployment/blong-operator --tail=80
+            # The artifact server the release steps talk to, which the workflow creates in
+            # `default` with `kubectl create deployment artifact`. It is nobody's tenant and no
+            # namespace above covers it, so a release step that cannot find its pod was blind.
+            echo '=== default (the artifact server) ==='
+            kubectl -n default get pods,deployments,services,endpoints -o wide
             echo '=== nodes ==='
             kubectl get nodes -o wide
             kubectl describe nodes | grep -E '^Name:|  Ready |MemoryPressure|DiskPressure|PIDPressure' | head -40
@@ -259,6 +283,9 @@ jobs:
           # beside it for the same reason the MySQL dump exists.
           kubectl -n blong-suite get pods,jobs -o wide || true
           kubectl -n blong-services get endpoints || true
+          # The one line a release step's failure needs without fetching the artifact: whether
+          # the pod it publishes through exists at all.
+          kubectl -n default get pods -l app=artifact -o wide || true
           wc -l ci-debug/cluster-state.txt
 
       - name: Collect CI failure diagnostics (k8s + MySQL)
