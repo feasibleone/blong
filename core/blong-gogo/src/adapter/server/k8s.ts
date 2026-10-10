@@ -198,6 +198,7 @@ export const withItemIdentity = (answer: unknown, resourceType: string): unknown
  * The body of an update: what the manifest asks for, plus the fields the server owns and a manifest
  * cannot express.
  *
+ *
  * `apply` reads the object before it writes it, and that read is the only place those fields are
  * visible. A `spec` key the manifest does not name is either absent because nobody asked for
  * it — the server defaulted it — or because the server *assigned* it, and a replace that omits

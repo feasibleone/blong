@@ -355,30 +355,25 @@ call it obsolete, and the only labels that filter honours today are the two coun
 
 > _2026-10-10 · realm/blong-kustomize · open_
 
-With mysql switched off, blong-suite keeps a mysql-credentials Secret the pass should have pruned,
-and the e2e asserts it must go (D-461, D-462; `test/blong-int-kustomize/lib/checks.ts`,
-`backingServicesCheck`, which reports `the credentials copy survived the switch in blong-suite`).
-Ruled out by the run and by reading the code: the prune was requested and on, `Secret` is in
-`RESOURCE_TYPE_BY_KIND` so `sweptResourceTypes()` covers it, `listingScopes` does create a
-`secret@<tenant>` scope for a kind the tree no longer names, the listing selects
-`app.kubernetes.io/part-of=<suite>` for every scope, `secret` is in the adapter's `API_OF_RESOURCE`
-so `cluster.secret.find` is answered rather than silently skipped, `prunable` keeps objects whose
-namespace is the tenant's, `prunableByObsolescence` only drops those carrying a retention label, and
-the committed base
-(`suite/blong-suite/system/kustomize/base/services/mysql/credentials-in-suite.yaml`) carries
-`part-of: blong-suite` and a `spec-hash`. The artifact of run 38082949690 (`kustomize-diagnostics`)
-then ruled out the selector as well: the operator's log tail carries
-`reconcile: pass from cr, apply yes: 0 to create, 11 to update, 10 unchanged, 0 obsolete, 0 deleted`
-and no tally, and the reconcile stamps its plan from the same `suiteName` it selects with
-(`kustomizeReconcileRun.ts` lines 576-584 against `suiteLabels` in `generator.ts`), so the generator
-and the selector agree on the value. Every pass reporting `0 obsolete` and `0 deleted` therefore
-says that no swept listing returns anything at all, rather than that one object is missed - which
-makes the listing call itself the remaining suspect, not the labels. The confirmed neighbour is
-T-267: `kustomizeGatewayKeysEnsure` creates its Secret with no labels, so no listing can see it
-either. The next step is a test that drives the pass against a mock cluster holding a
-`part-of: blong-suite` Secret of a departed kind and asserts a delete is issued -
-`testReconcileScope` covers `listingScopes` only, which is why the wiring can be wrong while the
-realm's suite stays green.
+The kustomize e2e's switch-off step fails on
+`the credentials copy survived the switch in blong-suite` (`test/blong-int-kustomize/lib/checks.ts`,
+`backingServicesCheck`). What the artifact of run 38087287631 settled is that no check had ever
+looked at a _switched_ pass: the runbook applies the switched-off tree and asserts the operator's
+removal in the same run, while the operator reads the CR at the start of a pass - up to a resync
+interval later - and the pass in the log had reconciled the pre-switch declaration
+(`status.deployments` still named mysql, and the CR carried `services: {mysql: false}` two seconds
+after that pass's timestamp). An earlier reading of that pass as `0 obsolete, 0 deleted` therefore
+says nothing about the prune, and the conclusions drawn from it - a label mismatch, then the listing
+call - are void: the live copy wears `app.kubernetes.io/part-of=blong-suite` and a
+`blong.feasible.one/spec-hash`, so it is one the tree still desired, which is why nothing was
+obsolete. The check now waits for the pass to observe the switch (`status.deployments` no longer
+naming the service, 300s) and then for the copy to go (120s), so the next failing run states which
+of the two happened. What remains open is whether a switched pass prunes the copy at all: if it does
+not, the failure is now named
+`timed out waiting for the pass to remove the credentials copy of mysql from blong-suite`, after the
+switch was observed, and _that_ is the defect to chase here. The neighbour to fix alongside is T-267
+(`kustomizeGatewayKeysEnsure` writes its Secret with no labels at all, `gateway-keys ... <none>` in
+the same artifact, so no sweep can see it).
 
 ## Done
 

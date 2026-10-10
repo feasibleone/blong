@@ -11,8 +11,8 @@
  * artifact may legitimately carry none, while a login answer with a private key in it is the one thing
  * that fails a run outright.
  */
-import {existsSync} from 'node:fs';
 import {spawn} from 'node:child_process';
+import {existsSync} from 'node:fs';
 
 import {serviceNames} from './artifacts.ts';
 import {
@@ -53,11 +53,14 @@ export const migrationStepRan = async (
     // attempt an older generator wrote, and the shape that shipped once lost the deployment's config
     // because a positional followed a flag (F-414).
     const args = (
-        await getField({
-            namespace,
-            resource: job,
-            jsonPath: '{.spec.template.spec.containers[0].args[*]}',
-        }, io)
+        await getField(
+            {
+                namespace,
+                resource: job,
+                jsonPath: '{.spec.template.spec.containers[0].args[*]}',
+            },
+            io,
+        )
     )
         .split(/\s+/)
         .filter(Boolean);
@@ -167,10 +170,43 @@ export const backingServicesCheck = async (
         // And the objects an earlier pass wrote into the suite's namespace are gone with it, the
         // credentials copy among them: a Secret left behind is a password a rotation never reaches,
         // while the workload's own copy in the services namespace is what stays (D-461, D-462).
-        if (await objectExists({namespace, resource: `secret/${serviceOff}-credentials`}, io)) {
-            fail(`the credentials copy survived the switch in ${namespace}`);
-        }
-        io.log('and the pass removed the credentials copy it wrote there, while the workload kept its own');
+        //
+        // The removal is a *pass's*, and a pass is not this process. What this run applied is a
+        // declaration the operator reads at the start of its next reconcile — up to a resync away —
+        // so a check that reads the cluster the moment the apply returned is reading one no pass has
+        // seen the switch in yet, and reports the outcome of a prune that has not been attempted as
+        // a prune that never happens. That is the whole difference between the two, and the reason
+        // the claim waits for the switch to be *observed* first: `status.deployments` is what a pass
+        // planned, so the switched-off service leaving it is the pass saying it read the switch.
+        const plannedDeployments = async (): Promise<string[]> => {
+            const names = await getField(
+                {namespace, resource: 'bdep', jsonPath: '{.items[0].status.deployments[*].name}'},
+                io,
+            );
+            return names.split(/\s+/).filter(Boolean);
+        };
+        await waitFor(
+            `the operator to reconcile the switch: the custom resource in ${namespace} still ` +
+                `plans ${serviceOff}`,
+            async () => {
+                const planned = await plannedDeployments();
+                return planned.length > 0 && !planned.includes(serviceOff);
+            },
+            {timeoutMs: 300_000, intervalMs: 5_000},
+        );
+        io.log(`the pass planned no ${serviceOff}: the declaration it read carries the switch`);
+        await waitFor(
+            `the pass to remove the credentials copy of ${serviceOff} from ${namespace}`,
+            async () =>
+                !(await objectExists(
+                    {namespace, resource: `secret/${serviceOff}-credentials`},
+                    io,
+                )),
+            {timeoutMs: 120_000, intervalMs: 5_000},
+        );
+        io.log(
+            'and the pass removed the credentials copy it wrote there, while the workload kept its own',
+        );
     }
     const servicesNamespace = servicesNamespaceOf({tree, suiteNamespace: namespace});
     if (!servicesNamespace) {
@@ -211,13 +247,23 @@ export const backingServicesCheck = async (
         // written in the suite's as well — that is the copy the deployment dials the alias with
         // (D-462). Compared rather than counted: two Secrets of one name holding different passwords
         // is the failure this catches, and it is invisible to a check that only asks whether one exists.
-        if (await objectExists({namespace: servicesNamespace, resource: `secret/${name}-credentials`}, io)) {
-            const beside = await secretData({namespace: servicesNamespace, name: `${name}-credentials`}, io);
+        if (
+            await objectExists(
+                {namespace: servicesNamespace, resource: `secret/${name}-credentials`},
+                io,
+            )
+        ) {
+            const beside = await secretData(
+                {namespace: servicesNamespace, name: `${name}-credentials`},
+                io,
+            );
             const inSuite = await secretData({namespace, name: `${name}-credentials`}, io);
             if (beside !== inSuite) {
                 fail(`${name}-credentials holds different values in ${namespace}`);
             }
-            io.log(`${name}-credentials is readable in ${namespace} with the workload's own values`);
+            io.log(
+                `${name}-credentials is readable in ${namespace} with the workload's own values`,
+            );
         }
         await dialFromSuite({namespace, name, port}, io);
     }
@@ -268,20 +314,20 @@ const dialFromSuite = async (
 
 /** The portal objects read back from the cluster, and the round trips a reader would make. */
 export const portalChecks = async (
-    {namespace, credentials}: {
+    {
+        namespace,
+        credentials,
+    }: {
         namespace: string;
         credentials?: {user?: string; password?: string};
     },
     io: IStepIo,
 ): Promise<void> => {
-    const listed = await io.capture('kubectl', [
-        '-n',
-        namespace,
-        'get',
-        'ingress',
-        '-o',
-        'jsonpath={.items[*].metadata.name}',
-    ], {allowFailure: true});
+    const listed = await io.capture(
+        'kubectl',
+        ['-n', namespace, 'get', 'ingress', '-o', 'jsonpath={.items[*].metadata.name}'],
+        {allowFailure: true},
+    );
     const ingresses = listed.split(/\s+/).filter(Boolean);
     if (!ingresses.length) {
         io.log('no portal: the suite declares none, or the one it declares has no host');
@@ -318,10 +364,16 @@ export const portalChecks = async (
         try {
             await portalPage(forward, io);
             if (!credentials?.user || !credentials.password) {
-                io.warn('BLONG_TEST_USER/BLONG_TEST_PASSWORD unset, so the login round trip was skipped');
+                io.warn(
+                    'BLONG_TEST_USER/BLONG_TEST_PASSWORD unset, so the login round trip was skipped',
+                );
                 continue;
             }
-            await loginRoundTrip(forward, {user: credentials.user, password: credentials.password}, io);
+            await loginRoundTrip(
+                forward,
+                {user: credentials.user, password: credentials.password},
+                io,
+            );
         } finally {
             forward.stop();
         }
@@ -335,7 +387,9 @@ const portalPage = async (forward: IPortForward, io: IStepIo): Promise<void> => 
         io.log('the portal serves a page at /s/');
         return;
     }
-    io.warn(`${forward.localPort} did not answer /s/ with a page — the artifact may carry no bundle`);
+    io.warn(
+        `${forward.localPort} did not answer /s/ with a page — the artifact may carry no bundle`,
+    );
 };
 
 /**
@@ -395,7 +449,9 @@ const loginRoundTrip = async (
             body: JSON.stringify({params: {username: user, password}}),
         });
         if (tokenAnswer(answer)) {
-            io.log('the login answers with a token, so the released process reached its credential tables');
+            io.log(
+                'the login answers with a token, so the released process reached its credential tables',
+            );
         } else {
             io.warn(`the login did not answer with a token: ${answer}`);
         }
@@ -404,7 +460,8 @@ const loginRoundTrip = async (
         // the gateway verifies, so a `d` here hands the deployment to every caller who can log in
         // (T-274). This is the assertion, and a leak fails the run rather than warning.
         const private_ = privateKeyFields(answer);
-        if (private_.length) fail(`the login answer carries private key material: ${private_.join(', ')}`);
+        if (private_.length)
+            fail(`the login answer carries private key material: ${private_.join(', ')}`);
         io.log('the login answer carries no private key material');
         // A released process publishes the CRUD validations of its public models, and that is a claim
         // about two modules agreeing: the port collects the models into a store at the package root and
@@ -450,7 +507,9 @@ export const suiteVersionDirectoryReport = async (
     {namespace}: {namespace: string},
     io: IStepIo,
 ): Promise<void> => {
-    const listed = await io.capture('kubectl', ['get', 'nodes', '-o', 'name'], {allowFailure: true});
+    const listed = await io.capture('kubectl', ['get', 'nodes', '-o', 'name'], {
+        allowFailure: true,
+    });
     for (const node of listed
         .split('\n')
         .map(line => line.replace(/^node\//, '').trim())

@@ -1420,11 +1420,11 @@ named rather than end the pass before it writes a status.
 One info line per pass now names what the sweep listed for every kind the tree no longer names, as
 namespace/kind=count, and names any scope whose listing failed. The alternative - report only the
 survivors the diff found - cannot tell an object the listing never returned from one that was never
-listed, and that is exactly the question the surviving credentials Secret asks (T-317): the pass
-reports 0 obsolete and 0 deleted on every pass, which is consistent with both a label mismatch and a
-listing that answers nothing. The price is one line per pass, accepted because the operator's log is
-what a reader has next to the artifact, and because the counts in the CR cannot distinguish the two
-causes.
+listed, and that is exactly the question the surviving credentials Secret asks (T-317). The price is
+one line per pass, accepted because the operator's log is what a reader has next to the artifact,
+and because the counts in the CR cannot distinguish the two causes. It also turned out to be the
+line that showed how few kinds a pass sweeps at all: only the four nothing in the tree names, since
+a kind the tree names in any namespace is scoped by the objects that name it.
 
 ## Superseded
 
