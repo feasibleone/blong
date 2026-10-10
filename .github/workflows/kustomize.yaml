@@ -138,18 +138,13 @@ jobs:
       - name: Wait for the operator to report Ready
         # The assertion that makes this job worth its minutes: the operator watches the CR, a pass
         # reconciles the plan, the migration Job runs, and the status carries the result back.
-        run: |
-          for _ in $(seq 1 60); do
-            phase="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.phase}' 2>/dev/null || true)"
-            if [ "$phase" = "Ready" ]; then
-              echo "the operator reports Ready"
-              kubectl -n blong-suite get bdep
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "the operator never reported Ready" >&2
-          exit 1
+        #
+        # The wait is the shared script, so a phase that never arrives is reported with what the
+        # status says about it — `status.message` names the first failed step — instead of a bare
+        # "never reported Ready" that only the diagnostics artifact could explain (F-471, T-317).
+        # A `Failed` phase is reported as soon as it appears: an operator that has given up does not
+        # recover by being waited for.
+        run: test/integration/wait-operator.sh Ready "the operator reports Ready"
       - name: Notify the cluster of the release
         # The release flow's second half, and the caller `kustomize.release.notify` never had: the
         # realm's own CLI loads the realm, dispatches against the cluster the kubeconfig names, and
@@ -178,18 +173,7 @@ jobs:
         # running suite: the second Ready is the assertion that the write above reached it. The
         # artifact behind the new name is the same bytes, so nothing about the workloads changes
         # except the cache's fetch command.
-        run: |
-          for _ in $(seq 1 60); do
-            phase="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.phase}' 2>/dev/null || true)"
-            if [ "$phase" = "Ready" ]; then
-              echo "the operator converged on the released declaration"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "the operator never converged after the announcement" >&2
-          kubectl -n blong-suite get bdep blong-suite -o yaml || true
-          exit 1
+        run: test/integration/wait-operator.sh Ready "the operator converged on the released declaration"
       - name: Run the runbook with a service switched off
         # The variant: `SERVICE_OFF=mysql` adds the switch to the generation, and the runbook is the
         # same one — one variable, because what differs is a field on the declaration, not a step.
@@ -203,18 +187,7 @@ jobs:
       - name: Wait for the operator to converge on the switch
         # The CR is what the operator regenerates from, so this is the pass that decides whether the
         # switch reached the declaration or was pruned on the way in (T-279).
-        run: |
-          phase=""
-          for _ in $(seq 1 60); do
-            phase="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.phase}' 2>/dev/null || true)"
-            if [ "$phase" = "Ready" ]; then
-              echo "the operator reports Ready with the service switched off"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "the operator never reported Ready after the switch (last phase: ${phase})" >&2
-          exit 1
+        run: test/integration/wait-operator.sh Ready "the operator reports Ready with the service switched off"
       - name: Assert what a prune reaches and what it leaves
         # The decision, asserted as it was decided (D-461): a pass removes the objects its
         # declaration stopped naming *inside the suite's namespace*, and reports the ones outside it.

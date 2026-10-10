@@ -195,6 +195,45 @@ export const withItemIdentity = (answer: unknown, resourceType: string): unknown
 };
 
 /**
+ * The body of an update: what the manifest asks for, plus the fields the server
+owns and a manifest cannot express.
+ *
+ * `apply` reads the object before it writes it, and that read is the only place
+those
+ * fields are visible. A `spec` key the manifest does not name is either absent
+because nobody
+ * asked for it — the server defaulted it — or because the server *assigned* it, and
+a replace that
+ * omits it asks the API to clear it. For most fields that is allowed and lands
+back on the same
+ * default, which is why a blind replace passes unnoticed; for the immutable ones
+it is refused, and
+ * the object can then never be applied again. A bound `PersistentVolumeClaim` is
+the case that found
+ * this in the kustomize e2e: its `volumeName` is assigned when the claim binds
+and its
+ * `storageClassName` is defaulted at creation, the manifest names neither, and
+every pass after the
+ * first was refused with `spec is immutable after creation` (status 422) — the
+release never
+ * reported Ready over two fields the tree had no opinion about.
+ *
+ * The merge stops at the first level under `spec` on purpose. That is where the
+server-owned fields
+ * live (`volumeName`, `storageClassName`, a Service's `clusterIP`), while
+everything the manifest
+ * does declare belongs to it completely: a pod template, an env list or a rule
+list is the
+ * manifest's whole, so a field dropped from the tree still disappears.
+ */
+export const withServerFields = (live: unknown, desired: unknown): unknown => {
+    const current = (live as {spec?: object} | undefined)?.spec;
+    const wanted = (desired as {spec?: object} | undefined)?.spec;
+    if (!current || !wanted) return desired;
+    return {...(desired as object), spec: {...current, ...wanted}};
+};
+
+/**
  * Commander explorer categories for namespaced resources. Each category groups
  * the resource types the adapter can list (`{ns}.<resource>.find`). The
  * category / resource levels are synthetic navigation (no cluster calls).
@@ -801,8 +840,9 @@ export default adapter<IConfig>(({utError}) => {
                         // along: a pass reported it as a failed step, and the message named the
                         // create rather than the read that had actually gone wrong (F-402).
                         let exists = false;
+                        let live: unknown;
                         try {
-                            await callApi(isCustomResource ? 'get' : 'read', {name});
+                            live = await callApi(isCustomResource ? 'get' : 'read', {name});
                             exists = true;
                         } catch (error) {
                             if (!isAbsent(error)) {
@@ -819,7 +859,14 @@ export default adapter<IConfig>(({utError}) => {
                                 );
                             }
                         }
-                        if (exists) return await callApi('replace', {name, body: resourceBody});
+                        if (exists) {
+                            // The object that is there is the update's starting point: the fields
+                            // the manifest cannot express come from it (`withServerFields`).
+                            return await callApi('replace', {
+                                name,
+                                body: withServerFields(live, resourceBody),
+                            });
+                        }
 
                         try {
                             return await callApi('create', {body: resourceBody});
@@ -829,7 +876,13 @@ export default adapter<IConfig>(({utError}) => {
                             // is the update the read would have produced, and an apply stays
                             // idempotent (F-402).
                             if (!isAlreadyThere(error)) throw error;
-                            return await callApi('replace', {name, body: resourceBody});
+                            const appeared = await callApi(isCustomResource ? 'get' : 'read', {
+                                name,
+                            });
+                            return await callApi('replace', {
+                                name,
+                                body: withServerFields(appeared, resourceBody),
+                            });
                         }
                     }
                     case 'scale': {

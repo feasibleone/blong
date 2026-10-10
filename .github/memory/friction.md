@@ -48,7 +48,7 @@ open (36)
 - `F-465` · ci — A metric change broke the package that renders it
 - `F-466` · ci — A package has two legs, and the count line names one
 
-resolved (28)
+resolved (29)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -80,6 +80,7 @@ resolved (28)
 - `F-303` · cross-cutting — The repo formats markdown with a prettier the packages do not have
 - `F-241` · docs — Markdown edits need prettier before markdownlint passes
 - `F-467` · ci — A mask hides a wrong shot; redaction showed one
+- `F-471` · ci — The e2e wait step hides its reason in the diagnostics artifact
 
 <!-- /memory:index -->
 
@@ -937,3 +938,22 @@ as a sign the shot is hiding something.
 The wrong shot is gone: the kafka messages step reaches its level and the remaining commander
 columns redact the value rather than painting it, so what a shot shows is now the table it claims to
 show.
+
+### F-471 — The e2e wait step hides its reason in the diagnostics artifact
+
+> _2026-10-10 · ci · resolved_
+
+Two rounds went into the kustomize e2e's `Wait for the operator to report Ready`, and both times the
+answer was one line of the custom resource it polls: `phase: Failed` with
+`message: '1 step(s) failed, first: <kind>/<namespace>/<name>'`. The failing step is a bare poll
+loop, so its log says only that the operator never reported Ready, and the line lives in the
+diagnostics artifact instead. The first round found the service objects were never listed in their
+own namespace; the second, one round later, found the apply replacing a bound
+`PersistentVolumeClaim` with a manifest that dropped the `volumeName` the API assigned when it
+bound, refused with status 422. Neither was in the code the failure was attributed to, and neither
+would have been found without the artifact — which makes the real lesson that the artifact is the
+_first_ place to look when a wait fails, not the last: the resource being waited on already knows
+why, and the step could say so itself (a todo in the `ci` area asks for exactly that).
+
+Addressed by T-317: the wait step now prints the status it polls (message first, then the resource)
+and fails fast on Failed, so the reason no longer lives only in the diagnostics artifact.
