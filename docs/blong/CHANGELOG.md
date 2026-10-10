@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.30.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.29.0...blong-docs-v1.30.0) (2026-10-10)
+
+
+### Features
+
+* blong-kustomize ([0ad6915](https://github.com/feasibleone/blong/commit/0ad6915af0d3c300a8741a509232aec7649999a1))
+
+
+### Bug Fixes
+
+* address CI issues ([d32fbb1](https://github.com/feasibleone/blong/commit/d32fbb10cc945db43eb492606792f63bfb848ae6))
+* address CI issues ([bea0f62](https://github.com/feasibleone/blong/commit/bea0f62aba2dcef95cc4363b02c4ee3e05c620b1))
+* docs link ([8bd6ca4](https://github.com/feasibleone/blong/commit/8bd6ca4270c3507363a80561a81d95c1c4d7964e))
+* kustomize layout ([1e0eb50](https://github.com/feasibleone/blong/commit/1e0eb506617862db0e5e19f33d18ee0121c6aa42))
+* test ACL with cucumber ([3a84be9](https://github.com/feasibleone/blong/commit/3a84be99a1544dd7ae599cdd976191cf21cabba9))
+
 ## [1.29.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.28.0...blong-docs-v1.29.0) (2026-10-01)
 
 

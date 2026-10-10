@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.0](https://github.com/feasibleone/blong/compare/blong-login-v1.11.1...blong-login-v1.12.0) (2026-10-10)
+
+
+### Features
+
+* blong-kustomize ([0ad6915](https://github.com/feasibleone/blong/commit/0ad6915af0d3c300a8741a509232aec7649999a1))
+
+
+### Bug Fixes
+
+* address CI issues ([bea0f62](https://github.com/feasibleone/blong/commit/bea0f62aba2dcef95cc4363b02c4ee3e05c620b1))
+
 ## [1.11.1](https://github.com/feasibleone/blong/compare/blong-login-v1.11.0...blong-login-v1.11.1) (2026-09-29)
 
 

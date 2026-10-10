@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/semantic-log-v1.3.1...semantic-log-v1.4.0) (2026-10-10)
+
+
+### Features
+
+* blong-kustomize ([0ad6915](https://github.com/feasibleone/blong/commit/0ad6915af0d3c300a8741a509232aec7649999a1))
+
+
+### Bug Fixes
+
+* address latency issue ([7504310](https://github.com/feasibleone/blong/commit/750431029b7345100e4124675f36404b6e1693fa))
+
 ## [1.3.1](https://github.com/feasibleone/blong/compare/semantic-log-v1.3.0...semantic-log-v1.3.1) (2026-09-29)
 
 

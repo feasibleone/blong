@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/feasibleone/blong/compare/blong-lib-v1.7.0...blong-lib-v1.8.0) (2026-10-10)
+
+
+### Features
+
+* blong-kustomize ([0ad6915](https://github.com/feasibleone/blong/commit/0ad6915af0d3c300a8741a509232aec7649999a1))
+
 ## [1.7.0](https://github.com/feasibleone/blong/compare/blong-lib-v1.6.0...blong-lib-v1.7.0) (2026-09-29)
 
 

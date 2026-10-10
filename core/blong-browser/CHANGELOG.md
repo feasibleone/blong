@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.24.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.23.0...blong-browser-v1.24.0) (2026-10-10)
+
+
+### Features
+
+* blong-kustomize ([0ad6915](https://github.com/feasibleone/blong/commit/0ad6915af0d3c300a8741a509232aec7649999a1))
+
+
+### Bug Fixes
+
+* address CI issues ([bea0f62](https://github.com/feasibleone/blong/commit/bea0f62aba2dcef95cc4363b02c4ee3e05c620b1))
+
 ## [1.23.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.22.0...blong-browser-v1.23.0) (2026-10-01)
 
 

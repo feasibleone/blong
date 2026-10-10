@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.3](https://github.com/feasibleone/blong/compare/blong-party-v1.7.2...blong-party-v1.7.3) (2026-10-10)
+
+
+### Bug Fixes
+
+* address CI issues ([bea0f62](https://github.com/feasibleone/blong/commit/bea0f62aba2dcef95cc4363b02c4ee3e05c620b1))
+* address latency issue ([7504310](https://github.com/feasibleone/blong/commit/750431029b7345100e4124675f36404b6e1693fa))
+* test ACL with cucumber ([3a84be9](https://github.com/feasibleone/blong/commit/3a84be99a1544dd7ae599cdd976191cf21cabba9))
+
 ## [1.7.2](https://github.com/feasibleone/blong/compare/blong-party-v1.7.1...blong-party-v1.7.2) (2026-09-29)
 
 

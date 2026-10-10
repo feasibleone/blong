@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.3](https://github.com/feasibleone/blong/compare/blong-gateway-v1.5.2...blong-gateway-v1.5.3) (2026-10-10)
+
+
+### Bug Fixes
+
+* address CI issues ([bea0f62](https://github.com/feasibleone/blong/commit/bea0f62aba2dcef95cc4363b02c4ee3e05c620b1))
+* test ACL with cucumber ([3a84be9](https://github.com/feasibleone/blong/commit/3a84be99a1544dd7ae599cdd976191cf21cabba9))
+
 ## [1.5.2](https://github.com/feasibleone/blong/compare/blong-gateway-v1.5.1...blong-gateway-v1.5.2) (2026-10-01)
 
 

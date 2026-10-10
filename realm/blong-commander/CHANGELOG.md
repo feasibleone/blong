@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.3](https://github.com/feasibleone/blong/compare/blong-commander-v1.2.2...blong-commander-v1.2.3) (2026-10-10)
+
+
+### Bug Fixes
+
+* address CI issues ([bea0f62](https://github.com/feasibleone/blong/commit/bea0f62aba2dcef95cc4363b02c4ee3e05c620b1))
+* address CI issues, improve snapshots ([a86310a](https://github.com/feasibleone/blong/commit/a86310a8317e28e610a33072a483afc83b4b5bd2))
+
 ## [1.2.2](https://github.com/feasibleone/blong/compare/blong-commander-v1.2.1...blong-commander-v1.2.2) (2026-10-01)
 
 

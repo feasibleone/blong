@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.14.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.13.0...blong-suite-v1.14.0) (2026-10-10)
+
+
+### Features
+
+* blong-kustomize ([0ad6915](https://github.com/feasibleone/blong/commit/0ad6915af0d3c300a8741a509232aec7649999a1))
+
+
+### Bug Fixes
+
+* kustomize layout ([1e0eb50](https://github.com/feasibleone/blong/commit/1e0eb506617862db0e5e19f33d18ee0121c6aa42))
+* summary ([af7bbca](https://github.com/feasibleone/blong/commit/af7bbcab5327f1a6f6357abff884a64e1bc65cd4))
+
 ## [1.13.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.12.0...blong-suite-v1.13.0) (2026-10-01)
 
 

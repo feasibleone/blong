@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.11.2...blong-chain-v1.12.0) (2026-10-10)
+
+
+### Features
+
+* blong-kustomize ([0ad6915](https://github.com/feasibleone/blong/commit/0ad6915af0d3c300a8741a509232aec7649999a1))
+
+
+### Bug Fixes
+
+* test ACL with cucumber ([3a84be9](https://github.com/feasibleone/blong/commit/3a84be99a1544dd7ae599cdd976191cf21cabba9))
+
 ## [1.11.2](https://github.com/feasibleone/blong/compare/blong-chain-v1.11.1...blong-chain-v1.11.2) (2026-10-01)
 
 

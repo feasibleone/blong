@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-mle",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Reusable MLE (Message Layer Encryption) client crypto + HTTP client for Blong gateways",
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"
