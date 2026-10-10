@@ -113,8 +113,8 @@ span them:
 | Stream  | What it is                                                   | Id                     | Tags                                   |
 | ------- | ------------------------------------------------------------ | ---------------------- | -------------------------------------- |
 | `entry` | one document per memory entry                                | the entry id (`F-316`) | `memory`, `kind:`, `area:`, `status:`  |
-| `docs`  | one document per published page in `docs/blong/docs/<tier>/` | `doc-<tier>-<name>`    | `type:documentation`, `tier:`, `path:` |
-| `skill` | one document per `.github/skills/*/SKILL.md`                 | `skill-<name>`         | `type:agent-skill`, `scope:`, `path:`  |
+| `docs`  | one document per published page in `docs/blong/docs/<tier>/` | `doc-<tier>-<name>`    | `kind:documentation`, `tier:`, `path:` |
+| `skill` | one document per `.github/skills/*/SKILL.md`                 | `skill-<name>`         | `kind:agent-skill`, `scope:`, `path:`  |
 
 A page or a skill is stable state rather than an event, so its id comes from its path: an edit
 replaces the document instead of adding a second fragment, which is what makes re-ingesting a whole

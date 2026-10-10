@@ -312,7 +312,7 @@ t.test('the memory command layer', async t => {
         t.equal(code, undefined, 'the search succeeded');
         t.same(
             calls.recalled[0]!.options?.tags,
-            ['type:documentation'],
+            ['kind:documentation'],
             'a page search never carries the entry tag, so it cannot drift back to entries',
         );
         t.end();
@@ -328,7 +328,7 @@ t.test('the memory command layer', async t => {
 
         t.same(
             calls.recalled[0]!.options?.tagGroups,
-            [{or: [{tags: ['memory']}, {tags: ['type:documentation']}]}],
+            [{or: [{tags: ['memory']}, {tags: ['kind:documentation']}]}],
             'the sources are alternatives — a flat list would be an AND and match nothing',
         );
         t.notOk(calls.recalled[0]!.options?.tags, 'the flat form is not sent beside the tree');
@@ -381,7 +381,7 @@ t.test('the memory command layer', async t => {
             'the page ids are the upsert keys',
         );
         const page = documents.find(document => document.documentId === 'doc-patterns-memory')!;
-        t.ok(page.tags.includes('type:documentation'), 'a page carries the documentation tag');
+        t.ok(page.tags.includes('kind:documentation'), 'a page carries the documentation tag');
         t.notOk(page.tags.includes('memory'), 'and not the entry tag');
         t.end();
     });
@@ -448,7 +448,7 @@ t.test('the memory command layer', async t => {
                 fakeStore(calls, {
                     documents: [
                         bankDocument('F-900', ['memory', 'kind:friction']),
-                        bankDocument('doc-patterns-memory', ['type:documentation']),
+                        bankDocument('doc-patterns-memory', ['kind:documentation']),
                     ],
                 }),
             );

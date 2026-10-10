@@ -72,7 +72,7 @@ t.test('a documentation page carries the taxonomy the entries are told apart by'
         'Project Documentation: patterns/memory.md',
         'the context names the file',
     );
-    t.ok(document.tags.includes('type:documentation'), 'it is a documentation page');
+    t.ok(document.tags.includes('kind:documentation'), 'it is a documentation page');
     t.ok(document.tags.includes('stability:stable'), 'and stable state, not an event');
     t.ok(document.tags.includes('tier:patterns'), 'the tier is a filterable dimension');
     t.notOk(document.tags.includes('memory'), 'a page must not answer an entry search');
@@ -100,7 +100,7 @@ t.test('a skill carries the procedural tags', t => {
         'Agent Skill Procedure: blong-handler/SKILL.md',
         'the context names it',
     );
-    t.ok(document.tags.includes('type:agent-skill'), 'it is an agent skill');
+    t.ok(document.tags.includes('kind:agent-skill'), 'it is an agent skill');
     t.ok(document.tags.includes('scope:behavioral-instruction'), 'systemic behaviour, not a log');
     t.ok(document.tags.includes('execution:procedural'), 'procedural, not factual');
     t.notOk(document.tags.includes('memory'), 'a skill must not answer an entry search');

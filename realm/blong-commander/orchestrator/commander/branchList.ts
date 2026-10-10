@@ -1,16 +1,8 @@
 import {type IMeta, handler} from '@feasibleone/blong';
+import {getPath} from '../../branch/getPath.ts';
+import {levelRowsSelect} from '../../branch/levelRowsSelect.ts';
 import {sources as defaultSources} from '../../config/sources.ts';
 import type {ICommanderLevel, ICommanderSource} from '../../types.ts';
-
-function getPath(obj: Record<string, unknown> | undefined, path: string): unknown {
-    if (!obj) return undefined;
-    let cur: unknown = obj;
-    for (const part of path.split('.')) {
-        if (cur === null || cur === undefined) return undefined;
-        cur = (cur as Record<string, unknown>)[part];
-    }
-    return cur;
-}
 
 /**
  * One-level flatten: keep top-level scalar fields; promote the scalar leaves of
@@ -161,6 +153,10 @@ export default handler(
                 return {items: []};
             }
             $meta.checkpoint?.('rows-listed', {rows: rows.length});
-            return {items: sortRows(level, rows).map(flattenItem)};
+            // What the level's own whitelist/blacklist admits, ordered the way the level
+            // displays it: the row half of the declaration, beside the ordering below.
+            return {
+                items: sortRows(level, levelRowsSelect(level, rows)).map(flattenItem),
+            };
         },
 );

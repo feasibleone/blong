@@ -193,11 +193,11 @@ test('a search with no filter asks for everything', async t => {
 test('a search over several sources sends a tag group, never a flat list', async t => {
     const {calls, load} = recorder();
     await createHindsightStore(CONFIG, load)!.recall('anything', {
-        tagGroups: [{or: [{tags: ['memory']}, {tags: ['type:documentation']}]}],
+        tagGroups: [{or: [{tags: ['memory']}, {tags: ['kind:documentation']}]}],
     });
     t.same(
         calls.recall[0]!.options['tagGroups'],
-        [{or: [{tags: ['memory']}, {tags: ['type:documentation']}]}],
+        [{or: [{tags: ['memory']}, {tags: ['kind:documentation']}]}],
         'the group tree reaches the server verbatim',
     );
     t.notOk('tags' in calls.recall[0]!.options, 'the flat form is not also sent');

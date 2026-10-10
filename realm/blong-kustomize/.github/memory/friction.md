@@ -36,7 +36,6 @@ open (42)
 - `F-396` · realm/blong-kustomize — One deployment walked the deploy path and found six defects
 - `F-397` · realm/blong-kustomize — An object method's arrow body is a parse error wearing a type's
   clothes
-- `F-398` · realm/blong-kustomize — A lookup that matches nothing reads as a timeout
 - `F-399` · realm/blong-kustomize — A JSON-patch path one level too shallow replaces the whole
   member
 - `F-400` · realm/blong-kustomize — A comment can trip a static scan
@@ -71,6 +70,7 @@ open (42)
 - `F-451` · realm/blong-kustomize — A realm change is only in the cluster once the artifact is
   rebuilt
 - `F-453` · realm/blong-kustomize — A patched list element moves to the front of its list
+- `F-398` · realm/blong-kustomize — A lookup that matches nothing reads as a timeout
 
 resolved (15)
 
@@ -341,26 +341,6 @@ parse are the ones whose methods use a block body. The package's tsconfig also s
 the same file reported an eslint Parsing error too, which made the type look guilty twice. The
 lesson is to compare a failing signature with a neighbouring one character by character before
 theorising: a single grep for the arrow body in the layer showed the only file with it was mine.
-
-### F-398 — A lookup that matches nothing reads as a timeout
-
-> _2026-10-06 · realm/blong-kustomize · open_
-
-The CR-driven pass reported one failed step for forty minutes and the message was the step did not
-finish within 300s, which sent the reading towards the Job and the API server: both Jobs were
-Complete, so the obvious next question was what the API was answering. It was answering nothing. The
-wait looks a Job up by labelSelector on the name label and the object's own name, and that label
-carries the suite on every generated object while the object's own name is on the instance label, so
-the selector matched no object at all and the loop polled an empty list until the deadline. The
-message could not say so, and that is the defect worth remembering: a timeout reported without what
-it looked for and what it saw is indistinguishable from a slow cluster, and the reader goes and
-checks the cluster instead of the selector. Two changes came out of it: the lookup uses the instance
-label, and the timeout now reports how many objects the lookup answered. The probe that settled it
-was a local pass on the CLI (reconcile --from=cr) printing the failure array with its message,
-because the operator's own log records the counts and the status records only the first key. Getting
-that probe to run found a second defect on the way: the tree generation child re-runs
-process.argv[1], which for the realm CLI is the CLI itself, so it answered with the realm's usage
-text.
 
 ### F-399 — A JSON-patch path one level too shallow replaces the whole member
 
@@ -690,6 +670,26 @@ kustomize output against the flat tree, and it caught a twelve-line difference. 
 patch carry the whole list it touches (the fill environment does), or to patch the entry the
 generator writes first (the suite volume, which every workload writes first) — and to keep the byte
 comparison, because it is the only thing that sees this class of difference.
+
+### F-398 — A lookup that matches nothing reads as a timeout
+
+> _2026-10-06 · realm/blong-kustomize · open_
+
+The CR-driven pass reported one failed step for forty minutes and the message was the step did not
+finish within 300s, which sent the reading towards the Job and the API server: both Jobs were
+Complete, so the obvious next question was what the API was answering. It was answering nothing. The
+wait looks a Job up by labelSelector on the name label and the object's own name, and that label
+carries the suite on every generated object while the object's own name is on the instance label, so
+the selector matched no object at all and the loop polled an empty list until the deadline. The
+message could not say so, and that is the defect worth remembering: a timeout reported without what
+it looked for and what it saw is indistinguishable from a slow cluster, and the reader goes and
+checks the cluster instead of the selector. Two changes came out of it: the lookup uses the instance
+label, and the timeout now reports how many objects the lookup answered. The probe that settled it
+was a local pass on the CLI (reconcile --from=cr) printing the failure array with its message,
+because the operator's own log records the counts and the status records only the first key. Getting
+that probe to run found a second defect on the way: the tree generation child re-runs
+`process.argv[1]`, which for the realm CLI is the CLI itself, so it answered with the realm's usage
+text.
 
 ## Resolved
 

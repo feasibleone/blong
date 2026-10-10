@@ -40,6 +40,7 @@
         "./playwright/docs": "./src/playwright/docs.ts",
         "./playwright/model": "./src/playwright/model.ts",
         "./playwright/pages": "./src/playwright/pages.ts",
+        "./playwright/redact": "./src/playwright/redact.ts",
         "./storyHelper": "./src/storyHelper.tsx",
         "./vite": "./src/vite.ts",
         "./storybookMain": "./src/storybookMain.ts",

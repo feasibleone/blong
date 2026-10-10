@@ -22,6 +22,15 @@ export interface ICommanderLevel {
     model?: {subject: string; object: string};
     /** Required permission (raw action name) to browse this level. */
     permission?: string;
+    /**
+     * Whitelist: regexes a row's display value must match to be shown. Absent or
+     * empty means every row the backend answers with.
+     */
+    include?: string[];
+    /**
+     * Blacklist: regexes a row is dropped by. Absent or empty drops nothing.
+     */
+    exclude?: string[];
     /** Triple + params that list the children of this level's nodes. */
     list: {
         method: string;

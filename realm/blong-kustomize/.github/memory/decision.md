@@ -81,7 +81,6 @@ active (85)
 - `D-430` · realm/blong-kustomize — Namespace Services are added beside the realm Services
 - `D-434` · realm/blong-kustomize — The deployment page needs a route from the portal to the
   operator API
-- `D-436` · realm/blong-kustomize — A CLI declares the layer folders its cli run needs
 - `D-437` · realm/blong-kustomize — The registry holds the per-realm config map by reference
 - `D-441` · realm/blong-kustomize — The gateway pair travels as an rc document, mounted under the
   pod home
@@ -110,8 +109,6 @@ active (85)
   interpreted
 - `D-464` · realm/blong-kustomize — The prune sweeps the kinds a suite can own, whether or not the
   tree names one
-- `D-465` · realm/blong-kustomize — The runbook is a library of handler-shaped steps driven by two
-  thin CLIs
 - `D-466` · realm/blong-kustomize — An init that has to call a server is a Job the deployment writes
 - `D-467` · realm/blong-kustomize — Pods wait for the artifact marker, and the runbook re-fetches
   before it applies
@@ -124,6 +121,9 @@ active (85)
 - `D-476` · realm/blong-kustomize — The fill makes the artifact's links relative
 - `D-475` · realm/blong-kustomize — The tree is a committed base and a gitignored local overlay
 - `D-477` · realm/blong-kustomize — The base carries templates the overlay instantiates
+- `D-436` · realm/blong-kustomize — A CLI declares the layer folders its cli run needs
+- `D-465` · realm/blong-kustomize — The runbook is a library of handler-shaped steps driven by two
+  thin CLIs
 
 superseded (9)
 
@@ -134,11 +134,11 @@ superseded (9)
 - `D-425` · realm/blong-kustomize — How a deployed process stops carrying the deployment realm
 - `D-433` · realm/blong-kustomize — A realm-level declaration surface is needed for roles and cli
   intents
-- `D-435` · realm/blong-kustomize — A realm CLI declares its intents, and CliOptions.intents is
-  required
 - `D-474` · realm/blong-kustomize — A nodeLocal reader mounts the artifact where the links point
 - `D-472` · realm/blong-kustomize — A nodeLocal reader mounts the artifact root a second time
 - `D-473` · realm/blong-kustomize — The committed tree carries the dev cluster's node names
+- `D-435` · realm/blong-kustomize — A realm CLI declares its intents, and CliOptions.intents is
+  required
 
 <!-- /memory:index -->
 
@@ -885,19 +885,6 @@ operator on a second host. Which one it is decides where authentication happens 
 operator verifies the same gateway keys the suite mints with, so a token from the suite login is
 accepted by both.
 
-### D-436 — A CLI declares the layer folders its cli run needs
-
-> _2026-10-07 · realm/blong-kustomize · active_
-
-The cli intent is named by no entry of WELL_KNOWN_LAYERS, so a package that ships a command declares
-which layer folders that command runs with, in the cli block of the realm whose handlers it
-dispatches: blong-kustomize names error, adapter and orchestrator, kukum names error and
-orchestrator, and the demo text realm names orchestrator alone. Declaring it on the realm rather
-than in the CLI options follows D-433 - the realm says what it is - and keeps CliOptions.intents at
-its ['cli'] default, which every realm CLI shares. A folder a command has no use for is left out
-rather than switched off, and a command that delegates its work to a child process re-running the
-framework with the k8s intent names only what its own process loads.
-
 ### D-437 — The registry holds the per-realm config map by reference
 
 > _2026-10-07 · realm/blong-kustomize · active_
@@ -1176,19 +1163,6 @@ the Role it runs under could delete its own rights. Version-named objects, those
 blong.feasible.one/retention, are kept out of obsolescence pruning too, because their retirement is
 a number another step reads.
 
-### D-465 — The runbook is a library of handler-shaped steps driven by two thin CLIs
-
-> _2026-10-09 · realm/blong-kustomize · active_
-
-The k3d scripts are TypeScript now, and the split is what makes them reusable rather than merely
-shorter: scripts/lib holds one function per question with the machine passed in as {run, capture,
-log}, which is the shape a realm handler takes, and the two entry points hold nothing but the
-sequence, the flags and what the run prints. rules.ts is the decisions the shell wrote as grep and
-[[ ]], which is the only part a test can hold without a cluster, and it is covered by the
-test.script.rules group. The developer cycle calls the runbook in-process instead of starting a
-shell that starts the framework twice, and the compile step is node's own type stripping, so there
-is no build to keep in step.
-
 ### D-466 — An init that has to call a server is a Job the deployment writes
 
 > _2026-10-09 · realm/blong-kustomize · active_
@@ -1313,6 +1287,32 @@ that a shared script needs a shared file; the template is that file, so the scri
 the Job lost a ConfigMap, a volume and a mount — the emitter writes a multi-line string as a block
 scalar, so it reads as well in a Job as it did in a ConfigMap.
 
+### D-436 — A CLI declares the layer folders its cli run needs
+
+> _2026-10-07 · realm/blong-kustomize · active_
+
+The cli intent is named by no entry of WELL_KNOWN_LAYERS, so a package that ships a command declares
+which layer folders that command runs with, in the cli block of the realm whose handlers it
+dispatches: blong-kustomize names error, adapter and orchestrator, kukum names error and
+orchestrator, and the demo text realm names orchestrator alone. Declaring it on the realm rather
+than in the CLI options follows D-433 - the realm says what it is - and keeps CliOptions.intents at
+its `['cli']` default, which every realm CLI shares. A folder a command has no use for is left out
+rather than switched off, and a command that delegates its work to a child process re-running the
+framework with the k8s intent names only what its own process loads.
+
+### D-465 — The runbook is a library of handler-shaped steps driven by two thin CLIs
+
+> _2026-10-09 · realm/blong-kustomize · active_
+
+The k3d scripts are TypeScript now, and the split is what makes them reusable rather than merely
+shorter: scripts/lib holds one function per question with the machine passed in as {run, capture,
+log}, which is the shape a realm handler takes, and the two entry points hold nothing but the
+sequence, the flags and what the run prints. rules.ts is the decisions the shell wrote as grep and
+`[[ ]]`, which is the only part a test can hold without a cluster, and it is covered by the
+test.script.rules group. The developer cycle calls the runbook in-process instead of starting a
+shell that starts the framework twice, and the compile step is node's own type stripping, so there
+is no build to keep in step.
+
 ## Superseded
 
 ### D-374 — Whether the kustomize stacks gain blong-login and blong-access-mock
@@ -1417,24 +1417,6 @@ both, blong and kustomize and the codec realm none - and the suite's realmRoles 
 IPlanOptions.realmRoles, IPlanConfig.realmRoles and the plan's fallback are gone. F-418 records the
 trap the first version fell into.
 
-### D-435 — A realm CLI declares its intents, and CliOptions.intents is required
-
-> _2026-10-07 · realm/blong-kustomize · superseded_
-
-The second half of the D-433 review item was the cli intent per package. runCli defaulted to
-['cli'], which is the framework guessing what a command needs rather than the package that owns the
-command saying it, so intents is now a required CliOptions field and every CLI states it: kukum,
-blong-kustomize and the demo blong-cli each pass ['cli'], and blong-kustomize keeps that value even
-though one of its commands writes a tree, because the tree is generated by a child process
-re-running the framework with the k8s intent. The alternative was leaving the default and declaring
-it anyway, which would document the decision without enforcing it. Each CLI was smoke-tested with
---help through the loader.
-
-Superseded by D-436. This entry recorded the wrong reading of the review item: it made
-CliOptions.intents required so each package declared the intent, where the item meant that each
-package declares the layer folders its cli run needs in the cli block of the realm that owns the
-command. CliOptions.intents is back to optional with its ['cli'] default.
-
 ### D-474 — A nodeLocal reader mounts the artifact where the links point
 
 > _2026-10-09 · realm/blong-kustomize · superseded_
@@ -1494,3 +1476,21 @@ Answered by the split: the committed base holds no node name, and the ignored ov
 per-node fill Jobs.
 
 Superseded by `D-475`.
+
+### D-435 — A realm CLI declares its intents, and CliOptions.intents is required
+
+> _2026-10-07 · realm/blong-kustomize · superseded_
+
+The second half of the D-433 review item was the cli intent per package. runCli defaulted to
+`['cli']`, which is the framework guessing what a command needs rather than the package that owns
+the command saying it, so intents is now a required CliOptions field and every CLI states it: kukum,
+blong-kustomize and the demo blong-cli each pass `['cli']`, and blong-kustomize keeps that value
+even though one of its commands writes a tree, because the tree is generated by a child process
+re-running the framework with the k8s intent. The alternative was leaving the default and declaring
+it anyway, which would document the decision without enforcing it. Each CLI was smoke-tested
+with --help through the loader.
+
+Superseded by D-436. This entry recorded the wrong reading of the review item: it made
+CliOptions.intents required so each package declared the intent, where the item meant that each
+package declares the layer folders its cli run needs in the cli block of the realm that owns the
+command. CliOptions.intents is back to optional with its `['cli']` default.

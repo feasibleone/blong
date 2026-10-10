@@ -15,6 +15,10 @@ open (4)
 - `F-250` · realm/blong-gateway — A capture that pins the first execution it finds is flaky
 - `F-346` · realm/blong-gateway — gateway.application.register mints a random secret
 
+resolved (1)
+
+- `F-454` · realm/blong-gateway — The rate probe window rolled under its own three calls
+
 <!-- /memory:index -->
 
 ## Open
@@ -81,3 +85,17 @@ dev-only bulk merge that takes the clientId and secret and writes the resource, 
 and the clientSecret credential.
 
 ## Resolved
+
+### F-454 — The rate probe window rolled under its own three calls
+
+> _2026-10-10 · realm/blong-gateway · resolved_
+
+The gateway rate probe asserts that of three metered calls the third is blocked. The counter is
+keyed by the window it falls in, `Math.floor(now / rateWindowSec)`, so three calls that straddle a
+boundary read a fresh counter and the third is allowed: CI failed while the same test passed
+locally, and a wall-clock window is the only nondeterminism in the path. The fixture now declares
+`rateWindowSec: 3600`, a window that cannot roll during a probe; the window length is not what the
+test asserts.
+
+The fixture now declares rateWindowSec 3600, so the three calls of the probe cannot straddle a
+window boundary; the gateway suite passes 21/21.

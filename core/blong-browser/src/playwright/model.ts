@@ -34,6 +34,7 @@
  */
 import type {Expect, Page} from '@playwright/test';
 import {BLONG_ELEMENT_TIMEOUT, type Portal} from '../playwright.js';
+import {redactPageText, type IRedactPattern} from './redact.js';
 
 /** Minimal test function interface — accepts any Playwright TestType that provides a `portal` fixture. */
 export interface ITestFn {
@@ -67,6 +68,12 @@ export interface IBrowseModelOptions {
     object: string;
     /** Optional search text to type before taking the screenshot (filters table rows). */
     searchText?: string;
+    /**
+     * Volatile substrings to redact (`###`) in every capture this helper takes — a minted
+     * id, a wall clock, the generated tail of a name. Redaction keeps the cell, its column
+     * and its header in the picture, where masking the cell would hide all three.
+     */
+    redact?: IRedactPattern[];
 }
 
 export interface ICreateAndEditModelOptions {
@@ -186,6 +193,12 @@ export interface ICreateAndEditModelOptions {
      * record-level guard refuses the caller's own new record.
      */
     skipCreate?: boolean;
+    /**
+     * Volatile substrings to redact (`###`) in every capture this helper takes — a minted
+     * id, a wall clock, the generated tail of a name. Redaction keeps the cell, its column
+     * and its header in the picture, where masking the cell would hide all three.
+     */
+    redact?: IRedactPattern[];
     /**
      * Prefix for every baseline name, defaulting to `\`${subject}-${object}\``.
      * Set it when a second spec drives the same entity (e.g. one covering only a
@@ -510,12 +523,32 @@ export async function selectNavigatorNode(page: Page, label: string): Promise<vo
 }
 
 /**
+ * A capture that redacts the spec's volatile text first.
+ *
+ * Redacting immediately before each capture — rather than once at the start of the test —
+ * is what lets a spec name text the page rendered since the previous one: a value the save
+ * returned, a row the detail tab loaded, a breadcrumb a drill wrote. A spec that names
+ * nothing pays nothing, which is why the empty list is not even walked.
+ *
+ * Exported because it is the whole of this module's redaction behaviour: the file it writes
+ * and the DOM it walks are elsewhere, so a unit test with a fake `expect` and a fake `page`
+ * can pin that the two are called in that order, and that neither is called for nothing.
+ */
+export function captureWith(expect: Expect, redact?: readonly IRedactPattern[]) {
+    return async (page: Page, name: string): Promise<void> => {
+        if (redact?.length) await redactPageText(page, redact);
+        await expect(page).toHaveScreenshot(name);
+    };
+}
+
+/**
  * Generate a browse-page test for a model.
  * Opens the browse page via the menu and takes a screenshot.
  */
 export function browseModel(test: ITestFn, expect: Expect, options: IBrowseModelOptions): void {
     const {subject, object} = options;
     const method = `${subject}.${object}.browse`;
+    const capture = captureWith(expect, options.redact);
 
     test(`browse ${subject} ${object}`, async ({portal}) => {
         await portal.menuClick(method);
@@ -527,7 +560,7 @@ export function browseModel(test: ITestFn, expect: Expect, options: IBrowseModel
             await portal.page.waitForTimeout(500);
             await portal.waitForTableData();
         }
-        await expect(portal.page).toHaveScreenshot(`${subject}-${object}-browse.png`);
+        await capture(portal.page, `${subject}-${object}-browse.png`);
     });
 }
 
@@ -550,10 +583,12 @@ export function createAndEditModel(
         details,
         editInCreate = true,
         skipCreate = false,
+        redact,
         baselinePrefix,
     } = options;
     const browseMethod = `${subject}.${object}.browse`;
     const base = baselinePrefix ?? `${subject}-${object}`;
+    const capture = captureWith(expect, redact);
 
     test(`create ${subject} ${object}`, async ({portal}) => {
         // An entity whose guard refuses the caller's own new record cannot be
@@ -577,11 +612,11 @@ export function createAndEditModel(
         }
 
         await portal.waitForFormLoad();
-        await expect(portal.page).toHaveScreenshot(`${base}-new-empty.png`);
+        await capture(portal.page, `${base}-new-empty.png`);
 
         // Fill form fields
         await fillFields(portal.page, fields);
-        await expect(portal.page).toHaveScreenshot(`${base}-new-filled.png`);
+        await capture(portal.page, `${base}-new-filled.png`);
 
         // Master-detail: switch to each detail tab, add + fill rows (pivot rows
         // are toggled in place — there is no Add button), screenshot the empty
@@ -613,9 +648,7 @@ export function createAndEditModel(
                         .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
                 }
                 if (detail.screenshots?.empty !== false) {
-                    await expect(portal.page).toHaveScreenshot(
-                        `${base}-tab-${detail.object}-empty.png`,
-                    );
+                    await capture(portal.page, `${base}-tab-${detail.object}-empty.png`);
                 }
                 if (detail.fields && (detail.pivot || detail.allowAdd !== false)) {
                     await fillDetailRows(
@@ -627,16 +660,14 @@ export function createAndEditModel(
                     );
                 }
                 if (detail.screenshots?.filled !== false) {
-                    await expect(portal.page).toHaveScreenshot(
-                        `${base}-tab-${detail.object}-filled.png`,
-                    );
+                    await capture(portal.page, `${base}-tab-${detail.object}-filled.png`);
                 }
             }
         }
 
         // Save
         await portal.save();
-        await expect(portal.page).toHaveScreenshot(`${base}-new-saved.png`);
+        await capture(portal.page, `${base}-new-saved.png`);
 
         // After a successful create the editor switches to edit mode but keeps
         // the last-visited detail tab active (master-detail layout), which hides
@@ -648,10 +679,10 @@ export function createAndEditModel(
         // Edit the same record in the same tab — verifies edit does not create a duplicate
         if (editInCreate && editFields && Object.keys(editFields).length > 0) {
             await fillFields(portal.page, editFields);
-            await expect(portal.page).toHaveScreenshot(`${base}-new-edit-dirty.png`);
+            await capture(portal.page, `${base}-new-edit-dirty.png`);
 
             await portal.save();
-            await expect(portal.page).toHaveScreenshot(`${base}-new-edit-saved.png`);
+            await capture(portal.page, `${base}-new-edit-saved.png`);
         }
     });
 
@@ -687,7 +718,7 @@ export function createAndEditModel(
             await portal.waitForFormLoad();
             // Wait for the API response to populate form inputs
             await portal.waitForFormData();
-            await expect(portal.page).toHaveScreenshot(`${base}-open.png`);
+            await capture(portal.page, `${base}-open.png`);
 
             // Master-detail: screenshot each detail tab showing the loaded rows,
             // operate on the first detail that declares editFields (proving that
@@ -702,9 +733,7 @@ export function createAndEditModel(
                         .first()
                         .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
                     if (detail.screenshots?.open !== false) {
-                        await expect(portal.page).toHaveScreenshot(
-                            `${base}-tab-${detail.object}-open.png`,
-                        );
+                        await capture(portal.page, `${base}-tab-${detail.object}-open.png`);
                     }
                 }
                 const detailToEdit = details.find(
@@ -727,7 +756,8 @@ export function createAndEditModel(
                         detailToEdit.editFields,
                     );
                     if (detailToEdit.screenshots?.editDirty !== false) {
-                        await expect(portal.page).toHaveScreenshot(
+                        await capture(
+                            portal.page,
                             `${base}-tab-${detailToEdit.object}-edit-dirty.png`,
                         );
                     }
@@ -754,11 +784,11 @@ export function createAndEditModel(
 
             // Fill the actual editFields (different from suffixed → form dirty)
             await fillFields(portal.page, editFields);
-            await expect(portal.page).toHaveScreenshot(`${base}-edit-dirty.png`);
+            await capture(portal.page, `${base}-edit-dirty.png`);
 
             // Save
             await portal.save();
-            await expect(portal.page).toHaveScreenshot(`${base}-edit-saved.png`);
+            await capture(portal.page, `${base}-edit-saved.png`);
         });
     }
 }
@@ -775,6 +805,8 @@ export interface ICleanupModelOptions {
     search: string;
     /** Remove method (semantic triple) whose browse-toolbar button deletes the selected row. */
     removeMethod: string;
+    /** Volatile substrings to redact (`###`) in the confirmation capture, as in `browseModel`. */
+    redact?: IRedactPattern[];
 }
 
 /**
@@ -790,8 +822,9 @@ export interface ICleanupModelOptions {
  * deletion.
  */
 export function cleanupModel(test: ITestFn, expect: Expect, options: ICleanupModelOptions): void {
-    const {subject, object, search, removeMethod} = options;
+    const {subject, object, search, removeMethod, redact} = options;
     const removeTestId = `action-${removeMethod.replace(/[/.]/g, '-')}`;
+    const capture = captureWith(expect, redact);
 
     test(`cleanup ${subject} ${object}`, async ({portal}) => {
         await portal.menuClick(`${subject}.${object}.browse`);
@@ -823,9 +856,7 @@ export function cleanupModel(test: ITestFn, expect: Expect, options: ICleanupMod
                 .locator('.p-confirm-dialog-accept')
                 .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
             if (deleted === 0) {
-                await expect(portal.page).toHaveScreenshot(
-                    `${subject}-${object}-cleanup-confirm.png`,
-                );
+                await capture(portal.page, `${subject}-${object}-cleanup-confirm.png`);
             }
             await portal.page.locator('.p-confirm-dialog-accept').click();
             deleted++;

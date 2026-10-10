@@ -8,6 +8,7 @@
  * assertions are used sparingly for critical state.
  */
 import {expect, test, type Page, type Portal} from '@feasibleone/blong-browser/playwright';
+import {redactPageText} from '@feasibleone/blong-browser/playwright/redact';
 
 test.use({blongPermissions: true});
 
@@ -38,6 +39,26 @@ function colsMask(page: Page, ...indexes: number[]) {
 function viewerJsonMask(page: Page) {
     return {mask: [page.locator('.blong-viewer-document pre')], maskColor: MASK_COLOR};
 }
+
+/**
+ * Redact the whole value of the given 1-based table columns.
+ *
+ * The alternative is `colsMask`, which paints the cell boxes magenta: that hides the
+ * column's *place* in the table along with its value, so a reader cannot tell that the
+ * table has an identity column at all. Redacting the text keeps the column, its header
+ * and the table's shape, and says `###` where a random value was.
+ */
+async function redactCells(page: Page, ...indexes: number[]) {
+    const within = indexes.map(index => `.p-datatable-tbody td:nth-child(${index})`).join(', ');
+    await redactPageText(page, [/^.+$/], {within});
+}
+
+/**
+ * The volatile tail of a generated name: `coredns-5d78c9869d-4tm59` is the ReplicaSet
+ * hash and the pod suffix, and the prefix is the workload the row is about. The hyphen
+ * stays, so the name still reads as one that was generated.
+ */
+const GENERATED_NAME_TAIL = /(?<=-)[a-z0-9]{9,10}-[a-z0-9]{5}\b/g;
 
 /** Narrow the commander table to rows containing `text` (deterministic subset). */
 async function filterRows(page: Page, text: string) {
@@ -213,13 +234,17 @@ test('access-db — browse tables (SQL via access.table.list)', async ({portal})
 
 test('k8s-dev — namespace → category → resource drill-down and item viewer', async ({portal}) => {
     await openCommander(portal);
-    // `kube-system` always exists. Mask the namespace resourceVersion + uid
-    // columns (values differ per cluster); keep Name + Status.Phase visible.
+    // `kube-system` always exists. The source shows only the namespaces Kubernetes
+    // owns — its namespace level declares the whitelist (D-482) — so this shot needs
+    // no filter of its own: a cluster also lists whatever its own work created
+    // (`blong-suite`, `blong-system`, …), and that set differs from cluster to
+    // cluster. The two values that differ per cluster (resourceVersion, uid) are
+    // redacted rather than masked, so the shot still shows the columns they belong to
+    // and a reader can see that the table has an identity column; Name, Api Version,
+    // Kind and Status.Phase are visible either way.
     await selectSource(portal.page, 'Kubernetes', 'kube-system');
-    await expect(portal.page).toHaveScreenshot(
-        'explore-k8s-namespaces.png',
-        colsMask(portal.page, 2, 3),
-    );
+    await redactCells(portal.page, 4, 5);
+    await expect(portal.page).toHaveScreenshot('explore-k8s-namespaces.png');
     // Drill into the namespace → the resource categories (static labels).
     await openRowByText(portal.page, 'kube-system');
     await expect(
@@ -231,22 +256,30 @@ test('k8s-dev — namespace → category → resource drill-down and item viewer
     await expect(
         portal.page.locator('.p-datatable-tbody tr').filter({hasText: 'Pods'}).first(),
     ).toBeVisible({timeout: 15_000});
-    // Pods → the actual pods in the namespace (names/versions/uids are random
-    // per cluster → mask those columns; Namespace/DnsPolicy stay visible).
+    // Pods → the actual pods in the namespace. The table is filtered to one workload
+    // every cluster runs, so the shot does not depend on how many pods the cluster
+    // happens to carry. The pod's name keeps its prefix and redacts only the generated
+    // tail, and the identity columns (versions/uids) are redacted cell by cell, so the
+    // table keeps its shape; Namespace/DnsPolicy stay visible.
     await openRowByText(portal.page, 'Pods');
     await expect(dataRows(portal.page).first()).toBeVisible({timeout: 15_000});
-    await expect(portal.page).toHaveScreenshot(
-        'explore-k8s-pods.png',
-        colsMask(portal.page, 1, 2, 4, 5, 8),
-    );
+    await filterRows(portal.page, 'coredns');
+    await redactPageText(portal.page, [GENERATED_NAME_TAIL]);
+    await redactCells(portal.page, 4, 6, 7);
+    await expect(portal.page).toHaveScreenshot('explore-k8s-pods.png');
     // Drill into a pod → document viewer with the pod's fields (JSON values are
-    // environment-specific → mask the pretty-printed body, keep field count).
+    // environment-specific → mask the pretty-printed body, keep field count). The name
+    // read here is the redacted one, which is what the row now says.
     const firstPod = await dataRows(portal.page).first().locator('td').first().textContent();
     if (firstPod) {
         await openRowByText(portal.page, firstPod.trim());
         await expect(portal.page.locator('.blong-viewer-document')).toBeVisible({
             timeout: 15_000,
         });
+        // The drill renders a breadcrumb that names the pod, so the redaction has to
+        // follow it: the tree's labels are the nodes it opened, which were redacted
+        // before the tree was drawn.
+        await redactPageText(portal.page, [GENERATED_NAME_TAIL]);
         await expect(portal.page).toHaveScreenshot(
             'explore-k8s-pod.png',
             viewerJsonMask(portal.page),

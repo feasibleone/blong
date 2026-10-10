@@ -72,6 +72,13 @@ whatever it is given.
 - **The list** posts `{source, level, parent}` to `commander.branch.list`, which resolves the
   level's `list` triple and calls it. The handler flattens heterogeneous rows (a Kubernetes object
   and a SQL row are both objects) so one table can show either.
+- **What a level shows is declarable**, not only what its backend answers: `include` (a whitelist)
+  and `exclude` (a blacklist) hold regexes matched against the value the level displays —
+  `labelField`, else `keyField` — and the same handler applies them before it orders the rows. The
+  Kubernetes source uses it to show only the namespaces Kubernetes itself owns, because a cluster
+  also lists whatever its own work created there and that set differs from cluster to cluster, so an
+  unfiltered level made the tree read the cluster rather than the source. An absent or empty list
+  means every row the backend answered with.
 - **The filter** is client-side over the flattened row, and the columns are derived from the data —
   scalar fields only. Nothing per-backend is configured for a table to appear.
 - **Opening a node** is opt-in per level: a level with an `open` triple fetches the detail, a level

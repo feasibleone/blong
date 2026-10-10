@@ -44,6 +44,12 @@ export const sources: ICommanderSource[] = [
                 keyField: 'metadata.name',
                 labelField: 'metadata.name',
                 permission: 'k8sDev.namespace.list',
+                // The namespaces Kubernetes itself owns, whichever cluster this reads.
+                // A cluster also lists whatever its own work created there (`blong-suite`,
+                // `blong-system`, …), and that set differs from one cluster to the next,
+                // so an unfiltered level made the navigator tree, and the screenshots of
+                // it, read the cluster rather than the UI (D-482).
+                include: ['^default$', '^kube-'],
                 list: {method: 'k8s-dev.namespace.list', resultSet: 'items'},
             },
             {
@@ -100,7 +106,10 @@ export const sources: ICommanderSource[] = [
                 labelField: 'Key',
                 viewer: 'file',
                 permission: 's3Dev.object.list',
-                open: {method: 's3-dev.object.get', params: {bucket: '{parent.bucket}', key: '{Key}'}},
+                open: {
+                    method: 's3-dev.object.get',
+                    params: {bucket: '{parent.bucket}', key: '{Key}'},
+                },
                 list: {
                     method: 's3-dev.object.list',
                     resultSet: 'Contents',

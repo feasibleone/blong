@@ -1,3 +1,4 @@
+import {checkable} from '@feasibleone/blong-lint';
 import {execSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {dirname, join, relative} from 'node:path';
@@ -89,6 +90,14 @@ export async function lintStaged(): Promise<void> {
 
     if (byProject.size === 0 && memoryFiles.length === 0 && !glossaryStaged) return; // nothing to check
 
+    // A staged path owned by no Rush project is not linted by this hook at all: the repository
+    // root holds `cspell.config.yaml`, the skills and its own markdown, no package covers them,
+    // and `rush ci-lint` does not either. Naming them is the same rule as the skip below — a
+    // reader can only trust the lines the hook prints if it also prints what it did not check.
+    const unowned = stagedSources.filter(
+        file => !rushConfig.projects.some(project => file.startsWith(project.projectFolder + '/')),
+    );
+
     // Path to this blong-dev CLI binary (resolved from the compiled file's
     // real location so it works correctly even when invoked via symlink).
     const blongDevCli = fileURLToPath(new URL('../../bin/blong-dev.ts', import.meta.url));
@@ -124,14 +133,32 @@ export async function lintStaged(): Promise<void> {
     }
 
     for (const [projectFolder, files] of byProject) {
-        process.stderr.write(`\nblong-dev lint-staged: ${projectFolder} (${files.join(', ')})\n`);
+        // The staged set is whatever the author touched, and a committed path is not a lint
+        // argument: a `Dockerfile` or a `package.json` is something no tool here reads, and
+        // asking the linter about it made the hook refuse a legitimate commit. Only the
+        // checkable ones are handed over, and the ones left out are named rather than
+        // dropped — the same "nothing was checked" trap `core/blong-lint` was fixed for in
+        // F-327, met from the other side: a skip has to be visible, never silent.
+        const checkableFiles = files.filter(file => checkable(file));
+        const unread = files.filter(file => !checkable(file));
+        if (checkableFiles.length === 0) {
+            process.stderr.write(`\nblong-dev lint-staged: ${projectFolder} — nothing to lint\n`);
+            process.stderr.write(`  · no tool reads: ${unread.join(', ')}\n`);
+            continue;
+        }
+        process.stderr.write(
+            `\nblong-dev lint-staged: ${projectFolder} (${checkableFiles.join(', ')})\n`,
+        );
+        if (unread.length > 0) {
+            process.stderr.write(`  · no tool reads: ${unread.join(', ')}\n`);
+        }
         const pkgDir = join(repoRoot, projectFolder);
         // Prepend the package's own node_modules/.bin so it can find tsc/cspell/eslint
         const env: NodeJS.ProcessEnv = {
             ...process.env,
             PATH: [join(pkgDir, 'node_modules', '.bin'), process.env['PATH'] ?? ''].join(PATH_SEP),
         };
-        const code = await runTool(process.execPath, [blongDevCli, 'lint', ...files], {
+        const code = await runTool(process.execPath, [blongDevCli, 'lint', ...checkableFiles], {
             cwd: pkgDir,
             env,
         });
@@ -139,6 +166,11 @@ export async function lintStaged(): Promise<void> {
             process.stderr.write(`blong-dev lint-staged: FAILED ${projectFolder} (exit ${code})\n`);
             failed = true;
         }
+    }
+
+    if (unowned.length > 0) {
+        process.stderr.write('\nblong-dev lint-staged: outside every package\n');
+        process.stderr.write(`  · not linted by this hook: ${unowned.join(', ')}\n`);
     }
 
     if (failed) process.exit(1);

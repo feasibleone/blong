@@ -93,7 +93,7 @@ tree that has always been deployed. The comment in the file now says this, so th
 not repeat the experiment.
 
 Superseded by the simpler fix the user proposed: the block is gone, and so are the explicit children
-that made it necessary. Removing children: ['./orchestrator', './gateway'] lets layer discovery see
-the folders, so the table's k8s column activates them and the realm's own microservice and k8s
+that made it necessary. Removing children: `['./orchestrator', './gateway']` lets layer discovery
+see the folders, so the table's k8s column activates them and the realm's own microservice and k8s
 blocks are redundant. The generated suite tree is byte-identical, which is the check that the
 earlier experiment lacked.

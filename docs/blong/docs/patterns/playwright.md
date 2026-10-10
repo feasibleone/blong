@@ -225,6 +225,38 @@ await expect(portal.page).toHaveScreenshot('page-name.png', {
 // node --run playwright:update
 ```
 
+### Redacting a value instead of masking a cell
+
+`mask` paints an element's box. That is right when the whole cell is noise, and wrong as soon as
+part of it is the point: painting a Kubernetes identity column hides the column as well as the
+value, and painting a Name column hides the workload the table is about. When only a substring
+varies, redact the substring instead — every match becomes `###`, and the layout, the columns and
+the headers stay as they are.
+
+```typescript
+import {redactPageText} from '@feasibleone/blong-browser/playwright/redact';
+
+// A pod is `coredns-5d78c9869d-4tm59`: keep the workload, hide the generated tail.
+await redactPageText(portal.page, [/(?<=-)[a-z0-9]{9,10}-[a-z0-9]{5}\b/g]);
+await expect(portal.page).toHaveScreenshot('pods.png');
+
+// Or name a cell whose whole value is random, leaving its column and header in place.
+await redactPageText(portal.page, [/^.+$/], {
+    within: '.p-datatable-tbody td:nth-child(4)',
+});
+```
+
+Three properties decide how a call is written:
+
+- A **string** pattern is matched literally, a **RegExp** as a pattern — and a pattern written
+  without `g` gets one, because hiding the first occurrence only is never what a caller means.
+- The rewrite is per **text node**: a value split across elements is two texts, and neither matches
+  a pattern written for the whole.
+- It lasts for the **rest of the test** (each test has its own page) and rewrites only text that is
+  already on the page. A breadcrumb rendered by the very drill the shot is about needs its own call
+  after that navigation, and a step that looks a row up by name (`openRowByText(name)`) has to read
+  the name _after_ the redaction, so it asks for what the row now says.
+
 ## Portal Helper Pattern
 
 The Portal class provides high-level methods. Use these instead of raw selectors:

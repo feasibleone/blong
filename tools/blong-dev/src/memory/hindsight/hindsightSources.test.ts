@@ -55,7 +55,7 @@ t.test('parseSources reads a comma list and refuses anything else', t => {
 
 t.test('sourceTags names the tags a reconcile owns', t => {
     t.same(sourceTags(['entry']), [SOURCE_TAG.entry], 'the entry stream');
-    t.same(sourceTags(['docs', 'skill']), ['type:documentation', 'type:agent-skill'], 'the pages');
+    t.same(sourceTags(['docs', 'skill']), ['kind:documentation', 'kind:agent-skill'], 'the pages');
     t.end();
 });
 

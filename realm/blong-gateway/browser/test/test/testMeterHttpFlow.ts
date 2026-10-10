@@ -100,7 +100,13 @@ export default handler(
                                     actions: 'meterprobe.rate',
                                     baseMonthlyCredits: 1000,
                                     rateLimit: 2,
-                                    rateWindowSec: 60,
+                                    // An hour, not the minute a real bundle would use: the counter is
+                                    // keyed by the window it falls in, so a probe whose three calls
+                                    // straddle a boundary reads a fresh counter and the third call is
+                                    // allowed (F-454). The window length is not what this test
+                                    // asserts — only that the third call of three is blocked — so a
+                                    // window that cannot roll during the probe is the honest fixture.
+                                    rateWindowSec: 3600,
                                     isActive: true,
                                 },
                                 'Meter Probe Credit': {

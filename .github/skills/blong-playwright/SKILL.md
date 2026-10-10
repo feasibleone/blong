@@ -149,6 +149,17 @@ exactly like a login form that never appeared.
 
 - `openPages` states a realm's pages as a list; `searchText` pins the rows a capture should show and
   `mask` hides the cells whose value cannot repeat (a minted id, a wall clock).
+- **A mask hides a cell; redaction hides a value.** `mask` paints the element's box, which is right
+  when the whole cell is noise — and wrong as soon as part of it is the point: painting an identity
+  column hides the column and its header along with the value, and painting a Name column hides the
+  workload the table is about. `redactPageText(page, patterns)` (from
+  `blong-browser/playwright/redact`) replaces every match with `###` in place, so the layout, the
+  columns and the headers survive. A string pattern is matched literally, a `RegExp` as a pattern
+  (and gains `g` when you leave it off). It rewrites text that is already on the page, so a
+  breadcrumb a drill renders needs its own call after that navigation, and a step that looks a row
+  up by name must read the name _after_ the redaction. `browseModel`, `createAndEditModel` and
+  `cleanupModel` take the same list as a `redact` option and apply it before every capture they
+  take.
 - **`searchText` pins _which_ rows, not _how many_.** A table that grows during a run — a change
   digest, a list of what has been observed so far — cannot be captured whole however well it is
   filtered: the row count alone differs run to run. Give that page a `region` and capture the row it
@@ -158,6 +169,11 @@ exactly like a login form that never appeared.
   text reads the same whether it is right or wrong.
 - Never regenerate baselines to make a suite green: `--update-snapshots=all` bakes in whatever the
   pages showed, including an error dialog. Open the images.
+- **The passing comparison is the quiet one.** An update request rewrites only the snapshots that
+  failed, so a baseline that is stale but inside `maxDiffPixelRatio` survives it — a shot whose tree
+  still named rows the source had stopped listing looked regenerated and was not. When the page
+  really did change, ask for `--update-snapshots=all` (or delete the file first) and then read the
+  new image.
 - `captureDiagram` (from `blong-browser/playwright/diagram`) screenshots a rendered diagram and
   writes its mermaid text to a committed markdown artifact, read from the renderer's
   `data-diagram-text` when the caller does not supply it. Artifacts are rewritten only with
@@ -386,6 +402,9 @@ Options:
 - `subject` — realm subject name
 - `object` — entity object name
 - `searchText` — optional text to type in the browse search input before the capture
+- `redact` — optional patterns applied before that capture, for a column whose header and place in
+  the table are worth keeping while its value is not (see the redaction note under _Writing page
+  specs_)
 
 ### `createAndEditModel(test, expect, options)`
 
@@ -401,6 +420,8 @@ Options:
 - `editInCreate` — whether the create test also applies `editFields` right after save in the same
   tab (default `true`; set `false` when the created record must keep its create default so the edit
   test can change a non-text field like a date to a distinct value)
+- `redact` — volatile substrings redacted (`###`) before every capture this helper takes: a minted
+  id, a wall clock, the generated tail of a name whose prefix is the point
 
 Field values can be plain strings, numbers, or booleans — the widget type is **auto-detected** from
 `blong-*` CSS classes in the DOM:
@@ -557,6 +578,10 @@ for the `integration` intent.
 12. **Let auto-detection work** — prefer plain field values over explicit
     `{widget: ..., value: ...}` objects. Auto-detection from `blong-*` CSS classes is accurate and
     keeps tests concise.
+13. **Redact a volatile value rather than mask its cell** — `redact` (`browseModel`,
+    `createAndEditModel`) or `redactPageText` keeps the column, its header and the table's shape in
+    the baseline and says `###` where the random value was; `mask` is for a cell that is noise
+    through and through.
 
 ## Observing UI Errors in the Browser Console
 
@@ -661,6 +686,7 @@ core/blong-browser/
 │   ├── playwright.ts              # Fixtures, Portal class, test export
 │   └── playwright/
 │       ├── config.ts              # defineBlongConfig() shared configuration
-│       └── model.ts               # Generic CRUD test helpers
-└── package.json                   # exports: ./playwright, ./playwright/config, ./playwright/model
+│       ├── model.ts               # Generic CRUD test helpers
+│       └── redact.ts              # Redact volatile text before a capture
+└── package.json                   # exports: ./playwright, its config, model and redact
 ```

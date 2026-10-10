@@ -69,6 +69,7 @@ open (43)
 - config hot reload log level
 - blong operator should log the deployment details
 - produce FAQ
+- kukum has no library-function primitive
 - reduce long comments in code with full cross references to memory and short descriptions
 - avoid the method naming pitfall that fails to find local method when using the dot notation (try
   to disable this notation)
