@@ -9,7 +9,7 @@
 import type {ICoverage} from './coverage.ts';
 import {lineCoveragePct} from './coverage.ts';
 import {readJson} from './jsonFile.ts';
-import {reportDurationMs, type IReport} from './reportTypes.ts';
+import {reportDurationMs, reportTestDurationMs, type IReport} from './reportTypes.ts';
 
 export interface ITestTotals {
     total: number;
@@ -17,11 +17,23 @@ export interface ITestTotals {
     failed: number;
     flaky: number;
     /**
-     * Test time of the run, when any runner measured one. Optional because a baseline
-     * committed before durations were collected has no such field, and a report is
+     * The run's own clock, every runner's slice as that runner measured it. Optional because
+     * a baseline committed before durations were collected has no such field, and a report is
      * expected to render without one rather than invent a delta.
+     *
+     * It carries whatever a run waited for — a service, a dev server, a browser — so it is
+     * context beside `testsMs` rather than the number to compare. A run that waited six
+     * minutes read as a six-minute regression until the two were told apart.
      */
     durationMs?: number;
+    /**
+     * The time the tests themselves carried, summed from their own durations: the number a
+     * delta belongs on, and the same kind of measurement whatever the runner.
+     *
+     * Added after `durationMs`, so a baseline written before it simply has nothing to compare
+     * against and the report says no delta rather than a wrong one.
+     */
+    testsMs?: number;
 }
 
 export interface IHistoryEntry {
@@ -38,8 +50,10 @@ export interface IPackageMetrics {
         failed: number;
         flaky: number;
         total: number;
-        /** Test time of every runner of the package, when one was measured. */
+        /** The run's own clock, every runner of the package as that runner measured it. */
         durationMs?: number;
+        /** The tests of the package, summed from their own durations. */
+        testsMs?: number;
     };
     coverage?: {linesHit: number; linesTotal: number};
 }
@@ -88,11 +102,13 @@ export function buildMetricsSnapshot(
 
     for (const report of reports) {
         const durationMs = reportDurationMs(report);
+        const testsMs = reportTestDurationMs(report);
         totals.total += report.counts.total;
         totals.passed += report.counts.passed;
         totals.failed += report.counts.failed;
         totals.flaky += report.counts.flaky;
         totals.durationMs = (totals.durationMs ?? 0) + durationMs;
+        if (testsMs > 0) totals.testsMs = (totals.testsMs ?? 0) + testsMs;
         packages[report.package] = {
             ...packages[report.package],
             tests: {
@@ -101,6 +117,7 @@ export function buildMetricsSnapshot(
                 flaky: report.counts.flaky,
                 total: report.counts.total,
                 ...(durationMs > 0 ? {durationMs} : {}),
+                ...(testsMs > 0 ? {testsMs} : {}),
             },
         };
     }

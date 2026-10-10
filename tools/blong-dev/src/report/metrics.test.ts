@@ -8,7 +8,8 @@
 import {test} from 'tap';
 
 import type {ICoverage} from './coverage.ts';
-import {coverageMovers, type IMetrics} from './metrics.ts';
+import {buildMetricsSnapshot, coverageMovers, type IMetrics} from './metrics.ts';
+import {reportOf} from './reportTypes.ts';
 
 function coverageOf(packages: Record<string, [number, number]>): ICoverage {
     const map = new Map<string, {hit: number; found: number}>();
@@ -37,6 +38,46 @@ function baselineOf(packages: Record<string, [number, number]>): IMetrics {
         packages: metrics,
     };
 }
+
+test('the snapshot keeps the run time and the tests time apart', t => {
+    // A delta belongs on the tests' time: the run's own clock also holds whatever it waited
+    // for, so comparing that to a baseline reports a slow service as a slow test surface.
+    const report = reportOf({package: 'blong-party', path: 'realm/blong-party'}, [
+        {
+            runner: 'tap',
+            status: 'passed',
+            counts: {total: 2, passed: 2, failed: 0, flaky: 0, skipped: 0, todo: 0},
+            durationMs: 522_559,
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            suites: [
+                {
+                    name: 'party.test.ts',
+                    status: 'passed',
+                    counts: {total: 2, passed: 2, failed: 0, flaky: 0, skipped: 0, todo: 0},
+                    tests: [
+                        {name: 'is quick', status: 'passed', durationMs: 9},
+                        {name: 'is slower', status: 'passed', durationMs: 4100},
+                    ],
+                },
+            ],
+        },
+    ]);
+    const snapshot = buildMetricsSnapshot([report], null);
+
+    t.equal(
+        snapshot.packages['blong-party']?.tests?.testsMs,
+        4109,
+        'the tests are the comparable number',
+    );
+    t.equal(
+        snapshot.packages['blong-party']?.tests?.durationMs,
+        522_559,
+        'and the run time stays beside it as context',
+    );
+    t.equal(snapshot.tests.testsMs, 4109, 'the totals carry the tests time');
+    t.equal(snapshot.tests.durationMs, 522_559, 'and the run time');
+    t.end();
+});
 
 test('coverageMovers ranks by how far a package moved', t => {
     const movers = coverageMovers(

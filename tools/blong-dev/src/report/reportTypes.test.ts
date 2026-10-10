@@ -10,9 +10,13 @@ import {test} from 'tap';
 import {
     formatDurationDeltaMs,
     formatDurationMs,
+    OUTSIDE_TESTS_MATERIAL_MS,
+    outsideTestsMs,
     reportDurationMs,
     reportOf,
+    reportTestDurationMs,
     runDurationMs,
+    runTestDurationMs,
     slowestTests,
     type IRunReport,
 } from './reportTypes.ts';
@@ -122,5 +126,37 @@ test('formatDurationDeltaMs signs a change in test time', t => {
     t.equal(formatDurationDeltaMs(15_200), '+15s', 'a run that got slower');
     t.equal(formatDurationDeltaMs(-3800), '-3.8s', 'and one that got faster');
     t.equal(formatDurationDeltaMs(0), '0s', 'unchanged reads as zero, not as +0ms');
+    t.end();
+});
+
+test('a run that waited is not a test that slowed', t => {
+    // The shape the report got wrong: tap measures its process, so a package whose fixture
+    // waited six minutes read as a package whose tests had got six minutes slower, while its
+    // cases carried the same two minutes the baseline held (blong-party, build 598).
+    const waited = reportOf({package: 'blong-party', path: 'realm/blong-party'}, [
+        run({durationMs: 522_559}),
+    ]);
+
+    t.equal(runTestDurationMs(run()), 4109, 'the cases of a run, added up');
+    t.equal(reportTestDurationMs(waited), 4109, 'the cases carried four seconds');
+    t.equal(reportDurationMs(waited), 522_559, 'the run took eight minutes and a half');
+    t.equal(outsideTestsMs(waited), 518_450, 'and the rest is what it waited for');
+    t.ok(
+        outsideTestsMs(waited) >= OUTSIDE_TESTS_MATERIAL_MS,
+        'a figure big enough for a report to say out loud',
+    );
+    t.end();
+});
+
+test('a runner that timed each test has nothing outside them', t => {
+    const timed = reportOf({package: 'blong-lib', path: 'core/blong-lib'}, [run()]);
+
+    t.equal(reportTestDurationMs(timed), 4109, 'the tests, added up');
+    t.equal(
+        reportDurationMs(timed),
+        4109,
+        'the run is its tests when no process clock was reported',
+    );
+    t.equal(outsideTestsMs(timed), 0, 'so no waiting is claimed');
     t.end();
 });

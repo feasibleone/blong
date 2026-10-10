@@ -259,6 +259,21 @@ export function describeCounts(counts: ITestCounts): string {
  */
 export function runDurationMs(run: IRunReport): number {
     if (typeof run.durationMs === 'number') return run.durationMs;
+    return runTestDurationMs(run);
+}
+
+/**
+ * What the *tests* of one run carried, summed from their own durations.
+ *
+ * The runner's own clock is the tempting number and the misleading one. tap measures its
+ * process, so a hook that waits for a service, a dev server starting and a browser
+ * launching all land in it: a package that waited six minutes reads as a package that got
+ * six minutes slower, which is what made one CI report claim a regression its test cases
+ * did not have (blong-party, whose run took 8m42s while its cases carried 2m09s). The
+ * tests' own durations are what a regression in the test surface moves, and they are the
+ * same kind of measurement whatever the runner, so they are the ones a baseline compares.
+ */
+export function runTestDurationMs(run: IRunReport): number {
     let total = 0;
     for (const suite of run.suites) {
         for (const test of suite.tests) total += test.durationMs ?? 0;
@@ -267,16 +282,40 @@ export function runDurationMs(run: IRunReport): number {
 }
 
 /**
- * What the package cost in this cycle: every runner's slice added up.
+ * What the package cost this cycle: every runner's slice added up.
  *
  * Added rather than overlapped because a package's runners run one after the other
- * (`blong-dev test && blong-dev playwright`), so this is the package's own test
- * time — not the wall clock of a CI job, which also depends on how packages are
- * spread over runners.
+ * (`blong-dev test && blong-dev playwright`), so this is the package's own run time — not
+ * the wall clock of a CI job, which also depends on how packages are spread over runners.
+ * It is the *run* time and not the tests' (see `reportTestDurationMs`): what a run waited
+ * for is in here, and that is the whole reason both numbers are kept.
  */
 export function reportDurationMs(report: IReport): number {
     return report.runs.reduce((sum, run) => sum + runDurationMs(run), 0);
 }
+
+/** The tests of every runner of the package, added up, as `reportDurationMs` does for runs. */
+export function reportTestDurationMs(report: IReport): number {
+    return report.runs.reduce((sum, run) => sum + runTestDurationMs(run), 0);
+}
+
+/**
+ * The part of a run the tests did not carry — hooks, a dev server, a browser, a wait.
+ *
+ * Named so a report can say it out loud: a large figure here is a slow *run*, not a slow
+ * test surface, and the two call for different work.
+ */
+export function outsideTestsMs(report: IReport): number {
+    return Math.max(0, reportDurationMs(report) - reportTestDurationMs(report));
+}
+
+/**
+ * When the time outside the tests is worth a reader's attention: a minute.
+ *
+ * Below it the figure is scheduling noise on a shared runner, and naming it in every row
+ * would cost more than it says.
+ */
+export const OUTSIDE_TESTS_MATERIAL_MS = 60_000;
 
 /** The longest tests of one run, most expensive first (ties keep report order). */
 export function slowestTests(run: IRunReport, limit: number): ITestEntry[] {

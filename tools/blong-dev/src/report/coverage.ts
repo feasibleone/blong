@@ -6,7 +6,17 @@
 import {existsSync, readFileSync} from 'node:fs';
 
 /** Category folders that sit above a package folder in this repository. */
-const CATEGORIES = new Set(['app', 'core', 'ext', 'library', 'realm', 'suite', 'demo', 'test', 'tools']);
+const CATEGORIES = new Set([
+    'app',
+    'core',
+    'ext',
+    'library',
+    'realm',
+    'suite',
+    'demo',
+    'test',
+    'tools',
+]);
 
 export interface ILinesCoverage {
     hit: number;

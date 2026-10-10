@@ -33,7 +33,9 @@ import {
     describeCounts,
     formatDurationMs,
     isProblem,
-    reportDurationMs,
+    OUTSIDE_TESTS_MATERIAL_MS,
+    outsideTestsMs,
+    reportTestDurationMs,
     runDurationMs,
     statusIcon,
     type IReport,
@@ -84,11 +86,15 @@ function problemsOf(report: IReport): Array<ITestEntry & {runner: string}> {
 
 /** The one-line result the page's heading carries, `🔴` when anything failed. */
 function headline(report: IReport): string {
-    const duration = reportDurationMs(report);
+    // The tests' own time, with the rest of the run named beside it: a page that reported the
+    // run's clock as the package's test time advertised a regression a wait had caused.
+    const tests = reportTestDurationMs(report);
+    const outside = outsideTestsMs(report);
     return (
         `${escapeHtml(report.package)} ${statusIcon(report.status)} ` +
         `${describeCounts(report.counts)} (${report.counts.total} total)` +
-        `${duration > 0 ? ` · ${formatDurationMs(duration)}` : ''}`
+        `${tests > 0 ? ` · ${formatDurationMs(tests)} of tests` : ''}` +
+        `${outside >= OUTSIDE_TESTS_MATERIAL_MS ? ` (${formatDurationMs(outside)} outside them)` : ''}`
     );
 }
 

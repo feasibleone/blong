@@ -115,6 +115,19 @@ test('writePackagePage renders the report.json the runner left', async t => {
     t.end();
 });
 
+test('renderPackagePage reports the tests, and what the run waited for', async t => {
+    const timed = reportOf();
+    const html = renderPackagePage(reportOf({runs: [{...timed.runs[0], durationMs: 522_559}]}));
+
+    t.match(html, /of tests/, 'the heading says whose time the figure is');
+    t.match(
+        html,
+        /8m 41s outside them/,
+        'and names what the run waited for beside it, rather than adding it to the tests',
+    );
+    t.end();
+});
+
 test('writePackagePage writes nothing for a package with no report', async t => {
     const cwd = mkdtempSync(join(tmpdir(), 'blong-package-page-'));
 

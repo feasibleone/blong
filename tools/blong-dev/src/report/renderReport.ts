@@ -28,7 +28,11 @@ import {metricsCoveragePct, type IMetrics} from './metrics.ts';
 import {
     formatDurationDeltaMs,
     formatDurationMs,
+    OUTSIDE_TESTS_MATERIAL_MS,
+    outsideTestsMs,
     reportDurationMs,
+    reportTestDurationMs,
+    runTestDurationMs,
     slowestTests,
     statusIcon,
     type IReport,
@@ -111,7 +115,8 @@ function runnerSplit(report: IReport | undefined): string {
     if (!report || report.runs.length < 2) return '';
     const parts = report.runs.map(run => {
         const failed = run.counts.failed > 0 ? ' ❌' : '';
-        return `${run.runner} ${fmtCount(run.counts.total)}${failed}`;
+        const ms = runTestDurationMs(run);
+        return `${run.runner} ${fmtCount(run.counts.total)}${ms > 0 ? ` ${formatDurationMs(ms)}` : ''}${failed}`;
     });
     return ` (${parts.join(' · ')})`;
 }
@@ -135,10 +140,10 @@ function runnerTotals(reports: readonly IReport[]): Map<string, IRunnerTotal> {
     return totals;
 }
 
-/** `1m 02s` per package, the five most expensive first. */
+/** `1m 02s` of tests per package, the five most expensive first. */
 function slowestPackages(reports: readonly IReport[]): Array<{pkg: string; ms: number}> {
     return reports
-        .map(report => ({pkg: report.package, ms: reportDurationMs(report)}))
+        .map(report => ({pkg: report.package, ms: reportTestDurationMs(report)}))
         .filter(entry => entry.ms > 0)
         .sort((left, right) => right.ms - left.ms || left.pkg.localeCompare(right.pkg))
         .slice(0, MAX_RANKED_ROWS);
@@ -283,19 +288,27 @@ export function renderCiReport(options: IRenderOptions): string {
     lines.push('## CI Summary', '');
     const flakyText = flaky > 0 ? `, ${flaky} flaky` : '';
     const runText = options.run ? ` — build #${options.run}` : '';
-    // Wall clock is the sum of every package's test time, not the job's: how the
-    // packages are spread over job runners is the workflow's business, and this
-    // number is the one that moves when a package gets slower.
-    const testTime = reports.reduce((sum, report) => sum + reportDurationMs(report), 0);
-    const baselineDuration = baseline?.tests.durationMs;
+    // Two numbers, told apart on purpose. The tests' own time is what moves when the test
+    // surface grows or slows, so it is the one compared to the baseline; the runs spent
+    // the rest waiting — for a service, a dev server, a browser — and that part is named
+    // beside it rather than summed into it. Calling the sum of the runs "test time" is how
+    // a package that waited six minutes read as a six-minute regression.
+    const testTime = reports.reduce((sum, report) => sum + reportTestDurationMs(report), 0);
+    const outsideTime = reports.reduce((sum, report) => sum + outsideTestsMs(report), 0);
+    const baselineTestsMs = baseline?.tests.testsMs;
     const durationDelta =
-        testTime > 0 && typeof baselineDuration === 'number'
-            ? ` (${formatDurationDeltaMs(testTime - baselineDuration)})`
+        testTime > 0 && typeof baselineTestsMs === 'number'
+            ? ` (${formatDurationDeltaMs(testTime - baselineTestsMs)})`
             : '';
     lines.push(
         `**${reports.length} package(s) · ${fmtCount(passed)} passed, ${fmtCount(failed)} failed` +
             `${flakyText} (${fmtCount(tests)} total)` +
-            `${testTime > 0 ? ` · ${formatDurationMs(testTime)}${durationDelta} of test time` : ''}**${runText}`,
+            `${testTime > 0 ? ` · ${formatDurationMs(testTime)}${durationDelta} of test time` : ''}` +
+            `${
+                outsideTime >= OUTSIDE_TESTS_MATERIAL_MS
+                    ? `, ${formatDurationMs(outsideTime)} outside the tests`
+                    : ''
+            }**${runText}`,
     );
 
     // How the suite divides between the runners. Only worth a line when a package
@@ -420,14 +433,20 @@ export function renderCiReport(options: IRenderOptions): string {
             cells.push('—');
         }
         if (showDuration) {
-            const ms = row.report ? reportDurationMs(row.report) : 0;
+            const ms = row.report ? reportTestDurationMs(row.report) : 0;
             if (ms === 0) cells.push('—');
             else {
-                const beforeMs = before?.tests?.durationMs;
+                const beforeMs = before?.tests?.testsMs;
+                const outside = row.report ? outsideTestsMs(row.report) : 0;
                 const slow = slowest.get(row.package);
                 cells.push(
                     `${formatDurationMs(ms)}` +
                         `${typeof beforeMs === 'number' ? ` (${formatDurationDeltaMs(ms - beforeMs)})` : ''}` +
+                        `${
+                            outside >= OUTSIDE_TESTS_MATERIAL_MS
+                                ? ` (+${formatDurationMs(outside)} outside)`
+                                : ''
+                        }` +
                         `${slow ? ` ⏱️ ${shorten(slow.name, MAX_CELL_TEST_NAME)} ${formatDurationMs(slow.durationMs ?? 0)}` : ''}`,
                 );
             }

@@ -22,7 +22,7 @@ wait_for_mysql() {
     if [ -n "$pod" ] && \
        kubectl -n "${ns}" exec "$pod" -- mysqladmin ping -h localhost -u blong-admin -ppassword --silent >/dev/null 2>&1 && \
        kubectl -n "${ns}" exec "$pod" -- mysql -h localhost -u blong-admin -ppassword -e "SELECT 1" >/dev/null 2>&1; then
-      echo "MySQL is ready (accepting queries for blong-admin)."
+      echo "MySQL is ready (accepting queries for blong-admin) after ${wait_elapsed}s."
       return 0
     fi
     echo "MySQL not ready yet... ${wait_elapsed}s elapsed"
@@ -63,7 +63,9 @@ while [ $elapsed -lt $timeout ]; do
   done
 
   if [ "$available" -eq "$total" ]; then
-    echo "All ${total} deployments are ready."
+    # The wait is the caller's dead time, not the tests': naming what it cost is what lets a
+    # reader tell a slow service from a slow test run in a job that only reports one number.
+    echo "All ${total} deployments are ready after ${elapsed}s."
     break
   fi
 

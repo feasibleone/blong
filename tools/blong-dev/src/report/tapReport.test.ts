@@ -26,7 +26,7 @@ test('tapInvocation asks a captured run for its report and keeps a watched one l
     t.same(
         tapInvocation('/pkg/.ci-report/tap.json', '/pkg/.ci-report/tap.raw.tap', args, true),
         args,
-        'a watched run is given only the caller\'s arguments: their reporter is the live one',
+        "a watched run is given only the caller's arguments: their reporter is the live one",
     );
     t.end();
 });
