@@ -195,17 +195,18 @@ export const withItemIdentity = (answer: unknown, resourceType: string): unknown
 };
 
 /**
- * The body of an update: what the manifest asks for, plus the fields the server owns and a manifest cannot express.
+ * The body of an update: what the manifest asks for, plus the fields the server owns and a manifest
+ * cannot express.
  *
- * `apply` reads the object before it writes it, and that read is the only place those
- * fields are visible. A `spec` key the manifest does not name is either absent because nobody
- * asked for it — the server defaulted it — or because the server *assigned* it, and a replace that
- * omits it asks the API to clear it. For most fields that is allowed and lands back on the same
- * default, which is why a blind replace passes unnoticed; for the immutable ones it is refused, and
- * the object can then never be applied again. A bound `PersistentVolumeClaim` is the case that found
+ * `apply` reads the object before it writes it, and that read is the only place those fields are
+ * visible. A `spec` key the manifest does not name is either absent because nobody asked for
+ * it — the server defaulted it — or because the server *assigned* it, and a replace that omits
+ * it asks the API to clear it. For most fields that is allowed and lands back on the same default,
+ * which is why a blind replace passes unnoticed; for the immutable ones it is refused, and the
+ * object can then never be applied again. A bound `PersistentVolumeClaim` is the case that found
  * this in the kustomize e2e: its `volumeName` is assigned when the claim binds and its
- * `storageClassName` is defaulted at creation, the manifest names neither, and every pass after the
- * first was refused with `spec is immutable after creation` (status 422) — the release never
+ * `storageClassName` is defaulted at creation, the manifest names neither, and every pass after
+ * the first was refused with `spec is immutable after creation` (status 422) — the release never
  * reported Ready over two fields the tree had no opinion about.
  *
  * The merge stops at the first level under `spec` on purpose. That is where the server-owned fields
