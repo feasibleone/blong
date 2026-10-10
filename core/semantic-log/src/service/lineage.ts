@@ -130,6 +130,67 @@ interface TraceBucket {
     records: TraceRecord[];
     /** The `sequence` value at the last `add` into this trace; greater is more recent. */
     touched: number;
+    /**
+     * The rank at which this trace first entered `byTrace`, which is the order
+     * `traceIds()` lists traces in — and therefore the first thing `closest()`
+     * breaks an equal-distance tie by, so its answer never depends on the order
+     * the fingerprint index happens to hold its candidates in.
+     */
+    order: number;
+}
+
+/**
+ * A retained node under its fingerprint, with the rank of its trace at the
+ * `add` that indexed it.
+ *
+ * The rank is copied rather than looked up through `byTrace` at read time: a
+ * trace's rank never changes while it is retained — only re-entering after its
+ * bucket was emptied or evicted takes a new one, and that cannot happen to a
+ * node the index still holds — so the copy is exact, and `closest()` needs no
+ * lookup and no unanswerable "what if the bucket is gone" branch.
+ */
+interface FingerprintRecord {
+    node: LineageNode;
+    order: number;
+}
+
+/**
+ * The order a trace's listing is kept in: by the record's time first, so a
+ * reader sees a trace's records in the order they happened, then by id, so two
+ * records sharing a millisecond still have one stable order however they
+ * arrived. Every comparison in this file goes through it, so the listing, the
+ * insert that places a record in it and `closest()` cannot disagree about what
+ * "before" means.
+ */
+function compareNodes(a: LineageNode, b: LineageNode): number {
+    return a.time - b.time || a.id.localeCompare(b.id);
+}
+
+/**
+ * Where a record belongs in a listing kept in `compareNodes` order, found by
+ * bisection.
+ *
+ * `add` used to push the record and then re-`sort()` the whole bucket. A profile
+ * of `realm/blong-party`'s browser leg caught that as 44% of the run: the cap is
+ * 256 records, so every `add` re-ran the comparator about 256·log₂ 256 times,
+ * where the record's place is 8 comparisons away. This is the same comparison on
+ * the same array — only the search changed.
+ *
+ * An equal record goes *after* the one already there (`<= 0` moves right), which
+ * is where a stable sort leaves equal keys.
+ */
+function insertIndex(records: TraceRecord[], record: TraceRecord): number {
+    let low = 0;
+    let high = records.length;
+    while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (compareNodes(records[mid].node, record.node) <= 0) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    return low;
 }
 
 /**
@@ -172,10 +233,21 @@ interface TraceBucket {
 export class LineageIndex {
     private readonly nodes = new Map<string, LineageNode>();
     private readonly byTrace = new Map<string, TraceBucket>();
+    /**
+     * Retained nodes by `fingerprint` — the index correlation resolves an anomaly
+     * against. Before it existed, `traceOf` walked every record of every retained
+     * trace *per anomaly*, through `trace()`, which hands out a freshly copied
+     * listing each time; a profile of the party suite put a quarter of the run
+     * there. Nothing is retained here that the walk index does not hold: the two
+     * are written and forgotten together.
+     */
+    private readonly byFingerprint = new Map<string, FingerprintRecord[]>();
     private readonly traceLimit: number;
     private readonly recordLimit: number;
     /** Monotonic recency source, so `touched` is a total order however the clock behaves. */
     private sequence = 0;
+    /** Monotonic rank source for `TraceBucket.order`. */
+    private traceRank = 0;
     private evictionCount = 0;
     private truncationCount = 0;
 
@@ -204,7 +276,36 @@ export class LineageIndex {
      * caller; this makes it an empty bucket.
      */
     private bucketOf(trace: string): TraceBucket {
-        return this.byTrace.get(trace) ?? {records: [], touched: 0};
+        return this.byTrace.get(trace) ?? {records: [], touched: 0, order: 0};
+    }
+
+    /**
+     * Drop a node from the fingerprint index, pruning the fingerprint when its
+     * last candidate goes — the same hygiene `add` applies to an emptied trace
+     * bucket — so the index cannot accumulate fingerprints that hold nothing.
+     *
+     * Removal is by identity, for the reason the listing's removal is (see `add`).
+     */
+    private unindex(node: LineageNode): void {
+        if (node.fingerprint === undefined) return;
+        const candidates = this.byFingerprint.get(node.fingerprint) ?? [];
+        const remaining = candidates.filter(candidate => candidate.node !== node);
+        if (remaining.length === 0) {
+            this.byFingerprint.delete(node.fingerprint);
+        } else {
+            this.byFingerprint.set(node.fingerprint, remaining);
+        }
+    }
+
+    /**
+     * Drop a node from both indexes at once, which is the only way either of them
+     * ever loses a record: `add`'s replacement, the record cap and the trace cap
+     * all go through here, so the walk index and the fingerprint index cannot
+     * drift apart and leave `closest()` answering with an evicted node.
+     */
+    private forget(node: LineageNode): void {
+        this.unindex(node);
+        this.nodes.delete(node.id);
     }
 
     /**
@@ -255,6 +356,10 @@ export class LineageIndex {
             // turns an absent bucket into a fresh one instead of an unchecked cast.
             const bucket = this.bucketOf(previous.trace);
             const remaining = bucket.records.filter(candidate => candidate.node !== previous);
+            // The replaced node leaves the fingerprint index with its listing: the
+            // two indexes hold the same records, and a stale candidate would let
+            // `closest()` name a node the walk index no longer has.
+            this.unindex(previous);
             if (remaining.length === 0) {
                 this.byTrace.delete(previous.trace);
             } else {
@@ -267,16 +372,22 @@ export class LineageIndex {
         // The monotonic sequence stamped at this `add`, reused as the bucket's
         // recency so the two caps order by the same clock — the arrival counter.
         const seq = ++this.sequence;
-        bucket.records.push({node, seq});
-        // `id` breaks a timestamp tie so one trace has a stable order however
-        // the records arrived: two records can share a millisecond, and a
-        // comparator that returned 0 for them would leave the order to sort's
-        // implementation rather than to the data.
-        bucket.records.sort(
-            (a, b) => a.node.time - b.node.time || a.node.id.localeCompare(b.node.id),
-        );
+        const record: TraceRecord = {node, seq};
+        // Bisect for the record's place instead of pushing and re-sorting (see
+        // `insertIndex`); the listing is in time order either way.
+        bucket.records.splice(insertIndex(bucket.records, record), 0, record);
         bucket.touched = seq;
+        // A trace that is not in `byTrace` yet takes the next rank, so `closest()`
+        // breaks a tie in the order `traceIds()` reports. A trace whose bucket was
+        // emptied or evicted and is added to again is a fresh insertion and ranks
+        // last, exactly as it does there.
+        if (!this.byTrace.has(node.trace)) bucket.order = ++this.traceRank;
         this.byTrace.set(node.trace, bucket);
+        if (node.fingerprint !== undefined) {
+            const candidates = this.byFingerprint.get(node.fingerprint) ?? [];
+            candidates.push({node, order: bucket.order});
+            this.byFingerprint.set(node.fingerprint, candidates);
+        }
         // Drop the least recently `add`ed record, not the smallest-time one. A
         // backdated arrival into a full bucket has the smallest time in it, so a
         // time-ordered cap would drop it the instant it was indexed — the very
@@ -293,7 +404,7 @@ export class LineageIndex {
                 }
             }
             const [dropped] = bucket.records.splice(victim, 1);
-            this.nodes.delete(dropped.node.id);
+            this.forget(dropped.node);
             this.truncationCount++;
         }
         this.enforceLimit();
@@ -308,6 +419,45 @@ export class LineageIndex {
     trace(traceId: string): LineageNode[] {
         const bucket = this.byTrace.get(traceId);
         return bucket ? bucket.records.map(record => ({...record.node})) : [];
+    }
+
+    /**
+     * The retained record whose `fingerprint` is `ref` and whose time is nearest to
+     * `time`, or `undefined` when nothing retained carries that fingerprint.
+     *
+     * Nearest-time rather than exact is deliberate, and the reasoning lives on the
+     * caller (`incidents.traceOf`): an anomaly shares its record's time, but a
+     * redelivery can re-`add` the record under a later one, and a nearest match
+     * still lands on the record the anomaly describes. Ties go to the candidate
+     * whose trace ranks first, then to the earlier time and the smaller id — the
+     * same order the caller used to get by scanning `traceIds()` and `trace()` — so
+     * no attribution changes because the answer is now a lookup.
+     *
+     * The node is a copy, like every other node this index hands out.
+     */
+    closest(ref: string, time: number): LineageNode | undefined {
+        const candidates = this.byFingerprint.get(ref);
+        if (!candidates) return undefined;
+        let best = candidates[0];
+        let bestDistance = Math.abs(best.node.time - time);
+        for (let index = 1; index < candidates.length; index++) {
+            const candidate = candidates[index];
+            const distance = Math.abs(candidate.node.time - time);
+            if (
+                distance < bestDistance ||
+                (distance === bestDistance && this.precedes(candidate, best))
+            ) {
+                best = candidate;
+                bestDistance = distance;
+            }
+        }
+        return {...best.node};
+    }
+
+    /** Whether `left` precedes `right` in the order `traceIds()` then `trace()` list. */
+    private precedes(left: FingerprintRecord, right: FingerprintRecord): boolean {
+        if (left.order !== right.order) return left.order < right.order;
+        return compareNodes(left.node, right.node) < 0;
     }
 
     /**
@@ -402,7 +552,7 @@ export class LineageIndex {
         // empty or non-string trace to `untraced`).
         const victim = this.byTrace.get(victimKey) as TraceBucket;
         for (const record of victim.records) {
-            this.nodes.delete(record.node.id);
+            this.forget(record.node);
         }
         this.byTrace.delete(victimKey);
         this.evictionCount++;

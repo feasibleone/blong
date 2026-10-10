@@ -35,9 +35,12 @@ policy:
     maxAgeDays: 90
     maxAttempts: 5
     credentialParams:
+      # No `iterations` here on purpose: the environment supplies it from
+      # `config.db.password`, so production derives with 100000 and dev/CI with a
+      # single iteration (see `realm/blong-access/server.ts`).  The value used is
+      # stored on each credential, so verification never has to guess it.
       function: hash
       algorithm: pbkdf2
-      iterations: 100000
       keyLength: 64
       digest: sha512
     isActive: 1

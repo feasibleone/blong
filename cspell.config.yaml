@@ -76,6 +76,7 @@ words:
   - confirmpopup
   - CONTRIB
   - coredns
+  - cpuprofile
   - crockford
   - cutoff
   - daemonset
@@ -331,6 +332,7 @@ words:
   - SMPP
   - softwaregroup
   - spanid
+  - Speedscope
   - splendidus
   - sqlitemadd
   - sqlitemlistactive
@@ -371,6 +373,7 @@ words:
   - unconfigured
   - ungated
   - ungroup
+  - unindexed
   - unixtime
   - unlayered
   - unmarshal

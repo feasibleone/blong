@@ -12,6 +12,15 @@ export default realm(() => ({
             // type overrides these; these defaults only apply when no
             // policy provides them.  `function` names the algorithm used
             // to derive the credential secret (currently `hash`).
+            //
+            // `iterations` is deliberately *not* pinned by the shipped policy
+            // (`meta/db/accessAuthorizationMerge.yaml`), so the environment decides
+            // how expensive a derivation is: production keeps the 100000 below,
+            // while `dev` and `ci` drop to a single iteration.  A suite signs in
+            // hundreds of times and pays the derivation on every login, where a
+            // dev or CI password protects nothing.  The resolved parameters travel
+            // with the credential (`credentialParamsJSON`), so fixtures seeded in
+            // those environments verify cheaply while production stays hard.
             db: {
                 password: {
                     function: 'hash',
@@ -32,7 +41,17 @@ export default realm(() => ({
                     clientId: 'mock-client',
                     clientSecret: 'mock-secret',
                     redirectUri: 'http://localhost:9101/oauth/callback',
-                },
+                }, // One PBKDF2 iteration — see the `default` comment above.  A local
+                // login is not a security boundary the way a deployed one is.
+                password: {iterations: 1},
+            },
+        },
+        ci: {
+            db: {
+                // `ci` is a platform intent the loader adds when the process runs
+                // on CI, so this covers every suite's integration run there.  One
+                // iteration, as in `dev`: the suites' own logins are the load.
+                password: {iterations: 1},
             },
         },
     },

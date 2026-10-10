@@ -192,7 +192,10 @@ export default schema(async ({lib: {type}}) => ({
             /**
              * Credential function parameters the policy dictates for new
              * credentials of this type (JSON document, `*JSON` column — see
-             * `credential.credentialParamsJSON`).
+             * `credential.credentialParamsJSON`).  A parameter the policy leaves
+             * out falls back to `config.db.password`; the shipped policy omits
+             * `iterations` for that reason, so the environment decides how
+             * expensive the derivation is.
              */
             credentialParamsJSON: type.stringNull(),
             isActive: type.booleanNotNull(),

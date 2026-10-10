@@ -211,11 +211,24 @@ the probes inside a row already run concurrently.
 > _2026-10-10 · realm/blong-party · active_
 
 The party browser file runs at about 170 seconds locally, of which roughly 100 is the ACL matrix:
-three tables of cells, each cell a gateway call and each row a sign-in, against the 240 seconds
-`blong-dev test` gives a tap subprocess by default. On a loaded CI runner that margin is gone, and
-the file was killed mid-matrix in two runs (595, 596) with the signature of two `timeout!` steps and
-three `cannot create subtest after parent test ends`. The package now passes `--timeout=420` in its
-own `test` and `ci-test` scripts. The budget is a stopgap: T-196 records the real work, which is to
-stop repeating the eight sign-ins per table.
+three tables of cells, each cell a gateway call and each row a sign-in. Set against the 240 seconds
+`blong-dev test` gives a tap subprocess by default, that margin is gone on a loaded CI runner: the
+file was killed mid-matrix in two runs (595, 596) with the signature of two `timeout!` steps and
+three `cannot create subtest after parent test ends`, so the package began passing `--timeout=420`
+in its own `test` and `ci-test` scripts. The runner then outgrew that number as well. Run
+38069591545 (job 114264890330, 2026-10-10) reported 423 seconds of file against the 420 second
+budget — three seconds short — so tap expired the file while its last group was still running and
+published the row that held the slot, `matrixReportsNothing_s2`, as `timeout!` although every
+assertion in it passed. The tap artifact splits those 423 seconds as a browser leg of 403 seconds
+(application matrix 196.7, service-account matrix 129.9, unscoped matrix 33.6, acl diagnostics 39.8,
+registration flow browser 3.0) plus about 18 seconds of platform load and a server leg of 1.5. The
+scripts pass `--timeout=900` because a budget set to the observed need breaks on the next matrix row
+— it now has, at 240 and at 420 — and because tap hands the same number to the child as its per-test
+ceiling, so the value is a hang ceiling rather than a target. The number no longer binds, and the
+reason is not a smaller matrix: the same investigation that found the budget three seconds short
+found the cost, the semantic-log analysis the suite was running over its own log (D-500 in
+`core/semantic-log`), and that fix took the browser leg from 162.8 s to 8.8 s and the matrices to
+about 13 s of a 60 s file. The 900 s is now purely the ceiling, and trimming the sign-ins (T-196,
+since done) is no longer what stands between the suite and its budget.
 
 ## Superseded

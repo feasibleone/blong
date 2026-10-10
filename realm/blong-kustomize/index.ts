@@ -51,6 +51,7 @@ export default server(() => ({
                     'test.gateway.keys',
                     'test.volume.prune',
                     'test.reconcile.guard',
+                    'test.reconcile.scope',
                     'test.gateway.static',
                     'test.service.catalog',
                 ],

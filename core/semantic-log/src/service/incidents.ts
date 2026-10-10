@@ -106,24 +106,13 @@ const MIN_CORRELATION_SIZE = 2;
  * under a redelivery's time (or the emitter's clock may repeat), and a nearest
  * match still lands on the record the anomaly describes. Ties keep the first
  * trace in the index's insertion order, which makes the attribution
- * deterministic without a second sort.
+ * deterministic without a second sort. Both rules live in `LineageIndex.closest`
+ * now, which holds the retained records by fingerprint — so this is a lookup
+ * rather than a walk of every record of every retained trace, once per anomaly.
  */
 function traceOf(anomaly: Anomaly, lineage: LineageIndex): string {
-    let bestTrace = '';
-    let bestDistance = Number.POSITIVE_INFINITY;
-    for (const traceId of lineage.traceIds()) {
-        for (const node of lineage.trace(traceId)) {
-            if (node.fingerprint !== anomaly.ref) {
-                continue;
-            }
-            const distance = Math.abs(node.time - anomaly.time);
-            if (distance < bestDistance) {
-                bestDistance = distance;
-                bestTrace = traceId;
-            }
-        }
-    }
-    return bestTrace === '' ? `${UNTRACED_PREFIX}${anomaly.ref}` : bestTrace;
+    const node = lineage.closest(anomaly.ref, anomaly.time);
+    return node ? node.trace : `${UNTRACED_PREFIX}${anomaly.ref}`;
 }
 
 /**
@@ -191,7 +180,9 @@ export function correlate(
         let rootCause = group.anomalies[0].ref;
         let bestDepth = Number.POSITIVE_INFINITY;
         for (const anomaly of group.anomalies) {
-            const nodes = lineage.trace(group.trace).filter(node => node.fingerprint === anomaly.ref);
+            const nodes = lineage
+                .trace(group.trace)
+                .filter(node => node.fingerprint === anomaly.ref);
             for (const node of nodes) {
                 // `chain` returns at least the node itself for a record the trace
                 // listing holds, so every candidate has a depth to compare.
@@ -253,7 +244,12 @@ export class IncidentStore {
      * {@link MIN_CORRELATION_SIZE} anomalies is skipped entirely — not retained
      * and not reported.
      */
-    absorb(anomalies: Anomaly[], lineage: LineageIndex, registry: TemplateRegistry, windowMs: number): Incident[] {
+    absorb(
+        anomalies: Anomaly[],
+        lineage: LineageIndex,
+        registry: TemplateRegistry,
+        windowMs: number,
+    ): Incident[] {
         for (const anomaly of anomalies) {
             this.recent.push(anomaly);
         }

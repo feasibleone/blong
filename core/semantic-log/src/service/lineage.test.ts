@@ -416,3 +416,99 @@ t.test(
         t.end();
     },
 );
+
+t.test('closest resolves a fingerprint to the retained record nearest in time', t => {
+    const index = new LineageIndex();
+    index.add(event({id: 'p1', time: 100, fingerprint: 'checkout'}));
+    index.add(event({id: 'p2', time: 900, fingerprint: 'checkout'}));
+    t.equal(index.closest('checkout', 120)?.id, 'p1', 'the earlier record is nearer');
+    t.equal(index.closest('checkout', 880)?.id, 'p2', 'the later one is nearer to a later time');
+    t.equal(
+        index.closest('checkout', 500)?.id,
+        'p1',
+        'an equal distance is broken by time, then by id',
+    );
+    t.equal(index.closest('nothing', 100), undefined, 'an unknown fingerprint answers undefined');
+    t.end();
+});
+
+t.test('an equal distance goes to the trace that entered the index first', t => {
+    const earlier = new LineageIndex();
+    earlier.add(
+        event({id: 'x1', time: 100, fingerprint: 'shared', refs: {record: 'x1', trace: 'tr-x'}}),
+    );
+    earlier.add(
+        event({id: 'y1', time: 300, fingerprint: 'shared', refs: {record: 'y1', trace: 'tr-y'}}),
+    );
+    t.equal(earlier.closest('shared', 200)?.trace, 'tr-x', 'the first trace wins the tie');
+    const later = new LineageIndex();
+    later.add(
+        event({id: 'y1', time: 300, fingerprint: 'shared', refs: {record: 'y1', trace: 'tr-y'}}),
+    );
+    later.add(
+        event({id: 'x1', time: 100, fingerprint: 'shared', refs: {record: 'x1', trace: 'tr-x'}}),
+    );
+    t.equal(
+        later.closest('shared', 200)?.trace,
+        'tr-y',
+        'and it is insertion order, not the trace name or the record id',
+    );
+    t.end();
+});
+
+t.test('a replaced record leaves the fingerprint index with its listing', t => {
+    const index = new LineageIndex();
+    index.add(event({id: 'p1', time: 10, fingerprint: 'checkout'}));
+    index.add(event({id: 'p1', time: 900, fingerprint: 'checkout'}));
+    t.equal(
+        index.closest('checkout', 10)?.time,
+        900,
+        'the redelivered record answers, not the listing the redelivery replaced',
+    );
+    t.end();
+});
+
+t.test('a record either cap drops cannot be resolved any more', t => {
+    const record = new LineageIndex(4, 1);
+    record.add(event({id: 'r1', time: 1, fingerprint: 'gone'}));
+    record.add(event({id: 'r2', time: 2, fingerprint: 'kept'}));
+    t.equal(record.closest('gone', 1), undefined, 'the record cap dropped it from the index');
+    t.equal(record.closest('kept', 2)?.id, 'r2', 'while the survivor still resolves');
+    t.equal(record.truncations(), 1, 'and the drop is the counted truncation');
+    const trace = new LineageIndex(1, 8);
+    trace.add(
+        event({id: 'a1', time: 1, fingerprint: 'evicted', refs: {record: 'a1', trace: 'tr-a'}}),
+    );
+    trace.add(
+        event({id: 'b1', time: 2, fingerprint: 'resident', refs: {record: 'b1', trace: 'tr-b'}}),
+    );
+    t.equal(
+        trace.closest('evicted', 1),
+        undefined,
+        'an evicted trace takes its candidates with it',
+    );
+    t.equal(trace.closest('resident', 2)?.id, 'b1', 'the resident trace still resolves');
+    t.equal(trace.evictions(), 1, 'and the eviction is counted');
+    t.end();
+});
+
+t.test('a record with no fingerprint is indexed by neither route, and is forgettable', t => {
+    const index = new LineageIndex(4, 1);
+    index.add(event({id: 'f1', time: 1, fingerprint: undefined}));
+    t.equal(index.closest('fp-f1', 1), undefined, 'no fingerprint means no candidate');
+    t.equal(index.closest('', 1), undefined, 'and it is not filed under the empty reference');
+    index.add(event({id: 'f2', time: 2, fingerprint: undefined}));
+    t.equal(index.trace('tr-1').length, 1, 'dropping it left the listing alone');
+    t.equal(index.truncations(), 1, 'the record cap still dropped the least recently seen');
+    t.end();
+});
+
+t.test('the node closest hands out is a copy the caller cannot edit into the index', t => {
+    const index = new LineageIndex();
+    index.add(event({id: 'p1', time: 10, fingerprint: 'checkout'}));
+    const node = index.closest('checkout', 10);
+    if (!node) throw new Error('the fingerprint is indexed');
+    node.operation = 'tampered';
+    t.equal(index.closest('checkout', 10)?.operation, undefined, 'the index kept its own node');
+    t.end();
+});

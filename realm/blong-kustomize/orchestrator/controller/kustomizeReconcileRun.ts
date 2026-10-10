@@ -55,6 +55,90 @@ export const jobAttemptsPastRetention = (
         .slice(keep);
 };
 
+/** One listing a pass needs: a resource type, the namespace to look in, and what it wants there. */
+export interface IListingScope {
+    resourceType: string;
+    namespace: string;
+    desired: IDesiredResource[];
+}
+
+/**
+ * The listings a pass needs, one per resource type *and namespace*.
+ *
+ * The namespace is part of the scope rather than a constant, because a suite's objects do not all
+ * live beside its workloads: a backing service is provisioned in the services namespace
+ * (`blong-services` by default), which every suite on the cluster shares. A listing taken in the
+ * tenant's namespace alone left those objects unread, so each pass treated them as missing and
+ * applied them again — and the claim among them is applied with a PUT, which a *bound* claim rejects
+ * (`spec is immutable after creation except resources.requests`), so a pass reported a step it could
+ * not stop failing and its CR never left `Failed`. That is what the kustomize e2e run showed, with
+ * the objects themselves applied cleanly and the suite's own workloads `Available` beside it.
+ *
+ * A kind the tree no longer names is still looked for, in the tenant's namespace: that is where a
+ * suite's own objects are, and what a shared namespace holds is reached through the objects that name
+ * it there (T-282, D-464).
+ *
+ * Pure and exported for the reason the retention helpers are: what a pass reads is worth pinning
+ * without a cluster, and the scope is the part that decides what a pass can ever see.
+ */
+export const listingScopes = (
+    managed: IDesiredResource[],
+    swept: readonly string[],
+    tenantNamespace: string,
+): IListingScope[] => {
+    const scopes = new Map<string, IListingScope>();
+    const scopeOf = (resourceType: string, namespace: string): IListingScope => {
+        // One scope per pair, joined on a NUL: a resource type and a namespace are DNS-ish names, so
+        // neither can contain one, and the pair stays unambiguous without a second map.
+        const key = `${resourceType}\u0000${namespace}`;
+        const scope = scopes.get(key) ?? {resourceType, namespace, desired: []};
+        scopes.set(key, scope);
+        return scope;
+    };
+    for (const entry of managed) {
+        const namespace = entry.object.metadata?.namespace ?? tenantNamespace;
+        scopeOf(entry.resourceType, namespace).desired.push(entry);
+    }
+    for (const resourceType of swept) {
+        // One scope per kind is enough for a sweep, and a kind the tree names is already scoped by
+        // the objects that name it.
+        if ([...scopes.values()].some(scope => scope.resourceType === resourceType)) continue;
+        scopeOf(resourceType, tenantNamespace);
+    }
+    return [...scopes.values()];
+};
+
+/**
+ * How many replicas each wanted Deployment has, from the listings taken for it.
+ *
+ * Pairing is by namespace *and* name: two Deployments of one name in two namespaces are two objects,
+ * and a listing that answered for one of them says nothing about the other. A Deployment no listing
+ * mentioned reads as zero, which is what a suite that has not rolled out yet looks like.
+ *
+ * Pure and exported for the reason the scope is: this is the half a cluster is not needed for, and it
+ * is the half that decided a CR could not leave `Progressing` (a backing service's Deployment was
+ * looked for in the tenant's namespace, so it answered zero replicas for ever).
+ */
+export const availableReplicas = (
+    targets: Array<{name: string; namespace: string}>,
+    listings: Array<{namespace: string; items: IClusterObject[]}>,
+): Array<{name: string; available: number}> => {
+    const replicas = new Map<string, number>();
+    for (const {namespace, items} of listings) {
+        for (const item of items) {
+            const status = item.status as {availableReplicas?: number} | undefined;
+            replicas.set(
+                `${namespace}/${String(item.metadata?.name ?? '')}`,
+                Number(status?.availableReplicas ?? 0),
+            );
+        }
+    }
+    return targets.map(target => ({
+        name: target.name,
+        available: replicas.get(`${target.namespace}/${target.name}`) ?? 0,
+    }));
+};
+
 /**
  * Which of the objects a plan no longer mentions a pass may remove.
  *
@@ -65,12 +149,11 @@ export const jobAttemptsPastRetention = (
  * realm's config dials it — and the workload, claim and Service beside it stay until whoever owns
  * that namespace retires them, reported as obsolete either way.
  *
- * The listing is scoped to that namespace already, so this filter is the second lock on the same
- * door: the first is the namespace every lookup is made in, and the second says out loud what the
- * decision is, so a listing that ever widens cannot delete past it.
- *
- * Cluster-scoped objects fall out with the same rule, which is what the install's own policy asks
- * for: the rights the operator runs under are not the operator's to withdraw.
+ * The listing reaches a shared namespace too — that is where the suite's services are, and a pass
+ * that cannot see them applies them again on every pass (`listingScopes`) — so this filter is the
+ * lock rather than the second half of one: the label says what is this suite's, and this says how
+ * far a removal may reach. The rights the operator runs under are not the operator's to withdraw
+ * either, so cluster-scoped objects fall out with the same rule.
  */
 export const prunable = (obsolete: IClusterObject[], namespace: string): IClusterObject[] =>
     obsolete.filter(object => object.metadata?.namespace === namespace);
@@ -283,27 +366,39 @@ export default handler(({handler}) => {
      *
      * A phase is only worth writing if it says where the suite stands, and a Deployment applied a
      * second ago has no available replicas yet: the count is the evidence and the phase is the
-     * summary of it. A failure to list answers zeroes rather than throwing — a status that could
-     * not be counted should say so, not take the pass down with it.
+     * summary of it. Each one is read in the namespace it names rather than in the tenant's, because
+     * a suite's Deployments do not all live beside its workloads — a backing service runs in the
+     * services namespace — and a Deployment looked for in the wrong place answers zero replicas for
+     * ever, which is a CR that never leaves `Progressing` however healthy the suite is.
+     *
+     * A failure to list answers zeroes rather than throwing — a status that could not be counted
+     * should say so, not take the pass down with it.
      */
     const deploymentAvailability = async (
-        names: string[],
-        namespace: string,
+        wanted: IDesiredResource[],
+        tenantNamespace: string,
         meta: IMeta,
     ): Promise<Array<{name: string; available: number}>> => {
-        if (!names.length) return [];
+        const targets = wanted.map(entry => ({
+            name: String(entry.object.metadata?.name ?? ''),
+            namespace: entry.object.metadata?.namespace ?? tenantNamespace,
+        }));
+        if (!targets.length) return [];
         const find = call('clusterDeploymentFind');
-        if (!find) return names.map(name => ({name, available: 0}));
-        try {
-            const found = (await find({namespace}, meta)) as {items?: IClusterObject[]};
-            const byName = new Map((found?.items ?? []).map(item => [item.metadata?.name, item]));
-            return names.map(name => {
-                const status = byName.get(name)?.status as {availableReplicas?: number} | undefined;
-                return {name, available: Number(status?.availableReplicas ?? 0)};
-            });
-        } catch {
-            return names.map(name => ({name, available: 0}));
+        if (!find) return targets.map(target => ({name: target.name, available: 0}));
+        // One listing per namespace, which is the scoping the pass itself reads through
+        // (`listingScopes`): where a Deployment lives is what a listing needs to find it.
+        const listings: Array<{namespace: string; items: IClusterObject[]}> = [];
+        for (const namespace of new Set(targets.map(target => target.namespace))) {
+            try {
+                const found = (await find({namespace}, meta)) as {items?: IClusterObject[]};
+                listings.push({namespace, items: found?.items ?? []});
+            } catch {
+                // A namespace that could not be listed answers nothing, which reads as no available
+                // replicas rather than as a failed pass.
+            }
         }
+        return availableReplicas(targets, listings);
     };
 
     /**
@@ -509,47 +604,55 @@ export default handler(({handler}) => {
                     `${skipped.length} skipped`,
             });
 
-            // One listing per resource type, selected by ownership: everything the label
-            // returns belongs to this suite, which is what lets a live object the plan no
-            // longer mentions be treated as obsolete rather than as a stranger.
-            const byType = new Map<string, IDesiredResource[]>();
-            for (const entry of managed) {
-                const list = byType.get(entry.resourceType) ?? [];
-                list.push(entry);
-                byType.set(entry.resourceType, list);
-            }
-
+            // One listing per resource type *and namespace*, selected by ownership: everything the
+            // label returns belongs to this suite, which is what lets a live object the plan no
+            // longer mentions be treated as obsolete rather than as a stranger. Which namespaces
+            // those are is `listingScopes`' answer, and it is the objects that give it.
             const groups: Array<{
                 resourceType: string;
                 desired: IDesiredResource[];
                 live: IClusterObject[];
             }> = [];
-            // The tree's kinds *and* the kinds a suite may own, because the interesting case is a
-            // kind that left the tree: a pass that looks up only what it names can never see the
-            // object it stopped naming (T-282, D-464).
-            for (const resourceType of [...byType.keys(), ...sweptResourceTypes()]) {
-                if (groups.some(group => group.resourceType === resourceType)) continue;
-                const desired = byType.get(resourceType) ?? [];
-                const find = call(wireName(resourceType, 'Find'));
+            // A scope the pass cannot read is a failure of that scope, not the end of the pass: what
+            // it cannot see is reported, and everything else in the tree is still applied. A
+            // namespace whose Rights went with it is the case (F-461), and it is worth naming — the
+            // alternative is a pass that dies before it writes a status, leaving a CR that describes
+            // a cluster nobody has since.
+            const unreadable: Array<{key: string; message: string}> = [];
+            for (const scope of listingScopes(managed, sweptResourceTypes(), suiteNamespace)) {
+                const find = call(wireName(scope.resourceType, 'Find'));
                 if (!find) {
                     // A kind the tree names and the cluster cannot look up is a pass that would apply
                     // what it cannot reconcile, so it says so. One only the sweep is interested in is
                     // skipped: the adapter does not answer for it either way.
-                    if (!desired.length) continue;
+                    if (!scope.desired.length) continue;
                     return {
                         reconciled: 0,
                         applied: false,
-                        reason: `the cluster adapter does not answer ${resourceType} lookups`,
+                        reason: `the cluster adapter does not answer ${scope.resourceType} lookups`,
                     };
                 }
-                const found = (await find(
-                    {
-                        namespace: suiteNamespace,
-                        labelSelector: `${PART_OF_LABEL}=${suiteName}`,
-                    },
-                    meta,
-                )) as {items?: IClusterObject[]};
-                groups.push({resourceType, desired, live: found?.items ?? []});
+                let found: {items?: IClusterObject[]} | undefined;
+                try {
+                    found = (await find(
+                        {
+                            namespace: scope.namespace,
+                            labelSelector: `${PART_OF_LABEL}=${suiteName}`,
+                        },
+                        meta,
+                    )) as {items?: IClusterObject[]};
+                } catch (error) {
+                    unreadable.push({
+                        key: `${scope.namespace}/${scope.resourceType}`,
+                        message: message(error),
+                    });
+                    continue;
+                }
+                groups.push({
+                    resourceType: scope.resourceType,
+                    desired: scope.desired,
+                    live: found?.items ?? [],
+                });
             }
 
             const readOnly = !params.apply;
@@ -576,7 +679,7 @@ export default handler(({handler}) => {
             let unchanged = 0;
             let obsolete = 0;
             let deleted = 0;
-            const failures: Array<{key: string; message: string}> = [];
+            const failures: Array<{key: string; message: string}> = [...unreadable];
             /**
              * Per kind, so a count that looks wrong can be traced to the kind that produced it.
              *
@@ -740,11 +843,12 @@ export default handler(({handler}) => {
             // cluster — a read-only pass reports in its log and claims nothing about the CR — and the
             // write never fails the pass it describes, because the work is already done.
             if (params.apply === true && origin === 'cr' && declaredName) {
-                const wantedNames = managed
-                    .filter(entry => entry.kind === 'Deployment')
-                    .map(entry => entry.object.metadata?.name)
-                    .filter((entryName): entryName is string => !!entryName);
-                const deployments = await deploymentAvailability(wantedNames, suiteNamespace, meta);
+                const wantedDeployments = managed.filter(entry => entry.kind === 'Deployment');
+                const deployments = await deploymentAvailability(
+                    wantedDeployments,
+                    suiteNamespace,
+                    meta,
+                );
                 const available = deployments.filter(entry => entry.available > 0).length;
                 const phase: StatusPhase = failures.length
                     ? 'Failed'
