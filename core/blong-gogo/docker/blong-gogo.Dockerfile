@@ -97,7 +97,18 @@ COPY demo ./demo
 COPY tools ./tools
 COPY docs ./docs
 COPY ext ./ext
-RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo && \
+# Build before deploying, because a deploy copies a package *as it is* and one of them
+# exports a file only a build writes: `@feasibleone/blong`'s `.` entry resolves its
+# `default` condition to `./dist/types.js`, which `.gitignore` keeps out of the repository
+# and which a container cannot dodge — it starts with no `--conditions` flag, where a
+# development shell reaches `types.ts` through the `blong-dev` condition. Without this line
+# the image carried the package's sources and no `dist/`, so every process that imported it
+# — the operator and all four suite pods — crash-looped on ERR_MODULE_NOT_FOUND, and the
+# migrate Job errored (F-464). It runs here rather than in the workflow so that the image
+# can build itself: the workflow builds the image before it builds anything else, and the
+# artifacts are published after a `rush build`, which is why only the image was affected.
+RUN node common/scripts/install-run-rush.js build --to @feasibleone/blong-gogo && \
+    node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo && \
     cd common/deploy && \
     node create-links.js create && \
     rm create-links.js && \

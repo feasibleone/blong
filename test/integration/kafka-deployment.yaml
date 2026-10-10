@@ -70,6 +70,24 @@ spec:
                   --topic blong-integration \
                   --partitions 1 \
                   --replication-factor 1
+                # Seed here as well as in the Job below. This container keeps no volume, so
+                # every restart loses the topic's messages and this hook recreates an *empty*
+                # topic — by which time the one-shot Job has long since run, leaving the topic
+                # empty for every reader (the commander's message level read empty for exactly
+                # that reason, D-498). Guarding on the message rather than on the topic keeps
+                # this idempotent, and mirrors the Job's own guard and its reason for reading
+                # by partition and offset.
+                seed=$(kafka-console-consumer --bootstrap-server localhost:9092 \
+                         --topic blong-integration --partition 0 --offset 0 --timeout-ms 5000 \
+                         2>/dev/null | grep -c '"kind":"commander"' || true)
+                if [ "${seed:-0}" -gt 0 ]; then
+                  echo "Seed message already present, leaving the topic untouched"
+                else
+                  printf '{"kind":"commander","message":"hello from blong-integration"}\n' | \
+                    kafka-console-producer --bootstrap-server localhost:9092 \
+                      --topic blong-integration
+                  echo "Seeded blong-integration with the commander demo message"
+                fi
         livenessProbe:
           tcpSocket:
             port: 9092

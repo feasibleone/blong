@@ -380,15 +380,29 @@ function baselineFixture(): IMetrics {
         commit: '',
         run: 1,
         updatedAt: '',
-        tests: {total: 20, passed: 20, failed: 0, flaky: 0, durationMs: 120_000},
+        tests: {total: 20, passed: 20, failed: 0, flaky: 0, durationMs: 120_000, testsMs: 32_000},
         coverage: {lines: {hit: 100, found: 300}},
         packages: {
             'fake-pass': {
-                tests: {passed: 10, failed: 0, flaky: 0, total: 10, durationMs: 8000},
+                tests: {
+                    passed: 10,
+                    failed: 0,
+                    flaky: 0,
+                    total: 10,
+                    durationMs: 8000,
+                    testsMs: 5700,
+                },
                 coverage: {linesHit: 70, linesTotal: 100},
             },
             'fake-fail': {
-                tests: {passed: 8, failed: 0, flaky: 0, total: 8, durationMs: 60_000},
+                tests: {
+                    passed: 8,
+                    failed: 0,
+                    flaky: 0,
+                    total: 8,
+                    durationMs: 60_000,
+                    testsMs: 15_000,
+                },
                 coverage: {linesHit: 60, linesTotal: 200},
             },
             // A loss too small to be a regression: the row that shows the third mark.
@@ -504,7 +518,7 @@ test('renderCiReport merges metrics, coverage, deltas and links into one table',
         t.match(markdown, /^## CI Summary/, 'headline');
         t.match(
             markdown,
-            /\*\*4 package\(s\) · 26 passed, 3 failed, 1 flaky \(32 total\) · 2m 15s \(\+15s\) of test time\*\* — build #551/,
+            /\*\*4 package\(s\) · 26 passed, 3 failed, 1 flaky \(32 total\) · 47s \(\+15s\) of test time, 1m 28s outside the tests\*\* — build #551/,
             'totals line carries the counts, what the run cost, and how that compares',
         );
         t.match(
@@ -535,17 +549,17 @@ test('renderCiReport merges metrics, coverage, deltas and links into one table',
         );
         t.match(
             markdown,
-            /^\| fake-pass \| ✅ \| 12 \| 0 \| 0 \| — \| 12 \(\+2\) \| 4\.2s \(-3\.8s\) \| 🟢 80% \(\+10\.0pp\) \| — \|$/m,
+            /^\| fake-pass \| ✅ \| 12 \| 0 \| 0 \| — \| 12 \(\+2\) \| 1\.9s \(-3\.8s\) \| 🟢 80% \(\+10\.0pp\) \| — \|$/m,
             'a grown package: test delta, faster than before, coverage up',
         );
         t.match(
             markdown,
-            /^\| fake-both \(tap 4 · playwright 2 ❌\) \| ❌ \| 4 \| 1 \| 0 \| 1 \| 6 \| 54s ⏱️ opens the roles tab 8\.2s \| — \| — \|$/m,
+            /^\| fake-both \(tap 4 302ms · playwright 2 16s ❌\) \| ❌ \| 4 \| 1 \| 0 \| 1 \| 6 \| 17s ⏱️ opens the roles tab 8\.2s \| — \| — \|$/m,
             'a two-runner package names its legs, and its slowest test sits in the duration cell',
         );
         t.match(
             markdown,
-            /^\| fake-fail \| ❌ \| 8 \| 2 \| 0 \| — \| 10 \(\+2\) \| 1m 05s \(\+5\.0s\) ⏱️ logs in as the seeded user 11s \| 🔴 25% \(-5\.0pp\) \| \[report\]\(https:\/\/example\.test\/blong-ci\/fake-fail\/Build\/551\/\) \|$/m,
+            /^\| fake-fail \| ❌ \| 8 \| 2 \| 0 \| — \| 10 \(\+2\) \| 20s \(\+5\.2s\) ⏱️ logs in as the seeded user 11s \| 🔴 25% \(-5\.0pp\) \| \[report\]\(https:\/\/example\.test\/blong-ci\/fake-fail\/Build\/551\/\) \|$/m,
             'a regressed package links its published report',
         );
         t.match(
@@ -576,7 +590,7 @@ test('renderCiReport merges metrics, coverage, deltas and links into one table',
         });
         t.match(
             steady,
-            /^\| fake-pass \| ✅ \| 12 \| 0 \| 0 \| — \| 12 \(\+2\) \| 4\.2s \(-3\.8s\) \| 80% \(0\.0pp\) \|/m,
+            /^\| fake-pass \| ✅ \| 12 \| 0 \| 0 \| — \| 12 \(\+2\) \| 1\.9s \| 80% \(0\.0pp\) \|/m,
             'an unmoved coverage number carries no mark',
         );
         t.match(markdown, /### Failed suites \(4 test\(s\)\)/, 'failed suites section');
@@ -659,11 +673,15 @@ test('renderCiReport leaves the deltas out when there is no baseline', async t =
             coverage: parseLcov(readFileSync(join(dir, 'coverage', 'lcov.info'), 'utf8')),
         });
 
-        t.match(markdown, /· 2m 15s of test time\*\*/, 'the run cost is stated without a delta');
+        t.match(
+            markdown,
+            /· 47s of test time, 1m 28s outside the tests\*\*/,
+            'the test time is stated without a delta',
+        );
         t.notMatch(markdown, /\(\+15s\)/, 'and no duration delta is invented');
         t.match(
             markdown,
-            /^\| fake-fail \| ❌ \| 8 \| 2 \| 0 \| — \| 10 \| 1m 05s ⏱️ logs in as the seeded user 11s \| 25% \|$/m,
+            /^\| fake-fail \| ❌ \| 8 \| 2 \| 0 \| — \| 10 \| 20s ⏱️ logs in as the seeded user 11s \| 25% \|$/m,
             'counts, time and coverage stand on their own',
         );
         t.notMatch(markdown, /🟢|🔴|🟡/, 'and nothing is marked green, red or unchanged');

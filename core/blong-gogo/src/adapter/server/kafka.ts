@@ -1,4 +1,4 @@
-import {adapter, type IMeta} from '@feasibleone/blong/types';
+import {adapter, type ILogger, type IMeta} from '@feasibleone/blong/types';
 import Kafka, {type Message} from 'node-rdkafka';
 import {Duplex} from 'stream';
 
@@ -30,6 +30,98 @@ export interface IConfig {
      *   reads via one-off consumers) are reachable. No produce/consume stream.
      */
     mode?: 'stream' | 'admin';
+}
+
+/**
+ * Read one topic's messages with a consumer of its own.
+ *
+ * A fresh consumer group has to *join* before a read can return anything: the broker
+ * holds a group's first rebalance for `group.initial.rebalance.delay.ms` (3s by
+ * default), and a read issued before the assignment lands comes back empty for a topic
+ * that has messages — which is how the commander's `message` level read empty while
+ * `topic.list` listed the topic right beside it (D-497). So the assignment is waited
+ * for first, exactly as `start()` waits for its own, and the consume timeout is what a
+ * *fetch* gets rather than what a join gets.
+ *
+ * The promise always settles with an array: a rebalance stall, a broker error or the
+ * deadline is an empty topic to the caller, never a malformed RPC response ("JSON RPC
+ * response without response and error").
+ */
+async function readTopicMessages(
+    connection: KafkaConfig,
+    topic: string,
+    limit: number,
+    log?: ILogger,
+): Promise<Message[]> {
+    const consumer = new Kafka.KafkaConsumer(
+        {...connection, 'group.id': `blong-commander-${Date.now()}`},
+        {'auto.offset.reset': 'earliest'},
+    );
+    // Long enough for a join on a loaded broker, short enough that an explorer's click
+    // is not left waiting for a topic that has nothing to say.
+    const joinDeadlineMs = 20_000;
+    // What a fetch gets once the group owns its partitions.
+    const consumeTimeoutMs = 5_000;
+    const startedAt = Date.now();
+    try {
+        return await new Promise<Message[]>(resolve => {
+            let settled = false;
+            let poll: ReturnType<typeof setInterval> | null = null;
+            let deadline: ReturnType<typeof setTimeout> | null = null;
+            const finish = (messages: Message[]) => {
+                if (settled) return;
+                settled = true;
+                if (poll) clearInterval(poll);
+                if (deadline) clearTimeout(deadline);
+                resolve(messages);
+            };
+            deadline = setTimeout(() => {
+                log?.warn?.(
+                    {topic, elapsedMs: Date.now() - startedAt},
+                    'kafka topic read timed out',
+                );
+                finish([]);
+            }, joinDeadlineMs);
+            consumer.setDefaultConsumeTimeout(consumeTimeoutMs);
+            consumer.on('event.error', error => {
+                log?.warn?.({topic, err: error?.message}, 'kafka topic read failed');
+                finish([]);
+            });
+            consumer.on('ready', () => {
+                consumer.subscribe([topic]);
+                // The assignment is what the read waits for: until the group has joined,
+                // `consume` reads partitions this consumer does not own yet and returns
+                // an empty batch for a topic that has messages.
+                poll = setInterval(() => {
+                    if (consumer.assignments().length === 0) return;
+                    if (poll) clearInterval(poll);
+                    poll = null;
+                    consumer.consume(limit, (error, messages) => {
+                        if (error) {
+                            log?.warn?.({topic, err: error.message}, 'kafka topic read failed');
+                            return finish([]);
+                        }
+                        log?.info?.(
+                            {
+                                topic,
+                                count: messages?.length ?? 0,
+                                elapsedMs: Date.now() - startedAt,
+                            },
+                            'kafka topic read',
+                        );
+                        finish(messages ?? []);
+                    });
+                }, 200);
+            });
+            consumer.connect();
+        });
+    } finally {
+        try {
+            consumer.disconnect();
+        } catch {
+            // A consumer that never connected has nothing to leave behind.
+        }
+    }
 }
 
 export default adapter<IConfig>(() => {
@@ -269,10 +361,7 @@ export default adapter<IConfig>(() => {
             return result;
         },
 
-        async exec(
-            params: Record<string, unknown>,
-            $meta: IMeta,
-        ): Promise<unknown> {
+        async exec(params: Record<string, unknown>, $meta: IMeta): Promise<unknown> {
             const {method} = $meta;
             const [, object, operation] = method!.split('.');
             if (object === 'topic') {
@@ -309,50 +398,14 @@ export default adapter<IConfig>(() => {
                         if (!topic) {
                             throw new Error('Missing topic param');
                         }
-                        const consumer = new Kafka.KafkaConsumer(
-                            {
-                                ...this.config.connection,
-                                'group.id': `blong-commander-${Date.now()}`,
-                            },
-                            {'auto.offset.reset': 'earliest'},
+                        const messages = await readTopicMessages(
+                            this.config.connection,
+                            topic,
+                            limit,
+                            this.log,
                         );
-                        // A fresh group must complete the rebalance (group join +
-                        // partition assignment) before the first consume returns.
-                        consumer.setDefaultConsumeTimeout(3000);
-                        // Always RESOLVE to a (possibly empty) batch — a rebalance
-                        // stall or broker hiccup must surface as an empty topic, not
-                        // as a malformed/empty RPC response ("JSON RPC response
-                        // without response and error").
-                        const messages = await new Promise<Message[] | undefined>(resolve => {
-                            const timer = setTimeout(() => {
-                                try {
-                                    consumer.disconnect();
-                                } catch {
-                                    // ignore
-                                }
-                                resolve(undefined);
-                            }, 15000);
-                            const done = (msgs: Message[] | undefined) => {
-                                clearTimeout(timer);
-                                try {
-                                    consumer.disconnect();
-                                } catch {
-                                    // ignore
-                                }
-                                resolve(msgs);
-                            };
-                            consumer.on('ready', () => {
-                                consumer.subscribe([topic]);
-                                consumer.consume(limit, (err, msgs) => {
-                                    if (err) return done(undefined);
-                                    done(msgs);
-                                });
-                            });
-                            consumer.on('event.error', () => done(undefined));
-                            consumer.connect();
-                        });
                         return {
-                            items: (messages ?? []).map(m => ({
+                            items: messages.map(m => ({
                                 topic: m.topic,
                                 partition: m.partition,
                                 offset: m.offset,

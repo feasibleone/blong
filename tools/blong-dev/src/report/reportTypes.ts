@@ -294,18 +294,40 @@ export function reportDurationMs(report: IReport): number {
     return report.runs.reduce((sum, run) => sum + runDurationMs(run), 0);
 }
 
-/** The tests of every runner of the package, added up, as `reportDurationMs` does for runs. */
+/** The tests of one run that carried a duration of their own. */
+function timedTests(run: IRunReport): number {
+    return run.suites.reduce(
+        (count, suite) =>
+            count +
+            suite.tests.filter(test => typeof test.durationMs === 'number' && test.durationMs > 0)
+                .length,
+        0,
+    );
+}
+
+/**
+ * What the package's tests cost: the cases that carried a duration, or — for a runner that
+ * timed no case at all — the run's own clock, because an empty figure would hide the number
+ * rather than correct it.
+ */
 export function reportTestDurationMs(report: IReport): number {
-    return report.runs.reduce((sum, run) => sum + runTestDurationMs(run), 0);
+    const timed = report.runs.reduce((sum, run) => sum + runTestDurationMs(run), 0);
+    return timed > 0 ? timed : reportDurationMs(report);
 }
 
 /**
  * The part of a run the tests did not carry — hooks, a dev server, a browser, a wait.
  *
- * Named so a report can say it out loud: a large figure here is a slow *run*, not a slow
- * test surface, and the two call for different work.
+ * Reported only when every test of every run carried a duration: the difference between a
+ * clock and a partial sum is missing data, not waiting, and naming that as time outside the
+ * tests would invent the very figure this is meant to keep honest.
  */
 export function outsideTestsMs(report: IReport): number {
+    const complete = report.runs.every(run => {
+        const runnable = run.counts.total - run.counts.skipped - run.counts.todo;
+        return runnable <= 0 || timedTests(run) >= runnable;
+    });
+    if (!complete) return 0;
     return Math.max(0, reportDurationMs(report) - reportTestDurationMs(report));
 }
 

@@ -319,6 +319,39 @@ test('allureGroupResultWrite - one result per group, with the steps nested insid
     await rm(tempDir, {recursive: true, force: true});
 });
 
+test('allureGroupResultWrite - a verdict from the runner outranks the steps', async t => {
+    const tempDir = join(tmpdir(), 'allure-group-broken-' + Date.now());
+    await mkdir(tempDir, {recursive: true});
+
+    // What a group that timed out looks like: the steps that recorded anything all
+    // passed, because the step that hung never recorded anything at all. The runner
+    // watched the test fail, so it hands the verdict in.
+    await allureGroupResultWrite(
+        tempDir,
+        {
+            name: 'acl diagnostics',
+            steps: [stepFixture({stepName: 'matrixReportsNothing', startTime: 10, endTime: 20})],
+            status: 'broken',
+            statusDetails: {message: 'timeout! — the group did not finish within its time budget'},
+            start: 10,
+            stop: 90_000,
+        },
+        {realm: 'test'},
+    );
+
+    const files = (await readdir(tempDir)).filter(f => f.endsWith('-result.json'));
+    const written = JSON.parse(await readFile(join(tempDir, files[0]), 'utf-8'));
+    t.equal(written.status, 'broken', 'the verdict wins: a hung step recorded no failure');
+    t.match(written.statusDetails?.message ?? '', /timeout!/, 'and the reason survives');
+    t.equal(
+        written.stop,
+        90_000,
+        'with the group own span, which is how long it was in flight before it was cut off',
+    );
+
+    await rm(tempDir, {recursive: true, force: true});
+});
+
 test('allureGroupResultWrite - a failed step fails the group it belongs to', async t => {
     const tempDir = join(tmpdir(), 'allure-group-fail-' + Date.now());
     await mkdir(tempDir, {recursive: true});

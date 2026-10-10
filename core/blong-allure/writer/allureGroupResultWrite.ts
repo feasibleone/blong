@@ -6,13 +6,19 @@
  * everything the scenario did — the steps it ran, and inside them the points and
  * branches they announced. The writer streams one file per group as the group
  * finishes, so a run that dies still leaves the groups that completed.
+ *
+ * The verdict is the steps' own unless the caller brings one. A group whose test
+ * timed out has a step that hung — one that recorded nothing, and no failed step
+ * either — so only the runner that watched the timeout can say the group did not
+ * pass, and it hands that verdict in (`broken`, the status of a test that could not
+ * finish rather than one that failed its own assertions).
  */
 
 import type {IMeta, IStepProgress} from '@feasibleone/blong-chain';
 import {createHash, randomUUID} from 'node:crypto';
 import {writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
-import type {AllureStatus, IAllureContext, IAllureResult} from '../types.js';
+import type {AllureStatus, IAllureContext, IAllureResult, IAllureStatusDetails} from '../types.js';
 import {allureLabelsBuild} from './allureLabelsBuild.ts';
 import {allureLinksBuild} from './allureLinksBuild.ts';
 import {allureStepTreeMap} from './allureStepTreeMap.ts';
@@ -27,6 +33,17 @@ export interface IAllureGroup {
     start?: number;
     /** When the group stopped, on the same terms. */
     stop?: number;
+    /**
+     * The verdict, when the caller knows better than the recorded steps do.
+     *
+     * A group whose test timed out is the case this exists for: the step that hung
+     * recorded nothing, so the steps read as `passed` while the runner watched the
+     * test fail — and a report that calls a run green which the summary lists as
+     * failed is worse than a report that is missing.
+     */
+    status?: AllureStatus;
+    /** Why, when the verdict is not the steps' own. */
+    statusDetails?: IAllureStatusDetails;
 }
 
 /** The verdict a group carries: a scenario that failed a step failed. */
@@ -70,15 +87,16 @@ export async function allureGroupResultWrite(
         name: group.name,
         labels: allureLabelsBuild(context),
         links: allureLinksBuild(meta, context),
-        status: statusOf(group.steps),
+        status: group.status ?? statusOf(group.steps),
         start: group.start ?? start,
         stop: group.stop ?? stop,
     };
 
     const failed = group.steps.find(step => step.status === 'failed');
-    if (failed?.error) {
-        result.statusDetails = {message: failed.error.message, trace: failed.error.stack};
-    }
+    const statusDetails =
+        group.statusDetails ??
+        (failed?.error ? {message: failed.error.message, trace: failed.error.stack} : undefined);
+    if (statusDetails) result.statusDetails = statusDetails;
 
     const steps = allureStepTreeMap(group.steps);
     if (steps !== undefined) result.steps = steps;

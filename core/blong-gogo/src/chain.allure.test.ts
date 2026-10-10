@@ -168,6 +168,61 @@ test('a server run opens the session and writes the group result', async t => {
     await endAllureSession();
 });
 
+/**
+ * The run that made this necessary, as a test: a group whose *test* failed while every
+ * step it recorded passed.
+ *
+ * `blong-party`'s `acl diagnostics` did exactly this in CI — one scenario row reported
+ * `timeout!`, the group's own test was `not ok`, and the published report said `passed`,
+ * because the verdict was read from the steps and a timeout is something no step records.
+ */
+test('a group whose test failed while its steps did not is written as broken', async t => {
+    const dir = await mkdtemp(join(tmpdir(), 'blong-chain-allure-'));
+    t.teardown(() => rm(dir, {recursive: true, force: true}));
+    const outputDir = join(dir, 'allure-results');
+    const {errors, log} = recordingLog();
+    const {default: chainFactory} = await t.mockImport<typeof import('./chain.ts')>(
+        './chain.ts',
+        {},
+    );
+
+    // The contract is what is faked, not the outcome: tap's own `passing()` answers
+    // `false` once a nested test has failed, which the raw TAP of that run shows the row
+    // doing long before the group ended. Reproducing the timeout itself would mean a spec
+    // whose own subtest fails, so the context answers the way tap's does instead.
+    const failedTest = {
+        test: async (_name: string, fn: (context: unknown) => unknown) => fn(failedTest),
+        passing: () => false,
+        timedOut: false,
+    };
+    const chain = await chainFactory(failedTest as never, log, {
+        method: 'test.acl.diagnostics',
+        allure: {enabled: true, outputDir},
+        platform: 'server',
+    });
+    await (chain as unknown as (steps: unknown) => Promise<unknown>)(
+        group('acl diagnostics', [
+            async function matrixReportsNothing() {
+                return 'reported';
+            },
+        ]),
+    );
+
+    t.same(errors, [], 'the report is a side effect, not a second failure');
+    const files = await readdir(outputDir);
+    const resultFile = files.find(name => name.endsWith('-result.json'));
+    t.ok(resultFile, 'the group leaves its result rather than vanishing from the report');
+    const result = JSON.parse(await readFile(join(outputDir, resultFile as string), 'utf8')) as {
+        status?: string;
+        statusDetails?: {message?: string};
+        steps?: Array<{status?: string}>;
+    };
+    t.equal(result.steps?.[0]?.status, 'passed', 'the step it recorded did pass');
+    t.equal(result.status, 'broken', 'so only the test verdict can say the group did not');
+    t.match(result.statusDetails?.message ?? '', /did not pass/, 'and the report says so');
+    t.match(result.statusDetails?.message ?? '', /timeout/, 'naming what usually causes it');
+});
+
 test('a failure to start is reported once, and leaves nothing to close', async t => {
     const dir = await mkdtemp(join(tmpdir(), 'blong-chain-allure-'));
     t.teardown(() => rm(dir, {recursive: true, force: true}));

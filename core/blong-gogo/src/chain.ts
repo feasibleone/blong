@@ -11,6 +11,16 @@ type Steps = (Promise<(Step | Step[]) & {name: string}>[] | Step[]) & {
 };
 interface ITestContext {
     test: (name: string, fn: (t: unknown) => void | Promise<void>) => unknown;
+    /**
+     * tap's verdict on the test this context is: `false` once it has seen a failure.
+     *
+     * A method since tap 21 and a plain property before it, so both are read, and a
+     * context that carries neither — a chain run driven by something other than tap —
+     * offers no verdict rather than a passing one.
+     */
+    passing?: boolean | (() => boolean);
+    /** Set by tap when this very test hit its timeout. */
+    timedOut?: boolean;
 }
 
 /** Allure reporting options, as the framework config supplies them. */
@@ -191,19 +201,74 @@ function stepsOf(executor: TestExecutor): IStepProgress[] {
     return Array.from(executor.getProgress().steps.values());
 }
 
+/**
+ * The verdict a group gets when its own steps do not tell the story.
+ *
+ * `broken` rather than `failed`, which is the status Allure keeps for a test that
+ * could not finish: the group did not fail an assertion, it was cut off.
+ */
+interface IGroupVerdict {
+    status: 'broken';
+    message: string;
+    /** The group's own span: a step that hung has no end time to read one from. */
+    start: number;
+    stop: number;
+}
+
+/**
+ * What tap says about the group, when its steps say something else.
+ *
+ * A step that hangs is a step that records nothing, so the executor reports a group
+ * whose every recorded step passed — while the test around it failed, and the run's own
+ * summary counts that failure. tap sets it on the test this run was handed (`timeout!`
+ * for a timeout), and that verdict is the only place it exists: `undefined` for every
+ * other group leaves the steps as the sole authority for one that ended the ordinary way.
+ */
+function verdictOf(t: ITestContext, startedAt: number): IGroupVerdict | undefined {
+    const passing = typeof t.passing === 'function' ? t.passing() : t.passing;
+    if (passing !== false) return undefined;
+    return {
+        status: 'broken',
+        message: t.timedOut
+            ? 'timeout! — the group did not finish within its time budget'
+            : 'the group did not pass although no step it recorded failed: a timeout ' +
+              'reports that way, because the step it cut off recorded nothing',
+        start: startedAt,
+        stop: Date.now(),
+    };
+}
+
 /** Write one group result, standing in for a step list its executor may not have. */
 async function writeGroupResult(
     options: IAllureRunOptions,
     name: string,
     executor: TestExecutor,
     method?: string,
+    verdict?: IGroupVerdict,
 ): Promise<void> {
     const steps = stepsOf(executor);
-    if (steps.length === 0) return;
+    // A step that failed speaks for the group: the report then points at that step and
+    // its error, rather than at a verdict the runner would be adding on top of it.
+    const final = steps.some(step => step.status === 'failed') ? undefined : verdict;
+    // A group that recorded nothing is not a scenario a reader can read — unless it did
+    // not finish, which is exactly the case a report must not leave out: the run before
+    // the fix printed `passed` for a group the summary listed as failed.
+    if (steps.length === 0 && !final) return;
     const {allureGroupResultWrite} = await import(/* @vite-ignore */ allurePackage());
     await allureGroupResultWrite(
         sessionConfig(options).outputDir,
-        {name, steps},
+        {
+            name,
+            steps,
+            ...(final
+                ? {
+                      status: final.status,
+                      statusDetails: {message: final.message},
+                      start: final.start,
+                      stop: final.stop,
+                  }
+                : {}),
+        },
         contextOf(method, options),
     );
 }
@@ -256,6 +321,11 @@ const runSteps =
         // tests (see `ensureSession`).
         const reporting = await ensureSession(options.allure, options.platform, log);
 
+        // The group's own start, for a verdict that has to be written without the steps'
+        // help: a hung step has no end time to read a span from, and that span is what
+        // tells a reader how long the group was in flight before it was cut off.
+        const startedAt = Date.now();
+
         // Execute with parallel executor, passing test context for nested output
         try {
             await withProgress(
@@ -283,11 +353,17 @@ const runSteps =
         } finally {
             // The group is the test case: one result per group, written whether the
             // group passed or not — a scenario that failed is the one a reader opens
-            // the report for. The group's own name is what it was run as.
+            // the report for. The group's own name is what it was run as, and its
+            // verdict is the steps' unless tap watched the test fail while the steps
+            // recorded nothing (see `verdictOf`).
             if (reporting && options.allure) {
-                await writeGroupResult(options.allure, steps.name, executor, options.method).catch(
-                    error => log?.error?.(error),
-                );
+                await writeGroupResult(
+                    options.allure,
+                    steps.name,
+                    executor,
+                    options.method,
+                    verdictOf(t, startedAt),
+                ).catch(error => log?.error?.(error));
             }
         }
     };
