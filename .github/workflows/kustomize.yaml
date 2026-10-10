@@ -229,7 +229,23 @@ jobs:
           # reads it (D-462), so the same pass owns it: leaving it behind would be a password a
           # rotation never reaches. The workload's own copy is the contrast — it stays where it is.
           if kubectl -n blong-suite get secret/mysql-credentials >/dev/null 2>&1; then
-            echo 'FAIL: the credentials copy survived in blong-suite' >&2
+            # The survivor is named where the check fails, because the step log is what a reader
+            # sees and the artifact is a fetch away. Labels, never data — the sweep finds what it
+            # prunes by `app.kubernetes.io/part-of`, so the label it wears (or lacks) is the
+            # answer, and the creation time says which pass wrote it (T-282).
+            {
+              echo 'FAIL: the credentials copy survived in blong-suite' >&2
+              echo '--- the survivor:' >&2
+              kubectl -n blong-suite get secret/mysql-credentials --show-labels >&2 || true
+              kubectl -n blong-suite get secret/mysql-credentials -o jsonpath='{.metadata.creationTimestamp} ownerReferences={.metadata.ownerReferences}' >&2 || true
+              echo >&2
+              echo '--- every Secret in the suite namespace:' >&2
+              kubectl -n blong-suite get secrets --show-labels >&2 || true
+              echo >&2
+              echo '--- what the last pass reported:' >&2
+              kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.lastResult}' >&2 || true
+              echo >&2
+            }
             exit 1
           fi
           echo "the credentials copy went with the alias"
@@ -259,6 +275,10 @@ jobs:
             kubectl -n blong-suite get bdep blong-suite -o yaml
             echo '=== blong-suite ==='
             kubectl -n blong-suite get pods,jobs -o wide
+            # Labels, never data: the sweep finds what it prunes by `app.kubernetes.io/part-of`,
+            # so a Secret that survived the prune is explained by the label it does not carry
+            # (T-282, D-461). `get secrets` prints no value, which is why it is safe in an artifact.
+            kubectl -n blong-suite get secrets --show-labels
             kubectl -n blong-suite get events --sort-by=.lastTimestamp | tail -40
             echo '=== what the Jobs said ==='
             for job in $(kubectl -n blong-suite get jobs -o name); do
@@ -267,9 +287,16 @@ jobs:
             done
             echo '=== blong-services ==='
             kubectl -n blong-services get pods,deployments,services,endpoints,persistentvolumeclaims -o wide
+            kubectl -n blong-services get secrets --show-labels
             echo '=== blong-system ==='
             kubectl -n blong-system get pods,jobs
             kubectl -n blong-system logs deployment/blong-operator --tail=80
+            # The passes themselves, which the tail above can bury: what the sweep listed per kind
+            # the tree no longer names, and what it decided per kind that changed. A survivor is
+            # explained by the first line (`secret=0` means the listing did not see it) where the
+            # counts in the CR cannot tell that from a listing that was never made (T-282).
+            kubectl -n blong-system logs deployment/blong-operator --since=15m 2>/dev/null |
+              grep 'reconcile:' | tail -40
             # The artifact server the release steps talk to, which the workflow creates in
             # `default` with `kubectl create deployment artifact`. It is nobody's tenant and no
             # namespace above covers it, so a release step that cannot find its pod was blind.

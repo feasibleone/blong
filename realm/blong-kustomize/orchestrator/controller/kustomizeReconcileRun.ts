@@ -610,6 +610,7 @@ export default handler(({handler}) => {
             // those are is `listingScopes`' answer, and it is the objects that give it.
             const groups: Array<{
                 resourceType: string;
+                namespace: string;
                 desired: IDesiredResource[];
                 live: IClusterObject[];
             }> = [];
@@ -650,8 +651,38 @@ export default handler(({handler}) => {
                 }
                 groups.push({
                     resourceType: scope.resourceType,
+                    namespace: scope.namespace,
                     desired: scope.desired,
                     live: found?.items ?? [],
+                });
+            }
+
+            // What the sweep found, per kind the tree does not name at all.
+            //
+            // The tally below reports what the diff decided, not what the listing returned, and the
+            // two disagree in the case that matters: an object the tree no longer mentions that the
+            // listing did not return looks exactly like one that was never listed, so `0 obsolete`
+            // beside a surviving credentials Secret says nothing about why it survived. The counts
+            // are named here, once per pass, which is what separates a listing that came back empty
+            // (the object wears labels this suite does not own, or the scope asked the wrong
+            // namespace) from one that was never made. The namespace is part of the entry because it
+            // is the fact in doubt: a kind the tree stopped naming still has to be looked for where
+            // the object was left — and a scope that could not be read at all is named beside the
+            // counts rather than left to the status, where `0` would read as `nothing was there`.
+            const swept = groups
+                .filter(group => !group.desired.length)
+                .map(group => `${group.namespace}/${group.resourceType}=${group.live.length}`);
+            if (swept.length || unreadable.length) {
+                (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
+                    $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
+                    message:
+                        `reconcile: the tree names none of these, so the listing is all ` +
+                        `there is (namespace/kind=count): ${swept.join(', ')}` +
+                        (unreadable.length
+                            ? `; unreadable: ${unreadable
+                                  .map(entry => `${entry.key} (${entry.message})`)
+                                  .join('; ')}`
+                            : ''),
                 });
             }
 
