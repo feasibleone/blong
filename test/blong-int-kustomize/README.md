@@ -34,10 +34,11 @@ wrote as `grep` and `[[ ]]` — a migration Job's arguments, whether an answer c
 material, whether a gateway refused a payload — and it is the only part of the runbook that a test
 can hold without a cluster.
 
-The developer's cycle:
+The developer's cycle — the cluster, the framework image, the two artifacts and then the runbook, in
+one command:
 
 ```bash
-CLUSTER=dev-cluster node k3d-dev-cycle.ts
+node --conditions=development bin/blongIntKustomize.ts cycle run --cluster=dev-cluster
 ```
 
 ## The assertions

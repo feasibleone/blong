@@ -32,9 +32,10 @@ active (19)
 - `D-351` · realm/blong-access — A service account is a user profile on the organization or unit
   resource
 
-superseded (1)
+superseded (2)
 
 - `D-064` · realm/blong-access — A role that collided on roleBit silently overwrote Admin
+- `D-485` · realm/blong-access — Seed replace is scoped to capabilities and users
 
 <!-- /memory:index -->
 
@@ -292,3 +293,21 @@ Superseded by `D-185`.
 Superseded: the NoLogin pre-seed with a free bit 5 was a workaround for the hardcoded roleBit 0 and
 the merge overwrite. Bits are no longer declared at all - they are allocated on creation, so no role
 needs a pre-seeded bit and the NoLogin entry is now just another name in 1-accessRoleMerge.yaml.
+
+### D-485 — Seed replace is scoped to capabilities and users
+
+> _2026-10-10 · realm/blong-access · superseded_
+
+A test seed may set replace on access.authorization.merge, which retracts the edges of the
+capabilities and users the file declares before merging, so shortening a list takes effect (F-357).
+Roles are deliberately left additive even then: a shared role's capability list is a union several
+files contribute to (the production Admin seed plus every realm that grants Admin), and the graph
+carries no marker saying which contribution is a given file's, so retracting a role list would
+delete another realm's grants. A realm that needs an exhaustive role list must own that role.
+
+Superseded by `D-487@ROOT`.
+
+The seed policy now recorded at D-487 makes a test seed authoritative for every row it names, so the
+shared-role caution here is a limitation of the current implementation rather than the intended
+semantics: replace still retracts only the capabilities and users a test seed declares, and
+extending it to shared rows waits for the ownership tracking D-487 requires.

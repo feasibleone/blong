@@ -1,3 +1,7 @@
+# A TEST seed: every list it declares is the complete one for the capability or user it names, so
+# `replace` retracts the edges a shortened list dropped (F-357).  Roles stay additive — a shared
+# role's capability list is a union several files contribute to (see access.authorization.merge).
+replace: true
 user:
   testUser:
     password: testPassword

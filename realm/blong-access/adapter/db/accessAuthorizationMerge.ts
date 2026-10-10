@@ -35,6 +35,18 @@ export default handler(
     }) => ({
         async accessAuthorizationMerge(
             params: {
+                /**
+                 * A **test** seed declares the *complete* list for the capabilities and users it
+                 * names: the edges those subjects hold for the predicate this call writes are
+                 * retracted first, so shortening a list in the file takes effect (F-357).
+                 *
+                 * `core.triple.merge` is additive on purpose — `onConflict ignore` makes replaying
+                 * a production seed a no-op, and no seed may delete another realm's contribution.
+                 * Roles stay additive even here: a shared role's capability list is a union that
+                 * several files contribute to, and the graph carries no marker saying which
+                 * contribution is this file's.
+                 */
+                replace?: boolean;
                 user?: Record<
                     string,
                     {
@@ -114,6 +126,10 @@ export default handler(
                 predicateName: string;
                 objectId: string;
             }> = [];
+            // The subjects this call declares, per predicate — the ones `replace` may retract the
+            // edges of: a capability's action list and a user's role list are a seed's own rows.
+            const declaredCapabilities = new Set<string>();
+            const declaredUsers = new Set<string>();
 
             // 1. Process capabilities and their actions first
             if (params.capability) {
@@ -140,6 +156,7 @@ export default handler(
                             },
                             $meta,
                         )) as {resourceId: string};
+                        declaredCapabilities.add(capabilityId);
                         triples.push({
                             subjectId: capabilityId,
                             predicateName: 'hasAction',
@@ -193,6 +210,8 @@ export default handler(
                         },
                         $meta,
                     )) as {resourceId: string};
+                    // A user's role list is this file's to declare (`replace`).
+                    declaredUsers.add(userId);
 
                     // Persist the display email even when the user already
                     // exists (coreResourceEnsure is insert-only on conflict), so
@@ -296,6 +315,24 @@ export default handler(
                     predicateName: 'hasScope',
                     objectId: scopeId,
                 });
+            }
+
+            // 4c. Retract what a replacing test seed dropped: the edges the declared capabilities
+            //     and users hold for the predicate this call writes (F-357).  The merge below counts
+            //     itself in the durable generation, so the deferred `access_path` rebuild sees the
+            //     retraction too — a dropped action stops authorizing.
+            if (params.replace) {
+                for (const [predicateName, ids] of [
+                    ['hasAction', declaredCapabilities],
+                    ['hasRole', declaredUsers],
+                ] as Array<[string, Set<string>]>) {
+                    if (ids.size) {
+                        await qb('core_triple')
+                            .where('predicateName', predicateName)
+                            .whereIn('subjectId', [...ids].map(account.uuidBuf))
+                            .delete();
+                    }
+                }
             }
 
             // 5. Write graph edges + refresh materialized paths via the shared
