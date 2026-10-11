@@ -110,8 +110,10 @@ folders) and each component's merged config, and returns an `IDeploymentPlan`:
 - **Services** come from _dispatch_ orchestrators only. An adapter's namespace (`cluster`, `db`) is
   a local handler group, not something another process dials.
 - **Contributions** come from each component's `activation.k8s` block (`k8sReplicas`,
-  `k8sResources`, `k8sPorts`, `k8sIngresses`, `k8sEnv`, `k8sManifests`). Objects deep-merge across
-  the realms that share a deployment.
+  `k8sResources`, `k8sPorts`, `k8sIngresses`, `k8sSecrets`, `k8sAssets`, `k8sVolumes`, `k8sEnv`,
+  `k8sManifests`). A collection a name identifies is a map keyed by that name, and the realms that
+  share a deployment merge it by that key; `k8sEnv` and `k8sManifests` stay lists, for the order and
+  the identity inside the object.
 
 ## Portals
 

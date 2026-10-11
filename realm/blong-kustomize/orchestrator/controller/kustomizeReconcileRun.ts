@@ -1,5 +1,6 @@
 import {handler, type IMeta} from '@feasibleone/blong';
 import {
+    GATEWAY_KEYS_LABEL,
     GENERATED_CREDENTIALS_LABEL,
     INSTANCE_LABEL,
     PART_OF_LABEL,
@@ -13,7 +14,6 @@ import {
     type IDesiredResource,
 } from '../../apply.ts';
 import {buildKustomizeTree, type KustomizeTree} from '../../generator.ts';
-import {DEFAULT_SERVICES_NAMESPACE} from '../../services.ts';
 import {
     OPERATOR_GROUP,
     OPERATOR_NAMESPACE,
@@ -29,6 +29,7 @@ import {
     planOptionsOf,
     registryView,
 } from '../../plan.ts';
+import {DEFAULT_SERVICES_NAMESPACE} from '../../services.ts';
 
 type ClusterCall = (params: unknown, $meta: IMeta) => Promise<unknown>;
 
@@ -101,7 +102,11 @@ export const listingScopes = (
     servicesNamespace?: string,
 ): IListingScope[] => {
     const scopes = new Map<string, IListingScope>();
-    const scopeOf = (resourceType: string, namespace: string, cleanupOnly = false): IListingScope => {
+    const scopeOf = (
+        resourceType: string,
+        namespace: string,
+        cleanupOnly = false,
+    ): IListingScope => {
         // One scope per pair, joined on a NUL: a resource type and a namespace are DNS-ish names, so
         // neither can contain one, and the pair stays unambiguous without a second map.
         const key = `${resourceType}\u0000${namespace}`;
@@ -232,7 +237,14 @@ export const hasRetentionLabel = (object: IClusterObject): boolean =>
  * decides are removed here (T-282, D-464, D-471).
  */
 export const prunableByObsolescence = (obsolete: IClusterObject[]): IClusterObject[] =>
-    obsolete.filter(object => !hasRetentionLabel(object));
+    obsolete.filter(
+        object =>
+            !hasRetentionLabel(object) &&
+            // The gateway key pair is written by a pass rather than by the tree, so a listing that can
+            // see it does not make it obsolete: it is held while its declaration exists and removed
+            // with it, which is what its owner reference is for (T-267).
+            object.metadata?.labels?.[GATEWAY_KEYS_LABEL] === undefined,
+    );
 
 const timestampOf = (object: IClusterObject): string =>
     String((object.metadata as {creationTimestamp?: string} | undefined)?.creationTimestamp ?? '');
@@ -542,6 +554,8 @@ export default handler(({handler}) => {
             // pass was triggered by — and only a CR pass has one.
             let declared: IBlongDeploymentSpec | undefined;
             let declaredName: string | undefined;
+            /** The declaration's `uid`, which is what an object it owns is removed by (T-267). */
+            let declaredUid: string | undefined;
             if (params.from === 'cr') {
                 // `custom` is the resource type a custom resource reaches the adapter as — not the
                 // kind, which is not a name it knows. The coordinates below are what it reads the
@@ -581,6 +595,9 @@ export default handler(({handler}) => {
                 );
                 declared = item?.spec;
                 declaredName = item?.metadata?.name;
+                // The listing type names only what the pass reads for the plan; the uid is what an
+                // owner reference needs, and it comes from the same object (T-267).
+                declaredUid = (item?.metadata as {uid?: string} | undefined)?.uid;
                 if (!declared) {
                     return {
                         reconciled: 0,
@@ -755,9 +772,25 @@ export default handler(({handler}) => {
             let keys: {name: string; created: boolean; reason?: string} | undefined;
             if (!readOnly) {
                 const ensure = call('kustomizeGatewayKeysEnsure') as unknown as
-                    | ((params: {namespace: string}, $meta?: IMeta) => Promise<typeof keys>)
+                    | ((
+                          params: {
+                              namespace: string;
+                              suite?: string;
+                              owner?: {name: string; uid: string};
+                          },
+                          $meta?: IMeta,
+                      ) => Promise<typeof keys>)
                     | undefined;
-                keys = ensure ? await ensure({namespace: suiteNamespace}, meta) : undefined;
+                // The pair is the pass's to write and the declaration's to own: a CR pass hands it
+                // the object it read, so Kubernetes removes the Secret with it, while a registry pass
+                // read no declaration and claims no owner.
+                const owner =
+                    declaredName && declaredUid
+                        ? {name: declaredName, uid: declaredUid}
+                        : undefined;
+                keys = ensure
+                    ? await ensure({namespace: suiteNamespace, suite: suiteName, owner}, meta)
+                    : undefined;
             }
             let created = 0;
             let updated = 0;

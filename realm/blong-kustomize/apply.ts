@@ -46,6 +46,16 @@ export const NAME_LABEL = 'app.kubernetes.io/name';
 export const GENERATED_CREDENTIALS_LABEL = 'blong.feasible.one/generated-credentials';
 
 /**
+ * The label of the gateway key pair a pass writes for a suite.
+ *
+ * The tree cannot carry the pair — a regenerated tree has to stay byte-identical, and a key that is
+ * regenerated is a key browsers are not holding — so the pass creates it outside the tree. This label
+ * says why it may live beside a tree that never names it: its owner is the declaration, it is kept
+ * while that exists, and a listing which sees it does not make it obsolete (T-267).
+ */
+export const GATEWAY_KEYS_LABEL = 'blong.feasible.one/gateway-keys';
+
+/**
  * The label that names the *object*, which is what a lookup by identity wants.
  *
  * `NAME_LABEL` carries the suite, so a selector built from it and an object's own name matches
@@ -146,7 +156,8 @@ export const sweptResourceTypes = (): string[] =>
 /** A kustomize document is a manifest to apply, or a build instruction to skip. */
 export const isClusterResource = (resource: KustomizeResource): resource is IClusterObject =>
     typeof resource === 'object' &&
-    resource !== null &&    typeof (resource as IClusterObject).kind === 'string' &&
+    resource !== null &&
+    typeof (resource as IClusterObject).kind === 'string' &&
     typeof (resource as IClusterObject).apiVersion === 'string' &&
     !String((resource as IClusterObject).apiVersion).startsWith('kustomize.config.k8s.io/');
 

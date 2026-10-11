@@ -305,8 +305,8 @@ export default adapter(blong => ({
         k8s: {
             k8sReplicas: 2,
             k8sResources: {requests: {cpu: '100m', memory: '128Mi'}},
-            k8sPorts: [{name: 'metrics', port: 9090}],
-            k8sIngresses: [{name: 'shop-webhook', path: '/webhook/shop', host: 'shop.example.com'}],
+            k8sPorts: {metrics: {port: 9090}},
+            k8sIngresses: {shop-webhook: {path: '/webhook/shop', host: 'shop.example.com'}},
             k8sEnv: [{name: 'SHOP_MODE', value: 'live'}],
             k8sManifests: [{apiVersion: 'v1', kind: 'ConfigMap', metadata: {name: 'shop-extra'}}],
         },
@@ -314,10 +314,13 @@ export default adapter(blong => ({
 }));
 ```
 
-Keys: `k8sReplicas`, `k8sResources` (requests/limits), `k8sPorts`, `k8sIngresses`, `k8sEnv`,
-`k8sManifests`. Objects deep-merge across the realms that share a deployment; arrays concatenate. An
-ingress with no `serviceName` binds to the Service of the deployment that owns the contributing
-realm.
+Keys: `k8sReplicas`, `k8sResources` (requests/limits), `k8sPorts`, `k8sIngresses`, `k8sSecrets`,
+`k8sAssets`, `k8sVolumes`, `k8sEnv`, `k8sManifests`. A collection a name identifies is a **map keyed
+by that name**, and the realms sharing a deployment merge it by that key: a realm adds a Secret
+beside the suite's, or overrides one field of it, without knowing the other exists. `k8sEnv` and
+`k8sManifests` stay lists — the first keeps the configuration's order, the second is identified by
+the `kind` and `metadata.name` inside it. An ingress with no `serviceName` binds to the Service of
+the deployment that owns the contributing realm.
 
 ---
 

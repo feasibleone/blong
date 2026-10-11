@@ -112,23 +112,51 @@ export interface IComponentVolume {
     storageClassName?: string;
 }
 
+/**
+ * A collection in configuration, keyed by the name each entry already carries.
+ *
+ * A map rather than a list, because a list cannot be merged: the keys of one declaration are what the
+ * other can add beside or override a field of, without either knowing the other exists — and a name
+ * declared twice is one entry rather than two objects of one name that the tree cannot both write.
+ * The key is the entry's own name, which is what the generated object is called and what a collision
+ * would be, so there is no second spelling of it to keep in step.
+ *
+ * A key is what this needs, so the collections that have none stay lists: see `k8sEnv` and
+ * `k8sManifests`.
+ */
+export type NamedMap<T extends {name: string}> = Record<string, Omit<T, 'name'>>;
+
 export interface IComponentK8sConfig {
     k8sReplicas?: number;
     k8sResources?: {
         requests?: Record<string, string>;
         limits?: Record<string, string>;
     };
-    k8sPorts?: IComponentPort[];
-    k8sIngresses?: IComponentIngress[];
+    /** Ports the process opens, by port name: two realms naming one port is one port. */
+    k8sPorts?: NamedMap<IComponentPort>;
+    /** Ingress rules, by rule name, which is the name of the generated Ingress. */
+    k8sIngresses?: NamedMap<IComponentIngress>;
+    /**
+     * Environment variables, as a list — deliberately.
+     *
+     * Their order is the configuration's, which is what a reader expects of a block of settings, and
+     * two variables of one container cannot share a name, so there is no collision a map would
+     * resolve.
+     */
     k8sEnv?: {name: string; value: string}[];
-    /** Raw extra manifests, written next to the generated ones. */
+    /**
+     * Raw extra manifests, as a list — deliberately.
+     *
+     * An object's identity is its `kind` and the `name` inside it, so a key would be a second
+     * spelling of one of them, and merging two entries under one key could combine two kinds.
+     */
     k8sManifests?: Record<string, unknown>[];
     /** Secrets the realm declares, emitted as generator entries rather than as literals. */
-    k8sSecrets?: IGeneratorEntry[];
+    k8sSecrets?: NamedMap<IGeneratorEntry>;
     /** Static files the realm serves, emitted as ConfigMap generators. */
-    k8sAssets?: IGeneratorEntry[];
+    k8sAssets?: NamedMap<IGeneratorEntry>;
     /** Volumes the realm owns; its own process mounts them. */
-    k8sVolumes?: IComponentVolume[];
+    k8sVolumes?: NamedMap<IComponentVolume>;
 }
 
 /** An attached port (adapter/orchestrator) and the namespace it answers for. */
@@ -271,6 +299,66 @@ export const resolveExternalServices = (
         // property the spread also carries, and the entry's own name is the one that has to win (an
         // explicit `name: x` in the entry used to overwrite the derived one silently).
         return Object.assign({name}, entry);
+    });
+};
+
+/**
+ * Merge declarations of one collection, later over earlier, by the name each entry carries.
+ *
+ * The `deepMerge` the deployment's resources already use, so a declaration that names an entry an
+ * earlier one carried adds to it rather than replacing it, and the order the declarations are read
+ * in decides what wins: the suite's own config first, then each realm's contribution over it.
+ */
+const mergeNamed = <T extends {name: string}>(
+    declarations: (NamedMap<T> | undefined)[],
+): NamedMap<T> =>
+    declarations.reduce<NamedMap<T>>(
+        // An absent declaration is skipped rather than replaced with `{}`: `deepMerge` answers a patch
+        // that is not an object with the patch itself, so merging an empty object over a malformed
+        // declaration would *erase* it and the resolver below would never see what was declared.
+        (merged, declaration) =>
+            declaration === undefined ? merged : (deepMerge(merged, declaration) as NamedMap<T>),
+        {},
+    );
+
+/**
+ * Turn a declared map into the list the generator renders, refusing a shape it cannot mean.
+ *
+ * The counterpart of `resolveExternalServices` for the collections a name identifies on its own. Both
+ * a CR and a config file are data this process *reads* rather than code it wrote, so the shape is
+ * checked where it is read: a declaration that still carries the list form otherwise reaches the tree
+ * and fails at the composer, with a message naming neither the field nor the entry (F-405).
+ */
+export const resolveNamedEntries = <T extends {name: string}>(
+    declaration: NamedMap<T> | unknown,
+    what: string,
+): T[] => {
+    if (declaration === undefined || declaration === null) return [];
+    if (Array.isArray(declaration)) {
+        throw new Error(
+            `${what} is a list, but it is a map keyed by the name of each entry — rewrite it as ` +
+                '{"<name>": {…}}',
+        );
+    }
+    if (typeof declaration !== 'object') {
+        throw new Error(
+            `${what} is a ${typeof declaration}, but it is a map keyed by the name of each entry`,
+        );
+    }
+    return Object.entries(declaration as NamedMap<T>).map(([name, entry]) => {
+        if (!name) {
+            throw new Error(
+                `${what} declares an entry whose key is empty: the key of the map is the name of ` +
+                    'the object it generates',
+            );
+        }
+        if (!entry || typeof entry !== 'object') {
+            throw new Error(`${what} declares "${name}" as a ${typeof entry}, not as its fields`);
+        }
+        // `Object.assign` rather than a spread, so an entry that spells its own name keeps it and the
+        // key cannot disagree with it silently — the same reason `resolveExternalServices` reads its
+        // entries this way.
+        return Object.assign({name}, entry) as T;
     });
 };
 
@@ -587,10 +675,16 @@ export interface IPlanOptions {
     /** Every portal the suite publishes, by alias. Empty is ordinary: a realm-only suite has no UI. */
     portal?: ISuitePortalMap;
     operator?: ISuiteOperatorRequest;
-    /** Secret generator entries for the whole suite. */
-    secrets?: IGeneratorEntry[];
-    /** ConfigMap generator entries for files the suite serves. */
-    assets?: IGeneratorEntry[];
+    /**
+     * Secret generator entries for the whole suite, by name.
+     *
+     * A map, like `externalServices`: the suite's config and each realm's contribution are merged, so
+     * a realm brings a Secret beside the suite's, and one naming an entry the suite already declared
+     * adds to it instead of writing a second object of the same name.
+     */
+    secrets?: NamedMap<IGeneratorEntry>;
+    /** ConfigMap generator entries for files the suite serves, by name as well. */
+    assets?: NamedMap<IGeneratorEntry>;
     /** Emit the `BlongDeployment` CRD and a CR for this suite (Phase 11). */
     crd?: boolean;
 }
@@ -919,7 +1013,12 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
                 limits: {...DEFAULT_RESOURCES.limits},
             },
         );
-        const ports = contributions.flatMap(contribution => contribution.k8sPorts ?? []);
+        // A port that two realms of one process declare is one port, which is what the map is for:
+        // they are the same container, so a name is the whole identity there is to compare.
+        const ports = resolveNamedEntries<IComponentPort>(
+            mergeNamed(contributions.map(contribution => contribution.k8sPorts)),
+            'k8sPorts',
+        );
         const env = contributions.flatMap(contribution => contribution.k8sEnv ?? []);
         return {
             name,
@@ -1020,39 +1119,47 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     const ingresses: IIngress[] = view.ports
         .filter(port => isApplicationPort(port, view))
         .flatMap(port =>
-            (port.k8s?.k8sIngresses ?? []).map(ingress => ({
-                name: ingress.name,
-                namespace,
-                host: ingress.host,
-                path: ingress.path,
-                pathType: ingress.pathType ?? 'Prefix',
-                serviceName:
-                    ingress.serviceName ??
-                    deploymentForRealm(port.id.split('.')[0] ?? '') ??
-                    deployments[0]?.name ??
-                    '',
-                servicePort: ingress.servicePort ?? 8080,
-                tls: ingress.tls,
-            })),
+            // Read per port rather than merged across them: a rule's Service defaults to the
+            // deployment of the realm whose port declared it, so a name two realms both use is two
+            // rules for a suite to resolve rather than one silently replaced.
+            resolveNamedEntries<IComponentIngress>(port.k8s?.k8sIngresses, 'k8sIngresses').map(
+                ingress => ({
+                    name: ingress.name,
+                    namespace,
+                    host: ingress.host,
+                    path: ingress.path,
+                    pathType: ingress.pathType ?? 'Prefix',
+                    serviceName:
+                        ingress.serviceName ??
+                        deploymentForRealm(port.id.split('.')[0] ?? '') ??
+                        deployments[0]?.name ??
+                        '',
+                    servicePort: ingress.servicePort ?? 8080,
+                    tls: ingress.tls,
+                }),
+            ),
         );
 
     const manifests: Record<string, unknown>[] = view.ports
         .filter(port => isApplicationPort(port, view))
         .flatMap(port => port.k8s?.k8sManifests ?? []);
     // What the suite declares first, then what its realms add: a suite can own a secret and a realm
-    // can bring one beside it without either knowing about the other.
-    const fromComponents = <T>(pick: (config: IComponentK8sConfig) => T[] | undefined): T[] =>
+    // can bring one beside it — or add a file to it — without either knowing about the other. That is
+    // what the declaration being a map buys, and the plan carries the list the generator renders.
+    const declaredByComponents = <T extends {name: string}>(
+        pick: (config: IComponentK8sConfig) => NamedMap<T> | undefined,
+    ): (NamedMap<T> | undefined)[] =>
         view.ports
             .filter(port => isApplicationPort(port, view))
-            .flatMap(port => (port.k8s ? pick(port.k8s) : undefined) ?? []);
-    const secrets: IGeneratorEntry[] = [
-        ...(options.secrets ?? []),
-        ...fromComponents(config => config.k8sSecrets),
-    ];
-    const assets: IGeneratorEntry[] = [
-        ...(options.assets ?? []),
-        ...fromComponents(config => config.k8sAssets),
-    ];
+            .map(port => (port.k8s ? pick(port.k8s) : undefined));
+    const secrets = resolveNamedEntries<IGeneratorEntry>(
+        mergeNamed([options.secrets, ...declaredByComponents(config => config.k8sSecrets)]),
+        'secrets',
+    );
+    const assets = resolveNamedEntries<IGeneratorEntry>(
+        mergeNamed([options.assets, ...declaredByComponents(config => config.k8sAssets)]),
+        'assets',
+    );
 
     return {
         suite: {
@@ -1123,10 +1230,10 @@ export interface IPlanConfig {
     operator?: ISuiteOperatorRequest;
     /** How this process runs the operator's loop; the environment can turn it on instead. */
     controller?: IControllerConfig;
-    /** Secret generator entries for the whole suite. */
-    secrets?: IGeneratorEntry[];
-    /** ConfigMap generator entries for files the suite serves. */
-    assets?: IGeneratorEntry[];
+    /** Secret generator entries for the whole suite, by name (see {@link IPlanOptions.secrets}). */
+    secrets?: NamedMap<IGeneratorEntry>;
+    /** ConfigMap generator entries for files the suite serves, by name. */
+    assets?: NamedMap<IGeneratorEntry>;
     /** Emit the `BlongDeployment` CRD and a CR for this suite (Phase 11). */
     crd?: boolean;
     /** Write the operator's install tree rather than a suite's (see {@link IPlanOptions.install}). */

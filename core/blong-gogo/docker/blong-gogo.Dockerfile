@@ -118,9 +118,6 @@ RUN node common/scripts/install-run-rush.js build --to @feasibleone/blong-gogo &
 
 # Final release image
 FROM node:${NODE_VERSION} AS release
-# `curl` and `unzip` are here for the deployer: the seeder container downloads a
-# suite artifact and unpacks it into the mounted volume, and `blong-kustomize`
-# generates that container from this image.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4 \
     libssl3 \
@@ -130,8 +127,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     liblz4-1 \
     zlib1g \
     ca-certificates \
-    curl \
-    unzip \
     && rm -rf /var/lib/apt/lists/*
 COPY --chown=node --from=builder /opt/blong/common/deploy /opt/blong/common/deploy
 RUN ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong.ts /usr/local/bin/blong && \

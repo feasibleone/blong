@@ -42,6 +42,7 @@ export default server(() => ({
                 test: [
                     'test.plan.find',
                     'test.tree.generate',
+                    'test.fill',
                     'test.artifact.fetch',
                     'test.release.notify',
                     'test.cluster.auth',

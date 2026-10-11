@@ -1,9 +1,9 @@
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
-import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
-import {ARTIFACT_READY, fetchCommand} from '../../../artifact.ts';
+import {ARTIFACT_READY, keepNewest} from '../../../artifact.ts';
 
 /**
  * server/test/test/testArtifactFetch.ts — placing the artifact the operator plans from.
@@ -95,7 +95,7 @@ export default handler(({lib: {group}, handler: {kustomizeArtifactFetch}}) => ({
                                 },
                                 $meta,
                             ),
-                        /curl|connect/i,
+                        /fetch failed|connect/i,
                         'another version fetches rather than reusing a sibling directory',
                     );
                 } finally {
@@ -152,7 +152,7 @@ export default handler(({lib: {group}, handler: {kustomizeArtifactFetch}}) => ({
                                 },
                                 $meta,
                             ),
-                        /curl|connect/i,
+                        /fetch failed|connect/i,
                         'a rebuilt artifact of one version fetches rather than reusing its sibling',
                     );
                 } finally {
@@ -162,22 +162,30 @@ export default handler(({lib: {group}, handler: {kustomizeArtifactFetch}}) => ({
 
             async function aFetchPrunesOnlyWhenToldHowManyToKeep(assert: IAssert) {
                 // One directory per published artifact is one full unpack, so a cache that only grows
-                // eventually fills the claim it lives on (T-286). The count is the volume's own, and it
-                // is optional because the other caller of this command — the `shared` backend's seed Job —
-                // fills a claim at its mount point, where the neighbours are not ours to remove.
-                const artifact = {source: 'url', url: 'http://127.0.0.1:9/suite.zip'} as const;
-                const target = '/cache/demo/1.0.0-a1b2c3d4';
-                const pruned = fetchCommand(artifact, target, 3);
-                assert.ok(
-                    pruned.includes('cd "/cache/demo"') && pruned.includes('tail -n +4'),
-                    'a fetch with a count keeps the newest three directories beside its target',
-                );
-                assert.ok(
-                    !pruned.includes('cd "/cache"'),
-                    'and prunes the suite directory rather than the whole cache root',
-                );
-                const unpruned = fetchCommand(artifact, target);
-                assert.ok(!unpruned.includes('tail -n +'), 'a fetch with no count removes nothing');
+                // eventually fills the claim it lives on (T-286). The count is the volume's own, and the
+                // seed Job's fetch passes none, because it fills a claim at its mount point where the
+                // neighbours are not ours to remove. The order is modification time, because an identity is
+                // a digest and a digest does not order (D-470).
+                const root = mkdtempSync(join(tmpdir(), 'kustomize-prune-'));
+                try {
+                    const older = ['1.0.0-aaaa', '1.0.0-bbbb', '1.0.0-cccc', '1.0.0-dddd'];
+                    for (const [index, name] of older.entries()) {
+                        const dir = join(root, name);
+                        mkdirSync(dir, {recursive: true});
+                        // An hour apart, oldest first, so "the newest three" is a fact about the fixture
+                        // rather than about how fast this test ran.
+                        const at = new Date(Date.now() - (older.length - index) * 3_600_000);
+                        utimesSync(dir, at, at);
+                    }
+                    keepNewest(root, 3);
+                    assert.deepEqual(
+                        older.filter(name => existsSync(join(root, name))),
+                        ['1.0.0-bbbb', '1.0.0-cccc', '1.0.0-dddd'],
+                        'a prune to three keeps the newest three directories and removes the rest',
+                    );
+                } finally {
+                    rmSync(root, {recursive: true, force: true});
+                }
             },
 
             async function anArtifactWithNoSourceIsRefused(

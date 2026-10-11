@@ -124,10 +124,11 @@ blong-server reuse); `suite/blong-suite` shows wiring multiple realms into one s
 ## Contributing Kubernetes resources
 
 An adapter or orchestrator that must shape its own deployment declares a `k8s` activation block
-co-located in its layer file — `k8sReplicas`, `k8sResources`, `k8sPorts`, `k8sIngresses`, `k8sEnv`,
-`k8sManifests`. `blong-kustomize` merges them into the deployment plan; an ingress with no
-`serviceName` binds to the owning deployment's Service. See `[K8S_CONTRIB]` in
-`_shared/conventions.md`.
+co-located in its layer file — `k8sReplicas`, `k8sResources`, `k8sPorts`, `k8sIngresses`,
+`k8sSecrets`, `k8sAssets`, `k8sVolumes`, `k8sEnv`, `k8sManifests`. `blong-kustomize` merges them into
+the deployment plan — the collections a name identifies are maps keyed by that name, so one realm
+adds to another's rather than colliding — and an ingress with no `serviceName` binds to the owning
+deployment's Service. See `[K8S_CONTRIB]` in `_shared/conventions.md`.
 
 ## Recommended skill set for creating a realm
 

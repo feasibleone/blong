@@ -1,7 +1,12 @@
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
+import {GATEWAY_KEYS_LABEL, PART_OF_LABEL} from '../../../apply.ts';
 import {realmCommand} from '../../../bin/kustomizeCommand.ts';
 import {GATEWAY_KEYS_SECRET} from '../../../generator.ts';
-import {generateGatewayKeys, gatewayKeysConfig} from '../../../orchestrator/controller/kustomizeGatewayKeysEnsure.ts';
+import {
+    gatewayKeysConfig,
+    gatewayKeysSecret,
+    generateGatewayKeys,
+} from '../../../orchestrator/controller/kustomizeGatewayKeysEnsure.ts';
 
 /**
  * server/test/test/testGatewayKeys.ts — the suite's gateway keys.
@@ -18,6 +23,57 @@ import {generateGatewayKeys, gatewayKeysConfig} from '../../../orchestrator/cont
 export default handler(({lib: {group}, handler: {kustomizeGatewayKeysEnsure}}) => ({
     testGatewayKeys: ({name = 'gateway keys'}: {name?: string} = {}) =>
         group(name)([
+            async function thePairIsWrittenWhereASweepCanFindIt(assert: IAssert) {
+                const secret = gatewayKeysSecret({
+                    name: GATEWAY_KEYS_SECRET,
+                    namespace: 'shop',
+                    suite: 'shop',
+                    owner: {name: 'shop', uid: '9f1c2a'},
+                    keys: generateGatewayKeys(),
+                });
+                const metadata = secret.metadata as {
+                    labels?: Record<string, string>;
+                    ownerReferences?: Array<Record<string, string>>;
+                };
+                assert.equal(
+                    metadata.labels?.[PART_OF_LABEL],
+                    'shop',
+                    'the pair carries the label a pass selects its objects by',
+                );
+                assert.equal(
+                    metadata.labels?.[GATEWAY_KEYS_LABEL],
+                    'true',
+                    'and the one that keeps a sweep from retiring it while the declaration exists',
+                );
+                // The owner reference *is* the removal rather than a promise of one: Kubernetes
+                // deletes the Secret when the declaration it names goes, which is the half no pass
+                // can do, because a pass stops running when the CR does (T-267).
+                assert.deepEqual(
+                    metadata.ownerReferences,
+                    [
+                        {
+                            apiVersion: 'blong.feasible.one/v1alpha1',
+                            kind: 'BlongDeployment',
+                            name: 'shop',
+                            uid: '9f1c2a',
+                        },
+                    ],
+                    'and it is owned by the declaration it was written for',
+                );
+                // A registry pass reads no CR — the process *is* the suite — so there is no owner to
+                // name, and the pair lives as long as the deployment does.
+                const unowned = gatewayKeysSecret({
+                    name: GATEWAY_KEYS_SECRET,
+                    namespace: 'shop',
+                    keys: generateGatewayKeys(),
+                });
+                assert.equal(
+                    (unowned.metadata as {ownerReferences?: unknown}).ownerReferences,
+                    undefined,
+                    'while a pass that read no declaration claims no owner',
+                );
+            },
+
             async function theGeneratedPairIsWhatTheGatewayReads(assert: IAssert) {
                 const keys = generateGatewayKeys();
                 const sign = keys.sign as Record<string, unknown>;
@@ -64,11 +120,7 @@ export default handler(({lib: {group}, handler: {kustomizeGatewayKeysEnsure}}) =
                     keys.sign,
                     'the serving role is configured with the pair',
                 );
-                assert.deepEqual(
-                    document.gateway.encrypt,
-                    keys.encrypt,
-                    'both halves of it',
-                );
+                assert.deepEqual(document.gateway.encrypt, keys.encrypt, 'both halves of it');
                 assert.deepEqual(
                     document.remote.client.sign,
                     keys.sign,

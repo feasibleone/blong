@@ -30,3 +30,13 @@
 # ---------------------------------------------------------------------------
 # DO NOT MODIFY ABOVE THIS LINE!  Add any project-specific overrides below.
 # ---------------------------------------------------------------------------
+# A realm package, so the whitelist names what the runtime loads: the `server.ts` and `browser.ts`
+# entry points, the `adapter` layer beside them and the `config` modules they import. The template
+# above keeps `bin`, `lib` and `dist`, so this package published as metadata only, while a consumer
+# resolves `@feasibleone/blong-test/server.ts` here (F-488, D-521).
+!/server.ts
+!/browser.ts
+!/adapter/**
+!/config/**
+!tsconfig.json
+!eslint.config.mjs

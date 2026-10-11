@@ -226,6 +226,7 @@ words:
   - networkpolicies
   - node-rdkafka
   - nodedir
+  - nohup
   - nomic
   - nosniff
   - npmjs

@@ -30,3 +30,14 @@
 # ---------------------------------------------------------------------------
 # DO NOT MODIFY ABOVE THIS LINE!  Add any project-specific overrides below.
 # ---------------------------------------------------------------------------
+# A package whose sources are its published surface: consumers resolve `./server.ts` and `./index.ts`,
+# while the template above keeps `bin`, `lib` and `dist` — a compiled layout nothing here produces — so
+# the package published as three files of metadata (F-488, D-521). Note the `./browser.js` and
+# `./browser.ts` entries the `exports` map declares: this package has no browser half, so those name
+# files that do not exist, and nothing imports them (recorded rather than repaired here).
+!index.ts
+!server.ts
+!/orchestrator/**
+!/config/**
+!tsconfig.json
+!eslint.config.mjs

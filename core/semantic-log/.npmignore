@@ -9,3 +9,9 @@
 !/src/**
 !/flow
 !/flow/**
+# The two root entry points the exports map declares that this list missed. `attachable.ts` is the one
+# `blong-gogo` imports (`@feasibleone/semantic-log/attachable`, from `Registry.ts` and
+# `semanticContext.ts`), so a published tarball without it cannot resolve a subpath this repository's
+# own published code uses (F-488).
+!/attachable.ts
+!/capability.ts

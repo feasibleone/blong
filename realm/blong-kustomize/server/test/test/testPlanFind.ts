@@ -440,6 +440,136 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 );
             },
 
+            async function aCollectionIsMergedByName(assert: IAssert) {
+                // The other half of T-249: `externalServices` was the collection a tenant's CR and a
+                // suite's config both declare, and these are the ones a *realm* declares beside the
+                // suite's. Keyed by the name each entry carries, so the two sources combine — a realm
+                // adds an entry the suite never named, and one that names an entry the suite declared
+                // adds its own fields to it instead of writing a second object of the same name. A list
+                // could only concatenate, which is two Secrets called `shop-db` by the time the tree is
+                // built (T-257).
+                const view = {
+                    realms: ['shop'],
+                    groups: [{name: 'shop.orchestrator', handlerCount: 1, layer: 'orchestrator'}],
+                    ports: [
+                        {
+                            id: 'shop.api',
+                            type: 'dispatch',
+                            namespace: 'shop',
+                            k8s: {
+                                k8sSecrets: {'shop-db': {literals: [{key: 'mode', value: 'live'}]}},
+                                k8sAssets: {'shop-ui': {files: ['ui/index.html']}},
+                                k8sPorts: {http: {port: 8080}},
+                            },
+                        },
+                        {
+                            id: 'shop.session',
+                            type: 'dispatch',
+                            namespace: 'shop',
+                            k8s: {
+                                k8sSecrets: {'shop-session': {envs: ['session.env']}},
+                                k8sPorts: {http: {containerPort: 8081}, metrics: {port: 9090}},
+                            },
+                        },
+                    ],
+                    roles: {},
+                } as IRegistryView;
+                const plan = planFromRegistry(view, {
+                    suiteName: 'demo',
+                    frameworkImage: 'image',
+                    secrets: {'shop-db': {envs: ['shop-db.env']}},
+                });
+
+                assert.deepEqual(
+                    plan.secrets,
+                    [
+                        {
+                            name: 'shop-db',
+                            envs: ['shop-db.env'],
+                            literals: [{key: 'mode', value: 'live'}],
+                        },
+                        {name: 'shop-session', envs: ['session.env']},
+                    ],
+                    'the suite entry and the realm entry merge under one name, beside the realm-only one',
+                );
+                assert.deepEqual(
+                    plan.assets,
+                    [{name: 'shop-ui', files: ['ui/index.html']}],
+                    'and a collection only a realm declares arrives the same way',
+                );
+                assert.deepEqual(
+                    plan.deployments[0]?.ports,
+                    [
+                        {name: 'http', port: 8080, containerPort: 8081},
+                        {name: 'metrics', port: 9090},
+                    ],
+                    'while two realms of one process naming one port is one port, not two',
+                );
+                assert.deepEqual(
+                    planFromRegistry(
+                        {...view, ports: [{id: 'shop.api', type: 'dispatch', namespace: 'shop'}]},
+                        {suiteName: 'demo', frameworkImage: 'image'},
+                    ).secrets,
+                    [],
+                    'and a suite that declares none, whose realms contribute none, has none',
+                );
+            },
+
+            async function aCollectionItCannotMeanIsRefused(assert: IAssert) {
+                // The shape is checked where it is read, because both sources are data rather than code:
+                // a config file someone edited, and a CR a tenant wrote. A list is the shape the older
+                // declarations carried, and a half-written entry is what a hand-edited map produces —
+                // neither says anything useful once the composer has it.
+                const view = {
+                    realms: ['shop'],
+                    groups: [{name: 'shop.orchestrator', handlerCount: 1, layer: 'orchestrator'}],
+                    ports: [{id: 'shop.api', type: 'dispatch', namespace: 'shop'}],
+                    roles: {},
+                } as IRegistryView;
+                const refuse = (secrets: unknown): string => {
+                    try {
+                        planFromRegistry(view, {
+                            suiteName: 'demo',
+                            frameworkImage: 'image',
+                            secrets,
+                        } as never);
+                    } catch (error) {
+                        return (error as Error).message;
+                    }
+                    return '';
+                };
+
+                assert.match(
+                    refuse([{name: 'shop-db', envs: ['shop-db.env']}]),
+                    /secrets is a list, but it is a map keyed by the name/,
+                    'the list form is refused, naming the field',
+                );
+                assert.match(
+                    refuse({'': {envs: ['shop-db.env']}}),
+                    /secrets declares an entry whose key is empty/,
+                    'and so is an entry whose key names nothing, because the key is the name',
+                );
+                assert.match(
+                    refuse({'shop-db': 'shop-db.env'}),
+                    /secrets declares "shop-db" as a string/,
+                    'as is one that carries a value rather than the fields of the object',
+                );
+                assert.match(
+                    refuse('shop-db'),
+                    /secrets is a string/,
+                    'while anything that is not a map says what it found instead',
+                );
+                assert.deepEqual(
+                    planFromRegistry(view, {
+                        suiteName: 'demo',
+                        frameworkImage: 'image',
+                        assets: {'shop-ui': {files: ['ui/index.html']}},
+                    }).assets,
+                    [{name: 'shop-ui', files: ['ui/index.html']}],
+                    'and the map is the one shape that is read',
+                );
+            },
+
             async function aPortalNamesTheProcessBehindIt(assert: IAssert) {
                 // A portal is an address *and* the process behind it, and the planner is where the two
                 // are joined. The realm is what a suite names, because a deployment name follows the

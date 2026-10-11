@@ -30,7 +30,15 @@ import {
     isClusterResource,
     stampSpecHash,
 } from './apply.ts';
-import {FILL_ENV, artifactIdentity, fetchCommand, fillScript} from './artifact.ts';
+import {
+    FILL_ENV,
+    FILL_MODULE,
+    artifactIdentity,
+    fillCommand,
+    fillModuleData,
+    fillModuleMount,
+    fillModuleVolume,
+} from './artifact.ts';
 import {
     AUTH_REVIEW_RULES,
     OPERATOR_CLUSTER_RULES,
@@ -1308,7 +1316,7 @@ export const installKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
         tree.set(`volumes/${plan.suite.name}-${volumeIdentity(plan)}.yaml`, pvcResource(plan));
         tree.set(`deployer/seed.yaml`, seedJobResource(plan));
     } else {
-        volumeFillJobs(tree, plan);
+        volumeFillJobs(tree, plan, OPERATOR_NAMESPACE);
     }
     tree.set('rbac/blong-operator-service-account.yaml', operatorServiceAccountResource(plan));
     tree.set('rbac/blong-operator-role.yaml', operatorRoleResource(plan));
@@ -1518,10 +1526,20 @@ const migrationContainer = (plan: IDeploymentPlan): Record<string, unknown> => (
 const seedContainer = (plan: IDeploymentPlan): Record<string, unknown> => ({
     name: 'seed',
     image: image(plan),
-    // The same path the deployment reads it from: `create-links.js` writes absolute links, so the
-    // seed has to land where the readers look.
-    command: ['sh', '-c', fetchCommand(plan.suiteVolume.artifact, SUITE_MOUNT)],
-    volumeMounts: [{name: 'suite', mountPath: SUITE_MOUNT}, ...releaseRc().mounts],
+    // The artifact arrives where the readers look, and this realm's own module does the work rather than a
+    // shell that needed `curl` and `unzip` to exist in the image (D-518). The mount is the target rather
+    // than a root: a `shared` volume is one directory, and there is nothing beside it for retention.
+    command: fillCommand(SUITE_MOUNT),
+    env: [
+        ...(plan.suiteVolume.artifact?.path
+            ? [{name: FILL_ENV.path, value: plan.suiteVolume.artifact.path}]
+            : [{name: FILL_ENV.url, value: plan.suiteVolume.artifact?.url ?? ''}]),
+    ],
+    volumeMounts: [
+        {name: 'suite', mountPath: SUITE_MOUNT},
+        ...releaseRc().mounts,
+        fillModuleMount(),
+    ],
     resources: containerResources(),
 });
 
@@ -1568,6 +1586,7 @@ const seedJobResource = (plan: IDeploymentPlan): Record<string, unknown> => {
                             },
                         },
                         ...releaseRc().volumes,
+                        fillModuleVolume(),
                     ],
                 },
             },
@@ -1678,15 +1697,23 @@ const storageKustomization = (plan: IDeploymentPlan): Record<string, unknown> =>
  * so it says so rather than being written. That is the one thing a caller has to get right, and a
  * silent empty tree would show up as pods that never start rather than as a sentence (D-470).
  */
-const volumeFillJobs = (tree: KustomizeTree, plan: IDeploymentPlan): void => {
+const volumeFillJobs = (tree: KustomizeTree, plan: IDeploymentPlan, namespace: string): void => {
     if (!plan.nodes.length) {
         throw new Error(
             `${plan.suite.name} reads its artifact from a per-node directory, and the plan names no ` +
                 'nodes: nothing would fill them. Name the nodes the suite runs on.',
         );
     }
-    // The script once, in the Job template: it is the same file for every node and every artifact, because
-    // the four values it works from arrive in its environment (D-475, D-477).
+    // The module once for the tree, in the namespace this tree's Jobs run in: the same file for every node
+    // and every artifact, because the four values it works from arrive in its environment (D-518, D-477).
+    // It is written here rather than by `artifact.ts` so that it carries the labels every other object of
+    // a tree carries — a ConfigMap of the module is an object like any other.
+    tree.set('configmaps/fill-script.yaml', {
+        apiVersion: 'v1',
+        kind: 'ConfigMap',
+        metadata: {name: FILL_MODULE.name, namespace, labels: suiteLabels(plan)},
+        binaryData: fillModuleData(),
+    });
     for (const node of plan.nodes) {
         tree.set(`cache/${fillJobName(plan, node)}.yaml`, fillJobResource(plan, node));
     }
@@ -1744,10 +1771,10 @@ const fillJobResource = (plan: IDeploymentPlan, node: string): Record<string, un
                         {
                             name: 'fill',
                             image: image(plan),
-                            // The script is the template's, and it is the same text for every node: what
-                            // differs per node and per artifact arrives in the environment below, which is
-                            // why the base can carry it and the overlay only the values (D-477).
-                            command: ['sh', '-c', fillScript()],
+                            // The module the tree's ConfigMap carries does the work; what differs per node
+                            // and per artifact arrives in the environment below, which is why the base can
+                            // carry it and the overlay only the values (D-477, D-518).
+                            command: fillCommand(),
                             env: [
                                 {name: FILL_ENV.root, value: root},
                                 {name: FILL_ENV.identity, value: volumeIdentity(plan)},
@@ -1761,7 +1788,10 @@ const fillJobResource = (plan: IDeploymentPlan, node: string): Record<string, un
                             // The parent, not the identity's own directory: the fill stages a sibling
                             // there and renames it into place, and the retention counts what is left
                             // beside it.
-                            volumeMounts: [{name: 'suite', mountPath: root}],
+                            volumeMounts: [
+                                {name: 'suite', mountPath: root},
+                                fillModuleMount(),
+                            ],
                             resources: containerResources(),
                             // Root, and only here: the volume is a hostPath, so `fsGroup` does not apply
                             // and the directory belongs to the node.
@@ -1777,6 +1807,7 @@ const fillJobResource = (plan: IDeploymentPlan, node: string): Record<string, un
                                 type: 'DirectoryOrCreate',
                             },
                         },
+                        fillModuleVolume(),
                     ],
                 },
             },
@@ -1785,11 +1816,12 @@ const fillJobResource = (plan: IDeploymentPlan, node: string): Record<string, un
 };
 
 /**
- * The fill script now travels in the Job template itself.
+ * The fill module travels as a ConfigMap each Job mounts.
  *
- * It used to be a ConfigMap the Job mounted, which cost one object and one mount to make the same text
- * reach every node; the template already *is* that shared text, and the script reads its settings from
- * the environment so nothing else had to change (D-477). Kept as a note because the ConfigMap is gone.
+ * It was shell text inside the template for a turn, which cost nothing while the step was three lines and a
+ * `curl`; now the step is a real program — fetched, unpacked and linked by this realm's own code rather than
+ * by binaries the framework image had to install — so it is a file `node` starts, and the ConfigMap is what
+ * puts it in every node's pod (D-518, D-477).
  */
 
 /**
@@ -2710,7 +2742,7 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
         tree.set(`volumes/${plan.suite.name}-${volumeIdentity(plan)}.yaml`, pvcResource(plan));
         tree.set(`deployer/seed.yaml`, seedJobResource(plan));
     } else {
-        volumeFillJobs(tree, plan);
+        volumeFillJobs(tree, plan, plan.suite.namespace);
     }
     if (plan.suiteVolume.rwxManifest) {
         tree.set('storage/kustomization.yaml', storageKustomization(plan));

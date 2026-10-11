@@ -24,7 +24,9 @@
  */
 import {handler, type IMeta} from '@feasibleone/blong';
 import {generateKeyPairSync} from 'node:crypto';
+import {GATEWAY_KEYS_LABEL, PART_OF_LABEL} from '../../apply.ts';
 import {GATEWAY_KEYS_SECRET} from '../../generator.ts';
+import {OPERATOR_GROUP, OPERATOR_VERSION} from '../../operator.ts';
 
 /** The keys one suite's processes share. */
 export interface IGatewayKeys {
@@ -72,6 +74,63 @@ export const gatewayKeysConfig = (keys: IGatewayKeys): string =>
         remote: {client: {sign: keys.sign, encrypt: keys.encrypt}},
     });
 
+/** The declaration the pair belongs to, when the pass read one. */
+export interface IGatewayKeysOwner {
+    /** The `BlongDeployment`'s name, which is the suite's. */
+    name: string;
+    /** Its `uid`: the name a removal follows back to the object that asked for the pair. */
+    uid: string;
+}
+
+/**
+ * The Secret a suite's key pair is written into.
+ *
+ * Two labels and an owner reference are the whole of how it is kept. `part-of` is what a pass selects
+ * its objects by, so without it the pair is invisible to every listing and outlives the suite it
+ * belongs to; the key label is what says a listing which now *can* see it does not make it obsolete;
+ * and the reference is what removes it when the declaration does (T-267). One key holds an rc document,
+ * because the pods mount the Secret as a directory and `rc` reads the `config` file in it (D-441).
+ */
+export const gatewayKeysSecret = ({
+    name,
+    namespace,
+    suite,
+    owner,
+    keys,
+}: {
+    name: string;
+    namespace: string;
+    /** The suite's name, which is the value of the label a pass selects by. */
+    suite?: string;
+    owner?: IGatewayKeysOwner;
+    keys: IGatewayKeys;
+}): Record<string, unknown> => ({
+    apiVersion: 'v1',
+    kind: 'Secret',
+    metadata: {
+        name,
+        namespace,
+        labels: {
+            ...(suite ? {[PART_OF_LABEL]: suite} : {}),
+            [GATEWAY_KEYS_LABEL]: 'true',
+        },
+        ...(owner
+            ? {
+                  ownerReferences: [
+                      {
+                          apiVersion: `${OPERATOR_GROUP}/${OPERATOR_VERSION}`,
+                          kind: 'BlongDeployment',
+                          name: owner.name,
+                          uid: owner.uid,
+                      },
+                  ],
+              }
+            : {}),
+    },
+    type: 'Opaque',
+    stringData: {config: gatewayKeysConfig(keys)},
+});
+
 export default handler(({handler}) => {
     const find = (
         name: string,
@@ -91,7 +150,7 @@ export default handler(({handler}) => {
          * `created: false` rather than rotating what browsers are holding.
          */
         async kustomizeGatewayKeysEnsure(
-            params: {namespace?: string} = {},
+            params: {namespace?: string; suite?: string; owner?: IGatewayKeysOwner} = {},
             $meta?: IMeta,
         ): Promise<IGatewayKeysResult> {
             const name = GATEWAY_KEYS_SECRET;
@@ -119,17 +178,13 @@ export default handler(({handler}) => {
             await create(
                 {
                     namespace,
-                    body: {
-                        apiVersion: 'v1',
-                        kind: 'Secret',
-                        metadata: {name, namespace},
-                        type: 'Opaque',
-                        // One key, because the pods mount the Secret as a *directory* and `rc` reads
-                        // the `config` file in it: an rc document names `gateway.sign`,
-                        // `gateway.encrypt` and the same pair under `remote.client`, which is what
-                        // the server and the rpc client read respectively.
-                        stringData: {config: gatewayKeysConfig(keys)},
-                    },
+                    body: gatewayKeysSecret({
+                        name,
+                        namespace,
+                        suite: params.suite,
+                        owner: params.owner,
+                        keys,
+                    }),
                 },
                 $meta as IMeta,
             );

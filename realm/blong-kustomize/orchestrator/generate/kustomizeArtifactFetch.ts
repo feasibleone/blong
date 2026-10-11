@@ -1,12 +1,8 @@
 import {handler} from '@feasibleone/blong';
-import {execFile} from 'node:child_process';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
-import {promisify} from 'node:util';
-import {artifactDir, artifactReady, fetchCommand} from '../../artifact.ts';
+import {artifactDir, artifactReady, fillArtifact} from '../../artifact.ts';
 import type {IPlanConfig, ISuiteArtifact} from '../../plan.ts';
-
-const run = promisify(execFile);
 
 /**
  * Fetches in flight, by target directory.
@@ -33,9 +29,11 @@ const inFlight = new Map<string, Promise<{dir: string; fetched: boolean; source:
  * A cache key that names the artifact is what makes "the same version, different files" two
  * directories rather than one (D-468).
  *
- * A `path` artifact is used where it is (a runbook that unpacks by hand, or a node-local volume);
- * a `url` artifact is fetched with the same command the tree's own Job runs, which is also why the
- * cache directory is a mount in a cluster and a directory under `$HOME` on a developer's machine.
+ * A `path` artifact is used where it is (a runbook that unpacks by hand, or a node-local volume); a `url`
+ * artifact is fetched by the realm's own fill, the module a node's Job runs, so the two callers agree about
+ * what a whole artifact is. That is also why the cache directory is a mount in a cluster and a directory
+ * under `$HOME` on a developer's machine, and why the operator needs no shell tooling in its image
+ * (D-518).
  *
  * The fetch also prunes, when it is told how many directories to keep: one directory per published
  * artifact is one full unpack, so a cache that only ever grows is a cache that eventually fills the
@@ -68,12 +66,16 @@ export default handler(() => ({
         if (artifactReady(dir)) return {dir, fetched: false, source: 'url' as const};
         const running = inFlight.get(dir);
         if (running) return running;
-        // The tree's own fetch, run here rather than in a Job: `curl` and `unzip` are in the
-        // framework image for exactly this.
+        // In this process rather than in a Job: the module fetches, unpacks and links by itself, which is
+        // what lets the framework image drop `curl` and `unzip` (D-518).
         const fetching = (async () => {
             try {
-                await run('sh', ['-c', fetchCommand(artifact, dir, retention)], {
-                    maxBuffer: 1024 * 1024,
+                await fillArtifact({
+                    source: {url: artifact.url},
+                    target: dir,
+                    // The cache's own retention, which counts this fetch's directory among the ones that
+                    // stay (T-286).
+                    ...(retention === undefined ? {} : {keep: retention}),
                 });
             } finally {
                 inFlight.delete(dir);

@@ -39,28 +39,108 @@ import {
 /** A patch that travels as text inside an instance's kustomization. */
 const parsedPatch = (patch: string): unknown => parse(patch) as unknown;
 
-/** Merge `patch` into `target` the way kustomize's strategic merge does, for the shapes the split writes. */
-const mergeInto = (target: unknown, patch: unknown): unknown => {
-    if (Array.isArray(patch)) {
-        // A list of maps that all carry a `name` merges by it, entry by entry; anything else is replaced,
-        // which is what a strategic merge does with a list of strings — a job's `args`, say.
-        const named = patch.every(
-            entry => typeof (entry as {name?: unknown} | null)?.name === 'string',
-        );
-        if (!named || !Array.isArray(target)) return patch;
-        const merged = [...target];
-        for (const entry of patch) {
-            const name = (entry as {name: string}).name;
-            const at = merged.findIndex(item => (item as {name?: string} | null)?.name === name);
-            if (at < 0) merged.push(entry);
-            else merged[at] = mergeInto(merged[at], entry);
+/**
+ * The merge keys kustomize's schema gives the lists a generated object can carry.
+ *
+ * A narrowed mirror of the upstream schema, which is the honest half of D-488: the composer a human
+ * runs is `kubectl kustomize`, the operator composes the same tree in JS, and the JS half therefore has
+ * to know what upstream knows about the lists a generated object holds — and nothing more, because a
+ * schema for every kind is what this deliberately avoids.
+ *
+ * A rule names the *tail* of a list's path, and the longest match wins, because one field is keyed
+ * differently in two places: a container's `ports` merge on `containerPort` while a Service's merge on
+ * `port`, and only the path tells them apart. `key` is the field the entries merge on. A list of scalars
+ * needs no rule — a strategic merge replaces it, which is what a Job's `args` wants — and a list of maps
+ * that no rule names is refused rather than guessed at. An Ingress's `rules` and the `paths` inside them
+ * are deliberately absent: the binary replaces both lists rather than merging them, which the step that
+ * holds this table to it shows, so a patch carrying one is refused instead of composed (D-517).
+ */
+export const LIST_MERGE_RULES: Array<{kind?: string; path: string[]; key: string}> = [
+    // The pod specs of every workload a tree writes: a Deployment, a DaemonSet, a StatefulSet, a Job and
+    // a CronJob's template all carry the same five lists.
+    {path: ['containers'], key: 'name'},
+    {path: ['initContainers'], key: 'name'},
+    {path: ['volumes'], key: 'name'},
+    {path: ['imagePullSecrets'], key: 'name'},
+    {path: ['containers', 'env'], key: 'name'},
+    {path: ['containers', 'volumeMounts'], key: 'mountPath'},
+    {path: ['containers', 'ports'], key: 'containerPort'},
+    // And the one a tree writes outside a pod spec: a Service's ports merge on the number, which is the
+    // field upstream keys differently from a container's.
+    {kind: 'Service', path: ['spec', 'ports'], key: 'port'},
+];
+
+/** Where a merge is happening: the kind of the object, and the fields walked to reach the value. */
+interface IMergeAt {
+    kind: string;
+    path: string[];
+}
+
+/** The rule that decides the list at `at`, or nothing when the narrowed table does not name one. */
+const listRuleAt = (at: IMergeAt): {kind?: string; path: string[]; key: string} | undefined => {
+    let best: {rule: {kind?: string; path: string[]; key: string}; depth: number} | undefined;
+    for (const rule of LIST_MERGE_RULES) {
+        const depth = rule.path.length;
+        if (depth < (best?.depth ?? 0)) continue;
+        if (rule.kind && rule.kind !== at.kind) continue;
+        const tail = at.path.slice(-depth);
+        if (tail.length === depth && tail.every((segment, index) => segment === rule.path[index])) {
+            best = {rule, depth};
         }
-        return merged;
+    }
+    return best?.rule;
+};
+
+/**
+ * Merge `patch` into `target` the way kustomize's strategic merge does, for the lists {@link LIST_MERGE_RULES} names.
+ *
+ * A list of maps no rule names is refused rather than approximated. The approximation this replaces — a list
+ * of maps that all carry a `name` merges by it, anything else is replaced — was right for the shapes the split
+ * happens to write today and wrong wherever upstream keys a list by something else, which is a difference
+ * nothing would have reported: the pass would compose one object and a human's `kubectl apply -k` another
+ * (F-480). The refusal names the path, and the patch that carries one is the overlay's, written by this
+ * realm, so the failure points at a line this realm can fix.
+ */
+const mergeInto = (target: unknown, patch: unknown, at: IMergeAt): unknown => {
+    if (Array.isArray(patch)) {
+        const rule = listRuleAt(at);
+        // A list that is not a list of maps is replaced, which is what a strategic merge does with a Job's
+        // `args` or a claim's access modes.
+        if (!patch.every(entry => entry && typeof entry === 'object')) return patch;
+        if (!rule) {
+            throw new Error(
+                `no merge key is mirrored for the list at ${at.kind}.${at.path.join('.')}: kustomize ` +
+                    'merges a list of maps by the key its own schema names, and guessing one here is how ' +
+                    'the two composers come to differ — add the rule to LIST_MERGE_RULES',
+            );
+        }
+        if (!Array.isArray(target)) return patch;
+        // The patch's entries come first, in the patch's own order, and the base's entries the patch did
+        // not touch follow. A strategic merge moves a list element it patches to the front rather than
+        // leaving it where it was — a fact the generator already works around when it writes a list (the
+        // fill Job's environment carries the whole list, D-481) and one this has to copy rather than
+        // improve on, because the composer the operator runs and the composer a human's `apply -k` runs
+        // have to produce the same object.
+        const untouched = [...target];
+        const merged: unknown[] = [];
+        for (const entry of patch) {
+            const value = (entry as Record<string, unknown>)[rule.key];
+            const existing = untouched.findIndex(
+                item => (item as Record<string, unknown> | null)?.[rule.key] === value,
+            );
+            if (existing < 0) merged.push(entry);
+            else {
+                merged.push(mergeInto(untouched[existing], entry, at));
+                untouched.splice(existing, 1);
+            }
+        }
+        return [...merged, ...untouched];
     }
     if (patch === null || typeof patch !== 'object') return patch;
     const merged = {...((target ?? {}) as Record<string, unknown>)};
     for (const [key, value] of Object.entries(patch as Record<string, unknown>)) {
-        merged[key] = key in merged ? mergeInto(merged[key], value) : value;
+        merged[key] =
+            key in merged ? mergeInto(merged[key], value, {...at, path: [...at.path, key]}) : value;
     }
     return merged;
 };
@@ -264,10 +344,10 @@ export const materializeSplitTree = (
         let materialized = template as Record<string, unknown>;
         for (const patch of instance.patches ?? []) {
             if (patch.patch) {
-                materialized = mergeInto(materialized, parsedPatch(patch.patch)) as Record<
-                    string,
-                    unknown
-                >;
+                materialized = mergeInto(materialized, parsedPatch(patch.patch), {
+                    kind: String((template as {kind?: unknown}).kind ?? ''),
+                    path: [],
+                }) as Record<string, unknown>;
             }
         }
         // The suffix goes on last, and not the other way round: kustomize applies it to the resources
@@ -292,7 +372,12 @@ export const materializeSplitTree = (
         const patch =
             (target ? patches.get(target.full) : undefined) ??
             (target ? patches.get(target.loose) : undefined);
-        const object = patch ? (mergeInto(resource, patch) as KustomizeResource) : resource;
+        const object = patch
+            ? (mergeInto(resource, patch, {
+                  kind: String((resource as {kind?: unknown}).kind ?? ''),
+                  path: [],
+              }) as KustomizeResource)
+            : resource;
         objects.set(path, restamp(object));
     }
 

@@ -164,13 +164,15 @@ in step (see `[K8S_CONTRIB]` in `_shared/conventions.md`):
 ```typescript
 activation: {
     default: {namespace: 'webhook'},
-    k8s: {k8sIngresses: [{name: 'shop-webhook', path: '/webhook/shop'}]},
+    k8s: {k8sIngresses: {shop-webhook: {path: '/webhook/shop'}}},
 }
 ```
 
-Keys: `k8sReplicas`, `k8sResources`, `k8sPorts`, `k8sIngresses`, `k8sEnv`, `k8sManifests`. Objects
-deep-merge across the realms sharing a deployment; arrays concatenate. An ingress with no
-`serviceName` binds to the owning deployment.
+Keys: `k8sReplicas`, `k8sResources`, `k8sPorts`, `k8sIngresses`, `k8sSecrets`, `k8sAssets`,
+`k8sVolumes`, `k8sEnv`, `k8sManifests`. A collection a name identifies is a map keyed by that name,
+and the realms sharing a deployment merge it by that key — a realm adds beside the suite's rather
+than colliding with it. `k8sEnv` and `k8sManifests` stay lists (order, and identity inside the
+object). An ingress with no `serviceName` binds to the owning deployment.
 
 ## Portals
 

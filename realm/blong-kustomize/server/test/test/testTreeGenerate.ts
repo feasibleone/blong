@@ -1,10 +1,18 @@
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 import {execFileSync} from 'node:child_process';
-import {cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {
+    cpSync,
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    rmSync,
+    writeFileSync,
+} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, relative, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {parse, parseAllDocuments} from 'yaml';
+import {parse, parseAllDocuments, stringify} from 'yaml';
 import {danglingReferences, isClusterResource, sweptResourceTypes} from '../../../apply.ts';
 import {
     type KustomizeResource,
@@ -366,9 +374,9 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         identityInBaseFiles: base.filter(file => read(file).includes(identity)),
                         identityInLocal: localText.includes(identity),
                         // The base keeps the *shape*: the templates the overlay builds an instance from,
-                        // which is where a reader sees what a fill Job is — script included, since the
-                        // script reads its settings from the environment and is the same text for every
-                        // node (D-477). No ConfigMap and no mount.
+                        // which is where a reader sees what a fill Job is — and the module it runs, which
+                        // is the realm's own program rather than shell text inside the Job, so the
+                        // template has no script in it and mounts the ConfigMap instead (D-518, D-477).
                         templatesInBase: base.filter(file => file.startsWith('base/templates/'))
                             .length,
                         scriptInTemplate: read('base/templates/fill/template.yaml').includes(
@@ -377,6 +385,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         scriptMounted: read('base/templates/fill/template.yaml').includes(
                             '/script/',
                         ),
+                        moduleInBase: baseText.includes('unpackZip'),
                         // The overlay is small: one kustomization per instance, and one patch per object
                         // that carries a value rather than a name.
                         instanceDirs: [...instances].sort(),
@@ -694,6 +703,418 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 } finally {
                     rmSync(dir, {recursive: true, force: true});
                     rmSync(brought, {recursive: true, force: true});
+                }
+            },
+
+            async function aListMergesByTheKeyKustomizeGivesIt(assert: IAssert) {
+                // The operator composes the split in JS because it ships no kustomize binary (D-488), and a
+                // strategic merge is a schema decision rather than a convention: kustomize merges a list of
+                // maps by the key its own schema names for that field, `containerPort` for a container's
+                // ports and `port` for a Service's. The mirror carries a narrowed table of those keys
+                // (`LIST_MERGE_RULES`) and this step holds it to the binary one shape at a time, because a
+                // difference here is a difference between what a pass applies and what a human's
+                // `kubectl apply -k` applies, and nothing else composes both and could report it. The last
+                // pair is the negative control: a list keyed by a field the table deliberately does not
+                // name is refused by the mirror, and the binary is what shows that refusing was right.
+                requireKubectl(assert);
+                const dir = mkdtempSync(join(tmpdir(), 'kustomize-merge-'));
+                const withIngress = mkdtempSync(join(tmpdir(), 'kustomize-merge-ingress-'));
+                const unlisted = mkdtempSync(join(tmpdir(), 'kustomize-merge-unlisted-'));
+                try {
+                    const write = (into: string, path: string, value: unknown): void => {
+                        mkdirSync(dirname(join(into, path)), {recursive: true});
+                        writeFileSync(join(into, path), stringify(value));
+                    };
+                    const base = {
+                        workload: {
+                            apiVersion: 'apps/v1',
+                            kind: 'Deployment',
+                            metadata: {name: 'shop', labels: {from: 'base'}},
+                            spec: {
+                                replicas: 1,
+                                template: {
+                                    spec: {
+                                        containers: [
+                                            {
+                                                name: 'app',
+                                                image: 'base:1',
+                                                args: ['--base'],
+                                                env: [{name: 'BASE', value: '1'}],
+                                                volumeMounts: [{name: 'data', mountPath: '/data'}],
+                                                ports: [{containerPort: 8080, name: 'http'}],
+                                            },
+                                        ],
+                                        initContainers: [{name: 'wait', image: 'base:1'}],
+                                        imagePullSecrets: [{name: 'registry'}],
+                                        volumes: [{name: 'data', emptyDir: {}}],
+                                    },
+                                },
+                            },
+                        },
+                        service: {
+                            apiVersion: 'v1',
+                            kind: 'Service',
+                            metadata: {name: 'shop'},
+                            spec: {ports: [{port: 80, name: 'http'}]},
+                        },
+                        ingress: {
+                            apiVersion: 'networking.k8s.io/v1',
+                            kind: 'Ingress',
+                            metadata: {name: 'shop'},
+                            spec: {
+                                rules: [
+                                    {
+                                        host: 'shop.example.test',
+                                        http: {
+                                            paths: [
+                                                {
+                                                    path: '/a',
+                                                    pathType: 'Prefix',
+                                                    backend: {
+                                                        service: {
+                                                            name: 'shop',
+                                                            port: {number: 80},
+                                                        },
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    };
+                    const patch = {
+                        workload: {
+                            apiVersion: 'apps/v1',
+                            kind: 'Deployment',
+                            metadata: {name: 'shop', labels: {patched: 'yes'}},
+                            spec: {
+                                replicas: 3,
+                                template: {
+                                    spec: {
+                                        containers: [
+                                            {
+                                                name: 'app',
+                                                args: ['--patched'],
+                                                env: [{name: 'EXTRA', value: '2'}],
+                                                volumeMounts: [
+                                                    {
+                                                        name: 'elsewhere',
+                                                        mountPath: '/data',
+                                                        readOnly: true,
+                                                    },
+                                                ],
+                                                ports: [
+                                                    {containerPort: 8080, name: 'web'},
+                                                    {containerPort: 9090, name: 'metrics'},
+                                                ],
+                                            },
+                                        ],
+                                        initContainers: [{name: 'wait', image: 'patched:1'}],
+                                        imagePullSecrets: [{name: 'registry'}, {name: 'mirror'}],
+                                        volumes: [{name: 'data', emptyDir: {sizeLimit: '1Gi'}}],
+                                    },
+                                },
+                            },
+                        },
+                        service: {
+                            apiVersion: 'v1',
+                            kind: 'Service',
+                            metadata: {name: 'shop'},
+                            spec: {
+                                ports: [
+                                    {port: 80, name: 'web'},
+                                    {port: 443, name: 'tls'},
+                                ],
+                            },
+                        },
+                        ingress: {
+                            apiVersion: 'networking.k8s.io/v1',
+                            kind: 'Ingress',
+                            metadata: {name: 'shop'},
+                            spec: {
+                                rules: [
+                                    {
+                                        host: 'shop.example.test',
+                                        http: {
+                                            paths: [
+                                                {
+                                                    path: '/b',
+                                                    pathType: 'Prefix',
+                                                    backend: {
+                                                        service: {
+                                                            name: 'shop',
+                                                            port: {number: 80},
+                                                        },
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                    },
+                                    {
+                                        host: 'other.example.test',
+                                        http: {
+                                            paths: [
+                                                {
+                                                    path: '/c',
+                                                    pathType: 'Prefix',
+                                                    backend: {
+                                                        service: {
+                                                            name: 'shop',
+                                                            port: {number: 80},
+                                                        },
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    };
+                    // A second container in the base and a patch naming one of its devices: `volumeDevices`
+                    // is a list kustomize merges on `devicePath`, and the one key the narrowed table leaves
+                    // out on purpose.
+                    const unlistedBase = structuredClone(base.workload) as Record<string, unknown>;
+                    const unlistedPatch = structuredClone(patch.workload) as Record<
+                        string,
+                        unknown
+                    >;
+                    const containersOf = (
+                        object: Record<string, unknown>,
+                    ): Record<string, unknown>[] =>
+                        (
+                            object as {
+                                spec: {template: {spec: {containers: Record<string, unknown>[]}}};
+                            }
+                        ).spec.template.spec.containers;
+                    containersOf(unlistedBase)[0].volumeDevices = [
+                        {name: 'dev', devicePath: '/dev/base'},
+                        {name: 'other', devicePath: '/dev/other'},
+                    ];
+                    containersOf(unlistedPatch)[0].volumeDevices = [
+                        {name: 'dev', devicePath: '/dev/base', extra: true},
+                    ];
+                    const tree = (
+                        into: string,
+                        files: string[],
+                        halves: {
+                            base: {workload: unknown; service: unknown; ingress: unknown};
+                            patch: {workload: unknown; service: unknown; ingress: unknown};
+                        },
+                    ): void => {
+                        const kinds: Record<string, string> = {
+                            workload: 'Deployment',
+                            service: 'Service',
+                            ingress: 'Ingress',
+                        };
+                        write(into, 'base/kustomization.yaml', {
+                            resources: files.map(file => `${file}.yaml`),
+                        });
+                        for (const file of files) {
+                            write(
+                                into,
+                                `base/${file}.yaml`,
+                                (halves.base as Record<string, unknown>)[file],
+                            );
+                        }
+                        write(into, 'local/kustomization.yaml', {
+                            resources: ['../base'],
+                            patches: files.map(file => ({
+                                path: `patches/${file}.yaml`,
+                                target: {kind: kinds[file], name: 'shop'},
+                            })),
+                        });
+                        for (const file of files) {
+                            write(
+                                into,
+                                `local/patches/${file}.yaml`,
+                                (halves.patch as Record<string, unknown>)[file],
+                            );
+                        }
+                    };
+                    tree(dir, ['workload', 'service'], {base, patch});
+                    tree(withIngress, ['ingress'], {base, patch});
+                    tree(unlisted, ['workload'], {
+                        base: {
+                            workload: unlistedBase,
+                            service: base.service,
+                            ingress: base.ingress,
+                        },
+                        patch: {
+                            workload: unlistedPatch,
+                            service: patch.service,
+                            ingress: patch.ingress,
+                        },
+                    });
+
+                    const composed = (into: string): KustomizeResource[] =>
+                        [...materializeGeneratedTree(into).values()].filter(isClusterResource);
+                    const rendered = (into: string): KustomizeResource[] =>
+                        parseAllDocuments(
+                            execFileSync('kubectl', ['kustomize', join(into, 'local')], {
+                                encoding: 'utf8',
+                            }),
+                        ).map(document => document.toJSON() as KustomizeResource);
+                    const of = (
+                        objects: KustomizeResource[],
+                        kind: string,
+                    ): Record<string, unknown> =>
+                        objects.find(object => (object as {kind?: string}).kind === kind) as Record<
+                            string,
+                            unknown
+                        >;
+                    const at = (
+                        object: Record<string, unknown>,
+                        path: Array<string | number>,
+                    ): unknown =>
+                        path.reduce<unknown>(
+                            (value, key) =>
+                                (value as Record<string | number, unknown> | undefined)?.[key],
+                            object,
+                        );
+                    const shapes: Array<{
+                        kind: string;
+                        path: Array<string | number>;
+                        value: unknown;
+                        why: string;
+                    }> = [
+                        {
+                            kind: 'Deployment',
+                            path: ['metadata', 'labels', 'patched'],
+                            value: 'yes',
+                            why: 'a field the patch adds to a map joins the keys the base had',
+                        },
+                        {
+                            kind: 'Deployment',
+                            path: ['spec', 'replicas'],
+                            value: 3,
+                            why: 'a scalar the patch names replaces the base value',
+                        },
+                        {
+                            kind: 'Deployment',
+                            path: ['spec', 'template', 'spec', 'containers', 0, 'args'],
+                            value: ['--patched'],
+                            why: "a list of scalars is replaced, which is what a Job's args want",
+                        },
+                        {
+                            kind: 'Deployment',
+                            path: ['spec', 'template', 'spec', 'containers', 0, 'env'],
+                            value: [
+                                {name: 'EXTRA', value: '2'},
+                                {name: 'BASE', value: '1'},
+                            ],
+                            why: 'a list of maps merges on name, and a patched entry moves to the front',
+                        },
+                        {
+                            kind: 'Deployment',
+                            path: ['spec', 'template', 'spec', 'containers', 0, 'ports'],
+                            value: [
+                                {containerPort: 8080, name: 'web'},
+                                {containerPort: 9090, name: 'metrics'},
+                            ],
+                            why: 'a container ports list merges on containerPort, not on their names',
+                        },
+                        {
+                            kind: 'Deployment',
+                            path: ['spec', 'template', 'spec', 'containers', 0, 'volumeMounts'],
+                            value: [{name: 'elsewhere', mountPath: '/data', readOnly: true}],
+                            why: 'and a volume mount merges on mountPath',
+                        },
+                        {
+                            kind: 'Deployment',
+                            path: ['spec', 'template', 'spec', 'volumes'],
+                            value: [{name: 'data', emptyDir: {sizeLimit: '1Gi'}}],
+                            why: 'a volume merges on name, its emptyDir merged key by key',
+                        },
+                        {
+                            kind: 'Service',
+                            path: ['spec', 'ports'],
+                            value: [
+                                {port: 80, name: 'web'},
+                                {port: 443, name: 'tls'},
+                            ],
+                            why: 'while a Service ports list merges on port, the field keyed differently in two schemas',
+                        },
+                        {
+                            kind: 'Deployment',
+                            path: ['spec', 'template', 'spec', 'initContainers'],
+                            value: [{name: 'wait', image: 'patched:1'}],
+                            why: 'and an init container merges on name, the image being what the patch names',
+                        },
+                        {
+                            kind: 'Deployment',
+                            path: ['spec', 'template', 'spec', 'imagePullSecrets'],
+                            value: [{name: 'registry'}, {name: 'mirror'}],
+                            why: 'a pull secret joins the list the base had, beside the one it names',
+                        },
+                    ];
+                    const composedTree = composed(dir);
+                    const renderedTree = rendered(dir);
+                    // What the two are held to is the list a patch merges and the order of its entries —
+                    // kustomize writes the keys inside an entry in its own order while the mirror keeps the
+                    // patch's, and a field order is not a contract: the operator compares objects against the
+                    // cluster by fingerprint and applies them key by key.
+                    const canonical = (value: unknown): unknown =>
+                        Array.isArray(value)
+                            ? value.map(canonical)
+                            : value && typeof value === 'object'
+                              ? Object.fromEntries(
+                                    Object.entries(value as Record<string, unknown>)
+                                        .sort(([left], [right]) => (left < right ? -1 : 1))
+                                        .map(([key, entry]) => [key, canonical(entry)]),
+                                )
+                              : value;
+                    for (const shape of shapes) {
+                        const mine = at(of(composedTree, shape.kind), shape.path);
+                        const theirs = at(of(renderedTree, shape.kind), shape.path);
+                        assert.deepEqual(
+                            {mirror: canonical(mine), binary: canonical(theirs)},
+                            {mirror: canonical(shape.value), binary: canonical(shape.value)},
+                            shape.why,
+                        );
+                    }
+
+                    assert.throws(
+                        () => composed(unlisted),
+                        /no merge key is mirrored for the list at Deployment\.spec\.template\.spec\.containers\.volumeDevices/,
+                        'a list of maps no rule names is refused, and the failure names the path',
+                    );
+                    const merged = at(of(rendered(unlisted), 'Deployment'), [
+                        'spec',
+                        'template',
+                        'spec',
+                        'containers',
+                        0,
+                        'volumeDevices',
+                    ]) as Array<Record<string, unknown>>;
+                    assert.deepEqual(
+                        {count: merged.length, first: merged[0]},
+                        {
+                            count: 2,
+                            first: {name: 'dev', devicePath: '/dev/base', extra: true},
+                        },
+                        'and the binary merges that list by devicePath, which is the guess the mirror refuses to make',
+                    );
+                    // The other shape the narrowed table leaves out, and the reason it leaves it out: an
+                    // Ingress's rules and the paths inside them are *replaced* by the binary rather than
+                    // merged, so there is no key to mirror and the patch's own list is the one that lands.
+                    // The base's `/a` is what shows it — a merge would have kept it beside the patch's `/b`.
+                    assert.throws(
+                        () => composed(withIngress),
+                        /no merge key is mirrored for the list at Ingress\.spec\.rules/,
+                        'an Ingress patch is refused rather than composed',
+                    );
+                    assert.deepEqual(
+                        canonical(at(of(rendered(withIngress), 'Ingress'), ['spec', 'rules'])),
+                        canonical((patch.ingress as {spec: {rules: unknown}}).spec.rules),
+                        'and the binary replaces those rules, the patch own list being what it leaves',
+                    );
+                } finally {
+                    rmSync(dir, {recursive: true, force: true});
+                    rmSync(withIngress, {recursive: true, force: true});
+                    rmSync(unlisted, {recursive: true, force: true});
                 }
             },
 
@@ -1269,6 +1690,19 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                                 },
                             },
                             {kind: 'Service', metadata: {name: 'the-alias'}},
+                            // A generated gateway key is written by the operator for a gateway the
+                            // suite does not own — the realm serves it — so its own label spares it
+                            // from a sweep that takes generated credentials: a diff that no longer
+                            // names it is not a reason to hand a suite its keys back (D-509, T-267).
+                            // The pin above is what proves this: if the label went unread the name
+                            // below would join it.
+                            {
+                                kind: 'Secret',
+                                metadata: {
+                                    name: 'blong-suite-gateway-keys',
+                                    labels: {'blong.feasible.one/gateway-keys': 'true'},
+                                },
+                            },
                         ]),
                     ),
                     sweptKinds: sweptResourceTypes().length,

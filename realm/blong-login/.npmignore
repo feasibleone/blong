@@ -30,3 +30,20 @@
 # ---------------------------------------------------------------------------
 # DO NOT MODIFY ABOVE THIS LINE!  Add any project-specific overrides below.
 # ---------------------------------------------------------------------------
+# A realm package, so the whitelist has to name the whole package: the runtime loads `server.ts`, and
+# `browser.ts` for the browser platform, then reaches the layers beside them — `error`, `gateway`,
+# `orchestrator`, `browser` — and the `config` and `types` modules those import. The template above
+# keeps `bin`, `lib` and `dist`, a compiled layout this repository does not have, so this package
+# published as three files of metadata while a consumer resolves `@feasibleone/blong-login/server.ts`
+# here and never `dist/server.js` (F-488, D-521).
+!/server.ts
+!/browser.ts
+!/error/**
+!/gateway/**
+!/orchestrator/**
+!/browser/**
+!/config/**
+!/types/**
+!/test/**
+!tsconfig.json
+!eslint.config.mjs

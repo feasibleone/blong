@@ -38,7 +38,6 @@ open (37)
 - `F-333` · ci — A semicolon-chained ci-test script hides the first failure
 - `F-330` · ci — One Playwright install covered three Playwright copies
 - `F-342` · cross-cutting — The repo holds stale autostash entries that a bare stash pop applies
-- `F-376` · cross-cutting — Rush deploy honours .npmignore, a deployment is not a publish
 - `F-424` · ci — rush update --full re-resolves the lockfile and breaks the deployed suite
 - `F-433` · skills — The skill corpus outgrew the prompt budget, so eleven skills cannot load
 - `F-455` · cross-cutting — A passing comparison never rewrites a stale baseline
@@ -48,8 +47,9 @@ open (37)
 - `F-465` · ci — A metric change broke the package that renders it
 - `F-466` · ci — A package has two legs, and the count line names one
 - `F-473` · ci — A kubectl spelling copied from cp to exec cost the diagnosis
+- `F-485` · cross-cutting — Piping a long run through tail hid its prompt
 
-resolved (29)
+resolved (31)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -82,6 +82,8 @@ resolved (29)
 - `F-241` · docs — Markdown edits need prettier before markdownlint passes
 - `F-467` · ci — A mask hides a wrong shot; redaction showed one
 - `F-471` · ci — The e2e wait step hides its reason in the diagnostics artifact
+- `F-376` · cross-cutting — Rush deploy honours .npmignore, a deployment is not a publish
+- `F-488` · cross-cutting — The publish allow-lists release packages without their entry points
 
 <!-- /memory:index -->
 
@@ -453,20 +455,6 @@ run a bare git stash pop here; name the stash, or compare a baseline with cp and
 instead. Recovery when there is no MERGE_HEAD but UU paths: git checkout --ours then git reset,
 which keeps the local side.
 
-### F-376 — Rush deploy honours .npmignore, a deployment is not a publish
-
-> _2026-10-05 · cross-cutting · open_
-
-rush deploy applies the .npmignore filter unless the scenario sets includeNpmIgnoreFiles, whose name
-reads backwards: true disables the filter and the default applies it. The repository templates
-ignore every file and un-ignore a short list, so a module that no entry point outside its own
-package names never reaches the deploy tree. The framework image died on
-@feasibleone/semantic-log/attachable.ts, and the suite artifact was missing
-realm/blong-kustomize/plan.ts and its siblings, realm/blong-login/server.ts and core/blong/knex.ts,
-none of which anything failed on until a pod imported it. Both scenarios now set
-includeNpmIgnoreFiles true, which is the rule to copy into a new scenario, and a scanner that
-compares a packed artifact against the source tree found every remaining hole in one pass.
-
 ### F-424 — rush update --full re-resolves the lockfile and breaks the deployed suite
 
 > _2026-10-07 · ci · open_
@@ -615,6 +603,19 @@ Worth recording alongside: this is the first run that got past
 `Wait for the operator to report Ready`, where the reconcile reported
 `0 created, 0 updated, 21 unchanged, 0 deleted` — the claim that blocked three runs now settles as
 unchanged, exactly as D-501 predicted.
+
+### F-485 — Piping a long run through tail hid its prompt
+
+> _2026-10-11 · cross-cutting · open_
+
+A cycle run looked hung for twenty-five minutes: no children, an idle event loop, no new pods. It
+was not hung at all, it was waiting for a yes/no answer to 'create it with 1 agent node(s)', and the
+prompt was invisible because the command was piped through tail — which prints nothing until the
+process exits. The lesson is to send a long-lived or interactive command's output to a file and to
+close its stdin, so a prompt fails loudly instead of stalling: run it under nohup, with stdin from
+/dev/null and the output into a log, then read the log. A second finding from the same run: the
+runbook never assumes a cluster (F-446), so with no --cluster it offers to create its own, and one
+it creates has none of the integration backends the deploy needs.
 
 ## Resolved
 
@@ -984,3 +985,55 @@ why, and the step could say so itself (a todo in the `ci` area asks for exactly 
 
 Addressed by T-317: the wait step now prints the status it polls (message first, then the resource)
 and fails fast on Failed, so the reason no longer lives only in the diagnostics artifact.
+
+### F-376 — Rush deploy honours .npmignore, a deployment is not a publish
+
+> _2026-10-05 · cross-cutting · resolved_
+
+rush deploy applies the .npmignore filter unless the scenario sets includeNpmIgnoreFiles, whose name
+reads backwards: true disables the filter and the default applies it. The repository templates
+ignore every file and un-ignore a short list, so a module that no entry point outside its own
+package names never reaches the deploy tree. The framework image died on
+@feasibleone/semantic-log/attachable.ts, and the suite artifact was missing
+realm/blong-kustomize/plan.ts and its siblings, realm/blong-login/server.ts and core/blong/knex.ts,
+none of which anything failed on until a pod imported it. Both scenarios now set
+includeNpmIgnoreFiles true, which is the rule to copy into a new scenario, and a scanner that
+compares a packed artifact against the source tree found every remaining hole in one pass.
+
+Closed as the deploy half, which is fixed and verified: all three scenarios set
+includeNpmIgnoreFiles true, the framework image and both artifacts build from an unfiltered tree,
+and a dev-cluster cycle fills a node and starts the suite. What the entry could not say is that the
+ignore files were never wrong only for deploys: the same allow-lists decide what npm receives, and
+four of the seven packages that declare ci-publish ship without their declared entry points, two of
+them empty on the registry (F-488, with the fix left as T-322).
+
+### F-488 — The publish allow-lists release packages without their entry points
+
+> _2026-10-11 · cross-cutting · resolved_
+
+rush deploy and npm pack read the same file, but only one of them is described by it. Every
+published package carries a .npmignore that ignores everything and un-ignores a compiled layout:
+bin, lib, dist, CHANGELOG. Nothing in this repository compiles TypeScript and every consumer imports
+the sources through an exports map that names index.ts, so that allow-list keeps build output nobody
+produces and drops the code everybody imports. Measured with npm pack --dry-run and confirmed
+against the registry: @feasibleone/blong-login@1.12.0 and @feasibleone/blong-openapi@1.2.1 are three
+files each, metadata only, an empty package; @feasibleone/blong@1.32.0 is thirteen files of
+untracked dist plus types.ts, with no index.ts and no knex.ts; @feasibleone/semantic-log@1.4.0
+carries 94 files including every test but omits attachable.ts and capability.ts, two of the five
+entry points its own exports map declares, and the first of those is what core/blong-gogo imports
+and what started F-376 on the deploy side. What a tarball contains depends on untracked build output
+happening to be present in the publishing checkout, which is why two of them are empty. Nobody
+notices because every resolution inside this repository goes through the workspace, so the published
+packages are only ever consumed from the outside.
+
+Fixed on both halves. The four whitelists that hid entry points now name them: semantic-log gained
+attachable.ts and capability.ts (the subpath blong-gogo imports), and the realm-shaped packages
+gained their sources, so blong-login packs 31 files where it packed 3, blong-openapi 22 where it
+packed 16, blong-test 27 where it packed 20. Eight files that served no publish purpose are deleted
+— blong-allure, blong-graph, blong-ttk, blong-kustomize, blong-realm, dev, and the kukum e2e-realm
+fixture — while blong-kopi's is kept deliberately because that package may start publishing, and
+that list was confirmed before anything was removed. The check that found the defect is committed as
+blong-dev publish check, with a unit test of the reader and a repo-level gate in the same suite, and
+it fails on a fixture whose whitelist hides a declared subpath. Residual findings are T-323: the
+declared targets under dist/ exist only after a build, and blong-openapi declares a browser half it
+does not have.
