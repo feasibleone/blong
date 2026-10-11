@@ -21,11 +21,13 @@ import {parse} from 'yaml';
  *     service is added by adding a file, and a file this code cannot mean is refused where it is read
  *     rather than half-applied to a cluster. `additionalProperties: false` is what makes a typo a
  *     failure (`kinds` spelled `kind` would otherwise generate nothing and say nothing).
- *   - **The adapters imply the service, the deployment may switch it off.** What a plan *needs* is a
- *     function of the adapter kinds its deployments activate, so the rule cannot drift from the
- *     deployment: a suite that activates `knex` needs a database. A deployment that points at an
- *     installation of its own switches the service off; a deployment that switches one *on* for an
- *     adapter it does not activate is refused, because the workload would be something nothing dials.
+ *   - **The adapters say what may be brought; the deployment says what is.** What a plan *needs* is a
+ *     function of the adapter kinds its deployments activate, so a suite that activates `knex` can be
+ *     deployed with a database — but a database is a workload somebody runs, and running one is a
+ *     decision rather than a consequence: the deployment opts it in, and a suite that carries its own
+ *     deployment opts in the services it expects, so a plain deployment of it brings them. Nothing is
+ *     brought merely because an adapter implies it, and an opt-in for a service no activated adapter
+ *     implies is refused, because the workload would be something nothing dials (D-504).
  *   - **The alias is the statement, not the host.** A realm's config keeps naming `mysql`, and the
  *     `ExternalName` Service that makes that name resolvable is generated beside the workload — which
  *     is what lets the workload move namespace without a configuration change anywhere.
@@ -120,7 +122,7 @@ export interface IServiceOverride {
     databases?: string[];
 }
 
-/** The deployment's own switchboard, keyed by service name. */
+/** What the deployment brings, keyed by service name: `true`, an override object, or `false`. */
 export type IServiceConfig = Record<string, boolean | IServiceOverride | undefined>;
 
 /**
@@ -187,7 +189,7 @@ export interface IServiceResolutionRequest {
 
 export interface IServiceResolution {
     services: IBackingService[];
-    /** What an activated adapter implies and the deployment switched off. */
+    /** What an activated adapter makes available and the deployment did not opt in. */
     disabled: string[];
 }
 
@@ -251,6 +253,15 @@ export const resolveBackingServices = (
     const implied = catalog.filter(descriptor =>
         descriptor.kinds.some(kind => request.kinds.includes(kind)),
     );
+    // What may be brought is what an adapter implies; what *is* brought is what the deployment opted in
+    // — a `value` of `true`, or an override object that names the values it wants. An absent key is not
+    // a refusal but the absence of a decision, and `false` is the decision not to bring it, which a
+    // deployment that runs the service itself makes. Both read the same way here, because the two
+    // generate the same tree: the folders the deployments do not bring are not referenced by an overlay.
+    const optedIn = (name: string): boolean => {
+        const value = config[name];
+        return value !== undefined && value !== false;
+    };
     for (const [name, value] of Object.entries(config)) {
         if (value === false || value === undefined) continue;
         const descriptor = catalog.find(entry => entry.name === name);
@@ -258,15 +269,15 @@ export const resolveBackingServices = (
             throw new Error(`services.${name}: no descriptor under services/ names that service`);
         if (!implied.includes(descriptor))
             throw new Error(
-                `services.${name}: switched on, but no activated adapter kind implies it ` +
+                `services.${name}: opted in, but no activated adapter kind implies it ` +
                     `(its descriptor serves ${descriptor.kinds.join(', ')})`,
             );
     }
     return {
         services: implied
-            .filter(descriptor => config[descriptor.name] !== false)
+            .filter(descriptor => optedIn(descriptor.name))
             .map(descriptor => applied(descriptor, config[descriptor.name], request)),
-        disabled: implied.filter(descriptor => config[descriptor.name] === false).map(d => d.name),
+        disabled: implied.filter(descriptor => !optedIn(descriptor.name)).map(d => d.name),
     };
 };
 

@@ -572,8 +572,9 @@ export interface IPlanOptions {
     groups?: Record<string, string[]>;
     externalServices?: IExternalServiceMap;
     /**
-     * Which third-party services to bring along, and what to override about them (`false` leaves one
-     * to an installation of the deployment's own).
+     * Which third-party services this deployment brings, and what to override about them: `true` for
+     * the service as the descriptor declares it, an object for one with values of its own, and `false`
+     * (or an absent name) for a service an installation of the deployment's own provides (D-504).
      */
     services?: IServiceConfig;
     /** The namespace the generated workloads run in (default `blong-services`). */

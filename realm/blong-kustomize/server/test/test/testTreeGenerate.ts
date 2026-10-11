@@ -24,8 +24,8 @@ import {
 import {materializeSplitTree} from '../../../materialize.ts';
 import {
     appliesUpdate,
-    attemptRetentionOf,
     ATTEMPT_RETENTION_LABEL,
+    attemptRetentionOf,
     fillJobsPastRetention,
     hasRetentionLabel,
     jobAttemptsPastRetention,
@@ -365,6 +365,80 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                             `base/templates/fill/${TEMPLATE_FILE}`,
                         ).includes('PLACEHOLDER'),
                     });
+                } finally {
+                    rmSync(dir, {recursive: true, force: true});
+                }
+            },
+
+            async function aServiceIsBesideTheBaseRatherThanInIt(assert: IAssert) {
+                // A backing service is a *deployment's* choice, not the suite's: one deployment brings
+                // mysql itself and the next points at a database somebody else runs. So the service is a
+                // folder beside the base — its workload, its claim, its credentials and the alias that
+                // reaches it — and the overlay is where a deployment opts it in, which is the only place
+                // the choice can be written down. A base that carried the service would apply it to every
+                // deployment of the suite, switched on or not, and nothing could take it back: the pass
+                // cannot prune an object its own tree still names (D-504, T-317).
+                const dir = mkdtempSync(join(tmpdir(), 'kustomize-service-'));
+                try {
+                    const mysql = resolveBackingServices(loadServiceCatalog(), {
+                        kinds: ['knex'],
+                        databases: ['blong-suite'],
+                        namespace: 'shop-services',
+                        // Opted in: an adapter makes a service available, the deployment brings it (D-504).
+                        config: {mysql: true},
+                    }).services[0];
+                    assert.ok(mysql, 'the catalogue answers for a database adapter');
+                    const plan = lib.suitePlan({
+                        suite: lib.pinnedSuite,
+                        backingServices: [mysql],
+                    }) as IDeploymentPlan;
+                    const written = writeKustomizeTree(buildKustomizeTree(plan), dir, {
+                        layout: 'split',
+                        plan,
+                    });
+                    const read = (file: string): string => readFileSync(join(dir, file), 'utf8');
+                    const base = written.filter(file => file.startsWith('base/'));
+                    const folder = written.filter(file =>
+                        file.startsWith(`services/${mysql.name}/`),
+                    );
+                    const overlay = read('local/kustomization.yaml');
+                    assert.ok(
+                        folder.includes(`services/${mysql.name}/kustomization.yaml`),
+                        'the service is a folder of its own, carrying the kustomization the overlay includes',
+                    );
+                    assert.deepEqual(
+                        base.filter(file => file.includes(`services/${mysql.name}/`)),
+                        [],
+                        'and nothing of it is left in the base',
+                    );
+                    assert.ok(
+                        !read('base/kustomization.yaml').includes(`services/${mysql.name}`),
+                        'the base references no service at all',
+                    );
+                    assert.ok(
+                        folder.includes(`services/${mysql.name}/external-service.yaml`),
+                        'the alias that reaches it travels with it',
+                    );
+                    assert.ok(
+                        overlay.includes(`../services/${mysql.name}`),
+                        'while the overlay is what opts the service in',
+                    );
+                    assert.ok(
+                        !base.includes(`namespaces/${mysql.namespace}.yaml`),
+                        "the namespace it runs in is not the base's either",
+                    );
+                    assert.ok(
+                        overlay.includes(`namespaces/${mysql.namespace}.yaml`),
+                        'and the overlay names it, because the base cannot',
+                    );
+                    assert.ok(
+                        written.some(
+                            file =>
+                                file.startsWith('local/') &&
+                                file.includes(`rbac/blong-operator-role-${mysql.namespace}`),
+                        ),
+                        'while the rights the operator needs there are written beside it',
+                    );
                 } finally {
                     rmSync(dir, {recursive: true, force: true});
                 }
@@ -1174,6 +1248,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     databases: ['blong-suite', 'blong-access'],
                     namespace: 'shop-services',
                     storageClassName: 'local-path',
+                    config: {mysql: true},
                 }).services[0];
                 assert.ok(mysql, 'the catalog carries the database the adapter needs');
                 const plan = lib.suitePlan({
@@ -1217,6 +1292,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     kinds: ['knex'],
                     databases: ['blong-suite'],
                     namespace: 'shop-services',
+                    config: {mysql: true},
                 }).services[0];
                 const withService = buildKustomizeTree(
                     lib.suitePlan({
@@ -1282,6 +1358,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 const mysql = resolveBackingServices(loadServiceCatalog(), {
                     kinds: ['knex'],
                     namespace: 'shop-services',
+                    config: {mysql: true},
                 }).services[0];
                 assert.deepEqual(
                     mysql.databases,

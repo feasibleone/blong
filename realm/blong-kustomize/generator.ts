@@ -3129,6 +3129,41 @@ const isDerivedKustomization = (
 const kustomizationFolder = (path: string): string => path.slice(0, -'/kustomization.yaml'.length);
 
 /**
+ * The service a tree path belongs to, and the name it takes inside that service's own folder.
+ *
+ * A backing service is brought by a *deployment* rather than by the suite: `mysql` is not in the tree
+ * every deployment applies, it is a folder a deployment opts into, and everything that exists only
+ * because of it travels with it — the workload and its claim, the credentials the two namespaces
+ * share, and the alias that reaches it from the suite's own namespace. `services/access.yaml` is not
+ * one of them: that is a suite's own process, which belongs to the base like any other workload.
+ */
+const serviceScopeOf = (
+    path: string,
+    plan: IDeploymentPlan,
+): {name: string; at: string} | undefined => {
+    for (const service of plan.backingServices) {
+        if (path.startsWith(`services/${service.name}/`)) {
+            return {name: service.name, at: path.slice(`services/${service.name}/`.length)};
+        }
+        if (path === `external-services/${service.name}.yaml`) {
+            return {name: service.name, at: 'external-service.yaml'};
+        }
+    }
+    return undefined;
+};
+
+/**
+ * Whether an object exists only because a service runs somewhere: its namespace, and the rights the
+ * operator holds in it. Both are the overlay's, because a base that names them names a service.
+ */
+const isServicePlumbing = (path: string, plan: IDeploymentPlan): boolean =>
+    plan.backingServices.some(
+        service =>
+            path === `namespaces/${service.namespace}.yaml` ||
+            (path.startsWith('rbac/') && path.endsWith(`-${service.namespace}.yaml`)),
+    );
+
+/**
  * Write a base and an overlay from one tree: the split layout.
  *
  * The two roots list files rather than folders, because the folders are what the split takes apart.
@@ -3157,7 +3192,25 @@ const writeSplitTree = (
     // Folder kustomizations to keep verbatim, and the folders whose files they already list: a folder that
     // brought one is not taken apart, so its files must not also be listed by the root.
     const brought: string[] = [];
+    /** One folder per backing service the deployment brings, laid out beside the base. */
+    const services = new Map<string, Map<string, KustomizeResource>>();
+    /** What the overlay owns outright: the namespace a service runs in, and the rights to write there. */
+    const overlayOwn = new Map<string, KustomizeResource>();
     for (const [path, resource] of tree) {
+        const service = serviceScopeOf(path, plan);
+        if (service) {
+            const folder = services.get(service.name) ?? new Map<string, KustomizeResource>();
+            services.set(service.name, folder);
+            folder.set(service.at, resource);
+            continue;
+        }
+        // The namespace a service runs in and the operator's rights in it are not a service's own
+        // files — two services may share one namespace — so they belong to the overlay rather than to
+        // any folder, and are written once for a deployment that brings one.
+        if (isServicePlumbing(path, plan)) {
+            overlayOwn.set(path, resource);
+            continue;
+        }
         if (path.endsWith('/kustomization.yaml') || path === 'kustomization.yaml') {
             const folder = kustomizationFolder(path);
             if (!folder || isDerivedKustomization(tree, folder, resource)) continue;
@@ -3262,7 +3315,15 @@ const writeSplitTree = (
             {
                 apiVersion: KUSTOMIZE_API,
                 kind: 'Kustomization',
-                resources: ['../base', ...[...instances.keys()].sort()],
+                // The base, then one folder per service this deployment brings: a deployment opts a
+                // service in by naming it, and the overlay is where that opt-in is written down — the
+                // base beside it says nothing about any service at all (D-504).
+                resources: [
+                    '../base',
+                    ...[...services.keys()].sort().map(name => `../services/${name}`),
+                    ...[...overlayOwn.keys()].sort(),
+                    ...[...instances.keys()].sort(),
+                ],
                 patches: [...patches.keys()].sort().map(path => ({path})),
             },
         ]);
@@ -3322,6 +3383,23 @@ const writeSplitTree = (
             `local/${at}/kustomization.yaml`,
             stringify(content, {lineWidth: 0, sortMapEntries: true}),
         );
+    }
+    // A service folder sits beside the base, never inside it: the base is what every deployment of the
+    // suite applies, and a service is what one deployment brings, so a folder the artifact shipped is
+    // used as it stands and one it did not is generated here — the zip decides, because the folder is
+    // the suite's to keep and to review (D-504).
+    for (const [name, folder] of [...services.entries()].sort()) {
+        if (!withBase && existsSync(join(dir, `services/${name}/kustomization.yaml`))) continue;
+        const files = [...folder.keys()].filter(path => path !== 'kustomization.yaml').sort();
+        if (!folder.has('kustomization.yaml')) {
+            folder.set('kustomization.yaml', folderKustomization(files));
+        }
+        for (const [path, content] of serializeKustomizeTree(folder)) {
+            write(`services/${name}/${path}`, content);
+        }
+    }
+    for (const [path, content] of withOverlay ? serializeKustomizeTree(overlayOwn) : []) {
+        write(`local/${path}`, content);
     }
     for (const [path, content] of serializeKustomizeTree(new Map(roots))) write(path, content);
     return written.sort();

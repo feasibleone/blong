@@ -12,7 +12,7 @@
  * that fails a run outright.
  */
 import {spawn} from 'node:child_process';
-import {existsSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 
 import {serviceNames} from './artifacts.ts';
 import {
@@ -159,14 +159,27 @@ export const backingServicesCheck = async (
     io: IStepIo,
 ): Promise<void> => {
     if (serviceOff) {
-        // A service the deployment switched off leaves no trace in the tree it asked for: no
-        // workload, no claim, no alias and no namespace.
-        for (const leftover of [`services/${serviceOff}`, `external-services/${serviceOff}.yaml`]) {
+        // A service the deployment switched off leaves no trace in the tree it asked for: no workload,
+        // no claim, no alias and no namespace. The tree is a base with one folder per service a
+        // deployment brings beside it, and the overlay is what says which those are — so a leftover has
+        // exactly three places to hide, and all three are read here (D-504).
+        if (existsSync(`${tree}/services/${serviceOff}`)) {
+            fail(`the tree still carries services/${serviceOff}`);
+        }
+        for (const leftover of [
+            `base/services/${serviceOff}`,
+            `base/external-services/${serviceOff}.yaml`,
+        ]) {
             if (existsSync(`${tree}/${leftover}`)) {
-                fail(`the tree still carries ${leftover}`);
+                fail(`the base still carries ${leftover}`);
             }
         }
-        io.log(`the tree carries nothing of ${serviceOff}: the switch removed it`);
+        const overlay = `${tree}/local/kustomization.yaml`;
+        const referenced = existsSync(overlay) ? readFileSync(overlay, 'utf8') : '';
+        if (referenced.includes(`../services/${serviceOff}`)) {
+            fail(`the overlay still opts ${serviceOff} in`);
+        }
+        io.log(`the tree brings nothing of ${serviceOff}: the switch left it out`);
         // And the objects an earlier pass wrote into the suite's namespace are gone with it, the
         // credentials copy among them: a Secret left behind is a password a rotation never reaches,
         // while the workload's own copy in the services namespace is what stays (D-461, D-462).

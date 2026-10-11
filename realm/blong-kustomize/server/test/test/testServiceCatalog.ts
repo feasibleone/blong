@@ -56,6 +56,11 @@ export default handler(({lib: {group}}) => ({
                             servicesNamespace: 'shop-services',
                             storageClassName: 'local-path',
                             nodes: NODES,
+                            // One descriptor at a time, each opted in through the deployment: an
+                            // adapter makes a service available and the deployment says it brings it,
+                            // and what this pins is that a descriptor the realm ships can be rendered
+                            // at all (D-504).
+                            services: {[descriptor.name]: true},
                         },
                     );
                     const service = plan.backingServices.find(
@@ -121,22 +126,31 @@ export default handler(({lib: {group}}) => ({
                 }
             },
 
-            async function theAdaptersDecideWhichServicesAreNeeded(assert: IAssert) {
+            async function theAdaptersDecideWhichServicesMayBeBrought(assert: IAssert) {
                 const catalog = loadServiceCatalog();
                 const resolved = resolveBackingServices(catalog, {
                     kinds: ['knex'],
                     databases: ['blong-suite', 'blong-access'],
                     storageClassName: 'local-path',
+                    // Opted in, because an adapter says what *may* be brought and the deployment says what
+                    // is: running a database is a decision rather than a consequence of activating an
+                    // adapter, and this is where the deployment makes it (D-504).
+                    config: {mysql: true},
                 });
                 assert.deepEqual(
                     resolved.services.map(service => service.name),
                     ['mysql'],
-                    'a plan that activates `knex` needs a database and nothing else',
+                    'a plan that activates `knex` and opts a database in brings it, and nothing else',
                 );
                 assert.deepEqual(
                     resolved.disabled,
                     [],
-                    'and nothing is disabled unless the deployment says so',
+                    'and leaves nothing out when the deployment named what it wants',
+                );
+                assert.deepEqual(
+                    resolveBackingServices(catalog, {kinds: ['knex']}),
+                    {services: [], disabled: ['mysql']},
+                    'while the same plan with no opt-in brings nothing, and is told what it could have',
                 );
                 assert.deepEqual(
                     resolved.services[0]?.databases,
@@ -155,15 +169,18 @@ export default handler(({lib: {group}}) => ({
                 );
 
                 assert.deepEqual(
-                    resolveBackingServices(catalog, {kinds: ['knex', 'redis', 's3']})
+                    resolveBackingServices(catalog, {
+                        kinds: ['knex', 'redis', 's3'],
+                        config: {mysql: true, redis: true, minio: true},
+                    })
                         .services.map(service => service.name)
                         .sort(),
                     ['minio', 'mysql', 'redis'],
-                    'three adapters bring three services, whatever order they are named in',
+                    'three adapters bring three services when all three are opted in, in any order',
                 );
             },
 
-            async function aDeploymentMaySwitchOneOffAndNotOneOn(assert: IAssert) {
+            async function aDeploymentOptsInWhatItBrings(assert: IAssert) {
                 const catalog = loadServiceCatalog();
                 const off = resolveBackingServices(catalog, {
                     kinds: ['knex'],
@@ -179,11 +196,19 @@ export default handler(({lib: {group}}) => ({
                     ['mysql'],
                     'and is told what it left out rather than being given a second one',
                 );
+                assert.deepEqual(
+                    resolveBackingServices(catalog, {
+                        kinds: ['knex'],
+                        config: {mysql: false},
+                    }).disabled,
+                    resolveBackingServices(catalog, {kinds: ['knex']}).disabled,
+                    'a refusal and an absent key are one answer, because they generate one tree',
+                );
 
                 assert.throws(
                     () => resolveBackingServices(catalog, {kinds: ['knex'], config: {kafka: true}}),
                     /no activated adapter kind implies it/,
-                    'a service switched on for an adapter nothing activates is refused',
+                    'a service opted in for an adapter nothing activates is refused',
                 );
                 assert.throws(
                     () =>
@@ -244,11 +269,12 @@ export default handler(({lib: {group}}) => ({
                     frameworkImage: 'blong',
                     servicesNamespace: 'shop-services',
                     nodes: NODES,
+                    services: {keycloak: true},
                 };
                 const plain = buildKustomizeTree(planFromRegistry(view, options));
                 assert.ok(
                     plain.has('services/keycloak/deployment.yaml'),
-                    'the service itself is generated for the adapter that implies it',
+                    'the service itself is generated because this deployment opted it in',
                 );
                 assert.equal(
                     plain.get('services/keycloak/init-config.yaml'),
@@ -347,6 +373,7 @@ export default handler(({lib: {group}}) => ({
                 const generated = resolveBackingServices(loadServiceCatalog(), {
                     kinds: ['knex'],
                     namespace: 'shop-services',
+                    config: {mysql: true},
                 });
                 assert.equal(
                     generated.services[0]?.credentialsGenerated,
@@ -358,6 +385,7 @@ export default handler(({lib: {group}}) => ({
                     frameworkImage: 'blong',
                     servicesNamespace: 'shop-services',
                     nodes: NODES,
+                    services: {mysql: true},
                 });
                 const tree = buildKustomizeTree(plan);
                 type ISecret = {
@@ -421,6 +449,7 @@ export default handler(({lib: {group}}) => ({
                         frameworkImage: 'blong',
                         servicesNamespace: 'shop-services',
                         nodes: NODES,
+                        services: {mysql: true},
                     }),
                 ).get('services/mysql/deployment.yaml') as IWorkload;
                 assert.equal(
@@ -465,6 +494,7 @@ export default handler(({lib: {group}}) => ({
                 const services = resolveBackingServices(loadServiceCatalog(), {
                     kinds: ['knex', 's3'],
                     namespace: 'shop-services',
+                    config: {mysql: true, minio: true},
                 }).services;
                 const aliases = externalServicesOf(services);
                 assert.deepEqual(
@@ -481,7 +511,7 @@ export default handler(({lib: {group}}) => ({
                 );
             },
 
-            async function thePlanCarriesWhatTheAdapterImplies(
+            async function thePlanCarriesWhatTheDeploymentOptsIn(
                 assert: IAssert,
                 {$meta}: {$meta: IMeta},
             ) {
@@ -510,11 +540,12 @@ export default handler(({lib: {group}}) => ({
                     frameworkImage: 'blong',
                     servicesNamespace: 'blong-services',
                     nodes: NODES,
+                    services: {mysql: true},
                 });
                 assert.deepEqual(
                     plan.backingServices.map(service => service.name),
                     ['mysql'],
-                    'and the plan brings the service that kind implies',
+                    'and the plan brings the service the deployment opted in',
                 );
                 assert.deepEqual(
                     plan.backingServices[0]?.databases,

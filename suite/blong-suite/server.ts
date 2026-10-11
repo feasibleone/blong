@@ -93,6 +93,12 @@ export default server(() => ({
                     // nothing — a ConfigMap that mounts and creates no database, while the migration
                     // step is the first thing to notice (T-277). One entry, because every realm in
                     // this suite dials the same database.
+                    //
+                    // The key is the opt-in, and this is the suite's own: an adapter makes a service
+                    // *available* and the deployment says which of them it brings, so a plain
+                    // deployment of this suite gets the database it was written against, and a tenant
+                    // that runs its own says `false` for it in the CR — the same switch, the other way
+                    // round (D-504).
                     services: {
                         mysql: {databases: ['blong-integration']},
                     },
