@@ -36,7 +36,6 @@ jobs:
         with:
           filters: |
             kustomize:
-              - '.github/workflows/kustomize.yaml'
               - 'realm/blong-kustomize/**'
               - 'core/blong-gogo/src/adapter/server/k8s.ts'
               - 'core/blong-gogo/src/adapter/server/knex.ts'
