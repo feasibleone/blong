@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/version: 1.13.0
     blong.feasible.one/spec-hash: 60029bd345de93c6
   name: jobs
-  namespace: blong-suite
 rules:
   - apiGroups:
       - batch

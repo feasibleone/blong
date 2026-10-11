@@ -29,8 +29,9 @@ import {parse} from 'yaml';
  *     brought merely because an adapter implies it, and an opt-in for a service no activated adapter
  *     implies is refused, because the workload would be something nothing dials (D-504).
  *   - **The alias is the statement, not the host.** A realm's config keeps naming `mysql`, and the
- *     `ExternalName` Service that makes that name resolvable is generated beside the workload — which
- *     is what lets the workload move namespace without a configuration change anywhere.
+ *     `ExternalName` Service that makes that name resolvable is generated from the declaration, in the
+ *     suite's namespace — which is what lets the workload move namespace without a configuration
+ *     change anywhere, and what makes a CR that points the alias elsewhere the copy that is applied.
  *
  * The objects themselves (the init ConfigMap, the claim, the Deployment, the Service) are not here:
  * they are a base beside each descriptor, which the generator copies into the emitted tree and renders
@@ -98,8 +99,22 @@ export interface IServicePlacement {
 export interface IServiceOverride {
     image?: string;
     storage?: {size?: string; storageClassName?: string};
-    /** A Secret the deployment already owns, instead of one generated from the descriptor. */
-    credentials?: {secret?: string};
+    /**
+     * The credentials the workload reads, as the deployment declares them.
+     *
+     * Three shapes and their absence, and each answers a different question (D-509). `values` are the
+     * secrets themselves, written into a Secret the tree generates beside the workload; `secret` names one
+     * the deployment manages elsewhere and is mounted as it stands; `generate` asks for the descriptor's own
+     * derivation, for a service whose credentials nobody else can supply. A name *and* generated values are
+     * two answers to one question and are refused, because the tree would be writing a Secret nothing reads.
+     * With none of the three the tree writes no Secret and the workload reads none: the credentials arrive
+     * some other way, which is what a service configured by a mounted file wants.
+     */
+    credentials?: {
+        secret?: string;
+        values?: Record<string, string>;
+        generate?: boolean;
+    };
     /** Where the workload may run: the pod spec is the only place these belong. */
     placement?: IServicePlacement;
     /**
@@ -128,11 +143,11 @@ export type IServiceConfig = Record<string, boolean | IServiceOverride | undefin
 /**
  * What a deployment asked for about the services it brings, as it asked.
  *
- * The three options travel together because they are one decision: a switch the operator has to reach
- * again (`backingServiceRequest`), the namespace the workloads run in, and the class their claims
- * ask for. A resolved service cannot say any of it back — an image an override pinned and one the
+ * The three options travel together because they are one decision: the opt-in the operator has to read
+ * again (`backingServiceRequest`), the namespace the workloads run in, and the class their claims ask
+ * for. A resolved service cannot say any of it back — an image an override pinned and one the
  * descriptor names look the same once applied — so the request is what the CR carries: the operator
- * regenerates the tree from that declaration, and a switch it cannot carry is a service that comes
+ * regenerates the tree from that declaration, and a choice it cannot carry is a service that comes
  * back on the next pass.
  */
 export interface IBackingServiceRequest {
@@ -154,16 +169,25 @@ export interface IBackingService extends IServiceDescriptor {
     databases: string[];
     /** The class its claim asks for, when the deployment named one. */
     storageClassName?: string;
-    /** The name the workload reads its credentials from — its own, or the one a deployment named. */
+    /**
+     * The name the workload reads its credentials from, when the deployment provides any.
+     *
+     * Absent is a real answer: a deployment that declares no credentials gets a workload whose base has the
+     * credentials it reads taken out of it, rather than one that waits for a Secret nobody writes (D-509).
+     */
     credentialsSecret?: string;
     /**
      * True when the values behind {@link credentialsSecret} are the tree's own.
      *
-     * The distinction decides whether a copy is written for the deployment that dials the service:
-     * a Secret this realm generates is one it can write twice, and one a deployment owns is theirs to
-     * place (D-462).
+     * The distinction decides what a pass may take back: a Secret this realm generated is removed when the
+     * declaration stops asking for it, and its label is what says so (`GENERATED_CREDENTIALS_LABEL`), while
+     * one a deployment names is theirs to place and theirs to keep (D-462, D-509). It is also what decides
+     * whether a copy is written for the deployment that dials the service: a Secret this realm generates is
+     * one it can write twice.
      */
     credentialsGenerated?: boolean;
+    /** The values a deployment supplied, which the generated Secret is written from. */
+    credentialsValues?: Record<string, string>;
     /** Where the workload may run, when the deployment named a place. */
     placement?: IServicePlacement;
     /**
@@ -181,7 +205,7 @@ export interface IServiceResolutionRequest {
     kinds: string[];
     /** The databases the connections name. */
     databases?: string[];
-    /** The deployment's own switch and overrides. */
+    /** What the deployment brings, and what it overrides about it. */
     config?: IServiceConfig;
     namespace?: string;
     storageClassName?: string;
@@ -237,12 +261,12 @@ const readDescriptor = (file: string): IServiceDescriptor => {
 };
 
 /**
- * Which services a plan needs, and what their bases are given.
+ * Which services a plan brings, and what their bases are given.
  *
- * The implied set is read from the adapter kinds the plan's ports carry, so adding an adapter to a
- * deployment adds its service without anybody remembering to; `config` may switch one off (a
- * deployment that points at an installation of its own) and may name values of its own for one that
- * stays on. Switching one *on* is only legitimate for a service some activated adapter implies —
+ * The *available* set is read from the adapter kinds the plan's ports carry, so adding an adapter to a
+ * deployment says which services it could run with; the *brought* set is what `config` opts in, and a
+ * deployment that points at an installation of its own leaves the name out (or says `false`, which is
+ * the same answer). Opting one in is only legitimate for a service some activated adapter implies —
  * otherwise the workload would be one nothing dials, and its alias a name no configuration resolves.
  */
 export const resolveBackingServices = (
@@ -288,6 +312,12 @@ const applied = (
     request: IServiceResolutionRequest,
 ): IBackingService => {
     const named = typeof override === 'object' ? override : undefined;
+    if (!descriptor.credentials && named?.credentials) {
+        throw new Error(
+            `services.${descriptor.name}.credentials: the descriptor declares no credentials, so there is ` +
+                'no Secret for them to fill — this service\u2019s image reads what it needs elsewhere',
+        );
+    }
     return {
         ...descriptor,
         image: named?.image ?? descriptor.image,
@@ -302,15 +332,11 @@ const applied = (
                   storageClassName: named?.storage?.storageClassName ?? request.storageClassName,
               }
             : {}),
-        // A deployment that already owns a Secret names it, and then nothing generated has to be
-        // written — the workload's reference is the same either way, which is what keeps a generated
-        // database and a hand-installed one one shape.
-        ...(descriptor.credentials
-            ? {
-                  credentialsSecret: named?.credentials?.secret ?? `${descriptor.name}-credentials`,
-                  credentialsGenerated: named?.credentials?.secret === undefined,
-              }
-            : {}),
+        // A deployment that declares credentials names the Secret or supplies the values, and the tree
+        // writes one only in the second case — the workload's reference is the same shape either way, which
+        // is what keeps a generated database and a hand-installed one one base. A deployment that declares
+        // none gets no name at all, so what its base reads comes out of the object the tree writes (D-509).
+        ...(descriptor.credentials ? credentialsOf(descriptor, named?.credentials) : {}),
         namespace: request.namespace ?? DEFAULT_SERVICES_NAMESPACE,
         // The connections first, then what the deployment named: deduplicated, because a name in both
         // places is one database and the init script creates it once.
@@ -322,6 +348,49 @@ const applied = (
         // generator writes it where the service's own base cannot — as text, unchanged.
         ...(named?.init?.script !== undefined ? {deploymentInitScript: named.init.script} : {}),
     };
+};
+
+/**
+ * How a deployment's credentials reach the workload, and whether the tree writes them.
+ *
+ * The *name* is what a service's base reads, so it is resolved whenever the deployment provides credentials
+ * at all; whether the tree also *writes* the Secret is a separate question, and the declaration answers it:
+ * `values` supply the secrets, `generate` asks for the descriptor's derivation, and a `secret` name means
+ * somebody else owns them. A declaration that does both is refused here rather than half-applied, because the
+ * three are answers to one question and a pick between them would be a decision nobody made (D-509).
+ */
+const credentialsOf = (
+    descriptor: IServiceDescriptor,
+    declared: {secret?: string; values?: Record<string, string>; generate?: boolean} | undefined,
+): Pick<IBackingService, 'credentialsSecret' | 'credentialsGenerated' | 'credentialsValues'> => {
+    if (declared?.secret && (declared.values || declared.generate)) {
+        throw new Error(
+            `services.${descriptor.name}.credentials: a Secret name and generated values are two ` +
+                'answers to one question — name the Secret the deployment owns, or supply the values to ' +
+                'generate one',
+        );
+    }
+    if (declared?.values) credentialsCover(descriptor, declared.values);
+    if (!declared?.secret && !declared?.values && !declared?.generate) return {};
+    return {
+        credentialsSecret: declared.secret ?? `${descriptor.name}-credentials`,
+        credentialsGenerated: declared.secret === undefined,
+        ...(declared.values ? {credentialsValues: declared.values} : {}),
+    };
+};
+
+/** Every key the descriptor's image reads has a value, and no value is given for a key it does not. */
+const credentialsCover = (descriptor: IServiceDescriptor, values: Record<string, string>): void => {
+    const names = descriptor.credentials?.keys ?? [];
+    const missing = names.filter(key => values[key] === undefined);
+    const unknown = Object.keys(values).filter(key => !names.includes(key));
+    if (!missing.length && !unknown.length) return;
+    throw new Error(
+        `services.${descriptor.name}.credentials.values: the image reads ` +
+            `${names.join(', ') || '(nothing)'}` +
+            `${missing.length ? `, and no value is given for ${missing.join(', ')}` : ''}` +
+            `${unknown.length ? `; ${unknown.join(', ')} is not one of them` : ''}`,
+    );
 };
 
 /**

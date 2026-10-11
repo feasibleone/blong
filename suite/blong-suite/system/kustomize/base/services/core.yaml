@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/version: 1.13.0
     blong.feasible.one/spec-hash: 6e07e1bc576e09ec
   name: core
-  namespace: blong-suite
 spec:
   ports:
     - name: rpc

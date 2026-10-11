@@ -14,8 +14,8 @@ description:
 
 `realm/blong-kustomize` is a **bare-cluster installer**: no business realm and no database of its
 own. It reads the loaded registry, writes manifests, and generates the third-party services a
-suite's adapters imply — a workload, a claim, credentials and an `ExternalName` alias per service,
-so a realm's config keeps naming `mysql` rather than a host (see _The services a deployment brings_
+deployment opts in — a workload, a claim, credentials and an `ExternalName` alias per service, so a
+realm's config keeps naming `mysql` rather than a host (see _The services a deployment brings_
 below). The deployer — the `k8s` intent for a tree, the operator for a running suite — is the only
 thing that talks to a cluster about them.
 
@@ -44,9 +44,21 @@ The tree is written in one of two layouts, and which one is a config key (`layou
     so the base carries a **template** under `base/templates/<kind>/` with `PLACEHOLDER` where the
     deploy's values go, and the overlay one kustomization per instance that includes it, appends the
     identity through `nameSuffix` and patches the values back. Every other object is in the base as
-    it is, or with a patch when it carries a _value_ the deploy owns (a Deployment's volume, the
-    declaration's digest). A rule of thumb: the base is what a reviewer should read, and the overlay
-    is what changes between two deploys.
+    it is, or with a patch when it carries a _value_ the deploy owns — a Deployment's volume. A rule
+    of thumb: the base is what a reviewer should read, and the overlay is what changes between two
+    deploys.
+
+    Two things belong to the _deployment_ rather than to the base, because a suite does not decide
+    them: the namespaces — the suite's is the one the CR was declared in, and a service's the one
+    that CR names — and the objects that live in them under a name the tenant chose, which are the
+    `ExternalName` aliases and the generated credentials. So no object a split writes carries a
+    namespace of its own, and no kustomization names one either: the overlay declares the two on its
+    children, `local/suite/` and `local/backing/`, because kustomize's `namespace:` is a rewrite
+    that runs over everything a child brought (D-506). The declaration itself ships as `example/`
+    beside the base — a sample a tenant copies, which no kustomization applies (D-507): rendering is
+    not declaring, and an operator nobody hands a declaration to keeps reconciling the one it
+    already has, so applying `example/` after the tree is the act that makes a revision the one that
+    runs.
 
 ## Configuring the realm
 
@@ -120,22 +132,29 @@ by — so adding a service is adding a file, and a plan that activates no such k
 
 The deployment may name its own values. `kustomize.deploy.services.<name>` is `false` (it runs that
 service itself, and the name has to be declared under `externalServices` instead), an object
-(`image`, `storage.size`, `storage.storageClassName`, `credentials.secret`), or `true` — which is
-refused unless an activated adapter implies it, because the workload would be one nothing dials.
-`servicesNamespace` (default `blong-services`) is where the workloads run; `storageClassName` is
-what their claims ask for.
+(`image`, `storage.size`, `storage.storageClassName`, and `credentials` as `secret`, `values` or
+`generate`), or `true` — which is refused unless an activated adapter implies it, because the
+workload would be one nothing dials. `servicesNamespace` (default `blong-services`) is where the
+workloads run; `storageClassName` is what their claims ask for.
 
 Generating one service means its workload (from `services/<name>/base`, a document the plan renders
-by substituting what it decided), its `Service`, a claim when the descriptor declares storage, an
-init ConfigMap, a credentials Secret whose values derive from suite, service and version — and an
-`ExternalName` alias **in the suite's namespace**, which is the name a realm's config dials.
+by substituting what it decided), its `Service`, a claim when the descriptor declares storage, and
+an init ConfigMap — as a folder beside the base, which is what one deployment's opt-in becomes
+(D-504). The credentials are that deployment's to declare: `values` are written into a Secret the
+tree generates, `generate` derives them from suite, service and version, a `secret` name is one the
+deployment owns elsewhere, and declaring none writes no Secret at all and takes the reference out of
+the workload instead (D-509). The `ExternalName` alias lands **in the suite's namespace**, which is
+the name a realm's config dials, and it is the overlay's rather than the folder's — so a CR that
+points it somewhere else is the copy that is applied.
 
 The request travels in the CR (`spec.services`, `spec.servicesNamespace`, `spec.storageClassName`),
 because the operator regenerates the tree from that declaration: a switch it could not carry would
 write the service back on the next pass (T-279). What a pass _removes_ is what its declaration
 stopped naming inside the suite's namespace (D-461) — so the alias goes with the switch, while the
 workload in a namespace of its own is reported `obsolete` and left, which is the point of the
-namespace it was given.
+namespace it was given. One exception: a credential the tree generated carries
+`blong.feasible.one/generated-credentials`, and a pass takes it back wherever it may list one,
+because it came from the declaration that stopped asking for it (D-509).
 
 ## Contributing Kubernetes resources
 
@@ -193,10 +212,11 @@ applies the difference against the cluster, and reports back:
   availability behind the phase.
 - **`prune` is on, and scoped to the suite's namespace** (D-461): the generated Deployment sets
   `BLONG_CONTROLLER_PRUNE=true`, so an object the declaration stopped naming is removed — the
-  `ExternalName` alias goes when a service is switched off — while anything in a namespace of its
-  own is left alone and reported as `obsolete`. Converging and removing are different intentions,
-  which is why they are two settings rather than one, and a deployment that wants its processes
-  updated without anything ever being deleted keeps `prune` off.
+  `ExternalName` alias goes when a service is switched off, and so does a generated credentials
+  Secret wherever it lives, because it carries `blong.feasible.one/generated-credentials` — while
+  anything else in a namespace of its own is left alone and reported as `obsolete`. Converging and
+  removing are different intentions, which is why they are two settings rather than one, and a
+  deployment that wants its processes updated without anything ever being deleted keeps `prune` off.
 - **The watch is a handler** (`kustomize.watch.run`), not part of the deploy orchestrator's loop,
   because the loop reaches the adapter through another component and a stream does not survive that
   request path — it answers `null`, which reads as "no events and nothing existing" (T-225, T-227,

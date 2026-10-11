@@ -135,15 +135,22 @@ What a deployment says about them is a switchboard, keyed by service name:
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `false`                            | This deployment runs that service itself: nothing of it is generated, so a name it still dials is declared under `externalServices` |
 | `true`                             | Generated although no adapter implied it — refused when none does, because the workload would be one nothing dials                  |
-| `{image?, storage?, credentials?}` | Generated, with `image`, `storage.size`, `storage.storageClassName` or `credentials.secret` overridden                              |
+| `{image?, storage?, credentials?}` | Generated with `image`, `storage.size`, `storage.storageClassName` or the credentials overridden                                    |
 
-Generation writes, under `services/<name>/`: the workload from
+Generation writes, as a folder beside the base, under `services/<name>/`: the workload from
 `services/<name>/base/deployment.yaml` — a document whose `${…}` placeholders the plan fills, so the
 base names nothing the plan decides — its `Service`, a claim when the descriptor declares storage,
-an init ConfigMap built from the databases the plan's connections named, and a credentials Secret
-whose values derive from suite, service and version, so the same plan writes the same Secret on
-every pass. The `ExternalName` alias lands in `external-services/`, in the suite's namespace, which
-is the name a realm's config dials.
+and an init ConfigMap built from the databases the plan's connections named. The credentials are the
+deployment's to declare, and the tree writes a Secret only where it was asked to: `values` are
+written as given, `generate` derives them from suite, service and version so that the same plan
+writes the same Secret on every pass, and a `secret` name means the deployment owns them elsewhere.
+A declaration with none of the three writes no Secret at all, and a workload whose base reads one
+then has that reference taken out rather than left waiting for a Secret nobody writes. Whichever
+copy the tree does write in the suite's namespace is read as environment by the suite's own
+processes, `optional` so that a switched-off service cannot keep a pod from starting. The
+`ExternalName` alias lands in `external-services/`, in the suite's namespace, which is the name a
+realm's config dials — and it is the overlay's, written from the declaration, so a CR that points it
+somewhere else is the copy that is applied.
 
 `services`, `servicesNamespace` and `storageClassName` travel in the CR, because the operator
 regenerates the tree from that declaration: a field the schema pruned is a service written back on
@@ -261,8 +268,14 @@ without `prune`. With `prune` on, what a pass removes is scoped to the suite's n
 what a suite declares there — the `ExternalName` alias a realm's config dials among them — goes when
 the declaration stops naming it, while a generated service's workload, claim and Service, which live
 in a namespace of their own, are reported `obsolete` and left for whoever owns that namespace to
-retire. Cluster-scoped objects are never removed, for the same reason the install owns them: the
-rights the operator runs under are not the operator's to withdraw.
+retire. One exception: a credential the tree generated carries
+`blong.feasible.one/generated-credentials`, and a pass takes it back wherever it may list one,
+because it was derived from the declaration that stopped asking for it — the label is what tells it
+from a Secret the tenant placed there (D-509). Taking it back needs the namespace to be there: one
+nothing creates any more is reported beside the pass's other listings and does not fail it, since
+nothing of the deployment can be in it, while any other listing a pass cannot read still fails it.
+Cluster-scoped objects are never removed, for the same reason the install owns them: the rights the
+operator runs under are not the operator's to withdraw.
 
 ## Status
 
@@ -319,9 +332,13 @@ kubectl apply -k system/kustomize/local --dry-run=server # validates against the
 
 `test/blong-int-kustomize` deploys to a local multi-node cluster; its `lib/` documents bringing an
 image in with podman (`k3d image import` needs the docker API), which is how the first end-to-end
-run was done. `SERVICE_OFF=<name>` runs the same runbook with that service switched off, which is
-the variant the CI job runs after the default one: the alias goes and the generated workload stays,
-which is what shows the switch reached the declaration and the prune respects the boundary.
+run was done. Run the deploy half from the suite's folder: it resolves its entry (`SUITE_ENTRY`,
+default `./index.ts`) against your working directory and leaves the process there, because the
+framework reads the suite's configuration from where it was started. `SERVICE_OFF=<name>` runs the
+same runbook with that service switched off, which is the variant the CI job runs after the default
+one: the runbook applies the declaration it generated, so the operator reads the switch, and then
+the alias and the credentials it generated go while the workload stays — the boundary is the
+tenant's namespace and the one exception is the label credentials carry (D-512).
 
 ## Serve another tenant
 

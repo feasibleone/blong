@@ -7,12 +7,10 @@ labels:
       app.kubernetes.io/name: blong-operator
       app.kubernetes.io/part-of: blong-operator
       app.kubernetes.io/version: 0.1.0
-namespace: blong-system
 resources:
   - crd/blongdeployment-crd.yaml
   - deployments/blong-operator.yaml
   - ingresses/blong-operator-test.yaml
-  - namespaces/blong-system.yaml
   - rbac/blong-operator-clusterrole.yaml
   - rbac/blong-operator-clusterrolebinding.yaml
   - rbac/blong-operator-role.yaml

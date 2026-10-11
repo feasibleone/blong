@@ -99,8 +99,16 @@ export default server(() => ({
                     // deployment of this suite gets the database it was written against, and a tenant
                     // that runs its own says `false` for it in the CR — the same switch, the other way
                     // round (D-504).
+                    //
+                    // `credentials.generate` is the second opt-in, and this suite needs it: a service
+                    // whose credentials come from nowhere in particular gets no Secret at all, which is
+                    // the right answer for one configured by a mounted file and the wrong one for a
+                    // database whose own users are created from it (D-509).
                     services: {
-                        mysql: {databases: ['blong-integration']},
+                        mysql: {
+                            databases: ['blong-integration'],
+                            credentials: {generate: true},
+                        },
                     },
                     // A portal names its address and the process behind it, and here both are named
                     // for a reason. The host is the e2e run's: the cluster's own ingress controller

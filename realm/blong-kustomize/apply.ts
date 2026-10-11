@@ -34,6 +34,18 @@ export const PART_OF_LABEL = 'app.kubernetes.io/part-of';
 export const NAME_LABEL = 'app.kubernetes.io/name';
 
 /**
+ * The label a Secret this realm *generated* from a declaration carries.
+ *
+ * Credentials a CR asks for are derived from that declaration, so when the CR stops asking the Secret is
+ * nobody's: the workload's own sits in a namespace the services own, and a pass does not delete there (D-461)
+ * — while a password left behind is one a rotation never reaches. The label is what tells the two apart, so
+ * the generator writes it and a pass may remove an object that carries it wherever it may list one, while a
+ * Secret a tenant placed is never touched. It is written rather than declared in a base, because a base a
+ * hand-edit could copy is exactly the thing that must not be deletable.
+ */
+export const GENERATED_CREDENTIALS_LABEL = 'blong.feasible.one/generated-credentials';
+
+/**
  * The label that names the *object*, which is what a lookup by identity wants.
  *
  * `NAME_LABEL` carries the suite, so a selector built from it and an object's own name matches

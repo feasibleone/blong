@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/version: 0.1.0
     blong.feasible.one/spec-hash: acdfe2e9caec044f
   name: blong-operator-test
-  namespace: blong-system
 spec:
   rules:
     - host: blong-operator.test

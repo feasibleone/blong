@@ -8,14 +8,11 @@ labels:
       app.kubernetes.io/part-of: blong-suite
       app.kubernetes.io/version: 1.13.0
 resources:
-  - blongdeployment.yaml
   - deployments/access.yaml
   - deployments/core.yaml
   - deployments/login.yaml
   - deployments/marine.yaml
-  - external-services/db.yaml
   - ingresses/blong-suite-test.yaml
-  - namespaces/blong-suite.yaml
   - rbac/auth-review-binding.yaml
   - rbac/auth-review.yaml
   - rbac/blong-operator-role.yaml

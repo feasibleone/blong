@@ -175,7 +175,8 @@ Object {
         "app.kubernetes.io/name": "shop",
         "app.kubernetes.io/part-of": "shop",
         "app.kubernetes.io/version": "9.9.9",
-        "blong.feasible.one/spec-hash": "5d068b02415140b6",
+        "blong.feasible.one/generated-credentials": "true",
+        "blong.feasible.one/spec-hash": "cede31e07e6e7e45",
       },
       "name": "mysql-credentials",
       "namespace": "shop-services",
@@ -404,17 +405,20 @@ Object {
   "identityInBaseFiles": Array [],
   "identityInLocal": true,
   "instanceDirs": Array [
-    "local/cache/blong-suite-fill-0.1.0-a1b2c3d4-node-a",
-    "local/cache/blong-suite-fill-0.1.0-a1b2c3d4-node-b",
+    "local/suite/cache/blong-suite-fill-0.1.0-a1b2c3d4-node-a",
+    "local/suite/cache/blong-suite-fill-0.1.0-a1b2c3d4-node-b",
   ],
+  "namespacesInBase": 0,
   "nodesInBase": 0,
   "nodesInLocal": 2,
   "patches": 1,
   "placeholderInBase": true,
   "placeholdersInTemplate": true,
   "realVolumeInPatch": true,
+  "rootNamesNamespace": false,
   "scriptInTemplate": true,
   "scriptMounted": false,
+  "suiteChildNamespace": true,
   "templatesInBase": 2,
 }
 `
@@ -837,7 +841,6 @@ Object {
           app.kubernetes.io/name: blong-suite
           app.kubernetes.io/part-of: blong-suite
           app.kubernetes.io/version: 1.0.0
-    namespace: blong-suite
     resources:
       - cache
       - deployments

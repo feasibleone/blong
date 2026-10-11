@@ -7,9 +7,8 @@ metadata:
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
     app.kubernetes.io/version: 1.13.0
-    blong.feasible.one/spec-hash: 3bdcfe4ddaec8279
+    blong.feasible.one/spec-hash: dd79779c9b86d030
   name: marine
-  namespace: blong-suite
 spec:
   replicas: 1
   selector:
@@ -46,6 +45,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          envFrom:
+            - secretRef:
+                name: mysql-credentials
+                optional: true
           image: docker.io/library/blong-gogo:1
           livenessProbe:
             tcpSocket:

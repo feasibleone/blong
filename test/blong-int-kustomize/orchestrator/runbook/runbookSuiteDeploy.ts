@@ -29,6 +29,7 @@ import {
 import {
     applyTree,
     clusterEnsure,
+    declarationApply,
     nodeNames,
     rolloutRestart,
     rolloutStatus,
@@ -189,6 +190,12 @@ export const runK3dE2eGenerated = async (options: IRunbookOptions, io: IStepIo):
     // Namespace too, so the create is the same object arriving a moment early.
     await keysEnsure({root, namespace: options.namespace}, io);
     await applyTree({tree: overlayOf(options.tree)}, io);
+    // And the declaration, which the tree no longer applies: it ships as an example beside the base,
+    // because which suite a namespace runs is the tenant's act (D-507) — and this run is that tenant.
+    // Applying it is what makes the operator reconcile *this* revision, and what carries a switch a
+    // `SERVICE_OFF` run generated with; without it the operator keeps reading whatever declaration an
+    // earlier run left, which is how a switched-off service stayed switched off across a full cycle.
+    await declarationApply({tree: options.tree}, io);
     await workloadRefresh(options, io);
 
     io.say('wait');

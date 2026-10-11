@@ -503,18 +503,18 @@ export interface IDeploymentPlan {
     /**
      * The third-party services this deployment brings with it (Phase 15 I).
      *
-     * Resolved from the adapter kinds its processes activate and filtered by the suite's own switch
-     * (`services.ts`): each entry names a descriptor under `services/` and carries the values its base
-     * is given. The alias that keeps a realm's config working — `mysql`, not a host — is published
-     * beside the workload when it is generated.
+     * Resolved from the adapter kinds its processes activate and filtered by the deployment's own
+     * opt-in (`services.ts`): each entry names a descriptor under `services/` and carries the values
+     * its base is given. The alias that keeps a realm's config working — `mysql`, not a host — is
+     * published beside the workload when it is generated.
      */
     backingServices: IBackingService[];
     /**
      * What the deployment asked for about those services, as it asked.
      *
      * The request rather than the resolved set, for the reason the portals travel the same way: the
-     * operator regenerates the tree from the CR, and a service a deployment switched off has to stay
-     * off across that pass — which only a field on the declaration can say.
+     * operator regenerates the tree from the CR, and a service a deployment did not opt in has to stay
+     * out across that pass — which only a field on the declaration can say.
      */
     backingServiceRequest: IBackingServiceRequest;
     ingresses: IIngress[];
@@ -855,8 +855,8 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     const profile = options.profile ?? DEFAULT_PROFILE;
     const namespace = options.namespace ?? options.suiteName;
     // What the deployment brings with it, before anything renders it: the adapter kinds its ports carry
-    // decide which services exist, the suite may switch one off, and the databases its connections
-    // name are the list a database service is asked to create (`services.ts`).
+    // decide which services are available, the deployment opts in the ones it brings, and the databases
+    // its connections name are the list a database service is asked to create (`services.ts`).
     const backing = resolveBackingServices(options.catalog ?? loadServiceCatalog(), {
         kinds: [...new Set(view.ports.map(port => port.type))].filter(
             (kind): kind is string => typeof kind === 'string' && kind !== 'dispatch',

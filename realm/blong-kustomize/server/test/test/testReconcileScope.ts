@@ -4,6 +4,7 @@ import type {IClusterObject, IDesiredResource} from '../../../apply.ts';
 import {
     availableReplicas,
     listingScopes,
+    unreadableFailures,
 } from '../../../orchestrator/controller/kustomizeReconcileRun.ts';
 
 /**
@@ -49,6 +50,65 @@ export default handler(({lib: {group}}) => ({
                     scopes.map(scope => scope.desired.length).sort(),
                     [1, 1],
                     'and the objects that named a scope travel with it',
+                );
+            },
+
+            async function theServicesNamespaceIsSweptForGeneratedCredentials(assert: IAssert) {
+                // A switched-off service names nothing in the namespace it ran in, so no object scopes
+                // it and the pass cannot see the Secret it generated there — which is how a generated
+                // credential outlived the declaration it was derived from. The scope is added from the
+                // declaration, and only for the credential kind: the label is what makes acting on what
+                // the listing answers safe in a namespace that is not the tenant's (D-461, D-509).
+                const scopes = listingScopes([], ['secret', 'job'], 'shop', 'shop-services');
+                assert.deepEqual(
+                    scopes.map(scope => `${scope.resourceType}@${scope.namespace}`).sort(),
+                    ['job@shop', 'secret@shop', 'secret@shop-services'],
+                    'the generated credentials are looked for in the services namespace as well',
+                );
+                assert.ok(
+                    scopes.every(scope => scope.desired.length === 0),
+                    'and a scope added for a sweep names no object of its own',
+                );
+                // The flag is what keeps a namespace nothing creates from failing every pass: the
+                // scope is here to find a leftover, so a pass that cannot read it says so and applies
+                // the rest (D-515) — while the scopes that hold this deployment's objects do not get
+                // that allowance, because an object of it may be in one of them unseen.
+                assert.deepEqual(
+                    scopes
+                        .filter(scope => scope.namespace === 'shop-services')
+                        .map(scope => scope.cleanupOnly === true),
+                    [true],
+                    'and it is marked as the one scope that cannot fail the pass',
+                );
+                assert.ok(
+                    scopes
+                        .filter(scope => scope.namespace === 'shop')
+                        .every(scope => scope.cleanupOnly === false),
+                    'while the scopes that hold this deployment are not',
+                );
+                // A deployment whose services run beside it needs one listing, not two.
+                const single = listingScopes([], ['secret'], 'shop', 'shop');
+                assert.deepEqual(
+                    single.map(scope => `${scope.resourceType}@${scope.namespace}`),
+                    ['secret@shop'],
+                    'and a services namespace that is the tenant one is listed once',
+                );
+            },
+
+            async function anUnreadableCleanupScopeDoesNotFailThePass(assert: IAssert) {
+                const failures = unreadableFailures([
+                    {key: 'shop/deployment', message: 'forbidden', cleanupOnly: false},
+                    {key: 'shop-services/secret', message: 'forbidden', cleanupOnly: true},
+                ]);
+                assert.deepEqual(
+                    failures,
+                    [{key: 'shop/deployment', message: 'forbidden'}],
+                    'a scope that exists to find leftovers cannot fail a pass that applied everything',
+                );
+                assert.deepEqual(
+                    unreadableFailures([{key: 'shop/secret', message: 'forbidden', cleanupOnly: false}]),
+                    [{key: 'shop/secret', message: 'forbidden'}],
+                    'while a scope that holds this deployment does fail it',
                 );
             },
 

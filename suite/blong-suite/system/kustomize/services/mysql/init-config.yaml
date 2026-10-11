@@ -12,4 +12,3 @@ metadata:
     app.kubernetes.io/version: 1.13.0
     blong.feasible.one/spec-hash: ee53868076d3f4e7
   name: mysql-init-config
-  namespace: blong-services

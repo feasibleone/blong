@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/version: 1.13.0
     blong.feasible.one/spec-hash: 2e4f09ec052609d5
   name: blong-operator
-  namespace: blong-suite
 rules:
   - apiGroups:
       - ""

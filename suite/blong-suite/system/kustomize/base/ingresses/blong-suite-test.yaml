@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/version: 1.13.0
     blong.feasible.one/spec-hash: ea158517f1129756
   name: blong-suite-test
-  namespace: blong-suite
 spec:
   rules:
     - host: blong-suite.test

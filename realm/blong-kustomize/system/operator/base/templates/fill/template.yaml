@@ -6,13 +6,12 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
-    app.kubernetes.io/version: 0.1.0
+    app.kubernetes.io/version: PLACEHOLDER
     blong.feasible.one/retention: "3"
-    blong.feasible.one/spec-hash: 06889f54377899d9
-    blong.feasible.one/suite-version: 0.1.0
+    blong.feasible.one/spec-hash: d47307da765c805a
+    blong.feasible.one/suite-version: PLACEHOLDER
     blong.feasible.one/volume-identity: PLACEHOLDER
   name: blong-operator-fill
-  namespace: blong-system
 spec:
   backoffLimit: 1
   template:
@@ -22,7 +21,7 @@ spec:
         app.kubernetes.io/managed-by: blong-kustomize
         app.kubernetes.io/name: blong-operator
         app.kubernetes.io/part-of: blong-operator
-        app.kubernetes.io/version: 0.1.0
+        app.kubernetes.io/version: PLACEHOLDER
     spec:
       containers:
         - command:
@@ -56,7 +55,7 @@ spec:
             - name: BLONG_ARTIFACT_KEEP
               value: "3"
             - name: BLONG_ARTIFACT_URL
-              value: http://blong-artifact.default.svc.cluster.local/kustomize.zip
+              value: https://github.com/feasibleone/blong/releases/latest/download/blong-kustomize.zip
           image: docker.io/library/blong-gogo:1
           name: fill
           resources:

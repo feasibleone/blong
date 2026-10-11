@@ -9,7 +9,6 @@ metadata:
     app.kubernetes.io/version: 1.13.0
     blong.feasible.one/spec-hash: 9ac58ed038850175
   name: mysql
-  namespace: blong-services
 spec:
   replicas: 1
   selector:

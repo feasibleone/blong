@@ -1,7 +1,9 @@
 import {handler, type IMeta} from '@feasibleone/blong';
 import {
+    GENERATED_CREDENTIALS_LABEL,
     INSTANCE_LABEL,
     PART_OF_LABEL,
+    RESOURCE_TYPE_BY_KIND,
     applyParams,
     collectManifests,
     diffResources,
@@ -11,6 +13,7 @@ import {
     type IDesiredResource,
 } from '../../apply.ts';
 import {buildKustomizeTree, type KustomizeTree} from '../../generator.ts';
+import {DEFAULT_SERVICES_NAMESPACE} from '../../services.ts';
 import {
     OPERATOR_GROUP,
     OPERATOR_NAMESPACE,
@@ -60,6 +63,16 @@ export interface IListingScope {
     resourceType: string;
     namespace: string;
     desired: IDesiredResource[];
+    /**
+     * Whether this scope exists only to find what a declaration stopped generating.
+     *
+     * Such a scope holds nothing the tree asks for: a switched-off service leaves a credential in a
+     * namespace no object of this deployment is declared in, and the pass looks there to take it
+     * back. A namespace nothing creates answers `forbidden` rather than `not found` — the API server
+     * cannot tell the two apart — so a pass that failed on this scope would report a deployment as
+     * failed while everything it asks for is applied. It is still named with the other listings.
+     */
+    cleanupOnly?: boolean;
 }
 
 /**
@@ -85,13 +98,14 @@ export const listingScopes = (
     managed: IDesiredResource[],
     swept: readonly string[],
     tenantNamespace: string,
+    servicesNamespace?: string,
 ): IListingScope[] => {
     const scopes = new Map<string, IListingScope>();
-    const scopeOf = (resourceType: string, namespace: string): IListingScope => {
+    const scopeOf = (resourceType: string, namespace: string, cleanupOnly = false): IListingScope => {
         // One scope per pair, joined on a NUL: a resource type and a namespace are DNS-ish names, so
         // neither can contain one, and the pair stays unambiguous without a second map.
         const key = `${resourceType}\u0000${namespace}`;
-        const scope = scopes.get(key) ?? {resourceType, namespace, desired: []};
+        const scope = scopes.get(key) ?? {resourceType, namespace, desired: [], cleanupOnly};
         scopes.set(key, scope);
         return scope;
     };
@@ -105,11 +119,32 @@ export const listingScopes = (
         if ([...scopes.values()].some(scope => scope.resourceType === resourceType)) continue;
         scopeOf(resourceType, tenantNamespace);
     }
+    // And the credentials a deployment generated in the namespace its services run in. A service the
+    // declaration switched off names nothing there, so no object scopes that namespace and the pass
+    // cannot see what it wrote — which is how a generated Secret outlived the definition it was
+    // derived from. Only the credential kind is listed there, and only a labelled object is removable
+    // once it is seen, so the shared namespace stays its owner's to edit (`prunable`, D-461, D-509).
+    if (servicesNamespace && servicesNamespace !== tenantNamespace) {
+        scopeOf(RESOURCE_TYPE_BY_KIND['Secret'] ?? 'secret', servicesNamespace, true);
+    }
     return [...scopes.values()];
 };
 
 /**
- * How many replicas each wanted Deployment has, from the listings taken for it.
+ * The scopes a pass could not read that leave it failed.
+ *
+ * A scope the pass added only to find what a declaration stopped generating does not: nothing of this
+ * deployment is expected in it, and the namespace a switched-off service left behind answers
+ * `forbidden` rather than `not found`, so counting it would report every pass as failed while
+ * everything the declaration asks for is applied. Every other unreadable scope is a failure, because
+ * an object of this deployment may be in it unseen (F-461, D-515).
+ */
+export const unreadableFailures = (
+    unreadable: ReadonlyArray<{key: string; message: string; cleanupOnly: boolean}>,
+): Array<{key: string; message: string}> =>
+    unreadable.filter(entry => !entry.cleanupOnly).map(({key, message}) => ({key, message}));
+
+/**
  *
  * Pairing is by namespace *and* name: two Deployments of one name in two namespaces are two objects,
  * and a listing that answered for one of them says nothing about the other. A Deployment no listing
@@ -154,9 +189,18 @@ export const availableReplicas = (
  * lock rather than the second half of one: the label says what is this suite's, and this says how
  * far a removal may reach. The rights the operator runs under are not the operator's to withdraw
  * either, so cluster-scoped objects fall out with the same rule.
+ *
+ * One exception, and it is the one that would otherwise leak: a credential the tree *generated* from a
+ * declaration. A switched-off service leaves it in the services namespace, and the next pass that no
+ * longer asks for it is the only thing that can take it back — so an object carrying the generated label
+ * is removable wherever the pass may list it, and everything else in a shared namespace is not (D-461).
  */
 export const prunable = (obsolete: IClusterObject[], namespace: string): IClusterObject[] =>
-    obsolete.filter(object => object.metadata?.namespace === namespace);
+    obsolete.filter(
+        object =>
+            object.metadata?.namespace === namespace ||
+            object.metadata?.labels?.[GENERATED_CREDENTIALS_LABEL] !== undefined,
+    );
 
 /** The label a fill Job carries: how many volume directories — one per identity — a node keeps. */
 export const VOLUME_RETENTION_LABEL = 'blong.feasible.one/retention';
@@ -619,8 +663,13 @@ export default handler(({handler}) => {
             // namespace whose Rights went with it is the case (F-461), and it is worth naming — the
             // alternative is a pass that dies before it writes a status, leaving a CR that describes
             // a cluster nobody has since.
-            const unreadable: Array<{key: string; message: string}> = [];
-            for (const scope of listingScopes(managed, sweptResourceTypes(), suiteNamespace)) {
+            const unreadable: Array<{key: string; message: string; cleanupOnly: boolean}> = [];
+            for (const scope of listingScopes(
+                managed,
+                sweptResourceTypes(),
+                suiteNamespace,
+                options.servicesNamespace ?? DEFAULT_SERVICES_NAMESPACE,
+            )) {
                 const find = call(wireName(scope.resourceType, 'Find'));
                 if (!find) {
                     // A kind the tree names and the cluster cannot look up is a pass that would apply
@@ -646,6 +695,7 @@ export default handler(({handler}) => {
                     unreadable.push({
                         key: `${scope.namespace}/${scope.resourceType}`,
                         message: message(error),
+                        cleanupOnly: scope.cleanupOnly === true,
                     });
                     continue;
                 }
@@ -680,7 +730,11 @@ export default handler(({handler}) => {
                         `there is (namespace/kind=count): ${swept.join(', ')}` +
                         (unreadable.length
                             ? `; unreadable: ${unreadable
-                                  .map(entry => `${entry.key} (${entry.message})`)
+                                  .map(entry =>
+                                      entry.cleanupOnly
+                                          ? `${entry.key} (${entry.message}; cleanup only)`
+                                          : `${entry.key} (${entry.message})`,
+                                  )
                                   .join('; ')}`
                             : ''),
                 });
@@ -710,7 +764,7 @@ export default handler(({handler}) => {
             let unchanged = 0;
             let obsolete = 0;
             let deleted = 0;
-            const failures: Array<{key: string; message: string}> = [...unreadable];
+            const failures: Array<{key: string; message: string}> = unreadableFailures(unreadable);
             /**
              * Per kind, so a count that looks wrong can be traced to the kind that produced it.
              *

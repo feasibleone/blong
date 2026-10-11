@@ -52,6 +52,12 @@ export const suiteTreeGenerate = async (
             resolve(entry),
             'k8s',
             `--kustomize.deploy.layout=${layout}`,
+            // Where the caller said, not where the framework defaults to. The two agreed only while
+            // `tree` *was* that default: every other value was deleted above, applied below and never
+            // written, so a run that pointed its tree elsewhere applied a directory that did not
+            // exist (`kubectl apply -k …: no such file or directory`) after a generation that looked
+            // like it succeeded. The output directory is the caller's, and saying so is one argument.
+            `--kustomize.deploy.outputDir=${tree}`,
             ...serviceOffArguments(serviceOff),
             ...digestArgs,
         ]);

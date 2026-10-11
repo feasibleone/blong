@@ -12,7 +12,6 @@ metadata:
     blong.feasible.one/suite-version: PLACEHOLDER
     blong.feasible.one/volume-identity: PLACEHOLDER
   name: blong-suite-migrate
-  namespace: blong-suite
 spec:
   backoffLimit: 0
   template:

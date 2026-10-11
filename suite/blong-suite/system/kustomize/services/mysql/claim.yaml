@@ -9,7 +9,6 @@ metadata:
     app.kubernetes.io/version: 1.13.0
     blong.feasible.one/spec-hash: 6b0b87205ecacf2a
   name: mysql-data
-  namespace: blong-services
 spec:
   accessModes:
     - ReadWriteOnce

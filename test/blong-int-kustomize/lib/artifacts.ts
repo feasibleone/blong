@@ -195,20 +195,40 @@ export const baseOf = (tree: string): string =>
 /** What a caller hands to `kubectl apply -k`: the composed tree, which is the overlay. */
 export const overlayOf = (tree: string): string => `${tree}/local`;
 
-/** The suite namespace a tree's nodes live under, as `ls tree/namespaces` would answer it. */
+/**
+ * The namespaces a tree writes, as `ls` would answer it.
+ *
+ * Read from the overlay rather than the base, because a namespace is the *deployment's*: it is the CR's
+ * own for the suite and the one that CR names for a service, so the base carries none and the overlay
+ * declares both on its two children (D-506). The base is still asked second, for a tree that predates
+ * the split.
+ */
 export const namespaceFileNames = (tree: string): string[] => {
-    try {
-        return readdirSync(`${baseOf(tree)}/namespaces`);
-    } catch {
-        return [];
+    for (const dir of [`${tree}/local/namespaces`, `${baseOf(tree)}/namespaces`]) {
+        try {
+            return readdirSync(dir);
+        } catch {
+            continue;
+        }
     }
+    return [];
 };
 
-/** The services a tree carries a folder for, which is the same list the shell runbook `ls` ed. */
+/**
+ * The services a tree carries a folder for, which is the same list the shell runbook `ls` ed.
+ *
+ * The folders sit *beside* the base rather than in it (D-504), so the tree's own `services/` is asked
+ * first and the base's second — that one holds a suite's process Services, which are files and not
+ * folders, so a base-only tree answers none either way.
+ */
 export const serviceNames = (tree: string): string[] => {
-    try {
-        return readdirSync(`${baseOf(tree)}/services`).filter(name => !name.endsWith('.yaml'));
-    } catch {
-        return [];
+    for (const dir of [`${tree}/services`, `${baseOf(tree)}/services`]) {
+        try {
+            const names = readdirSync(dir).filter(name => !name.endsWith('.yaml'));
+            if (names.length) return names;
+        } catch {
+            continue;
+        }
     }
+    return [];
 };

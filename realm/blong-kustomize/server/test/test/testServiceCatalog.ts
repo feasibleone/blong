@@ -2,6 +2,7 @@ import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {GENERATED_CREDENTIALS_LABEL} from '../../../apply.ts';
 import {buildKustomizeTree} from '../../../generator.ts';
 import {planFromRegistry, registryView, type IRegistryView} from '../../../plan.ts';
 import {
@@ -269,7 +270,9 @@ export default handler(({lib: {group}}) => ({
                     frameworkImage: 'blong',
                     servicesNamespace: 'shop-services',
                     nodes: NODES,
-                    services: {keycloak: true},
+                    // The init script logs in with the service's credentials, so the deployment has to
+                    // provide some: a declaration with none gets no Secret and no `envFrom` at all (D-509).
+                    services: {keycloak: {credentials: {generate: true}}},
                 };
                 const plain = buildKustomizeTree(planFromRegistry(view, options));
                 assert.ok(
@@ -295,7 +298,7 @@ export default handler(({lib: {group}}) => ({
                 const supplied = buildKustomizeTree(
                     planFromRegistry(view, {
                         ...options,
-                        services: {keycloak: {init: {script}}},
+                        services: {keycloak: {init: {script}, credentials: {generate: true}}},
                     }),
                 );
                 const config = supplied.get('services/keycloak/init-config.yaml') as {
@@ -362,18 +365,38 @@ export default handler(({lib: {group}}) => ({
             },
 
             async function aGeneratedSecretIsReadableWhereTheSuiteDialsIt(assert: IAssert) {
-                // A pod reads only the Secrets of its own namespace, and the alias this tree publishes
-                // is dialled from the suite's. A deployment pointed at the database generated for it
-                // therefore needs the values twice, and derived rather than random, so that the two
-                // copies cannot drift and nothing has to sync them (D-462).
+                // A pod reads only the Secrets of its own namespace, and the alias this tree publishes is
+                // dialled from the suite's. A deployment that supplies credentials therefore needs them twice
+                // — beside the workload and where its own processes run — and derived rather than random, so
+                // that the two copies cannot drift and nothing has to sync them (D-462, D-509).
                 const view = registryView({
                     describe: () => ({realms: ['srv'], ports: ['srv.db']}),
                     getPort: () => ({config: {type: 'knex'}}),
                 });
+                const options = {
+                    suiteName: 'shop',
+                    frameworkImage: 'blong',
+                    servicesNamespace: 'shop-services',
+                    nodes: NODES,
+                };
+                type IContainer = {
+                    env?: Array<{valueFrom?: {secretKeyRef?: {name?: string}}}>;
+                    envFrom?: unknown[];
+                };
+                type ISecret = {
+                    metadata?: {namespace?: string; name?: string; labels?: Record<string, string>};
+                    stringData?: Record<string, string>;
+                };
+                const containersOf = (tree: Map<string, unknown>, file: string): IContainer[] => {
+                    const document = tree.get(file) as
+                        | {spec?: {template?: {spec?: {containers?: IContainer[]}}}}
+                        | undefined;
+                    return document?.spec?.template?.spec?.containers ?? [];
+                };
                 const generated = resolveBackingServices(loadServiceCatalog(), {
                     kinds: ['knex'],
                     namespace: 'shop-services',
-                    config: {mysql: true},
+                    config: {mysql: {credentials: {generate: true}}},
                 });
                 assert.equal(
                     generated.services[0]?.credentialsGenerated,
@@ -381,28 +404,21 @@ export default handler(({lib: {group}}) => ({
                     'a Secret this tree writes is marked as one it can write twice',
                 );
                 const plan = planFromRegistry(view, {
-                    suiteName: 'shop',
-                    frameworkImage: 'blong',
-                    servicesNamespace: 'shop-services',
-                    nodes: NODES,
-                    services: {mysql: true},
+                    ...options,
+                    services: {mysql: {credentials: {generate: true}}},
                 });
                 const tree = buildKustomizeTree(plan);
-                type ISecret = {
-                    metadata?: Record<string, unknown>;
-                    stringData?: Record<string, string>;
-                };
                 const beside = tree.get('services/mysql/credentials.yaml') as ISecret;
                 const inSuite = tree.get('services/mysql/credentials-in-suite.yaml') as ISecret;
                 assert.ok(inSuite, 'the copy the deployment reads is written');
                 assert.equal(
-                    inSuite.metadata?.['namespace'],
+                    inSuite.metadata?.namespace,
                     plan.suite.namespace,
                     'in the namespace the suite runs its own pods in',
                 );
                 assert.equal(
-                    inSuite.metadata?.['name'],
-                    beside.metadata?.['name'],
+                    inSuite.metadata?.name,
+                    beside.metadata?.name,
                     'under the name the workload and the connection both know',
                 );
                 assert.deepEqual(
@@ -410,13 +426,61 @@ export default handler(({lib: {group}}) => ({
                     beside.stringData,
                     'and with the same values, because both are derived from the plan',
                 );
+                // The label is what lets a pass take a generated credential back when the declaration stops
+                // asking for it: the workload's own copy is in a namespace a pass does not delete in, so
+                // nothing but the object saying it was generated can make its removal safe (D-461, D-509).
+                assert.equal(
+                    inSuite.metadata?.labels?.[GENERATED_CREDENTIALS_LABEL],
+                    'true',
+                    'and says it was generated rather than placed, which is what a sweep reads',
+                );
+                // The values are what the workload reads, and the same name is what the suite's own
+                // processes read in their namespace — which is where `aDeploymentBringsItsOwnServices`
+                // pins the `envFrom` that draws on them (D-509).
+
+                // The values a deployment supplies are the ones written, and they cover the keys the image
+                // reads: a Secret missing one is a database that starts without the user it needs (D-509).
+                const supplied = buildKustomizeTree(
+                    planFromRegistry(view, {
+                        ...options,
+                        services: {
+                            mysql: {
+                                credentials: {
+                                    values: {MYSQL_USER: 'shop', MYSQL_PASSWORD: 'hunter2'},
+                                },
+                            },
+                        },
+                    }),
+                );
+                assert.deepEqual(
+                    (supplied.get('services/mysql/credentials.yaml') as ISecret).stringData,
+                    {MYSQL_USER: 'shop', MYSQL_PASSWORD: 'hunter2'},
+                    'a deployment that supplies the values gets exactly them',
+                );
+                assert.throws(
+                    () =>
+                        planFromRegistry(view, {
+                            ...options,
+                            services: {mysql: {credentials: {values: {MYSQL_USER: 'shop'}}}},
+                        }),
+                    /no value is given for MYSQL_PASSWORD/,
+                    'and a value for every key the image reads, or the Secret is refused',
+                );
+                assert.throws(
+                    () =>
+                        planFromRegistry(view, {
+                            ...options,
+                            services: {
+                                mysql: {credentials: {secret: 'hand-made', generate: true}},
+                            },
+                        }),
+                    /two answers to one question/,
+                    'while naming a Secret and generating one are two answers to one question',
+                );
 
                 const owned = buildKustomizeTree(
                     planFromRegistry(view, {
-                        suiteName: 'shop',
-                        frameworkImage: 'blong',
-                        servicesNamespace: 'shop-services',
-                        nodes: NODES,
+                        ...options,
                         services: {mysql: {credentials: {secret: 'hand-made'}}},
                     }),
                 );
@@ -426,9 +490,37 @@ export default handler(({lib: {group}}) => ({
                     'a Secret a deployment owns is theirs to place, so nothing is copied',
                 );
                 assert.equal(
-                    (owned.get('services/mysql/credentials.yaml') as ISecret).metadata?.['name'],
+                    owned.get('services/mysql/credentials.yaml'),
+                    undefined,
+                    'and nothing is generated beside the workload either',
+                );
+                assert.equal(
+                    containersOf(owned, 'services/mysql/deployment.yaml')[0]?.env?.[0]?.valueFrom
+                        ?.secretKeyRef?.name,
                     'hand-made',
                     'while the workload still reads the name the deployment gave it',
+                );
+
+                // And a deployment that declares none gets none: no Secret anywhere, and a workload whose
+                // base names one has the reference taken out, rather than one that waits for a Secret nobody
+                // writes — which is what a service configured by a mounted file needs (D-509).
+                const bare = buildKustomizeTree(
+                    planFromRegistry(view, {...options, services: {mysql: true}}),
+                );
+                assert.equal(
+                    bare.get('services/mysql/credentials.yaml'),
+                    undefined,
+                    'a deployment that declares no credentials gets no Secret',
+                );
+                assert.equal(
+                    bare.get('services/mysql/credentials-in-suite.yaml'),
+                    undefined,
+                    'and no copy for its own processes',
+                );
+                assert.deepEqual(
+                    containersOf(bare, 'services/mysql/deployment.yaml')[0]?.env,
+                    [],
+                    'and the workload reads none, rather than waiting for one nobody writes',
                 );
             },
 
@@ -597,6 +689,24 @@ export default handler(({lib: {group}}) => ({
                     'the namespace the workloads belong in',
                 );
                 assert.equal(cr?.spec?.['storageClassName'], 'local-path', 'and the class');
+                // The default is written out rather than left to the operator: the pass locates what
+                // it managed before by the namespace the declaration gives it, so a deployment that
+                // named none would have its reads fall back to the client's own namespace, where the
+                // operator's account is refused and the pass fails (F-481).
+                const unnamed = planFromRegistry(view, {
+                    suiteName: 'shop',
+                    frameworkImage: 'blong',
+                    services: {mysql: true},
+                    nodes: NODES,
+                });
+                const unnamedCr = buildKustomizeTree({...unnamed, crd: true}).get(
+                    'blongdeployment.yaml',
+                ) as {spec?: Record<string, unknown>};
+                assert.equal(
+                    unnamedCr?.spec?.['servicesNamespace'],
+                    'blong-services',
+                    'a deployment that named no namespace is declared in the one its workloads use',
+                );
                 assert.ok($meta, 'a plan is built from the meta every step shares');
             },
 

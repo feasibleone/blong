@@ -16,9 +16,10 @@ the first decision: **the manifest generator introspects the loaded registry rat
 source or trusting a hand-written map**.
 
 That also fixes the granularity question that motivated the framework. A suite that runs as one
-process in development and as twelve in production is the same code, and the difference is which
-layers land in which deployment. The generator takes that as a profile — `namespace`, `realm` (the
-default), `group`, `monolith` — so the architecture is a property of the deployment, not a rewrite.
+process in development and as one per namespace in production is the same code, and the difference
+is which layers land in which deployment. The generator takes that as a profile — `namespace`,
+`realm` (the default), `group`, `monolith` — so the architecture is a property of the deployment,
+not a rewrite.
 
 Three smaller decisions follow from wanting the output to be reviewable.
 

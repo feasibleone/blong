@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/version: 0.1.0
     blong.feasible.one/spec-hash: 2788fab6017d08ad
   name: blong-operator
-  namespace: blong-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

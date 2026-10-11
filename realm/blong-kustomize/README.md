@@ -1,7 +1,8 @@
 # @feasibleone/blong-kustomize
 
 Deployment for Blong suites: it turns a loaded suite into a kustomize tree, a versioned suite volume
-and a `BlongDeployment` the operator can reconcile.
+and a `BlongDeployment` the operator can reconcile — the declaration as an example beside the base,
+because which suite a namespace runs is the tenant's act rather than the suite's.
 
 The realm is a **bare-cluster installer**. It loads no business realm, needs no database and depends
 on no third-party service: everything it knows comes from the loaded registry and everything it
@@ -34,8 +35,8 @@ a process that wants the read API asks with `framework.realms: {kustomize: true}
 
 The tree is written in two halves. `base/` is committed and holds nothing a deploy owns, so it
 changes only when the _design_ does; `local/` sits beside it, is ignored, and carries what one
-deploy and one cluster say — the artifact's identity and one fill Job per node. `kubectl apply -k`
-is pointed at `local/`, which composes the two (D-475).
+deploy and one cluster say — the artifact's identity, the namespaces, and one fill Job per node.
+`kubectl apply -k` is pointed at `local/`, which composes the two (D-475).
 
 The split is decided by one question, asked of each object's **name**: does it name the artifact —
 one fill Job per node, one attempt per artifact, one claim per artifact? Then the base carries a
@@ -43,42 +44,54 @@ _template_ (a folder under `base/templates/`, not listed by the base's kustomiza
 overlay one small kustomization per instance, which includes the template, appends the identity and
 patches back the values the template replaced with `PLACEHOLDER`. No patch can rename an object,
 which is why those cannot live in the base as objects. Everything else is in the base: as it is, or
-with a patch when the object carries a value the deploy owns — a Deployment's volume, the suite's
-declaration.
+with a patch when the object carries a value the deploy owns — a Deployment's volume.
 
 ```text
 system/kustomize/
-├── base/                     # committed: the same files for every deploy
+├── base/                     # committed: the same files for every deploy, and no namespace
 │   ├── kustomization.yaml    # the labels, and the files below — never the templates
-│   ├── namespaces/           # the suite namespace, and the services one when a service is generated
-│   ├── deployments/          # one Deployment per process in the plan, with a placeholder volume
-│   ├── services/             # one per orchestrator namespace (+ one gateway per portal),
-│   │                         #   and one folder per generated service (services/mysql/…)
-│   ├── external-services/    # ExternalName aliases, declared and generated
+│   ├── deployments/          # one Deployment per process, with a placeholder volume
+│   ├── services/             # one per orchestrator namespace (+ one gateway per portal)
 │   ├── ingresses/            # one per host: the portals and the contributed webhooks
 │   ├── rbac/                 # the suite's ServiceAccount and least-privilege Role, the UI's
 │   │                         # auth-review pair, and the bindings the operator gets here
-│   ├── blongdeployment.yaml  # the CR that asks the cluster's operator for this suite, without a digest
 │   ├── storage/              # opt-in: the remote manifest for an RWX provider
 │   └── templates/            # one folder per kind the deploy owns by name: the fill Job (script and
 │                             #   all, since it reads its settings from the environment), an attempt,
 │                             #   a claim — the shape, with PLACEHOLDER where the deploy's values go
+├── services/<name>/          # one folder per service a deployment opts in, beside the base: its
+│                             #   workload, Service, claim and init config — the namespace, the
+│                             #   alias and the credentials are the overlay's or the deployment's
+├── example/                  # the declaration as a sample to copy; no kustomization lists it —
+│                             #   apply it after the tree to have the operator follow this revision
 └── local/                    # ignored: what this deploy and this cluster own
-    ├── kustomization.yaml    # resources: [../base, …instances] and the patches below
-    ├── cache/<job>/          # one kustomization per node: the fill template + its node and identity
-    ├── deployer/<attempt>/   # one per attempt: the seed or migration template + its volume
-    ├── volumes/<claim>/      # one per claim, when the backend is `shared`
-    └── patches/              # one per object that carries a value rather than a name
+    ├── kustomization.yaml    # lists `suite`, `backing` and the namespaces — and names none
+    ├── suite/                # `namespace: <the CR's>`: the base, the aliases, the generated
+    │                         #   credentials copy, and the patches and instances below
+    ├── backing/              # `namespace: <servicesNamespace>`: one folder per service opted in,
+    │                         #   and the rights the operator holds in that namespace
+    └── namespaces/           # the Namespace objects, each named after what it holds
 ```
 
-Every document names the namespace it belongs in, and each root kustomization names one only while
-the tree holds a single namespace: the `namespace` field is a rewrite — it moves every namespaceable
-object and renames every `Namespace` — so a second one cannot coexist with it (F-440).
+No object a split writes carries a namespace of its own, because it belongs to the deployment rather
+than to the design: the suite's namespace is the one the CR was declared in, a service's is the one
+that CR names for it, and the halves are shared by every deployment of the suite (D-506). The two
+come from the overlay's children — `local/suite/` and `local/backing/`, each with a `namespace:`
+field — because kustomize's field is a rewrite rather than a default: it moves every namespaceable
+object and renames every `Namespace`, so a field on the overlay's root would pull the services'
+workloads into the tenant's namespace and collide the two `Namespace` objects (F-440). The operator,
+which has no kustomize binary, stamps the same two from those children in
+`materializeGeneratedTree`, and the `Namespace` objects are the overlay's because each is named
+after what it holds — a name being the one thing a patch cannot retarget. The single exception is a
+folder whose objects a generator _builds_ (`secrets/`, `assets/`): a generated object has no
+namespace of its own, and a flat tree has no parent to give it one (F-440).
 
 The operator itself is _not_ in this tree. It is one process for the whole cluster — its Deployment,
 its cluster-scoped rights and the CRD in `system/operator/` beside this realm, generated from
 `operator-entry.ts` and applied once, before any suite. What a suite's tree carries is the bindings
-that operator is granted inside this suite's namespace, and its own CR.
+that operator is granted inside this suite's namespace, and the declaration as an `example/` beside
+the base — a sample a tenant copies and edits, which no kustomization applies, because the suite
+that a namespace runs is that tenant's act (D-507).
 
 The output is deterministic — deep-sorted keys, no line folding, the tree is replaced rather than
 merged — so a regenerated `base/` is byte-identical across runs, which is what makes it reviewable
@@ -203,16 +216,24 @@ kustomize: {
 
 A deployment brings the services its adapters need: a `knex` port brings a MySQL, an `s3` port a
 MinIO, and so on. The catalogue under `services/` pairs each descriptor with the adapter kinds that
-imply it, and the plan carries every implied service into the tree — its own namespace, workload,
-claim, init script, credentials Secret and an `ExternalName` alias in the suite's namespace, so a
-realm's config keeps naming `mysql` rather than a host.
+imply it — an adapter makes a service _available_, and the deployment says which of them it brings —
+and what it opts in becomes a folder beside the base (`services/<name>/`) holding the workload, its
+Service, its claim and its init config. The namespace, the `ExternalName` alias a realm's config
+dials and the credentials are the deployment's rather than the design's, so the overlay writes them
+(D-504, D-506).
 
-The credentials are written twice when this realm generates them: beside the workload, where the
-service reads them, and in the suite's namespace, where the deployment that dials the alias reads
-them — a pod sees only its own namespace, so a name that answers is not enough (D-462). The values
-are derived from the plan rather than random, so the two copies say the same thing on every pass and
-nothing has to sync them. A Secret the deployment names under `credentials.secret` is not copied:
-its placement is the deployment's own.
+The credentials are the deployment's to declare, in `services.<name>.credentials` (D-509): `values`
+are written into a Secret the tree generates, `secret` names one the deployment owns elsewhere and
+mounts as it stands, and `generate` asks for the descriptor's own derivation — derived from suite,
+service and version, so the same plan writes the same Secret on every pass. Naming a Secret and
+supplying values at once is refused, because they are two answers to one question, and declaring
+nothing writes no Secret at all: a workload whose base reads one then has that reference taken out,
+rather than left waiting for a Secret nobody writes. A generated Secret is written twice — beside
+the workload, where the service reads it, and in the suite's namespace, where the suite's own
+processes read it as environment — because a pod sees only its own namespace. Both copies carry
+`blong.feasible.one/generated-credentials`, which is what lets a pass take them back when the
+declaration stops asking: a credential this realm derived is the one object it deletes outside the
+tenant's namespace (D-461, D-462).
 
 `services` is the switchboard, keyed by service name:
 
@@ -234,19 +255,19 @@ its placement is the deployment's own.
   value the plan decides. The storage class comes from `storageClassName`, and `servicesNamespace`
   (default `blong-services`) is where the generated workloads run.
 
-The switches travel in the `BlongDeployment` the tree applies, because the operator regenerates the
-tree from that declaration: a switch it could not carry would write the service back on its next
-pass. What a pass removes is what its declaration stopped naming _inside the suite's namespace_
-(D-461), which is why the `ExternalName` alias — the name a realm's config dials — and the copy of
-the credentials written for it are deleted when a service is switched off, while a workload the
-service was given a namespace of its own keeps running and is reported as `obsolete` in the CR's
-status. Deleting that one is its owner's call, which is the point of the namespace it was given. A
-generated workload chooses no node of its own: its base carries no `nodeSelector`, affinity or
-topology spread, so it is scheduled wherever the cluster likes, which is the right default where a
-storage class is portable between nodes and the wrong one where it is not — a claim binds on one
-node, and a pod that lands on another finds no volume. A cluster whose storage is node-local
-therefore names its nodes under `placement`, per service. The switches are also on the command line,
-per service:
+The switches travel in the `BlongDeployment` — the tenant's declaration, which the tree ships as
+`example/` and the operator regenerates from — because a switch the declaration could not carry
+would write the service back on its next pass. What a pass removes is what its declaration stopped
+naming _inside the suite's namespace_ (D-461), which is why the `ExternalName` alias — the name a
+realm's config dials — and the credentials copy written for it are deleted when a service is
+switched off, while a workload the service was given a namespace of its own keeps running and is
+reported as `obsolete` in the CR's status, its generated credentials aside. Deleting that one is its
+owner's call, which is the point of the namespace it was given. A generated workload chooses no node
+of its own: its base carries no `nodeSelector`, affinity or topology spread, so it is scheduled
+wherever the cluster likes, which is the right default where a storage class is portable between
+nodes and the wrong one where it is not — a claim binds on one node, and a pod that lands on another
+finds no volume. A cluster whose storage is node-local therefore names its nodes under `placement`,
+per service. The switches are also on the command line, per service:
 
 ```bash
 --kustomize.deploy.services.mysql=false

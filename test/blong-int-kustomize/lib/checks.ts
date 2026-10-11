@@ -36,6 +36,15 @@ import {
 } from './rules.ts';
 import {servicesNamespaceOf} from './trees.ts';
 
+/**
+ * The namespace a generated workload runs in, unless the CR names another (D-504).
+ *
+ * The switched-off branch needs it from the *declaration* rather than from the tree: a switched-off
+ * deployment's overlay names no service, so the tree cannot say where the workload it leaves behind still
+ * runs.
+ */
+const DEFAULT_SERVICES_NAMESPACE = 'blong-services';
+
 /** The release step, which is a Job: a deployed process runs `release`, and the schema is beside it. */
 export const migrationStepRan = async (
     {namespace, timeoutSeconds = 600}: {namespace: string; timeoutSeconds?: number},
@@ -159,25 +168,24 @@ export const backingServicesCheck = async (
     io: IStepIo,
 ): Promise<void> => {
     if (serviceOff) {
-        // A service the deployment switched off leaves no trace in the tree it asked for: no workload,
-        // no claim, no alias and no namespace. The tree is a base with one folder per service a
-        // deployment brings beside it, and the overlay is what says which those are — so a leftover has
-        // exactly three places to hide, and all three are read here (D-504).
+        // A service the deployment switched off leaves no trace in the tree it asked for: no folder
+        // beside the base, no alias in the suite's namespace, and nothing in the overlay that opts it
+        // in. A split keeps each of those in one place (D-504, D-506), so each is read here.
         if (existsSync(`${tree}/services/${serviceOff}`)) {
             fail(`the tree still carries services/${serviceOff}`);
         }
+        const optIn = `${tree}/local/backing/kustomization.yaml`;
+        const referenced = existsSync(optIn) ? readFileSync(optIn, 'utf8') : '';
+        if (referenced.includes(`../services/${serviceOff}`)) {
+            fail(`the overlay still opts ${serviceOff} in`);
+        }
         for (const leftover of [
-            `base/services/${serviceOff}`,
+            `local/suite/external-services/${serviceOff}.yaml`,
             `base/external-services/${serviceOff}.yaml`,
         ]) {
             if (existsSync(`${tree}/${leftover}`)) {
-                fail(`the base still carries ${leftover}`);
+                fail(`the tree still carries ${leftover}`);
             }
-        }
-        const overlay = `${tree}/local/kustomization.yaml`;
-        const referenced = existsSync(overlay) ? readFileSync(overlay, 'utf8') : '';
-        if (referenced.includes(`../services/${serviceOff}`)) {
-            fail(`the overlay still opts ${serviceOff} in`);
         }
         io.log(`the tree brings nothing of ${serviceOff}: the switch left it out`);
         // And the objects an earlier pass wrote into the suite's namespace are gone with it, the
@@ -220,6 +228,48 @@ export const backingServicesCheck = async (
         io.log(
             'and the pass removed the credentials copy it wrote there, while the workload kept its own',
         );
+        // And what the switch *keeps*, which is the other half of D-461 and the half nothing asserted here: the
+        // workload, its claim and its Service are the tenant's to retire, so a pass leaves them where they are
+        // and takes back only what the declaration wrote for them. The namespace comes from the declaration,
+        // because a switched-off deployment's overlay names no service and the tree therefore cannot say
+        // where they run.
+        const declaredNamespace = await getField(
+            {
+                namespace,
+                resource: 'bdep',
+                jsonPath: '{.items[0].spec.servicesNamespace}',
+                optional: true,
+            },
+            io,
+        );
+        const workloadNamespace = declaredNamespace || DEFAULT_SERVICES_NAMESPACE;
+        for (const kept of [
+            `deployment/${serviceOff}`,
+            `pvc/${serviceOff}-data`,
+            `service/${serviceOff}`,
+        ]) {
+            if (!(await objectExists({namespace: workloadNamespace, resource: kept}, io))) {
+                fail(
+                    `${serviceOff} was switched off and ${kept} is gone with it: the workload left in ` +
+                        `${workloadNamespace} is the tenant's to retire, not the pass's (D-461)`,
+                );
+            }
+        }
+        io.log(`and left ${serviceOff}'s workload, claim and Service in ${workloadNamespace}`);
+        // While the credentials the declaration generated are gone, the workload's own copy with them: the
+        // values came from the declaration that stopped asking for them, so the pass takes them back — which
+        // is what the generated-credentials label is for, since a pass deletes nothing else in a shared
+        // namespace (D-461, D-509).
+        await waitFor(
+            `the pass to remove the generated credentials of ${serviceOff} from ${workloadNamespace}`,
+            async () =>
+                !(await objectExists(
+                    {namespace: workloadNamespace, resource: `secret/${serviceOff}-credentials`},
+                    io,
+                )),
+            {timeoutMs: 120_000, intervalMs: 5_000},
+        );
+        io.log('and took the generated credentials back, while the workload they were made for stayed');
     }
     const servicesNamespace = servicesNamespaceOf({tree, suiteNamespace: namespace});
     if (!servicesNamespace) {

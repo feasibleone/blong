@@ -24,7 +24,12 @@ import {
 import {basename, dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parse, stringify} from 'yaml';
-import {SPEC_HASH_LABEL, isClusterResource, stampSpecHash} from './apply.ts';
+import {
+    GENERATED_CREDENTIALS_LABEL,
+    SPEC_HASH_LABEL,
+    isClusterResource,
+    stampSpecHash,
+} from './apply.ts';
 import {FILL_ENV, artifactIdentity, fetchCommand, fillScript} from './artifact.ts';
 import {
     AUTH_REVIEW_RULES,
@@ -54,7 +59,7 @@ import {
     DEFAULT_RESOURCES,
     DEFAULT_RETENTION,
 } from './plan.ts';
-import type {IBackingService} from './services.ts';
+import {DEFAULT_SERVICES_NAMESPACE, type IBackingService} from './services.ts';
 
 const KUSTOMIZE_API = 'kustomize.config.k8s.io/v1beta1';
 
@@ -172,13 +177,19 @@ export const SUITE_MOUNT = '/opt/deploy/suite';
 export const SUITE_ROOT = '/var/lib/blong/suites';
 
 /**
- * Where a suite's declaration sits in its tree.
+ * Where a suite's declaration sits in a *flat* tree, and what an example is built from.
  *
- * A `BlongDeployment` is almost entirely static — the profile, the entry, the services, the volume — and
- * the one thing a deploy owns about it is the artifact's digest. That is why a split keeps it in the base
- * and patches the digest, rather than treating the whole object as the deploy's (D-475).
+ * A `BlongDeployment` is the tenant's act: its `metadata.namespace` is the namespace the suite is
+ * deployed into, its `spec.services` is what that deployment brings, and the artifact's digest is what
+ * it was fetched at. None of that belongs in a base every deployment of the suite shares (D-506), so a
+ * split writes the declaration **beside** the base — a sample a tenant copies and edits — and only the
+ * flat layout keeps it at the tree's root, where it was always a one-off `kubectl apply -f`'s
+ * convenience.
  */
 export const CR_PATH = 'blongdeployment.yaml';
+
+/** Where a split puts the declaration: an example beside the base rather than an object inside it. */
+export const CR_EXAMPLE = 'example/blongdeployment.yaml';
 
 /** The file a template's folder carries: the object an instance's kustomization includes. */
 export const TEMPLATE_FILE = 'template.yaml';
@@ -426,6 +437,24 @@ const suiteVolume = (
  * describes is gone.
  */
 
+/**
+ * The credentials of the services a deployment brings, as environment of the suite's own processes.
+ *
+ * A service's workload reads the Secret beside itself, but the suite's processes dial the *alias*, so they
+ * need the same values — and a pod sees only its own namespace, which is why the tree writes a copy of a
+ * generated Secret into the tenant's as well. This is the other half of that copy being useful: `envFrom`
+ * puts the Secret's keys into the environment, where `blong-config` reads them, so a deployment that supplies
+ * credentials supplies them to the whole suite rather than to the database alone (D-509).
+ *
+ * `optional`, because the reference cannot be conditional: the base is shared by every deployment of the
+ * suite, and one that switches the service off must not keep its pods from starting on a Secret that went
+ * with it (R5).
+ */
+const credentialsEnvFrom = (plan: IDeploymentPlan): unknown[] =>
+    plan.backingServices
+        .filter(service => service.credentialsSecret)
+        .map(service => ({secretRef: {name: service.credentialsSecret, optional: true}}));
+
 const deploymentResource = (
     plan: IDeploymentPlan,
     deployment: IDeployment,
@@ -445,6 +474,7 @@ const deploymentResource = (
         'app.kubernetes.io/instance': deployment.name,
         'app.kubernetes.io/part-of': plan.suite.name,
     };
+    const credentials = credentialsEnvFrom(plan);
     return {
         apiVersion: 'apps/v1',
         kind: 'Deployment',
@@ -516,6 +546,10 @@ const deploymentResource = (
                                     protocol: port.protocol ?? 'TCP',
                                 })),
                             ],
+                            // The credentials of the services this deployment brings, when it supplies any:
+                            // the process reads them from the environment the way it reads every other
+                            // setting, and the Secret is the copy written into its own namespace (D-509).
+                            ...(credentials.length ? {envFrom: credentials} : {}),
                             ...(deployment.resources ? {resources: deployment.resources} : {}),
                             volumeMounts: [
                                 mount,
@@ -1337,8 +1371,10 @@ const stampAndKustomize = (tree: KustomizeTree, plan: IDeploymentPlan): Kustomiz
 const generatorKustomization = (
     kind: 'secretGenerator' | 'configMapGenerator',
     entries: IGeneratorEntry[],
-    // Named here rather than inherited: what a generator builds carries no namespace of its own, and
-    // the root kustomization only names one while the tree holds a single namespace (F-440).
+    // Named here rather than inherited: what a generator builds carries no namespace of its own, and a
+    // *flat* tree has no parent to give it one. This is the one place a generated kustomization names a
+    // namespace at all; a split's overlay declares the same one a level up, so the base's value is
+    // overridden by the child that includes it rather than disagreeing with it (F-440, D-506).
     namespace: string,
 ): Record<string, unknown> => ({
     apiVersion: KUSTOMIZE_API,
@@ -2040,9 +2076,13 @@ const blongDeploymentResource = (plan: IDeploymentPlan): Record<string, unknown>
         ...(Object.keys(plan.backingServiceRequest.services ?? {}).length
             ? {services: plan.backingServiceRequest.services}
             : {}),
-        ...(plan.backingServiceRequest.servicesNamespace
-            ? {servicesNamespace: plan.backingServiceRequest.servicesNamespace}
-            : {}),
+        // The namespace the deployment's backing services live in, written even when it named none:
+        // it is the same `blong-services` the workloads default to, and a service the declaration has
+        // stopped generating still has to be found there to be retired. A field the CR omits sends the
+        // operator's lookup of what it managed before to whatever namespace its client falls back to,
+        // where its account is refused — so the pass fails instead of retiring anything (F-481).
+        servicesNamespace:
+            plan.backingServiceRequest.servicesNamespace ?? DEFAULT_SERVICES_NAMESPACE,
         ...(plan.backingServiceRequest.storageClassName
             ? {storageClassName: plan.backingServiceRequest.storageClassName}
             : {}),
@@ -2055,14 +2095,6 @@ const folderKustomization = (files: string[]): Record<string, unknown> => ({
     resources: files,
 });
 
-/**
- * Every namespace the tree writes an object into: the suite's, and one per service that brings its
- * own — the set `rootKustomization` reads before it decides whether it can name one at all.
- */
-const treeNamespaces = (plan: IDeploymentPlan): string[] => [
-    ...new Set([plan.suite.namespace, ...plan.backingServices.map(service => service.namespace)]),
-];
-
 const rootKustomization = (
     plan: IDeploymentPlan,
     folders: string[],
@@ -2070,15 +2102,16 @@ const rootKustomization = (
 ): Record<string, unknown> => ({
     apiVersion: KUSTOMIZE_API,
     kind: 'Kustomization',
-    // Written only while the tree holds one namespace, because the field is a rewrite rather than a
-    // default: kustomize moves *every* namespace-able object into it, overwriting the namespace the
-    // object declared, and renames every Namespace object to it — so a second namespace cannot
-    // coexist with it (the two Namespace objects collide and the workload is pulled back into the
-    // suite's namespace), and no annotation opts out (F-440). Every document this generator writes
-    // already names its own, which is what makes leaving the field out safe.
-    ...(treeNamespaces(plan).length > 1 ? {} : {namespace: plan.suite.namespace}),
-    // Folders and root documents in one list, which is what kustomize takes: a suite's CR is a
-    // resource like any other, and a folder is a path it resolves itself.
+    // A generated kustomization never names a namespace, because the field is a rewrite rather than a
+    // default and it is the *deployment* that owns a namespace, not the tree (D-506): kustomize moves
+    // every namespace-able object into it, overwriting the namespace the object declared, and renames
+    // every Namespace object to it — so a tree with a second namespace cannot carry one at all
+    // (F-440), and a base that carried the suite's namespace would deploy every tenant of the suite
+    // into the same one. Every object names its own namespace, and a *split* carries none at all: the
+    // overlay's `local/suite/` and `local/services/` declare the two namespaces a deployment has.
+    //
+    // Folders and root documents in one list, which is what kustomize takes: a folder is a path it
+    // resolves itself, and (in the flat layout) a suite's declaration is a resource like any other.
     resources: [...folders, ...documents],
     labels: [{pairs: suiteLabels(plan), includeSelectors: false}],
 });
@@ -2097,8 +2130,15 @@ const serviceValues = (service: IBackingService): Record<string, string> => ({
     image: service.image,
     claimName: `${service.name}-data`,
     initConfigName: `${service.name}-init-config`,
-    credentialsSecret: service.credentialsSecret ?? '',
+    // A base names the Secret its image reads, and the name is resolved whenever the deployment provides
+    // credentials at all. A deployment that provides none gets the reference taken out of the object
+    // instead, which is why the derived name is filled in either way (D-509).
+    credentialsSecret: credentialsName(service),
 });
+
+/** The name a service's credentials Secret carries: the deployment's, or the one the descriptor derives. */
+const credentialsName = (service: IBackingService): string =>
+    service.credentialsSecret ?? `${service.name}-credentials`;
 
 /** Fill what one line asks for, or fail naming the file and the placeholder it could not fill. */
 const fillPlaceholders = (line: string, path: string, values: Record<string, string>): string =>
@@ -2180,7 +2220,72 @@ const renderedServiceBase = (
             ? {spec: {...((template['spec'] ?? {}) as object), ...service.placement}}
             : {}),
     };
-    return document;
+    // And with the credentials taken out when the deployment declares none: the base is the *service's*
+    // shape, and whether a Secret exists is the deployment's answer (D-509).
+    return service.credentialsSecret === undefined
+        ? credentialsFree(document, credentialsName(service))
+        : document;
+};
+
+/**
+ * A base with the credentials it reads taken out, for a deployment that declares none.
+ *
+ * A base names the Secret its image needs because that is the shape of the service, and only the plan knows
+ * whether one exists: a deployment that declares no credentials gets a workload that reads none rather than
+ * one that waits for a Secret nobody writes (`CreateContainerConfigError`) — which is what "no secret is
+ * mounted" has to mean for a service whose credentials arrive some other way (D-509). Matched by name rather
+ * than by position, because a base is a template its descriptor's author writes.
+ */
+const credentialsFree = (
+    object: Record<string, unknown>,
+    name: string,
+): Record<string, unknown> => {
+    const template = (object.spec as {template?: {spec?: Record<string, unknown>}} | undefined)
+        ?.template;
+    const spec = template?.spec;
+    if (!spec) return object;
+    const strip = (containers: unknown): unknown =>
+        Array.isArray(containers)
+            ? containers.map(container => {
+                  const entry = container as {
+                      env?: Array<{valueFrom?: {secretKeyRef?: {name?: string}}}>;
+                      envFrom?: Array<{secretRef?: {name?: string}}>;
+                  };
+                  return {
+                      ...entry,
+                      ...(entry.env
+                          ? {
+                                env: entry.env.filter(
+                                    item => item.valueFrom?.secretKeyRef?.name !== name,
+                                ),
+                            }
+                          : {}),
+                      ...(entry.envFrom
+                          ? {
+                                envFrom: entry.envFrom.filter(
+                                    item => item.secretRef?.name !== name,
+                                ),
+                            }
+                          : {}),
+                  };
+              })
+            : containers;
+    return {
+        ...object,
+        spec: {
+            ...(object.spec as Record<string, unknown>),
+            template: {
+                ...template,
+                spec: {
+                    ...spec,
+                    ...(spec['containers'] ? {containers: strip(spec['containers'])} : {}),
+                    ...(spec['initContainers']
+                        ? {initContainers: strip(spec['initContainers'])}
+                        : {}),
+                },
+            },
+        },
+    };
 };
 
 /** Where a service's init script is mounted inside its init Job. */
@@ -2351,20 +2456,31 @@ const backingServiceResources = (
             documents.push(['init-job.yaml', serviceInitJob(plan, service, script)]);
         }
     }
-    if (service.credentials) {
+    if (service.credentials && service.credentialsGenerated) {
         const userKey = service.values?.['credentialUserKey'];
         const user = service.values?.['credentialUser'];
-        const strings = Object.fromEntries(
-            // Derived rather than random, and the same on every pass: a tree is written again
-            // on every reconcile, and a password that changed would be a service whose own
-            // users stopped matching the Secret beside it.
-            service.credentials.keys.map(key => [
-                key,
-                key === userKey && user !== undefined
-                    ? user
-                    : `b${serviceDigest(plan, service, key)}`,
-            ]),
-        );
+        // Supplied values win, and the descriptor's own derivation is what a deployment that asks for it
+        // without supplying any gets: derived rather than random, and the same on every pass, because a tree
+        // is written again on every reconcile and a password that changed would be a service whose own users
+        // stopped matching the Secret beside it (D-509).
+        const strings =
+            service.credentialsValues ??
+            Object.fromEntries(
+                service.credentials.keys.map(key => [
+                    key,
+                    key === userKey && user !== undefined
+                        ? String(user)
+                        : `b${serviceDigest(plan, service, key)}`,
+                ]),
+            );
+        const credentialLabels = {
+            ...labels,
+            ...suiteLabels(plan),
+            // What a pass reads to know this Secret is the tree's rather than a tenant's, so a declaration
+            // that stops asking for it can take it with it — in the shared namespace as well, which is where
+            // the workload's own copy lives (D-509).
+            [GENERATED_CREDENTIALS_LABEL]: 'true',
+        };
         documents.push([
             'credentials.yaml',
             {
@@ -2374,33 +2490,29 @@ const backingServiceResources = (
                 metadata: {
                     name: values['credentialsSecret'],
                     namespace: service.namespace,
-                    labels: {...labels, ...suiteLabels(plan)},
+                    labels: credentialLabels,
                 },
                 stringData: strings,
             },
         ]);
-        // The same Secret under the same name in the suite's namespace, because that is where the
-        // deployment that dials the alias reads it: a pod sees only its own namespace. Written only
-        // when the values are this tree's own — one a deployment owns is theirs to place (D-462) —
-        // and derived rather than random, so the two copies cannot drift and nothing has to sync
-        // them. It lives in the suite's namespace, so the prune takes it with the alias when the
-        // service is switched off (D-461).
-        if (service.credentialsGenerated) {
-            documents.push([
-                'credentials-in-suite.yaml',
-                {
-                    apiVersion: 'v1',
-                    kind: 'Secret',
-                    type: 'Opaque',
-                    metadata: {
-                        name: values['credentialsSecret'],
-                        namespace: plan.suite.namespace,
-                        labels: {...labels, ...suiteLabels(plan)},
-                    },
-                    stringData: strings,
+        // The same Secret under the same name in the suite's namespace, because that is where the suites's
+        // own processes read it: a pod sees only its own namespace, and the copy is what the `envFrom` on
+        // every one of its workloads points at (D-462, D-509). Derived rather than random, so the two copies
+        // cannot drift and nothing has to sync them.
+        documents.push([
+            'credentials-in-suite.yaml',
+            {
+                apiVersion: 'v1',
+                kind: 'Secret',
+                type: 'Opaque',
+                metadata: {
+                    name: values['credentialsSecret'],
+                    namespace: plan.suite.namespace,
+                    labels: credentialLabels,
                 },
-            ]);
-        }
+                stringData: strings,
+            },
+        ]);
     }
     return documents;
 };
@@ -2742,37 +2854,32 @@ export const writeKustomizeTree = (
 };
 
 /**
- * What a split does with one object, decided by the path the tree already gives it.
+ * What a split does with one object, decided by the name the object already carries.
  *
- * Two questions, and each object answers one of them. Does the object name the *artifact* it belongs to,
- * or the node it runs on — in its values? Then the base can carry the same object with a placeholder and
- * the overlay a patch, which is what a Deployment and a suite's declaration do. Or does the object *name*
- * itself belong to the deploy — one fill Job per node, one attempt per artifact, one claim per artifact?
- * Then no patch can help, because a patch targets by name, and the base carries a **template** the overlay
- * instantiates once per node or per artifact instead. Everything else is the same file in every deploy,
- * which is the whole point of the split (D-475).
+ * One question, and each object answers it. Does the object *name* itself belong to the deploy — one fill
+ * Job per node, one attempt per artifact, one claim per artifact? Then no patch can help, because a patch
+ * targets by name, and the base carries a **template** the overlay instantiates once per node or per
+ * artifact instead. Everything else belongs to the base, and what a deploy owns *inside* such an object —
+ * the artifact its volume reads, the node it runs on — is patched back by the overlay rather than left out
+ * of the base, which is the whole point of the split (D-475).
  *
  * `cache/fill-script.yaml` is the exception that proves the rule: the script is the same for every node
  * and every artifact — that is why it reads its settings from the environment — so it belongs to the base,
  * which is also where a reader will look for it.
  */
-type TreePlacement = 'base' | 'patched' | 'instantiated';
+type TreePlacement = 'base' | 'instantiated';
 
 /**
  * What a split does with one object.
  *
  * The question is the object's *name*, because that is what a patch cannot change: an object named after
  * the artifact — one fill Job per node, one attempt per artifact, one claim per artifact — can only be
- * produced by instantiating a template, and everything else can either move into the base as it is or stay
- * there with a patch. Deciding by the path would be a list to keep in step with the generator; deciding by
- * the name is the rule itself, and it also covers the claims that carry no identity (the operator's own
- * artifact cache) without an exception.
+ * produced by instantiating a template, and everything else moves into the base as it is. Deciding by the
+ * path would be a list to keep in step with the generator; deciding by the name is the rule itself, and it
+ * also covers the claims that carry no identity (the operator's own artifact cache) without an exception.
  */
-const placementOf = (path: string, name: string, plan: IDeploymentPlan): TreePlacement => {
-    if (name.includes(volumeIdentity(plan))) return 'instantiated';
-    if (path === CR_PATH) return 'patched';
-    return 'base';
-};
+const placementOf = (name: string, plan: IDeploymentPlan): TreePlacement =>
+    name.includes(volumeIdentity(plan)) ? 'instantiated' : 'base';
 
 /** The name an object carries, when it carries one: a kustomization and a raw file carry none. */
 const nameOf = (resource: KustomizeResource | undefined): string =>
@@ -2881,11 +2988,10 @@ const splitWorkload = (
             kind: object.kind,
             metadata: {
                 name: metadata.name,
-                // Named, because kustomize matches a patch against a qualified object and a patch without
-                // one targets `[noNs]`, which matches nothing. The object's own namespace wins — a service
-                // workload lives in the services namespace, not the suite's — and the plan supplies one
-                // only for the objects that carry none (T-293).
-                namespace: metadata.namespace ?? plan.suite.namespace,
+                // No namespace, because the base's object carries none: the split strips it from every
+                // object it moves into the base, and the overlay's `local/suite/` declares the one the
+                // deployment has (D-506). A patch that named one would target an id the object does not
+                // hold — kustomize matches a qualified patch against a qualified object only (verified).
                 ...(metadata.labels?.[SPEC_HASH_LABEL]
                     ? {labels: {[SPEC_HASH_LABEL]: metadata.labels[SPEC_HASH_LABEL]}}
                     : {}),
@@ -2998,11 +3104,10 @@ const instantiate = (
         kind: object.kind,
         metadata: {
             name: template,
-            // Named, because kustomize matches a patch against a qualified object and a patch without one
-            // targets `[noNs]`, which matches nothing. The object's own namespace wins — a service
-            // workload is not in the suite's — and the plan supplies one only for objects that carry none
-            // (T-293).
-            namespace: metadata.namespace ?? plan.suite.namespace,
+            // No namespace, because the base's template carries none either: the split strips it from
+            // every object it moves into the base, and the overlay's `local/suite/` declares the one the
+            // deployment has (D-506). A patch that named one would target an id the template does not
+            // hold — kustomize matches a qualified patch against a qualified object only (verified).
             // The object's labels, *all* of them. A placeholder replacement is a value substitution, so a
             // label that merely *read* the identity — the suite's version, say — was destroyed by it, and
             // only the object itself says what such a label should read. Merged over the template's, so
@@ -3053,54 +3158,6 @@ const instantiate = (
 };
 
 /**
- * Take the artifact out of a suite's declaration, and hand it back as the overlay's patch.
- *
- * A declaration is the deploy's own in one field — which artifact it asks for — and static in everything
- * else: the profile, the entry, the services, the volume and the portals are the same for every deploy of
- * that version. So the base carries the declaration with no digest and the overlay names the one, which is
- * also what a reader comparing two revisions wants to see (D-475).
- */
-const splitDeclaration = (
-    plan: IDeploymentPlan,
-    object: Record<string, unknown>,
-): {base: Record<string, unknown>; patch?: Record<string, unknown>} => {
-    const metadata = object.metadata as {name: string; labels?: Record<string, string>};
-    const spec = object.spec as {suiteVolume?: {artifact?: Record<string, unknown>}};
-    const {digest, deployedAt, ...rest} = spec.suiteVolume?.artifact ?? {};
-    if (!digest && !deployedAt) return {base: object};
-    const withoutArtifact = {
-        ...object,
-        metadata: {...(object.metadata as Record<string, unknown>)},
-        spec: {
-            ...(object.spec as Record<string, unknown>),
-            suiteVolume: {
-                ...(spec.suiteVolume as Record<string, unknown>),
-                artifact: rest,
-            },
-        },
-    };
-    return {
-        base: stampSpecHash(withoutArtifact),
-        patch: {
-            apiVersion: object.apiVersion,
-            kind: object.kind,
-            metadata: {
-                name: metadata.name,
-                namespace: plan.suite.namespace,
-                ...(metadata.labels?.[SPEC_HASH_LABEL]
-                    ? {labels: {[SPEC_HASH_LABEL]: metadata.labels[SPEC_HASH_LABEL]}}
-                    : {}),
-            },
-            spec: {
-                suiteVolume: {
-                    artifact: {...(digest ? {digest} : {}), ...(deployedAt ? {deployedAt} : {})},
-                },
-            },
-        },
-    };
-};
-
-/**
  * Whether a folder's kustomization is one the tree *derived*, rather than one the folder brought.
  *
  * The distinction decides what a split does with it: a derived kustomization lists the files beside it, so
@@ -3132,10 +3189,12 @@ const kustomizationFolder = (path: string): string => path.slice(0, -'/kustomiza
  * The service a tree path belongs to, and the name it takes inside that service's own folder.
  *
  * A backing service is brought by a *deployment* rather than by the suite: `mysql` is not in the tree
- * every deployment applies, it is a folder a deployment opts into, and everything that exists only
- * because of it travels with it — the workload and its claim, the credentials the two namespaces
- * share, and the alias that reaches it from the suite's own namespace. `services/access.yaml` is not
- * one of them: that is a suite's own process, which belongs to the base like any other workload.
+ * every deployment applies, it is a folder a deployment opts into, and what exists only because of it
+ * travels with it — the workload, its claim and its init config. The two objects that belong to the
+ * *suite's* namespace rather than to the workload's do not: the alias a realm's config resolves and the
+ * credentials copy a suite pod reads are the overlay's suite child's, because a folder is stamped with
+ * the services namespace (D-506). `services/access.yaml` is not one of them either: that is a suite's
+ * own process, which belongs to the base like any other workload.
  */
 const serviceScopeOf = (
     path: string,
@@ -3145,22 +3204,19 @@ const serviceScopeOf = (
         if (path.startsWith(`services/${service.name}/`)) {
             return {name: service.name, at: path.slice(`services/${service.name}/`.length)};
         }
-        if (path === `external-services/${service.name}.yaml`) {
-            return {name: service.name, at: 'external-service.yaml'};
-        }
     }
     return undefined;
 };
 
 /**
- * Whether an object exists only because a service runs somewhere: its namespace, and the rights the
- * operator holds in it. Both are the overlay's, because a base that names them names a service.
+ * Whether an object is a right the operator holds in a service's namespace rather than a service's own
+ * file: two services may share one namespace, so the overlay writes the pair once (D-504). The namespace
+ * *itself* is not among them — it is cluster-scoped and named after the deployment, so the tree writes it
+ * at the overlay's root (D-506).
  */
 const isServicePlumbing = (path: string, plan: IDeploymentPlan): boolean =>
     plan.backingServices.some(
-        service =>
-            path === `namespaces/${service.namespace}.yaml` ||
-            (path.startsWith('rbac/') && path.endsWith(`-${service.namespace}.yaml`)),
+        service => path.startsWith('rbac/') && path.endsWith(`-${service.namespace}.yaml`),
     );
 
 /**
@@ -3173,6 +3229,32 @@ const isServicePlumbing = (path: string, plan: IDeploymentPlan): boolean =>
  * `layout` is `base` for a caller that wants the base alone, and `local` for one that wants the overlay
  * alone: the derivation runs the same way, and only the writes of the missing half are left out.
  */
+/**
+ * The same object with no namespace of its own.
+ *
+ * A split strips the namespace wherever it appears, because it belongs to the *deployment* rather than to
+ * the design: the CR's namespace for the suite's objects, the services namespace the CR names for the
+ * workloads a deployment brings (D-506). The halves are shared by every deployment of the suite, so
+ * neither can carry one; the overlay's two children declare them, and a patch that named one would target
+ * an id no namespace-free object holds — kustomize matches a qualified patch against a qualified object
+ * only (verified against kubectl).
+ *
+ * The fingerprint is deliberately *kept* rather than recomputed. It covers the object the halves compose
+ * to, and the composition is what puts the namespace back: the plan the base was generated from carries the
+ * same namespace the overlay declares, because that is the namespace the CR named. Re-stamping here would
+ * leave every stripped object with a fingerprint of something nobody applies — kustomize adds the namespace
+ * without touching a label — so the pass that reads it would see a change on the first reconcile and one
+ * only a recompute could settle.
+ */
+const namespaceFree = (resource: KustomizeResource): KustomizeResource => {
+    if (!isClusterResource(resource)) return resource;
+    const metadata = resource.metadata as Record<string, unknown> | undefined;
+    if (!metadata || !('namespace' in metadata)) return resource;
+    const rest = {...metadata};
+    delete rest.namespace;
+    return {...resource, metadata: rest} as KustomizeResource;
+};
+
 const writeSplitTree = (
     tree: KustomizeTree,
     plan: IDeploymentPlan,
@@ -3181,6 +3263,7 @@ const writeSplitTree = (
 ): string[] => {
     const withBase = layout !== 'local';
     const withOverlay = layout !== 'base';
+    /** The design half: everything every deployment of this suite shares. */
     const base = new Map<string, KustomizeResource>();
     /** The templates the overlay instantiates, by kind: written under the base's `templates/`. */
     const templates = new Map<string, Record<string, unknown>>();
@@ -3194,21 +3277,54 @@ const writeSplitTree = (
     const brought: string[] = [];
     /** One folder per backing service the deployment brings, laid out beside the base. */
     const services = new Map<string, Map<string, KustomizeResource>>();
-    /** What the overlay owns outright: the namespace a service runs in, and the rights to write there. */
-    const overlayOwn = new Map<string, KustomizeResource>();
+    /** The namespaces the tree creates: cluster-scoped, and named after the deployment that owns them. */
+    const namespaces = new Map<string, KustomizeResource>();
+    /** What the suite's child owns outright: the aliases the CR may point elsewhere (D-506). */
+    const suiteOwn = new Map<string, KustomizeResource>();
+    /** The rights the operator holds in a service's namespace: the overlay's `services` child. */
+    const serviceOwn = new Map<string, KustomizeResource>();
+    /** The declaration, which no kustomization applies: a sample a tenant copies (D-506). */
+    const examples = new Map<string, KustomizeResource>();
+    /** The namespace the workloads a deployment brings run in, when it brings one at all. */
+    const workloadNamespace = plan.backingServices[0]?.namespace;
     for (const [path, resource] of tree) {
+        // The declaration is the tenant's own act — its namespace, the services it brings, the artifact it
+        // fetched — and a base every deployment of the suite shares cannot carry any of it (D-506), so it
+        // travels beside the base as an example to copy.
+        if (path === CR_PATH) {
+            examples.set(CR_EXAMPLE, resource);
+            continue;
+        }
+        // A Namespace is cluster-scoped and *named* after what it holds, which is exactly what a patch
+        // cannot change: the suite's namespace is the CR's own and the services' is the one it names. So
+        // both are the overlay's, written where no `namespace:` field can rewrite them.
+        if (isClusterResource(resource) && resource.kind === 'Namespace') {
+            namespaces.set(path, resource);
+            continue;
+        }
+        // The credentials copy a deployment's own pods read is the *suite's*, not the service's: it lives
+        // in the namespace the CR names for the suite, while the workload reads its Secret in the services
+        // namespace. So the folder cannot hold it — the overlay stamps a folder with the services namespace
+        // — and it cannot share the workload's name in that folder either, because two same-named Secrets in
+        // one kustomization are two resources with one id, which kustomize refuses (D-506).
+        const copied = plan.backingServices.find(
+            entry => path === `services/${entry.name}/credentials-in-suite.yaml`,
+        );
+        if (copied) {
+            suiteOwn.set(`credentials/${copied.name}-credentials.yaml`, namespaceFree(resource));
+            continue;
+        }
         const service = serviceScopeOf(path, plan);
         if (service) {
             const folder = services.get(service.name) ?? new Map<string, KustomizeResource>();
             services.set(service.name, folder);
-            folder.set(service.at, resource);
+            folder.set(service.at, namespaceFree(resource));
             continue;
         }
-        // The namespace a service runs in and the operator's rights in it are not a service's own
-        // files — two services may share one namespace — so they belong to the overlay rather than to
-        // any folder, and are written once for a deployment that brings one.
+        // The rights the operator holds in a service's namespace are not a service's own files — two
+        // services may share one namespace — so the overlay's services child writes them once.
         if (isServicePlumbing(path, plan)) {
-            overlayOwn.set(path, resource);
+            serviceOwn.set(path, namespaceFree(resource));
             continue;
         }
         if (path.endsWith('/kustomization.yaml') || path === 'kustomization.yaml') {
@@ -3217,7 +3333,7 @@ const writeSplitTree = (
             const split = [...tree.keys()].filter(
                 candidate =>
                     candidate.startsWith(`${folder}/`) &&
-                    placementOf(candidate, nameOf(tree.get(candidate)), plan) !== 'base',
+                    placementOf(nameOf(tree.get(candidate)), plan) !== 'base',
             );
             if (split.length) {
                 throw new Error(
@@ -3229,7 +3345,14 @@ const writeSplitTree = (
             brought.push(path);
             continue;
         }
-        const placement = placementOf(path, nameOf(resource), plan);
+        // The alias a realm's own configuration resolves — `db`, not a host — is a value the CR may point
+        // somewhere else, so it belongs to the overlay rather than to the base (D-506). The alias a
+        // *generated* service publishes travels with its folder instead, which is the same answer.
+        if (path.startsWith('external-services/')) {
+            suiteOwn.set(path, namespaceFree(resource));
+            continue;
+        }
+        const placement = placementOf(nameOf(resource), plan);
         if (placement === 'instantiated' && isClusterResource(resource)) {
             // The name is what the deploy owns here, so the base gets a template and the overlay one
             // kustomization per instance: it includes the template, appends what the deploy adds and
@@ -3250,7 +3373,12 @@ const writeSplitTree = (
                           : 'attempt',
                 node: nodeOf(resource),
             });
-            templates.set(instance.key, instance.object);
+            templates.set(
+                instance.key,
+                // The template carries no namespace either: its instance's patch names none, and kustomize
+                // matches a patch against an unqualified object only when the patch is unqualified too.
+                namespaceFree(instance.object) as Record<string, unknown>,
+            );
             const at = `${dirname(path)}/${basename(path, '.yaml')}`;
             if (!withOverlay) continue;
             instances.set(at, {
@@ -3259,21 +3387,15 @@ const writeSplitTree = (
                 // Up out of `local/<folder>/<instance>/` to the tree, then into the base's templates: a
                 // directory holding its own kustomization, which is the one reference kustomize resolves
                 // without being asked to leave the overlay's root.
+                // Up out of `local/suite/<folder>/<instance>/` to the tree, then into the base's templates:
+                // a directory holding its own kustomization, which is the one reference kustomize resolves
+                // without being asked to leave the overlay's root.
                 resources: [
-                    `${'../'.repeat(at.split('/').length + 1)}base/templates/${instance.key}`,
+                    `${'../'.repeat(at.split('/').length + 2)}base/templates/${instance.key}`,
                 ],
                 nameSuffix: instance.suffix,
                 patches: [{patch: stringify(instance.patch, {lineWidth: 0, sortMapEntries: true})}],
             });
-            continue;
-        }
-        if (placement === 'patched' && isClusterResource(resource)) {
-            const {base: placeholder, patch} = splitDeclaration(plan, resource);
-            base.set(path, placeholder);
-            if (patch) {
-                patches.set(`patches/${basename(path)}`, patch);
-                patchedPaths.add(path);
-            }
             continue;
         }
         // Only a workload that reads the suite volume has something the overlay must put back: patching
@@ -3285,12 +3407,12 @@ const writeSplitTree = (
             suiteVolumeOf(resource)
         ) {
             const {base: placeholder, patch} = splitWorkload(plan, resource);
-            base.set(path, placeholder);
+            base.set(path, namespaceFree(placeholder));
             patches.set(`patches/${basename(path)}`, patch);
             patchedPaths.add(path);
             continue;
         }
-        base.set(path, resource);
+        base.set(path, namespaceFree(resource));
     }
     const filesOf = (entries: Map<string, KustomizeResource>): string[] =>
         [...entries.keys()].filter(path => path.endsWith('/kustomization.yaml') === false).sort();
@@ -3310,23 +3432,56 @@ const writeSplitTree = (
         ]);
     }
     if (withOverlay) {
+        // The overlay's root names no namespace, because its two children each declare one and a field
+        // here would rewrite both: kustomize's namespace transformer runs over everything a child brought
+        // (verified against kubectl), so the services' workloads would land in the tenant's namespace and
+        // the two Namespace objects would collide (F-440, D-506).
         roots.push([
             'local/kustomization.yaml',
             {
                 apiVersion: KUSTOMIZE_API,
                 kind: 'Kustomization',
-                // The base, then one folder per service this deployment brings: a deployment opts a
-                // service in by naming it, and the overlay is where that opt-in is written down — the
-                // base beside it says nothing about any service at all (D-504).
                 resources: [
-                    '../base',
-                    ...[...services.keys()].sort().map(name => `../services/${name}`),
-                    ...[...overlayOwn.keys()].sort(),
-                    ...[...instances.keys()].sort(),
+                    'suite',
+                    ...(services.size || serviceOwn.size ? ['backing'] : []),
+                    ...[...namespaces.keys()].sort(),
                 ],
-                patches: [...patches.keys()].sort().map(path => ({path})),
             },
         ]);
+        // The suite's half: the base every deployment shares, the aliases the CR may point elsewhere, and
+        // the instances the base carries as templates. It takes the CR's namespace, which is where the
+        // deployment's own objects belong.
+        roots.push([
+            'local/suite/kustomization.yaml',
+            {
+                apiVersion: KUSTOMIZE_API,
+                kind: 'Kustomization',
+                namespace: plan.suite.namespace,
+                resources: ['../../base', ...filesOf(suiteOwn), ...[...instances.keys()].sort()],
+                ...(patches.size
+                    ? {patches: [...patches.keys()].sort().map(path => ({path}))}
+                    : {}),
+            },
+        ]);
+        // And the services' half: one folder per service this deployment brings, plus the rights the
+        // operator holds in their namespace. A deployment opts a service in by naming it, and the overlay
+        // is where that opt-in is written down — the base beside it says nothing about any service (D-504).
+        // Named `backing` rather than `services`, because the base itself has a `services/` folder (the
+        // suite's own process Services) and a composer reads the two halves by path.
+        if (services.size || serviceOwn.size) {
+            roots.push([
+                'local/backing/kustomization.yaml',
+                {
+                    apiVersion: KUSTOMIZE_API,
+                    kind: 'Kustomization',
+                    ...(workloadNamespace ? {namespace: workloadNamespace} : {}),
+                    resources: [
+                        ...[...services.keys()].sort().map(name => `../../services/${name}`),
+                        ...filesOf(serviceOwn),
+                    ],
+                },
+            ]);
+        }
     }
     // A local-only run is applied beside a base somebody else wrote — committed, or fetched with the
     // artifact — so the two have to be one generation: an instance referencing a template the base does
@@ -3354,7 +3509,12 @@ const writeSplitTree = (
     };
     const sides: Array<[string, Map<string, KustomizeResource>]> = [];
     if (withBase) sides.push(['base', base]);
-    if (withOverlay) sides.push(['local', patches]);
+    if (withOverlay) {
+        sides.push(['local/suite', patches]);
+        sides.push(['local/suite', suiteOwn]);
+        sides.push(['local/backing', serviceOwn]);
+        sides.push(['local', namespaces]);
+    }
     for (const [side, entries] of sides) {
         for (const [path, content] of serializeKustomizeTree(entries))
             write(`${side}/${path}`, content);
@@ -3378,16 +3538,20 @@ const writeSplitTree = (
             stringify(content, {lineWidth: 0, sortMapEntries: true}),
         );
     }
+    // The declaration beside the base rather than in it: a sample a tenant copies, and no kustomization
+    // lists it (D-506).
+    for (const [path, content] of withBase ? serializeKustomizeTree(examples) : []) {
+        write(path, content);
+    }
     for (const [at, content] of withOverlay ? instances : []) {
         write(
-            `local/${at}/kustomization.yaml`,
+            `local/suite/${at}/kustomization.yaml`,
             stringify(content, {lineWidth: 0, sortMapEntries: true}),
         );
     }
-    // A service folder sits beside the base, never inside it: the base is what every deployment of the
-    // suite applies, and a service is what one deployment brings, so a folder the artifact shipped is
-    // used as it stands and one it did not is generated here — the zip decides, because the folder is
-    // the suite's to keep and to review (D-504).
+    // The service folders are written last of the halves: one the artifact shipped is used as it stands
+    // (the zip decides, because the folder is the suite's to keep and to review), and one it did not is
+    // written here, with the kustomization the overlay includes it by (D-504).
     for (const [name, folder] of [...services.entries()].sort()) {
         if (!withBase && existsSync(join(dir, `services/${name}/kustomization.yaml`))) continue;
         const files = [...folder.keys()].filter(path => path !== 'kustomization.yaml').sort();
@@ -3397,9 +3561,6 @@ const writeSplitTree = (
         for (const [path, content] of serializeKustomizeTree(folder)) {
             write(`services/${name}/${path}`, content);
         }
-    }
-    for (const [path, content] of withOverlay ? serializeKustomizeTree(overlayOwn) : []) {
-        write(`local/${path}`, content);
     }
     for (const [path, content] of serializeKustomizeTree(new Map(roots))) write(path, content);
     return written.sort();

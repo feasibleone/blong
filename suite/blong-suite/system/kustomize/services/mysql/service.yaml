@@ -9,7 +9,6 @@ metadata:
     app.kubernetes.io/version: 1.13.0
     blong.feasible.one/spec-hash: 276e47f0e995fdb2
   name: mysql
-  namespace: blong-services
 spec:
   ports:
     - name: mysql

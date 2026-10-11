@@ -9,7 +9,6 @@ metadata:
     app.kubernetes.io/version: 0.1.0
     blong.feasible.one/spec-hash: 0f19dae8d585d284
   name: blong-operator
-  namespace: blong-system
 spec:
   replicas: 1
   selector:

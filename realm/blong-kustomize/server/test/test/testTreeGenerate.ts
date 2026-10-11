@@ -1,6 +1,6 @@
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 import {execFileSync} from 'node:child_process';
-import {existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, relative, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -21,7 +21,7 @@ import {
     volumeIdentity,
     writeKustomizeTree,
 } from '../../../generator.ts';
-import {materializeSplitTree} from '../../../materialize.ts';
+import {materializeGeneratedTree, materializeSplitTree} from '../../../materialize.ts';
 import {
     appliesUpdate,
     ATTEMPT_RETENTION_LABEL,
@@ -70,6 +70,27 @@ import {loadServiceCatalog, resolveBackingServices} from '../../../services.ts';
 const pin = (assert: IAssert, name: string, value: unknown): void => {
     if (typeof assert.snapshot === 'function') assert.snapshot(value, name);
     else assert.ok(value, `${name}: produced (this runner has no snapshot context — T-214)`);
+};
+
+/**
+ * The `kubectl` a composition step needs, or the failure that says it is a requirement.
+ *
+ * `kubectl kustomize` is not a convenience here: it is the composer a human's `kubectl apply -k` runs, so a
+ * split tree has two of them and the JS materializer the operator runs is only one. A step that skipped when
+ * the binary was missing left half of that contract unchecked and still reported a green run, which is the
+ * failure this replaces: the binary is a requirement of a developer's machine and of CI rather than an
+ * optional extra, so its absence fails the run and names what is missing.
+ */
+const requireKubectl = (assert: IAssert): void => {
+    try {
+        execFileSync('kubectl', ['kustomize', '--help'], {stdio: 'ignore'});
+    } catch {
+        assert.fail(
+            'kubectl is required: this step pins the split tree with `kubectl kustomize`, which is the ' +
+                "composer a human's `kubectl apply -k` runs and the only reader that checks that half " +
+                'of the contract (install kubectl, or put it on PATH)',
+        );
+    }
 };
 
 /**
@@ -324,7 +345,12 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                             local
                                 .filter(file => file.endsWith('/kustomization.yaml'))
                                 .map(file => dirname(file))
-                                .filter(at => at !== 'local'),
+                                .filter(
+                                    at =>
+                                        at !== 'local' &&
+                                        at !== 'local/suite' &&
+                                        at !== 'local/backing',
+                                ),
                         ),
                     ];
                     const baseText = base.map(read).join('\n');
@@ -354,16 +380,30 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         // The overlay is small: one kustomization per instance, and one patch per object
                         // that carries a value rather than a name.
                         instanceDirs: [...instances].sort(),
-                        patches: written.filter(file => file.startsWith('local/patches/')).length,
+                        // Patches and instances both live under the suite's child, because kustomize refuses a
+                        // patch outside the directory of the kustomization that names it.
+                        patches: written.filter(file => file.startsWith('local/suite/patches/'))
+                            .length,
                         // A workload holds a source that names no artifact, and the patch beside it holds
                         // the real one.
                         placeholderInBase: read(`base/deployments/${first}.yaml`).includes(
                             SUITE_MOUNT,
                         ),
-                        realVolumeInPatch: read(`local/patches/${first}.yaml`).includes(identity),
+                        realVolumeInPatch: read(`local/suite/patches/${first}.yaml`).includes(
+                            identity,
+                        ),
                         placeholdersInTemplate: read(
                             `base/templates/fill/${TEMPLATE_FILE}`,
                         ).includes('PLACEHOLDER'),
+                        // The namespace is the deployment's, not the design's (D-506): no object the base
+                        // holds names one, and the overlay's suite child declares the one they all belong in.
+                        namespacesInBase: base
+                            .filter(file => file.endsWith('.yaml'))
+                            .filter(file => /^ {2}namespace:/m.test(read(file))).length,
+                        suiteChildNamespace: read('local/suite/kustomization.yaml').includes(
+                            `namespace: ${plan.suite.namespace}`,
+                        ),
+                        rootNamesNamespace: /^namespace:/m.test(read('local/kustomization.yaml')),
                     });
                 } finally {
                     rmSync(dir, {recursive: true, force: true});
@@ -416,12 +456,20 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         'the base references no service at all',
                     );
                     assert.ok(
-                        folder.includes(`services/${mysql.name}/external-service.yaml`),
-                        'the alias that reaches it travels with it',
+                        !folder.includes(`services/${mysql.name}/external-service.yaml`),
+                        'the alias is not the folder’s: a realm resolves it in the suite’s namespace, not the workload’s',
                     );
                     assert.ok(
-                        overlay.includes(`../services/${mysql.name}`),
-                        'while the overlay is what opts the service in',
+                        read('local/suite/kustomization.yaml').includes(
+                            `external-services/${mysql.name}.yaml`,
+                        ),
+                        'while the overlay’s suite child names it, which is what lets the CR point it elsewhere',
+                    );
+                    assert.ok(
+                        read('local/backing/kustomization.yaml').includes(
+                            `../../services/${mysql.name}`,
+                        ),
+                        'and the overlay’s backing child is what opts the service in',
                     );
                     assert.ok(
                         !base.includes(`namespaces/${mysql.namespace}.yaml`),
@@ -439,8 +487,213 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         ),
                         'while the rights the operator needs there are written beside it',
                     );
+                    // What the folder holds is the workload's own, and a namespace is not: it belongs to the
+                    // deployment, so the overlay's backing child stamps the one it names (D-506).
+                    const folderText = folder.map(read).join('\n');
+                    assert.ok(
+                        !folderText.includes('shop-services') && !folderText.includes('shop-suite'),
+                        'and names no namespace at all, because the overlay stamps the one each half belongs in',
+                    );
+                    assert.ok(
+                        !folderText.includes('PLACEHOLDER'),
+                        'and carries no placeholder for one',
+                    );
                 } finally {
                     rmSync(dir, {recursive: true, force: true});
+                }
+            },
+
+            async function aServiceFolderComposesIntoTheObjectsItStandsFor(assert: IAssert) {
+                // A service folder sits beside the base and the overlay is what brings it: kustomize has
+                // to render the two into the objects the tree carries, placeholders and patches resolved
+                // and no object doubled — so this is where a folder that the overlay cannot reach, or a
+                // patch whose target moved, is caught before a cluster ever sees it (D-504).
+                requireKubectl(assert);
+                const dir = mkdtempSync(join(tmpdir(), 'kustomize-service-compose-'));
+                try {
+                    const mysql = resolveBackingServices(loadServiceCatalog(), {
+                        kinds: ['knex'],
+                        databases: ['blong-suite'],
+                        namespace: 'shop-services',
+                        config: {mysql: true},
+                    }).services[0];
+                    assert.ok(mysql, 'the catalogue answers for a database adapter');
+                    const plan = lib.suitePlan({
+                        suite: lib.pinnedSuite,
+                        backingServices: [mysql],
+                    }) as IDeploymentPlan;
+                    const built = buildKustomizeTree(plan);
+                    writeKustomizeTree(built, dir, {layout: 'base', plan});
+                    writeKustomizeTree(built, dir, {layout: 'local', plan});
+                    const rendered = execFileSync('kubectl', ['kustomize', join(dir, 'local')], {
+                        encoding: 'utf8',
+                    });
+                    assert.ok(
+                        !rendered.includes('PLACEHOLDER'),
+                        'every placeholder the folder carries is replaced by the overlay',
+                    );
+                    assert.ok(
+                        rendered.includes('shop-services') && rendered.includes('shop-suite'),
+                        "and the values that come back are this deployment's",
+                    );
+                    // And every object is one the tree carries, placed in the namespace of the half it
+                    // belongs to: the identity carries the namespace, and the folder's workload and the
+                    // suite's processes are in two different ones. That is the layout's whole contract, so
+                    // an overlay that named a namespace at its **root** fails here rather than in a cluster
+                    // — kustomize applies that field over everything a child brought, which would move the
+                    // folder's workload into the tenant's namespace and collide the two Namespace objects
+                    // (D-506). `kubectl` is the reader a human's `kubectl apply -k` uses, which is why this
+                    // is composed by the binary and not only by the JS materializer the operator runs.
+                    const identityOf = (resource: KustomizeResource): string => {
+                        const meta = resource as {
+                            apiVersion?: string;
+                            kind?: string;
+                            metadata?: {name?: string; namespace?: string};
+                        };
+                        return [
+                            meta.apiVersion ?? '',
+                            meta.kind ?? '',
+                            meta.metadata?.namespace ?? '',
+                            meta.metadata?.name ?? '',
+                        ].join('/');
+                    };
+                    const named = (objects: KustomizeResource[]): string[] =>
+                        objects
+                            .filter(isClusterResource)
+                            // The declaration is not an object a split applies: it ships as an example
+                            // beside the base (D-507).
+                            .filter(object => object.kind !== 'BlongDeployment')
+                            .map(identityOf)
+                            .sort();
+                    assert.deepEqual(
+                        named(
+                            parseAllDocuments(rendered).map(
+                                document => document.toJSON() as KustomizeResource,
+                            ),
+                        ),
+                        named([...built.values()]),
+                        'the render names every object the tree carries, in the namespace of its own half',
+                    );
+                } finally {
+                    rmSync(dir, {recursive: true, force: true});
+                }
+            },
+
+            async function aServiceFolderIsPartOfWhatAPassApplies(assert: IAssert) {
+                // The pass applies what the child's composition returns, so a service folder has to be
+                // inside it. Composed from the two halves alone it was not: an opted-in service's workload
+                // was never applied, and every live object that belonged to one read as obsolete — so the
+                // pass pruned the alias and the credentials copy the runbook had just written, and the
+                // switch-off variant would have passed its assertions for the wrong reason (D-504).
+                const dir = mkdtempSync(join(tmpdir(), 'kustomize-applied-'));
+                try {
+                    const mysql = resolveBackingServices(loadServiceCatalog(), {
+                        kinds: ['knex'],
+                        databases: ['blong-suite'],
+                        namespace: 'shop-services',
+                        config: {mysql: true},
+                    }).services[0];
+                    assert.ok(mysql, 'the catalogue answers for a database adapter');
+                    const plan = lib.suitePlan({
+                        suite: lib.pinnedSuite,
+                        backingServices: [mysql],
+                    }) as IDeploymentPlan;
+                    const built = buildKustomizeTree(plan);
+                    writeKustomizeTree(built, dir, {layout: 'base', plan});
+                    writeKustomizeTree(built, dir, {layout: 'local', plan});
+                    const idOf = (resource: KustomizeResource): string => {
+                        const object = resource as {
+                            kind?: string;
+                            metadata?: {name?: string; namespace?: string};
+                        };
+                        return `${String(object.kind)}/${String(
+                            object.metadata?.namespace ?? '',
+                        )}/${String(object.metadata?.name ?? '')}`;
+                    };
+                    const ids = (tree: Map<string, KustomizeResource>): string[] =>
+                        [...tree.values()].filter(isClusterResource).map(idOf).sort();
+                    const applied = ids(materializeGeneratedTree(dir));
+                    const wanted = ids(built);
+                    const missing = wanted.filter(id => !applied.includes(id));
+                    const extra = applied.filter(id => !wanted.includes(id));
+                    assert.equal(
+                        `missing: ${missing.join(', ')} ;; extra: ${extra.join(', ')}`,
+                        'missing:  ;; extra: ',
+                        'a pass applies exactly the objects the tree names, the service among them',
+                    );
+                    // The negative control, because a step that cannot fail proves nothing: the two halves
+                    // on their own do not name the service, which is the gap this step exists for.
+                    const halves = materializeSplitTree(
+                        readKustomizeTree(join(dir, 'base')),
+                        readKustomizeTree(join(dir, 'local')),
+                    );
+                    assert.ok(
+                        ids(halves).length < ids(built).length,
+                        'and the halves alone fall short of it',
+                    );
+                } finally {
+                    rmSync(dir, {recursive: true, force: true});
+                }
+            },
+
+            async function aFolderNothingNamesIsNotComposed(assert: IAssert) {
+                // An artifact ships the service folders of the suite it was built with, so a folder can
+                // sit beside the base that this deployment's overlay never names — a switch is exactly
+                // that case, since the CR says `mysql: false` while the artifact brought the folder with
+                // it. `kubectl kustomize` is what a human's `kubectl apply -k` runs, and it ignores a
+                // folder no kustomization references. The materializer composes the halves in JS
+                // instead, so it has to be held to the same rule rather than left to walk the
+                // directory: walking it composed the switched-off service's five objects in no
+                // namespace at all, and the pass then looked for them in its client's own namespace and
+                // was refused there (F-480).
+                requireKubectl(assert);
+                const dir = mkdtempSync(join(tmpdir(), 'kustomize-unreferenced-'));
+                const brought = mkdtempSync(join(tmpdir(), 'kustomize-brought-'));
+                try {
+                    const mysql = resolveBackingServices(loadServiceCatalog(), {
+                        kinds: ['knex'],
+                        databases: ['blong-suite'],
+                        namespace: 'shop-services',
+                        config: {mysql: true},
+                    }).services[0];
+                    assert.ok(mysql, 'the catalogue answers for a database adapter');
+                    // The tree of a deployment that brings nothing, with the folder an artifact would
+                    // have shipped copied in beside it, the way `kustomizeSuiteGenerate` copies one.
+                    const plan = lib.suitePlan({
+                        suite: lib.pinnedSuite,
+                        backingServices: [],
+                    }) as IDeploymentPlan;
+                    const built = buildKustomizeTree(plan);
+                    writeKustomizeTree(built, dir, {layout: 'base', plan});
+                    writeKustomizeTree(built, dir, {layout: 'local', plan});
+                    const bringing = lib.suitePlan({
+                        suite: lib.pinnedSuite,
+                        backingServices: [mysql],
+                    }) as IDeploymentPlan;
+                    writeKustomizeTree(buildKustomizeTree(bringing), brought, {
+                        layout: 'base',
+                        plan: bringing,
+                    });
+                    cpSync(join(brought, 'services'), join(dir, 'services'), {recursive: true});
+                    assert.ok(
+                        existsSync(join(dir, 'services', mysql.name, 'claim.yaml')),
+                        'the folder sits beside the base, as an artifact leaves it',
+                    );
+                    const rendered = execFileSync('kubectl', ['kustomize', join(dir, 'local')], {
+                        encoding: 'utf8',
+                    });
+                    assert.ok(
+                        !rendered.includes(`${mysql.name}-data`),
+                        'kustomize leaves the folder out, because no kustomization names it',
+                    );
+                    const composed = [...materializeGeneratedTree(dir).keys()].map(String);
+                    assert.ok(
+                        !composed.some(path => path.startsWith(`${mysql.name}/`)),
+                        'and the materializer composes what the kustomizations name, not the disk',
+                    );
+                } finally {
+                    rmSync(dir, {recursive: true, force: true});
+                    rmSync(brought, {recursive: true, force: true});
                 }
             },
 
@@ -499,20 +752,37 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     writeKustomizeTree(built, flatDir);
                     writeKustomizeTree(built, treeDir, {layout: 'base', plan});
                     writeKustomizeTree(built, treeDir, {layout: 'local', plan});
-                    const materialized = materializeSplitTree(
-                        readKustomizeTree(join(treeDir, 'base')),
-                        readKustomizeTree(join(treeDir, 'local')),
-                    );
-                    // Only the objects count: a base carries templates and kustomizations beside them,
-                    // which the materializer either instantiates or leaves out.
+                    const materialized = materializeGeneratedTree(treeDir);
+                    // By identity rather than by path, and without the declaration: the overlay renames the
+                    // objects it owns into the child that stamps them (`suite/external-services/…`), and a
+                    // split ships the suite's `BlongDeployment` as an example beside the base rather than as
+                    // an object a kustomization applies (D-506). What has to be equal is the set of objects
+                    // a pass applies.
+                    const identityOf = (resource: KustomizeResource): string => {
+                        const meta = resource as {
+                            apiVersion?: string;
+                            kind?: string;
+                            metadata?: {name?: string; namespace?: string};
+                        };
+                        return [
+                            meta.apiVersion ?? '',
+                            meta.kind ?? '',
+                            meta.metadata?.namespace ?? '',
+                            meta.metadata?.name ?? '',
+                        ].join('/');
+                    };
                     const objects = (tree: Map<string, unknown>): Record<string, unknown> =>
                         Object.fromEntries(
                             [...tree]
                                 .filter(([, resource]) =>
                                     isClusterResource(resource as KustomizeResource),
                                 )
-                                .map(([path, resource]) => [
-                                    path,
+                                .filter(
+                                    ([, resource]) =>
+                                        (resource as {kind?: string}).kind !== 'BlongDeployment',
+                                )
+                                .map(([, resource]) => [
+                                    identityOf(resource as KustomizeResource),
                                     typeof resource === 'string'
                                         ? (parse(resource) as unknown)
                                         : resource,
@@ -537,15 +807,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // to render the overlay into the same objects the generator writes flat. The round trip
                 // above checks the JS composer; nothing checked kustomize before this step, and the gap
                 // between the two is exactly where a patch that no longer matches a target hides.
-                try {
-                    execFileSync('kubectl', ['kustomize', '--help'], {stdio: 'ignore'});
-                } catch {
-                    return {
-                        skipped:
-                            'no kubectl on PATH: this step composes the split tree with kustomize and ' +
-                            'compares the result with the flat tree',
-                    };
-                }
+                requireKubectl(assert);
                 const flatDir = mkdtempSync(join(tmpdir(), 'kustomize-flat-'));
                 const treeDir = mkdtempSync(join(tmpdir(), 'kustomize-compose-'));
                 try {
@@ -596,6 +858,11 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     const flat = [...readKustomizeTree(flatDir)]
                         .map(([, resource]) => resource)
                         .filter(resource => isClusterResource(resource as KustomizeResource))
+                        // The declaration is not an object the split applies: the base ships it as an
+                        // example beside itself (D-506).
+                        .filter(
+                            resource => (resource as {kind?: string}).kind !== 'BlongDeployment',
+                        )
                         .map(
                             resource =>
                                 (typeof resource === 'string'
@@ -1248,12 +1515,19 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     databases: ['blong-suite', 'blong-access'],
                     namespace: 'shop-services',
                     storageClassName: 'local-path',
-                    config: {mysql: true},
+                    // Generation is the deployment's own opt-in (D-509), so a plan that wants the
+                    // credentials has to ask for them — which is also what this pin is about.
+                    config: {mysql: {credentials: {generate: true}}},
                 }).services[0];
                 assert.ok(mysql, 'the catalog carries the database the adapter needs');
                 const plan = lib.suitePlan({
                     suite: lib.pinnedSuite,
                     backingServices: [mysql],
+                    // One process of the suite's own, because the copy of the credentials is written for
+                    // *its* namespace and the `envFrom` that reads it is on its workload (D-509).
+                    deployments: [
+                        {name: 'shop', realms: ['shop'], layers: [], namespaces: [], replicas: 1},
+                    ],
                 }) as IDeploymentPlan;
                 const tree = buildKustomizeTree(plan);
                 pin(assert, 'backingService', {
@@ -1276,36 +1550,45 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     tree.get('services/mysql/credentials.yaml'),
                     'and the same plan writes the same credentials, pass after pass',
                 );
+                // The copy in the suite's namespace is only worth writing because something reads it: the
+                // suite's own processes take it as environment, where `blong-config` finds it, and the
+                // reference is `optional` so that a deployment which switches the service off does not
+                // keep its pods from starting on a Secret that went with it (R5, D-509).
+                const suiteWorkload = tree.get(
+                    `deployments/${plan.deployments[0]?.name ?? ''}.yaml`,
+                ) as {
+                    spec?: {template?: {spec?: {containers?: Array<{envFrom?: unknown[]}>}}};
+                };
+                assert.deepEqual(
+                    suiteWorkload.spec?.template?.spec?.containers?.[0]?.envFrom,
+                    [{secretRef: {name: 'mysql-credentials', optional: true}}],
+                    'and the suite reads the copy in its environment, tolerating a switched-off service',
+                );
             },
 
             async function aTreeThatCarriesTwoNamespacesNamesEachItsOwn(assert: IAssert) {
-                // kustomize's `namespace:` is a rewrite rather than a default: it moves every
-                // namespace-able object into it, overwriting the namespace the object declared, and
-                // renames every Namespace object in the tree to it — so a tree with a second namespace
-                // cannot carry the field at all, because the two Namespace objects collide and
-                // `kustomize build` refuses to produce anything, which is how this was found (F-440).
-                // What makes leaving the field out safe is a property of the tree rather than of the
-                // field, so the property is what this step pins: every document the generator writes
-                // names the namespace it belongs in, and both namespaces are created by the same
-                // apply.
+                // The namespace is the deployment's rather than the design's, so no kustomization the
+                // generator writes names one (D-506) — and that is a requirement rather than a
+                // preference: kustomize's `namespace:` is a rewrite, moving every namespace-able object
+                // into it and renaming every Namespace object, so a field on the tree's root would pull the
+                // services' workloads into the tenant's namespace and collide the two Namespace objects
+                // (F-440). What the split does instead is declare the two on two children of the overlay,
+                // one per half, and this step pins both halves of that: the shape in the tree, and the name
+                // each child declares once the tree is written out.
                 const mysql = resolveBackingServices(loadServiceCatalog(), {
                     kinds: ['knex'],
                     databases: ['blong-suite'],
                     namespace: 'shop-services',
                     config: {mysql: true},
                 }).services[0];
-                const withService = buildKustomizeTree(
-                    lib.suitePlan({
-                        suite: lib.pinnedSuite,
-                        backingServices: [mysql],
-                    }) as IDeploymentPlan,
-                );
-                const root = withService.get('kustomization.yaml') as {namespace?: unknown};
-                assert.equal(
-                    root.namespace,
-                    undefined,
-                    'a tree with two namespaces writes no namespace field',
-                );
+                const plan = lib.suitePlan({
+                    suite: lib.pinnedSuite,
+                    backingServices: [mysql],
+                }) as IDeploymentPlan;
+                const withService = buildKustomizeTree(plan);
+                // The Namespace objects are the deployment's too — each is *named* after what it holds,
+                // which is what a patch cannot change — so both are the overlay's, and one apply creates
+                // both, which is what gives the workload somewhere to run.
                 assert.deepEqual(
                     [...withService.values()]
                         .filter(
@@ -1315,38 +1598,51 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         .map(document => (document['metadata'] as {name: string}).name)
                         .sort(),
                     ['shop-services', 'shop-suite'],
-                    'and the same apply creates both, so the workload has somewhere to run',
+                    'the tree creates both namespaces, so the workload has somewhere to run',
                 );
-                // Cluster-scoped kinds carry no namespace by design; anything else that arrives
-                // without one would be placed by whatever namespace the caller happens to be in.
-                const clusterScoped = new Set([
-                    'Namespace',
-                    'ClusterRole',
-                    'ClusterRoleBinding',
-                    'CustomResourceDefinition',
-                ]);
-                assert.deepEqual(
-                    [...withService]
-                        .filter(
-                            ([file, document]) =>
-                                !file.endsWith('kustomization.yaml') &&
-                                typeof document === 'object' &&
-                                !clusterScoped.has(String(document['kind'])) &&
-                                !(document['metadata'] as {namespace?: string}).namespace,
-                        )
-                        .map(([file]) => file),
-                    [],
-                    'no document leans on the kustomization to place it',
-                );
-                assert.equal(
-                    (
-                        buildKustomizeTree(
-                            lib.suitePlan({suite: lib.pinnedSuite}) as IDeploymentPlan,
-                        ).get('kustomization.yaml') as {namespace?: unknown}
-                    ).namespace,
-                    'shop-suite',
-                    'while a tree that answers one namespace still names it',
-                );
+                const named = [...withService]
+                    .filter(([file]) => file.endsWith('kustomization.yaml'))
+                    .filter(
+                        ([, document]) =>
+                            (document as {namespace?: unknown}).namespace !== undefined,
+                    )
+                    .map(([file]) => file);
+                assert.deepEqual(named, [], 'no generated kustomization names a namespace');
+                // The *tree* is one document per object, so it is the flat half that names each object's
+                // own namespace; a split strips them and declares them once per half instead (D-506), and
+                // that is what this checks.
+                const dir = mkdtempSync(join(tmpdir(), 'kustomize-two-namespaces-'));
+                try {
+                    const written = writeKustomizeTree(withService, dir, {layout: 'split', plan});
+                    const read = (file: string): string => readFileSync(join(dir, file), 'utf8');
+                    assert.deepEqual(
+                        written
+                            .filter(file => file.startsWith('base/') && file.endsWith('.yaml'))
+                            .filter(file => /^ {2}namespace:/m.test(read(file))),
+                        [],
+                        'no object the base holds names a namespace, because it belongs to the CR',
+                    );
+                    assert.ok(
+                        !/^namespace:/m.test(read('base/kustomization.yaml')),
+                        'and the base names none either',
+                    );
+                    assert.ok(
+                        !/^namespace:/m.test(read('local/kustomization.yaml')),
+                        'while the overlay’s root names none: a field there would rewrite both children',
+                    );
+                    assert.match(
+                        read('local/suite/kustomization.yaml'),
+                        /^namespace: shop-suite$/m,
+                        'each half declares its own — the suite’s is the CR’s namespace',
+                    );
+                    assert.match(
+                        read('local/backing/kustomization.yaml'),
+                        /^namespace: shop-services$/m,
+                        'and the service’s is the namespace that CR named for it',
+                    );
+                } finally {
+                    rmSync(dir, {recursive: true, force: true});
+                }
             },
 
             async function aServiceWithNoDatabasesStillWritesItsInitContainerFile(assert: IAssert) {
