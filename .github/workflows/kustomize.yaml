@@ -213,9 +213,10 @@ jobs:
         # So the alias — which lives in the suite's namespace because that is where a realm's config
         # dials it — goes with the switch, while the workload, its Service and its claim keep running
         # in `blong-services`, where a shared service the suite stopped generating is somebody else's
-        # to retire. The second half of each check is the one that would have hidden a bug: an alias
-        # left behind resolves to a workload that nothing regenerates, and a workload deleted across
-        # namespaces takes a database down with a config edit.
+        # to retire. The one object a pass does take outside that namespace is a credential it
+        # generated itself (D-509): the values came from the declaration that stopped asking, the
+        # label says so (D-512), and leaving them behind would be a password a rotation never
+        # reaches. What is not this pass's is a Secret the deployment placed itself.
         run: |
           switch="$(kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.spec.services}')"
           test "$switch" = '{"mysql":false}'
@@ -226,8 +227,7 @@ jobs:
           fi
           echo "the alias was deleted with the switch"
           # The credentials copy lives in the suite's namespace too, because that is where the pod
-          # reads it (D-462), so the same pass owns it: leaving it behind would be a password a
-          # rotation never reaches. The workload's own copy is the contrast — it stays where it is.
+          # reads it (D-462), so the same pass owns it.
           if kubectl -n blong-suite get secret/mysql-credentials >/dev/null 2>&1; then
             # The survivor is named where the check fails, because the step log is what a reader
             # sees and the artifact is a fetch away. Labels, never data — the sweep finds what it
@@ -249,8 +249,22 @@ jobs:
             exit 1
           fi
           echo "the credentials copy went with the alias"
-          kubectl -n blong-services get secret/mysql-credentials >/dev/null
-          echo "while the workload keeps its own"
+          if kubectl -n blong-services get secret/mysql-credentials >/dev/null 2>&1; then
+            {
+              echo 'FAIL: the generated credentials survived in blong-services' >&2
+              echo '--- the survivor:' >&2
+              kubectl -n blong-services get secret/mysql-credentials --show-labels >&2 || true
+              echo >&2
+              echo '--- every Secret in the services namespace:' >&2
+              kubectl -n blong-services get secrets --show-labels >&2 || true
+              echo >&2
+              echo '--- what the last pass reported:' >&2
+              kubectl -n blong-suite get bdep blong-suite -o jsonpath='{.status.lastResult}' >&2 || true
+              echo >&2
+            }
+            exit 1
+          fi
+          echo "and the workload's own copy with it"
           for object in 'deployment/mysql' 'persistentvolumeclaim/mysql-data' 'service/mysql'; do
             if ! kubectl -n blong-services get "$object" >/dev/null 2>&1; then
               echo "FAIL: ${object} was deleted outside the suite's namespace" >&2
