@@ -24,7 +24,10 @@ export default server(() => ({
         // plan settings belong one level deeper, under the port's own name `deploy` — a port is
         // handed `mergedConfig[realm][port]`, so `kustomize.deploy.profile`, `kustomize.deploy.volume`
         // and `--kustomize.deploy.outputDir=/tmp/tree` are the addresses that reach `IPlanConfig`.
-        default: {kustomize: {deploy: {}}},
+        default: {
+            kustomize: {deploy: {}},
+            srv: {orchestrator: true, adapter: false},
+        },
         integration: {
             kustomize: {deploy: {}},
             // The gateway port's own slice. This realm serves no browser build, so the root is a test
@@ -47,6 +50,7 @@ export default server(() => ({
                     'test.release.notify',
                     'test.cluster.auth',
                     'test.login',
+                    'test.session',
                     'test.cluster.apply',
                     'test.cluster.status',
                     'test.gateway.keys',

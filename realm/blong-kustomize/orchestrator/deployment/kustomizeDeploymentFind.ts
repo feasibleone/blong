@@ -39,7 +39,15 @@ export default handler(({handler: {clusterDeploymentFind}}) => ({
         params: {namespace?: string},
         $meta: IMeta,
     ): Promise<{items: IKustomizeDeploymentRow[]; total: number}> {
-        const result = (await clusterDeploymentFind({namespace: params.namespace}, $meta)) as {
+        // The page asks for "the deployments" and names nothing, so the namespace is the one this
+        // realm is deployed for: the operator knows the suite it serves and a browser has no reason
+        // to. Without the default the cluster adapter lists every namespace, which the operator's
+        // rights refuse — a list across namespaces needs the namespaces themselves — and the table
+        // came back empty with `Kubernetes Access Forbidden` in the log (T-326).
+        const namespace =
+            params.namespace ??
+            (this as unknown as {config?: {suite?: {namespace?: string}}}).config?.suite?.namespace;
+        const result = (await clusterDeploymentFind({namespace}, $meta)) as {
             items?: IClusterDeployment[];
         };
         const items = (result?.items ?? []).map(

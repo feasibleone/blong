@@ -1574,6 +1574,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../../core/blong
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-server
       tinyglobby:
         specifier: ^0.2.16
         version: 0.2.17

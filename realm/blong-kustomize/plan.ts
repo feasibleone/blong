@@ -630,11 +630,49 @@ export interface IDeploymentPlan {
     install: boolean;
 }
 
+/**
+ * Where the node set of a `nodeLocal` deployment comes from.
+ *
+ * A `nodeLocal` volume is one directory per node (D-470), so a plan cannot be written without
+ * knowing the nodes — and the process that plans is not always one that can see them. The `k8s`
+ * generator asks the cluster; an operator that reconciles a pass a page triggered has to be *told*,
+ * and so does a suite artifact read in a child process. Hence a source with the two shapes a caller
+ * actually has: the names, when the installer knows them, or a selector, when the cluster does. The
+ * list wins when both are named, because a person who listed them meant those.
+ */
+export interface INodeSource {
+    /** The node names, when the caller knows them. */
+    list?: string[];
+    /** A label selector, answered by the cluster's own `node.find`. */
+    selector?: string;
+}
+
+/**
+ * The node list a source names, with the cluster asked only when it has to be.
+ *
+ * The finder is a parameter rather than a call: which handler answers it is the caller's business
+ * (`kustomizeTreeGenerate` destructures it, a reconcile pass reaches it through the proxy), and a
+ * test hands in its own.
+ */
+export const resolveNodes = async (
+    source: INodeSource | undefined,
+    find: (selector: string) => Promise<string[] | undefined>,
+): Promise<string[] | undefined> => {
+    if (source?.list?.length) return source.list;
+    if (source?.selector) return find(source.selector);
+    return undefined;
+};
+
 export interface IPlanOptions {
     suiteName: string;
     suiteVersion?: string;
     /** The nodes the suite runs on, when the caller can see the cluster (`nodeLocal` needs them). */
     nodes?: string[];
+    /**
+     * Where the nodes come from when the caller cannot see the cluster — a name list, or a label
+     * selector to ask it with. Resolved by {@link resolveNodes} into `nodes` before a plan is built.
+     */
+    nodeSource?: INodeSource;
     namespace?: string;
     frameworkImage: string;
     minFrameworkVersion?: string;
@@ -1201,6 +1239,36 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
 };
 
 /** The realm-level config the planner reads (declared in the layer/`server.ts`). */
+/**
+ * A session the realm mints at login.
+ *
+ * The credential a deployment's caller presents is the cluster's own, and the framework reads the MLE
+ * key pair its calls are signed with out of the *token* — which a service-account token cannot carry.
+ * So the realm mints one: signed with the gateway's own sign key, carrying the caller's keys and the
+ * name it logged in as, and verified by the same process through the key set this deployment serves.
+ * Every value here is an address or a lifetime of the deployment, which is why it is configuration and
+ * not a constant (F-500).
+ */
+export interface ISessionConfig {
+    /** The issuer a minted token names, and the entry the gateway verifies it against. */
+    issuer?: string;
+    /** The audience a minted token carries, which the issuer entry must expect too. */
+    audience?: string;
+    /** How long a minted token lives, in seconds. */
+    expiresIn?: number;
+    /**
+     * The private half of the gateway's sign key, which is what mints.
+     *
+     * Configuration rather than a read of the gateway's own config, and that is not an accident to be
+     * tidied away: `mle.ts` writes the *public* half back over `gateway.sign` so that private material
+     * cannot be read out of configuration by a diagnostic or a realm (D-448). The framework's own
+     * login realm is given its key the same way, as its own config, and this deployment writes this one
+     * into the same rc document as the pair — generated per suite, never in git
+     * (`kustomizeGatewayKeysEnsure`, `gatewayKeysConfig`).
+     */
+    key?: Record<string, unknown>;
+}
+
 export interface IPlanConfig {
     suite?: {
         name?: string;
@@ -1221,6 +1289,13 @@ export interface IPlanConfig {
     services?: IServiceConfig;
     /** The namespace the generated workloads run in (default `blong-services`). */
     servicesNamespace?: string;
+    /**
+     * The nodes a `nodeLocal` deployment runs on: the names, or a label selector the cluster answers.
+     * A `k8s` run can ask for itself and ignores this; a process that plans without seeing the cluster
+     * — an operator reconciling a pass a page triggered — cannot, and a CR may override what the
+     * realm is configured with (T-327, D-470).
+     */
+    nodes?: INodeSource;
     /** The storage class a generated claim asks for, where the cluster has one to name. */
     storageClassName?: string;
     suiteVolume?: ISuiteVolumeRequest;
@@ -1230,6 +1305,8 @@ export interface IPlanConfig {
     operator?: ISuiteOperatorRequest;
     /** How this process runs the operator's loop; the environment can turn it on instead. */
     controller?: IControllerConfig;
+    /** The session this realm mints for a caller that logged in against the cluster (F-500). */
+    session?: ISessionConfig;
     /** Secret generator entries for the whole suite, by name (see {@link IPlanOptions.secrets}). */
     secrets?: NamedMap<IGeneratorEntry>;
     /** ConfigMap generator entries for files the suite serves, by name. */
@@ -1297,6 +1374,15 @@ export interface IBlongDeploymentSpec {
     storageClassName?: string;
     /** The portals this suite publishes; a tenant may name their `host` and nothing else. */
     portal?: ISuitePortalMap;
+    /**
+     * The nodes a `nodeLocal` deployment runs on, when the tenant names them — as a list of names or
+     * as a label selector for the cluster to answer. A tenant that says nothing leaves the realm's
+     * own configuration in charge, which is the rule every other field here follows.
+     *
+     * Named `nodeSource` rather than `nodes` on purpose: the spec file the tree writer reads carries
+     * `nodes` as the *resolved* names, and one field cannot be both the source and the answer.
+     */
+    nodeSource?: INodeSource;
 }
 
 /**
@@ -1323,6 +1409,7 @@ export const planOptionsFromSpec = (spec: IBlongDeploymentSpec = {}): Partial<IP
     if (spec.storageClassName !== undefined) options.storageClassName = spec.storageClassName;
     if (spec.suiteVolume !== undefined) options.suiteVolume = spec.suiteVolume;
     if (spec.portal !== undefined) options.portal = spec.portal;
+    if (spec.nodeSource !== undefined) options.nodeSource = spec.nodeSource;
     return options;
 };
 
@@ -1342,6 +1429,9 @@ export const planOptionsOf = (config: IPlanConfig | undefined): IPlanOptions => 
     services: config?.services,
     servicesNamespace: config?.servicesNamespace,
     storageClassName: config?.storageClassName,
+    // The realm's own answer for the node set, which a CR may override and a `k8s` run ignores
+    // (that one can see the cluster itself).
+    nodeSource: config?.nodes,
     suiteVolume: config?.suiteVolume,
     portal: config?.portal,
     operator: config?.operator,

@@ -90,7 +90,17 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
             'http',
             '8091',
             this.#errors,
-            this.sender('request'),
+            // The session step's own call — the one the codec makes while it verifies a caller's token
+            // (`identity.checkInternal`) — is asked through the *resolver* like every other call this
+            // process makes, which is what lets a process answer it itself. Handed the raw transport it
+            // could only ever dial: the routing question would be answered (the codec keeps the method
+            // out of a gateway, `skipGateway`) and then the call left for an `identity` namespace that a
+            // deployment answering its own login does not publish — refused for a missing bearer when it
+            // reached a gateway, and `ENOTFOUND` when it reached nothing (F-494, F-497). Asked through
+            // the resolver, `remote.canSkipSocket` decides: the process that verified the token answers
+            // the question, and a deployment that runs an identity service still reaches it.
+            (msg: unknown, $meta: unknown) =>
+                this.remote(($meta as IMeta)?.method ?? 'identity.checkInternal')(msg, $meta),
             this.#resolution,
         );
     }

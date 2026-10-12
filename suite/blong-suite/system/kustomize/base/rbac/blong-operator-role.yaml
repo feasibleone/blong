@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
-    app.kubernetes.io/version: 1.13.0
-    blong.feasible.one/spec-hash: 2e4f09ec052609d5
+    app.kubernetes.io/version: 1.14.0
+    blong.feasible.one/spec-hash: 8fc363c26a70a5e0
   name: blong-operator
 rules:
   - apiGroups:

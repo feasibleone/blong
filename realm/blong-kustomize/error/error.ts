@@ -9,4 +9,8 @@ export default {
     'kustomize.notFound': 'Deployment {id} not found',
     'kustomize.invalidStatus': 'Invalid deployment status {status}',
     'kustomize.loginFailed': 'The token could not be verified: {reason}',
+    'kustomize.sessionUnknown':
+        'No MLE handshake is recorded for {actorId}, so a call it signed cannot be verified — ' +
+        'the caller has to log in again',
+    'kustomize.sessionUnconfigured': 'This process cannot mint a session: {reason}',
 };

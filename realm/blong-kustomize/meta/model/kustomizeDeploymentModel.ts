@@ -78,7 +78,15 @@ export default model(
                             confirm:
                                 'Run a reconcile pass now? Objects the plan wants and the cluster lacks are created, and changed ones are updated. Nothing is deleted.',
                             method: 'kustomize.reconcile.run',
-                            params: {apply: true},
+                            // From the CR, which is the declaration a deployment page is about: the
+                            // objects this page lists were generated for the suite a CR declares, and
+                            // a pass from the registry origin reconciles the install this process *is*
+                            // instead — a plan built before its artifact is materialized, which names
+                            // no volume identity and waits on a fill Job that never exists (F-502).
+                            // The tenant is left to the handler: a suite's own portal is configured
+                            // with its namespace, and the operator's portal is answered about whatever
+                            // CRs it can see, with the answer naming which one it read (T-328).
+                            params: {apply: true, from: 'cr'},
                             refresh: true,
                         },
                     ],

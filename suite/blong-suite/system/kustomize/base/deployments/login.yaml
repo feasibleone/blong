@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
-    app.kubernetes.io/version: 1.13.0
-    blong.feasible.one/spec-hash: 70925710b8967e8c
+    app.kubernetes.io/version: 1.14.0
+    blong.feasible.one/spec-hash: 8f1d1bcc5a50bdba
   name: login
 spec:
   replicas: 1
@@ -22,7 +22,7 @@ spec:
         app.kubernetes.io/managed-by: blong-kustomize
         app.kubernetes.io/name: blong-suite
         app.kubernetes.io/part-of: blong-suite
-        app.kubernetes.io/version: 1.13.0
+        app.kubernetes.io/version: 1.14.0
         blong.feasible.one/namespace-access: "true"
         blong.feasible.one/namespace-core: "true"
         blong.feasible.one/namespace-login: "true"
@@ -34,12 +34,12 @@ spec:
             - release
             - --login.orchestrator
             - --login.gateway
+            - --srv.orchestrator
             - --core.adapter
             - --core.orchestrator
             - --access.adapter
             - --access.orchestrator
             - --access.gateway
-            - --server.orchestrator
           env:
             - name: BLONG_ENV
               value: release

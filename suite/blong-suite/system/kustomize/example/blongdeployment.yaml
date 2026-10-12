@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
-    app.kubernetes.io/version: 1.13.0
-    blong.feasible.one/spec-hash: 64aaaae188c0e6bd
+    app.kubernetes.io/version: 1.14.0
+    blong.feasible.one/spec-hash: a9260bf2f8326a2a
   name: blong-suite
   namespace: blong-suite
 spec:
@@ -33,10 +33,10 @@ spec:
   servicesNamespace: blong-services
   suiteVolume:
     artifact:
-      digest: 3267e0c426778c0c01d596f84a41ba7c911be32c91bc5606da9bb098f2ba9fdb
+      digest: 0c31c6d0b40d1ac4e44fc094a8def148757e3cb8bf7ad5b8bb8fd2b21bd3ec27
       source: url
       url: http://blong-artifact.default.svc.cluster.local/suite.zip
     attemptRetention: 5
     backend: nodeLocal
     retention: 3
-  version: 1.13.0
+  version: 1.14.0

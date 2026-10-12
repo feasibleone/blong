@@ -72,6 +72,9 @@ open (52)
 - playwright webp, strict screenshot tolerance
 - T-195
 - T-276
+- F-490
+- Adopt https://github.com/allure-framework/allure3/pull/353
+- Adopt https://mastra.ai/integrations/frameworks/vite-react
 - embed storybook in docs
 - sync modified memory during commit
 - config validation with explanation

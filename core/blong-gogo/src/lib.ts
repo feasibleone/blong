@@ -240,16 +240,39 @@ export async function requestGet(
     protocol: string,
     tls: Record<string, unknown> | undefined,
 ): Promise<unknown> {
-    const response = await ky.get(url, {
-        ...tls,
-        ...(headers && {
-            headers: {
-                'x-forwarded-proto': headers['x-forwarded-proto'] || protocol,
-                'x-forwarded-host': headers['x-forwarded-host'] || headers.host,
-            },
-        }),
-        throwHttpErrors: false,
-    });
+    let response;
+    try {
+        response = await ky.get(url, {
+            ...tls,
+            ...(headers && {
+                headers: {
+                    // Every header the caller named, not only the two forwarded-for ones. Dropping
+                    // the rest silently dropped the `authorization` an issuer's discovery is read
+                    // with, and the API server answered 401 for a request that presented nothing —
+                    // a failure with no trace of the cause it was given (F-494).
+                    ...(Object.fromEntries(
+                        Object.entries(headers).filter(([, value]) => value !== undefined),
+                    ) as Record<string, string>),
+                    'x-forwarded-proto': headers['x-forwarded-proto'] || protocol,
+                    'x-forwarded-host': headers['x-forwarded-host'] || headers.host,
+                },
+            }),
+            throwHttpErrors: false,
+        });
+    } catch (error) {
+        // Name what could not be fetched. A transport failure reaches the log as `fetch failed`
+        // and nothing else, so an unreachable dependency was diagnosed by reading DNS names out of
+        // the process the hard way (F-494); the address and the resolver's code belong in the
+        // message, where whoever reads the failure is already looking.
+        const cause = (error as {cause?: {code?: string; hostname?: string; syscall?: string}})
+            ?.cause;
+        const detail = cause ? [cause.code, cause.syscall, cause.hostname].filter(Boolean).join(' ') : '';
+        throw new Error(
+            `could not reach ${url}: ${(error as Error)?.message ?? String(error)}` +
+                `${detail ? ` (${detail})` : ''}`,
+            {cause: error as Error},
+        );
+    }
 
     const responseText = await response.text();
     let body: {[key: string]: unknown} | undefined;

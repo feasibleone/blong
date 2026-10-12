@@ -1,5 +1,7 @@
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
+import {crListingScope} from '../../../orchestrator/controller/kustomizeReconcileRun.ts';
+
 /**
  * server/test/test/testReconcileGuard.ts — what a reconcile pass refuses.
  *
@@ -37,6 +39,27 @@ export default handler(({lib: {group}, handler: {kustomizeReconcileRun}}) => ({
                     String(answer.reason),
                     /declares no suite entry/,
                     'while saying which declaration is missing, rather than deploying quietly (T-260)',
+                );
+            },
+            async function readsTheCrsItCanSeeWhenNobodyNamesOne(assert: IAssert) {
+                // The page's Reconcile button is this caller: it sends `from: 'cr'` and no namespace,
+                // because a deployment page lists a suite it did not have to name. An operator is
+                // configured with one namespace and installed for suites in others, so the pass has
+                // to read the CRs it can see rather than the namespace it happens to know (T-328).
+                assert.deepEqual(
+                    crListingScope({configured: 'blong-system', held: 0}),
+                    {scope: 'any namespace', namespaced: false},
+                    'a caller that named no namespace and found nothing reads the whole cluster',
+                );
+                assert.deepEqual(
+                    crListingScope({named: 'blong-suite', configured: 'blong-system', held: 0}),
+                    {scope: 'blong-suite', namespaced: true},
+                    'a namespace that was named is answered about that namespace, never widened',
+                );
+                assert.deepEqual(
+                    crListingScope({configured: 'blong-system', held: 1}),
+                    {scope: 'blong-system', namespaced: true},
+                    'and the CR the configured namespace holds is found without asking the cluster',
                 );
             },
         ]),

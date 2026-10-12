@@ -5,7 +5,13 @@ import type {
     IRegistryView,
     IResolvedPortalMap,
 } from '../../../plan.ts';
-import {planFromRegistry, planOptionsFromSpec, registryView} from '../../../plan.ts';
+import {
+    planFromRegistry,
+    planOptionsFromSpec,
+    planOptionsOf,
+    registryView,
+    resolveNodes,
+} from '../../../plan.ts';
 
 /**
  * The nodes the plan is derived for.
@@ -619,6 +625,48 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                     /no process of its own/,
                     'and a companion is refused, because it owns no process to serve one',
                 );
+            },
+
+            async function resolvesTheNodesADeploymentNames(assert: IAssert) {
+                const asked: string[] = [];
+                const find = async (selector: string): Promise<string[]> => {
+                    asked.push(selector);
+                    return ['node-b'];
+                };
+                assert.deepEqual(
+                    await resolveNodes({list: ['node-a']}, find),
+                    ['node-a'],
+                    'a list is the answer',
+                );
+                assert.deepEqual(asked, [], 'and the cluster is not asked for it');
+                assert.deepEqual(
+                    await resolveNodes({selector: 'kubernetes.io/os=linux'}, find),
+                    ['node-b'],
+                    'a selector is answered by the cluster',
+                );
+                assert.deepEqual(
+                    asked,
+                    ['kubernetes.io/os=linux'],
+                    'with the selector it was given',
+                );
+                assert.equal(
+                    await resolveNodes(undefined, find),
+                    undefined,
+                    // Not an empty list: a plan with no nodes is what D-470 refuses later, and saying
+                    // so by leaving the field unset is what lets the caller keep its own fallback.
+                    'and a deployment that names neither leaves the question open',
+                );
+                assert.deepEqual(
+                    planOptionsFromSpec({nodeSource: {list: ['node-a']}}).nodeSource,
+                    {list: ['node-a']},
+                    'the CR is one way in',
+                );
+                assert.deepEqual(
+                    planOptionsOf({suite: {name: 'x'}, nodes: {selector: 'a=b'}}).nodeSource,
+                    {selector: 'a=b'},
+                    'and the realm own config is the other',
+                );
+                return {};
             },
         ]),
 }));

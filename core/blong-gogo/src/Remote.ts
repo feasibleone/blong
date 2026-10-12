@@ -24,7 +24,18 @@ const errorMap: IErrorMap = {
 
 export default class Remote extends Internal implements IRemote {
     #config: {
-        canSkipSocket: boolean;
+        /**
+         * Whether a call may be answered in this process instead of through the transport: `true` for
+         * every method, `false` for none, or a regular-expression *source* matched against the method
+         * name for the ones that belong here ({@link canAnswerLocally}).
+         *
+         * A configured gateway still wins, and deliberately: a method a gateway is declared for is not
+         * this process's to answer, and a deployment that wants an exception says so on the other side
+         * — `GatewayCodec`'s `skipGateway` keeps the method out of the gateway, and this is what the
+         * fallback then resolves by. Asking the same question in two places would make the two settings
+         * disagreeable; asking it here only when nothing else claims the call keeps them composable.
+         */
+        canSkipSocket: boolean | string;
         requireMeta: 'trace' | 'debug' | 'warn' | 'error' | 'fatal' | 'info' | true;
     } = {
         canSkipSocket: false,
@@ -36,12 +47,21 @@ export default class Remote extends Internal implements IRemote {
     #errors: Errors<typeof errorMap>;
     #local: ILocal;
     #platform: IPlatformApi;
+    /**
+     * The compiled pattern of each `canSkipSocket` source seen, `null` for one that does not compile.
+     *
+     * Per source rather than one slot, because a reload replaces the config and a process may see more
+     * than one value in its life; the map is small enough that keeping the earlier ones costs nothing.
+     */
+    #skipPatterns = new Map<string, RegExp | null>();
 
     #brokerRequest: RemoteMethod;
     #brokerPublish: RemoteMethod;
 
     public constructor(
-        config: {logLevel?: Parameters<ILog['logger']>[0]},
+        // Declared rather than read off the caller's own interface, because a type that names only
+        // `logLevel` refuses the value the loader actually passes — `canSkipSocket` among them.
+        config: {logLevel?: Parameters<ILog['logger']>[0]; canSkipSocket?: boolean | string},
         {
             log,
             error,
@@ -202,9 +222,10 @@ export default class Remote extends Internal implements IRemote {
             if (!fn) {
                 // don't try skipping socket if there is a gateway configured
                 if (methodName && !this.gateway?.($applyMeta, methodName)) {
-                    if (this.#config.canSkipSocket) fn = this._findMethod(methodName, methodType);
+                    if (this.canAnswerLocally(methodName))
+                        fn = this._findMethod(methodName, methodType);
                     if (fn) unpack = true;
-                    else if (methodName && this.#config.canSkipSocket) {
+                    else if (this.canAnswerLocally(methodName)) {
                         // Visibility: under canSkipSocket every call is expected
                         // to resolve locally. A missing method (e.g. a derived
                         // handler name that doesn't match a registered file —
@@ -368,7 +389,7 @@ export default class Remote extends Internal implements IRemote {
             mtid = $meta.mtid;
             if (mtid === 'discard') return true;
             const handler =
-                this.#config.canSkipSocket &&
+                this.canAnswerLocally($meta.method) &&
                 this._findMethod($meta.method!, mtid === 'request' ? 'request' : 'publish');
             if (handler) {
                 return Promise.resolve(handler(...params));
@@ -390,6 +411,43 @@ export default class Remote extends Internal implements IRemote {
 
     private _getOpcode(name: string): string {
         return this._getPath(name).split('.').pop()!;
+    }
+
+    /**
+     * Whether a method may be answered in this process rather than through the transport.
+     *
+     * `true` and `false` are the two ends — a process that carries everything answers everything, one
+     * that carries only its own realm answers nothing — and the string is the middle: a
+     * regular-expression *source*, read against the method name, for a process that serves some of what
+     * it can reach and has to send the rest out. The pattern is compiled once per value, because a
+     * reload replaces the config.
+     *
+     * A source that does not compile is not a reason to refuse every call: it is reported once and
+     * treated as nothing matching, which leaves the process dialling as it would have with `false`.
+     *
+     * The caller decides *when* to ask ({@link _getMethod} asks only where no gateway claims the call),
+     * so nothing here knows about gateways: this is the local half of the question and the routing half
+     * lives in the codec that actually routes.
+     */
+    protected canAnswerLocally(methodName: string | undefined): boolean {
+        const {canSkipSocket} = this.#config;
+        if (canSkipSocket === true) return true;
+        if (typeof canSkipSocket !== 'string' || !methodName) return false;
+        const cached = this.#skipPatterns.get(canSkipSocket);
+        if (cached !== undefined) return cached ? cached.test(methodName) : false;
+        try {
+            const pattern = new RegExp(canSkipSocket);
+            this.#skipPatterns.set(canSkipSocket, pattern);
+            return pattern.test(methodName);
+        } catch (error) {
+            this.#skipPatterns.set(canSkipSocket, null);
+            this.log?.warn?.({
+                $meta: {mtid: 'event', method: 'remote.canSkipSocket'},
+                message: `canSkipSocket is not a regular expression: ${canSkipSocket}`,
+                error,
+            });
+            return false;
+        }
     }
 
     private _findMethod(methodName: string, type: 'request' | 'publish'): RemoteMethod {

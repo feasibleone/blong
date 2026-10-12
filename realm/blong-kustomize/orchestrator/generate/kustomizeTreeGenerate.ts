@@ -2,7 +2,7 @@ import {handler, type IMeta} from '@feasibleone/blong';
 import type {TreeLayout} from '../../generator.ts';
 import {DEFAULT_OUTPUT_DIR, buildKustomizeTree, writeKustomizeTree} from '../../generator.ts';
 import type {IDescribeCapable, IPlanConfig} from '../../plan.ts';
-import {clusterNodeNames, planFor} from '../../plan.ts';
+import {clusterNodeNames, planFor, planOptionsOf, resolveNodes} from '../../plan.ts';
 import {readSpecFile} from '../../spec.ts';
 
 /**
@@ -46,11 +46,23 @@ export default handler(({handler: {clusterNodeFind}}) => ({
         // the runbook has just listed them for the image import, and a test has no cluster to ask.
         // A base needs neither: it names no node, so a stand-in derives the fill template and never
         // reaches a file.
-        const listed =
+        const source = readSpecFile(specFile)?.nodeSource ?? planOptionsOf(self.config).nodeSource;
+        const fromSource =
             params?.nodes || layout === 'base'
                 ? undefined
+                : await resolveNodes(source, async selector =>
+                      clusterNodeNames(
+                          (await clusterNodeFind({labelSelector: selector}, $meta)) as unknown as {
+                              items?: unknown[];
+                          },
+                      ),
+                  );
+        const listed =
+            params?.nodes || fromSource?.length || layout === 'base'
+                ? undefined
                 : ((await clusterNodeFind({}, $meta)) as unknown as {items?: unknown[]});
-        const nodes = params?.nodes ?? (listed ? clusterNodeNames(listed) : [STAND_IN_NODE]);
+        const nodes =
+            params?.nodes ?? fromSource ?? (listed ? clusterNodeNames(listed) : [STAND_IN_NODE]);
         const plan = planFor(self.config, self.registry, readSpecFile(specFile), nodes);
         const outputDir = params?.outputDir ?? self.config?.outputDir ?? DEFAULT_OUTPUT_DIR;
         // What a caller needs to *report* the tree as well as to read it: the counts are the plan's, and

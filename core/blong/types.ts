@@ -987,7 +987,12 @@ export interface IBaseConfig extends TObject<{
      */
     watch: TObject;
     remote: TObject<{
-        canSkipSocket?: TBoolean;
+        /**
+         * Whether a call may be answered in this process instead of through the transport: `true` for
+         * all of them, `false` for none, or a regular-expression source matched against the method
+         * name for the ones that belong here. See the resolution in `Remote`.
+         */
+        canSkipSocket?: TBoolean | TString;
     }>;
     adapter: TBoolean | TObject;
     orchestrator: TBoolean | TObject;

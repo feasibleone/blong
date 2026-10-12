@@ -19,6 +19,7 @@ spec:
       containers:
       - name: redis
         image: redis:7-alpine
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 6379
           name: redis
@@ -74,10 +75,12 @@ spec:
       initContainers:
       - name: wait-for-redis
         image: redis:7-alpine
+        imagePullPolicy: IfNotPresent
         command: ["sh", "-c", "until redis-cli -h redis ping > /dev/null 2>&1; do sleep 2; done"]
       containers:
       - name: seed
         image: redis:7-alpine
+        imagePullPolicy: IfNotPresent
         command:
         - sh
         - -c

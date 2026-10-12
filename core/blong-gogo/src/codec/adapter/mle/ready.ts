@@ -176,7 +176,28 @@ export default handler<{
 
     return {
         async ready() {
-            let mleKey = null; // isBrowser && JSON.parse(window.localStorage.getItem('mle-jose') || 'null');
+            /**
+             * The pair is kept across a reload, which is what the write below has always assumed.
+             *
+             * A caller's session is opened with the pair it presented when it logged in — the realm
+             * that answers the session hands those two public keys back — and every later call is
+             * verified against the signing half of it. A reload that minted a new pair therefore
+             * signed with a key the session had never seen, and the gateway answered
+             * `Decryption failed` with `ERR_JWS_SIGNATURE_VERIFICATION_FAILED` underneath, on the
+             * first call of every page that logs in by reloading (F-497). The value is written below
+             * and was never read back, which is the shape of a half-finished feature rather than a
+             * decision: keeping it is now deliberate — a private JWK in `localStorage` is readable by
+             * any script on this origin, and the alternative is a session re-opened after every
+             * reload, which needs the caller's keys to travel with the call instead (D-530).
+             */
+            let mleKey = null;
+            if (isBrowser) {
+                try {
+                    mleKey = JSON.parse(window.localStorage.getItem('mle-jose') || 'null');
+                } catch {
+                    mleKey = null;
+                }
+            }
             if (!mleKey) {
                 const {body: {sign, encrypt} = {}}: {body?: {sign?: unknown; encrypt?: unknown}} =
                     (await (this as {exec?(...params: unknown[]): Promise<unknown>}).exec!(

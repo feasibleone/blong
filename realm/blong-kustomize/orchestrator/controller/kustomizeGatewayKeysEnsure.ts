@@ -67,11 +67,18 @@ export const generateGatewayKeys = (): IGatewayKeys => {
  * the gateway a container serves (server, `gateway.*`) and the peers it calls (client,
  * `remote.client.*`). Writing it here, next to the generator, keeps the shape the Secret's writer
  * produces and the shape the mounts expect in one place.
+ *
+ * The realm's own session mint reads it too (`kustomize.login.session.key`), and that is deliberate:
+ * `mle.ts` writes the *public* half back over `gateway.sign`, so a realm cannot reach the private half
+ * through the gateway's config — the framework's login realm is given its key as its own configuration
+ * for the same reason (D-448). The pair is generated per suite and never committed, so this is the one
+ * place it can be handed to a realm.
  */
 export const gatewayKeysConfig = (keys: IGatewayKeys): string =>
     JSON.stringify({
         gateway: {sign: keys.sign, encrypt: keys.encrypt},
         remote: {client: {sign: keys.sign, encrypt: keys.encrypt}},
+        kustomize: {login: {session: {key: keys.sign}}},
     });
 
 /** The declaration the pair belongs to, when the pass read one. */

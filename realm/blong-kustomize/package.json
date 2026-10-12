@@ -22,7 +22,7 @@
     "scripts": {
         "blong": "blong",
         "blong-watch": "blong-watch",
-        "build": "true",
+        "build": "vite build",
         "build-storybook": "storybook build",
         "ci-lint": "blong-dev lint",
         "ci-storybook": "npm run build-storybook",
@@ -36,6 +36,7 @@
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-server": "workspace:^1.0.0",
         "tinyglobby": "^0.2.16",
         "typebox": "^1.1.5",
         "yaml": "^2.8.3"

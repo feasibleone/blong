@@ -1,6 +1,21 @@
 import type {Errors} from '@feasibleone/blong';
 import {createLocalJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify} from 'jose';
+import {readFileSync} from 'node:fs';
 import {requestGet as get, loginService} from './lib.ts';
+
+/**
+ * The headers an issuer's own endpoints are read with.
+ *
+ * A cluster's discovery document and key set are not anonymous: the API server answers 401 unless
+ * the caller presents an identity it knows, so an issuer that names its credentials by file is read
+ * with them (`rpc.oidcHttp: OpenID returned HTTP error 401` is what an uncredentialed read looks
+ * like). The file is read per fetch rather than cached, because what lives in a projected
+ * service-account volume is rotated by the kubelet and the process is meant to pick the new one up.
+ */
+const issuerHeaders = (config: {tokenFile?: string} | undefined): Record<string, string> => {
+    if (!config?.tokenFile) return {};
+    return {authorization: `Bearer ${readFileSync(config.tokenFile, 'utf8').trim()}`};
+};
 
 export default ({
     issuers,
@@ -55,9 +70,12 @@ export default ({
                 ) => Promise<{protocol: string; hostname: string; port: number}>,
             );
             issuer = `${loginProtocol}://${hostname}:${port}/rpc/login/.well-known/openid-configuration`;
-        } else {
-            headers = undefined;
         }
+        // The headers are kept for every issuer, not only for `blong-login`. A configured issuer
+        // is read with whatever the caller of this function brought, and for a cluster issuer that
+        // is the process's own credential: discarding it here turned the API server's answer into
+        // `rpc.oidcHttp: 401` for a request that presented nothing, with nothing in the message to
+        // say the credential had been dropped on the way (F-494).
         return await get(issuer, errorOidcHttp, errorOidcEmpty, headers, protocol ?? '', tls);
     }
 
@@ -155,6 +173,7 @@ export default ({
                             {
                                 ...((await openIdConfig(
                                     configuration || issuerUrl(issuerId, url),
+                                    issuerHeaders(rest as {tokenFile?: string}),
                                 )) as object),
                                 audience,
                                 issuerId,
@@ -220,11 +239,12 @@ export default ({
     }
 
     async function jwks(issuerId: string) {
+        const config = await issuerConfig(issuerId);
         return get(
-            (await issuerConfig(issuerId)).jwks_uri,
+            config.jwks_uri,
             errorOidcHttp,
             errorOidcEmpty,
-            {},
+            issuerHeaders(config as {tokenFile?: string}),
             '',
             tls,
         );
@@ -295,7 +315,21 @@ export default ({
         } catch (error) {
             throw errorInvalid({params: {message: (error as Error).message}, cause: error});
         }
-        if (session && audience === 'blong' && !decoded.ses) await session(decoded);
+        /**
+         * The session step, for the issuers that ask for one.
+         *
+         * It is what hands a caller its session — an actor, a session id and the MLE key pair its
+         * later calls are decrypted with — by asking the `identity` namespace, and the framework's
+         * own issuer asks for it by name. An issuer may ask too (`session: true`), which is how a
+         * realm that answers its own login keeps the framework's session contract without running
+         * the framework's login realm: it answers `identity.checkInternal` itself. An issuer that
+         * asks for nothing gets nothing — a cluster issuer answers for the caller by its signature
+         * alone — and asking an `identity` service that does not exist is what made a verified
+         * token fail with `ENOTFOUND identity.<namespace>.svc.cluster.local` (F-494).
+         */
+        const wantsSession =
+            (config as {session?: boolean})?.session ?? decoded.iss === 'blong-login';
+        if (session && wantsSession && !decoded.ses) await session(decoded);
         return {
             ...decoded,
             config,

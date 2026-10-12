@@ -35,6 +35,37 @@ export default ({
         encrypt: string;
     }>;
 }) => {
+    /**
+     * What could not be reached, in the message rather than in a cause nobody prints.
+     *
+     * `fetch failed` is all a `TypeError` from the transport says, and the method and the
+     * address it was fetching are not in it: diagnosing an unreachable namespace came down
+     * to reading the process's DNS names out of a log line that did not carry them (F-494).
+     * Every transport failure in this file therefore leaves through here, with the method,
+     * the address and the code the resolver or the socket returned.
+     */
+    const unreachable = async <T>(
+        target: string,
+        method: string,
+        call: () => Promise<T>,
+    ): Promise<T> => {
+        try {
+            return await call();
+        } catch (error) {
+            const cause = (error as {cause?: {code?: string; hostname?: string; syscall?: string}})
+                ?.cause;
+            const detail = cause
+                ? [cause.code, cause.syscall, cause.hostname].filter(Boolean).join(' ')
+                : '';
+            throw new Error(
+                `gateway codec could not reach ${target} for '${method}': ` +
+                    `${(error as Error)?.message ?? String(error)}` +
+                    `${detail ? ` (${detail})` : ''}`,
+                {cause: error as Error},
+            );
+        }
+    };
+
     const localCache: Record<
         string,
         {
@@ -193,10 +224,12 @@ export default ({
         const cache = (localCache[url] = localCache[url] || {});
 
         if (localKeys && !cache.remoteKeys) {
-            const body = await get(
-                `${url}/rpc/login/.well-known/mle`,
-                errors['bus.jsonRpcHttp'],
-                errors['bus.jsonRpcEmpty'],
+            const body = await unreachable(`${url}/rpc/login/.well-known/mle`, method, () =>
+                get(
+                    `${url}/rpc/login/.well-known/mle`,
+                    errors['bus.jsonRpcHttp'],
+                    errors['bus.jsonRpcEmpty'],
+                ),
             );
             if (body.sign && body.encrypt) cache.remoteKeys = body;
         }
@@ -230,7 +263,10 @@ export default ({
             return codec;
         }
 
-        if (!cache.auth) await login(cache, url, username, password, channel);
+        if (!cache.auth)
+            await unreachable(`${url}/rpc/login/identity`, method, () =>
+                login(cache, url, username, password, channel),
+            );
 
         const exp = Date.now();
 

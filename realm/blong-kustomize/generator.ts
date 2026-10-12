@@ -1160,7 +1160,12 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
             replicas: plan.operator.replicas,
             selector: {matchLabels: selector},
             template: {
-                metadata: {labels: {...suiteLabels(plan), ...selector}},
+                metadata: {
+                    labels: {
+                        ...suiteLabels(plan),
+                        ...selector,
+                    },
+                },
                 spec: {
                     serviceAccountName: name,
                     containers: [
@@ -1202,6 +1207,19 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
                                 // declaration stopped naming is one nothing brings back, and leaving
                                 // it running is how a switched-off service keeps answering.
                                 {name: OPERATOR_ENV.prune, value: 'true'},
+                                // The API server's certificate is the cluster's own, and this
+                                // process must trust it to verify the caller against the issuer
+                                // that certificate belongs to: the framework reads the issuer's
+                                // discovery document and key set over HTTPS, and without this
+                                // that read fails as `SELF_SIGNED_CERT_IN_CHAIN` — which the
+                                // deployment page reported as an empty table, because the model's
+                                // schema call is what the verification refused. Node appends this
+                                // file to its root certificates at startup, so every TLS client
+                                // in the process inherits the trust, the gateway codec included.
+                                {
+                                    name: 'NODE_EXTRA_CA_CERTS',
+                                    value: '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt',
+                                },
                             ],
                             volumeMounts: [
                                 mount,
@@ -1286,6 +1304,13 @@ export const installKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
     // Service in its own namespace and a selector is namespace-local — so the address belongs to the
     // cluster rather than to a tenant, which is the same reason the operator is installed once.
     tree.set('services/blong-operator.yaml', operatorServiceResource(plan));
+    // No `identity` Service here: this process answers the session step itself. The framework's
+    // session check (`identity.checkInternal`) is resolved in the process that verified the token —
+    // the entry names it in `remote.skipGateway` so it never reaches a gateway — so the name has
+    // nothing to resolve to, and the
+    // Service that used to publish it selected a pod label for an address no call asks for (F-494
+    // is now the local answer, not a Service). A suite's tree still generates the namespace Services
+    // its own containers answer for, which is the generic path (`unservedNamespaces`).
     // The address the deployment read API answers on, when the installer named one (D-434): an Ingress
     // in the operator's own namespace, pointing at the operator's own Service. A suite's portal
     // cannot front it — an Ingress backend has to be a Service in the Ingress's namespace, and a
@@ -1788,10 +1813,7 @@ const fillJobResource = (plan: IDeploymentPlan, node: string): Record<string, un
                             // The parent, not the identity's own directory: the fill stages a sibling
                             // there and renames it into place, and the retention counts what is left
                             // beside it.
-                            volumeMounts: [
-                                {name: 'suite', mountPath: root},
-                                fillModuleMount(),
-                            ],
+                            volumeMounts: [{name: 'suite', mountPath: root}, fillModuleMount()],
                             resources: containerResources(),
                             // Root, and only here: the volume is a hostPath, so `fsGroup` does not apply
                             // and the directory belongs to the node.

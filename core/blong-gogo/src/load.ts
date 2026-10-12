@@ -1360,7 +1360,7 @@ export default async function loadRealm<T extends TSchema>(
          */
         intents?: readonly string[];
     }> = [
-        {name: 'server', specifier: '@feasibleone/blong-server/server.ts'},
+        {name: 'srv', specifier: '@feasibleone/blong-server/server.ts'},
         {name: 'login', specifier: '@feasibleone/blong-login/server.ts'},
         {name: 'core', specifier: '@feasibleone/blong-core/server.ts'},
         {name: 'access', specifier: '@feasibleone/blong-access/server.ts'},

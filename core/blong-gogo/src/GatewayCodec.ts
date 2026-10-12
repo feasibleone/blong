@@ -39,6 +39,28 @@ export interface IGatewayCodec {
 export interface IConfig {
     client?: {tls?: {ca?: string | string[]; key?: string; cert?: string; crl?: string}};
     gateway?: object;
+    /**
+     * Whether a method must *not* be carried by the gateway this config names: `true` for every method,
+     * `false` for none, or a regular-expression *source* matched against the method name for the ones
+     * that belong here.
+     *
+     * The routing decision is made here — a gateway is where an *outside* caller reaches a process, and
+     * `gateway()` is what says whether a call is handed to one — so this is where a method that has to
+     * be answered at home is kept out of it. The name the framework needs it for is its own session
+     * check: `identity.checkInternal` is asked by the process that verified the token, from inside that
+     * verification, and a realm that answers its own login is one process. Routed through a gateway the
+     * call reached the gateway itself, was refused for a missing bearer and came back as a null the
+     * session step destructured (F-497) — a hardcoded name here until this setting replaced it, because
+     * a deployment that routes namespaces through a gateway is the one that knows which of its own
+     * methods have to stay home.
+     *
+     * A skipped method falls back to the ordinary path, and what that resolves to is the resolver's
+     * answer: `remote.canSkipSocket` decides whether the process answers it in-process or sends it to
+     * the namespace. The two settings compose rather than overlap — this one says "not through the
+     * gateway", that one says "answered here" — which is why the resolver asks its question only after
+     * this one has let the call through.
+     */
+    skipGateway?: boolean | string;
     protocol?: Protocol;
     host?: string;
     port?: string;
@@ -56,6 +78,14 @@ export default class GatewayCodecImpl implements IGatewayCodec {
     #config: IConfig;
     #tlsClient: object;
     #resolution: IResolution;
+    /**
+     * The `skipGateway` source as it was compiled, and the pattern — `null` for a source that did not
+     * compile.
+     *
+     * Kept beside the source for the reason the resolver keeps its own: `gateway()` runs for every
+     * outgoing call, and compiling the same expression per call is work that only the first call needs.
+     */
+    #skipGateway: {source: boolean | string; pattern: RegExp | null} | undefined;
 
     public verify!: IGatewayCodec['verify'];
 
@@ -170,8 +200,37 @@ export default class GatewayCodecImpl implements IGatewayCodec {
         this.verify = verify as IGatewayCodec['verify'];
     }
 
+    /**
+     * Whether this call is one the gateway must not carry ({@link IConfig.skipGateway}).
+     *
+     * A source that does not compile is treated as nothing matching rather than as every method: a typo
+     * in a config must not decide that no call is ever routed, and the alternative — refusing to start —
+     * would take a deployment down over a string. Nothing is logged here because this class has no
+     * logger: it is handed one by the caller that owns the logs, and the silent treatment is the same
+     * answer `Remote.canAnswerLocally` reports through its own.
+     */
+    private _skipsGateway(methodName: string): boolean {
+        const {skipGateway} = this.#config;
+        if (skipGateway === true) return true;
+        if (typeof skipGateway !== 'string') return false;
+        if (this.#skipGateway?.source !== skipGateway) {
+            let pattern: RegExp | null = null;
+            try {
+                pattern = new RegExp(skipGateway);
+            } catch {
+                pattern = null;
+            }
+            this.#skipGateway = {source: skipGateway, pattern};
+        }
+        return this.#skipGateway.pattern?.test(methodName) ?? false;
+    }
+
     public gateway($meta: IMeta, methodName: string = $meta.method!): object | void {
-        if (this.#config.gateway && methodName !== 'identity.checkInternal') {
+        // A skipped method does not reach a gateway at all, not even one the caller asked for in
+        // `$meta.gateway`: the setting says this process answers the call, and what answers it is the
+        // resolver's business (see `IConfig.skipGateway`).
+        if (this._skipsGateway(methodName)) return undefined;
+        if (this.#config.gateway) {
             const gw = this.#config.gateway as Record<string, unknown>;
             const [prefix, method] = methodName.split('/');
             if (method) {

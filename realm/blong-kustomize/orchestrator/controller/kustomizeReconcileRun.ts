@@ -24,10 +24,12 @@ import {
 import type {IBlongDeploymentSpec, IDescribeCapable, IPlanConfig} from '../../plan.ts';
 import {
     DEFAULT_ATTEMPT_RETENTION,
+    clusterNodeNames,
     planFromRegistry,
     planOptionsFromSpec,
     planOptionsOf,
     registryView,
+    resolveNodes,
 } from '../../plan.ts';
 import {DEFAULT_SERVICES_NAMESPACE} from '../../services.ts';
 
@@ -148,6 +150,37 @@ export const unreadableFailures = (
     unreadable: ReadonlyArray<{key: string; message: string; cleanupOnly: boolean}>,
 ): Array<{key: string; message: string}> =>
     unreadable.filter(entry => !entry.cleanupOnly).map(({key, message}) => ({key, message}));
+
+/**
+ * Which listing a CR pass reads: the namespace it knows, or every CR the operator can see.
+ *
+ * The narrow question is asked first, because both callers that *do* know a namespace name one — a
+ * suite's own portal is configured with the suite's namespace, and an operator is configured with the
+ * namespace it serves. A caller that named none and found nothing there is asking about the CRs this
+ * operator reconciles, which is a set nobody configured: an operator is installed once and reconciles
+ * suites it was never told about, and the deployment page's button is exactly that caller (T-328). A
+ * namespace that was named is never widened — naming one is a request to be answered about it, and
+ * falling back would answer a narrower question with a broader object.
+ *
+ * Pure and exported for the reason the other guards are: which scope a pass reads is the half no
+ * cluster is needed for, and it is the half that decides whether the page's button is answered about
+ * the suite it lists or about nothing at all.
+ */
+export const crListingScope = ({
+    named,
+    configured,
+    held,
+}: {
+    /** The namespace the caller named, if it named one. */
+    named?: string;
+    /** The namespace this process is configured with. */
+    configured: string;
+    /** How many CRs the configured namespace holds. */
+    held: number;
+}): {scope: string; namespaced: boolean} =>
+    named === undefined && held === 0
+        ? {scope: 'any namespace', namespaced: false}
+        : {scope: named ?? configured, namespaced: true};
 
 /**
  *
@@ -532,6 +565,14 @@ export default handler(({handler}) => {
             reconciled: number;
             applied: boolean;
             origin?: 'registry' | 'cr';
+            /**
+             * Which CR the pass reconciled, when it read one.
+             *
+             * The caller that named one does not need it back; the caller that named none — the
+             * deployment page's button, which reconciles whatever the operator serves — does, and so
+             * does anyone reading a log line about a pass that read a declaration (T-328).
+             */
+            suite?: {name?: string; namespace?: string};
             created?: number;
             updated?: number;
             unchanged?: number;
@@ -571,21 +612,32 @@ export default handler(({handler}) => {
                 const tenant = params.namespace ?? options.namespace ?? options.suiteName;
                 // The coordinates, not just the namespace: the adapter reaches a custom resource
                 // through its group, version and plural, and a `BlongDeployment` is not a kind it
-                // knows from the client's own API list.
-                const found = (await list(
-                    {
-                        group: OPERATOR_GROUP,
-                        version: OPERATOR_VERSION,
-                        plural: OPERATOR_PLURAL,
-                        namespace: tenant,
-                    },
-                    meta,
-                )) as {
-                    items?: Array<{
-                        metadata?: {name?: string};
-                        spec?: IBlongDeploymentSpec;
-                    }>;
+                // knows from the client's own API list. Held once because the two listings below
+                // differ only in the scope they name.
+                const coordinates = {
+                    group: OPERATOR_GROUP,
+                    version: OPERATOR_VERSION,
+                    plural: OPERATOR_PLURAL,
                 };
+                const listing = async (scope: object) =>
+                    (await list({...coordinates, ...scope}, meta)) as {
+                        items?: Array<{
+                            metadata?: {name?: string; namespace?: string; uid?: string};
+                            spec?: IBlongDeploymentSpec;
+                        }>;
+                    };
+                // The narrow question first, and only widened when nobody named a namespace and that
+                // one holds nothing — see `crListingScope`, which is where the rule is written down.
+                let found = await listing({namespace: tenant});
+                const {scope, namespaced} = crListingScope({
+                    named: params.namespace,
+                    configured: tenant,
+                    held: found?.items?.length ?? 0,
+                });
+                if (!namespaced) {
+                    const all = await listing({namespaced: false});
+                    if (all?.items?.length) found = all;
+                }
                 // Filtered here rather than in the API call: the adapter's find answers a list, and
                 // one namespace holds one suite in practice, so a name is a lookup into a handful of
                 // items rather than a reason for a second verb. The item is kept whole because the
@@ -597,19 +649,20 @@ export default handler(({handler}) => {
                 declaredName = item?.metadata?.name;
                 // The listing type names only what the pass reads for the plan; the uid is what an
                 // owner reference needs, and it comes from the same object (T-267).
-                declaredUid = (item?.metadata as {uid?: string} | undefined)?.uid;
+                declaredUid = item?.metadata?.uid;
                 if (!declared) {
                     return {
                         reconciled: 0,
                         applied: false,
                         reason: params.name
-                            ? `no BlongDeployment ${params.name} in ${tenant}`
-                            : `no BlongDeployment names a suite in ${tenant}`,
+                            ? `no BlongDeployment ${params.name} in ${scope}`
+                            : `no BlongDeployment names a suite in ${scope}`,
                     };
                 }
                 // The CR's namespace is the tenant: the suite deploys where it was declared, not
-                // where this process happens to be configured.
-                options.namespace = tenant;
+                // where this process happens to be configured — which is what the cluster-wide
+                // listing above has to hand back rather than the namespace it searched.
+                options.namespace = item?.metadata?.namespace ?? tenant;
                 Object.assign(options, planOptionsFromSpec(declared));
                 origin = 'cr';
             }
@@ -649,6 +702,19 @@ export default handler(({handler}) => {
                 )) as {tree: KustomizeTree};
                 tree = generated.tree;
             } else {
+                // A pass this process plans itself has to be *told* the nodes: it is not the run that
+                // wrote the tree, and a `nodeLocal` volume is one directory per node (D-470). The CR
+                // wins where it names them, the realm's config answers otherwise, and the cluster is
+                // asked only for a selector (T-327). A CR pass needs none of this: it asks
+                // `kustomize.suite.generate` for a tree, and that leg reads the same source itself.
+                const nodeFind = call('clusterNodeFind');
+                options.nodes = await resolveNodes(options.nodeSource, async selector => {
+                    if (!nodeFind) return undefined;
+                    const found = (await nodeFind({labelSelector: selector}, $meta as IMeta)) as {
+                        items?: unknown[];
+                    };
+                    return clusterNodeNames(found);
+                });
                 tree = buildKustomizeTree(planFromRegistry(registryView(self.registry), options));
             }
             const {managed, skipped} = collectManifests(tree);
@@ -1006,6 +1072,12 @@ export default handler(({handler}) => {
                 reconciled: groups.reduce((total, group) => total + group.live.length, 0),
                 applied: !readOnly && failures.length === 0,
                 origin,
+                // Which declaration this pass answered for. A caller that named the CR knows it
+                // already; the one that named none was answered about whichever the cluster holds,
+                // and a pass that does not say which is one nobody can act on (T-328).
+                ...(origin === 'cr' && declaredName
+                    ? {suite: {name: declaredName, namespace: suiteNamespace}}
+                    : {}),
                 created,
                 updated,
                 unchanged,

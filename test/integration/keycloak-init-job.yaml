@@ -10,6 +10,7 @@ spec:
       containers:
       - name: keycloak-init
         image: curlimages/curl:latest
+        imagePullPolicy: IfNotPresent
         env:
         - name: KEYCLOAK_URL
           value: "http://keycloak:8180"
