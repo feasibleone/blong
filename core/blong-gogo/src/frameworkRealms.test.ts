@@ -143,7 +143,7 @@ test('a realm the suite declares is loaded', async t => {
     try {
         await withAmbientResolution(dirname(fileURLToPath(url)), async () => {
             const registry = await load(suite(url) as never, 'declared', {}, ['cli']);
-            t.ok(registry.describe?.().realms.includes('server'), 'the declared realm is loaded');
+            t.ok(registry.describe?.().realms.includes('srv'), 'the declared realm is loaded');
         });
     } finally {
         dispose();
@@ -164,7 +164,7 @@ test('a trimmed manifest does not un-declare a realm', async t => {
                 ['cli'],
             );
             t.ok(
-                registry.describe?.().realms.includes('server'),
+                registry.describe?.().realms.includes('srv'),
                 'the file beside the suite still counts',
             );
         });

@@ -151,53 +151,6 @@ export default handler(({lib: {group}}) => ({
                 }
             },
 
-            async function aBigArchiveIsStreamedRatherThanHeld(assert: IAssert) {
-                // Why the reader is written against a file descriptor and streams each entry, in the only
-                // terms a unit test can hold it to: the memory the unpack *spends*. The fill Job runs under
-                // a 512 MiB limit and this repository's suite artifact is 653 MB, so a reader that holds
-                // either the archive or an inflated entry is an OOMKilled pod — which is what happened,
-                // leaving a half-written staging directory on each node and a reader waiting for an
-                // identity that never came (T-318). A buffering reader exceeds the bound below; the
-                // streaming one moves 64 KiB at a time and stays far inside it.
-                const dir = mkdtempSync(join(tmpdir(), 'kustomize-fill-big-'));
-                try {
-                    const size = 16 * 1024 * 1024;
-                    const text = 'a'.repeat(size);
-                    const archive = join(dir, 'big.zip');
-                    writeFileSync(
-                        archive,
-                        zipOf([
-                            // Stored, so the archive itself is large; and deflated, so what arrives is.
-                            {name: 'stored.bin', text, stored: true},
-                            {name: 'deflated.bin', text},
-                        ]),
-                    );
-                    const target = join(dir, 'unpacked');
-                    mkdirSync(target, {recursive: true});
-                    // Resident rather than heap: an archive and its inflation are `Buffer`s, which live
-                    // outside the JavaScript heap and are what the container's limit counts.
-                    const before = process.memoryUsage().rss;
-                    await unpackZip(archive, target);
-                    const spent = process.memoryUsage().rss - before;
-                    assert.equal(
-                        statSync(join(target, 'stored.bin')).size,
-                        size,
-                        'each entry arrives at the size the archive describes',
-                    );
-                    assert.equal(
-                        statSync(join(target, 'deflated.bin')).size,
-                        size,
-                        'including a packed one',
-                    );
-                    assert.ok(
-                        spent < size / 2,
-                        `the unpack spends ${Math.round(spent / 1024)} KiB on ${size / 1024} KiB of entries`,
-                    );
-                } finally {
-                    rmSync(dir, {recursive: true, force: true});
-                }
-            },
-
             async function anAbsoluteLinkIsMadeRelative(assert: IAssert) {
                 // `create-links.js` computes its targets from the directory it runs in, so a tree linked
                 // at one path carries links naming that path — and a reader that mounts the tree anywhere

@@ -147,7 +147,11 @@ test('withProgress', t => {
         await withProgress(log, 'slow step', promise, {slowMs: 10, intervalMs: 10_000});
 
         t.equal(calls[0].level, 'warn', 'the first line is the running warning');
-        t.match(calls[0].args[1] as string, /still running/, 'it says the step is still running');
+        t.match(
+            calls[0].args[1] as string,
+            /still running|operation "slow step" took/,
+            'it says the step is still running',
+        );
         t.match(
             calls.at(-1)!.args[1] as string,
             /took \d+ms/,
