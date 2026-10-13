@@ -54,7 +54,7 @@ them, in both directions:
 ```mermaid
 flowchart LR
     subgraph write["write path"]
-        c["memory add / edit / close"] --> f["the markdown tree"]
+        c["memory add / edit / close / …"] --> f["the markdown tree"]
         f --> h["retain the entry"]
     end
     subgraph read["read path"]
@@ -68,17 +68,20 @@ flowchart LR
     class c,f,h,q,r,a,bank,b nowrap
 ```
 
-The **write path** is a hook, not a second thing to remember to run: `add`, `edit`, `close`, `move`
-and `prune` push the entry they touched into the index after the file is written. The markdown is
-unchanged by it, and a hook that cannot reach the server costs a warning rather than a failure.
+The **write path** is a hook, not a second thing to remember to run: whatever command changes an
+entry pushes it into the index after the file is written, and whatever removes one takes its
+document out again. The markdown is unchanged by it, and a hook that cannot reach the server costs a
+warning rather than a failure.
 
 The **read path** is one command with filters for kind, area and status, so "find the decision about
 this" is one keystroke away from "find anything about this".
 
 The **backfill** exists because the index is derived and therefore disposable:
-`memory index --semantic` walks the whole tree and re-ingests every entry, which is the recovery for
-a wiped bank, a new machine, or a question about whether the index still matches the files. Today it
-rebuilds all 596 entries in about half a minute.
+`memory index --semantic` re-ingests the tree — every entry by default, and with `--sources` the
+documentation pages and skills the search can compare on equal terms — which is the recovery for a
+wiped bank, a new machine, or a question about whether the index still matches the files. Today that
+is 1 049 entries in about four seconds, and it reports what the bank holds that the tree no longer
+does, which is how that drift gets noticed instead of being assumed away.
 
 ## The files stay the source of truth
 
@@ -100,6 +103,9 @@ Three properties keep the index from becoming a second, quietly diverging record
 | `HINDSIGHT_API_URL`  | `http://localhost:8888` | which server the index lives on                    |
 | `HINDSIGHT_BANK`     | `blong`                 | which collection of entries to read and write      |
 | `HINDSIGHT_DISABLED` | unset                   | the write hook off, for a machine without a server |
+
+The first two may also live in `.blong_devrc`, as `hindsight.url` and `hindsight.bank` — which is
+how a machine stores them once rather than exporting them in every shell.
 
 ## One choice that could not be undone
 
@@ -138,3 +144,7 @@ The commands, the entry shape and the settings are in
 what the notes are, and [the rationale](/docs/rationale/memory) explains why the files are markdown
 with ids rather than a database — which is also why the index beside them is allowed to be
 disposable.
+
+The post that follows takes the same ids out of the notes and back into the code:
+[prose cross references](/blog/prose-cross-reference) are how a comment cites the reasoning it
+depends on instead of restating it.

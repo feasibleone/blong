@@ -14,8 +14,8 @@ import {
 } from 'node:fs';
 import {tmpdir} from 'node:os';
 import {isAbsolute, join} from 'node:path';
-import {fileURLToPath} from 'node:url';
 import {crc32, deflateRawSync} from 'node:zlib';
+import {FILL_MODULE, fillModuleData} from '../../../artifact.ts';
 import {
     ARTIFACT_READY,
     FILL_ENV,
@@ -24,6 +24,7 @@ import {
     relativizeLinks,
     unpackZip,
 } from '../../../fill.ts';
+import {FILL_SOURCE, minifiedFill} from '../../../scripts/minifyFill.ts';
 
 /**
  * server/test/test/testFill.ts — the step that brings an artifact to where it is read from.
@@ -352,14 +353,29 @@ export default handler(({lib: {group}}) => ({
                         join(source, 'suite', 'index.ts'),
                         'export const suite = true;\n',
                     );
-                    // What the ConfigMap carries: this module's own text, under the name the Job starts.
+                    // What the ConfigMap carries: the module's own text, without its comments, under
+                    // the name the Job starts. The bytes are taken from the generator rather than from
+                    // the file, so this case runs what a cluster receives.
+                    const shipped = Buffer.from(
+                        fillModuleData()[FILL_MODULE.file] as string,
+                        'base64',
+                    ).toString('utf8');
+                    assert.match(shipped, /FILL_ENV/, 'the code is all there');
+                    assert.doesNotMatch(
+                        shipped,
+                        /\/\*|^\s*\/\//m,
+                        'and no comment travels into the ConfigMap',
+                    );
+                    assert.equal(
+                        shipped,
+                        minifiedFill(readFileSync(FILL_SOURCE, 'utf8')),
+                        'and the committed copy is what the minifier writes today, so editing the ' +
+                            'source without running sync-fill-module fails here',
+                    );
                     const version = '..2026_10_11_14_46_55.123';
                     const published = join(dir, 'script', version);
                     mkdirSync(published, {recursive: true});
-                    writeFileSync(
-                        join(published, 'fill.mts'),
-                        readFileSync(fileURLToPath(new URL('../../../fill.ts', import.meta.url))),
-                    );
+                    writeFileSync(join(published, 'fill.mts'), shipped);
                     // And how the kubelet publishes it: the name the Job reads is a link to that directory.
                     const script = join(dir, 'script', 'fill.mts');
                     symlinkSync(join(version, 'fill.mts'), script);

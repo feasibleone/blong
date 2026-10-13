@@ -54,10 +54,12 @@ reordered, split or moved. A line number in a note rots the first time anybody a
 above it; an id does not.
 
 Ids are allocated by the command, never reused, and shared across the whole workspace, so `F-292` is
-one specific afternoon wherever it is filed. The files themselves are filed by **area**: a package
-folder from `rush.json` (`core/blong-browser`), or one of the reserved labels `cross-cutting`, `ci`,
-`docs` and `skills`. A package's notes live in that package, next to the code they are about, and
-the root file keeps only what concerns the workspace as a whole.
+one specific afternoon wherever it is filed. An entry that is closed or removed leaves its id behind
+in a `## Retired` ledger at the foot of the file, so a reference to it still resolves — as done,
+with the date — instead of pointing at whatever number came next. The files themselves are filed by
+**area**: a package folder from `rush.json` (`core/blong-browser`), or one of the reserved labels
+`cross-cutting`, `ci`, `docs` and `skills`. A package's notes live in that package, next to the code
+they are about, and the root file keeps only what concerns the workspace as a whole.
 
 ## The command owns the format
 
@@ -79,9 +81,10 @@ folder nor a reserved label. The index is derived from the entries, so a drifted
 failure rather than a stale file, and the same command is wired into the pre-commit hook: staged
 changes under `.github/memory/` are checked before the commit is recorded.
 
-Two consequences are worth naming. The index is how the files stay cheap to read: an agent opens the
-first forty lines and sees every entry in the file, one line each, grouped by status. And a batch
-import validates _before_ writing anything, so it lands whole or not at all.
+Two consequences are worth naming. The index is how the files stay cheap to read: the top of the
+file lists every entry in it, one line each, grouped by status, so a reader knows what a file holds
+before reading a single entry. And a batch import validates _before_ writing anything, so it lands
+whole or not at all.
 
 ## What it does not do, said plainly
 
@@ -121,4 +124,5 @@ flowchart TB
 How it works, with the commands and the entry shape, is in
 [the memory pattern guide](/docs/patterns/memory); [the concept page](/docs/concepts/memory) covers
 the three kinds, and [the rationale](/docs/rationale/memory) explains why this is markdown with ids
-rather than a database or a tracker.
+rather than a database or a tracker. The next post in the series adds a way to read the same notes
+by meaning instead of by phrase: [the repo answers by meaning](/blog/the-repo-answers-by-meaning).

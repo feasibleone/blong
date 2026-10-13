@@ -1,8 +1,8 @@
-import {createHash} from 'node:crypto';
-import {existsSync, readFileSync} from 'node:fs';
-import {join} from 'node:path';
-import {ARTIFACT_READY} from './fill.ts';
-import type {ISuiteArtifact} from './plan.ts';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { ARTIFACT_READY } from './fill.ts';
+import type { ISuiteArtifact } from './plan.ts';
 
 /**
  * artifact.ts — where a suite's artifact comes from and where it lands, shared by the operator and a
@@ -42,6 +42,11 @@ export const fillModuleMount = (): Record<string, unknown> => ({
 /**
  * The module's bytes, as the ConfigMap carries them: base64, one keyed value per file.
  *
+ * The bytes are `fill.min.mts`, the module swc wrote, rather than `fill.ts`: the copy that runs in a
+ * Job is a derived artefact, and minifying it inline would put a minifier into the framework image and
+ * the operator's artifact, neither of which carries one (@@D-542). `npm run sync-fill-module` writes
+ * it, and a test compares the committed copy with a fresh one, so a stale file fails there (@@D-543).
+ *
  * `binaryData` rather than `data`, because a multi-line value is written as a *folded* block scalar — the
  * line breaks would be replaced with spaces and the text re-wrapped at the width, and a program that
  * arrived that way would not parse. kustomize re-emits the value it parsed, so the flattening would
@@ -50,7 +55,7 @@ export const fillModuleMount = (): Record<string, unknown> => ({
  * it carries the labels every other object of a tree carries.
  */
 export const fillModuleData = (): Record<string, string> => ({
-    [FILL_MODULE.file]: readFileSync(new URL('./fill.ts', import.meta.url)).toString('base64'),
+    [FILL_MODULE.file]: readFileSync(new URL('./fill.min.mts', import.meta.url)).toString('base64'),
 });
 
 /**
@@ -60,7 +65,7 @@ export const fillModuleData = (): Record<string, string> => ({
  * tree and the operator both ask this module for them — and because the mounted copy is that same file
  * (@@D-518).
  */
-export {ARTIFACT_READY, FILL_ENV, fillArtifact, keepNewest, type IFillRequest} from './fill.ts';
+export { ARTIFACT_READY, FILL_ENV, fillArtifact, keepNewest, type IFillRequest } from './fill.ts';
 
 /**
  * The short token one artifact's directories carry: eight characters of its digest, or a digest of the

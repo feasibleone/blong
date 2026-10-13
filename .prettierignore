@@ -9,5 +9,9 @@
 # Generated, and compared byte for byte by test/flow/observedFlows.test.ts — a formatter
 # that re-padded its tables would turn a green suite red without changing a diagram.
 **/docs/observed-flows.md
+# Written by realm/blong-kustomize/scripts/minifyFill.ts and compared byte for byte by
+# realm/blong-kustomize/server/test/test/testFill.ts — a formatter would expand the minified
+# module and turn a green suite red without changing what the operator ships.
+**/fill.min.mts
 .env
 tsdoc-metadata.json

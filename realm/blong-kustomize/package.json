@@ -31,6 +31,10 @@
         "playwright": "blong-dev playwright",
         "playwright:update": "blong-dev playwright --update-snapshots",
         "storybook": "storybook dev -p 6007",
+        "sync-derived": "npm run sync-fill-module && npm run sync-install-tree && npm run sync-snapshots",
+        "sync-fill-module": "node ./scripts/minifyFill.ts",
+        "sync-install-tree": "blong ./operator-entry.ts k8s --kustomize.deploy.outputDir=system/operator --kustomize.deploy.layout=split --kustomize.deploy.suiteVolume.artifact.url=http://blong-artifact.default.svc.cluster.local/kustomize.zip --kustomize.deploy.suite.frameworkImage=docker.io/library/blong-gogo --kustomize.deploy.suite.minFrameworkVersion=1",
+        "sync-snapshots": "blong-dev test --snapshot",
         "test": "blong-dev test",
         "typecheck": "tsc --noEmit"
     },

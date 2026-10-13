@@ -445,6 +445,9 @@ export async function lintCollect(
             const result = await failure('eslint', [
                 '--max-warnings',
                 '0',
+                // Naming an ignored file on the command line makes eslint warn about it, and a
+                // warning fails the run: skip it, exactly as a whole-package run would.
+                '--no-warn-ignored',
                 '-f',
                 'json',
                 ...targets,
