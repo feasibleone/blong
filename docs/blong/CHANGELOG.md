@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.32.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.31.0...blong-docs-v1.32.0) (2026-10-13)
+
+
+### Features
+
+* prose cross reference ([edd89f3](https://github.com/feasibleone/blong/commit/edd89f3ce53864e03a8a4aaa723882bef6d4df3e))
+
+
+### Bug Fixes
+
+* fill.ts ([837385e](https://github.com/feasibleone/blong/commit/837385e6f412c68d1bfa1f4bdc232b70fc1ca217))
+
 ## [1.31.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.30.0...blong-docs-v1.31.0) (2026-10-13)
 
 

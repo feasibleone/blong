@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/feasibleone/blong/compare/semantic-log-v1.5.0...semantic-log-v1.6.0) (2026-10-13)
+
+
+### Features
+
+* prose cross reference ([edd89f3](https://github.com/feasibleone/blong/commit/edd89f3ce53864e03a8a4aaa723882bef6d4df3e))
+
 ## [1.5.0](https://github.com/feasibleone/blong/compare/semantic-log-v1.4.0...semantic-log-v1.5.0) (2026-10-13)
 
 
