@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.25.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.24.0...blong-browser-v1.25.0) (2026-10-13)
+
+
+### Features
+
+* blong-kustomize improvements ([0a07e50](https://github.com/feasibleone/blong/commit/0a07e50275208a3fd8a23476e0abe9334ec3822d))
+* blong-kustomize operator UI ([2599dab](https://github.com/feasibleone/blong/commit/2599dab9c5ac734c9949f9af9b11fcb181eb8c7f))
+
 ## [1.24.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.23.0...blong-browser-v1.24.0) (2026-10-11)
 
 

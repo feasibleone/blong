@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.33.0](https://github.com/feasibleone/blong/compare/blong-v1.32.0...blong-v1.33.0) (2026-10-13)
+
+
+### Features
+
+* blong-kustomize operator UI ([2599dab](https://github.com/feasibleone/blong/commit/2599dab9c5ac734c9949f9af9b11fcb181eb8c7f))
+
 ## [1.32.0](https://github.com/feasibleone/blong/compare/blong-v1.31.1...blong-v1.32.0) (2026-10-11)
 
 

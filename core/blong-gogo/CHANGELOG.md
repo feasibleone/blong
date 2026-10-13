@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.40.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.39.0...blong-gogo-v1.40.0) (2026-10-13)
+
+
+### Features
+
+* blong-kustomize improvements ([0a07e50](https://github.com/feasibleone/blong/commit/0a07e50275208a3fd8a23476e0abe9334ec3822d))
+* blong-kustomize operator UI ([2599dab](https://github.com/feasibleone/blong/commit/2599dab9c5ac734c9949f9af9b11fcb181eb8c7f))
+
+
+### Bug Fixes
+
+* flaky tests ([226d4a6](https://github.com/feasibleone/blong/commit/226d4a6c1bb912e2fff0919bda975ba487d3e060))
+
 ## [1.39.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.38.1...blong-gogo-v1.39.0) (2026-10-11)
 
 

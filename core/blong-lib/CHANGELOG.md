@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/feasibleone/blong/compare/blong-lib-v1.8.0...blong-lib-v1.8.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* flaky tests ([226d4a6](https://github.com/feasibleone/blong/commit/226d4a6c1bb912e2fff0919bda975ba487d3e060))
+
 ## [1.8.0](https://github.com/feasibleone/blong/compare/blong-lib-v1.7.0...blong-lib-v1.8.0) (2026-10-11)
 
 

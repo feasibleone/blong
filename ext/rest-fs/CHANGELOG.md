@@ -4,6 +4,13 @@ All notable changes to the "rest-filesystem" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/rest-fs-v1.6.0...rest-fs-v1.7.0) (2026-10-13)
+
+
+### Features
+
+* blong-kustomize improvements ([0a07e50](https://github.com/feasibleone/blong/commit/0a07e50275208a3fd8a23476e0abe9334ec3822d))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/rest-fs-v1.5.0...rest-fs-v1.6.0) (2026-09-26)
 
 
