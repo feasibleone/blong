@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.10.0...blong-dev-v1.11.0) (2026-10-13)
+
+
+### Features
+
+* prose cross reference ([edd89f3](https://github.com/feasibleone/blong/commit/edd89f3ce53864e03a8a4aaa723882bef6d4df3e))
+
 ## [1.10.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.9.0...blong-dev-v1.10.0) (2026-10-13)
 
 

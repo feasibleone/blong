@@ -1,9 +1,9 @@
 {
     "core/blong": "1.33.0",
     "realm/blong-login": "1.13.0",
-    "docs/blong": "1.31.0",
+    "docs/blong": "1.32.0",
     "realm/blong-test": "1.10.0",
-    "ext/rest-fs": "1.7.0",
+    "ext/rest-fs": "1.8.0",
     "core/blong-gogo": "1.40.0",
     "core/blong-chain": "1.12.0",
     "core/blong-kopi": "1.19.0",
@@ -18,7 +18,7 @@
     "core/blong-browser": "1.25.0",
     "demo/blong-marine": "1.9.0",
     "suite/blong-suite": "1.15.0",
-    "tools/blong-dev": "1.10.0",
+    "tools/blong-dev": "1.11.0",
     "realm/blong-access": "1.10.0",
     "realm/blong-core": "1.4.0",
     "core/blong-lib": "1.8.1",
@@ -30,5 +30,5 @@
     "core/blong-mle": "1.2.0",
     "realm/blong-access-mock": "1.1.0",
     "realm/blong-commander": "1.2.3",
-    "core/semantic-log": "1.5.0"
+    "core/semantic-log": "1.6.0"
 }
