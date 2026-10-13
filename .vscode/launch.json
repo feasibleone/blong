@@ -35,7 +35,8 @@
             "request": "launch",
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}/ext/rest-fs",
-                "--disable-extensions"
+                "--disable-extensions",
+                "${workspaceFolder}"
             ],
             "outFiles": ["${workspaceFolder}/ext/rest-fs/dist/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",

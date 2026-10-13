@@ -25,7 +25,7 @@ type SessionHandler = {
  *
  * Built rather than reached through the proxy for the reason the identity handler is: a library the
  * test-side import resolves is a no-op there, and a test that cannot tell a mint from a no-op proves
- * nothing (F-495). The gateway is a stub whose `config()` answers the pair the realm's own generator
+ * nothing (@@F-495). The gateway is a stub whose `config` answers the pair the realm's own generator
  * makes, which is the pair a deployment's rc file hands the process.
  */
 const buildMint = async (session: {
@@ -71,7 +71,7 @@ const claimsOf = (token: string): Record<string, unknown> =>
  * that resolution asks the registry for the name — which for `identityCheckInternal` is the method
  * `identity.check.internal`, a *three*-part name the port answers as `ports.identity.request`. What a
  * test-side import resolves to there is a no-op that answers `undefined`, and a test asserting a
- * refusal cannot tell that apart from a refusal that did not happen (F-495). The contract under test
+ * refusal cannot tell that apart from a refusal that did not happen (@@F-495). The contract under test
  * is the handler's own, so it is built the way the loader builds it.
  */
 const buildSession = (): {handler: SessionHandler; failures: string[]} => {
@@ -92,19 +92,8 @@ const buildSession = (): {handler: SessionHandler; failures: string[]} => {
 };
 
 /**
- * server/test/test/testSession.ts — the session a verified caller's calls are decrypted with.
- *
- * The framework asks `identity.checkInternal` for the keys a token's calls are signed with and
- * encrypted to, and reads the answer out of the packet a port returns — `[{ 'identity.check': … }]`,
- * the first element of `[value, $meta]`. That shape is the contract between the realm and the
- * framework, and neither side shows it on its own: the reader is `GatewayCodec.session`, the writer is
- * `orchestrator/identity/identityCheckInternal.ts`, and a mismatch between them appears only as
- * `Decryption failed` on a call three steps later. So the shape is pinned here, together with the
- * refusal a caller sees when its handshake is gone — that message is what an operator reads when a
- * page stops working after a restart. No cluster is needed: the handshake is remembered directly,
- * which is what the login handler does with a real one.
- *
- * Registered as the `test.session` group (`integration.watch.test` in `index.ts`).
+ * server/test/test/testSession.ts — the session a verified caller's calls are decrypted with: the
+ * packet shape `GatewayCodec.session` reads, and the refusal when the handshake is gone.
  */
 export default handler(({lib: {group}}) => ({
     testSession: ({name = 'session'}: {name?: string} = {}) =>
@@ -172,7 +161,7 @@ export default handler(({lib: {group}}) => ({
 
                 // The name the caller logged in as, which is what tells two browsers apart: the key
                 // pair travels inside the token, so nothing about the session is shared with another
-                // login — the collision F-500 recorded was one slot per service account.
+                // login — the collision @@F-500 recorded was one slot per service account.
                 const token = await mint({
                     username: 'blong-suite',
                     clusterUser: identity,
@@ -267,7 +256,7 @@ export default handler(({lib: {group}}) => ({
                 // The one string that must not drift: the deployment configures `remote.openId` with
                 // this document's URL and mints tokens whose `iss` is the issuer beside it, so a
                 // document that named a different address would leave every minted token unresolvable
-                // (F-494).
+                // (@@F-494).
                 const configuration =
                     'http://127.0.0.1:8080/rpc/session/.well-known/openid-configuration';
                 const build = sessionConfigurationFile as unknown as (api: object) => {

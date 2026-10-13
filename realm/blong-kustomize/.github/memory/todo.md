@@ -375,3 +375,7 @@ objects out of obsolescence pruning so the volume-retirement step stays the one 
 
 the sweep covers the kinds a suite can own and version-named objects are left to the retention step
 (D-464); verified on the dev cluster, where the credentials copy is now pruned with the switch
+
+## Retired
+
+- T-337 — done 2026-10-13

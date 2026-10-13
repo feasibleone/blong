@@ -43,7 +43,7 @@ export default handler(({handler: {clusterDeploymentFind}}) => ({
         // realm is deployed for: the operator knows the suite it serves and a browser has no reason
         // to. Without the default the cluster adapter lists every namespace, which the operator's
         // rights refuse — a list across namespaces needs the namespaces themselves — and the table
-        // came back empty with `Kubernetes Access Forbidden` in the log (T-326).
+        // came back empty with `Kubernetes Access Forbidden` in the log .
         const namespace =
             params.namespace ??
             (this as unknown as {config?: {suite?: {namespace?: string}}}).config?.suite?.namespace;

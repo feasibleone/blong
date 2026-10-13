@@ -37,11 +37,21 @@ export const KIND_STATUSES: Record<MemoryKind, readonly string[]> = {
     decision: ['active', 'superseded'],
 };
 
+/**
+ * The section that records a closed or pruned id so its number is never reused.
+ *
+ * A `## Retired` bullet (`- F-101 — superseded by F-090 (2026-08-01)`) keeps the id
+ * resolvable after its entry is gone: a stale reference is a warning that names its
+ * successor, not a mystery. Ids are allocated from the highest number in the entries
+ * _and_ the ledger, so a closed entry's number does not come back.
+ */
+export const RETIRED_SECTION = 'Retired';
+
 /** Sections a kind may use, in file order. */
 export const KIND_SECTIONS: Record<MemoryKind, readonly string[]> = {
-    friction: ['Open', 'Resolved'],
-    todo: ['Manual', 'Open', 'Done'],
-    decision: ['Active', 'Superseded'],
+    friction: ['Open', 'Resolved', RETIRED_SECTION],
+    todo: ['Manual', 'Open', 'Done', RETIRED_SECTION],
+    decision: ['Active', 'Superseded', RETIRED_SECTION],
 };
 
 /** Sections a freshly created file starts with. */
@@ -93,6 +103,14 @@ export const KIND_PURPOSE: Record<MemoryKind, string> = {
 /** Cross-cutting areas that live in the root files. */
 export const RESERVED_AREAS: readonly string[] = ['cross-cutting', 'ci', 'docs', 'skills'];
 
+/**
+ * The section that records a closed or pruned id so its number is never reused.
+ *
+ * A `## Retired` bullet (`- F-101 — superseded by F-090 (2026-08-01)`) keeps the id
+ * resolvable after its entry is gone: a stale reference is a warning that names its
+ * successor, not a mystery. Ids are allocated from the highest number in the entries
+ * *and* the ledger, so a closed entry's number does not come back.
+
 /** Prose is hard-wrapped here, matching the repository's prettier `printWidth`. */
 export const MAX_LINE_LENGTH = 100;
 
@@ -118,6 +136,20 @@ export const KIND_BY_PREFIX: Record<string, MemoryKind> = {
 
 /** Any memory id mentioned in prose. */
 export const ID_REFERENCE = /\b[FTD]-\d{3}\b/g;
+
+/**
+ * A cross-reference token written outside a memory file: `@@F-014`, an entry id;
+ * `@@doc:patterns/memory#anchor`, a documentation page and section; `@@skill:blong-realm#layers`,
+ * an agent skill and section. One grammar for all three corpora, so one resolver, one linter and
+ * one editor provider cover them.
+ *
+ * The token is deliberately plain: `@@` cannot appear in TypeScript, YAML, shell or markdown
+ * syntax, so it needs no escaping and is greppable as text (`grep -rF '@@T-'`). The scope qualifier
+ * (`@@F-014@root`) is not part of a reference — that form is the CLI's own addressing; an id that
+ * two files hold is an error a `memory renumber` fixes.
+ */
+export const REFERENCE =
+    /@@(?:(?<id>[FTD]-\d{3})|doc:(?<docTier>[a-z0-9-]+)\/(?<docName>[a-z0-9.-]+)(?:#(?<docAnchor>[a-z0-9-]+))?|skill:(?<skillName>[a-z0-9-]+)(?:#(?<skillAnchor>[a-z0-9-]+))?)/g;
 
 /** A line-number reference to a memory file — forbidden, they rot. */
 export const LINE_REFERENCE = /\b(?:friction|todo|decision)\.md\s+(?:line\s+)?L\d+\b/i;

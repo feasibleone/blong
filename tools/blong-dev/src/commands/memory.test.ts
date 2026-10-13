@@ -1,4 +1,7 @@
 /**
+ * memory-refs: ignore — the fixtures name ids that exist only in the throwaway repository a case
+ * builds, so this file is not a place a reference can resolve.
+ *
  * Unit tests for the `blong-dev memory` command layer (commands/memory.ts).
  *
  * The store is injected through `setHindsightStoreFactory`, so nothing here
@@ -6,7 +9,11 @@
  * throwaway repository whose `rush.json` makes the temp directory the repo root.
  * These are exactly the seams a hand-run used to be the only coverage for: the
  * write hook surviving an unreachable index, the search filters, the search
- * failure, and the prune that also forgets the document.
+ * failure, the prune that also forgets the document, and the rewrite a citation
+ * of a superseded decision gets.
+ *
+ * memory-refs: ignore — the fixtures name ids that exist only in the throwaway
+ * repository a case builds, so the file is not a place a reference can resolve.
  */
 
 import {mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
@@ -277,6 +284,139 @@ t.test('the memory command layer', async t => {
         t.same(calls.removed, [['F-001']], 'the document is forgotten, not just unlinked');
         const written = readFileSync(join(repo.dir, '.github/memory/friction.md'), 'utf8');
         t.notMatch(written, /### F-001/, 'and the entry leaves the file');
+        t.match(
+            written,
+            /## Retired\n\n- F-001 — pruned \d{4}-\d{2}-\d{2} — duplicated by F-090/,
+            'the ledger adds the section with the blank line the format wants below its heading',
+        );
+    });
+
+    await t.test('refs --fix-superseded follows the successor an entry names', async t => {
+        const repo = tempRepo();
+        t.teardown(repo.restore);
+        setHindsightStoreFactory(null);
+
+        await capture(() =>
+            memory([
+                'add',
+                'decision',
+                '--title',
+                'The answer that moved',
+                '--area',
+                'cross-cutting',
+            ]),
+        );
+        await capture(() =>
+            memory([
+                'add',
+                'decision',
+                '--title',
+                'The answer that stands',
+                '--area',
+                'cross-cutting',
+            ]),
+        );
+        await capture(() => memory(['close', 'D-001', '--by', 'D-002']));
+        mkdirSync(join(repo.dir, 'src'), {recursive: true});
+        writeFileSync(
+            join(repo.dir, 'src/one.ts'),
+            '// the separator (@@D-001).\nexport const a = 1;\n',
+        );
+        writeFileSync(
+            join(repo.dir, 'src/two.ts'),
+            '// both, one of them stale (@@D-001 @@D-002).\nexport const b = 2;\n',
+        );
+
+        const {out, code} = await capture(() =>
+            memory(['refs', '--fix-superseded', '--files', 'src/one.ts,src/two.ts']),
+        );
+
+        t.equal(code, undefined, 'the command did not fail');
+        t.match(
+            out,
+            /follows src\/one\.ts:1  @@D-001 → D-002/,
+            'the citation follows the successor',
+        );
+        t.equal(
+            readFileSync(join(repo.dir, 'src/one.ts'), 'utf8'),
+            '// the separator (@@D-002).\nexport const a = 1;\n',
+            'and the token is rewritten in place',
+        );
+        t.equal(
+            readFileSync(join(repo.dir, 'src/two.ts'), 'utf8'),
+            '// both, one of them stale (@@D-002).\nexport const b = 2;\n',
+            'a token whose successor is already cited is dropped, with the parentheses tidied',
+        );
+    });
+
+    await t.test('a citation whose successor is named fails the gate', async t => {
+        const repo = tempRepo();
+        t.teardown(repo.restore);
+        setHindsightStoreFactory(null);
+
+        await capture(() =>
+            memory([
+                'add',
+                'decision',
+                '--title',
+                'The answer that moved',
+                '--area',
+                'cross-cutting',
+            ]),
+        );
+        await capture(() =>
+            memory([
+                'add',
+                'decision',
+                '--title',
+                'The answer that stands',
+                '--area',
+                'cross-cutting',
+            ]),
+        );
+        await capture(() => memory(['close', 'D-001', '--by', 'D-002']));
+        mkdirSync(join(repo.dir, 'src'), {recursive: true});
+        writeFileSync(
+            join(repo.dir, 'src/one.ts'),
+            '// the separator (@@D-001).\nexport const a = 1;\n',
+        );
+
+        const {err, code} = await capture(() => memory(['refs', '--files', 'src/one.ts']));
+
+        t.equal(code, 1, 'the linter fails on it');
+        t.match(err, /reasoning moved to D-002/, 'and says where the reasoning moved');
+        t.match(err, /--fix-superseded/, 'and names the command that follows it');
+    });
+
+    await t.test('a superseded entry with no successor is left for a person', async t => {
+        const repo = tempRepo();
+        t.teardown(repo.restore);
+        setHindsightStoreFactory(null);
+
+        await capture(() =>
+            memory([
+                'add',
+                'decision',
+                '--title',
+                'The question that settled',
+                '--area',
+                'cross-cutting',
+            ]),
+        );
+        await capture(() => memory(['close', 'D-001', '--reason', 'answered in the entry itself']));
+        mkdirSync(join(repo.dir, 'src'), {recursive: true});
+        writeFileSync(join(repo.dir, 'src/one.ts'), '// settled (@@D-001).\nexport const a = 1;\n');
+
+        const {out} = await capture(() =>
+            memory(['refs', '--fix-superseded', '--files', 'src/one.ts']),
+        );
+
+        t.match(out, /D-001 names no successor/, 'the entry is named as the thing to fix');
+        t.equal(
+            readFileSync(join(repo.dir, 'src/one.ts'), 'utf8'),
+            '// settled (@@D-001).\nexport const a = 1;\n',
+            'and nothing is rewritten',
+        );
     });
 
     await t.test('a prune that cannot reach the index still removes the entry', async t => {

@@ -6,7 +6,7 @@ import {planOptionsFromSpec} from './plan.ts';
  * spec.ts — the `BlongDeployment` a process was asked to generate a tree for.
  *
  * The operator does not hold the suite it reconciles: it loads the target suite's artifact in a
- * short-lived child process and hands it the CR's spec (T-234, D-395). The spec travels as a file
+ * short-lived child process and hands it the CR's spec (@@D-395). The spec travels as a file
  * rather than as a dozen `--kustomize.*` flags because it is nested — external services, the
  * volume, the UI — and a file is the one form that needs no escaping and reads the way the CR does.
  *

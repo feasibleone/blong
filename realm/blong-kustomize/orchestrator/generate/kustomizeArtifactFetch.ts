@@ -9,35 +9,15 @@ import type {IPlanConfig, ISuiteArtifact} from '../../plan.ts';
  *
  * The watch and the interval both trigger passes, so two of them can want the same artifact at the
  * same time — and two fetches into one directory are two `rm -rf`s and two `unzip`s racing over the
- * same tree, which is how a generation read a half-written artifact (F-407). A caller that arrives
+ * same tree, which is how a generation read a half-written artifact (@@F-407). A caller that arrives
  * while a fetch is running waits for it instead of starting a second one; the map is per process,
  * which is enough because the operator is the only writer of its own cache.
  */
 const inFlight = new Map<string, Promise<{dir: string; fetched: boolean; source: 'url'}>>();
 
 /**
- * kustomize.artifact.fetch — place the artifact a CR names, and say where it is.
- *
- * The operator reconciles a CR it does not hold the code for: the plan for a suite comes from *that
- * suite's* artifact, loaded in a short-lived child (D-395, T-234). This is the step before the
- * child: the artifact is fetched once and cached, keyed the way the volume is — by suite, version and
- * the artifact's own identity.
- *
- * The cache used to be keyed by suite and version, and that made a rebuilt artifact invisible: the
- * marker from the first fetch answered the second, so an operator went on planning from the archive it
- * had already seen while the CLI that published the new one applied a tree nothing would keep (F-452).
- * A cache key that names the artifact is what makes "the same version, different files" two
- * directories rather than one (D-468).
- *
- * A `path` artifact is used where it is (a runbook that unpacks by hand, or a node-local volume); a `url`
- * artifact is fetched by the realm's own fill, the module a node's Job runs, so the two callers agree about
- * what a whole artifact is. That is also why the cache directory is a mount in a cluster and a directory
- * under `$HOME` on a developer's machine, and why the operator needs no shell tooling in its image
- * (D-518).
- *
- * The fetch also prunes, when it is told how many directories to keep: one directory per published
- * artifact is one full unpack, so a cache that only ever grows is a cache that eventually fills the
- * claim it lives on (T-286).
+ * kustomize.artifact.fetch — place the artifact a CR names, keyed by its identity, and say where it
+ * is (@@D-395 @@F-452 @@D-468 @@D-518).
  */
 export default handler(() => ({
     async kustomizeArtifactFetch(params: {
@@ -67,14 +47,14 @@ export default handler(() => ({
         const running = inFlight.get(dir);
         if (running) return running;
         // In this process rather than in a Job: the module fetches, unpacks and links by itself, which is
-        // what lets the framework image drop `curl` and `unzip` (D-518).
+        // what lets the framework image drop `curl` and `unzip` (@@D-518).
         const fetching = (async () => {
             try {
                 await fillArtifact({
                     source: {url: artifact.url},
                     target: dir,
                     // The cache's own retention, which counts this fetch's directory among the ones that
-                    // stay (T-286).
+                    // stay .
                     ...(retention === undefined ? {} : {keep: retention}),
                 });
             } finally {

@@ -31,8 +31,8 @@ export default server(() => ({
         integration: {
             kustomize: {deploy: {}},
             // The gateway port's own slice. This realm serves no browser build, so the root is a test
-            // fixture rather than a bundle, and what is under test is the leg nothing could see before
-            // T-246: a block a process names under its intent reaching the port that hands it to the
+            // fixture rather than a bundle, and what is under test is the leg nothing could see:
+            // a block a process names under its intent reaching the port that hands it to the
             // static plugin. The plugin's behaviour is covered where the plugin is. Absolute, because
             // `@fastify/static` refuses a relative root, and derived from this file rather than written
             // out so the fixture moves with the package.

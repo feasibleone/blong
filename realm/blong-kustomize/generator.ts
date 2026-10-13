@@ -81,18 +81,8 @@ export type KustomizeResource = Record<string, unknown> | string;
 export type KustomizeTree = Map<string, KustomizeResource>;
 
 /**
- * The `resources` block every generated container carries.
- *
- * A container with no `resources` is BestEffort to the scheduler: the first to be evicted under
- * pressure, and free to take a node's memory with it before anything notices — which is why the plan
- * carries a default rather than leaving the field empty (see {@link DEFAULT_RESOURCES}).
- *
- * The processes the suite *serves* take the plan's own value, because a realm may raise it with
- * `k8sResources`. The containers the generator emits around them — the seed and migration Jobs, the
- * fill Job for each node, and the operator — take the default, because
- * nothing knows better how much a step needs, and an unpinned step beside pinned processes is the
- * one that gets evicted first. None of them carried a value until they were asked for: the migration
- * Job shipped BestEffort from the day it existed, and only a running pod said so (F-432).
+ * The `resources` block every generated container carries; an empty one would leave it BestEffort
+ * (@@F-432).
  */
 const containerResources = (): {
     requests: Record<string, string>;
@@ -128,20 +118,8 @@ const manifestVersion = (entry?: string): string | undefined => {
 };
 
 /**
- * The version of the suite the tree deploys.
- *
- * A config may pin it and normally does — a suite's `package.json` version, reaching the plan through
- * `suite.version` — and the fallback is the manifest of the package this generator is *running
- * from*, which is what the version should come from when a tree has no suite config of its own: the
- * operator's own install tree is exactly that case, and there the running package is the realm the
- * operator deploys. Last of all comes the plan's `entry`, for a generation running inside an artifact
- * whose manifest is beside the entrance it was given. Reading a version rather than requiring one is
- * what stops every suite and every CR repeating a value its package already holds (Q4).
- *
- * The two versions in this file are different things, and one field used to answer for both: the
- * framework image carries `minFrameworkVersion` — the `blong-gogo` the suite needs — while the
- * standard `app.kubernetes.io/version` label is the suite's own version, which is what a reader of
- * `kubectl get` is asking about and what a release tags.
+ * The version of the suite the tree deploys: the config's, else the running package's manifest, else
+ * the plan's `entry` — never required, so no suite repeats a value its package holds.
  */
 const suiteVersion = (plan: IDeploymentPlan): string =>
     plan.suite.version ??
@@ -152,10 +130,10 @@ const suiteVersion = (plan: IDeploymentPlan): string =>
 /**
  * What one deploy's artifact is called: the suite's version and a token taken from the artifact.
  *
- * The volume is named after this and nothing else (D-469), which is what makes a rebuilt artifact under
+ * The volume is named after this and nothing else (@@D-469), which is what makes a rebuilt artifact under
  * an unchanged version a *new* directory rather than a rewrite of the one readers are attached to. The
  * name itself is computed in one place, `artifact.ts`, because the operator's artifact cache asks the
- * same question and has to answer it the same way (F-452).
+ * same question and has to answer it the same way (@@F-452).
  */
 export const volumeIdentity = (plan: IDeploymentPlan): string =>
     artifactIdentity(suiteVersion(plan), plan.suiteVolume.artifact);
@@ -189,7 +167,7 @@ export const SUITE_ROOT = '/var/lib/blong/suites';
  *
  * A `BlongDeployment` is the tenant's act: its `metadata.namespace` is the namespace the suite is
  * deployed into, its `spec.services` is what that deployment brings, and the artifact's digest is what
- * it was fetched at. None of that belongs in a base every deployment of the suite shares (D-506), so a
+ * it was fetched at. None of that belongs in a base every deployment of the suite shares (@@D-506), so a
  * split writes the declaration **beside** the base — a sample a tenant copies and edits — and only the
  * flat layout keeps it at the tree's root, where it was always a one-off `kubectl apply -f`'s
  * convenience.
@@ -212,21 +190,8 @@ export const TEMPLATE_FILE = 'template.yaml';
 const DEFAULT_SUITE_ENTRY = `${SUITE_MOUNT}/index.ts`;
 
 /**
- * The intents a deployed process runs with.
- *
- * Without one the framework activates its own defaults — `dev`, `microservice` and `integration` —
- * so every pod would watch files for changes and run integration tests. `release` is the one intent a
- * deployment is *about*: the configuration block uat, staging and production share, and the block a
- * suite declares its own deployment in (which realms a released process loads, where its database
- * is). Its layers are not its business — a released process is activated by the `--<realm>.<layer>`
- * flags this generator writes, so that each pod runs the split it was planned for (T-237, D-428), and
- * `microservice` would activate every layer of every realm the process carries instead.
- *
- * It is also the trailing intent, and that is not decoration: the trailing name is what picks the rc
- * file the loader reads (`core/blong-config/index.ts`), so a pod whose last intent is `microservice`
- * reads `blong_microservicerc` while the tree mounts `.blong_releaserc` and `/etc/blong_releaserc`.
- * The mounts and the reader have to agree (Phase 15 E), which is why {@link deploymentIntents} keeps
- * it last.
+ * The intents a deployed process runs with — `release`, last, because the trailing name picks the rc
+ * file the loader reads (@@D-428).
  */
 export const DEFAULT_SUITE_INTENTS = ['release'];
 
@@ -236,7 +201,7 @@ export const DEFAULT_SUITE_INTENTS = ['release'];
  * They are not refused, they are dropped: a CR written before this distinction existed names
  * `microservice` (the CRD used to default to it), and honouring it would activate every layer of
  * every realm the pod carries — a split deployment turned into N monoliths, each opening the other
- * processes' gateways and database connections (D-428). `dev` and `integration` are the same kind of
+ * processes' gateways and database connections (@@D-428). `dev` and `integration` are the same kind of
  * mistake for the same reason: a released process neither watches files nor runs tests.
  */
 const DEV_ONLY_INTENTS = new Set(['microservice', 'dev', 'integration', 'playwright']);
@@ -281,7 +246,7 @@ const suiteArgs = (plan: IDeploymentPlan): string[] => [
  * is emitted per profile instead of being configured once. A suite that spells it out in its own
  * config carries a sentence about its deployment shape that stays true only until somebody copies
  * the config into a split tree, and there the call that should have crossed the network resolves
- * locally and fails as a method nobody has (T-224).
+ * locally and fails as a method nobody has .
  */
 const profileArgs = (plan: IDeploymentPlan): string[] =>
     plan.profile === 'monolith' ? ['--remote.canSkipSocket=true'] : [];
@@ -293,19 +258,8 @@ const namespaceResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
 });
 
 /**
- * The two configuration files a cluster may supply (Q7), given to every pod that runs a suite entry.
- *
- * One Secret the realm manages — the cross-deployment settings every suite in the cluster shares —
- * mounted where the developer's own `.blong_releaserc` sits in the image, and one a user manages at
- * the system path. The pair is `optional`, because a mount is not a promise that the file exists: a
- * missing Secret leaves the pod running on its defaults instead of refusing to schedule, which is
- * what makes it safe to put both in every tree. Neither Secret is written here — creating one is a
- * deployment's or a user's act, and the tree only names it.
- *
- * The names are constants because each file has one home per namespace, and the namespace already
- * separates one suite from another. The mount uses `subPath`, so the Secret's *key* is the file's
- * basename; a Secret whose key does not match mounts an empty directory in the file's place. A
- * `subPath` mount is not updated in place, which is what a configuration read once at startup wants.
+ * The two configuration files a cluster may supply, mounted into every pod that runs a suite entry —
+ * both `optional`, and neither written here.
  */
 export const RELEASE_RC_SECRET = 'blong-releaserc';
 export const RELEASE_RC_SITE_SECRET = 'blong-releaserc-etc';
@@ -313,26 +267,8 @@ const RELEASE_RC_HOME = '/home/node/.blong_releaserc';
 const RELEASE_RC_SITE = '/etc/blong_releaserc';
 
 /**
- * The suite's key material, as configuration the pods read.
- *
- * A released process needs *real* keys, and the framework's own fallback is the wrong unit for a
- * deployment: with nothing configured the gateway generates a pair per **process**, so a browser's
- * session belongs to whichever replica answered the handshake and a restart invalidates it (the
- * framework says so in a warning, see `Gateway.ts`).
- *
- * The pair travels as ordinary configuration rather than as a variable of the framework's choosing:
- * `blong-config` loads `rc('blong_<last intent>')`, and `rc`'s own standards include
- * `$HOME/.config/<app-name>/config`, so the Secret is mounted as a *directory* holding a `config`
- * file that names `gateway.sign`, `gateway.encrypt` and the same pair again under `remote.client`
- * (D-441). Both readers then resolve one file with no framework code between them.
- *
- * A directory, not a file: with `optional` and the Secret not created yet, Kubernetes leaves an empty
- * directory where a `subPath` file mount would leave a directory *at the file's path*, which `rc`
- * cannot read. An empty directory it ignores, so a tree applied by hand still starts.
- *
- * One Secret per namespace — `kustomize.gatewayKeysEnsure` creates it, a tenant that would rather own
- * the keys writes the Secret itself under this name, and a future secret manager replaces the
- * generator rather than the wiring.
+ * The suite's key material, as an rc Secret the pods read — one pair per suite, not per process
+ * (@@D-441).
  */
 const gatewayKeys = (plan: IDeploymentPlan): {volumes: unknown[]; mounts: unknown[]} => ({
     volumes: [
@@ -349,12 +285,8 @@ const gatewayKeys = (plan: IDeploymentPlan): {volumes: unknown[]; mounts: unknow
 });
 
 /**
- * Where `rc` looks for the deployment's own file in a pod.
- *
- * The app name is the trailing intent: `blong-config` ends its intent list at `release`, which is the
- * name whose rc file a deployment mounts (D-428), and `rc` reads `$HOME/.config/<app-name>/config`
- * among its candidates. Computed rather than written out, so a tree whose intents change does not
- * quietly name a file nothing loads.
+ * Where `rc` looks for the deployment's own file in a pod: the trailing intent names the rc file
+ * (@@D-428).
  */
 const rcConfigDir = (plan: IDeploymentPlan): string =>
     `/home/node/.config/blong_${deploymentIntents(plan.suite.intents).at(-1) ?? 'release'}/`;
@@ -402,12 +334,12 @@ const releaseRc = (): {volumes: unknown[]; mounts: unknown[]} => ({
  *
  * One mount, at one path for every backend and every deploy. What makes that possible is the fill's last
  * step: `create-links.js` writes *absolute* links taken from the directory it runs in, so the artifact is
- * re-written to carry **relative** links instead (D-476) — the tree is self-contained, so where it is
- * mounted stops mattering, and a reader sees a tree whose links resolve whatever the identity is (F-449,
+ * re-written to carry **relative** links instead (@@D-476) — the tree is self-contained, so where it is
+ * mounted stops mattering, and a reader sees a tree whose links resolve whatever the identity is (@@F-449,
  * which needed a second mount of the node root before this).
  *
  * The volume is named after the artifact's identity rather than its version, so two artifacts of one
- * version are two directories and neither is ever rewritten under a reader (D-468, D-469).
+ * version are two directories and neither is ever rewritten under a reader (@@D-468 @@D-469).
  */
 const suiteVolume = (
     plan: IDeploymentPlan,
@@ -440,8 +372,8 @@ const suiteVolume = (
  * The init container that holds a pod until the artifact in its volume is whole.
  *
  * Superseded by the staged fill: the directory a reader mounts is created by a rename that brings a
- * whole tree with it (D-468), so the `Directory` type on the volume is the ordering and this container
- * was only what stood in for it (F-448). Kept as a note rather than a comment because the container it
+ * whole tree with it (@@D-468), so the `Directory` type on the volume is the ordering and this container
+ * was only what stood in for it (@@F-448). Kept as a note rather than a comment because the container it
  * describes is gone.
  */
 
@@ -452,7 +384,7 @@ const suiteVolume = (
  * need the same values — and a pod sees only its own namespace, which is why the tree writes a copy of a
  * generated Secret into the tenant's as well. This is the other half of that copy being useful: `envFrom`
  * puts the Secret's keys into the environment, where `blong-config` reads them, so a deployment that supplies
- * credentials supplies them to the whole suite rather than to the database alone (D-509).
+ * credentials supplies them to the whole suite rather than to the database alone (@@D-509).
  *
  * `optional`, because the reference cannot be conditional: the base is shared by every deployment of the
  * suite, and one that switches the service off must not keep its pods from starting on a Secret that went
@@ -469,7 +401,7 @@ const deploymentResource = (
 ): Record<string, unknown> => {
     const {volume, mount} = suiteVolume(plan);
     // The volumes this process owns beyond the suite artifact: a realm that declared one gets it
-    // mounted where it asked, and the tree builder emits a claim per volume (T-208).
+    // mounted where it asked, and the tree builder emits a claim per volume .
     const extraVolumes = (deployment.volumes ?? []).map(owned => ({
         name: owned.name,
         persistentVolumeClaim: {claimName: owned.name},
@@ -528,7 +460,7 @@ const deploymentResource = (
                                 // overrides the intents the process was started with, so a value that
                                 // disagrees with `args` sends every pod to a file nothing writes:
                                 // with the namespace here the release files a deployment mounts were
-                                // never read, and the gateway generated a pair per process (T-252).
+                                // never read, and the gateway generated a pair per process .
                                 // The namespace travels in `BLONG_NAMESPACE` below.
                                 {
                                     name: 'BLONG_ENV',
@@ -556,7 +488,7 @@ const deploymentResource = (
                             ],
                             // The credentials of the services this deployment brings, when it supplies any:
                             // the process reads them from the environment the way it reads every other
-                            // setting, and the Secret is the copy written into its own namespace (D-509).
+                            // setting, and the Secret is the copy written into its own namespace (@@D-509).
                             ...(credentials.length ? {envFrom: credentials} : {}),
                             ...(deployment.resources ? {resources: deployment.resources} : {}),
                             volumeMounts: [
@@ -627,7 +559,7 @@ const namespaceLabel = (namespace: string): string => `blong.feasible.one/namesp
  * *namespace* name in the suite's namespace, so every namespace a process answers needs one — a
  * realm Service covers those that happen to be named after their realm (`access`, `core`, …), because
  * the subject orchestrator carries them, and nothing published the rest: a process calling `subject`
- * died with `ENOTFOUND rpc-subject` (F-413).
+ * died with `ENOTFOUND rpc-subject` (@@F-413).
  */
 const unservedNamespaces = (plan: IDeploymentPlan): string[] => {
     const taken = new Set([
@@ -725,7 +657,7 @@ export const ingressName = (host?: string): string => {
  * They are the *controller's* annotations, so they belong to the host rather than to the path: two
  * portals sharing a host share one set, and the merge is last-writer-wins per key. That is why a
  * portal that needs a different auth wants a host of its own, and why a webhook sharing the UI's
- * host inherits the UI's authentication (T-241).
+ * host inherits the UI's authentication .
  */
 const authAnnotations = (
     auth: IPortalAuth | undefined,
@@ -944,18 +876,8 @@ const roleBindingResource = (plan: IDeploymentPlan): Record<string, unknown> => 
 });
 
 /**
- * The UI's right to ask the cluster a question about a caller.
- *
- * The login verifies a presented token with a `TokenReview` and asks what that identity may do with
- * a `SubjectAccessReview` (D-376). Both are cluster-scoped and neither is about an object in the
- * suite's namespace, so they cannot live in the namespaced `Role` above — and the permission is
- * exactly what the cluster's own `system:auth-delegator` role grants, which is why it is spelled
- * out here rather than bound: a suite should not depend on a role it does not control, but a reader
- * should recognise it.
- *
- * One role for the cluster, because the rules are the same for every suite; one binding per suite,
- * because the subject is that suite's own identity. Without it the login works from a laptop (a
- * kubeconfig is usually an administrator) and fails in a pod, which is the worst order to find out in.
+ * The UI's right to ask the cluster a question about a caller: a `TokenReview` and a
+ * `SubjectAccessReview`, cluster-scoped (@@D-376).
  */
 export const AUTH_REVIEW_ROLE = 'auth-review';
 const authReviewClusterRoleResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
@@ -983,7 +905,7 @@ const authReviewClusterRoleBindingResource = (plan: IDeploymentPlan): Record<str
 });
 
 /**
- * The operator's identity and permissions (D-373).
+ * The operator's identity and permissions (@@D-373).
  *
  * Its own ServiceAccount, Role, RoleBinding and — for the custom resource, which lives
  * outside the namespace — ClusterRole and ClusterRoleBinding. The `rbac/` objects above
@@ -1027,7 +949,7 @@ const tenantNamespaces = (plan: IDeploymentPlan): string[] => [
  *
  * A `Role` rather than a `ClusterRole`, bound in the tenant's own namespaces: the operator applies a
  * suite where that suite was declared, so its rights are per tenant and granted by the tenant's own
- * tree (D-396). The pair ships with the suite because the suite is what knows its namespaces.
+ * tree (@@D-396). The pair ships with the suite because the suite is what knows its namespaces.
  */
 const operatorTenantRoleResource = (
     plan: IDeploymentPlan,
@@ -1065,7 +987,7 @@ const operatorNamespaceResource = (plan: IDeploymentPlan): Record<string, unknow
     metadata: {name: OPERATOR_NAMESPACE, labels: suiteLabels(plan)},
 });
 
-/** Where the operator caches the artifacts it plans from (D-398): one claim, mounted at `/cache`. */
+/** Where the operator caches the artifacts it plans from (@@D-398): one claim, mounted at `/cache`. */
 const OPERATOR_CACHE_MOUNT = '/cache';
 /** The claim the operator's artifact cache sits on. Distinct from the install's fill Jobs, which
  * carry the *realm's* artifact and are named after the operator too. */
@@ -1139,7 +1061,7 @@ const operatorClusterRoleBindingResource = (plan: IDeploymentPlan): Record<strin
  * healthy pod for a loop that is not running. It mounts the same read-only suite volume
  * the deployments do, because the plan it reconciles is derived from the registry that
  * artifact carries. Emitted only when the suite asks for it: until the reconcile loop
- * lands (T-201) an enabled Deployment starts a process with nothing to do.
+ * lands  an enabled Deployment starts a process with nothing to do.
  */
 const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unknown> => {
     const name = OPERATOR_NAME;
@@ -1173,7 +1095,7 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
                             name: 'operator',
                             image: plan.operator.image ?? image(plan),
                             // The operator's own entry, not a suite's: this process reconciles
-                            // suites it does not hold (D-395), so what it runs is the deployment
+                            // suites it does not hold (@@D-395), so what it runs is the deployment
                             // realm and nothing else.
                             args: suiteArgs(plan),
                             env: [
@@ -1194,7 +1116,7 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
                                 // The container's command line belongs to the image, so the loop is
                                 // switched on here — and the realm reads these same names, which is
                                 // what keeps the manifest and the code that obeys it together
-                                // (T-201).
+                                // .
                                 {
                                     name: OPERATOR_ENV.intervalSeconds,
                                     value: `${plan.operator.intervalSeconds}`,
@@ -1203,7 +1125,7 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
                                 {name: OPERATOR_ENV.apply, value: 'true'},
                                 // A deployment that has been told what it should be is a
                                 // deployment somebody expects to match it, and what a pass removes is
-                                // scoped to the suite's namespace (D-461): an object here that the
+                                // scoped to the suite's namespace (@@D-461): an object here that the
                                 // declaration stopped naming is one nothing brings back, and leaving
                                 // it running is how a switched-off service keeps answering.
                                 {name: OPERATOR_ENV.prune, value: 'true'},
@@ -1231,7 +1153,7 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
                             // internal dispatch a peer uses, and the gateway port carries the read
                             // API the deployment UI calls. The entry declares the `gateway` config
                             // that starts the second one — without it the operator listened on 8091
-                            // alone and every read route answered 404 (T-261).
+                            // alone and every read route answered 404 .
                             ports: [
                                 {name: 'rpc', containerPort: 8091, protocol: 'TCP'},
                                 {name: 'http', containerPort: 8080, protocol: 'TCP'},
@@ -1258,7 +1180,7 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
 /**
  * The operator's install tree: what a cluster is given once, before any suite.
  *
- * One operator per cluster and no suite code in it (D-396, D-397): the namespace it lives in, the
+ * One operator per cluster and no suite code in it (@@D-396 @@D-397): the namespace it lives in, the
  * claim its artifact cache sits on, the Deployment that runs it, the cluster-scoped rights to the CR
  * and its status, and the CRD — which is cluster-scoped and therefore cannot be shipped by every
  * suite without two suites racing to define it. A suite's tree carries the CR, and the bindings it
@@ -1270,7 +1192,7 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
  * Its selector is the operator's own — `instance` and `part-of` both naming the operator — so a
  * second operator in another namespace is not selected by it. It publishes the same two ports a
  * served container declares: `rpc` (8091) for the internal dispatch, and `http` (8080) for the
- * gateway the read API answers on (T-261).
+ * gateway the read API answers on .
  */
 const operatorServiceResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
     apiVersion: 'v1',
@@ -1300,7 +1222,7 @@ export const installKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
     tree.set('deployments/blong-operator.yaml', operatorDeploymentResource(plan));
     // The operator answers the deployment read API, and a Service is what gives that an address: one
     // per cluster, in the operator's own namespace, because one operator serves every suite it
-    // reconciles (T-254, T-258). A suite's portal cannot front it — an Ingress backend has to be a
+    // reconciles (@@T-258). A suite's portal cannot front it — an Ingress backend has to be a
     // Service in its own namespace and a selector is namespace-local — so the address belongs to the
     // cluster rather than to a tenant, which is the same reason the operator is installed once.
     tree.set('services/blong-operator.yaml', operatorServiceResource(plan));
@@ -1308,10 +1230,10 @@ export const installKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
     // session check (`identity.checkInternal`) is resolved in the process that verified the token —
     // the entry names it in `remote.skipGateway` so it never reaches a gateway — so the name has
     // nothing to resolve to, and the
-    // Service that used to publish it selected a pod label for an address no call asks for (F-494
+    // Service that used to publish it selected a pod label for an address no call asks for (@@F-494
     // is now the local answer, not a Service). A suite's tree still generates the namespace Services
     // its own containers answer for, which is the generic path (`unservedNamespaces`).
-    // The address the deployment read API answers on, when the installer named one (D-434): an Ingress
+    // The address the deployment read API answers on, when the installer named one (@@D-523): an Ingress
     // in the operator's own namespace, pointing at the operator's own Service. A suite's portal
     // cannot front it — an Ingress backend has to be a Service in the Ingress's namespace, and a
     // selector is namespace-local — which is also why the deployment page exists only here.
@@ -1370,7 +1292,7 @@ const stampAndKustomize = (tree: KustomizeTree, plan: IDeploymentPlan): Kustomiz
     // the writer try to create a directory where the file goes. Listed *and* passed on: for a while
     // this comment was true of the folder derivation and false of the tree, so the CR was written,
     // stamped and never applied by an `apply -k` — a suite declaring itself to an operator that
-    // never saw the declaration, and nothing in the tree said so (T-242).
+    // never saw the declaration, and nothing in the tree said so .
     const rootDocuments = [...tree.keys()]
         .filter(path => !path.includes('/') && path !== 'kustomization.yaml')
         .sort();
@@ -1407,7 +1329,7 @@ const generatorKustomization = (
     // Named here rather than inherited: what a generator builds carries no namespace of its own, and a
     // *flat* tree has no parent to give it one. This is the one place a generated kustomization names a
     // namespace at all; a split's overlay declares the same one a level up, so the base's value is
-    // overridden by the child that includes it rather than disagreeing with it (F-440, D-506).
+    // overridden by the child that includes it rather than disagreeing with it (@@F-440 @@D-506).
     namespace: string,
 ): Record<string, unknown> => ({
     apiVersion: KUSTOMIZE_API,
@@ -1444,7 +1366,7 @@ const pvcResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
     kind: 'PersistentVolumeClaim',
     metadata: {
         // Named after the identity rather than the version, so the retention reads identities apart
-        // and a second artifact under one version is a claim of its own (D-469).
+        // and a second artifact under one version is a claim of its own (@@D-469).
         name: `${plan.suite.name}-${volumeIdentity(plan)}`,
         namespace: plan.suite.namespace,
         labels: {
@@ -1475,38 +1397,8 @@ const pvcResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
 const SUITE_GID = 1000;
 
 /**
- * The name of a deploy-time Job: the suite, what the Job does, the version and a hash of the inputs.
- *
- * A Job's spec is immutable, so a changed attempt cannot be applied over an old one — a *different
- * name* is how the change arrives, and that is what this name is built for. It replaces the earlier
- * answer (D-378: delete the failed Job so the next one can be created) with one that keeps the
- * evidence: the failed Job and its logs stay for inspection, and the attempt that follows is simply
- * another object (D-386, Q6). The hash is taken over what the Job *runs* — its kind and the whole
- * container: the image, the entry, the command line, the mounts and the resources it asks for —
- * rather than over the object it becomes, because the name is the hash's output and cannot also be
- * its input.
- *
- * The container, whole, because every part of it is immutable with the Job: the resources a step asks
- * for were the one input left out, and the moment the generator began emitting them the tree was
- * refused beside the attempt already in the cluster — `spec.template: field is immutable`, from an
- * object that differed in nothing else (F-432). A term a reader can change about the step has to
- * move the name with it, and the way to keep that true is to hash the container the Job is built from
- * rather than a list of its inputs.
- *
- * The command line, not the intents field: the two are the same fact spelled twice, because
- * `migrationArgs` already falls back to `DEFAULT_SUITE_INTENTS` when the plan names none. Hashing the
- * field as well made the name depend on whether the intents were *written down*, and they are not
- * always: the CRD declares `intents` and `portal.*.path` defaults, so the API server materialises
- * them into a CR whose author never wrote them. The tenant's tree and the operator's plan of the same
- * suite then hashed differently — `a49b82e7` against `ebc5b94d` for one migration — and one cluster
- * ended up with two attempts for one step, the first of which ran before its volume was seeded and
- * failed (F-410).
- *
- * The version part of the name is the *deploy stamp* — the artifact identity — rather than the bare
- * version (D-471): a rebuilt artifact under an unchanged version is a new attempt and a new volume,
- * while re-applying the same artifact names the same Job, which has already completed and is waited on
- * rather than run again. The version alone made those two cases one, and an unchanged name over a
- * changed artifact is what the immutability of `spec.template` refuses (F-432's neighbourhood).
+ * A deploy-time Job's name: suite, kind, deploy stamp and a hash of what the Job runs
+ * (@@D-386 @@D-471 @@F-410 @@F-432).
  */
 export const jobName = (plan: IDeploymentPlan, kind: 'seed' | 'migrate'): string =>
     [
@@ -1521,7 +1413,7 @@ export const jobName = (plan: IDeploymentPlan, kind: 'seed' | 'migrate'): string
                     volumeIdentity(plan),
                     // The container, whole. It carries the image, the entry, the command line, the
                     // mounts and the resources, so a corrected step cannot keep the name of the old
-                    // one and be refused as an update (T-253, F-406, F-432).
+                    // one and be refused as an update (@@F-406 @@F-432).
                     JSON.stringify(
                         kind === 'migrate' ? migrationContainer(plan) : seedContainer(plan),
                     ),
@@ -1552,7 +1444,7 @@ const seedContainer = (plan: IDeploymentPlan): Record<string, unknown> => ({
     name: 'seed',
     image: image(plan),
     // The artifact arrives where the readers look, and this realm's own module does the work rather than a
-    // shell that needed `curl` and `unzip` to exist in the image (D-518). The mount is the target rather
+    // shell that needed `curl` and `unzip` to exist in the image (@@D-518). The mount is the target rather
     // than a root: a `shared` volume is one directory, and there is nothing beside it for retention.
     command: fillCommand(SUITE_MOUNT),
     env: [
@@ -1586,7 +1478,7 @@ const seedJobResource = (plan: IDeploymentPlan): Record<string, unknown> => {
                 ...selector,
                 // The two labels a prune works from: which artifact this attempt belongs to, and how
                 // many attempts the suite keeps. The second is the *attempt* number rather than the
-                // volume one, because the two are unrelated quantities (D-471).
+                // volume one, because the two are unrelated quantities (@@D-471).
                 'blong.feasible.one/suite-version': suiteVersion(plan),
                 'blong.feasible.one/volume-identity': volumeIdentity(plan),
                 'blong.feasible.one/attempt-retention': `${plan.suiteVolume.attemptRetention}`,
@@ -1620,49 +1512,26 @@ const seedJobResource = (plan: IDeploymentPlan): Record<string, unknown> => {
 };
 
 /**
- * The migration step: the schema has to exist before a process reads it.
- *
- * A served process does not migrate — the `db` intent does — so the tree carries the step as a Job
- * that runs the suite's own entry with the deployment's config, and the intent that ends the process.
- * Without it a first deployment starts against an empty database and fails on the first table it
- * reads, which is what happened here.
- *
- * The order is the deployment's rather than the command's: `upgrade` comes *before* the suite's own
- * intents, because the file a run reads is named after the **trailing** intent (Phase 15 E). The Job
- * mounts the same two release files every other pod mounts, and with `db` last it read `blong_db` and
- * `/etc/blong_db` — two files nobody creates — while the tenant's cross-deployment settings, the
- * database password among them, are exactly what a migration needs. Nothing failed when that was
- * wrong: the mounts were simply never read (T-253).
- *
- * The intents also come before anything else on the line. The parser is `minimist`, which reads
- * `--marine.orchestrator release` as `{marine: {orchestrator: 'release'}}`, so a positional that
- * follows a flag is swallowed as that flag's value: emitted the other way round the trailing
- * `release` was eaten, the step ran with only the first intent — no release config, therefore the
- * adapter's default database host — and it retried against `127.0.0.1:3306` while every pod beside
- * it connected to `db` (F-414). The deployment's own command line follows the same rule
- * ({@link suiteArgs}), and it is the one that still carries selectors.
- *
- * The command line has its own name because the attempt's name is a hash of it: the Job a tree carries
- * cannot be updated once it exists, so a corrected command line has to arrive as a *different* attempt
- * (see {@link jobName}).
+ * The migration step, as a Job: `upgrade` before the suite's intents, and intents before any flag
+ * (@@F-414).
  */
 export const migrationArgs = (plan: IDeploymentPlan): string[] => [
     plan.suite.entry ?? DEFAULT_SUITE_ENTRY,
-    // `upgrade` first, because the trailing intent names the rc file the step reads (T-253) and that
+    // `upgrade` first, because the trailing intent names the rc file the step reads  and that
     // file is the deployment's, not the step's — and because bringing the schema up to date is what
     // the step is *for*: `upgrade` is the intent that activates the database adapter's
-    // `schema.sync` / `schema.seed`, while the `db` intent it replaced named no work at all (D-431).
+    // `schema.sync` / `schema.seed`, while the `db` intent it replaced named no work at all (@@D-431).
     'upgrade',
     // Nothing else: no `--<realm>.<layer>` selector rides a migration. The step brings *every* realm
     // the suite declares up to date, so it cannot name a subset, and the layers each realm needs for
     // that are the realm's own business — activated by the `upgrade` intent in `core/blong-lib/layers.ts`
     // and, where a realm needs more, in its own `layer.server.ts`. The realms themselves are named by
     // the suite's `upgrade` config block, the way its `k8s` block names them for a planning run
-    // (T-268).
+    // .
     ...deploymentIntents(plan.suite.intents),
     // The same one setting the deployment carries, and for the same reason: in a monolith the step
     // runs in the process that serves every namespace, so a call it makes to another of them is a
-    // call to itself (T-224).
+    // call to itself .
     ...profileArgs(plan),
 ];
 
@@ -1720,7 +1589,7 @@ const storageKustomization = (plan: IDeploymentPlan): Record<string, unknown> =>
  *
  * A plan that names no nodes is not a tree — nothing would fill the directories the processes mount —
  * so it says so rather than being written. That is the one thing a caller has to get right, and a
- * silent empty tree would show up as pods that never start rather than as a sentence (D-470).
+ * silent empty tree would show up as pods that never start rather than as a sentence (@@D-470).
  */
 const volumeFillJobs = (tree: KustomizeTree, plan: IDeploymentPlan, namespace: string): void => {
     if (!plan.nodes.length) {
@@ -1730,7 +1599,7 @@ const volumeFillJobs = (tree: KustomizeTree, plan: IDeploymentPlan, namespace: s
         );
     }
     // The module once for the tree, in the namespace this tree's Jobs run in: the same file for every node
-    // and every artifact, because the four values it works from arrive in its environment (D-518, D-477).
+    // and every artifact, because the four values it works from arrive in its environment (@@D-518 @@D-477).
     // It is written here rather than by `artifact.ts` so that it carries the labels every other object of
     // a tree carries — a ConfigMap of the module is an object like any other.
     tree.set('configmaps/fill-script.yaml', {
@@ -1751,7 +1620,7 @@ const volumeFillJobs = (tree: KustomizeTree, plan: IDeploymentPlan, namespace: s
  * the node writes to whichever node it lands on, and the others keep an empty directory. The name
  * carries the identity it fills and the node it fills it on, so redeploying one artifact names the same
  * Job — which has completed and is left alone — while a *changed* artifact names a new one and fills a
- * new directory (D-469, D-470).
+ * new directory (@@D-469 @@D-470).
  */
 export const fillJobName = (plan: IDeploymentPlan, node: string): string =>
     [plan.suite.name, 'fill', volumeIdentity(plan), node].join('-').toLowerCase();
@@ -1798,7 +1667,7 @@ const fillJobResource = (plan: IDeploymentPlan, node: string): Record<string, un
                             image: image(plan),
                             // The module the tree's ConfigMap carries does the work; what differs per node
                             // and per artifact arrives in the environment below, which is why the base can
-                            // carry it and the overlay only the values (D-477, D-518).
+                            // carry it and the overlay only the values (@@D-477 @@D-518).
                             command: fillCommand(),
                             env: [
                                 {name: FILL_ENV.root, value: root},
@@ -1843,7 +1712,7 @@ const fillJobResource = (plan: IDeploymentPlan, node: string): Record<string, un
  * It was shell text inside the template for a turn, which cost nothing while the step was three lines and a
  * `curl`; now the step is a real program — fetched, unpacked and linked by this realm's own code rather than
  * by binaries the framework image had to install — so it is a file `node` starts, and the ConfigMap is what
- * puts it in every node's pod (D-518, D-477).
+ * puts it in every node's pod (@@D-518 @@D-477).
  */
 
 /**
@@ -1856,7 +1725,7 @@ const fillJobResource = (plan: IDeploymentPlan, node: string): Record<string, un
  * suite config cannot drift into meaning different things — down to the shapes inside
  * the arrays, because `kubectl` validates strictly: a field a structural schema does not
  * declare fails the apply rather than being pruned, which is how the first live run
- * found the missing external-service ports and artifact source (T-221). `spec` is
+ * found the missing external-service ports and artifact source . `spec` is
  * walked against this schema by `theCrOnlySaysWhatItsCrdDeclares`.
  */
 const crdResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
@@ -2022,7 +1891,7 @@ const crdResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
                                             },
                                             // Two numbers, because they are two quantities: the
                                             // volumes are disk on every node, the attempts are Jobs
-                                            // (D-471).
+                                            // (@@D-471).
                                             attemptRetention: {
                                                 type: 'integer',
                                                 minimum: 1,
@@ -2044,7 +1913,7 @@ const crdResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
                                                     // is: a publisher that hashed what it published
                                                     // names the digest, and a caller that has no
                                                     // hash stamps when the deploy happened. Either
-                                                    // one names the volume (D-469).
+                                                    // one names the volume (@@D-469).
                                                     digest: {type: 'string'},
                                                     deployedAt: {type: 'string'},
                                                 },
@@ -2134,7 +2003,7 @@ const blongDeploymentResource = (plan: IDeploymentPlan): Record<string, unknown>
         // it is the same `blong-services` the workloads default to, and a service the declaration has
         // stopped generating still has to be found there to be retired. A field the CR omits sends the
         // operator's lookup of what it managed before to whatever namespace its client falls back to,
-        // where its account is refused — so the pass fails instead of retiring anything (F-481).
+        // where its account is refused — so the pass fails instead of retiring anything (@@F-481).
         servicesNamespace:
             plan.backingServiceRequest.servicesNamespace ?? DEFAULT_SERVICES_NAMESPACE,
         ...(plan.backingServiceRequest.storageClassName
@@ -2157,10 +2026,10 @@ const rootKustomization = (
     apiVersion: KUSTOMIZE_API,
     kind: 'Kustomization',
     // A generated kustomization never names a namespace, because the field is a rewrite rather than a
-    // default and it is the *deployment* that owns a namespace, not the tree (D-506): kustomize moves
+    // default and it is the *deployment* that owns a namespace, not the tree (@@D-506): kustomize moves
     // every namespace-able object into it, overwriting the namespace the object declared, and renames
     // every Namespace object to it — so a tree with a second namespace cannot carry one at all
-    // (F-440), and a base that carried the suite's namespace would deploy every tenant of the suite
+    // (@@F-440), and a base that carried the suite's namespace would deploy every tenant of the suite
     // into the same one. Every object names its own namespace, and a *split* carries none at all: the
     // overlay's `local/suite/` and `local/services/` declare the two namespaces a deployment has.
     //
@@ -2186,7 +2055,7 @@ const serviceValues = (service: IBackingService): Record<string, string> => ({
     initConfigName: `${service.name}-init-config`,
     // A base names the Secret its image reads, and the name is resolved whenever the deployment provides
     // credentials at all. A deployment that provides none gets the reference taken out of the object
-    // instead, which is why the derived name is filled in either way (D-509).
+    // instead, which is why the derived name is filled in either way (@@D-509).
     credentialsSecret: credentialsName(service),
 });
 
@@ -2234,7 +2103,7 @@ const renderedServiceBase = (
     // Line by line, and comments are left alone. Every base opens by naming the placeholders a base
     // may use, and substituting over the whole text made that list a dependency: the header of a base
     // for a service with no credentials asked for one, so a file that would have applied failed to
-    // generate, with an error naming a comment (F-443). A comment describes what a base may say; it
+    // generate, with an error naming a comment (@@F-443). A comment describes what a base may say; it
     // does not say it.
     const rendered = text
         .split('\n')
@@ -2275,7 +2144,7 @@ const renderedServiceBase = (
             : {}),
     };
     // And with the credentials taken out when the deployment declares none: the base is the *service's*
-    // shape, and whether a Secret exists is the deployment's answer (D-509).
+    // shape, and whether a Secret exists is the deployment's answer (@@D-509).
     return service.credentialsSecret === undefined
         ? credentialsFree(document, credentialsName(service))
         : document;
@@ -2287,7 +2156,7 @@ const renderedServiceBase = (
  * A base names the Secret its image needs because that is the shape of the service, and only the plan knows
  * whether one exists: a deployment that declares no credentials gets a workload that reads none rather than
  * one that waits for a Secret nobody writes (`CreateContainerConfigError`) — which is what "no secret is
- * mounted" has to mean for a service whose credentials arrive some other way (D-509). Matched by name rather
+ * mounted" has to mean for a service whose credentials arrive some other way (@@D-509). Matched by name rather
  * than by position, because a base is a template its descriptor's author writes.
  */
 const credentialsFree = (
@@ -2346,20 +2215,8 @@ const credentialsFree = (
 const INIT_SCRIPT_MOUNT = '/opt/blong-init';
 
 /**
- * The Job that initialises a service whose init cannot be a mount of the workload.
- *
- * Two services in the catalogue answer to this differently, and the difference is the point: MySQL's
- * script is one line per database and the base mounts the ConfigMap into the Deployment itself, where
- * the server reads it at start-up. Keycloak is the other shape — its realms, clients and users are
- * created by *calling* a running server, so the step has to be a process of its own, and
- * `initJob: true` in the descriptor is what says which shape a service is (D-466).
- *
- * The name carries a digest of the script for the reason a Job's spec is immutable: a changed script
- * cannot be applied over the old object, so it becomes a different object instead — and the attempt
- * that failed stays where it is, which is what a failed init is read from (D-386's neighbourhood).
- *
- * The script is mounted rather than inlined into a command line, so what runs is a file a reader can
- * fetch from the cluster and a deployment's text is never quoted into a shell invocation.
+ * The Job that initialises a service whose init cannot be a mount of the workload — `initJob: true`
+ * in the descriptor says which shape a service is (@@D-466).
  */
 const serviceInitJob = (
     plan: IDeploymentPlan,
@@ -2487,13 +2344,13 @@ const backingServiceResources = (
                 // database the plan's connections named, which is the list `upgrade` is about to want a
                 // schema in. A deployment's script is not — it is the text of the step that service
                 // needs, written as it arrived, because this realm has no opinion about what a realm of
-                // Keycloak's contains (D-466).
+                // Keycloak's contains (@@D-466).
                 //
                 // Written even when that list is empty, because it is the *base* that mounts it: a
                 // suite naming its database only in its release rc leaves the planning view with none
                 // to name, and the object the workload mounts then does not exist — a pod that never
                 // starts, `MountVolume.SetUp failed for volume "mysql-init": configmap not found`,
-                // reported against a service whose tree looked complete (T-277).
+                // reported against a service whose tree looked complete (@@T-277).
                 data: {
                     [scriptKey]:
                         supplied !== undefined
@@ -2516,7 +2373,7 @@ const backingServiceResources = (
         // Supplied values win, and the descriptor's own derivation is what a deployment that asks for it
         // without supplying any gets: derived rather than random, and the same on every pass, because a tree
         // is written again on every reconcile and a password that changed would be a service whose own users
-        // stopped matching the Secret beside it (D-509).
+        // stopped matching the Secret beside it (@@D-509).
         const strings =
             service.credentialsValues ??
             Object.fromEntries(
@@ -2532,7 +2389,7 @@ const backingServiceResources = (
             ...suiteLabels(plan),
             // What a pass reads to know this Secret is the tree's rather than a tenant's, so a declaration
             // that stops asking for it can take it with it — in the shared namespace as well, which is where
-            // the workload's own copy lives (D-509).
+            // the workload's own copy lives (@@D-509).
             [GENERATED_CREDENTIALS_LABEL]: 'true',
         };
         documents.push([
@@ -2551,7 +2408,7 @@ const backingServiceResources = (
         ]);
         // The same Secret under the same name in the suite's namespace, because that is where the suites's
         // own processes read it: a pod sees only its own namespace, and the copy is what the `envFrom` on
-        // every one of its workloads points at (D-462, D-509). Derived rather than random, so the two copies
+        // every one of its workloads points at (@@D-462 @@D-509). Derived rather than random, so the two copies
         // cannot drift and nothing has to sync them.
         documents.push([
             'credentials-in-suite.yaml',
@@ -2660,7 +2517,7 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
         if (ingress.tls && !tlsByHost.has(ingress.host)) tlsByHost.set(ingress.host, ingress.tls);
     }
     for (const [name, entry] of Object.entries(plan.portal)) {
-        // A webhook must not land on a portal's host (T-241). The annotations belong to the *host* —
+        // A webhook must not land on a portal's host . The annotations belong to the *host* —
         // that is what makes `auth` apply to the whole Ingress — so a realm's contributed path beside
         // a portal inherits the portal's authentication: an `oauth2` portal would ask a machine for a
         // browser login, and a `basic` one for a password that exists so a human can read a page. The
@@ -2711,7 +2568,7 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
         );
     }
     // Folders that appear only when something asks for them, so a tree never carries a shape
-    // nothing reads (T-207).
+    // nothing reads .
     if (plan.secrets.length > 0) {
         tree.set(
             'secrets/kustomization.yaml',
@@ -2741,7 +2598,7 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
     tree.set('rbac/jobs-rolebinding.yaml', roleBindingResource(plan));
     // The operator's rights *in this suite's namespaces*, granted by the suite's own tree: the
     // operator is installed once for the cluster, and which suites it may converge is a property of
-    // each tenant rather than of the install (D-396). One pair per namespace, named after the
+    // each tenant rather than of the install (@@D-396). One pair per namespace, named after the
     // operator so a reader can tell what holds it; the pair beyond the suite's own carries the
     // namespace in its name, because the file names have to differ.
     for (const namespace of tenantNamespaces(plan)) {
@@ -2755,7 +2612,7 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
             operatorTenantRoleBindingResource(plan, namespace),
         );
     }
-    // The UI's right to ask the cluster about a caller (D-376). The role is one object for the whole
+    // The UI's right to ask the cluster about a caller (@@D-376). The role is one object for the whole
     // cluster because its rules are the same for every suite; the binding is not, because its subject
     // is this suite's identity — which is exactly the rule the naming table states (Phase 15 A2).
     tree.set('rbac/auth-review.yaml', authReviewClusterRoleResource(plan));
@@ -2774,7 +2631,7 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
     }
     if (plan.crd) {
         // The CRD belongs to the operator's install, not here: it is cluster-scoped, and two suites
-        // shipping it would race to define one object (D-397). What a suite ships is its declaration.
+        // shipping it would race to define one object (@@D-397). What a suite ships is its declaration.
         tree.set(CR_PATH, blongDeploymentResource(plan));
     }
 
@@ -2801,41 +2658,7 @@ export const serializeKustomizeTree = (tree: KustomizeTree): Map<string, string>
     );
 
 /**
- * How a tree is written: a directory of manifests (`flat`), a committed base with a local overlay
- * (`split`), or one half of that pair — `base` where the design is known, `local` where the deploy is.
- *
- * The four values answer two questions, and only one of them is about files. *Who knows what*: which
- * objects exist, and what they are, is a property of the design — knowable in a dev or CI run with no
- * cluster — while the artifact's identity and the node names are the deploy's own: knowable only
- * where the deploy happens, and not worth committing. *Is one generation enough*: a caller that knows
- * both writes the halves together, and a caller that knows only the deploy writes its half beside a
- * base somebody else produced.
- *
- * `flat` is one directory with nothing left to resolve, which is the shape a consumer reads back: the
- * operator compares the objects it reads with the cluster, so a tree carrying patches would be
- * misapplied in silence (D-395). It is what the writer below falls back on when no source names a
- * layout — the `k8s` intent names `base` — and the reference a split is measured against.
- *
- * `split` writes both halves from one tree in one pass, which is what makes them one generation *by
- * construction* rather than by two writers agreeing. A caller writes it when a single process knows
- * the design and the deploy: the developer's cycle, and the operator's own install tree.
- *
- * `base` writes the design half alone, and it is the only value a cluster-free run can write — one
- * stand-in node derives the fill template and its name never reaches a file, which is also why this is
- * the one value that skips the node lookup (T-294). It is what a suite commits, and what its artifact
- * ships.
- *
- * `local` writes the deploy half alone, *beside* a base it did not produce, and that is why it
- * verifies the base rather than trusting it: the templates it instantiates and the objects it patches
- * have to be there, and a base from another generation is refused instead of being composed into
- * something nobody wrote (T-295). The operator's CR pass writes this half, over the base its artifact
- * carries (D-488).
- *
- * A pair is held together by one equality: a base and its overlay compose to exactly the tree `flat`
- * would have written, object for object (D-473, D-475, T-296). Two consumers compose the pair, so the
- * equality is pinned twice — `materializeSplitTree` in TypeScript, because the operator has no
- * kustomize binary, and `kubectl kustomize` for a cluster's own apply. The same four names are the
- * values of `--kustomize.deploy.layout`, so the flag and this union cannot drift.
+ * How a tree is written: `flat`, `split`, or one half — `base` or `local` (@@D-475 @@D-488).
  */
 export type TreeLayout = 'flat' | 'split' | 'base' | 'local';
 
@@ -2850,22 +2673,8 @@ export interface IWriteTreeOptions {
 }
 
 /**
- * Write the tree to `dir`, replacing whatever was there. Returns the paths written.
- *
- * `flat` is one directory of manifests, which is what the operator applies: it reads objects back and
- * compares them with the cluster, so a tree it cannot evaluate — a base with patches — would be a tree it
- * silently misapplies (D-395).
- *
- * `split` writes the same objects twice over: a `base/` that changes only when the *design* does, and a
- * `local/` overlay carrying what one deploy says — the artifact's identity in the claim and the volume,
- * the job attempts named after it, and one fill Job per node. Consumers apply the overlay with kustomize
- * (`kubectl apply -k …/local`), which is what keeps a dev cluster's node names and a deploy's digest out
- * of the repository (D-473, D-475).
- *
- * `base` writes the first of those halves and stops. It names no node and no artifact, which is what lets
- * dev or CI generate it without a cluster — the generation needs one stand-in node to derive the fill
- * template from, and its name never reaches a file (T-294). The overlay is then written where the deploy
- * is known.
+ * Write the tree to `dir`, replacing whatever was there; `flat`, `split` or `base` decides how much
+ * (@@D-395 @@D-475).
  */
 export const writeKustomizeTree = (
     tree: KustomizeTree,
@@ -2908,18 +2717,8 @@ export const writeKustomizeTree = (
 };
 
 /**
- * What a split does with one object, decided by the name the object already carries.
- *
- * One question, and each object answers it. Does the object *name* itself belong to the deploy — one fill
- * Job per node, one attempt per artifact, one claim per artifact? Then no patch can help, because a patch
- * targets by name, and the base carries a **template** the overlay instantiates once per node or per
- * artifact instead. Everything else belongs to the base, and what a deploy owns *inside* such an object —
- * the artifact its volume reads, the node it runs on — is patched back by the overlay rather than left out
- * of the base, which is the whole point of the split (D-475).
- *
- * `cache/fill-script.yaml` is the exception that proves the rule: the script is the same for every node
- * and every artifact — that is why it reads its settings from the environment — so it belongs to the base,
- * which is also where a reader will look for it.
+ * What a split does with one object, decided by the name it already carries: a name the deploy owns
+ * becomes a template the overlay instantiates (@@D-475).
  */
 type TreePlacement = 'base' | 'instantiated';
 
@@ -3044,7 +2843,7 @@ const splitWorkload = (
                 name: metadata.name,
                 // No namespace, because the base's object carries none: the split strips it from every
                 // object it moves into the base, and the overlay's `local/suite/` declares the one the
-                // deployment has (D-506). A patch that named one would target an id the object does not
+                // deployment has (@@D-506). A patch that named one would target an id the object does not
                 // hold — kustomize matches a qualified patch against a qualified object only (verified).
                 ...(metadata.labels?.[SPEC_HASH_LABEL]
                     ? {labels: {[SPEC_HASH_LABEL]: metadata.labels[SPEC_HASH_LABEL]}}
@@ -3104,19 +2903,8 @@ const containerEnvOf = (
 type InstanceKind = 'fill' | 'attempt' | 'claim';
 
 /**
- * Split an object the deploy owns by name into a template and the patch that instantiates it.
- *
- * The rule is one rule for all three kinds: the template is the real name up to the identity, and the
- * suffix is everything after it — `<suite>-fill-<identity>-<node>` becomes a `<suite>-fill` template with
- * `-<identity>-<node>` appended, and `<suite>-migrate-<identity>-<hash>` and `<suite>-<identity>` the same.
- * These cannot stay in the base as objects, because no patch renames an object: the name *is* the part the
- * deploy owns (D-475).
- *
- * The template is *derived* — every value that names the deploy is replaced by {@link placeholderize} — so
- * a field nobody thought of is still covered. The patch is written per kind, because "which parts of a Job
- * name the artifact" is a question about that Job: the labels two places over, the node it runs on, the
- * identity in its environment, the volume it reads. The two are held together by `kubectl kustomize`: the
- * instantiated overlay has to be the tree the flat layout would have written, object for object.
+ * Split an object the deploy owns by name into a template and the patch that instantiates it — the
+ * template derived, the patch written per kind (@@D-475).
  */
 const instantiate = (
     plan: IDeploymentPlan,
@@ -3160,7 +2948,7 @@ const instantiate = (
             name: template,
             // No namespace, because the base's template carries none either: the split strips it from
             // every object it moves into the base, and the overlay's `local/suite/` declares the one the
-            // deployment has (D-506). A patch that named one would target an id the template does not
+            // deployment has (@@D-506). A patch that named one would target an id the template does not
             // hold — kustomize matches a qualified patch against a qualified object only (verified).
             // The object's labels, *all* of them. A placeholder replacement is a value substitution, so a
             // label that merely *read* the identity — the suite's version, say — was destroyed by it, and
@@ -3247,7 +3035,7 @@ const kustomizationFolder = (path: string): string => path.slice(0, -'/kustomiza
  * travels with it — the workload, its claim and its init config. The two objects that belong to the
  * *suite's* namespace rather than to the workload's do not: the alias a realm's config resolves and the
  * credentials copy a suite pod reads are the overlay's suite child's, because a folder is stamped with
- * the services namespace (D-506). `services/access.yaml` is not one of them either: that is a suite's
+ * the services namespace (@@D-506). `services/access.yaml` is not one of them either: that is a suite's
  * own process, which belongs to the base like any other workload.
  */
 const serviceScopeOf = (
@@ -3264,9 +3052,9 @@ const serviceScopeOf = (
 
 /**
  * Whether an object is a right the operator holds in a service's namespace rather than a service's own
- * file: two services may share one namespace, so the overlay writes the pair once (D-504). The namespace
+ * file: two services may share one namespace, so the overlay writes the pair once (@@D-504). The namespace
  * *itself* is not among them — it is cluster-scoped and named after the deployment, so the tree writes it
- * at the overlay's root (D-506).
+ * at the overlay's root (@@D-506).
  */
 const isServicePlumbing = (path: string, plan: IDeploymentPlan): boolean =>
     plan.backingServices.some(
@@ -3284,21 +3072,8 @@ const isServicePlumbing = (path: string, plan: IDeploymentPlan): boolean =>
  * alone: the derivation runs the same way, and only the writes of the missing half are left out.
  */
 /**
- * The same object with no namespace of its own.
- *
- * A split strips the namespace wherever it appears, because it belongs to the *deployment* rather than to
- * the design: the CR's namespace for the suite's objects, the services namespace the CR names for the
- * workloads a deployment brings (D-506). The halves are shared by every deployment of the suite, so
- * neither can carry one; the overlay's two children declare them, and a patch that named one would target
- * an id no namespace-free object holds — kustomize matches a qualified patch against a qualified object
- * only (verified against kubectl).
- *
- * The fingerprint is deliberately *kept* rather than recomputed. It covers the object the halves compose
- * to, and the composition is what puts the namespace back: the plan the base was generated from carries the
- * same namespace the overlay declares, because that is the namespace the CR named. Re-stamping here would
- * leave every stripped object with a fingerprint of something nobody applies — kustomize adds the namespace
- * without touching a label — so the pass that reads it would see a change on the first reconcile and one
- * only a recompute could settle.
+ * The same object with no namespace of its own — a split strips it and keeps the fingerprint
+ * (@@D-506).
  */
 const namespaceFree = (resource: KustomizeResource): KustomizeResource => {
     if (!isClusterResource(resource)) return resource;
@@ -3333,17 +3108,17 @@ const writeSplitTree = (
     const services = new Map<string, Map<string, KustomizeResource>>();
     /** The namespaces the tree creates: cluster-scoped, and named after the deployment that owns them. */
     const namespaces = new Map<string, KustomizeResource>();
-    /** What the suite's child owns outright: the aliases the CR may point elsewhere (D-506). */
+    /** What the suite's child owns outright: the aliases the CR may point elsewhere (@@D-506). */
     const suiteOwn = new Map<string, KustomizeResource>();
     /** The rights the operator holds in a service's namespace: the overlay's `services` child. */
     const serviceOwn = new Map<string, KustomizeResource>();
-    /** The declaration, which no kustomization applies: a sample a tenant copies (D-506). */
+    /** The declaration, which no kustomization applies: a sample a tenant copies. */
     const examples = new Map<string, KustomizeResource>();
     /** The namespace the workloads a deployment brings run in, when it brings one at all. */
     const workloadNamespace = plan.backingServices[0]?.namespace;
     for (const [path, resource] of tree) {
         // The declaration is the tenant's own act — its namespace, the services it brings, the artifact it
-        // fetched — and a base every deployment of the suite shares cannot carry any of it (D-506), so it
+        // fetched — and a base every deployment of the suite shares cannot carry any of it (@@D-506), so it
         // travels beside the base as an example to copy.
         if (path === CR_PATH) {
             examples.set(CR_EXAMPLE, resource);
@@ -3360,7 +3135,7 @@ const writeSplitTree = (
         // in the namespace the CR names for the suite, while the workload reads its Secret in the services
         // namespace. So the folder cannot hold it — the overlay stamps a folder with the services namespace
         // — and it cannot share the workload's name in that folder either, because two same-named Secrets in
-        // one kustomization are two resources with one id, which kustomize refuses (D-506).
+        // one kustomization are two resources with one id, which kustomize refuses (@@D-506).
         const copied = plan.backingServices.find(
             entry => path === `services/${entry.name}/credentials-in-suite.yaml`,
         );
@@ -3400,7 +3175,7 @@ const writeSplitTree = (
             continue;
         }
         // The alias a realm's own configuration resolves — `db`, not a host — is a value the CR may point
-        // somewhere else, so it belongs to the overlay rather than to the base (D-506). The alias a
+        // somewhere else, so it belongs to the overlay rather than to the base (@@D-506). The alias a
         // *generated* service publishes travels with its folder instead, which is the same answer.
         if (path.startsWith('external-services/')) {
             suiteOwn.set(path, namespaceFree(resource));
@@ -3472,7 +3247,7 @@ const writeSplitTree = (
         [...entries.keys()].filter(path => path.endsWith('/kustomization.yaml') === false).sort();
     const roots: Array<[string, KustomizeResource]> = [];
     // Each half is written where the other one already is: a base-only run stops before the overlay, and
-    // a local-only run has no base to write (T-294, T-295).
+    // a local-only run has no base to write .
     if (withBase) {
         roots.push([
             'base/kustomization.yaml',
@@ -3489,7 +3264,7 @@ const writeSplitTree = (
         // The overlay's root names no namespace, because its two children each declare one and a field
         // here would rewrite both: kustomize's namespace transformer runs over everything a child brought
         // (verified against kubectl), so the services' workloads would land in the tenant's namespace and
-        // the two Namespace objects would collide (F-440, D-506).
+        // the two Namespace objects would collide (@@F-440 @@D-506).
         roots.push([
             'local/kustomization.yaml',
             {
@@ -3519,7 +3294,7 @@ const writeSplitTree = (
         ]);
         // And the services' half: one folder per service this deployment brings, plus the rights the
         // operator holds in their namespace. A deployment opts a service in by naming it, and the overlay
-        // is where that opt-in is written down — the base beside it says nothing about any service (D-504).
+        // is where that opt-in is written down — the base beside it says nothing about any service (@@D-504).
         // Named `backing` rather than `services`, because the base itself has a `services/` folder (the
         // suite's own process Services) and a composer reads the two halves by path.
         if (services.size || serviceOwn.size) {
@@ -3540,7 +3315,7 @@ const writeSplitTree = (
     // A local-only run is applied beside a base somebody else wrote — committed, or fetched with the
     // artifact — so the two have to be one generation: an instance referencing a template the base does
     // not hold, or a patch whose object is not there, composes into something nobody wrote. Say it here
-    // rather than let kustomize report a missing target later (T-295).
+    // rather than let kustomize report a missing target later .
     if (layout === 'local') {
         const absent = [
             ...[...templates.keys()].map(key => `base/templates/${key}/${TEMPLATE_FILE}`),
@@ -3593,7 +3368,7 @@ const writeSplitTree = (
         );
     }
     // The declaration beside the base rather than in it: a sample a tenant copies, and no kustomization
-    // lists it (D-506).
+    // lists it (@@D-506).
     for (const [path, content] of withBase ? serializeKustomizeTree(examples) : []) {
         write(path, content);
     }
@@ -3605,7 +3380,7 @@ const writeSplitTree = (
     }
     // The service folders are written last of the halves: one the artifact shipped is used as it stands
     // (the zip decides, because the folder is the suite's to keep and to review), and one it did not is
-    // written here, with the kustomization the overlay includes it by (D-504).
+    // written here, with the kustomization the overlay includes it by (@@D-504).
     for (const [name, folder] of [...services.entries()].sort()) {
         if (!withBase && existsSync(join(dir, `services/${name}/kustomization.yaml`))) continue;
         const files = [...folder.keys()].filter(path => path !== 'kustomization.yaml').sort();
@@ -3626,7 +3401,7 @@ const writeSplitTree = (
  * A deployment's entry is an absolute path inside the mount (`SUITE_MOUNT/...`), and the operator
  * reads the same artifact from its cache directory instead: the suffix after the mount is the path
  * within the artifact, whatever directory it is unpacked into — which the fill makes literal by
- * rewriting the artifact's links as relative ones (D-476). An entry that names no mount is taken as
+ * rewriting the artifact's links as relative ones (@@D-476). An entry that names no mount is taken as
  * already relative, and an artifact with no entry of its own falls back to `index.ts` at its root,
  * which is what `rush deploy` produces for a package whose entry is the conventional one.
  */
@@ -3642,7 +3417,7 @@ export const artifactEntry = (dir: string, entry?: string): string => {
  *
  * The inverse of {@link writeKustomizeTree}, and the operator's half of a generation that happened in
  * another process: the child writes the tree the CR asked for and the pass applies what it wrote
- * (D-395). YAML is parsed rather than merely copied because the objects have to be compared with the
+ * (@@D-395). YAML is parsed rather than merely copied because the objects have to be compared with the
  * cluster — and parsing keeps the fingerprint the generator stamped on each one, which is what lets
  * an unchanged object be left alone rather than re-applied.
  */

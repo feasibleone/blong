@@ -47,37 +47,12 @@ interface IPassOptions {
 }
 
 /**
- * kustomize.watch.run — the operator's trigger.
- *
- * The watch belongs in a handler rather than in the port's loop for one reason, and it is the
- * reason this file exists: a handler reaches the adapter through the handler proxy, which is a local
- * call, while the port's `request` path crosses a transport that serialises both directions. The
- * adapter's watch answers a stream, and a stream does not survive serialisation — the reply came
- * back as `null`, which read as "no events and nothing existing" (T-227). Through the proxy the
- * stream arrives whole, so the loop can hold it and a reconcile is triggered per event.
- *
- * The loop is started, not awaited: a caller asks for a watch and is answered immediately, because
- * the stream outlives the request that began it. One watch serves the whole cluster — a
- * `BlongDeployment` in any namespace is reconciled where it was declared — and each CR is coalesced
- * so a burst of events for one object becomes one pass.
- *
- * The module also owns the watch's *end*: `stopWatch`, called from the dispatch port's own `stop()`
- * on the way out, is the only handle anything outside has on this loop.
+ * kustomize.watch.run — the operator's trigger; a handler, because a stream does not survive the
+ * port's request path (@@T-227).
  */
 /**
- * Whether the watch has been asked to stop, and the one thing a shutdown needs.
- *
- * The watch is closure state — the loop, its pending triggers and the generation map — and nothing
- * outside this module held a handle on any of it, so a terminating pod waited out its grace period
- * with a watch that was still renewing (the platform's `stop()` reaches the ports, and no port knew
- * this loop existed). Flipping this flag is what the dispatch port's `stop()` calls.
- *
- * What it deliberately does *not* do is abort the in-flight long poll: the abort handle belongs to
- * the adapter's own generator and is not exposed, so the poll would have to finish anyway. Nothing
- * waits for it either — the shutdown path calls `process.exit`, which is what closes the socket —
- * and refusing to renew is what stops the loop from opening another one. The flag is cleared when
- * the handler is called again, because a config reload stops and starts the port rather than
- * replacing the process (see `Watch.ts`'s `applyConfigReload`).
+ * Whether the watch has been asked to stop — the one handle a shutdown has on the loop, flipped by
+ * the dispatch port's `stop()`.
  */
 let stopRequested = false;
 
@@ -120,7 +95,7 @@ export default handler(({handler}) => {
                     // settings are the caller's, so a read-only controller stays read-only here.
                     // Deliberately not awaited: a watch event must not block the stream. Which is why
                     // the failure is caught here — without this it escapes as an unhandled rejection
-                    // and takes the operator down (T-229).
+                    // and takes the operator down .
                     void reconcile({...pass, name, namespace}, $meta).catch(error =>
                         logger?.error?.({
                             $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
@@ -238,7 +213,7 @@ export default handler(({handler}) => {
             if (!running) {
                 logger = log;
                 // Never awaited, so its rejection is reported here: an uncaught one would end the
-                // process (T-229). The loop has its own per-cycle catch, so this only ever sees a
+                // process . The loop has its own per-cycle catch, so this only ever sees a
                 // failure outside it.
                 running = loop(pass, $meta as IMeta).catch(error =>
                     logger?.error?.({

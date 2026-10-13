@@ -1,7 +1,8 @@
-import * as path from 'node:path';
-import * as os from 'node:os';
-import * as vscode from 'vscode';
 import * as cacache from 'cacache';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import * as vscode from 'vscode';
+import {registerMemoryReferences} from './memoryReferences';
 import {RestFileSystemProvider} from './restFileSystemProvider';
 import {RestShellTaskProvider} from './restShellTaskProvider';
 
@@ -16,6 +17,7 @@ type RestFsWorkspaceConfig = Record<
 /** A terminal link that carries the ULID of the associated log entry. */
 interface BlongLogTerminalLink extends vscode.TerminalLink {
     logId: string;
+    data: string;
 }
 
 /**
@@ -200,11 +202,37 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(shellTaskProviderRegistration);
 
+    class LogContentProvider implements vscode.TextDocumentContentProvider {
+        async provideTextDocumentContent(
+            uri: vscode.Uri,
+            token: vscode.CancellationToken,
+        ): Promise<string | undefined> {
+            const cfg = vscode.workspace.getConfiguration('restfs');
+            const cachePathRaw: string = cfg.get('blongLogCachePath', '~/.blong/log-cache');
+            const cachePath = cachePathRaw.startsWith('~')
+                ? path.join(os.homedir(), cachePathRaw.slice(1))
+                : cachePathRaw;
+
+            let content: string;
+            try {
+                const result = await cacache.get(cachePath, uri.path.substring(1)); // skip the /
+                const entry = JSON.parse(result.data.toString()) as unknown;
+                return JSON.stringify(entry, null, 2);
+            } catch (err) {
+                vscode.window.showErrorMessage(`Failed to read log entry ${uri.path}: ${err}`);
+                return;
+            }
+        }
+    }
+    const logContentProvider = vscode.workspace.registerTextDocumentContentProvider(
+        'semlog',
+        new LogContentProvider(),
+    );
+    context.subscriptions.push(logContentProvider);
+
     // Register terminal link provider for semlog://r/<id> and semlog://t/<id> links
     const logLinkProvider = vscode.window.registerTerminalLinkProvider({
-        provideTerminalLinks(
-            terminalContext: vscode.TerminalLinkContext,
-        ): BlongLogTerminalLink[] {
+        provideTerminalLinks(terminalContext: vscode.TerminalLinkContext): BlongLogTerminalLink[] {
             const match = LOG_LINK_REGEX.exec(terminalContext.line);
             if (!match) {
                 return [];
@@ -215,36 +243,23 @@ export function activate(context: vscode.ExtensionContext) {
                     length: match[0].length,
                     tooltip: 'Open log entry details',
                     logId: match[1],
+                    data: match[0],
                 },
             ];
         },
 
         async handleTerminalLink(link: BlongLogTerminalLink): Promise<void> {
-            const cfg = vscode.workspace.getConfiguration('restfs');
-            const cachePathRaw: string = cfg.get('blongLogCachePath', '~/.blong/log-cache');
-            const cachePath = cachePathRaw.startsWith('~')
-                ? path.join(os.homedir(), cachePathRaw.slice(1))
-                : cachePathRaw;
-
-            let content: string;
-            try {
-                const result = await cacache.get(cachePath, link.logId);
-                const entry = JSON.parse(result.data.toString()) as unknown;
-                content = JSON.stringify(entry, null, 2);
-            } catch (err) {
-                vscode.window.showErrorMessage(`Failed to read log entry ${link.logId}: ${err}`);
-                return;
-            }
-
-            const doc = await vscode.workspace.openTextDocument({
-                content,
-                language: 'json',
-            });
+            const doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(link.data));
+            await vscode.languages.setTextDocumentLanguage(doc, 'json');
             await vscode.window.showTextDocument(doc);
         },
     });
 
     context.subscriptions.push(logLinkProvider);
+
+    // Memory cross-references: hover a `@@` token to see the entry it names, click to
+    // open it, F12 to jump to the entry's line. Reads a derived index; never writes.
+    registerMemoryReferences(context);
 }
 
 export function deactivate() {}

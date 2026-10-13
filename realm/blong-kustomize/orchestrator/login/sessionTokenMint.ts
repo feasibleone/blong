@@ -16,22 +16,8 @@ export interface ISessionMintParams {
 }
 
 /**
- * session.token.mint — the session token the realm's login hands back.
- *
- * The credential a caller presents is a Kubernetes service-account token, and the realm keeps it as
- * the credential the cluster trusts. What it hands *back* is a token of its own, because the caller's
- * MLE key pair has to travel with it: the API server signs a service-account token, so no claim can be
- * added to one, and the pair therefore had to be kept in this process beside the identity — one entry
- * per service account, which every browser sharing that token also shares (F-500).
- *
- * Signed with the gateway's own sign key, which is the pair the deployment's rc file names
- * (`gateway.sign`, written by `kustomizeGatewayKeysEnsure`), and which the gateway verifies with the
- * public half it publishes — so a minted token is verifiable by this process and by no other, and a
- * restart or a second replica keeps its sessions working.
- *
- * The issuer and the audience are configuration, not a constant: the `jwks_uri` the framework reads a
- * key set from is an address of the deployment, and the issuer has to be the same string the
- * deployment configured the gateway with, or verification is refused as an unknown issuer (F-494).
+ * session.token.mint — the session token the realm's login hands back, signed with the gateway's own
+ * key (@@F-494 @@F-500).
  */
 export default library(
     async ({

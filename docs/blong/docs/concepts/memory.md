@@ -37,3 +37,27 @@ flowchart LR
     cli --> area["filed by area:<br/>a rush.json package folder,<br/>or cross-cutting / ci / docs / skills"]
     kinds --> statuses["friction: open → resolved<br/>todo: open → done<br/>decision: active → superseded"]
 ```
+
+## Cross-references
+
+A note is pointed at from outside with a **reference**: `@@` immediately followed by a target.
+
+| Target        | Token                                        | Names                              |
+| ------------- | -------------------------------------------- | ---------------------------------- |
+| memory entry  | `@@F-014`                                    | the entry, wherever its file lives |
+| doc page      | `@@doc:patterns/memory`                      | a page under `docs/blong/docs/`    |
+| doc section   | `@@doc:patterns/memory#searching-by-meaning` | the heading with that slug         |
+| skill         | `@@skill:blong-realm`                        | `.github/skills/*/SKILL.md`        |
+| skill section | `@@skill:blong-realm#layers`                 | the heading with that slug         |
+
+`@@` cannot appear in TypeScript, YAML, shell or markdown syntax, so the token needs no escaping and
+is greppable as text (`grep -rF '@@T-'`). In a markdown file — a doc page, a skill, a memory entry —
+a page or a skill is named with a **normal relative link** instead; only a file with no link syntax
+uses the `@@doc:`/`@@skill:` spelling. A reference that no longer resolves fails
+`blong-dev memory refs --dangling`: an unknown id or a missing section is an error, a retired id is
+a warning that names its successor, and a syntax _example_ inside backticks or a fence is ignored.
+
+A closed or pruned id is not forgotten: it is recorded in `## Retired`
+(`- F-101 — superseded by F-090 (2026-08-01)`) and its number is never reused, so a reference that
+outlived its entry is diagnosed instead of silently pointing at a later one. See the
+[pattern guide](../patterns/memory) for the commands.

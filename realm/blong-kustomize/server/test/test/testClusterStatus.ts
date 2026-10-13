@@ -2,27 +2,8 @@ import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 import {OPERATOR_GROUP, OPERATOR_PLURAL, OPERATOR_VERSION} from '../../../operator.ts';
 
 /**
- * server/test/test/testClusterStatus.ts — the operator's report, on a cluster.
- *
- * The status is a subresource, and the write is the shape a wrong guess at it breaks on: the
- * generated client sends a JSON patch for a custom resource whatever it is handed, so an object body
- * comes back as "cannot unmarshal object into []jsonPatchOp" (F-382), and a patch to the object's
- * own path cannot change a status field at all. Three things therefore need a live cluster to be
- * true, and this group is where they are checked together:
- *
- * 1. the adapter addresses the subresource (`subresource: 'status'` becomes
- *    `patchNamespacedCustomObjectStatus`),
- * 2. the API server accepts the operation, and
- * 3. the CRD declares every field that was written — an unknown status field is *pruned*, so
- *    `phase` disappearing here is the same failure that took a regenerated CRD to fix in a
- *    namespace (T-229).
- *
- * Gated because it writes:
- *
- *     BLONG_TEST_APPLY=1 node --run test
- *
- * It writes its own `BlongDeployment` rather than any real one: a test that reported a phase onto a
- * live suite would be a test that broke the suite it was checking.
+ * server/test/test/testClusterStatus.ts — the operator's status subresource, on a cluster: the patch
+ * shape and the CRD fields it needs @@F-382. Gated by `BLONG_TEST_APPLY=1`.
  */
 export default handler(
     ({

@@ -7,7 +7,7 @@
 # credential keys, so a deployment that already owns an admin account hands its own Secret instead.
 #
 # What is deliberately *not* here is the `keycloak-init` Job the integration matrix runs: realms, roles
-# and clients are suite-specific, and who owns a suite realm is an open question (D-433), so the
+# and clients are suite-specific, and who owns a suite realm is an open question (@@D-437), so the
 # generated service is a Keycloak that starts and authenticates and no more.
 #
 # Placeholders are the generator's, and one it does not know is a failure rather than a literal:

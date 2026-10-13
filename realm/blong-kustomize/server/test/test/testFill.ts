@@ -29,7 +29,7 @@ import {
  * server/test/test/testFill.ts — the step that brings an artifact to where it is read from.
  *
  * `fill.ts` is the realm's own program now rather than shell text, and it is the one file that runs in two
- * places: the operator imports it, and a fill Job runs a mounted copy of it (D-518). What that buys is that
+ * places: the operator imports it, and a fill Job runs a mounted copy of it (@@D-518). What that buys is that
  * a mistake here is a *test* failure rather than a fill Job that reports nothing — so the pieces that were
  * previously trusted to `curl`, `unzip`, `find` and `ls` are checked where they can be, by building the
  * archives and the trees they are given.
@@ -154,8 +154,8 @@ export default handler(({lib: {group}}) => ({
             async function anAbsoluteLinkIsMadeRelative(assert: IAssert) {
                 // `create-links.js` computes its targets from the directory it runs in, so a tree linked
                 // at one path carries links naming that path — and a reader that mounts the tree anywhere
-                // else has hundreds of dangling links and dies on its first import (F-449). Making them
-                // relative is what lets the artifact be read from wherever it lands (D-476).
+                // else has hundreds of dangling links and dies on its first import (@@F-449). Making them
+                // relative is what lets the artifact be read from wherever it lands (@@D-476).
                 const dir = mkdtempSync(join(tmpdir(), 'kustomize-fill-links-'));
                 try {
                     mkdirSync(join(dir, 'packages', 'thing'), {recursive: true});
@@ -227,7 +227,7 @@ export default handler(({lib: {group}}) => ({
 
             async function aStagedFillPublishesAWholeDirectory(assert: IAssert) {
                 // The Job's own path: the artifact is staged beside where it belongs and renamed into
-                // place, so a reader sees either nothing or a whole tree (D-468) — which is why the
+                // place, so a reader sees either nothing or a whole tree (@@D-468) — which is why the
                 // retention counts the directories *beside* the target, and why a staging directory an
                 // interrupted run left behind is collected rather than counted as an identity.
                 const dir = mkdtempSync(join(tmpdir(), 'kustomize-fill-stage-'));
@@ -339,7 +339,7 @@ export default handler(({lib: {group}}) => ({
              * (`/script/..2026_10_11_14_46_55.123/fill.mts`). Every other case in this file calls
              * `fillFromEnvironment` directly, so all of them stayed green while the Job did nothing at
              * all: the fill Jobs reported `Completed` seconds after they started, published no directory,
-             * and every reader waited on one that was never created (found in the dev cluster, T-318).
+             * and every reader waited on one that was never created (found in the dev cluster).
              * This case starts the module the way the Job does — through the symlink — which is the only
              * way a test in this process can see it.
              */

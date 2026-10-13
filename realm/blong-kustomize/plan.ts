@@ -25,7 +25,7 @@ import {
  * `group` takes the explicit `groups` map, and `monolith` puts everything in one process. The
  * `layer` and `custom` spellings that used to sit here are gone: layer granularity is what a
  * `group` entry's `<realm>.<layer>` selectors express, and `custom` was that same map under a
- * second name (Phase 15 C, T-231).
+ * second name (Phase 15 C).
  */
 export type DeploymentProfile = 'namespace' | 'realm' | 'group' | 'monolith';
 
@@ -263,7 +263,7 @@ export interface IExternalService {
  * names the generated Service. A CR is data from outside this process, so the shape is checked
  * rather than assumed: an entry the plan cannot name produced a Service called `0` with no
  * `externalName` — written from a stale CR that still carried the list form — and the apply failed
- * with `Missing key value for ?key?`, naming neither the field nor the CR (F-405). Refusing here
+ * with `Missing key value for ?key?`, naming neither the field nor the CR (@@F-404). Refusing here
  * fails the generation instead, where the message can say what is wrong.
  */
 export const resolveExternalServices = (
@@ -327,7 +327,7 @@ const mergeNamed = <T extends {name: string}>(
  * The counterpart of `resolveExternalServices` for the collections a name identifies on its own. Both
  * a CR and a config file are data this process *reads* rather than code it wrote, so the shape is
  * checked where it is read: a declaration that still carries the list form otherwise reaches the tree
- * and fails at the composer, with a message naming neither the field nor the entry (F-405).
+ * and fails at the composer, with a message naming neither the field nor the entry (@@F-404).
  */
 export const resolveNamedEntries = <T extends {name: string}>(
     declaration: NamedMap<T> | unknown,
@@ -396,7 +396,7 @@ export interface ISuiteArtifact {
      *
      * The identity of the artifact, and the reason a volume can be new under an unchanged version: two
      * deploys that ship different files are two artifacts, and only something taken from the artifact
-     * can tell them apart (D-469). A publisher has it for free — the runbook hashes the zip it just
+     * can tell them apart (@@D-469). A publisher has it for free — the runbook hashes the zip it just
      * wrote — while an artifact nobody hashed names {@link deployedAt} instead.
      */
     digest?: string;
@@ -404,36 +404,15 @@ export interface ISuiteArtifact {
      * When this deploy was stamped, for an artifact nobody hashed.
      *
      * An input rather than a reading of the clock: the operator regenerates the tree on every reconcile
-     * pass, so a value taken *then* would mint a new volume and a new attempt every pass (D-469). Eight
+     * pass, so a value taken *then* would mint a new volume and a new attempt every pass (@@D-469). Eight
      * characters of it name the volume, hashed when the stamp is not itself hex.
      */
     deployedAt?: string;
 }
 
 /**
- * A published entry point: an address, and the process behind it.
- *
- * A suite may publish more than one, because a portal is an address rather than a property of the
- * suite: two hostnames that answer different things are two entries, and each is served by the
- * process that owns the page it shows. What a portal *serves* is that process's own business — the
- * bundle it mounts is the gateway config of whoever fronts it — so this names the address and the
- * process and says nothing about content.
- *
- * A portal usually belongs to the *tenant*: the host is a DNS record and a TLS certificate, and the
- * ingress controller that enforces the auth annotations is the cluster's. So a suite declares that
- * it has a portal and the tenant names the host in the CR (see `IPlanOptions.portal`).
- *
- * Portals are a **map keyed by alias** rather than a list, and the alias is what names the portal:
- * an alias is a name a person chose, so it is stable across a profile change in a way that a
- * deployment name is not, and it is the word the errors and the generated objects use. A map also
- * merges where a list cannot — two releases, a suite and a CR, or two overlays can each add a portal
- * without either having to know the other's position in an array.
- *
- * Auth is delegated to the cluster on purpose. The realm generates an Ingress
- * whose annotations the ingress controller already understands, so the operator
- * authenticates against infrastructure they own instead of against a user table
- * this realm would have to keep — and which would drag in a database the realm
- * deliberately does not have.
+ * A published entry point: an address and the process behind it — portals are a map keyed by alias,
+ * with auth delegated to the cluster.
  */
 /**
  * The ingress-level authentication a host may sit behind.
@@ -480,7 +459,7 @@ export interface ISuiteVolume {
      * How many deploy attempts (the seed and migration Jobs) are retained.
      *
      * A second number rather than the one above, because the two are unrelated quantities: a volume is
-     * disk on every node, an attempt is one Job (D-471).
+     * disk on every node, an attempt is one Job (@@D-471).
      */
     attemptRetention: number;
     /** Opt-in RWX provider the installer generates so `shared` becomes available. */
@@ -503,7 +482,7 @@ export interface ISuiteOperatorRequest {
     image?: string;
     /** Seconds between reconcile passes. 0 means the Deployment starts no loop. */
     intervalSeconds?: number;
-    /** The address the deployment read API answers on (D-434). */
+    /** The address the deployment read API answers on (@@D-523). */
     ingress?: IOperatorIngress;
 }
 
@@ -512,9 +491,9 @@ export interface ISuiteOperatorRequest {
  *
  * The operator publishes the deployment read API, one per cluster in the namespace it was installed
  * into — and a suite's portal can never front it, because an Ingress backend has to be a Service in
- * the Ingress's own namespace and a selector is namespace-local (T-254, T-258). So the address is the
+ * the Ingress's own namespace and a selector is namespace-local (@@T-258). So the address is the
  * *installer's* to declare: it sits beside `install` and `operator` in the operator's own config, and
- * a suite (or a CR) never carries one, because the deployment page is the operator's alone (D-434).
+ * a suite (or a CR) never carries one, because the deployment page is the operator's alone (@@D-523).
  */
 export interface IOperatorIngress {
     host: string;
@@ -552,7 +531,7 @@ export interface IControllerConfig {
      *
      * Separate from `apply` because a converge and a removal are different intentions, and the
      * second one cannot be walked back. What it removes is scoped to the suite's namespace, so a
-     * generated service in a namespace of its own is reported rather than deleted (D-461).
+     * generated service in a namespace of its own is reported rather than deleted (@@D-461).
      */
     prune?: boolean;
     /**
@@ -561,7 +540,7 @@ export interface IControllerConfig {
      * On for a CR pass, which is the default a CR-driven controller wants: waiting out the interval
      * for a change someone just applied is the wrong answer, and the watch re-lists every thirty
      * seconds, so it resyncs as well as reacts. The watch itself runs in `kustomize.watch.run`,
-     * because a stream does not survive the deploy port's request path (T-225, T-227); `false` turns
+     * because a stream does not survive the deploy port's request path (@@T-225 @@T-227); `false` turns
      * it off and leaves the interval as the only trigger.
      */
     watch?: boolean;
@@ -616,7 +595,7 @@ export interface IDeploymentPlan {
      * The nodes the suite runs on, which is what a `nodeLocal` volume is filled per.
      *
      * Cluster state rather than configuration, and carried here because the tree cannot be written
-     * without it: one fill Job per node is one directory per node (D-470). A plan that names none is a
+     * without it: one fill Job per node is one directory per node (@@D-470). A plan that names none is a
      * plan whose tree would leave every process waiting for a directory nobody fills.
      */
     nodes: string[];
@@ -633,7 +612,7 @@ export interface IDeploymentPlan {
 /**
  * Where the node set of a `nodeLocal` deployment comes from.
  *
- * A `nodeLocal` volume is one directory per node (D-470), so a plan cannot be written without
+ * A `nodeLocal` volume is one directory per node (@@D-470), so a plan cannot be written without
  * knowing the nodes — and the process that plans is not always one that can see them. The `k8s`
  * generator asks the cluster; an operator that reconciles a pass a page triggered has to be *told*,
  * and so does a suite artifact read in a child process. Hence a source with the two shapes a caller
@@ -690,7 +669,7 @@ export interface IPlanOptions {
      * watch files and run integration tests. What a *deployment* may name here is the intents it is
      * configuration for (`release`, `debug`); the intents that describe how a developer runs a
      * realm are dropped by `deploymentIntents` in `generator.ts`, and `release` stays last because the
-     * trailing name picks the rc file the tree mounts (D-428).
+     * trailing name picks the rc file the tree mounts (@@D-428).
      */
     intents?: string[];
     profile?: DeploymentProfile;
@@ -700,7 +679,7 @@ export interface IPlanOptions {
     /**
      * Which third-party services this deployment brings, and what to override about them: `true` for
      * the service as the descriptor declares it, an object for one with values of its own, and `false`
-     * (or an absent name) for a service an installation of the deployment's own provides (D-504).
+     * (or an absent name) for a service an installation of the deployment's own provides (@@D-504).
      */
     services?: IServiceConfig;
     /** The namespace the generated workloads run in (default `blong-services`). */
@@ -811,7 +790,7 @@ export const resolveSuiteOperator = (request?: ISuiteOperatorRequest): ISuiteOpe
     // interval would otherwise start a pod whose only behaviour is to exist.
     intervalSeconds: request?.intervalSeconds ?? 60,
     // No ingress unless one is asked for: an Ingress is a DNS record and a certificate somebody has
-    // to own, so the installer declares the host rather than the tree inventing one (D-434).
+    // to own, so the installer declares the host rather than the tree inventing one (@@D-523).
     ingress: request?.ingress,
 });
 
@@ -892,7 +871,7 @@ export const registryView = (registry?: IDescribeCapable): IRegistryView => {
     // A port used to be able to state one as well, which is what the planner read while a realm-level
     // surface was missing: it made the role a property of whoever happened to own a port, and a realm
     // that owns none — `core` and `access`, whose handlers live in the shared `srv.db` adapter — could
-    // not state it at all (D-433).
+    // not state it at all (@@D-437).
     const roles: Record<string, RealmRole> = {};
     for (const [name, config] of Object.entries(described.realmConfig ?? {})) {
         const declared = (config as {k8s?: {k8sRealmRole?: RealmRole}} | undefined)?.k8s
@@ -1004,7 +983,7 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     // `service` realm becomes a process of its own and owns its namespaces, a `companion` is carried
     // by every process and owns none (so it publishes no Service), `both` is carried everywhere *and*
     // owns a process — the only way an in-process library realm can also offer a public API — and
-    // `none` is not deployed at all (T-235).
+    // `none` is not deployed at all .
     const roleOf = (realm: string): RealmRole => view.roles[realm] ?? 'service';
     const deployable = (realm: string): boolean =>
         roleOf(realm) === 'service' || roleOf(realm) === 'both';
@@ -1077,7 +1056,7 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     // Which process is a realm's *own*: the one the profile built from that realm's selectors. Asking
     // instead which deployment happens to include the realm answers a different question, because a
     // companion and a `both` realm are carried by every process — the first match was another realm's
-    // process, which is how the `access` Service ended up pointing at the `core` deployment (T-236).
+    // process, which is how the `access` Service ended up pointing at the `core` deployment .
     const dedicated = new Map<string, string>();
     const deploymentForRealm = (realm: string): string | undefined => dedicated.get(realm);
     for (const [name, own] of byName) {
@@ -1090,7 +1069,7 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     // A portal names the realm whose process serves it, and the two ways of not naming one are
     // refused rather than guessed: a suite split into several processes would get whichever
     // deployment the map happened to yield first — the arbitrary answer the namespace Services were
-    // fixed out of (T-236) — and a companion has no process for a portal to land on, which is a
+    // fixed out of  — and a companion has no process for a portal to land on, which is a
     // realm-role mistake worth hearing about at plan time rather than from a 503 at the Ingress.
     const portal: IResolvedPortalMap = {};
     for (const [name, entry] of Object.entries(options.portal ?? {})) {
@@ -1124,7 +1103,7 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     // merged the namespace in, not the one whose handlers answer there. A namespace named after a
     // deployable realm belongs to that realm; otherwise the realm that declared it owns it when it
     // is deployable; otherwise it is carried by companions alone, every process can answer it, and
-    // it publishes nothing — a Service there would name one of them arbitrarily (T-235).
+    // it publishes nothing — a Service there would name one of them arbitrarily .
     const declaredNamespaces = new Map<string, string>();
     for (const port of view.ports) {
         if (!isApplicationPort(port, view)) continue;
@@ -1247,7 +1226,7 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
  * So the realm mints one: signed with the gateway's own sign key, carrying the caller's keys and the
  * name it logged in as, and verified by the same process through the key set this deployment serves.
  * Every value here is an address or a lifetime of the deployment, which is why it is configuration and
- * not a constant (F-500).
+ * not a constant (@@F-500).
  */
 export interface ISessionConfig {
     /** The issuer a minted token names, and the entry the gateway verifies it against. */
@@ -1261,7 +1240,7 @@ export interface ISessionConfig {
      *
      * Configuration rather than a read of the gateway's own config, and that is not an accident to be
      * tidied away: `mle.ts` writes the *public* half back over `gateway.sign` so that private material
-     * cannot be read out of configuration by a diagnostic or a realm (D-448). The framework's own
+     * cannot be read out of configuration by a diagnostic or a realm (@@D-448). The framework's own
      * login realm is given its key the same way, as its own config, and this deployment writes this one
      * into the same rc document as the pair — generated per suite, never in git
      * (`kustomizeGatewayKeysEnsure`, `gatewayKeysConfig`).
@@ -1293,7 +1272,7 @@ export interface IPlanConfig {
      * The nodes a `nodeLocal` deployment runs on: the names, or a label selector the cluster answers.
      * A `k8s` run can ask for itself and ignores this; a process that plans without seeing the cluster
      * — an operator reconciling a pass a page triggered — cannot, and a CR may override what the
-     * realm is configured with (T-327, D-470).
+     * realm is configured with (@@D-470).
      */
     nodes?: INodeSource;
     /** The storage class a generated claim asks for, where the cluster has one to name. */
@@ -1305,7 +1284,7 @@ export interface IPlanConfig {
     operator?: ISuiteOperatorRequest;
     /** How this process runs the operator's loop; the environment can turn it on instead. */
     controller?: IControllerConfig;
-    /** The session this realm mints for a caller that logged in against the cluster (F-500). */
+    /** The session this realm mints for a caller that logged in against the cluster (@@F-500). */
     session?: ISessionConfig;
     /** Secret generator entries for the whole suite, by name (see {@link IPlanOptions.secrets}). */
     secrets?: NamedMap<IGeneratorEntry>;
@@ -1326,12 +1305,12 @@ export interface IPlanConfig {
      * a cluster. A caller that wants the composed objects in one directory asks for `flat`, which is
      * also the generator's fallback when no source names a layout at all. `local` writes
      * the overlay for a deploy's nodes and artifact beside a base that is already there, and `split`
-     * writes both halves from one tree (D-475, D-490, T-294, T-295).
+     * writes both halves from one tree (@@D-475 @@D-490).
      */
     layout?: 'flat' | 'split' | 'base' | 'local';
     /**
      * A `BlongDeployment` spec, as a JSON file, when this process generates for a CR rather than for
-     * itself: the operator loads the target suite's artifact and has to tell it what to plan (T-234).
+     * itself: the operator loads the target suite's artifact and has to tell it what to plan .
      */
     specFile?: string;
     /**
@@ -1445,12 +1424,12 @@ export const planFor = (
     config: IPlanConfig | undefined,
     registry?: IDescribeCapable,
     spec?: Partial<IPlanOptions>,
-    /** The cluster's nodes, which a `nodeLocal` tree cannot be written without (D-470). */
+    /** The cluster's nodes, which a `nodeLocal` tree cannot be written without (@@D-470). */
     nodes?: string[],
 ): IDeploymentPlan =>
     // A spec wins only where it names a field: a CR that mentions its own name must not quietly undo a
     // volume the suite configured, which is the rule `planOptionsFromSpec` already keeps field by
-    // field (T-234).
+    // field .
     planFromRegistry(registryView(registry), {
         ...planOptionsOf(config),
         ...spec,
@@ -1464,7 +1443,7 @@ export const planFor = (
  * port's dispatch, a realm's `local` registry — and each unwraps its own answer. What matters is here:
  * a node without a name is not a node, and a realm loaded without a cluster answers with none, so a
  * plan can say what it is missing rather than leaving every process waiting for a directory nobody
- * fills (D-470).
+ * fills (@@D-470).
  */
 export const clusterNodeNames = (listed: {items?: unknown[]} | undefined): string[] =>
     (listed?.items ?? [])

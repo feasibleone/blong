@@ -1,20 +1,8 @@
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 /**
- * server/test/test/testClusterAuth.ts — the two identity questions, asked of a real cluster.
- *
- * A TokenReview is "whose token is this?" and a SubjectAccessReview is "may that identity do
- * this?" — the pair the deployment UI's login depends on (Phase 13 A). Neither can be answered
- * without a cluster, so this group **skips itself** unless `BLONG_TEST_TOKEN` is set:
- *
- *     BLONG_TEST_TOKEN="$(kubectl create token default -n default)" node --run test
- *
- * The check that matters is not that the calls work but that the *cluster* is the one deciding:
- * the first review reports the identity the token belongs to, and the second reports that a
- * service account nobody granted anything holds no rights, rather than this realm guessing either
- * answer.
- *
- * Registered as the `test.cluster.auth` group (`integration.watch.test` in `index.ts`).
+ * server/test/test/testClusterAuth.ts — the two identity questions asked of a real cluster: whose
+ * token is this, and may it do this. Skipped unless `BLONG_TEST_TOKEN` is set.
  */
 export default handler(
     ({lib: {group}, handler: {clusterToken_ReviewCreate, clusterSubject_Access_ReviewCreate}}) => ({

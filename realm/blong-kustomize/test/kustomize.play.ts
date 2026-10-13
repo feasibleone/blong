@@ -1,16 +1,5 @@
 /**
- * The portal, logged in with a cluster identity.
- *
- * This realm's login is answered by the cluster (D-376): the password field carries a Kubernetes
- * service-account token, so this spec needs one and skips itself without it:
- *
- *     BLONG_TEST_TOKEN="$(kubectl create token default -n default)" node --run playwright
- *
- * What it proves is what Phase 13 A set out to fix — that the form leads to a rendered page instead
- * of sitting on its own, which is the failure that stopped every browser test before it. The rows
- * themselves come from whatever the cluster holds, so a browse assertion belongs here only once a
- * suite is actually deployed to that cluster (group D); until then this asserts the shell and
- * captures it.
+ * The portal, logged in with a cluster identity (@@D-376); skipped unless `BLONG_TEST_TOKEN` is set.
  */
 import {expect, test} from '@feasibleone/blong-browser/playwright';
 

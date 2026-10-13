@@ -19,7 +19,7 @@ registry, writes the tree and exits. A throw during generation exits non-zero, s
 fails the build rather than being committed. The tree it writes is the design half
 (`system/kustomize/base/`) unless the caller names a layout, because that half is what a repository
 keeps: `--kustomize.deploy.layout=flat` asks for one directory of composed objects, `local` for the
-deploy's half beside a base that is already there, and `split` for both (D-490).
+deploy's half beside a base that is already there, and `split` for both (@@D-490).
 
 There is no flag for "am I generating": the realm writes only when the `k8s` activation block set
 `generateManifests`, so a process that loads the realm for its read API never generates while one
@@ -29,14 +29,14 @@ Where the realm loads is deliberate, and the framework's own realm list is where
 the `k8s` intent (the short-lived generator), and in any process that names the realm itself — its
 own entry, its CLI, and the operator, whose entry loads it through its own `children`. A suite that
 declares the package for its `k8s` run does _not_ thereby put the realm in the processes it deploys;
-a process that wants the read API asks with `framework.realms: {kustomize: true}` (T-254).
+a process that wants the read API asks with `framework.realms: {kustomize: true}` .
 
 ## What it generates
 
 The tree is written in two halves. `base/` is committed and holds nothing a deploy owns, so it
 changes only when the _design_ does; `local/` sits beside it, is ignored, and carries what one
 deploy and one cluster say — the artifact's identity, the namespaces, and one fill Job per node.
-`kubectl apply -k` is pointed at `local/`, which composes the two (D-475).
+`kubectl apply -k` is pointed at `local/`, which composes the two (@@D-475).
 
 The split is decided by one question, asked of each object's **name**: does it name the artifact —
 one fill Job per node, one attempt per artifact, one claim per artifact? Then the base carries a
@@ -75,23 +75,23 @@ system/kustomize/
 
 No object a split writes carries a namespace of its own, because it belongs to the deployment rather
 than to the design: the suite's namespace is the one the CR was declared in, a service's is the one
-that CR names for it, and the halves are shared by every deployment of the suite (D-506). The two
+that CR names for it, and the halves are shared by every deployment of the suite (@@D-506). The two
 come from the overlay's children — `local/suite/` and `local/backing/`, each with a `namespace:`
 field — because kustomize's field is a rewrite rather than a default: it moves every namespaceable
 object and renames every `Namespace`, so a field on the overlay's root would pull the services'
-workloads into the tenant's namespace and collide the two `Namespace` objects (F-440). The operator,
+workloads into the tenant's namespace and collide the two `Namespace` objects (@@F-440). The operator,
 which has no kustomize binary, stamps the same two from those children in
 `materializeGeneratedTree`, and the `Namespace` objects are the overlay's because each is named
 after what it holds — a name being the one thing a patch cannot retarget. The single exception is a
 folder whose objects a generator _builds_ (`secrets/`, `assets/`): a generated object has no
-namespace of its own, and a flat tree has no parent to give it one (F-440).
+namespace of its own, and a flat tree has no parent to give it one (@@F-440).
 
 The operator itself is _not_ in this tree. It is one process for the whole cluster — its Deployment,
 its cluster-scoped rights and the CRD in `system/operator/` beside this realm, generated from
 `operator-entry.ts` and applied once, before any suite. What a suite's tree carries is the bindings
 that operator is granted inside this suite's namespace, and the declaration as an `example/` beside
 the base — a sample a tenant copies and edits, which no kustomization applies, because the suite
-that a namespace runs is that tenant's act (D-507).
+that a namespace runs is that tenant's act (@@D-507).
 
 The output is deterministic — deep-sorted keys, no line folding, the tree is replaced rather than
 merged — so a regenerated `base/` is byte-identical across runs, which is what makes it reviewable
@@ -157,7 +157,7 @@ Each deployed _artifact_ gets its own named volume, and old ones are kept for a 
 the artifact rather than the version, because a rebuilt artifact can ship different files under an
 unchanged version. The name is the version plus eight characters taken from the artifact: its
 `digest` when the publisher computed one, a `deployedAt` stamp otherwise, and the version alone when
-an artifact names neither (D-469).
+an artifact names neither (@@D-469).
 
 - `nodeLocal` (the default) — one **fill Job per node** unpacks the artifact into
   `/var/lib/blong/suites/<suite>/<identity>`, and a deployment mounts it read-only at
@@ -175,7 +175,7 @@ carried as labels, and they are two numbers because they are two quantities: the
 retention (`blong.feasible.one/retention`, default 3) is how many directories stay on each node —
 the fill Job reads it and keeps the newest, by modification time — and the **attempt** retention
 (`blong.feasible.one/attempt-retention`, default 5) is how many seed and migration Jobs stay, which
-the operator's pass reads off the objects it is deciding about (D-471).
+the operator's pass reads off the objects it is deciding about (@@D-471).
 
 ## Resolving names in the cluster
 
@@ -191,11 +191,11 @@ looks up to load the realm at all) and the orchestrator that owns the plan, `dep
 is handed only its own slice of the runtime config, so every key below is addressed in two levels —
 `kustomize.deploy.<key>`, as `--kustomize.deploy.profile=realm` on the command line or a config
 block that nests the same two levels. A key one level too shallow (`--kustomize.profile`) is dropped
-without a warning (F-370).
+without a warning (@@F-370).
 
 They belong in the suite's `default` block rather than under `k8s`: the generator and the operator
 process both read them, and a setting that appears only under `k8s` makes an operator pass report
-objects it does not manage as drift (D-379).
+objects it does not manage as drift (@@D-379).
 
 ```ts
 // the suite's config block
@@ -222,9 +222,9 @@ imply it — an adapter makes a service _available_, and the deployment says whi
 and what it opts in becomes a folder beside the base (`services/<name>/`) holding the workload, its
 Service, its claim and its init config. The namespace, the `ExternalName` alias a realm's config
 dials and the credentials are the deployment's rather than the design's, so the overlay writes them
-(D-504, D-506).
+(@@D-504 @@D-506).
 
-The credentials are the deployment's to declare, in `services.<name>.credentials` (D-509): `values`
+The credentials are the deployment's to declare, in `services.<name>.credentials` (@@D-509): `values`
 are written into a Secret the tree generates, `secret` names one the deployment owns elsewhere and
 mounts as it stands, and `generate` asks for the descriptor's own derivation — derived from suite,
 service and version, so the same plan writes the same Secret on every pass. Naming a Secret and
@@ -235,7 +235,7 @@ the workload, where the service reads it, and in the suite's namespace, where th
 processes read it as environment — because a pod sees only its own namespace. Both copies carry
 `blong.feasible.one/generated-credentials`, which is what lets a pass take them back when the
 declaration stops asking: a credential this realm derived is the one object it deletes outside the
-tenant's namespace (D-461, D-462).
+tenant's namespace (@@D-461 @@D-462).
 
 `services` is the switchboard, keyed by service name:
 
@@ -260,7 +260,7 @@ tenant's namespace (D-461, D-462).
 The switches travel in the `BlongDeployment` — the tenant's declaration, which the tree ships as
 `example/` and the operator regenerates from — because a switch the declaration could not carry
 would write the service back on its next pass. What a pass removes is what its declaration stopped
-naming _inside the suite's namespace_ (D-461), which is why the `ExternalName` alias — the name a
+naming _inside the suite's namespace_ (@@D-461), which is why the `ExternalName` alias — the name a
 realm's config dials — and the credentials copy written for it are deleted when a service is
 switched off, while a workload the service was given a namespace of its own keeps running and is
 reported as `obsolete` in the CR's status, its generated credentials aside. Deleting that one is its
@@ -336,7 +336,7 @@ takes the same cycle with its inputs from the caller: `ARTIFACT_URL`/`OPERATOR_A
 `ARTIFACT_PATH` for an unpacked tree), `FRAMEWORK_IMAGE`/`FRAMEWORK_VERSION`, `CLUSTER`,
 `NAMESPACE`, `SUITE_ENTRY`, `TREE`. It never creates a cluster it did not find — a run that was
 pointed at one that is not there stops and says so, which is what keeps a forgotten `CLUSTER` from
-becoming a second cluster beside the running one (F-446); the job that does want one says
+becoming a second cluster beside the running one (@@F-446); the job that does want one says
 `CREATE_CLUSTER=1`. It regenerates both trees from the repository, applies them — which is what
 makes it work on an empty cluster and on one that is already running a revision — and then, unless
 `REFRESH=0`, restarts the operator and the tenant processes so the new code is the code that runs.
@@ -348,7 +348,7 @@ passes it as the artifact's identity, so a rebuilt artifact under an unchanged v
 directory and a new fill Job — the tree's apply is what fetches it — while a run that published
 nothing falls back to the version and reuses what the cluster has. The operator's cache is keyed by
 the same identity, so a republished artifact is fetched there as well rather than planned from the
-one it saw before (F-452):
+one it saw before (@@F-452):
 
 ```bash
 kubectl -n blong-system rollout restart deployment/blong-operator

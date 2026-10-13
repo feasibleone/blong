@@ -3,7 +3,7 @@
  *
  * The realm applies manifests on the suite's behalf, so it needs write verbs that the
  * deployment UI deliberately does not have. That is two identities rather than one
- * widened one (D-373): the `rbac/` objects in `generator.ts` stay read-only and belong to
+ * widened one (@@D-373): the `rbac/` objects in `generator.ts` stay read-only and belong to
  * the UI, and the operator gets its own ServiceAccount, its Role and RoleBinding in each namespace
  * it converges, and its ClusterRole and ClusterRoleBinding, from here.
  *
@@ -20,7 +20,7 @@ export const OPERATOR_SUFFIX = '-operator';
  *
  * Static on purpose, and the reason one operator serves a cluster: tooling has to be able to name it
  * without first discovering which suite happens to be deployed — kubectl, an alert, a runbook. The
- * suite a CR belongs to is in the CR's labels, not in the operator's name (Phase 15 A, D-396).
+ * suite a CR belongs to is in the CR's labels, not in the operator's name (Phase 15 A).
  */
 export const OPERATOR_NAME = 'blong-operator';
 
@@ -97,24 +97,14 @@ export const OPERATOR_ENV = {
      * A word of its own rather than part of `apply`, because a converge and a removal are different
      * intentions: the second one cannot be walked back, and a deployment may want its processes
      * updated without anything ever being deleted. Deletion is scoped to the suite's namespace
-     * (D-461).
+     * (@@D-461).
      */
     prune: 'BLONG_CONTROLLER_PRUNE',
 } as const;
 
 /**
- * The two identity questions, and the one verb each needs.
- *
- * The login verifies a presented token with a `TokenReview` and asks what that identity may do with
- * a `SubjectAccessReview` (D-376). Both objects are cluster-scoped and neither is about a resource,
- * so both are granted by a `ClusterRole`: the tenant's own (`auth-review`, bound to the tenant's
- * identity — see `generator.ts`), and the operator's, whose portal login asks the same two questions
- * about the callers that reach it. One list for both identities, because the permission is one fact —
- * it is exactly what the cluster's own `system:auth-delegator` role grants, spelled out rather than
- * bound, so a suite does not depend on a role it does not control.
- *
- * `create` alone: reading a review back is not part of asking the question, and the API server
- * answers the create with the verdict.
+ * The two identity questions and the one verb each needs: a `TokenReview` and a `SubjectAccessReview`,
+ * both cluster-scoped (@@D-376).
  */
 export const AUTH_REVIEW_RULES: IPolicyRule[] = [
     {apiGroups: ['authentication.k8s.io'], resources: ['tokenreviews'], verbs: ['create']},
@@ -122,22 +112,8 @@ export const AUTH_REVIEW_RULES: IPolicyRule[] = [
 ];
 
 /**
- * The custom resource, which is cluster-scoped, and its status.
- *
- * The status is a subresource of its own: a role that can write the spec but not the
- * status reports nothing back, and one that can write the status can pass a deployment
- * off as reconciled without touching it.
- *
- * The review rules join them because the operator is also what serves its own deployment UI, and
- * that UI's login is the realm's cluster-backed one: without the two rules the portal answers
- * `k8s.forbidden` while every other part of the install works (F-430). The operator's
- * ClusterRoleBinding already names its service account, so the rights arrive with an install the
- * cluster has anyway.
- *
- * The node list joins them because the plan is made per node — one fill Job each, over the
- * node-local volume behind it — so a pass handed a CR whose spec names no `nodes` has to list them,
- * and nodes are cluster-scoped. Without the rule every generation answered `nodes is forbidden`, so
- * no pass could converge, while the CR went on reading `Ready` from the pass that last succeeded.
+ * The custom resource and its status, plus the review and node-list rules the operator needs
+ * (@@F-430).
  */
 export const OPERATOR_CLUSTER_RULES: IPolicyRule[] = [
     {apiGroups: [OPERATOR_GROUP], resources: [OPERATOR_PLURAL], verbs: WRITE},
@@ -166,7 +142,7 @@ export interface IStatusResult {
     updated: number;
     unchanged: number;
     obsolete: number;
-    /** What the pass removed: obsolete objects inside the suite's namespace (D-461). */
+    /** What the pass removed: obsolete objects inside the suite's namespace (@@D-461). */
     deleted: number;
     failures: number;
 }

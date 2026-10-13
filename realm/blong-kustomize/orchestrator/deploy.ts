@@ -5,31 +5,8 @@ import {stopWatch} from './controller/kustomizeWatchRun.ts';
 import {startController} from './controller/operatorLoop.ts';
 
 /**
- * orchestrator/deploy.ts — the realm's dispatch port, and nothing else.
- *
- * The port's *name* is what a config override has to address: the framework hands a port its own
- * slice of the runtime config, `mergedConfig[kustomize][deploy]`, so every key of `IPlanConfig` is
- * set as `--kustomize.deploy.<key>` (or declared under `config.<intent>.kustomize.deploy`). A key
- * addressed one level too shallow — `--kustomize.<key>` — is dropped without a warning, which is
- * what made this look like a framework bug (T-200).
- *
- * It extends `orchestrator.dispatch` so the framework attaches the local handler
- * groups (the `imports` patterns match the folder names, mirroring `srv.db`'s
- * `/\\.db$/`) and registers the `kustomize` namespace. There is no `destination`:
- * the realm reads the cluster and writes manifests, it does not route to another
- * service.
- *
- * The port serves two APIs, and which of them a process gets is the intent's decision.
- * `kustomize.tree.generate` runs only under the `k8s` intent — the activation block sets
- * `generateManifests` there and nowhere else, and `start()` checks it. The read API the UI uses
- * (`kustomize.deployment.find`) and the operator's controller handlers load in every serving intent,
- * which is why `orchestrator/layer.server.ts` exists. The operator's own loop is not in this file:
- * it is `controller/operatorLoop.ts`, beside the watch that is its other trigger, and `start()`
- * below is the only thing that starts it.
- *
- * A throw during generation rejects `platform.start()`, which propagates out of
- * `autoRun` and exits the process non-zero — the desired failure behaviour for a
- * generator.
+ * orchestrator/deploy.ts — the realm's dispatch port: its name is the config slice, and which API it
+ * serves is the intent's decision.
  */
 export default orchestrator<IPlanConfig>(blong => {
     /**
@@ -39,7 +16,7 @@ export default orchestrator<IPlanConfig>(blong => {
      * request path rather than done here: writing a tree needs facts only a *handler* can reach — the
      * nodes a `nodeLocal` volume is filled per come from the cluster adapter, and a port's `start()` is
      * not a handler context (its factory is given `config`, `registry` and `log`, and no handler proxy).
-     * This is the same path the controller's passes take to `kustomize.reconcile.run` (T-225, D-470).
+     * This is the same path the controller's passes take to `kustomize.reconcile.run` (@@T-225 @@D-470).
      */
     const run = async (self: {
         config?: IPlanConfig;
@@ -49,7 +26,7 @@ export default orchestrator<IPlanConfig>(blong => {
         const outputDir = self.config?.outputDir ?? DEFAULT_OUTPUT_DIR;
         // The tree this process writes is the tree for the CR it was handed, when it was handed one:
         // the operator loads a target suite's artifact and passes its spec here, so the child plans what
-        // the CR asked for rather than what this artifact's own config happens to say (T-234).
+        // the CR asked for rather than what this artifact's own config happens to say .
         const packet = (await self.request!(
             {outputDir, specFile: self.config?.specFile},
             {mtid: 'request', method: 'kustomize.tree.generate'},
@@ -102,7 +79,7 @@ export default orchestrator<IPlanConfig>(blong => {
             // here rather than in a suite, because a generation is a `k8s` run in *any* repository:
             // what one writes by default is the design half, the tree a repository keeps, while the
             // composed form is what a caller asks for (`layout=flat`) and a deploy writes `local`
-            // beside the base it found (D-475, D-490).
+            // beside the base it found (@@D-475 @@D-490).
             k8s: {generateManifests: true, layout: 'base'},
         },
         start() {

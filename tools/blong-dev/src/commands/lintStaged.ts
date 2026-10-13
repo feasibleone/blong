@@ -120,6 +120,37 @@ export async function lintStaged(): Promise<void> {
         }
     }
 
+    if (memoryFiles.length > 0) {
+        // A memory change may leave code citing an entry that is now retired or
+        // superseded; comply names the sites to re-read, and fails on a stale one.
+        process.stderr.write('\nblong-dev lint-staged: memory compliance\n');
+        const code = await runTool(process.execPath, [blongDevCli, 'memory', 'comply'], {
+            cwd: repoRoot,
+            env: process.env,
+        });
+        if (code !== 0) {
+            process.stderr.write(`blong-dev lint-staged: FAILED memory comply (exit ${code})\n`);
+            failed = true;
+        }
+    }
+
+    if (stagedSources.length > 0) {
+        // A `@@` token or a link into the docs, skills or memory trees that no longer
+        // names anything is a broken reference; check the staged files for one.
+        process.stderr.write(
+            `\nblong-dev lint-staged: references (${stagedSources.length} file(s))\n`,
+        );
+        const code = await runTool(
+            process.execPath,
+            [blongDevCli, 'memory', 'refs', '--dangling', '--files', stagedSources.join(',')],
+            {cwd: repoRoot, env: process.env},
+        );
+        if (code !== 0) {
+            process.stderr.write(`blong-dev lint-staged: FAILED references (exit ${code})\n`);
+            failed = true;
+        }
+    }
+
     if (glossaryStaged) {
         process.stderr.write('\nblong-dev lint-staged: glossary\n');
         const code = await runTool(process.execPath, [blongDevCli, 'glossary', 'check'], {

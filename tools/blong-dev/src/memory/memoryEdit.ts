@@ -20,6 +20,7 @@ import {
     KIND_PURPOSE,
     KIND_TITLE,
     MAX_LINE_LENGTH,
+    RETIRED_SECTION,
     SECTION_FOR_STATUS,
     SKELETON_SECTIONS,
     type IMemoryDoc,
@@ -97,6 +98,27 @@ export function removeEntry(doc: IMemoryDoc, entry: IMemoryEntry): void {
     doc.lines.splice(entry.start, entry.end - entry.start + 1);
 }
 
+/**
+ * Record a retired id in the `## Retired` ledger.
+ *
+ * The entry's text is gone; the id, its fate and its successor are not. Because
+ * `highestId` reads the ledger too, the number is never reused, so a reference that
+ * outlived its entry is diagnosed (a warning naming the successor) instead of
+ * silently pointing at a later entry that took the number.
+ */
+export function retireEntry(doc: IMemoryDoc, id: string, fate: string): void {
+    let structure = parseDoc(doc.lines);
+    let section = structure.sections.find(candidate => candidate.heading === RETIRED_SECTION);
+    if (!section) {
+        doc.lines = appendSection(doc.lines, RETIRED_SECTION);
+        structure = parseDoc(doc.lines);
+        section = structure.sections.find(candidate => candidate.heading === RETIRED_SECTION)!;
+    }
+    const at = section.end + 1;
+    doc.lines.splice(at, 0, `- ${id} — ${fate}`);
+    spaceSectionHeadings(doc.lines);
+}
+
 /** The section an entry with this status belongs in. */
 export function sectionForStatus(status: string): string {
     return SECTION_FOR_STATUS[status] ?? 'Open';
@@ -127,6 +149,22 @@ export function refreshIndex(doc: IMemoryDoc): void {
 }
 
 /**
+ * Put the blank line the format wants below every `## ` heading (MD022).
+ *
+ * Entries are re-rendered from their parts, but a section's own lines are not: the `## Retired`
+ * ledger and the `## Manual` items are kept verbatim, so a section an older version created can sit
+ * under its heading with no blank line — and `check` then reports MD022/MD032 on a file this CLI
+ * wrote itself.
+ */
+function spaceSectionHeadings(lines: string[]): void {
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+        if (!/^##\s/.test(lines[index] ?? '')) continue;
+        const next = lines[index + 1];
+        if (next !== undefined && next.trim() !== '') lines.splice(index + 1, 0, '');
+    }
+}
+
+/**
  * Re-render every entry from its parsed parts.
  *
  * The entry format belongs to the CLI, so a change to it (the meta line becoming
@@ -150,6 +188,7 @@ export function canonicalise(doc: IMemoryDoc): void {
             ),
         );
     }
+    spaceSectionHeadings(doc.lines);
     refreshIndex(doc);
 }
 
@@ -302,7 +341,9 @@ export function formatId(kind: MemoryKind, value: number): string {
 /** Highest id number already in use for a kind, across every memory file. */
 export function highestId(root: string, kind: MemoryKind): number {
     const prefix = KIND_PREFIX[kind];
-    const pattern = new RegExp(`^###\\s+(${prefix}-\\d{3})\\b`, 'gm');
+    // Entries (`### F-014`) and retired ids (`- F-101 — …`): a number that outlived its
+    // entry stays allocated, so it is never handed to a later entry.
+    const pattern = new RegExp(`^(?:###\\s+|-\\s*)(${prefix}-\\d{3})\\b`, 'gm');
     let highest = 0;
     for (const file of listMemoryFiles(root)) {
         if (file.kind !== kind) continue;

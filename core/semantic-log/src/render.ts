@@ -233,8 +233,13 @@ function keyValues(prefix: string, values: Record<string, string> | undefined): 
 }
 
 /** Values that have no meaningful text form in a log line. */
-function isSkippedField(value: unknown): boolean {
-    return value === undefined || typeof value === 'function' || typeof value === 'symbol';
+function isSkippedField(key: string, value: unknown): boolean {
+    return (
+        /^config$|^configBase$/.test(key) ||
+        value === undefined ||
+        typeof value === 'function' ||
+        typeof value === 'symbol'
+    );
 }
 
 /**
@@ -479,7 +484,7 @@ export function renderHuman(record: LogRecord, options: RenderOptions = {}): str
             const payloads = record.refs.payloads;
             const {context: _, ...fields} = record.fields;
             for (const [key, value] of Object.entries(fields)) {
-                if (isSkippedField(value)) continue;
+                if (isSkippedField(key, value)) continue;
                 const text = renderField(value);
                 const payload = payloads?.[key];
                 // A large embedded value renders as its payload reference instead

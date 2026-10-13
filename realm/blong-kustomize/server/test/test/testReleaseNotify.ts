@@ -3,20 +3,8 @@ import {realmCommand} from '../../../bin/kustomizeCommand.ts';
 import {releasePatch} from '../../../orchestrator/controller/kustomizeReleaseNotify.ts';
 
 /**
- * server/test/test/testReleaseNotify.ts — a release announcing itself to a cluster.
- *
- * A release publishes an image and an artifact, and the realm's job is to tell a cluster about them
- * through the declaration it already holds. Which seam it tells *is* the decision (Q9): a cluster
- * whose operator watches a CR wants the patch, a cluster whose operator watches a repository wants
- * the GitOps push, and doing both would mean two operators converging on one suite — so the GitOps
- * seam is consulted first and wins when a target is configured.
- *
- * Nothing here needs a cluster, and that shapes what can be asserted: what a unit run reaches is the
- * *answer* — which seam ran, and why the other did not — while the patch itself is exercised where
- * the cluster is (section K). The GitOps seam is part of this realm, so its refusal is a real one
- * from the configured state, not a stub's.
- *
- * Registered as the `test.release.notify` group (`integration.watch.test` in `index.ts`).
+ * server/test/test/testReleaseNotify.ts — a release announcing itself to a cluster; the answer says
+ * which seam ran, and only a cluster exercises the patch itself.
  */
 export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
     testReleaseNotify: ({name = 'release notify'}: {name?: string} = {}) =>
@@ -61,7 +49,7 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                 // would replace the volume — a release would then reset `backend` and `retention` to the
                 // CRD's defaults, and a node-local suite became `auto` because a release happened. The
                 // live run that found this was the CI job's own notify step, rehearsed against the dev
-                // cluster (T-247).
+                // cluster .
                 assert.deepEqual(
                     releasePatch({version: '1.13.0'}),
                     [{op: 'add', path: '/spec/version', value: '1.13.0'}],

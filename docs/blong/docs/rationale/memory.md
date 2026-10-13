@@ -70,3 +70,18 @@ the reason for the design rather than accidents of it:
 3. The user's own todo list is theirs: it lives in a `## Manual` section no agent edits.
 4. Everything the format promises is checked by a command, so the promise survives without anyone
    remembering it.
+
+## One copy of the reasoning
+
+A comment that explains _why_ is a second copy of what an entry already says, and the two drift: the
+code is edited and the essay above it is not, or the entry is superseded and the comment still cites
+it as live. So the reasoning lives in the entry and the comment carries a summary plus a
+**reference** — `@@D-476`, `@@doc:patterns/memory#anchor`, `@@skill:blong-realm#layers`. The
+reference is an id, not a line number, so it survives any edit; it is checked by
+`blong-dev memory refs --dangling`, so it cannot rot silently; and it opens the entry in the editor,
+so the reasoning is one hover away.
+
+A reference and an id are the same vocabulary the index is built on, which is why one command can
+check a token, resolve it and ingest it. A retired id keeps its number and its fate, so the rare
+reference that outlives its entry is a warning that names the successor, never a silent redirect to
+whatever entry took the number afterwards.

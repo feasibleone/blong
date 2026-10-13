@@ -41,6 +41,14 @@ export interface ICheckContext {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** A `## Retired` ledger line: `- F-101 — superseded by F-090 (2026-08-01)`. */
+const LEDGER_LINE = /^-\s*(?<id>[FTD]-\d{3})\s*—\s*\S/;
+
+/** The id a ledger line records, or `null` when the line is not one. */
+function ledgerId(line: string): string | null {
+    return LEDGER_LINE.exec(line.trim())?.groups?.['id'] ?? null;
+}
+
 /** True when the line must stay on one line: fences, tables, headings, comments. */
 function mustStayOnOneLine(line: string): boolean {
     return (
@@ -124,6 +132,20 @@ export function checkDoc(doc: IMemoryDoc, context: ICheckContext): IProblem[] {
         if (!KIND_SECTIONS[doc.kind].includes(section.heading)) {
             report(section.start + 1, `unknown section "## ${section.heading}"`, 'warning');
         }
+    }
+
+    // The retired ledger: each line names an id once, and no id is both an entry and a
+    // retired id in the same file — a number either belongs to an entry or it does not.
+    const ledger = new Map<string, number>();
+    doc.lines.forEach((line, index) => {
+        const retired = ledgerId(line);
+        if (!retired) return;
+        if (ledger.has(retired)) report(index + 1, `the ledger records ${retired} twice`);
+        ledger.set(retired, index + 1);
+    });
+    for (const entry of structure.entries) {
+        const at = ledger.get(entry.id);
+        if (at !== undefined) report(at, `${entry.id} is both an entry and a retired id`);
     }
 
     const fenced: boolean[] = [];

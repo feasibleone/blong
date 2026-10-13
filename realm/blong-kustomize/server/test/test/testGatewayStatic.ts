@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 /**
  * server/test/test/testGatewayStatic.ts — a process's own block reaching the gateway port.
  *
- * This is the leg T-246 found unobservable. `core/blong-gogo/src/static.test.ts` proves the static
+ * This is the leg that was unobservable. `core/blong-gogo/src/static.test.ts` proves the static
  * plugin serves a bundle and tolerates a missing one, and nothing proved that the root a process
  * names in its own config — a suite's `release` block points it at the artifact's browser build —
  * arrives at the port that hands it over. The plugin is registered only when that config is there, so

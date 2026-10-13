@@ -1,25 +1,6 @@
 /**
- * apply.ts — the difference between the tree the plan describes and the state the
- * cluster holds.
- *
- * Like `plan.ts` and `generator.ts` this module sits at the realm root, outside every
- * layer folder, so the framework never scans it as a handler group. It is pure: it
- * reads a kustomize tree and a set of live objects and says what would have to change.
- * It makes no cluster call and holds no client, which is what lets the decision the
- * operator makes be tested without a cluster — and read before it is taken.
- *
- * Two ideas carry the weight:
- *
- * - **Ownership.** The operator applies the workload kinds the framework knows how to
- *   talk about, and nothing else. Cluster-scoped bootstrap objects (the namespace, the
- *   CRD) belong to the install, and the custom resource itself is the operator's input,
- *   not its output. Anything left over is reported as skipped with the reason, never
- *   silently dropped.
- * - **A fingerprint, not a diff.** Kubernetes adds defaults to almost every object it
- *   stores, so comparing a wanted manifest against a live one always differs and would
- *   re-apply forever. Each generated object therefore carries a hash of itself, and
- *   "changed" means "the hash differs" — the same trick that keeps GitOps tools from
- *   looping on API-server drift.
+ * apply.ts — the difference between the tree the plan describes and the state the cluster holds: a
+ * fingerprint, not a diff.
  */
 import {createHash} from 'node:crypto';
 import type {KustomizeResource, KustomizeTree} from './generator.ts';
@@ -37,7 +18,7 @@ export const NAME_LABEL = 'app.kubernetes.io/name';
  * The label a Secret this realm *generated* from a declaration carries.
  *
  * Credentials a CR asks for are derived from that declaration, so when the CR stops asking the Secret is
- * nobody's: the workload's own sits in a namespace the services own, and a pass does not delete there (D-461)
+ * nobody's: the workload's own sits in a namespace the services own, and a pass does not delete there (@@D-461)
  * — while a password left behind is one a rotation never reaches. The label is what tells the two apart, so
  * the generator writes it and a pass may remove an object that carries it wherever it may list one, while a
  * Secret a tenant placed is never touched. It is written rather than declared in a base, because a base a
@@ -51,7 +32,7 @@ export const GENERATED_CREDENTIALS_LABEL = 'blong.feasible.one/generated-credent
  * The tree cannot carry the pair — a regenerated tree has to stay byte-identical, and a key that is
  * regenerated is a key browsers are not holding — so the pass creates it outside the tree. This label
  * says why it may live beside a tree that never names it: its owner is the declaration, it is kept
- * while that exists, and a listing which sees it does not make it obsolete (T-267).
+ * while that exists, and a listing which sees it does not make it obsolete .
  */
 export const GATEWAY_KEYS_LABEL = 'blong.feasible.one/gateway-keys';
 
@@ -80,18 +61,8 @@ export interface IClusterObject {
 }
 
 /**
- * Kind → the resource type whose name the k8s adapter builds its verbs from.
- *
- * The adapter spells a request `<namespace>.<resourceType>.<verb>` (it reads the middle word to
- * pick an API and to look up the client's method), so this map is what makes `Deployment`
- * reachable as `cluster.deployment.apply`. A kind of several words keeps them apart with an `_`
- * — `persistent_volume_claim`, not `persistentvolumeclaim` — because that is what lets the adapter
- * join them into the client's own spelling (`PersistentVolumeClaim`): written as one lump the words
- * cannot be recovered, and `clusterPersistentVolumeClaimApply` resolves to
- * `cluster.persistent.volumeClaimApply`, whose middle word names no API at all (F-379). The
- * kind the tree carries is unaffected — this is the Blong name, not the Kubernetes one. Kinds the
- * adapter names no verbs for are absent rather than guessed: an omitted kind is reported, not
- * misapplied.
+ * Kind → the resource type whose name the k8s adapter builds its verbs from; a kind of several words
+ * keeps them apart with an `_` (@@F-395).
  */
 export const RESOURCE_TYPE_BY_KIND: Record<string, string> = {
     PersistentVolumeClaim: 'persistent_volume_claim',
@@ -142,7 +113,7 @@ export const INSTALL_OWNED_KINDS: Record<string, string> = {
  * A pass looks up the kinds its *tree* names — and that is exactly what it cannot do when a kind
  * leaves the tree altogether: the credentials copy a switched-off service wrote into the suite's
  * namespace is a Secret, a tree with no Secret left in it never looks one up, and the copy is
- * orphaned by the pass that was supposed to remove it (found in the dev cluster, T-282). So the
+ * orphaned by the pass that was supposed to remove it (found in the dev cluster, @@T-282). So the
  * sweep covers every kind a suite may own, whether or not this tree happens to name one.
  *
  * The install-owned kinds are left out: they are applied by the install, not by a pass, and sweeping
@@ -189,7 +160,7 @@ export const applyOrder = (kind: string): number => {
  *
  * The kind is asked for rather than trusted, because a list answer does not carry one: the API
  * returns `kind` on every item, but what reaches here is `metadata`, `spec` and `status` and
- * nothing that names the type (T-226, first seen as `created 18` beside `obsolete 18` for every
+ * nothing that names the type (first seen as `created 18` beside `obsolete 18` for every
  * kind the plan touches). A caller that listed one type at a time knows the answer already, which
  * is why it is a parameter and not a lookup.
  */
@@ -324,23 +295,8 @@ const labelsOf = (object: IClusterObject): Record<string, string> =>
         ?.template?.metadata?.labels ?? {}) as Record<string, string>;
 
 /**
- * Every reference inside a tree that points at nothing in that tree.
- *
- * A generated tree is a graph, and the interesting failures are its dangling edges: a mount that
- * names no volume, a Service whose selector matches no pod, an Ingress whose backend names no
- * Service. All three shipped at least once in this realm's short life, each silently — a pod with
- * an unmounted path runs, a Service with no endpoints answers nothing, and an Ingress with a missing
- * backend is a 503 from the controller rather than an error from `kubectl apply`. None of them needs
- * a cluster to see, which is why this is a pure function over the tree and not a check inside a
- * reconcile pass (T-242).
- *
- * Deliberately *not* checked, because a finding would be wrong more often than right:
- *
- * - a `secretKeyRef` or a claim the tree does not create itself. The rc files and the gateway keys
- *   are the tenant's, the install owns the claim, and the tree names them on purpose.
- * - a Service that selects labels no Deployment carries *in this tree*, when the Deployment comes
- *   from another tree in the same namespace (the operator's install). Only Services and the pods
- *   generated beside them are compared, and the finding says which pair disagreed.
+ * Every reference in a tree that points at nothing in it — a mount with no volume, a backend with no
+ * Service.
  */
 export const danglingReferences = (tree: KustomizeTree): string[] => {
     const findings: string[] = [];

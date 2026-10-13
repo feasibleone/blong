@@ -2,7 +2,7 @@
 #
 # reconcile-local.sh — run one CR-origin reconcile pass from this machine, against a dev cluster.
 #
-# Why this exists (T-251). The operator reconciles a CR it does not hold by starting a short-lived
+# Why this exists . The operator reconciles a CR it does not hold by starting a short-lived
 # child that loads the *suite's artifact*, and the CR names that artifact as a URL the cluster fetches.
 # A pass run from a laptop cannot fetch it — the URL belongs to the cluster's network — so the probe
 # patches that one field to a local `path` for the duration of the pass and puts it back afterwards, in
@@ -11,7 +11,7 @@
 # (`orchestrator/generate/kustomizeArtifactFetch.ts`), which is what makes the patch enough.
 #
 # What it is for: the CR path is otherwise only exercised by the operator itself, so a defect in it —
-# the Job looked up by the suite's label instead of the attempt's, F-398 — is found by watching a
+# the Job looked up by the suite's label instead of the attempt's, @@F-398 — is found by watching a
 # cluster converge. This runs the same pass on demand and prints what it found.
 #
 # Usage

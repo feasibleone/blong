@@ -18,23 +18,8 @@ export interface IReleaseNotify {
 }
 
 /**
- * kustomize.release.notify — a release telling a cluster what to run.
- *
- * A release publishes two things, the framework image and the suite artifact, and what a cluster
- * needs from it is one write to the declaration the cluster already holds: the CR is the single
- * input the operator converges from (D-379), so announcing a release is a patch to `spec.version`
- * and to the artifact URL rather than a second mechanism for putting objects on a cluster.
- *
- * **Two seams, one of them chosen (Q9).** A cluster whose operator watches a CR wants the patch; a
- * cluster whose operator watches a repository wants the release to push the regenerated tree
- * instead. Doing both would mean two operators converging on one suite, so the GitOps seam wins when
- * a target is configured and the patch is what happens otherwise — and the answer says which seam
- * ran, because "the release succeeded" is not the interesting part of this call.
- *
- * The patch touches the version and the artifact and nothing else. The entry, the intents and the
- * volume are the release's and the tenant's business, and a release that rewrote them would be
- * editing a deployment it was not asked to edit; the operator regenerates the tree from the
- * declaration, so a field the release does not name keeps the value it had.
+ * kustomize.release.notify — a release patches the CR the operator converges from, or pushes a tree
+ * for a GitOps seam (@@D-379).
  */
 export const releasePatch = (
     params: Pick<IReleaseNotify, 'version' | 'frameworkImage' | 'artifactUrl'>,

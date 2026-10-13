@@ -5,31 +5,8 @@ import {rememberMleHandshake} from '../../mleHandshake.ts';
 type ClusterCall = (params: unknown, $meta: IMeta) => Promise<unknown>;
 
 /**
- * login.token.create — the deployment UI's login, answered by the cluster.
- *
- * The portal's form posts `{username, password}` and will not show a page until it gets a token
- * back. Here the **password field carries a Kubernetes service-account token**, and the credential
- * is verified by the cluster rather than by anything this realm keeps: a `TokenReview` says whose
- * token it is, and a `SubjectAccessReview` says whether that identity may reconcile this suite.
- *
- * The username is the caller's own name for itself, not the cluster's name for its credential. The
- * form pre-fills it and offers the command that mints a token, and what it names becomes the subject
- * of the session token this handler mints — so a browser's session is a fact inside its own token
- * rather than a slot in a process-wide map keyed by the service account every browser shares, which is
- * what made a second login break the first browser's calls (`ERR_JWS_SIGNATURE_VERIFICATION_FAILED`,
- * F-500). A caller that sends no username is named by the identity the cluster verified instead,
- * which is no worse than the collision it replaces.
- *
- * What comes back is a token of this realm's making, minted by `sessionTokenMint` and signed with the
- * gateway's own sign key: it carries the caller's MLE key pair (`enc`/`sig`), the session id and the
- * cluster identity that was verified (`clusterUser`). The cluster token that was *presented* is the
- * credential and is not handed back — it cannot carry those claims — so the bearer the portal stores
- * is one this deployment can verify and no other.
- *
- * What this deliberately does *not* do is authorize the read path. The gateway's methods run as the
- * process's own service account, so what protects them is the Ingress in front of the UI and the
- * RBAC of the process — the login proves the caller holds a cluster identity, and the cluster
- * decides what that identity may do about the reconcile.
+ * login.token.create — the deployment UI's login, answered by the cluster: the password field carries
+ * a service-account token (@@F-500).
  */
 export default handler(({errors, handler, lib: {sessionTokenMint}}) => {
     const review = async (name: string, body: unknown, $meta: IMeta): Promise<unknown> => {
@@ -131,7 +108,7 @@ export default handler(({errors, handler, lib: {sessionTokenMint}}) => {
 
             return {
                 // The session this realm minted, not the cluster token that was presented: only a
-                // token this deployment signs can carry the caller's keys (F-500).
+                // token this deployment signs can carry the caller's keys (@@F-500).
                 access_token: await sessionTokenMint(
                     {
                         username,

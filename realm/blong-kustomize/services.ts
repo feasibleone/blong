@@ -6,36 +6,8 @@ import {Value} from 'typebox/value';
 import {parse} from 'yaml';
 
 /**
- * services.ts — the third-party services a deployment brings with it (Phase 15 I).
- *
- * A realm names an *abstract* service in its config (`db`, `s3`, the issuer of its identity provider)
- * and never a host, so a suite declares its `externalServices` today and points each at something
- * somebody else installed — the integration matrix's `mysql.blong-integration.svc.cluster.local`, in
- * the dev cluster's case. This module is the other half: one descriptor per service under `services/`,
- * saying what the service *is* and which adapters imply it, so that a deployment can generate the
- * workload itself and publish the alias its own config already uses.
- *
- * Three decisions are the module's, and they are what the plan's items ask for:
- *
- *   - **A descriptor is data, validated at load.** The file is the deployment's, not this realm's: a
- *     service is added by adding a file, and a file this code cannot mean is refused where it is read
- *     rather than half-applied to a cluster. `additionalProperties: false` is what makes a typo a
- *     failure (`kinds` spelled `kind` would otherwise generate nothing and say nothing).
- *   - **The adapters say what may be brought; the deployment says what is.** What a plan *needs* is a
- *     function of the adapter kinds its deployments activate, so a suite that activates `knex` can be
- *     deployed with a database — but a database is a workload somebody runs, and running one is a
- *     decision rather than a consequence: the deployment opts it in, and a suite that carries its own
- *     deployment opts in the services it expects, so a plain deployment of it brings them. Nothing is
- *     brought merely because an adapter implies it, and an opt-in for a service no activated adapter
- *     implies is refused, because the workload would be something nothing dials (D-504).
- *   - **The alias is the statement, not the host.** A realm's config keeps naming `mysql`, and the
- *     `ExternalName` Service that makes that name resolvable is generated from the declaration, in the
- *     suite's namespace — which is what lets the workload move namespace without a configuration
- *     change anywhere, and what makes a CR that points the alias elsewhere the copy that is applied.
- *
- * The objects themselves (the init ConfigMap, the claim, the Deployment, the Service) are not here:
- * they are a base beside each descriptor, which the generator copies into the emitted tree and renders
- * with the values this module resolves.
+ * services.ts — the third-party services a deployment brings with it: a descriptor per service under
+ * `services/`, and the alias it publishes (@@D-504).
  */
 
 /** A value a base may read out of a descriptor: one scalar, because a template cannot mean a tree. */
@@ -102,7 +74,7 @@ export interface IServiceOverride {
     /**
      * The credentials the workload reads, as the deployment declares them.
      *
-     * Three shapes and their absence, and each answers a different question (D-509). `values` are the
+     * Three shapes and their absence, and each answers a different question (@@D-509). `values` are the
      * secrets themselves, written into a Secret the tree generates beside the workload; `secret` names one
      * the deployment manages elsewhere and is mounted as it stands; `generate` asks for the descriptor's own
      * derivation, for a service whose credentials nobody else can supply. A name *and* generated values are
@@ -123,7 +95,7 @@ export interface IServiceOverride {
      * A deployment that needs a realm of its own — an identity provider's clients, roles and users —
      * knows what they are and this realm does not, so the script travels as text rather than as a
      * shape this realm would have to model. It is written into the service's init object exactly as it
-     * arrives: no `${db}` expansion, because a deployment's script is not a template (D-466).
+     * arrives: no `${db}` expansion, because a deployment's script is not a template (@@D-466).
      */
     init?: {script?: string};
     /**
@@ -131,7 +103,7 @@ export interface IServiceOverride {
      *
      * Named here when the plan cannot read them: a connection a `release` block carries is not in
      * the config a `k8s` planning run merges, so a suite that names its database only where it
-     * dials it would otherwise ask its generated service for nothing and find none of them (T-277).
+     * dials it would otherwise ask its generated service for nothing and find none of them (@@T-277).
      * What the connections *do* name is merged with this list rather than replaced by it.
      */
     databases?: string[];
@@ -173,7 +145,7 @@ export interface IBackingService extends IServiceDescriptor {
      * The name the workload reads its credentials from, when the deployment provides any.
      *
      * Absent is a real answer: a deployment that declares no credentials gets a workload whose base has the
-     * credentials it reads taken out of it, rather than one that waits for a Secret nobody writes (D-509).
+     * credentials it reads taken out of it, rather than one that waits for a Secret nobody writes (@@D-509).
      */
     credentialsSecret?: string;
     /**
@@ -181,7 +153,7 @@ export interface IBackingService extends IServiceDescriptor {
      *
      * The distinction decides what a pass may take back: a Secret this realm generated is removed when the
      * declaration stops asking for it, and its label is what says so (`GENERATED_CREDENTIALS_LABEL`), while
-     * one a deployment names is theirs to place and theirs to keep (D-462, D-509). It is also what decides
+     * one a deployment names is theirs to place and theirs to keep (@@D-462 @@D-509). It is also what decides
      * whether a copy is written for the deployment that dials the service: a Secret this realm generates is
      * one it can write twice.
      */
@@ -335,7 +307,7 @@ const applied = (
         // A deployment that declares credentials names the Secret or supplies the values, and the tree
         // writes one only in the second case — the workload's reference is the same shape either way, which
         // is what keeps a generated database and a hand-installed one one base. A deployment that declares
-        // none gets no name at all, so what its base reads comes out of the object the tree writes (D-509).
+        // none gets no name at all, so what its base reads comes out of the object the tree writes (@@D-509).
         ...(descriptor.credentials ? credentialsOf(descriptor, named?.credentials) : {}),
         namespace: request.namespace ?? DEFAULT_SERVICES_NAMESPACE,
         // The connections first, then what the deployment named: deduplicated, because a name in both
@@ -357,7 +329,7 @@ const applied = (
  * at all; whether the tree also *writes* the Secret is a separate question, and the declaration answers it:
  * `values` supply the secrets, `generate` asks for the descriptor's derivation, and a `secret` name means
  * somebody else owns them. A declaration that does both is refused here rather than half-applied, because the
- * three are answers to one question and a pick between them would be a decision nobody made (D-509).
+ * three are answers to one question and a pick between them would be a decision nobody made (@@D-509).
  */
 const credentialsOf = (
     descriptor: IServiceDescriptor,

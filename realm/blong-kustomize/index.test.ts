@@ -1,18 +1,6 @@
 /**
- * index.test.ts — Tap test runner for `kustomize` integration tests.
- *
- * Loads both the server and browser platforms, then runs tests on each:
- *  - server: `test.plan.find` — the plan derived from the loaded registry
- *  - server: `test.tree.generate` — the tree is reproducible and every object is
- *    fingerprinted
- *
- * There is no browser-side group. The scaffold had one that checked HTTP access control
- * (401/403/200), but this realm loads no login and no access realm — there is no user to
- * authenticate and no capability to check — so it could not have passed.
- *
- * Usage:
- *   node --run ci-test    (via blong-dev test, which uses this file)
- *   node index.test.ts    (direct tap invocation)
+ * index.test.ts — Tap runner for the `kustomize` integration tests: `test.plan.find` and
+ * `test.tree.generate` on the server, and no browser-side group.
  */
 import load from '@feasibleone/blong-gogo';
 import tap, {Test} from 'tap';

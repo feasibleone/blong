@@ -23,7 +23,7 @@ interface IItem {
  * it: the versions come from labels, and the ordering, the minimum and the split are what a reader
  * has to get right. Written out so a test can hold it down, which is what the handler's first live
  * run showed was missing — its adapter lookup had been spelled wrongly since it was written and
- * nothing exercised it (T-245).
+ * nothing exercised it .
  *
  * The retention is clamped to at least one: a suite must keep something to roll back to, and a
  * `--retention=0` that deleted the running version would be a request nobody means.
@@ -54,7 +54,7 @@ export default handler(({handler}) => {
             // middle part is `persistent`, and the adapter answered `no verb matched` — the join is
             // what keeps the words one part, and the adapter joins them again for the client
             // (`[K8S_ADAPTER_VERBS]`; the wire names in `testClusterApply` spell every compound kind
-            // the same way). Nothing caught this while the handler had no caller (T-245).
+            // the same way). Nothing caught this while the handler had no caller .
             const list = find('clusterPersistent_Volume_ClaimFind');
             if (!list) {
                 return {
@@ -65,7 +65,7 @@ export default handler(({handler}) => {
                 };
             }
             // The *identity* rather than the version: two artifacts of one version are two claims, and a
-            // retention that counted versions would call them one and retire the wrong number (D-469).
+            // retention that counted versions would call them one and retire the wrong number (@@D-469).
             // The version is read as well, so claims a revision before the identity carry a number the
             // step can still count.
             const identities = ((await list({}, $meta as IMeta))?.items ?? [])

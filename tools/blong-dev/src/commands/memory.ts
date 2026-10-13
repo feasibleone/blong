@@ -40,8 +40,8 @@
  */
 
 import {execFileSync} from 'node:child_process';
-import {existsSync, readFileSync} from 'node:fs';
-import {relative, resolve} from 'node:path';
+import {existsSync, readFileSync, writeFileSync} from 'node:fs';
+import {join, relative, resolve} from 'node:path';
 
 import {
     areaTag,
@@ -91,6 +91,7 @@ import {
     refreshIndex,
     removeEntry,
     replaceMeta,
+    retireEntry,
     sectionForStatus,
     skeleton,
     writeDoc,
@@ -110,10 +111,19 @@ import {
     scopeOf,
     type IMemoryFileRef,
 } from '../memory/memoryPaths.ts';
+import {
+    buildReferenceIndex,
+    nearestAnchor,
+    referenceSites,
+    scanSites,
+    trackedFiles,
+    type ReferenceTarget,
+} from '../memory/memoryReference.ts';
 import {parseId, resolveId, scopeForCwd, type IIdHit} from '../memory/memoryResolve.ts';
 import {
     DEFAULT_STATUS,
     ENTRY_HEADING,
+    KIND_PREFIX,
     KIND_STATUSES,
     MAX_TITLE_LENGTH,
     SECTION_FOR_STATUS,
@@ -132,7 +142,9 @@ const USAGE = [
     'blong-dev memory list [--kind <kind>] [--area <area>] [--status <status>] [--search <text>] [--json]',
     'blong-dev memory show <id|id@scope> [--json]',
     'blong-dev memory edit <id|id@scope> [--title <title>] [--body <text>|--body-file <file>] [--status <status>]',
-    'blong-dev memory close <id|id@scope> [--note <text>] [--keep] [--by <id>] [--reason <text>]',
+    'blong-dev memory close <id|id@scope> [--note <text>] [--keep] [--by <id>] [--reason <text>] [--purge]',
+    'blong-dev memory renumber <id|id@scope> --to <id>',
+    'blong-dev memory comply [--since <ref>] [--json]',
     'blong-dev memory reopen <id|id@scope>',
     'blong-dev memory move <id> --area <area>',
     'blong-dev memory index|format|check [--files a.md,b.md]',
@@ -140,9 +152,11 @@ const USAGE = [
     'blong-dev memory search <query> [--source entry|docs|skill] [--kind <kind>] [--area <area>] [--limit <n>] [--json]',
     'blong-dev memory manual <list|add <text>|done <n|text>>',
     'blong-dev memory audit [--json]',
+    'blong-dev memory refs [<id|doc:page|skill:name>…] [--dangling] [--sites] [--changed] [--fix-anchors] [--fix-superseded] [--summary] [--json]',
+    'blong-dev memory export [--out <file>]',
     'blong-dev memory migrate <file> --kind <kind> [--default-area <area>] [--drop <file>] [--apply]',
     'blong-dev memory import <file.json> [...] [--kind <kind>] [--apply] [--force]',
-    'blong-dev memory prune <id,id> --reason "<why>"',
+    'blong-dev memory prune <id,id> --reason "<why>" [--force] [--purge]',
 ].join('\n');
 
 /** Results a search prints unless `--limit` says otherwise. */
@@ -176,6 +190,9 @@ const TOPIC_AREAS: Record<string, string> = {
 };
 
 type Options = Map<string, string>;
+
+/** A `## Retired` ledger line: `- F-101 — superseded by F-090 (2026-08-01)`. */
+const LEDGER_LINE = /^-\s*(?<id>[FTD]-\d{3})\s*—\s*\S/;
 
 /** Resolve a kind from a CLI word, or `null`. */
 function kindOf(value: string | undefined): MemoryKind | null {
@@ -553,10 +570,19 @@ async function close(
     assertMigrated(doc);
 
     if (doc.kind === 'todo' && !flags.has('keep')) {
+        const date = (options.get('date') ?? today()).trim();
         removeEntry(doc, entry);
+        if (flags.has('purge')) {
+            process.stdout.write(`# ${entry.id} done and purged\n`);
+        } else {
+            // The entry is gone; the id is not. It stays resolvable as "done <date>", so a
+            // reference that outlived the work is a warning, not a dangling mystery.
+            retireEntry(doc, entry.id, `done ${date}`);
+            process.stdout.write(`# ${entry.id} done and retired\n`);
+        }
         refreshIndex(doc);
         writeDoc(doc);
-        process.stdout.write(`# ${entry.id} done and removed\n# ${entry.title}\n`);
+        process.stdout.write(`# ${entry.title}\n`);
         await forget([entry.id]);
         return;
     }
@@ -1082,7 +1108,8 @@ async function check(root: string, options: Options, flags: Set<string>): Promis
     }
     const context: ICheckContext = {ids, packages: new Set(packageAreas(root))};
 
-    const problems = docs.flatMap(doc => checkDoc(doc, context));
+    const problems: IProblem[] = docs.flatMap(doc => checkDoc(doc, context));
+    if (flagOn(flags, options, 'refs')) problems.push(...referenceProblems(root, options));
     if (!flags.has('no-spell')) problems.push(...(await spellProblems(root, docs)));
 
     const errors = problems.filter(problem => problem.severity === 'error');
@@ -1438,6 +1465,45 @@ function migrate(root: string, args: string[], options: Options, flags: Set<stri
     }
 }
 
+/**
+ * Give an entry a new id, and record the old one as retired.
+ *
+ * This is the repair for a collision — two files holding the same id — and for a note
+ * filed under the wrong kind. The old number stays in the ledger pointing at the new
+ * entry, so a reference that used it becomes a warning that names the successor,
+ * instead of a dangling id or, worse, a later entry that took the number.
+ */
+async function renumber(root: string, id: string | undefined, options: Options): Promise<void> {
+    if (!id) fail('memory renumber <id|id@scope> --to <id>');
+    const to = options.get('to')?.trim().toUpperCase();
+    if (!to || !/^[FTD]-\d{3}$/.test(to)) fail('memory renumber needs --to <F-000>-style id');
+    const found = findEntry(root, id);
+    if (!found) fail(`no entry with id ${id}`);
+    const {doc, entry} = found;
+    assertMigrated(doc);
+    if (entry.id === to) {
+        process.stdout.write(`# ${entry.id} already has that id\n`);
+        return;
+    }
+    if (!to.startsWith(KIND_PREFIX[doc.kind])) {
+        fail(`--to ${to} must share the kind prefix ${KIND_PREFIX[doc.kind]}-`);
+    }
+    if (findEntry(root, to)) fail(`${to} is already in use — pick a free number`);
+
+    removeEntry(doc, entry);
+    insertEntry(
+        doc,
+        SECTION_FOR_STATUS[entry.meta!.status] ?? 'Open',
+        entryLines(to, entry.title, entry.meta!, entry.body),
+    );
+    retireEntry(doc, entry.id, `renumbered to ${to} (${today()})`);
+    refreshIndex(doc);
+    writeDoc(doc);
+    process.stdout.write(`# ${entry.id} renumbered to ${to}\n# ${relative(root, doc.path)}\n`);
+    await forget([entry.id]);
+    await ingest(root, [{doc, id: to}]);
+}
+
 /** Remove entries by id, for a reviewed prune. */
 async function prune(
     root: string,
@@ -1454,12 +1520,28 @@ async function prune(
         .filter(Boolean);
     if (ids.length === 0) fail('memory prune needs at least one id');
 
+    const sites = referenceSites(root, trackedFiles(root));
     const removed: string[] = [];
     for (const id of ids) {
         const found = findEntry(root, id);
         if (!found) fail(`no entry with id ${id}`);
         assertMigrated(found.doc);
+        const cited = sites.filter(site => site.target.kind === 'entry' && site.target.id === id);
+        if (cited.length > 0 && !flags.has('force')) {
+            fail(
+                `${id} is cited by ${cited.length} site(s) — ${cited
+                    .slice(0, 5)
+                    .map(site => `${site.file}:${site.line}`)
+                    .join(', ')} — retarget them, or pass --force to retire it anyway`,
+            );
+        }
+        for (const site of cited) {
+            process.stdout.write(`# retarget ${site.file}:${site.line} ${site.raw}\n`);
+        }
         removeEntry(found.doc, found.entry);
+        if (!flags.has('purge')) {
+            retireEntry(found.doc, id, `pruned ${today()} — ${reason}`);
+        }
         refreshIndex(found.doc);
         writeDoc(found.doc);
         removed.push(`${id} ${found.entry.title}`);
@@ -1477,6 +1559,608 @@ async function prune(
     process.stdout.write(`# ${removed.length} entries pruned — ${reason}\n`);
 }
 
+/** The string a `refs <target>` argument matches against. */
+function targetKey(target: ReferenceTarget): string {
+    if (target.kind === 'entry') return target.id;
+    if (target.kind === 'doc') {
+        return `doc:${target.page}${target.anchor ? `#${target.anchor}` : ''}`;
+    }
+    return `skill:${target.name}${target.anchor ? `#${target.anchor}` : ''}`;
+}
+
+/**
+ * True when a reference must fail the gate rather than be reported.
+ *
+ * A superseded decision counts as an error when it names its successor, because the fix is one
+ * command (`refs --fix-superseded`); when it names none, only a reader can settle it, so it stays a
+ * warning. A retired id and a resolved friction are the history the code embodies and always do.
+ */
+function isErrorCode(code: string, successor?: string): boolean {
+    return (
+        code === 'unknown' || code === 'ambiguous' || (code === 'superseded' && Boolean(successor))
+    );
+}
+
+/** The package folder a scanned file belongs to, for the `--summary` ledger. */
+function packageOf(file: string): string {
+    const parts = file.split('/');
+    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : (parts[0] ?? file);
+}
+
+/**
+ * How `--sites` marks a citation a reader should look at, by the state of the entry it names.
+ *
+ * The audit view exists because resolution is not correctness, so it shows what the resolver knows:
+ * a retired id names its fate, a superseded decision names the successor its reasoning moved to (or
+ * says that none is recorded), and a resolved friction or done todo is marked as the record it is.
+ */
+function statusNote(row: {code: string; status: string; successor?: string}): string {
+    if (row.code === 'retired') return '  (retired)';
+    if (row.code === 'superseded') {
+        return `  (superseded${row.successor ? ` → ${row.successor}` : ', no successor named'})`;
+    }
+    if (row.status === 'resolved' || row.status === 'done') return `  (${row.status})`;
+    return '';
+}
+
+/** True when a file is one of the three corpora, whose relative links are checked. */
+function inCorpus(file: string): boolean {
+    return (
+        file.startsWith('docs/blong/docs/') ||
+        file.startsWith('.github/skills/') ||
+        file.includes('/.github/memory/') ||
+        file.startsWith('.github/memory/')
+    );
+}
+
+/**
+ * Replace one token in one file, verifying the text is still there.
+ *
+ * A rewrite is the only edit `refs` makes, and it is guarded: the line and column come from a
+ * snapshot taken before any other fix, so a second fix on a moved line must not land on the wrong
+ * text. The check refuses rather than guessing.
+ */
+function rewriteToken(
+    root: string,
+    site: {file: string; line: number; column: number; raw: string},
+    next: string,
+): boolean {
+    const path = join(root, site.file);
+    const lines = splitLines(readFileSync(path, 'utf8'));
+    const original = lines[site.line - 1];
+    if (original === undefined) return false;
+    if (original.slice(site.column, site.column + site.raw.length) !== site.raw) return false;
+    lines[site.line - 1] =
+        original.slice(0, site.column) + next + original.slice(site.column + site.raw.length);
+    writeFileSync(path, `${lines.join('\n')}\n`);
+    return true;
+}
+
+/**
+ * Retarget or drop one citation of a superseded decision.
+ *
+ * The token becomes the successor the entry names, or is dropped when the line already cites it —
+ * with the space and the parentheses the drop leaves behind tidied away. Like every rewrite here it
+ * verifies the text it is about to replace, so a stale line refuses instead of editing the wrong
+ * thing.
+ */
+function rewriteSuperseded(
+    root: string,
+    site: {file: string; line: number; column: number; raw: string},
+    successor: string,
+): 'retargeted' | 'dropped' | null {
+    const path = join(root, site.file);
+    const lines = splitLines(readFileSync(path, 'utf8'));
+    const original = lines[site.line - 1];
+    if (original === undefined) return null;
+    if (original.slice(site.column, site.column + site.raw.length) !== site.raw) return null;
+    const before = original.slice(0, site.column);
+    const after = original.slice(site.column + site.raw.length);
+    const drop = original.includes(`@@${successor}`);
+    const next = drop
+        ? (before + after)
+              .replace(/\(\s+/g, '(')
+              .replace(/\s+\)/g, ')')
+              .replace(/\(\s*\)/g, '')
+              .replace(/ ([.,;:)])/g, '$1')
+              .replace(/(\S)[ \t]{2,}(?=\s*@@)/g, '$1 ')
+        : `${before}@@${successor}${after}`;
+    if (next === original) return null;
+    lines[site.line - 1] = next;
+    writeFileSync(path, `${lines.join('\n')}\n`);
+    return drop ? 'dropped' : 'retargeted';
+}
+
+/**
+ * The reverse index and the linter.
+ *
+ * With targets it answers "what cites this?"; with `--summary` it counts per package;
+ * by default it is the linter — every `@@` token and every relative link in the three
+ * corpora, resolved — and it exits non-zero when one does not resolve. A retired id is
+ * a warning, because it is history that names its successor, not a mistake.
+ */
+function refs(root: string, args: string[], options: Options, flags: Set<string>): void {
+    const index = buildReferenceIndex(root);
+    const named = options.get('files');
+    const files = named
+        ? named
+              .split(',')
+              .map(entry => entry.trim())
+              .filter(Boolean)
+        : trackedFiles(root);
+    const scanned = scanSites(root, files, index);
+    const links = scanned.links.filter(link => inCorpus(link.file));
+
+    const wanted = args.filter(Boolean).map(arg => arg.trim().replace(/^@@/, '').toLowerCase());
+    if (wanted.length > 0) {
+        const chosen = scanned.references.filter(site => {
+            const key = targetKey(site.target).toLowerCase();
+            return wanted.some(want => key === want || key.startsWith(want));
+        });
+        if (flags.has('json')) {
+            process.stdout.write(`${JSON.stringify(chosen, null, 2)}\n`);
+            return;
+        }
+        for (const site of chosen) {
+            process.stdout.write(
+                `${site.file}:${site.line}  ${site.raw}  → ${site.resolution.message}\n`,
+            );
+        }
+        process.stdout.write(`# ${chosen.length} site(s) cite ${wanted.join(', ')}\n`);
+        return;
+    }
+
+    if (flags.has('sites')) {
+        // The audit view: every reference beside the title it resolved to, so a person can see a
+        // citation that resolves but points at the wrong entry — which no linter can judge.
+        const rows = scanned.references
+            .filter(site => site.resolution.code !== 'unknown')
+            .map(site => ({
+                file: site.file,
+                line: site.line,
+                raw: site.raw,
+                text: site.text,
+                code: site.resolution.code,
+                status: site.resolution.status ?? site.resolution.code,
+                successor: site.resolution.successor,
+                title: site.resolution.title ?? site.resolution.message,
+            }));
+        if (flags.has('json')) {
+            process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`);
+            return;
+        }
+        for (const row of rows) {
+            process.stdout.write(
+                `${row.file}:${row.line}  ${row.raw}  → ${row.title}${statusNote(row)}\n` +
+                    `    ${row.text}\n`,
+            );
+        }
+        process.stdout.write(`# ${rows.length} reference(s) with their entry titles\n`);
+        return;
+    }
+
+    if (flags.has('changed')) {
+        const since = options.get('since')?.trim() ?? 'HEAD';
+        const changes = changedMemoryEntries(root, since);
+        const ids = new Set(changes.map(change => change.id));
+        const cited = scanned.references.filter(
+            site => site.target.kind === 'entry' && ids.has(site.target.id),
+        );
+        if (flags.has('json')) {
+            process.stdout.write(`${JSON.stringify({since, changes, cited}, null, 2)}\n`);
+            return;
+        }
+        for (const site of cited) {
+            process.stdout.write(`${site.file}:${site.line}  ${site.raw}  → re-read it\n`);
+        }
+        process.stdout.write(
+            `# memory refs --changed: ${changes.length} changed entry(ies), ` +
+                `${cited.length} site(s) to re-read since ${since}\n`,
+        );
+        return;
+    }
+
+    if (flags.has('fix-anchors')) {
+        // Rewrite an anchor that moved when exactly one heading is a plausible target; anything
+        // else is reported by the default run rather than guessed at.
+        const pageByFile = new Map(
+            [...index.docs.values(), ...index.skills.values()].map(page => [page.file, page]),
+        );
+        let fixed = 0;
+        for (const site of scanned.references) {
+            if (site.target.kind === 'entry' || !site.target.anchor) continue;
+            const anchor = site.target.anchor;
+            const page =
+                site.target.kind === 'doc'
+                    ? index.docs.get(site.target.page)
+                    : index.skills.get(site.target.name);
+            if (!page || anchor in page.anchors) continue;
+            const candidates = nearestAnchor(page.anchors, anchor);
+            if (candidates === undefined) continue;
+            const next = site.raw.replace(`#${anchor}`, `#${candidates}`);
+            if (rewriteToken(root, site, next)) {
+                fixed += 1;
+                process.stdout.write(`# fixed ${site.file}:${site.line}  ${site.raw} → ${next}\n`);
+            }
+        }
+        for (const link of links) {
+            // Only an anchor this rewrites: a link whose file is missing names nothing to fix.
+            if (link.code !== 'unknown' || link.reason !== 'anchor' || !link.anchor) continue;
+            const page = pageByFile.get(link.target);
+            if (!page) continue;
+            const candidates = nearestAnchor(page.anchors, link.anchor);
+            if (candidates === undefined) continue;
+            const next = link.raw.replace(`#${link.anchor}`, `#${candidates}`);
+            if (rewriteToken(root, link, next)) {
+                fixed += 1;
+                process.stdout.write(`# fixed ${link.file}:${link.line}  ${link.raw} → ${next}\n`);
+            }
+        }
+        process.stdout.write(`# memory refs --fix-anchors: ${fixed} anchor(s) rewritten\n`);
+        return;
+    }
+
+    if (flags.has('fix-superseded')) {
+        // A decision that names its successor has moved its reasoning, so the citation follows it.
+        // One that names none is left for a person: only a reader knows which entry holds the answer.
+        const orphans = new Set<string>();
+        let fixed = 0;
+        for (const site of scanned.references) {
+            if (site.resolution.code !== 'superseded') continue;
+            const id = site.target.kind === 'entry' ? site.target.id : site.raw;
+            const successor = site.resolution.successor;
+            if (!successor) {
+                orphans.add(id);
+                continue;
+            }
+            const outcome = rewriteSuperseded(root, site, successor);
+            if (outcome === null) {
+                process.stdout.write(`# refused ${site.file}:${site.line}  ${site.raw}\n`);
+                continue;
+            }
+            fixed += 1;
+            process.stdout.write(
+                `${outcome === 'dropped' ? 'dropped' : 'follows'} ${site.file}:${site.line}  ` +
+                    `${site.raw} → ${successor}\n`,
+            );
+        }
+        for (const id of orphans) {
+            process.stdout.write(`# ${id} names no successor — its citations need a person\n`);
+        }
+        process.stdout.write(
+            `# memory refs --fix-superseded: ${fixed} citation(s) moved to their successor, ` +
+                `${orphans.size} entry(s) left for a reader\n`,
+        );
+        return;
+    }
+
+    if (flags.has('summary')) {
+        const perPackage = new Map<string, {refs: number; files: Set<string>}>();
+        for (const site of scanned.references) {
+            const key = packageOf(site.file);
+            const record = perPackage.get(key) ?? {refs: 0, files: new Set<string>()};
+            record.refs += 1;
+            record.files.add(site.file);
+            perPackage.set(key, record);
+        }
+        const rows = [...perPackage].sort((a, b) => b[1].refs - a[1].refs);
+        if (flags.has('json')) {
+            process.stdout.write(
+                `${JSON.stringify(
+                    rows.map(([pkg, record]) => ({
+                        package: pkg,
+                        refs: record.refs,
+                        files: record.files.size,
+                    })),
+                    null,
+                    2,
+                )}\n`,
+            );
+            return;
+        }
+        for (const [pkg, record] of rows) {
+            process.stdout.write(
+                `# ${pkg}: ${record.refs} ref(s) in ${record.files.size} file(s)\n`,
+            );
+        }
+        process.stdout.write(
+            `# ${scanned.references.length} reference(s) in ${files.length} file(s)\n`,
+        );
+        return;
+    }
+
+    const errors: Array<{file: string; line: number; raw: string; message: string}> = [
+        ...scanned.references
+            .filter(site => isErrorCode(site.resolution.code, site.resolution.successor))
+            .map(site => ({
+                file: site.file,
+                line: site.line,
+                raw: site.raw,
+                message: site.resolution.successor
+                    ? `${site.resolution.message} — refs --fix-superseded retargets it`
+                    : site.resolution.message,
+            })),
+        ...links
+            .filter(link => link.code === 'unknown')
+            .map(link => ({
+                file: link.file,
+                line: link.line,
+                raw: link.raw,
+                message: link.message,
+            })),
+    ];
+    const retired = scanned.references.filter(site => site.resolution.code === 'retired');
+    const superseded = scanned.references.filter(site => site.resolution.code === 'superseded');
+
+    if (flags.has('json')) {
+        process.stdout.write(
+            `${JSON.stringify(
+                {
+                    dangling: errors,
+                    retired: retired.map(site => ({
+                        file: site.file,
+                        line: site.line,
+                        raw: site.raw,
+                        message: site.resolution.message,
+                    })),
+                    superseded: superseded.map(site => ({
+                        file: site.file,
+                        line: site.line,
+                        raw: site.raw,
+                        successor: site.resolution.successor,
+                        message: site.resolution.message,
+                    })),
+                    references: scanned.references.length,
+                },
+                null,
+                2,
+            )}\n`,
+        );
+    } else {
+        for (const item of errors) {
+            process.stderr.write(`✖ ${item.file}:${item.line}  ${item.raw}  ${item.message}\n`);
+        }
+        for (const site of [...retired, ...superseded]) {
+            process.stdout.write(
+                `⚠ ${site.file}:${site.line}  ${site.raw}  ${site.resolution.message}\n`,
+            );
+        }
+    }
+    if (errors.length === 0) {
+        process.stdout.write(
+            `# memory refs: ${scanned.references.length} reference(s) resolve, ` +
+                `${retired.length} retired, ${superseded.length} superseded\n`,
+        );
+    }
+    if (errors.length > 0) process.exitCode = 1;
+}
+
+/**
+ * The machine index the editor and a hover read.
+ *
+ * One JSON document with all three corpora and their anchors. It is derived — the
+ * markdown is the source of truth — so `--out` writes a cache the editor watches,
+ * and stdout is the same document for a one-off read.
+ */
+function exportIndex(root: string, options: Options): void {
+    const index = buildReferenceIndex(root);
+    const payload = {
+        version: 1,
+        entries: Object.fromEntries(
+            [...index.entries].map(([id, holders]) => {
+                const first = holders[0]!;
+                return [
+                    id,
+                    {
+                        title: first.title,
+                        area: first.area,
+                        status: first.status,
+                        date: first.date,
+                        body: first.body,
+                        file: first.file,
+                        line: first.line,
+                        ...(first.successor ? {successor: first.successor} : {}),
+                        ...(holders.length > 1
+                            ? {alsoIn: holders.slice(1).map(holder => holder.file)}
+                            : {}),
+                    },
+                ];
+            }),
+        ),
+        retired: Object.fromEntries(
+            [...index.ledger].map(([id, record]) => [
+                id,
+                {
+                    fate: record.fate,
+                    file: record.file,
+                    ...(record.successor ? {successor: record.successor} : {}),
+                },
+            ]),
+        ),
+        docs: Object.fromEntries(
+            [...index.docs].map(([key, page]) => [
+                key,
+                {title: page.title, tier: page.tier, file: page.file, anchors: page.anchors},
+            ]),
+        ),
+        skills: Object.fromEntries(
+            [...index.skills].map(([key, page]) => [
+                key,
+                {title: page.title, file: page.file, anchors: page.anchors},
+            ]),
+        ),
+    };
+    const text = `${JSON.stringify(payload, null, 2)}\n`;
+    const out = options.get('out');
+    if (out) {
+        writeFileSync(resolve(out.trim()), text);
+        process.stdout.write(`# wrote ${out}\n`);
+        return;
+    }
+    process.stdout.write(text);
+}
+
+/**
+ * The `@@` and markdown-link references of the selected files, as check problems.
+ *
+ * This is what `check --refs` adds to the memory-file checks: the same tree the `refs`
+ * linter walks, reported through the check problem shape, so one command covers the
+ * entries and everything that cites them.
+ */
+function referenceProblems(root: string, options: Options): IProblem[] {
+    const index = buildReferenceIndex(root);
+    const named = options.get('files');
+    const files = named
+        ? named
+              .split(',')
+              .map(entry => entry.trim())
+              .filter(Boolean)
+        : trackedFiles(root);
+    const scanned = scanSites(root, files, index);
+    const problems: IProblem[] = [];
+    for (const site of scanned.references) {
+        if (site.resolution.code === 'ok') continue;
+        problems.push({
+            file: site.file,
+            line: site.line,
+            message: `reference ${site.raw} — ${site.resolution.message}`,
+            severity: isErrorCode(site.resolution.code, site.resolution.successor)
+                ? 'error'
+                : 'warning',
+        });
+    }
+    for (const link of scanned.links) {
+        if (link.code === 'ok' || !inCorpus(link.file)) continue;
+        problems.push({
+            file: link.file,
+            line: link.line,
+            message: `link ${link.raw} — ${link.message}`,
+            severity: 'error',
+        });
+    }
+    return problems;
+}
+
+/** One entry id a diff added, changed or removed. */
+interface IComplianceChange {
+    id: string;
+    file: string;
+    how: 'added' | 'edited' | 'removed' | 'status';
+    status?: string;
+}
+
+/** The `ref:path` contents as lines, or `[]` when the file did not exist then. */
+function gitShowLines(root: string, ref: string, file: string): string[] {
+    try {
+        return splitLines(
+            execFileSync('git', ['show', `${ref}:${file}`], {cwd: root}).toString('utf8'),
+        );
+    } catch {
+        return [];
+    }
+}
+
+/** id → its status and body text, for comparing two revisions of a memory file. */
+function entryMap(lines: readonly string[]): Map<string, {status: string; text: string}> {
+    const map = new Map<string, {status: string; text: string}>();
+    for (const entry of parseDoc(lines).entries) {
+        map.set(entry.id, {status: entry.meta?.status ?? '?', text: entry.body.join('\n')});
+    }
+    return map;
+}
+
+/** The memory entries a diff touched, across every scope's `friction`/`todo`/`decision`. */
+function changedMemoryEntries(root: string, since: string): IComplianceChange[] {
+    let files: string[];
+    try {
+        files = execFileSync(
+            'git',
+            ['diff', '--name-only', since, '--', ':(glob)**/.github/memory/**'],
+            {cwd: root},
+        )
+            .toString('utf8')
+            .split('\n')
+            .filter(Boolean);
+    } catch {
+        return [];
+    }
+
+    const changes: IComplianceChange[] = [];
+    for (const file of files) {
+        const before = entryMap(gitShowLines(root, since, file));
+        const after = entryMap(
+            existsSync(join(root, file)) ? splitLines(readFileSync(join(root, file), 'utf8')) : [],
+        );
+        for (const [id, entry] of before) {
+            const now = after.get(id);
+            if (!now) {
+                changes.push({id, file, how: 'removed'});
+            } else if (now.status !== entry.status) {
+                changes.push({id, file, how: 'status', status: now.status});
+            } else if (now.text !== entry.text) {
+                changes.push({id, file, how: 'edited'});
+            }
+        }
+        for (const id of after.keys()) if (!before.has(id)) changes.push({id, file, how: 'added'});
+    }
+    return changes;
+}
+
+/**
+ * The compliance gate: what cites an entry this change edited, retired or superseded.
+ *
+ * An `edit` is a warning — re-read it. A `removed` or superseded/resolved entry is an
+ * error, because a site still cites it as live reasoning and the comment now says
+ * something the entry no longer supports.
+ */
+function comply(root: string, options: Options, flags: Set<string>): void {
+    const since = options.get('since')?.trim() ?? 'HEAD';
+    const changes = changedMemoryEntries(root, since);
+    const index = buildReferenceIndex(root);
+    const sites = referenceSites(root, trackedFiles(root), index);
+
+    const rows: Array<{
+        file: string;
+        line: number;
+        raw: string;
+        change: IComplianceChange;
+        severity: IProblem['severity'];
+    }> = [];
+    for (const change of changes) {
+        const stale =
+            change.how === 'removed' ||
+            (change.how === 'status' &&
+                ['superseded', 'resolved', 'done'].includes(change.status ?? ''));
+        for (const site of sites.filter(
+            candidate => candidate.target.kind === 'entry' && candidate.target.id === change.id,
+        )) {
+            rows.push({
+                file: site.file,
+                line: site.line,
+                raw: site.raw,
+                change,
+                severity: stale ? 'error' : 'warning',
+            });
+        }
+    }
+
+    if (flags.has('json')) {
+        process.stdout.write(`${JSON.stringify({since, changes, sites: rows}, null, 2)}\n`);
+    } else {
+        for (const row of rows) {
+            const where = row.change.status ? ` (${row.change.status})` : '';
+            process.stdout.write(
+                `${row.severity === 'error' ? '✖' : '⚠'} ${row.file}:${row.line}  ${row.raw}  ` +
+                    `— ${row.change.id} ${row.change.how}${where}, re-read it\n`,
+            );
+        }
+        process.stdout.write(
+            `# memory comply: ${changes.length} changed entry(ies), ${rows.length} site(s) to re-read\n`,
+        );
+    }
+    if (rows.some(row => row.severity === 'error')) process.exitCode = 1;
+}
+
 function audit(root: string, options: Options, flags: Set<string>): void {
     const docs = docsOf(root, options);
     const entries = docs.flatMap(doc => parseDoc(doc.lines).entries.map(entry => ({doc, entry})));
@@ -1491,7 +2175,16 @@ function audit(root: string, options: Options, flags: Set<string>): void {
             holders.set(entry.id, seen);
         }
     }
-    const known = new Set(holders.keys());
+    // A retired id is known — it resolves, as a warning that names its successor — so it
+    // is not dangling, and the ledger line itself is not a reference to check.
+    const ledger = new Set<string>();
+    for (const file of listMemoryFiles(root)) {
+        for (const line of readDoc(file.path, file.kind, file.scope).lines) {
+            const id = LEDGER_LINE.exec(line.trim())?.groups?.['id'];
+            if (id) ledger.add(id);
+        }
+    }
+    const known = new Set([...holders.keys(), ...ledger]);
     const ambiguous = Array.from(holders.entries())
         .filter(([, files]) => files.size > 1)
         .map(([id, files]) => ({id, files: [...files]}));
@@ -1499,7 +2192,7 @@ function audit(root: string, options: Options, flags: Set<string>): void {
     const dangling: Array<{file: string; line: number; id: string}> = [];
     for (const doc of docs) {
         doc.lines.forEach((line, index) => {
-            if (ENTRY_HEADING.test(line)) return;
+            if (ENTRY_HEADING.test(line) || LEDGER_LINE.test(line.trim())) return;
             for (const match of line.matchAll(/\b[FTD]-\d{3}\b/g)) {
                 if (!known.has(match[0]))
                     dangling.push({file: relative(root, doc.path), line: index + 1, id: match[0]});
@@ -1568,6 +2261,10 @@ export async function memory(args: string[]): Promise<void> {
                 return await edit(root, positionals[1], options);
             case 'close':
                 return await close(root, positionals[1], options, flags);
+            case 'renumber':
+                return await renumber(root, positionals[1], options);
+            case 'comply':
+                return comply(root, options, flags);
             case 'reopen':
                 return await reopen(root, positionals[1]);
             case 'move':
@@ -1584,6 +2281,10 @@ export async function memory(args: string[]): Promise<void> {
                 return manual(root, rest, flags);
             case 'audit':
                 return audit(root, options, flags);
+            case 'refs':
+                return refs(root, positionals.slice(1), options, flags);
+            case 'export':
+                return exportIndex(root, options);
             case 'migrate':
                 return migrate(root, rest, options, flags);
             case 'import':

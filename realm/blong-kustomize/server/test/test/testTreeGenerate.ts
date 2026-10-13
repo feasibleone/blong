@@ -71,7 +71,7 @@ import {loadServiceCatalog, resolveBackingServices} from '../../../services.ts';
  *
  * `assert.snapshot` is injected by the chain when the run has a test context — TAP's `t`, which is
  * also what holds the stored snapshots — and the dev server's watch runner executes this group
- * without one (T-214), so a step that pinned *only* through a snapshot would assert nothing there.
+ * without one , so a step that pinned *only* through a snapshot would assert nothing there.
  * What is left on that runner is the check that the structure was produced at all; the pin itself
  * waits for the runner, and saying so here is what keeps the guard out of every step.
  */
@@ -106,7 +106,7 @@ const requireKubectl = (assert: IAssert): void => {
  *
  * Two, because a `nodeLocal` volume is one directory per node and one node would pin a tree that
  * cannot show the per-node part of it. Named here rather than discovered, because a unit test has no
- * cluster to ask — the live assertions are the ones that read a real node list (D-470).
+ * cluster to ask — the live assertions are the ones that read a real node list (@@D-470).
  */
 const NODES = ['node-a', 'node-b'];
 
@@ -117,7 +117,7 @@ const NODES = ['node-a', 'node-b'];
  *
  * Snapshotting this instead of asserting each mount in a regular expression is what stops a *new*
  * file from arriving unnoticed — a mount nothing asserted was the shape of the failures this step
- * exists for (T-252, T-253) — and it reads the document the cluster is given rather than the
+ * exists for  — and it reads the document the cluster is given rather than the
  * characters the generator happened to write.
  */
 const configurationOf = (text: string): unknown => {
@@ -265,7 +265,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
             },
 
             async function aCrSpecDrivesTheTree(assert: IAssert, {$meta}: {$meta: IMeta}) {
-                // The operator generates for a CR it does not hold (T-234), so the spec arrives as a
+                // The operator generates for a CR it does not hold , so the spec arrives as a
                 // file; it wins only where it names a field. The suite's *name* is not one of them any
                 // more: it is the CR's own `metadata.name`, which the operator passes beside the spec
                 // (Q4), so a spec that names a suite must not rename the process it is generated for —
@@ -315,7 +315,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 {$meta}: {$meta: IMeta},
             ) {
                 // The repository tree is split so that a dev cluster's node names and a deploy's digest
-                // never enter it (D-473, D-475): the base is the same files for every deploy, and the
+                // never enter it (@@D-475): the base is the same files for every deploy, and the
                 // overlay carries what one deploy says. Nothing else reads that boundary — a base that
                 // grew a node name would still compose — so this is where the promise is checked.
                 const dir = mkdtempSync(join(tmpdir(), 'kustomize-split-'));
@@ -376,7 +376,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         // The base keeps the *shape*: the templates the overlay builds an instance from,
                         // which is where a reader sees what a fill Job is — and the module it runs, which
                         // is the realm's own program rather than shell text inside the Job, so the
-                        // template has no script in it and mounts the ConfigMap instead (D-518, D-477).
+                        // template has no script in it and mounts the ConfigMap instead (@@D-518 @@D-477).
                         templatesInBase: base.filter(file => file.startsWith('base/templates/'))
                             .length,
                         scriptInTemplate: read('base/templates/fill/template.yaml').includes(
@@ -404,7 +404,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         placeholdersInTemplate: read(
                             `base/templates/fill/${TEMPLATE_FILE}`,
                         ).includes('PLACEHOLDER'),
-                        // The namespace is the deployment's, not the design's (D-506): no object the base
+                        // The namespace is the deployment's, not the design's (@@D-506): no object the base
                         // holds names one, and the overlay's suite child declares the one they all belong in.
                         namespacesInBase: base
                             .filter(file => file.endsWith('.yaml'))
@@ -426,14 +426,14 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // reaches it — and the overlay is where a deployment opts it in, which is the only place
                 // the choice can be written down. A base that carried the service would apply it to every
                 // deployment of the suite, switched on or not, and nothing could take it back: the pass
-                // cannot prune an object its own tree still names (D-504, T-317).
+                // cannot prune an object its own tree still names (@@D-504).
                 const dir = mkdtempSync(join(tmpdir(), 'kustomize-service-'));
                 try {
                     const mysql = resolveBackingServices(loadServiceCatalog(), {
                         kinds: ['knex'],
                         databases: ['blong-suite'],
                         namespace: 'shop-services',
-                        // Opted in: an adapter makes a service available, the deployment brings it (D-504).
+                        // Opted in: an adapter makes a service available, the deployment brings it (@@D-504).
                         config: {mysql: true},
                     }).services[0];
                     assert.ok(mysql, 'the catalogue answers for a database adapter');
@@ -497,7 +497,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         'while the rights the operator needs there are written beside it',
                     );
                     // What the folder holds is the workload's own, and a namespace is not: it belongs to the
-                    // deployment, so the overlay's backing child stamps the one it names (D-506).
+                    // deployment, so the overlay's backing child stamps the one it names (@@D-506).
                     const folderText = folder.map(read).join('\n');
                     assert.ok(
                         !folderText.includes('shop-services') && !folderText.includes('shop-suite'),
@@ -516,7 +516,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // A service folder sits beside the base and the overlay is what brings it: kustomize has
                 // to render the two into the objects the tree carries, placeholders and patches resolved
                 // and no object doubled — so this is where a folder that the overlay cannot reach, or a
-                // patch whose target moved, is caught before a cluster ever sees it (D-504).
+                // patch whose target moved, is caught before a cluster ever sees it (@@D-504).
                 requireKubectl(assert);
                 const dir = mkdtempSync(join(tmpdir(), 'kustomize-service-compose-'));
                 try {
@@ -551,7 +551,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     // an overlay that named a namespace at its **root** fails here rather than in a cluster
                     // — kustomize applies that field over everything a child brought, which would move the
                     // folder's workload into the tenant's namespace and collide the two Namespace objects
-                    // (D-506). `kubectl` is the reader a human's `kubectl apply -k` uses, which is why this
+                    // (@@D-506). `kubectl` is the reader a human's `kubectl apply -k` uses, which is why this
                     // is composed by the binary and not only by the JS materializer the operator runs.
                     const identityOf = (resource: KustomizeResource): string => {
                         const meta = resource as {
@@ -570,7 +570,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         objects
                             .filter(isClusterResource)
                             // The declaration is not an object a split applies: it ships as an example
-                            // beside the base (D-507).
+                            // beside the base (@@D-507).
                             .filter(object => object.kind !== 'BlongDeployment')
                             .map(identityOf)
                             .sort();
@@ -593,7 +593,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // inside it. Composed from the two halves alone it was not: an opted-in service's workload
                 // was never applied, and every live object that belonged to one read as obsolete — so the
                 // pass pruned the alias and the credentials copy the runbook had just written, and the
-                // switch-off variant would have passed its assertions for the wrong reason (D-504).
+                // switch-off variant would have passed its assertions for the wrong reason (@@D-504).
                 const dir = mkdtempSync(join(tmpdir(), 'kustomize-applied-'));
                 try {
                     const mysql = resolveBackingServices(loadServiceCatalog(), {
@@ -654,7 +654,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // instead, so it has to be held to the same rule rather than left to walk the
                 // directory: walking it composed the switched-off service's five objects in no
                 // namespace at all, and the pass then looked for them in its client's own namespace and
-                // was refused there (F-480).
+                // was refused there (@@F-480).
                 requireKubectl(assert);
                 const dir = mkdtempSync(join(tmpdir(), 'kustomize-unreferenced-'));
                 const brought = mkdtempSync(join(tmpdir(), 'kustomize-brought-'));
@@ -707,7 +707,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
             },
 
             async function aListMergesByTheKeyKustomizeGivesIt(assert: IAssert) {
-                // The operator composes the split in JS because it ships no kustomize binary (D-488), and a
+                // The operator composes the split in JS because it ships no kustomize binary (@@D-488), and a
                 // strategic merge is a schema decision rather than a convention: kustomize merges a list of
                 // maps by the key its own schema names for that field, `containerPort` for a container's
                 // ports and `port` for a Service's. The mirror carries a narrowed table of those keys
@@ -1119,7 +1119,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
             },
 
             async function aWrittenTreeReadsBackAsItself(assert: IAssert, {$meta}: {$meta: IMeta}) {
-                // The operator applies the tree its child wrote (D-395), so reading it back has to
+                // The operator applies the tree its child wrote (@@D-396), so reading it back has to
                 // return the same objects — fingerprints included, because an unchanged object is
                 // recognised by its fingerprint rather than re-applied.
                 const dir = mkdtempSync(join(tmpdir(), 'kustomize-read-'));
@@ -1158,10 +1158,10 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 assert: IAssert,
                 {$meta}: {$meta: IMeta},
             ) {
-                // The operator has no kustomize binary, so it composes the two halves itself (D-488): a
+                // The operator has no kustomize binary, so it composes the two halves itself (@@D-488): a
                 // materialized pair has to be the tree the generator would have written flat, object for
                 // object. That equality is the whole contract of the split, and the reason the base can
-                // be committed and the overlay generated in the cluster (D-473, D-475, T-296).
+                // be committed and the overlay generated in the cluster (@@D-475).
                 const flatDir = mkdtempSync(join(tmpdir(), 'kustomize-flat-'));
                 const treeDir = mkdtempSync(join(tmpdir(), 'kustomize-halves-'));
                 try {
@@ -1177,7 +1177,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     // By identity rather than by path, and without the declaration: the overlay renames the
                     // objects it owns into the child that stamps them (`suite/external-services/…`), and a
                     // split ships the suite's `BlongDeployment` as an example beside the base rather than as
-                    // an object a kustomization applies (D-506). What has to be equal is the set of objects
+                    // an object a kustomization applies (@@D-506). What has to be equal is the set of objects
                     // a pass applies.
                     const identityOf = (resource: KustomizeResource): string => {
                         const meta = resource as {
@@ -1280,7 +1280,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         .map(([, resource]) => resource)
                         .filter(resource => isClusterResource(resource as KustomizeResource))
                         // The declaration is not an object the split applies: the base ships it as an
-                        // example beside itself (D-506).
+                        // example beside itself (@@D-506).
                         .filter(
                             resource => (resource as {kind?: string}).kind !== 'BlongDeployment',
                         )
@@ -1307,10 +1307,10 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
             async function anArtifactEntryIsFoundInAnyDirectory(assert: IAssert) {
                 // The entry a CR names is absolute inside the deployment's mount, and the operator
                 // unpacks the same artifact elsewhere: the suffix after the mount is what identifies
-                // the file (D-398).
+                // the file (@@D-398).
                 // The entry a CR names is absolute inside the deployment's mount, and the operator
                 // unpacks the same artifact elsewhere: the suffix after the mount is what identifies
-                // the file (D-398). The three answers are one structure — the mount, an entry that is
+                // the file (@@D-398). The three answers are one structure — the mount, an entry that is
                 // already relative, and an artifact that names none — so they are pinned together.
                 pin(assert, 'artifactEntry', {
                     mounted: artifactEntry(
@@ -1342,7 +1342,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                             name: 'webhook',
                             namespace: 'shop-suite',
                             // Not the portal's host: an Ingress carries one set of annotations for the
-                            // whole host, and the portal's are its authentication (T-241).
+                            // whole host, and the portal's are its authentication .
                             host: 'hooks.shop.example',
                             path: '/webhook',
                             pathType: 'Prefix',
@@ -1369,7 +1369,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // One Ingress per host, named after the host, and what each carries is the host it
                 // serves, its paths, its backend, its certificate and the annotations a *host* is
                 // behind — which is why the portal's authentication rides the host that serves it and
-                // reaches neither the webhook beside it nor a certificate of its own (T-241).
+                // reaches neither the webhook beside it nor a certificate of its own .
                 pin(assert, 'ingresses', {
                     ingressFiles,
                     hosts: Object.fromEntries(
@@ -1402,7 +1402,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // And the host is not shared: a webhook beside a portal would inherit the portal's
                 // authentication, which is what makes an `oauth2` portal ask a machine for a browser
                 // login. There is no per-path annotation to give it its own, so the tree refuses —
-                // naming both sides, because the fix is to move one of them (T-241).
+                // naming both sides, because the fix is to move one of them .
                 assert.throws(
                     () =>
                         buildKustomizeTree({
@@ -1496,12 +1496,12 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // A released process reads three files the cluster may supply — the cross-deployment
                 // settings the realm manages for every suite, the one a user manages for the cluster,
                 // and the key pair, which is a *file* rather than two variables only the framework
-                // knows about, because `rc` reads `$HOME/.config/<app-name>/config` (Q7, D-441). Three
+                // knows about, because `rc` reads `$HOME/.config/<app-name>/config` (Q7, @@D-441). Three
                 // things are worth pinning and they are the same three for each: that a mount names
                 // the file, that a missing Secret is `optional` (a mount is not a promise the file
                 // exists, so a pod has to run on its defaults), and that the pod is configured by the
                 // name its rc file is built from — the trailing intent, which `BLONG_ENV` overrides
-                // rather than the namespace it used to carry (T-252, T-253). The tree names the
+                // rather than the namespace it used to carry . The tree names the
                 // Secrets and never writes them: creating one is a deployment's act.
                 const {dir, files} = await generated;
                 // No `finally` that removes the directory: the fixture is the group's, and the test
@@ -1597,7 +1597,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
             async function olderJobAttemptsArePrunedByRetention(assert: IAssert) {
                 // A Job attempt is obsolete the moment a new one is generated, and an obsolete Job is
                 // evidence rather than litter: this is the policy that decides which of them a pass
-                // may remove (D-386, Q6). The current attempt is not in this list at all — it is in
+                // may remove (@@D-386, Q6). The current attempt is not in this list at all — it is in
                 // the tree — so `retention - 1` older ones make the count up, and a failure is not
                 // treated differently from a success, because a failed deploy is what one reads.
                 const attempts = (count: number) =>
@@ -1617,11 +1617,11 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // the retention and when there are more, the retention it reads off the objects and
                 // the one it falls back to when there is nothing to read, and whether a Job may be
                 // replaced at all — it may not, because its name carries the attempt, so an existing
-                // one *is* this attempt and is waited on instead (D-386, F-407).
+                // one *is* this attempt and is waited on instead (@@D-386 @@F-407).
                 pin(assert, 'retention', {
                     belowRetention: names(jobAttemptsPastRetention(attempts(2), 3)).sort(),
                     pastRetention: names(jobAttemptsPastRetention(attempts(4), 3)).sort(),
-                    // Two readers for two numbers (D-471): an attempt declares how many attempts stay,
+                    // Two readers for two numbers (@@D-471): an attempt declares how many attempts stay,
                     // and a volume that declares nothing is counted by its own default — which is what
                     // says the two are not one knob read twice.
                     declared: attemptRetentionOf(attempts(1)),
@@ -1630,7 +1630,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     jobReplaced: appliesUpdate('job'),
                     deploymentReplaced: appliesUpdate('deployment'),
                 });
-                // Where a pass may delete at all, which is the other half of the same policy (D-461):
+                // Where a pass may delete at all, which is the other half of the same policy (@@D-461):
                 // the suite's namespace and nothing wider, which is what lets a switch remove the
                 // alias a realm's config dials while leaving a generated service's workload — in a
                 // namespace of its own — for whoever owns that namespace to retire.
@@ -1669,7 +1669,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // the objects whose retirement a number decides: the volume of an identity a suite is
                 // not currently running, and the attempts a previous deploy left, both look obsolete to
                 // a diff and are kept by their own retirement step — which is what keeps them from
-                // fighting the pass (T-282, D-471).
+                // fighting the pass (@@T-282 @@D-471).
                 pin(assert, 'obsolescence', {
                     versionNamedLeftAlone: names(
                         prunableByObsolescence([
@@ -1693,7 +1693,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                             // A generated gateway key is written by the operator for a gateway the
                             // suite does not own — the realm serves it — so its own label spares it
                             // from a sweep that takes generated credentials: a diff that no longer
-                            // names it is not a reason to hand a suite its keys back (D-509, T-267).
+                            // names it is not a reason to hand a suite its keys back (@@D-509).
                             // The pin above is what proves this: if the label went unread the name
                             // below would join it.
                             {
@@ -1711,7 +1711,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
 
             async function aChangedJobIsANewJob(assert: IAssert) {
                 // A Job's spec is immutable, so the only way a changed attempt can reach a cluster is
-                // under a new name (D-386, Q6). The name therefore carries the version and a hash of
+                // under a new name (@@D-386, Q6). The name therefore carries the version and a hash of
                 // what the Job runs, which is what the fixed `<suite>-migrate` could not do: it needed
                 // the failed Job deleted before the next attempt could be created, and that deleted
                 // the evidence. The three assertions are the property in full — the shape, that a
@@ -1735,7 +1735,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // The names are the property: one attempt is named after the suite, the step, the
                 // version and a hash of what the Job runs, the file it is written to keeps its name
                 // so a review can diff it, and a name that changes with the entry and with the version
-                // — but not with the act of regenerating — is what makes an attempt new (D-386).
+                // — but not with the act of regenerating — is what makes an attempt new (@@D-386).
                 pin(assert, 'jobNames', {
                     first: nameOf(plan({})),
                     file: pathOf(plan({})),
@@ -1753,7 +1753,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // materialises them into a CR whose author never wrote them, and the tenant's tree and
                 // the operator's plan of one suite hashed differently. One cluster ended up with two
                 // attempts for one migration step, and the first failed because it ran before its volume
-                // was seeded (F-410).
+                // was seeded (@@F-410).
                 const attemptName = (suite: Record<string, unknown>): string =>
                     jobName(
                         {
@@ -1768,7 +1768,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // Four spellings of the intents, and the names they produce: the defaults written down
                 // and omitted name one attempt, a CR that still names the development intent names the
                 // same one, and an intent a deployment does run with is a different attempt — the
-                // equality and the difference are both visible in the pin (F-410).
+                // equality and the difference are both visible in the pin (@@F-410).
                 pin(assert, 'attemptNames', {
                     omitted: attemptName({}),
                     spelled: attemptName({intents: DEFAULT_SUITE_INTENTS}),
@@ -1782,7 +1782,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // run actually reads is named after its **trailing** intent (Phase 15 E). With `db`
                 // last it read `blong_db` and `/etc/blong_db` — two files nobody creates — so the
                 // tenant's cross-deployment settings, the database password among them, were mounted
-                // and never read, and nothing failed to say so (T-253). What is pinned here is the
+                // and never read, and nothing failed to say so . What is pinned here is the
                 // pair: the Job reads a file, and that file is the one its own mounts name.
                 const plan = (
                     suite: Record<string, unknown>,
@@ -1818,7 +1818,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // `{marine: {orchestrator: 'release'}}`, so the intents have to come *before* the
                 // selectors: a positional that follows a flag is swallowed as that flag's value, and
                 // the step then ran without the deployment's config and dialled the default
-                // `127.0.0.1:3306` while every pod around it connected (T-267). What decides which rc
+                // `127.0.0.1:3306` while every pod around it connected . What decides which rc
                 // file is read is still the last *positional*, which a flag never is.
                 const positionalOf = (list: string[]): string[] =>
                     list.filter(argument => !argument.startsWith('--'));
@@ -1828,7 +1828,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // intents keeps. The dev-only ones are dropped rather than honoured: a CR that names
                 // `microservice` (every CR written before the split did — the CRD used to default to it)
                 // would activate every layer of every realm the pod carries, turning a split deployment
-                // into N monoliths, each opening the others' gateways and database connections (D-428).
+                // into N monoliths, each opening the others' gateways and database connections (@@D-428).
                 pin(assert, 'migrationArgs', {
                     args: argsOf({}),
                     custom: positionalOf(argsOf({intents: ['microservice', 'custom']})),
@@ -1838,7 +1838,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // the values: `minimist` reads `--marine.orchestrator release` as
                 // `{marine: {orchestrator: 'release'}}`, so an intent written after a flag is swallowed
                 // as that flag's value, and the step then ran without the deployment's config and
-                // dialled the default `127.0.0.1:3306` while every pod around it connected (T-267).
+                // dialled the default `127.0.0.1:3306` while every pod around it connected .
                 const args = argsOf({});
                 assert.ok(args.length, 'the migration Job runs the suite entry with intents');
                 const firstFlag = args.findIndex(argument => argument.startsWith('--'));
@@ -1852,7 +1852,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // container with no `resources` is BestEffort, and the steps around the processes —
                 // the fill, seed and migration Jobs — had none while the processes beside them had
                 // the plan's default. The
-                // migration Job shipped that way from the day it existed (F-432), so the check is
+                // migration Job shipped that way from the day it existed (@@F-432), so the check is
                 // over every pod spec a tree declares rather than over the one that was reported.
                 const unsized = (tree: Map<string, unknown>): string[] => {
                     const findings: string[] = [];
@@ -1904,7 +1904,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // or layer profile is the opposite, which is why the setting belongs to the profile
                 // rather than to the suite — spelled out in a suite config it stays true only until
                 // somebody copies that config into a split tree, where the call that should have crossed
-                // the network resolves locally and fails as a method nobody has (T-224). Both command
+                // the network resolves locally and fails as a method nobody has . Both command
                 // lines are pinned, because both carry it: the process and the migration step beside it.
                 const plan = (profile: 'monolith' | 'realm'): IDeploymentPlan =>
                     lib.suitePlan({
@@ -1949,7 +1949,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     databases: ['blong-suite', 'blong-access'],
                     namespace: 'shop-services',
                     storageClassName: 'local-path',
-                    // Generation is the deployment's own opt-in (D-509), so a plan that wants the
+                    // Generation is the deployment's own opt-in (@@D-509), so a plan that wants the
                     // credentials has to ask for them — which is also what this pin is about.
                     config: {mysql: {credentials: {generate: true}}},
                 }).services[0];
@@ -1958,7 +1958,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     suite: lib.pinnedSuite,
                     backingServices: [mysql],
                     // One process of the suite's own, because the copy of the credentials is written for
-                    // *its* namespace and the `envFrom` that reads it is on its workload (D-509).
+                    // *its* namespace and the `envFrom` that reads it is on its workload (@@D-509).
                     deployments: [
                         {name: 'shop', realms: ['shop'], layers: [], namespaces: [], replicas: 1},
                     ],
@@ -1987,7 +1987,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // The copy in the suite's namespace is only worth writing because something reads it: the
                 // suite's own processes take it as environment, where `blong-config` finds it, and the
                 // reference is `optional` so that a deployment which switches the service off does not
-                // keep its pods from starting on a Secret that went with it (R5, D-509).
+                // keep its pods from starting on a Secret that went with it (R5, @@D-509).
                 const suiteWorkload = tree.get(
                     `deployments/${plan.deployments[0]?.name ?? ''}.yaml`,
                 ) as {
@@ -2002,11 +2002,11 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
 
             async function aTreeThatCarriesTwoNamespacesNamesEachItsOwn(assert: IAssert) {
                 // The namespace is the deployment's rather than the design's, so no kustomization the
-                // generator writes names one (D-506) — and that is a requirement rather than a
+                // generator writes names one (@@D-506) — and that is a requirement rather than a
                 // preference: kustomize's `namespace:` is a rewrite, moving every namespace-able object
                 // into it and renaming every Namespace object, so a field on the tree's root would pull the
                 // services' workloads into the tenant's namespace and collide the two Namespace objects
-                // (F-440). What the split does instead is declare the two on two children of the overlay,
+                // (@@F-440). What the split does instead is declare the two on two children of the overlay,
                 // one per half, and this step pins both halves of that: the shape in the tree, and the name
                 // each child declares once the tree is written out.
                 const mysql = resolveBackingServices(loadServiceCatalog(), {
@@ -2043,7 +2043,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     .map(([file]) => file);
                 assert.deepEqual(named, [], 'no generated kustomization names a namespace');
                 // The *tree* is one document per object, so it is the flat half that names each object's
-                // own namespace; a split strips them and declares them once per half instead (D-506), and
+                // own namespace; a split strips them and declares them once per half instead (@@D-506), and
                 // that is what this checks.
                 const dir = mkdtempSync(join(tmpdir(), 'kustomize-two-namespaces-'));
                 try {
@@ -2084,7 +2084,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // happens to know: a suite that names its database only in its release rc leaves the
                 // planning view with none to name, and the workload then never starts —
                 // `MountVolume.SetUp failed for volume "mysql-init": configmap "mysql-init-config" not
-                // found` — which is a tree that reads complete and a pod stuck at `Init:0/1` (T-277).
+                // found` — which is a tree that reads complete and a pod stuck at `Init:0/1` (@@T-277).
                 const mysql = resolveBackingServices(loadServiceCatalog(), {
                     kinds: ['knex'],
                     namespace: 'shop-services',
@@ -2153,7 +2153,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // to the same hostname on the gateway port. A realm Service covers the namespaces that
                 // happen to be named after their realm, and nothing published the rest: a released
                 // process calling `subject` died with `ENOTFOUND rpc-subject`, and the migration step
-                // could not seed (F-413). Three things make the name usable, and one keeps it from
+                // could not seed (@@F-413). Three things make the name usable, and one keeps it from
                 // being written twice.
                 const tree = buildKustomizeTree(
                     lib.suitePlan({
@@ -2191,7 +2191,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // `rpc-<namespace>` is answered on the RPC port with the gateway port beside it, the
                 // selector is the label the process carries, and a namespace named after its realm
                 // keeps the Service that realm owns rather than gaining a second one under that name
-                // (F-413).
+                // (@@F-413).
                 pin(assert, 'namespaceServices', {
                     service: service?.spec,
                     processLabels: core?.spec?.template?.metadata?.labels,
@@ -2224,13 +2224,13 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 const args = job.spec?.template?.spec?.containers?.[0]?.args ?? [];
                 // No selector in what the step is run with: the realms activate what a migration needs
                 // themselves rather than dialling the processes it is about to start, and `release` is
-                // still the trailing intent, which names the rc file it reads (T-268).
+                // still the trailing intent, which names the rc file it reads .
                 pin(assert, 'migrationStep', {
                     args,
                     selectors: args.filter(argument => argument.startsWith('--')),
                     // The step runs code from a volume the prefetch replaces in place, and it has one
                     // attempt, so it waits for the marker a whole tree is written under before it
-                    // starts (F-448). The neighbours are read as well, because an init container that
+                    // starts (@@F-448). The neighbours are read as well, because an init container that
                     // *replaced* the wait would otherwise pass this: what is pinned is the list.
                     waits: (job.spec?.template?.spec?.initContainers ?? []).map(
                         container => container?.name,
@@ -2245,7 +2245,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // Service with no endpoints answers nothing, and the controller answers 503 for an
                 // Ingress it cannot resolve. `danglingReferences` is the check; these are the two
                 // halves it needs to be worth having: the tree this realm generates has no finding,
-                // and each class is reported when it is broken (T-242).
+                // and each class is reported when it is broken .
                 const plan = buildKustomizeTree(
                     lib.suitePlan({
                         suite: lib.pinnedSuite,
@@ -2288,7 +2288,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
 
                 // Each class of dangling edge is reported with the path to the file it was found in, and
                 // a mount that resolves is not reported at all — which is what makes the three findings
-                // readings (T-242). The strings are the contract, so they are pinned rather than
+                // readings . The strings are the contract, so they are pinned rather than
                 // matched one at a time.
                 pin(assert, 'danglingReferences', {
                     resolved: findings([['deployments/shop.yaml', pod('suite')]]),
@@ -2377,7 +2377,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
             async function aVolumeIsNamedAfterItsArtifact(assert: IAssert) {
                 // What names a volume is the artifact rather than the version: a rebuild that ships
                 // different files under an unchanged version is a *new* directory, which is what stops
-                // a reader from being attached to a tree that is being rewritten (D-468, D-469). A
+                // a reader from being attached to a tree that is being rewritten (@@D-468 @@D-469). A
                 // digest is kept as its own prefix — a reader can check the eight characters against
                 // the archive — while a stamp is hashed into the same shape, because eight characters
                 // of a timestamp are either too coarse for one day or not comparable across a year.
@@ -2447,7 +2447,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     // function of the plan, so any change to the output is a change to what a
                     // cluster receives, and the snapshot is where that becomes visible.
                     // The other half of the assert API is exercised here too: `matchSnapshot`
-                    // compares against a stored snapshot (T-205).
+                    // compares against a stored snapshot .
                     if (typeof assert.matchSnapshot === 'function') {
                         assert.matchSnapshot(files.length, 'generatedFileCount');
                     }
@@ -2462,8 +2462,8 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
             },
 
             async function theTreeCarriesWhatARealmDeclares(assert: IAssert) {
-                // The folders that appear only on demand (T-207) and a volume a realm owns
-                // (T-208): a claim named after the volume, mounted by the process that asked for
+                // The folders that appear only on demand  and a volume a realm owns
+                // : a claim named after the volume, mounted by the process that asked for
                 // it, and a secret that refers to a file rather than carrying a value.
                 const plan = lib.suitePlan({
                     deployments: [
@@ -2493,7 +2493,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         };
                     };
                 };
-                // The folders that appear only on demand (T-207) and a volume a realm owns (T-208): a
+                // The folders that appear only on demand  and a volume a realm owns : a
                 // claim named after the volume, mounted by the process that asked for it at the path
                 // it asked for, and a secret that refers to a file rather than carrying a value.
                 pin(assert, 'realmDeclarations', {
@@ -2512,7 +2512,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
             },
 
             async function theOperatorIsInstalledOnceForTheCluster(assert: IAssert) {
-                // One operator per cluster, installed before any suite (D-396, D-397): its own tree
+                // One operator per cluster, installed before any suite (@@D-396 @@D-397): its own tree
                 // carries the Deployment, its cluster-scoped rights and the CRD, while a suite's tree
                 // carries the bindings it grants in its own namespace and its CR.
                 const suite = lib.suitePlan({
@@ -2533,12 +2533,12 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // identity may do (`SubjectAccessReview`). Without the two rules here the portal answers
                 // `k8s.forbidden` while every other part of the install works, and the tenant's own
                 // `auth-review` role does not cover the operator's identity — it is bound to the
-                // suite's (F-430). The two roles share one list (`AUTH_REVIEW_RULES`), and this is the
+                // suite's (@@F-430). The two roles share one list (`AUTH_REVIEW_RULES`), and this is the
                 // half that states the operator's own need.
                 const clusterRole = operator.get('rbac/blong-operator-clusterrole.yaml') as {
                     rules: Array<{resources: string[]; verbs: string[]}>;
                 };
-                // The address the read API answers on is the installer's to name (D-434), and nothing
+                // The address the read API answers on is the installer's to name (@@D-523), and nothing
                 // invents one: a host is a DNS record and a certificate somebody has to own, so an
                 // install tree with no named host carries the Service and no Ingress at all.
                 const addressed = buildKustomizeTree(
@@ -2557,13 +2557,13 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         }),
                     }),
                 );
-                // One operator per cluster, installed before any suite (D-396, D-397): the suite's tree
+                // One operator per cluster, installed before any suite (@@D-396 @@D-397): the suite's tree
                 // ships no operator and no cluster-scoped CRD of its own and grants the operator its
                 // rights in its own namespace instead, while the install tree carries the operator, the
                 // CRD, the address the deployment read API answers at — both surfaces, selected by the
                 // operator's own labels so another namespace's operator is not it — and none of the
                 // suite's objects, which is what keeps the two trees from being confused for one
-                // another (T-258).
+                // another (@@T-258).
                 pin(assert, 'operatorInstall', {
                     suiteFiles: files,
                     installFiles: install,
@@ -2572,7 +2572,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     // The operator runs its own entry from the volume the prefetch replaces in place, so
                     // it waits for the marker a whole tree is written under. Pinned because the operator
                     // Deployment has its own builder rather than the suite's, which is exactly how the
-                    // gate was first left out of it (F-448).
+                    // gate was first left out of it (@@F-448).
                     waits: (deployment?.spec?.template?.spec?.initContainers ?? []).map(
                         container => container?.name,
                     ),
@@ -2594,7 +2594,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // from the realm's own config (`operator-entry.ts`), so a path that is short by one
                 // folder is only visible against a real artifact: it named
                 // `/opt/deploy/suite/operator-entry.ts`, no artifact has that file, and the operator
-                // exited with "No entry point found in /opt/deploy" (F-404). The check is static
+                // exited with "No entry point found in /opt/deploy" (@@F-404). The check is static
                 // because the file is a suite definition rather than a value a test can import
                 // cheaply, and the rule it asserts is what the failure was about.
                 const here = fileURLToPath(import.meta.url);
@@ -2621,7 +2621,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // The CR is written by the generator and the CRD beside it, so a field the
                 // planner emits and the schema does not declare is a failed apply: `kubectl`
                 // validates strictly, and the API server refuses a field a structural schema
-                // does not know (T-221 — the external-service ports and the artifact source
+                // does not know (the external-service ports and the artifact source
                 // were rejected exactly like that). Walking the emitted CR against the emitted
                 // schema keeps the two in step with no cluster in the loop.
                 const plan = lib.suitePlan({
@@ -2772,7 +2772,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // The two paths a CR pass takes, and the one argument that differs: an artifact that
                 // ships the base gets the overlay written beside it, and one that does not gets the
                 // tree whole. Neither leaves that to a default, because the default a repository
-                // wants is a design half and a pass applies what it reads back (D-490).
+                // wants is a design half and a pass applies what it reads back (@@D-490).
                 const args = (base: boolean): string[] =>
                     suiteGenerateArgs({
                         entry: '/cache/blong-suite/index.ts',
@@ -2796,7 +2796,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
             },
 
             async function theRetentionCountsVolumeJobsPerNode(assert: IAssert) {
-                // Two numbers, two rules (D-471): a fill Job carries the *volume* retention and is
+                // Two numbers, two rules (@@D-471): a fill Job carries the *volume* retention and is
                 // counted per node, because the directory it fills is a node's own — three means three
                 // identities on that node, the current one included — while an attempt carries its own
                 // and is counted with the attempts of its step.
@@ -2861,7 +2861,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
 
             async function theInstallSweepSelectsOnTheRetentionLabels(assert: IAssert) {
                 // The install namespace is the one place a pass deletes outside the suite's own
-                // (D-491), and it holds objects the operator may not touch: its own RBAC, its
+                // (@@D-491), and it holds objects the operator may not touch: its own RBAC, its
                 // Deployment, the Service in front of it. What keeps the sweep off them is that it
                 // selects on the retention labels and nothing else — no name, no kind, no position in
                 // a list — so an object that does not say how long to keep it is never a candidate.

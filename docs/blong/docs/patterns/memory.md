@@ -233,3 +233,56 @@ hand-written body would break — a section heading in the middle of a body, a l
 `<placeholder>` HTML, emphasis on a line of its own, a list or fence without a blank line around it.
 `blong-dev lint --files …` covers the same ground for any markdown file plus cspell, and is the
 command to run when you have touched a `.md` file outside the memory tree.
+
+## Pointing at a note from the code
+
+A comment carries a **summary**, not the reasoning, and cites the entry that holds it with `@@`:
+
+```ts
+// gc keeps one directory per version, so a rebuilt tree is never rewritten under a reader (@@D-468 @@D-469).
+```
+
+Parentheses are optional. Never cite by line number (`decision.md L1153` rots). Cite the **active**
+entry: when a decision is superseded, retarget the comment to the successor and close the old one.
+
+```bash
+blong-dev memory refs --dangling   # the linter: every reference in the tree resolves
+blong-dev memory refs D-476        # what cites this entry
+blong-dev memory refs --summary    # references per package, the conversion ledger
+blong-dev memory refs --sites      # the audit view: each citation beside the title it resolved to
+blong-dev memory refs --changed    # sites citing an entry the working tree changed (--since <ref>)
+blong-dev memory refs --fix-anchors   # rewrite an anchor whose heading only moved
+blong-dev memory refs --fix-superseded   # follow the successor a superseded decision names
+blong-dev memory comply            # sites citing an entry this change edited, retired or superseded
+blong-dev memory check --refs      # the memory files, plus the references into and out of them
+blong-dev memory export --out .github/memory/references.json   # the index the editor reads
+```
+
+`refs --dangling` exits non-zero on an error; a retired id is a warning. `comply` compares the
+memory files with a git ref (`--since`, default `HEAD`) and names the code to re-read.
+
+A citation of a **superseded decision** is reported in two ways: an error when the entry names the
+successor its reasoning moved to (the paragraph `close --by` writes), because
+`refs --fix-superseded` follows it in one command, and a warning when it names none, because only a
+reader can settle that. A resolved friction or a done todo stays the citation, because it is the
+record of the workaround the code embodies — which is why the linter counts the two apart:
+`N retired, M superseded`.
+
+Resolution is not correctness: the linter proves an id exists, not that it holds the reasoning. A
+sweep of `realm/blong-kustomize` found a citation that resolved cleanly and pointed at the wrong
+entry, so an audit reads the title `--sites` prints beside each citation — a word-overlap heuristic
+flagged 243 of those 388 citations, too many to be a check. `--fix-anchors` rewrites a token whose
+heading moved and whose replacement is unambiguous, and reports rather than guesses otherwise.
+
+## Retiring an id
+
+A closed todo, a pruned entry or a renumbered one leaves a line in `## Retired`, and its number is
+never reused, so a reference that outlived the entry stays diagnosable. `close` retires a todo
+(`--purge` deletes it outright), `prune` refuses an id any file cites (`--force` retires it anyway),
+and `renumber <id> --to <new-id>` fixes a collision:
+
+```bash
+blong-dev memory close T-123                       # a todo: retired as "done <date>"
+blong-dev memory prune F-101 --reason "duplicated by F-090"
+blong-dev memory renumber D-001 --to D-050         # the old id stays in the ledger, pointing at the new
+```

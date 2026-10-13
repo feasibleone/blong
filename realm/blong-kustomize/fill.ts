@@ -1,17 +1,6 @@
 /**
- * fill.ts — bring a suite artifact to where it is read from, as one program with two callers.
- *
- * The operator fetches an artifact into its own cache while it plans, and a node's fill Job stages one
- * beside the directory it will occupy and renames it into place. They must agree about what an artifact
- * is and what makes it whole, so the pieces — fetch, unpack, link, make portable, mark, retain — are
- * defined once here and differ only in what a caller passes. The same file is what the container runs:
- * it is mounted into the fill Job and started with `node`, which is the whole reason this is a module
- * rather than the shell it replaces. That shell needed `curl`, `unzip`, `find`, `ls` and `mv` to exist in
- * the framework image, and the image installed two of them for no other reason — so the deploy path
- * depended on shell tooling that has nothing to do with the artifact (D-518).
- *
- * Nothing here imports anything but `node:*`, which is what lets one file be both a library and a
- * program: a mounted copy has no `node_modules` above it and could resolve no dependency of ours.
+ * fill.ts — bring a suite artifact to where it is read from, as one program with two callers (the
+ * operator's cache and a node's fill Job); nothing here imports but `node:*` (@@D-518).
  */
 import {execFileSync} from 'node:child_process';
 import {
@@ -100,23 +89,8 @@ const readAt = (fd: number, offset: number, length: number): Buffer => {
 };
 
 /**
- * Unpack a zip into a directory that is already there.
- *
- * Written here rather than taken from a library, because the copy of this file that runs inside a fill Job
- * is mounted into a directory with no `node_modules` above it: any dependency would have to be installed
- * into the framework image, which is the coupling this module exists to end. What a zip needs is a
- * central directory walk and `zlib`'s inflate, both of which are here.
- *
- * Refused rather than guessed at: an encrypted entry, an entry that leaves the directory, and a zip64
- * entry, whose sizes live in an extra field this reader does not read. A suite artifact is a deploy
- * output of a few hundred megabytes, so none of the three is a case a release has to survive.
- *
- * Streamed entry by entry, and that is not a preference: the suite artifact in this repository is 653 MB,
- * while the fill Job that unpacks it runs under a 512 MiB limit. Reading the archive into memory is what
- * the first version of this did — the pods were OOMKilled part-way through the unpack, leaving a
- * half-written staging directory on each node and every reader waiting for an identity that never
- * appeared, and a fill that dies like that looks like a fill that succeeded until somebody reads the
- * node (found in the dev cluster, T-318).
+ * Unpack a zip into a directory that is already there — written here and streamed entry by entry,
+ * because the fill Job has no `node_modules` above it and runs under a memory limit.
  */
 export const unpackZip = async (archive: string, target: string): Promise<void> => {
     const fd = openSync(archive, 'r');
@@ -214,7 +188,7 @@ export const linkAt = (target: string): void => {
  *
  * The link script computes its targets from the directory it runs in, so a tree linked at
  * `/var/lib/blong/suites/<suite>/<identity>` carries links naming that path — and a reader that mounts the
- * directory anywhere else has hundreds of dangling links and dies on its first import (F-449). Every
+ * directory anywhere else has hundreds of dangling links and dies on its first import (@@F-449). Every
  * link's target is inside the artifact, which was checked across a whole tree in a live cluster, so a
  * relative link is equivalent and position-independent.
  *
@@ -342,12 +316,12 @@ export const dropStaleStaging = (root: string, olderThanMs = 60 * 60 * 1000): vo
  *
  * A *staged* fill: the artifact is unpacked, linked and made portable beside where it belongs, and then
  * moved into place in one rename, so a reader sees either nothing or a whole tree — which is what makes an
- * in-place rewrite, and the notification a reader would need to survive one, unnecessary (D-468). Linking
+ * in-place rewrite, and the notification a reader would need to survive one, unnecessary (@@D-468). Linking
  * before the move is what the relative links make possible: a relative link names a path *within* the
  * tree, so a rename that preserves the tree's shape keeps every link valid.
  *
  * A directory that already holds a whole artifact is what this exists to arrive at, so it returns without
- * touching it: the identity *is* the content (D-469).
+ * touching it: the identity *is* the content (@@D-469).
  */
 export const fillFromEnvironment = async (): Promise<void> => {
     const env = process.env;
@@ -368,7 +342,7 @@ export const fillFromEnvironment = async (): Promise<void> => {
     mkdirSync(staging, {recursive: true});
     // The retention is how many identities stay on the node, and this run's directory is one of them: the
     // shell spelling passed one more to a helper that kept one fewer, which is the same number written
-    // twice (D-470).
+    // twice (@@D-470).
     await fillArtifact({
         source: env[FILL_ENV.path] ? {path: env[FILL_ENV.path]} : {url: env[FILL_ENV.url] ?? ''},
         target: staging,

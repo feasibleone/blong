@@ -1,23 +1,8 @@
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 /**
- * server/test/test/testClusterApply.ts — the apply path on the kinds that broke it.
- *
- * F-369 was that the adapter built client method names by capitalising only the first letter, so
- * every compound kind — `DaemonSet`, `PersistentVolumeClaim`, and the rest — was unreachable. Those
- * are exactly the kinds the volume backends need, which means the apply path could never have
- * worked against a cluster. This group proves it does now, and it is gated because it writes:
- *
- *     BLONG_TEST_APPLY=1 node --run test
- *
- * The wire names below spell those kinds with their words apart (`clusterPersistent_Volume_ClaimApply`):
- * a Blong method name has exactly three parts, so a two-word object would be read as two of them and
- * the request would land nowhere near the API it wanted. The separator is what keeps the words one
- * part, and the adapter joins them again into the client's own spelling. The realm's `apply.ts` maps
- * its kinds the same way, which is why the map exists.
- *
- * The DaemonSet selects a node that does not exist, so nothing is scheduled: what is being tested is
- * that the object can be created, read back and deleted, not that a pod runs.
+ * server/test/test/testClusterApply.ts — the apply path on the compound kinds it broke on; gated by
+ * `BLONG_TEST_APPLY=1` @@F-369.
  */
 export default handler(
     ({

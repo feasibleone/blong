@@ -5,7 +5,7 @@ import {validation} from '@feasibleone/blong';
  *
  * The method is the one the model's `browser.toolbar` entry names, so this file is the difference
  * between a Reconcile button that posts a 200 and one that posts nothing at all: a method the
- * gateway does not name has no route, and the page's call is answered `Not Found` (F-497). Nothing
+ * gateway does not name has no route, and the page's call is answered `Not Found` (@@F-497). Nothing
  * else about the action is declared here — which it is, what it applies and what it prunes are the
  * handler's business, and the model says when to confirm.
  *
@@ -30,7 +30,7 @@ export default validation(
                      * validation *removes* what is not declared, so a caller that named a tenant was
                      * silently answered about the operator's own install instead: the pass looked in
                      * `blong-system`, found no `BlongDeployment` there, and reported that rather than
-                     * the suite it was asked about (T-327).
+                     * the suite it was asked about .
                      */
                     namespace: type.Optional(type.String()),
                 }),

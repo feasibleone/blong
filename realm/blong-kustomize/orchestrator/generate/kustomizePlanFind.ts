@@ -14,7 +14,7 @@ export default handler(({handler: {clusterNodeFind}}) => ({
     async kustomizePlanFind(params: {nodes?: string[]} | undefined, $meta: IMeta) {
         const self = this as unknown as {registry?: IDescribeCapable; config?: IPlanConfig};
         // The plan is the whole of what a tree is written from, so it carries the nodes a `nodeLocal`
-        // volume is filled per — listed here rather than by whoever reads the plan next (D-470).
+        // volume is filled per — listed here rather than by whoever reads the plan next (@@D-470).
         const listed = (await clusterNodeFind({}, $meta)) as unknown as {items?: unknown[]};
         const nodes = params?.nodes ?? clusterNodeNames(listed);
         return planFor(self.config, self.registry, readSpecFile(self.config?.specFile), nodes);

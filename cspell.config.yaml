@@ -102,6 +102,7 @@ words:
   - dismissable
   - DMMT
   - Dockerfiles
+  - docstrings
   - domcontentloaded
   - dont
   - drpp
@@ -374,6 +375,7 @@ words:
   - uncleanly
   - unconfigured
   - uncredentialed
+  - undertree
   - ungated
   - ungroup
   - unindexed

@@ -114,6 +114,84 @@ it permanently either by better instructions or improved tooling.
   `blong-dev memory edit <id> [--title] [--body|--body-file] [--status]` — never hand-edit a memory
   file, and never re-import a batch that is already written (it duplicates).
 
+- **Point at a note with a reference, not a line number.** `@@F-014` (an entry),
+  `@@doc:tier/page#anchor` (a page and section), `@@skill:name#section` (a skill).
+  `blong-dev memory refs --dangling` is the linter, `refs --summary` the per-package ledger,
+  `comply` the gate on a memory change, and `export` the index the editor reads. See
+  `[CRITICAL_PROSE]`.
+
+## [CRITICAL_PROSE]
+
+When a detailed explanation needs to be kept, source comments carry a **title**, not the details.
+The details live in a memory entry or documentation, and the comment points at it with a
+**reference**: `@@` immediately followed by a target — `@@F-011`, `@@T-021`, `@@D-002`,
+`@@doc:patterns/memory#anchor`, `@@skill:blong-realm#layers`.
+
+- A comment says what the code does _in brief_ or as _title_, then cites the entry that holds the
+  full details: `// gc keeps one directory per version @@D-468 @@D-469`. Parentheses are allowed
+  when a sentence reads better with them, but they are not part of the token.
+- One reference is one `@@` plus one target; several are written as several tokens
+  (`@@D-476 @@T-124`), never a comma list. The token is searchable as plain text: `grep -rF '@@T-'`.
+- The id is the entry's; never a line number (`decision.md L1153` rots). A reference that does not
+  resolve — an unknown id, one two files hold, or a heading that no longer exists — is an error.
+- Cite the **active** entry. When a decision is superseded, retarget the comment to the successor
+  and close the old one (`blong-dev memory close D-018 --by D-042`). A **retired** id still resolves
+  — it is a warning that names its successor, and the fix is to retarget, not to delete the
+  reference.
+- Never restate an entry's body in code. If a comment needs a paragraph, the paragraph belongs in
+  the entry (`blong-dev memory edit <id> --body-file <file>`) and the comment keeps the title.
+- **Write an example in backticks.** The scan skips inline code and fenced blocks, so a token inside
+  a sample is read as an illustration and not as a citation — what a how-to wants.
+- **A file may opt out**: a line matching `memory-refs: ignore` within its first eight lines leaves
+  its references unchecked — for a fixture that carries a deliberately broken example.
+- **A citation belongs in prose or a comment, never in a string literal.** Inside a message it is
+  invisible to a reader of the code and prints as content when the message is thrown; a converter
+  must leave it alone (four such lines were left in `realm/blong-kustomize`).
+- **An entry must carry the reasoning, or the reference is a promise it does not keep.** The
+  `realm/blong-kustomize` sweep found a comment citing an unrelated entry for a fact no entry held:
+  write the entry and move the paragraph into it rather than leaving the reasoning in the comment
+  (@@F-514).
+- **Retarget a superseded decision, keep a resolved friction.** A decision whose entry names its
+  successor has moved its reasoning, and the comment follows it — `refs --fix-superseded` rewrites
+  the token, or drops it where the line already cites the successor, and a citation left behind
+  fails the linter; a resolved friction or a done todo is the record of the workaround the code
+  embodies and stays the citation. A superseded entry that names no successor is a warning, left for
+  a reader.
+- **Resolution is not correctness.** `refs --dangling` proves an id exists, not that it holds the
+  reasoning: the `realm/blong-kustomize` sweep found a citation that resolved cleanly and pointed at
+  the wrong entry. Re-read the entry before citing it, and audit a batch with
+  `blong-dev memory refs --sites`, which prints each citation beside the title and status of the
+  entry it resolved to. A word-overlap heuristic flagged 243 of those 388 citations, so no check can
+  make the judgement — the audit view is the tool (@@D-540).
+- In a markdown file, link to a page or a skill with a normal markdown link. Use the
+  `@@doc:<tier>/<name>#<anchor>` and `@@skill:<name>#<section>` tokens only where a link cannot be
+  written — source, YAML, shell. A user-facing doc tier is cited by path, never by a memory id; a
+  skill may cite ids, because it is loaded where they exist.
+- In VS Code, `@@F-014` shows the entry on hover and opens the file at the entry on Ctrl+click
+  (extension `undertree.rest-fs`). The markdown stays the source of truth; the hover reads a derived
+  index.
+
+**Ongoing conversion — do not mass-rewrite.** The source tree is being converted to this style
+incrementally. `realm/blong-kustomize` is the proof of concept and the worked example. Convert a
+comment or a doc page when you touch it, and leave the rest for its own pass; track progress with
+`blong-dev memory refs --summary`. This is an open todo, not a one-off task. Cross referencing via
+@@ is a new concept in the repository, be careful and spot gaps or any need of updating the approach
+or the tooling around it.
+
+**Before you finish** — when you touched a memory entry, a doc page, a skill, or a file that cites
+one:
+
+```bash
+blong-dev memory refs --dangling   # the linter: every reference in the tree resolves
+blong-dev memory refs --sites      # the audit view: each citation beside the entry title
+blong-dev memory refs --changed    # sites citing an entry the working tree changed
+blong-dev memory check --refs      # memory files, plus the references into and out of them
+blong-dev memory comply            # sites citing an entry this change edited, retired or superseded
+```
+
+A broken reference, a `comply` error, or a `retired` warning you have not retargeted blocks the
+change the same way a failing test does.
+
 ## [CRITICAL_GUARDRAILS]
 
 Hard rules — apply first, never contradict.

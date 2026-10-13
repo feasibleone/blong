@@ -1,22 +1,6 @@
 #!/usr/bin/env -S node
 /**
- * blong-kustomize — CLI for the deployment realm.
- *
- * Only what is specific to this realm lives here: the usage text, how the arguments name a method, and
- * what each method answers to. The plumbing — loading the realm on the `cli` intent, resolving the
- * method against the live registry, keeping stdout for the result, the exit codes — is
- * `@feasibleone/blong-gogo/cli.ts`, shared with every other realm CLI (the realm CLI pattern).
- *
- * It exists because two of the realm's handlers are decisions rather than steps, and a decision needs
- * something that can put it to a cluster without a UI:
- *
- *   - `release-notify` is what a release calls after publishing, so the CR it targets carries the new
- *     version and artifact (J). Nothing dispatches it until a release has an entry point that loads
- *     this realm and can reach a cluster — which is what this is.
- *   - `volume-prune` answers which retained versions are past the retention, and had no caller at all.
- *     It stays a report: the deletion is the operator's to perform, which the handler says in as many
- *     words, and a CLI that deleted on a read pass would be the mistake that comment was written to
- *     prevent.
+ * blong-kustomize — CLI for the deployment realm; the plumbing is `@feasibleone/blong-gogo/cli.ts`.
  *
  * Usage:
  *   blong-kustomize release-notify --suite=shop --version=1.13.0 --artifact-url=https://…/suite.zip

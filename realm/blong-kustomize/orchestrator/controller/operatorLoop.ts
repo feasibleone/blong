@@ -2,23 +2,8 @@ import {OPERATOR_ENV} from '../../operator.ts';
 import type {IPlanConfig} from '../../plan.ts';
 
 /**
- * operatorLoop.ts — the operator's loop, beside the other trigger it belongs with.
- *
- * The loop is started by configuration, or by the environment the generated operator Deployment
- * sets, and absent otherwise: a UI process and the one-shot `k8s` intent must not reconcile
- * anything. It is not the port — `orchestrator/deploy.ts` is, and it starts this — and it is not a
- * scheduler either: Blong has no scheduler API (checked in `core/blong` and `core/blong-gogo`), so a
- * plain interval timer is what a resync is made of, and the one other trigger is the watch in
- * `kustomizeWatchRun.ts`.
- *
- * A pass calls the port's own `kustomize.reconcile.run` through the framework's request path, so the
- * loop is a caller like any other and its work is visible in the log as that method rather than as a
- * hidden side effect.
- *
- * The default export is the function itself only because of how a layer is loaded: `Watch.ts` reads
- * every code file in a handler-group folder and reports the ones without a default export as stray
- * source. A bare function carries neither a handler nor a library tag, so the loader classifies it as
- * neither and ignores it — which is the right reading of a module that is a helper for the port.
+ * operatorLoop.ts — the operator's loop: started by config or by the generated Deployment, resyncing
+ * on an interval and a watch.
  */
 export const startController = (self: {
     config?: IPlanConfig;
@@ -35,7 +20,7 @@ export const startController = (self: {
         (process.env[OPERATOR_ENV.from] as 'registry' | 'cr' | undefined) ??
         'cr';
     const apply = configured?.apply ?? process.env[OPERATOR_ENV.apply] === 'true';
-    // Deleting is a word of its own (D-461): a deployment that wants its processes updated without
+    // Deleting is a word of its own (@@D-461): a deployment that wants its processes updated without
     // anything ever being removed keeps this off, and what a pass may remove is scoped to the
     // suite's namespace either way.
     const prune = configured?.prune ?? process.env[OPERATOR_ENV.prune] === 'true';
@@ -50,7 +35,7 @@ export const startController = (self: {
      * A request answers `[answer, $meta]` — the answers it produced followed by the meta the loop
      * appended — and an error is thrown rather than returned. Reading the second element as the
      * result is what made a pass report the request's own meta, and it hid the watch's generator in
-     * the element that looked like a failure (T-225).
+     * the element that looked like a failure (@@T-225).
      */
     const call = async (method: string, params: unknown): Promise<unknown[]> => {
         const packet = (await self.request!(params, {
@@ -84,7 +69,7 @@ export const startController = (self: {
     };
 
     // The watch trigger lives in the `kustomize.watch.run` handler, because a stream cannot cross
-    // this loop's request path (T-227): on when the loop reads its plan from a CR, since waiting out
+    // this loop's request path (@@T-227): on when the loop reads its plan from a CR, since waiting out
     // the interval for a change someone just applied is the wrong default. Off leaves the interval
     // below as the only trigger.
     const watching = from === 'cr' && configured?.watch !== false;
@@ -97,7 +82,7 @@ export const startController = (self: {
     if (watching) {
         // The trigger is a handler, not this loop, and that is the whole point of
         // `kustomize.watch.run`: a handler reaches the adapter through the local proxy, while this
-        // loop's `call` crosses a transport whose reply a stream cannot survive (T-227). The handler
+        // loop's `call` crosses a transport whose reply a stream cannot survive (@@T-227). The handler
         // renews its watch every thirty seconds and re-lists on each renewal, so it is also the
         // resync for every CR it sees. It reconciles with the settings this loop runs under —
         // `watch: true` changes when a pass happens, never what a pass is allowed to do.
@@ -109,7 +94,7 @@ export const startController = (self: {
                 }),
             )
             // Not awaited, so the rejection is reported here: an uncaught one would end the process
-            // (T-229) instead of leaving a line saying which call failed.
+            //  instead of leaving a line saying which call failed.
             .catch(error =>
                 self.log?.error?.({
                     $meta: {mtid: 'event', method: 'kustomize.watch.run'},

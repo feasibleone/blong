@@ -70,6 +70,10 @@ run. See [intents](./intents.md) and the [rationale](../rationale/intents.md).
 place business logic lives. See [orchestrator](./orchestrator.md) and the
 [pattern](../patterns/orchestrator.md).
 
+**prose cross reference** — A source comment or doc sentence that carries a title and a reference to
+the entry holding the reasoning, so the prose stays short and the details are maintained once. See
+[memory](./memory.md) and the [memory pattern](../patterns/memory.md).
+
 **RBAC** — Role-based access control — roles, capabilities and actions — evaluated over the resource
 graph. See [RBAC](./rbac.md) and the [RBAC pattern](../patterns/rbac.md).
 
@@ -78,6 +82,10 @@ graph. See [RBAC](./rbac.md) and the [RBAC pattern](../patterns/rbac.md).
 
 **resource graph** — The generic subject-predicate-object triples behind `blong-core`, used to
 relate and query entities. See [the resource graph](./resource-graph.md).
+
+**retired id** — An entry id whose entry was closed, pruned or renumbered; it keeps its number in
+the Retired ledger, so a stale reference warns with its successor. See
+[retired id](../patterns/memory.md#retiring-an-id).
 
 **schema sync** — The declarative database management that reconciles tables, constraints and
 procedures from TypeScript and YAML. See [schema sync](./schema-sync.md).

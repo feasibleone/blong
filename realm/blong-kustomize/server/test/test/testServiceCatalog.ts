@@ -16,7 +16,7 @@ import {
  * The nodes these trees are generated for.
  *
  * A `nodeLocal` volume is one directory per node, so a plan without nodes is a plan whose tree cannot
- * be written — and a unit test has no cluster to ask (D-470).
+ * be written — and a unit test has no cluster to ask (@@D-470).
  */
 const NODES = ['node-a', 'node-b'];
 
@@ -60,7 +60,7 @@ export default handler(({lib: {group}}) => ({
                             // One descriptor at a time, each opted in through the deployment: an
                             // adapter makes a service available and the deployment says it brings it,
                             // and what this pins is that a descriptor the realm ships can be rendered
-                            // at all (D-504).
+                            // at all (@@D-504).
                             services: {[descriptor.name]: true},
                         },
                     );
@@ -135,7 +135,7 @@ export default handler(({lib: {group}}) => ({
                     storageClassName: 'local-path',
                     // Opted in, because an adapter says what *may* be brought and the deployment says what
                     // is: running a database is a decision rather than a consequence of activating an
-                    // adapter, and this is where the deployment makes it (D-504).
+                    // adapter, and this is where the deployment makes it (@@D-504).
                     config: {mysql: true},
                 });
                 assert.deepEqual(
@@ -260,7 +260,7 @@ export default handler(({lib: {group}}) => ({
                 // template the base mounts into the Deployment — one line per database the plan names.
                 // Keycloak's realm is created by *calling* a running server, so the step is a process
                 // of its own, and the script is the deployment's: this realm has no opinion about what
-                // a realm of Keycloak's contains, so it writes the text as it arrived (D-466).
+                // a realm of Keycloak's contains, so it writes the text as it arrived (@@D-466).
                 const view = registryView({
                     describe: () => ({realms: ['srv'], ports: ['srv.keycloak']}),
                     getPort: () => ({config: {type: 'keycloak'}}),
@@ -271,7 +271,7 @@ export default handler(({lib: {group}}) => ({
                     servicesNamespace: 'shop-services',
                     nodes: NODES,
                     // The init script logs in with the service's credentials, so the deployment has to
-                    // provide some: a declaration with none gets no Secret and no `envFrom` at all (D-509).
+                    // provide some: a declaration with none gets no Secret and no `envFrom` at all (@@D-509).
                     services: {keycloak: {credentials: {generate: true}}},
                 };
                 const plain = buildKustomizeTree(planFromRegistry(view, options));
@@ -368,7 +368,7 @@ export default handler(({lib: {group}}) => ({
                 // A pod reads only the Secrets of its own namespace, and the alias this tree publishes is
                 // dialled from the suite's. A deployment that supplies credentials therefore needs them twice
                 // — beside the workload and where its own processes run — and derived rather than random, so
-                // that the two copies cannot drift and nothing has to sync them (D-462, D-509).
+                // that the two copies cannot drift and nothing has to sync them (@@D-462 @@D-509).
                 const view = registryView({
                     describe: () => ({realms: ['srv'], ports: ['srv.db']}),
                     getPort: () => ({config: {type: 'knex'}}),
@@ -428,7 +428,7 @@ export default handler(({lib: {group}}) => ({
                 );
                 // The label is what lets a pass take a generated credential back when the declaration stops
                 // asking for it: the workload's own copy is in a namespace a pass does not delete in, so
-                // nothing but the object saying it was generated can make its removal safe (D-461, D-509).
+                // nothing but the object saying it was generated can make its removal safe (@@D-461 @@D-509).
                 assert.equal(
                     inSuite.metadata?.labels?.[GENERATED_CREDENTIALS_LABEL],
                     'true',
@@ -436,10 +436,10 @@ export default handler(({lib: {group}}) => ({
                 );
                 // The values are what the workload reads, and the same name is what the suite's own
                 // processes read in their namespace — which is where `aDeploymentBringsItsOwnServices`
-                // pins the `envFrom` that draws on them (D-509).
+                // pins the `envFrom` that draws on them (@@D-509).
 
                 // The values a deployment supplies are the ones written, and they cover the keys the image
-                // reads: a Secret missing one is a database that starts without the user it needs (D-509).
+                // reads: a Secret missing one is a database that starts without the user it needs (@@D-509).
                 const supplied = buildKustomizeTree(
                     planFromRegistry(view, {
                         ...options,
@@ -503,7 +503,7 @@ export default handler(({lib: {group}}) => ({
 
                 // And a deployment that declares none gets none: no Secret anywhere, and a workload whose
                 // base names one has the reference taken out, rather than one that waits for a Secret nobody
-                // writes — which is what a service configured by a mounted file needs (D-509).
+                // writes — which is what a service configured by a mounted file needs (@@D-509).
                 const bare = buildKustomizeTree(
                     planFromRegistry(view, {...options, services: {mysql: true}}),
                 );
@@ -692,7 +692,7 @@ export default handler(({lib: {group}}) => ({
                 // The default is written out rather than left to the operator: the pass locates what
                 // it managed before by the namespace the declaration gives it, so a deployment that
                 // named none would have its reads fall back to the client's own namespace, where the
-                // operator's account is refused and the pass fails (F-481).
+                // operator's account is refused and the pass fails (@@F-481).
                 const unnamed = planFromRegistry(view, {
                     suiteName: 'shop',
                     frameworkImage: 'blong',

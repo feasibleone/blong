@@ -9,22 +9,8 @@ interface IIdentitySessionReply {
 }
 
 /**
- * identity.checkInternal — the session a verified caller's call is decrypted with.
- *
- * The framework asks this of the `identity` namespace once a token has verified and before the call
- * that carried it runs (`GatewayCodec.session`, reached from `oidc`): the reply's `mle` pair becomes
- * the token's `enc`/`sig`, which `jwt.ts` turns into the request's credentials — the key its body is
- * verified with and the key its answer is encrypted to. Without it a call that arrives signed but
- * with no claim to read the signing key from is refused as `Decryption failed`, which is what a
- * cluster token looks like to the gateway: the API server signs it, so `enc`/`sig` cannot be added,
- * and only the realm knows what the caller's keys are. They are the keys the caller sent in the
- * header of its login call, which `login.token.create` recorded — see `mleHandshake.ts`.
- *
- * The caller is named by the identity the cluster gave it: the framework passes the token's `sub`,
- * which for a service-account token is the account itself, and the same string is what the login
- * review resolved. A caller whose handshake is gone (the process restarted, or the token outlived
- * the session it was minted with) is told so by name instead of being refused with a decryption
- * failure three steps later — logging in again is the whole fix.
+ * identity.checkInternal — the session a verified caller's call is decrypted with, from the handshake
+ * `login.token.create` recorded (`mleHandshake.ts`).
  */
 export default handler(({errors}) => {
     return {

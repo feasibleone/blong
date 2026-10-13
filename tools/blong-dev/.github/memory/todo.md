@@ -192,3 +192,8 @@ reference case: the party suite's browser leg makes roughly 450 gateway calls, a
 expensive method was guesswork until a hand-written version of this was run against eight thousand
 entries; the entries also outlive the process, so this is the only way to ask the question about a
 run that has finished — including the tap artifact of a CI run, which carries the same lines.
+
+## Retired
+
+- T-335 — done 2026-10-13
+- T-336 — done 2026-10-13

@@ -20,7 +20,7 @@ for **developing and improving the model system itself**.
 
 For describing what the model is conceptually, see:
 
-- [blong-browser Model concept](../../docs/blong/docs/concepts/blong-model.md)
+- [blong-browser Model concept](../../../docs/blong/docs/concepts/blong-model.md)
 
 For using the model in realm development, use the **blong-model** skill.
 

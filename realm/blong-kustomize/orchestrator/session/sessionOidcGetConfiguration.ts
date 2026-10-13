@@ -3,22 +3,8 @@ import {handler, type IMeta} from '@feasibleone/blong';
 import {SESSION_ALG} from '../../sessionToken.ts';
 
 /**
- * session.oidc.getConfiguration — the discovery document a minted session's issuer is resolved from.
- *
- * The framework verifies a bearer against a configured issuer by *reading* that issuer's
- * `.well-known/openid-configuration` over HTTP and then the key set it names there. A deployment that
- * mints its own tokens therefore has to answer for an issuer, and the shortest honest address for that
- * answer is its own gateway — which is what the entry configures (`remote.openId` names the issuer and
- * this document), so no second service is dialled and none has to exist.
- *
- * Both addresses are derived from the request rather than configured, the way the framework's own login
- * realm derives its own: the framework fetched this document at the address the deployment configured,
- * so the issuer is that address with the document's own name removed, and the key set sits beside it.
- * A configured copy would be a second string to keep in step with the token's `iss`, and the one thing
- * that cannot drift is the value the token names.
- *
- * The route is public by construction (`auth: false` in the gateway file beside this one): it is read
- * before any token is verified, and what it publishes is a public key set's address and nothing besides.
+ * session.oidc.getConfiguration — the discovery document a minted session's issuer is resolved from;
+ * both addresses are derived from the request rather than configured.
  */
 export default handler(() => {
     return {

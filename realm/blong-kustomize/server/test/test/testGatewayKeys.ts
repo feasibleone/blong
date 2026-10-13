@@ -13,7 +13,7 @@ import {
  *
  * The realm does not *hold* the keys, it names them: the tree is deterministic and a regenerated tree
  * must stay byte-identical, so the pair cannot be written into it, and a pair generated into git is
- * either a secret in a repository or a new pair on every run (T-252). What can be asserted without a
+ * either a secret in a repository or a new pair on every run . What can be asserted without a
  * cluster is therefore the two halves the wiring depends on — that the generated pair is the material
  * the gateway reads, and that the CLI asks for it by the right name — while the creation itself is
  * exercised where a cluster is.
@@ -47,7 +47,7 @@ export default handler(({lib: {group}, handler: {kustomizeGatewayKeysEnsure}}) =
                 );
                 // The owner reference *is* the removal rather than a promise of one: Kubernetes
                 // deletes the Secret when the declaration it names goes, which is the half no pass
-                // can do, because a pass stops running when the CR does (T-267).
+                // can do, because a pass stops running when the CR does .
                 assert.deepEqual(
                     metadata.ownerReferences,
                     [
@@ -109,7 +109,7 @@ export default handler(({lib: {group}, handler: {kustomizeGatewayKeysEnsure}}) =
                 // in it are the two roles every pod has — the gateway it serves and the peer it
                 // calls — and they hold the *same* pair, which is what makes one Secret per
                 // namespace enough: a browser's session survives a restart and a second replica, and
-                // a peer verifies with the key the gateway would have signed with (D-441).
+                // a peer verifies with the key the gateway would have signed with (@@D-441).
                 const keys = generateGatewayKeys();
                 const document = JSON.parse(gatewayKeysConfig(keys)) as {
                     gateway: {sign: unknown; encrypt: unknown};

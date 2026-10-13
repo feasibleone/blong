@@ -39,7 +39,7 @@ const message = (error: unknown): string =>
     error instanceof Error ? error.message : String(error);
 
 /**
- * Which of a deploy's older Job attempts a prune may remove (D-386, Q6).
+ * Which of a deploy's older Job attempts a prune may remove (@@D-386, Q6).
  *
  * The tree's own Job is the *current* attempt and is never obsolete; what reaches this function are
  * the attempts a previous generation created, newest first by creation time. The newest
@@ -78,25 +78,7 @@ export interface IListingScope {
     cleanupOnly?: boolean;
 }
 
-/**
- * The listings a pass needs, one per resource type *and namespace*.
- *
- * The namespace is part of the scope rather than a constant, because a suite's objects do not all
- * live beside its workloads: a backing service is provisioned in the services namespace
- * (`blong-services` by default), which every suite on the cluster shares. A listing taken in the
- * tenant's namespace alone left those objects unread, so each pass treated them as missing and
- * applied them again — and the claim among them is applied with a PUT, which a *bound* claim rejects
- * (`spec is immutable after creation except resources.requests`), so a pass reported a step it could
- * not stop failing and its CR never left `Failed`. That is what the kustomize e2e run showed, with
- * the objects themselves applied cleanly and the suite's own workloads `Available` beside it.
- *
- * A kind the tree no longer names is still looked for, in the tenant's namespace: that is where a
- * suite's own objects are, and what a shared namespace holds is reached through the objects that name
- * it there (T-282, D-464).
- *
- * Pure and exported for the reason the retention helpers are: what a pass reads is worth pinning
- * without a cluster, and the scope is the part that decides what a pass can ever see.
- */
+/** The listings a pass needs, one per resource type _and namespace_ (@@T-282 @@D-464). */
 export const listingScopes = (
     managed: IDesiredResource[],
     swept: readonly string[],
@@ -130,7 +112,7 @@ export const listingScopes = (
     // declaration switched off names nothing there, so no object scopes that namespace and the pass
     // cannot see what it wrote — which is how a generated Secret outlived the definition it was
     // derived from. Only the credential kind is listed there, and only a labelled object is removable
-    // once it is seen, so the shared namespace stays its owner's to edit (`prunable`, D-461, D-509).
+    // once it is seen, so the shared namespace stays its owner's to edit (`prunable`, @@D-461 @@D-509).
     if (servicesNamespace && servicesNamespace !== tenantNamespace) {
         scopeOf(RESOURCE_TYPE_BY_KIND['Secret'] ?? 'secret', servicesNamespace, true);
     }
@@ -144,7 +126,7 @@ export const listingScopes = (
  * deployment is expected in it, and the namespace a switched-off service left behind answers
  * `forbidden` rather than `not found`, so counting it would report every pass as failed while
  * everything the declaration asks for is applied. Every other unreadable scope is a failure, because
- * an object of this deployment may be in it unseen (F-461, D-515).
+ * an object of this deployment may be in it unseen (@@F-461 @@D-515).
  */
 export const unreadableFailures = (
     unreadable: ReadonlyArray<{key: string; message: string; cleanupOnly: boolean}>,
@@ -153,18 +135,6 @@ export const unreadableFailures = (
 
 /**
  * Which listing a CR pass reads: the namespace it knows, or every CR the operator can see.
- *
- * The narrow question is asked first, because both callers that *do* know a namespace name one — a
- * suite's own portal is configured with the suite's namespace, and an operator is configured with the
- * namespace it serves. A caller that named none and found nothing there is asking about the CRs this
- * operator reconciles, which is a set nobody configured: an operator is installed once and reconciles
- * suites it was never told about, and the deployment page's button is exactly that caller (T-328). A
- * namespace that was named is never widened — naming one is a request to be answered about it, and
- * falling back would answer a narrower question with a broader object.
- *
- * Pure and exported for the reason the other guards are: which scope a pass reads is the half no
- * cluster is needed for, and it is the half that decides whether the page's button is answered about
- * the suite it lists or about nothing at all.
  */
 export const crListingScope = ({
     named,
@@ -213,25 +183,8 @@ export const availableReplicas = (
 };
 
 /**
- * Which of the objects a plan no longer mentions a pass may remove.
- *
- * Only the suite's own namespace (D-461). What makes deletion safe is that the pass lists nothing
- * but what the suite owns, and ownership is not the only question a removal asks: the generated
- * third-party services live in a namespace of their own precisely so that a config edit cannot take
- * a shared database with it. So the alias goes — it sits in the suite's namespace, which is where a
- * realm's config dials it — and the workload, claim and Service beside it stay until whoever owns
- * that namespace retires them, reported as obsolete either way.
- *
- * The listing reaches a shared namespace too — that is where the suite's services are, and a pass
- * that cannot see them applies them again on every pass (`listingScopes`) — so this filter is the
- * lock rather than the second half of one: the label says what is this suite's, and this says how
- * far a removal may reach. The rights the operator runs under are not the operator's to withdraw
- * either, so cluster-scoped objects fall out with the same rule.
- *
- * One exception, and it is the one that would otherwise leak: a credential the tree *generated* from a
- * declaration. A switched-off service leaves it in the services namespace, and the next pass that no
- * longer asks for it is the only thing that can take it back — so an object carrying the generated label
- * is removable wherever the pass may list it, and everything else in a shared namespace is not (D-461).
+ * Which objects a plan no longer mentions a pass may remove — only the suite's own namespace
+ * (@@D-461).
  */
 export const prunable = (obsolete: IClusterObject[], namespace: string): IClusterObject[] =>
     obsolete.filter(
@@ -243,7 +196,7 @@ export const prunable = (obsolete: IClusterObject[], namespace: string): ICluste
 /** The label a fill Job carries: how many volume directories — one per identity — a node keeps. */
 export const VOLUME_RETENTION_LABEL = 'blong.feasible.one/retention';
 
-/** The label an attempt Job carries: how many attempts of one step a suite keeps (D-471). */
+/** The label an attempt Job carries: how many attempts of one step a suite keeps (@@D-471). */
 export const ATTEMPT_RETENTION_LABEL = 'blong.feasible.one/attempt-retention';
 
 /** The labels a retention step reads, and therefore the objects obsolescence leaves alone. */
@@ -267,7 +220,7 @@ export const hasRetentionLabel = (object: IClusterObject): boolean =>
  * and a tree names one identity at a time, which makes every other identity look obsolete to a pass
  * that diffed without reading the label. So the volumes a suite is not currently running, and the
  * attempts a previous deploy left, are left to their own steps, and only the objects nothing else
- * decides are removed here (T-282, D-464, D-471).
+ * decides are removed here (@@T-282 @@D-464 @@D-471).
  */
 export const prunableByObsolescence = (obsolete: IClusterObject[]): IClusterObject[] =>
     obsolete.filter(
@@ -275,7 +228,7 @@ export const prunableByObsolescence = (obsolete: IClusterObject[]): IClusterObje
             !hasRetentionLabel(object) &&
             // The gateway key pair is written by a pass rather than by the tree, so a listing that can
             // see it does not make it obsolete: it is held while its declaration exists and removed
-            // with it, which is what its owner reference is for (T-267).
+            // with it, which is what its owner reference is for .
             object.metadata?.labels?.[GATEWAY_KEYS_LABEL] === undefined,
     );
 
@@ -290,7 +243,7 @@ const timestampOf = (object: IClusterObject): string =>
  * attempt — the pass waits on it rather than replacing it. Updating it used to be what the diff
  * produced for an unchanged attempt, and the API server answered `Job.batch "…" is invalid:
  * spec.template: Invalid value: field is immutable`, which the pass reported as a failed step and the
- * CR as a failed deploy (F-406). A changed attempt is a different name, and arrives as a create.
+ * CR as a failed deploy (@@F-406). A changed attempt is a different name, and arrives as a create.
  */
 export const appliesUpdate = (resourceType: string): boolean => resourceType !== 'job';
 
@@ -311,7 +264,7 @@ export const retentionOf = (objects: IClusterObject[], fallback = 3): number => 
 /**
  * The attempt retention the objects declare about themselves.
  *
- * A second reader for a second number (D-471): the Jobs carry how many attempts to keep and the volumes
+ * A second reader for a second number (@@D-471): the Jobs carry how many attempts to keep and the volumes
  * carry how many directories, and one knob for both is how a suite that kept three volumes kept three
  * attempts. Read off the objects for the same reason the volumes' is: a CR-driven pass never sees the
  * plan its tree was generated from.
@@ -342,7 +295,7 @@ const fillNodeOf = (object: IClusterObject): string => {
 };
 
 /**
- * Which of a suite's older fill Jobs a prune may remove (D-471).
+ * Which of a suite's older fill Jobs a prune may remove (@@D-471).
  *
  * The rule the volume retention states, and the one the attempt rule cannot express: one fill Job per
  * node, so the number is kept *per node* — three means three identities' Jobs on that node, the current
@@ -373,7 +326,7 @@ export const fillJobsPastRetention = (
  * Two numbers and two rules, told apart by the label the generator wrote rather than by the name: an
  * attempt carries `attempt-retention` and is counted with the other attempts of its step, a fill Job
  * carries `retention` and is counted per node, and a Job carrying neither — every Job before the two
- * numbers existed — is retired as an attempt, which is what the pass did for all of them (D-471).
+ * numbers existed — is retired as an attempt, which is what the pass did for all of them (@@D-471).
  */
 export const jobsPastRetention = (obsolete: IClusterObject[]): IClusterObject[] => {
     const carries = (object: IClusterObject, label: string): boolean =>
@@ -395,7 +348,7 @@ export const jobsPastRetention = (obsolete: IClusterObject[]): IClusterObject[] 
  * point. A resource type of several words keeps its separator and capitalises each word, because
  * that is what tells the framework's name splitter the words are one part rather than two:
  * `clusterPersistentVolumeClaimApply` reads as `cluster.persistent.volumeClaimApply`, whose middle
- * word matches no API (F-379). The framework's own k8s tests call single-word resources the same
+ * word matches no API (@@F-395). The framework's own k8s tests call single-word resources the same
  * way (`clusterPodFind`, `clusterPodLog`), so the realm can apply a kind without importing a
  * Kubernetes client of its own.
  */
@@ -406,25 +359,8 @@ const wireName = (resourceType: string, verb: string): string =>
         .join('_')}${verb}`;
 
 /**
- * kustomize.reconcile.run — one pass of the operator's loop.
- *
- * The objects a pass compares with the cluster come from one of two origins, and each is the right one for
- * what the process knows. A CR pass is not running the suite it reconciles: the tree comes from
- * `kustomize.suite.generate`, whose short-lived child loads that suite's artifact and writes this deploy's
- * overlay beside the base the artifact carries, and the pair is materialized into the objects the pass
- * applies. So a CR pass converges on the design that was *deployed*, rather than the one this image's
- * generator would have written, which is what makes a committed base the source of truth (D-488, T-298).
- * A pass of a suite's own realm is running it, so it has the registry and derives the tree itself; there
- * the files on disk stay an artefact for review rather than the source of truth.
- *
- * Two words guard the destructive half. Without `apply` this is a read: it lists the
- * kinds the plan mentions and reports the difference it would make, which is the half
- * safe to run against a live cluster at any time. Without `prune` on top of `apply`,
- * nothing is deleted, because a converge and a removal are different intentions and the
- * second one cannot be walked back.
- *
- * The adapter is reached through the handler proxy by name, so this handler holds no
- * reference to it (the IoC rule) and a test can stand in for the cluster.
+ * kustomize.reconcile.run — one pass of the operator's loop; a CR pass converges on the deployed
+ * design, and `apply`/`prune` guard the destructive half (@@D-488).
  */
 export default handler(({handler}) => {
     const call = (name: string): ClusterCall | undefined => {
@@ -437,7 +373,7 @@ export default handler(({handler}) => {
      *
      * A CR pass does not plan: this process is not running the suite it reconciles, so the tree comes
      * from `kustomize.suite.generate`, which loads the target suite's artifact in a short-lived child
-     * (D-395, T-234). Reaching it through the proxy keeps this handler free of a reference to it, the
+     * (@@D-395). Reaching it through the proxy keeps this handler free of a reference to it, the
      * same rule the cluster verbs follow.
      */
     const suiteGenerate = (params: object, meta: IMeta): Promise<unknown> => {
@@ -500,7 +436,7 @@ export default handler(({handler}) => {
      * the suite's own name label is the same on both and selects neither. When nothing matches, the
      * wait polls and then reports the timeout, so the timeout message carries the number of objects
      * the lookup saw: a lookup that matches nothing and a step that never finishes read the same in
-     * a bare "did not finish" (T-251).
+     * a bare "did not finish" .
      */
     const waitForStep = async (
         object: IClusterObject,
@@ -570,7 +506,7 @@ export default handler(({handler}) => {
              *
              * The caller that named one does not need it back; the caller that named none — the
              * deployment page's button, which reconciles whatever the operator serves — does, and so
-             * does anyone reading a log line about a pass that read a declaration (T-328).
+             * does anyone reading a log line about a pass that read a declaration .
              */
             suite?: {name?: string; namespace?: string};
             created?: number;
@@ -588,14 +524,14 @@ export default handler(({handler}) => {
             // reconciling. The registry is what the suite actually runs; the CR is the declaration
             // an operator was handed. Reading the second one closes the loop the CRD opened, and
             // anything the CR does not name stays with the config rather than falling to a default
-            // (T-210).
+            // .
             const options = planOptionsOf(self.config);
             let origin: 'registry' | 'cr' = 'registry';
             // Kept out here because the status is written at the end of the pass, back to the CR the
             // pass was triggered by — and only a CR pass has one.
             let declared: IBlongDeploymentSpec | undefined;
             let declaredName: string | undefined;
-            /** The declaration's `uid`, which is what an object it owns is removed by (T-267). */
+            /** The declaration's `uid`, which is what an object it owns is removed by . */
             let declaredUid: string | undefined;
             if (params.from === 'cr') {
                 // `custom` is the resource type a custom resource reaches the adapter as — not the
@@ -648,7 +584,7 @@ export default handler(({handler}) => {
                 declared = item?.spec;
                 declaredName = item?.metadata?.name;
                 // The listing type names only what the pass reads for the plan; the uid is what an
-                // owner reference needs, and it comes from the same object (T-267).
+                // owner reference needs, and it comes from the same object .
                 declaredUid = item?.metadata?.uid;
                 if (!declared) {
                     return {
@@ -669,10 +605,10 @@ export default handler(({handler}) => {
             // A registry pass reconciles the suite *this process is*, so a process that declares no
             // suite entry has no tree of its own to apply: running this realm's CLI against a cluster
             // planned the realm's own ports — `blong`, `codec`, `kustomize` — and deployed them as a
-            // suite's workloads into whatever namespace it was handed (F-406), and the failure was
+            // suite's workloads into whatever namespace it was handed (@@F-406), and the failure was
             // silent, because a pass reports what it created. Refused rather than narrowed by
             // namespace: a namespace says where a pass may write, not whether it has a suite to
-            // write (T-260).
+            // write .
             if (origin === 'registry' && !options.entry) {
                 return {
                     reconciled: 0,
@@ -686,7 +622,7 @@ export default handler(({handler}) => {
             // the registry plans in-process, because that process *is* the suite. A pass from a CR
             // must not: the operator is installed once and reconciles suites it does not hold, so the
             // tree is written by a short-lived child that loads that suite's artifact, and this
-            // process applies what the child wrote (D-395, T-234).
+            // process applies what the child wrote (@@D-395).
             const suiteName = declaredName ?? options.suiteName;
             const suiteNamespace = options.namespace ?? options.suiteName;
             let tree: KustomizeTree;
@@ -703,9 +639,9 @@ export default handler(({handler}) => {
                 tree = generated.tree;
             } else {
                 // A pass this process plans itself has to be *told* the nodes: it is not the run that
-                // wrote the tree, and a `nodeLocal` volume is one directory per node (D-470). The CR
+                // wrote the tree, and a `nodeLocal` volume is one directory per node (@@D-470). The CR
                 // wins where it names them, the realm's config answers otherwise, and the cluster is
-                // asked only for a selector (T-327). A CR pass needs none of this: it asks
+                // asked only for a selector . A CR pass needs none of this: it asks
                 // `kustomize.suite.generate` for a tree, and that leg reads the same source itself.
                 const nodeFind = call('clusterNodeFind');
                 options.nodes = await resolveNodes(options.nodeSource, async selector => {
@@ -720,7 +656,7 @@ export default handler(({handler}) => {
             const {managed, skipped} = collectManifests(tree);
 
             // A pass says what it was asked to do before it does it. The controller logs what the
-            // call answered, which is not the same thing: while the dispatch was broken (T-225) that
+            // call answered, which is not the same thing: while the dispatch was broken (@@T-225) that
             // line reported a pass that had run and changed nothing, and the only way to tell it
             // apart from a pass that never ran was to look here.
             (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
@@ -743,7 +679,7 @@ export default handler(({handler}) => {
             }> = [];
             // A scope the pass cannot read is a failure of that scope, not the end of the pass: what
             // it cannot see is reported, and everything else in the tree is still applied. A
-            // namespace whose Rights went with it is the case (F-461), and it is worth naming — the
+            // namespace whose Rights went with it is the case (@@F-461), and it is worth naming — the
             // alternative is a pass that dies before it writes a status, leaving a CR that describes
             // a cluster nobody has since.
             const unreadable: Array<{key: string; message: string; cleanupOnly: boolean}> = [];
@@ -832,7 +768,7 @@ export default handler(({handler}) => {
              * realm's tests pin — so the deployment creates them, and it has to create them *before*
              * the Deployments: a pod that comes up in this same pass would otherwise hold only the
              * framework's per-process fallback, and the browser session opened against it would
-             * belong to that one replica until it restarts (T-252). A read-only pass creates nothing,
+             * belong to that one replica until it restarts . A read-only pass creates nothing,
              * the same rule pruning follows.
              */
             let keys: {name: string; created: boolean; reason?: string} | undefined;
@@ -888,7 +824,7 @@ export default handler(({handler}) => {
                 // The same count on both sides means the keys never matched, and the pair says which
                 // part of the key did it — the kind string, the namespace, or the name the plan
                 // derives. Logged only in that state, so a healthy pass stays quiet and a broken one
-                // names itself on the first run (T-226).
+                // names itself on the first run .
                 if (diff.create.length && diff.obsolete.length) {
                     (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
                         $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
@@ -926,7 +862,7 @@ export default handler(({handler}) => {
                         const failure = await waitForStep(entry.object, findStep, meta);
                         if (!failure) continue;
                         failures.push({key: resourceKey(entry.object), message: failure});
-                        // The failed Job is **left where it is** (D-386, Q6). It used to be removed so
+                        // The failed Job is **left where it is** (@@D-386, Q6). It used to be removed so
                         // that the next pass could create the same object again — a Job's spec is
                         // immutable — but the name now carries the attempt (version and hash), so a
                         // retry is a different object and nothing has to be deleted for it to exist.
@@ -965,11 +901,11 @@ export default handler(({handler}) => {
             }
 
             // The install tree piles up the same way the tenant's namespace does, and nothing swept
-            // it (D-491): an operator image is an identity, so every rollout leaves another fill Job
+            // it (@@D-491): an operator image is an identity, so every rollout leaves another fill Job
             // per node in the namespace the operator is installed in — 28 Jobs across 14 identities
             // were sitting there against a retention of three. Swept here, by the same rule and with
             // the same cascade, and only over Jobs that name a retention label themselves, so the
-            // install-owned RBAC, Deployment and Service beside them stay out of reach (D-461).
+            // install-owned RBAC, Deployment and Service beside them stay out of reach (@@D-461).
             //
             // Only a pass triggered by a CR does this, because that pass is the operator and the
             // namespace is the operator's own. A tenant's pass runs this same code and would be
@@ -1011,7 +947,7 @@ export default handler(({handler}) => {
                   : undefined;
             // A pass reports its own outcome, not only the controller that triggered it: a watch
             // triggers a pass directly, and a pass with no line of its own is indistinguishable from
-            // one that never ran (the shape T-225 hid behind for three days).
+            // one that never ran (the shape @@T-225 hid behind for three days).
             (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
                 $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
                 message:
@@ -1074,7 +1010,7 @@ export default handler(({handler}) => {
                 origin,
                 // Which declaration this pass answered for. A caller that named the CR knows it
                 // already; the one that named none was answered about whichever the cluster holds,
-                // and a pass that does not say which is one nobody can act on (T-328).
+                // and a pass that does not say which is one nobody can act on .
                 ...(origin === 'cr' && declaredName
                     ? {suite: {name: declaredName, namespace: suiteNamespace}}
                     : {}),
@@ -1085,7 +1021,7 @@ export default handler(({handler}) => {
                 deleted,
                 skipped: skipped.map(entry => `${entry.path}: ${entry.reason}`),
                 // Whether this pass had to make the keys, so a run that created a suite's first pair
-                // says so rather than leaving the reader to diff secrets (T-252).
+                // says so rather than leaving the reader to diff secrets .
                 ...(keys ? {keys} : {}),
                 ...(failures.length ? {failures} : {}),
                 ...(reason ? {reason} : {}),

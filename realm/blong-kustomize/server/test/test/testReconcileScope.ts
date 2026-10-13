@@ -8,20 +8,8 @@ import {
 } from '../../../orchestrator/controller/kustomizeReconcileRun.ts';
 
 /**
- * server/test/test/testReconcileScope.ts — where a pass looks for what it wants.
- *
- * The scope is what decides what a pass can ever see, and getting it wrong is invisible in the pass's
- * own report: an object the listing cannot reach is an object the pass believes is missing, so it
- * applies it again on every pass. That is how a suite's backing service — provisioned in the services
- * namespace beside its neighbours rather than in the tenant's — was applied on every pass: the claim
- * among its objects is applied with a PUT, a *bound* claim refuses one (`spec is immutable`), and the
- * CR could never leave `Failed` while the suite's own workloads sat `Available` beside it (the
- * kustomize e2e run that found it).
- *
- * Cluster-free on purpose: the handler around it needs a cluster, and this is the half worth pinning
- * without one, the way the retention decision is.
- *
- * Registered as the `test.reconcile.scope` group (`integration.watch.test` in `index.ts`).
+ * server/test/test/testReconcileScope.ts — where a pass looks for what it wants; a scope that cannot
+ * see an object makes the pass reapply it forever.
  */
 export default handler(({lib: {group}}) => ({
     testReconcileScope: ({name = 'reconcile scope'}: {name?: string} = {}) =>
@@ -58,7 +46,7 @@ export default handler(({lib: {group}}) => ({
                 // it and the pass cannot see the Secret it generated there — which is how a generated
                 // credential outlived the declaration it was derived from. The scope is added from the
                 // declaration, and only for the credential kind: the label is what makes acting on what
-                // the listing answers safe in a namespace that is not the tenant's (D-461, D-509).
+                // the listing answers safe in a namespace that is not the tenant's (@@D-461 @@D-509).
                 const scopes = listingScopes([], ['secret', 'job'], 'shop', 'shop-services');
                 assert.deepEqual(
                     scopes.map(scope => `${scope.resourceType}@${scope.namespace}`).sort(),
@@ -71,7 +59,7 @@ export default handler(({lib: {group}}) => ({
                 );
                 // The flag is what keeps a namespace nothing creates from failing every pass: the
                 // scope is here to find a leftover, so a pass that cannot read it says so and applies
-                // the rest (D-515) — while the scopes that hold this deployment's objects do not get
+                // the rest (@@D-515) — while the scopes that hold this deployment's objects do not get
                 // that allowance, because an object of it may be in one of them unseen.
                 assert.deepEqual(
                     scopes

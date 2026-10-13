@@ -34,7 +34,7 @@ export default browser(blong => ({
                 },
                 // The portal's form is a credential form, and this realm's credential is a
                 // Kubernetes service-account token: the cluster verifies it with a TokenReview and
-                // its RBAC decides what the identity may reconcile (D-376). The name is pre-filled
+                // its RBAC decides what the identity may reconcile (@@D-376). The name is pre-filled
                 // because the form requires one, not because it is used — the review answers it —
                 // and the hint beside the field is where someone finds out what to paste.
                 login: {

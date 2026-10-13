@@ -9,7 +9,7 @@ import {ARTIFACT_READY, keepNewest} from '../../../artifact.ts';
  * server/test/test/testArtifactFetch.ts — placing the artifact the operator plans from.
  *
  * The operator does not hold the code for the suite it reconciles: the plan comes from that suite's
- * own artifact, loaded in a short-lived child (D-395, T-234). Before the child runs, the artifact
+ * own artifact, loaded in a short-lived child (@@D-395). Before the child runs, the artifact
  * has to be on disk, which is this handler's whole job — and the properties that matter are the
  * ones a cluster exercises every interval: a local artifact is read where it is, and a cached one is
  * not downloaded again.
@@ -50,7 +50,7 @@ export default handler(({lib: {group}, handler: {kustomizeArtifactFetch}}) => ({
                 // A cache hit is what keeps a watch event and the interval behind it from downloading
                 // the same archive twice: the marker says the unpack and the link step both finished.
                 // Not a file from the archive — `create-links.js` is unpacked early, so a directory
-                // that has it may still be missing the suite it is supposed to hold (F-406).
+                // that has it may still be missing the suite it is supposed to hold (@@F-407).
                 const root = mkdtempSync(join(tmpdir(), 'kustomize-cache-'));
                 try {
                     const cached = join(root, 'demo', '2');
@@ -107,7 +107,7 @@ export default handler(({lib: {group}, handler: {kustomizeArtifactFetch}}) => ({
                 // The same version, different files: a dev cluster redeploys under an unchanged version
                 // all the time, and a rebuild is a *new* artifact. Keyed by suite and version alone the
                 // marker from the first fetch answered the second, so the operator went on planning from
-                // the archive it had already seen while the CLI published a tree nothing kept (F-452).
+                // the archive it had already seen while the CLI published a tree nothing kept (@@F-452).
                 // The key now carries the artifact's identity, which is the name its volume gets too.
                 const root = mkdtempSync(join(tmpdir(), 'kustomize-cache-'));
                 try {
@@ -162,10 +162,10 @@ export default handler(({lib: {group}, handler: {kustomizeArtifactFetch}}) => ({
 
             async function aFetchPrunesOnlyWhenToldHowManyToKeep(assert: IAssert) {
                 // One directory per published artifact is one full unpack, so a cache that only grows
-                // eventually fills the claim it lives on (T-286). The count is the volume's own, and the
+                // eventually fills the claim it lives on . The count is the volume's own, and the
                 // seed Job's fetch passes none, because it fills a claim at its mount point where the
                 // neighbours are not ours to remove. The order is modification time, because an identity is
-                // a digest and a digest does not order (D-470).
+                // a digest and a digest does not order (@@D-470).
                 const root = mkdtempSync(join(tmpdir(), 'kustomize-prune-'));
                 try {
                     const older = ['1.0.0-aaaa', '1.0.0-bbbb', '1.0.0-cccc', '1.0.0-dddd'];

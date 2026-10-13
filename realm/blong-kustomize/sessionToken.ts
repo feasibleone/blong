@@ -1,21 +1,5 @@
 /**
- * The session token this realm mints at login, and the key material it is signed with.
- *
- * Why a token at all: the framework reads the MLE key pair a caller's calls are signed with out of the
- * *token* — the `enc` and `sig` claims — and a Kubernetes service-account token cannot carry claims,
- * because the API server signs it. The realm therefore kept the pair beside the identity it verified
- * (`mleHandshake.ts`), keyed by that identity — and an identity is a service account, which every
- * browser presenting the same token shares. The second login overwrote the first browser's keys, and
- * the first browser's next call was refused as `Decryption failed` with
- * `ERR_JWS_SIGNATURE_VERIFICATION_FAILED` three steps from the cause (F-500). The pair belongs in the
- * token, where each login puts its own, and the key the pair is kept under is then a claim *inside*
- * the token the login created — its `sub`, the name the caller logged in as.
- *
- * Why it is signed here rather than by `jose`: the realm has no dependency of its own
- * (`kustomizeGatewayKeysEnsure` says why) and this is one algorithm on one key — a P-384 ECDSA over
- * the P-384 pair the realm generates. `dsaEncoding: 'ieee-p1363'` is the one detail that matters: JWS
- * carries the raw `R || S`, which node spells that way, while node's default is the DER shape no JWS
- * verifier accepts.
+ * The session token this realm mints at login, and the key material it is signed with (@@F-500).
  */
 import {createHash, createPrivateKey, createSign, type JsonWebKey} from 'node:crypto';
 

@@ -7,7 +7,7 @@ import {retentionDecision} from '../../../orchestrator/controller/kustomizeVolum
  * The handler is a thin wrapper over this: it reads the versions off the labels and hands them here.
  * That split exists because of what the handler's first live run showed — its adapter lookup had been
  * spelled in camel case since it was written, the proxy split the name differently, and nothing
- * noticed because nothing called it (T-245). The half that needs no cluster is the half worth
+ * noticed because nothing called it . The half that needs no cluster is the half worth
  * pinning: which versions are kept, which are candidates, and what a retention that makes no sense
  * means.
  *

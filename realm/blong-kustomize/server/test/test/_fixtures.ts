@@ -74,14 +74,14 @@ const suitePlan = (overrides: object = {}): IDeploymentPlan => {
     } as unknown as IDeploymentPlan;
 };
 
-/** The tree a cluster is given once: the operator, its cluster-scoped rights and the CRD (D-397). */
+/** The tree a cluster is given once: the operator, its cluster-scoped rights and the CRD (@@D-397). */
 const installPlan = (overrides: object = {}): IDeploymentPlan =>
     suitePlan({...overrides, install: true});
 
 const nodeLocalVolume = resolveSuiteVolume({backend: 'nodeLocal'});
 const sharedVolume = resolveSuiteVolume({backend: 'shared'});
 /**
- * The volume a *released* artifact is fetched into, rather than one the cluster fills (T-221).
+ * The volume a *released* artifact is fetched into, rather than one the cluster fills .
  *
  * The CR names the source and the tree mounts what it unpacks, so the two have to be one volume; it
  * is here rather than in the step because which suite is fetched is not what the step is about.

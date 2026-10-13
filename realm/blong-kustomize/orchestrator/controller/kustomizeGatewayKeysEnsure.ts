@@ -1,27 +1,4 @@
-/**
- * The suite's gateway keys: one pair per suite, generated when it is missing.
- *
- * Why the tree cannot carry them: it is deterministic — a regenerated tree must be byte-identical,
- * which the realm's tests pin — and a key generated *into* it would change on every run or, worse,
- * live in git. So the realm names a Secret and the *deployment* creates it, the same rule the two rc
- * files follow.
- *
- * Why one pair per suite rather than one per process, which is what the framework does when nothing
- * is configured: a browser's session must survive a restart and a second replica. The handshake is
- * per process, so a per-process pair would make a session belong to whichever replica answered —
- * and the bearer path hands the *descriptor* it was configured with to `jose`, which accepts only key
- * material, so a released process does not merely get unstable keys: it fails where a `dev` run works
- * (`dev` supplies material — `devSignKey`/`devEncryptKey`). That is the defect this works around, and
- * a secret manager is the durable answer (recorded as a todo).
- *
- * The Secret holds one key, `config`, whose value is an rc document — the same shape and the same
- * channel the deployment's rc files use, so no variable of the framework's own choosing appears in a
- * pod's environment (D-441). The generator mounts it as a directory under the pod's home, where
- * `rc('blong_release')` finds `$HOME/.config/blong_release/config`: `gateway.sign`/`gateway.encrypt`
- * for the process that serves the gateway and `remote.client.sign`/`remote.client.encrypt` for the
- * same process calling a peer. Both read the one pair a namespace shares, which is what keeps a
- * browser's session alive across a restart and a second replica.
- */
+/** The suite's gateway keys: one pair per suite, generated into a Secret when missing (@@D-441). */
 import {handler, type IMeta} from '@feasibleone/blong';
 import {generateKeyPairSync} from 'node:crypto';
 import {GATEWAY_KEYS_LABEL, PART_OF_LABEL} from '../../apply.ts';
@@ -61,18 +38,8 @@ export const generateGatewayKeys = (): IGatewayKeys => {
 };
 
 /**
- * The pair as the rc document the pods read.
- *
- * One document rather than two variables because the same pair serves both roles of every process:
- * the gateway a container serves (server, `gateway.*`) and the peers it calls (client,
- * `remote.client.*`). Writing it here, next to the generator, keeps the shape the Secret's writer
- * produces and the shape the mounts expect in one place.
- *
- * The realm's own session mint reads it too (`kustomize.login.session.key`), and that is deliberate:
- * `mle.ts` writes the *public* half back over `gateway.sign`, so a realm cannot reach the private half
- * through the gateway's config — the framework's login realm is given its key as its own configuration
- * for the same reason (D-448). The pair is generated per suite and never committed, so this is the one
- * place it can be handed to a realm.
+ * The pair as the rc document the pods read — one document, because the same pair serves both roles
+ * of every process (@@D-448).
  */
 export const gatewayKeysConfig = (keys: IGatewayKeys): string =>
     JSON.stringify({
@@ -95,8 +62,8 @@ export interface IGatewayKeysOwner {
  * Two labels and an owner reference are the whole of how it is kept. `part-of` is what a pass selects
  * its objects by, so without it the pair is invisible to every listing and outlives the suite it
  * belongs to; the key label is what says a listing which now *can* see it does not make it obsolete;
- * and the reference is what removes it when the declaration does (T-267). One key holds an rc document,
- * because the pods mount the Secret as a directory and `rc` reads the `config` file in it (D-441).
+ * and the reference is what removes it when the declaration does . One key holds an rc document,
+ * because the pods mount the Secret as a directory and `rc` reads the `config` file in it (@@D-441).
  */
 export const gatewayKeysSecret = ({
     name,

@@ -17,7 +17,7 @@ import {
  * The nodes the plan is derived for.
  *
  * A `nodeLocal` volume is one directory per node, so a plan without nodes is a plan whose tree cannot
- * be written — and a unit test has no cluster to ask (D-470).
+ * be written — and a unit test has no cluster to ask (@@D-470).
  */
 const NODES = ['node-a', 'node-b'];
 
@@ -74,7 +74,7 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 // What each realm *is* in a deployment used to be the suite's answer, which meant the
                 // suite had to know about realms it does not own and had to spell one realm twice when
                 // it was loaded under two names. The realm answers now, in its own `server.ts` config:
-                // the loader records it per realm and `describe()` publishes it (D-433).
+                // the loader records it per realm and `describe` publishes it (@@D-437).
                 const view = registryView({
                     describe: () => ({
                         realms: ['srv', 'core', 'blong'],
@@ -136,12 +136,12 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 // deployment is built from, so a field that appears, disappears or changes
                 // meaning should fail here rather than in a cluster. Guarded, because the dev
                 // server's watch runner executes these same groups without a snapshot context
-                // (T-214).
+                // .
                 if (typeof assert.snapshot === 'function') assert.snapshot(first, 'plan');
             },
 
             async function aCrOverridesOnlyWhatItNames(assert: IAssert) {
-                // The CR-driven plan (T-210): a `BlongDeployment` carries inputs, and the fields
+                // The CR-driven plan : a `BlongDeployment` carries inputs, and the fields
                 // it leaves out have to stay with the config rather than falling to a default,
                 // or a CR that mentions its volume would quietly undo a suite's choice. The suite's
                 // *name* is the exception, and not through this mapping: it is the CR's own
@@ -255,7 +255,7 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
             },
 
             async function theRoleDecidesParticipation(assert: IAssert) {
-                // A realm's role decides what it *is* in a deployment (T-235), and the namespace rule
+                // A realm's role decides what it *is* in a deployment , and the namespace rule
                 // is what follows from it: a companion is carried by every process and owns no
                 // Service, a `both` realm is carried everywhere and owns one, and `none` is dropped
                 // before any profile groups anything.
@@ -264,7 +264,7 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 // namespace: it names none of its own, because the realm that carries it declares
                 // which namespace its models answer in (`orchestrator/subject/init.ts`) — while a
                 // port that *did* name `subject` had `unservedNamespaces` publish a Service under
-                // that name in every suite, pointing at every process (F-413's neighbourhood).
+                // that name in every suite, pointing at every process (@@F-413's neighbourhood).
                 const view = {
                     realms: ['srv', 'core', 'marine'],
                     groups: [
@@ -306,7 +306,7 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
             },
 
             async function aSharedOrchestratorDoesNotOwnItsNamespaces(assert: IAssert) {
-                // The shape blong-suite actually produces (T-236): the framework realm's subject
+                // The shape blong-suite actually produces : the framework realm's subject
                 // orchestrator is the *only* dispatch port, and it declares the namespaces of the
                 // realms it carries — `server.subject` declares `subject` and `access`. Reading the
                 // owner off that port pointed the `access` Service at the `server` deployment, so the
@@ -348,7 +348,7 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 // the tenant's CR — each add an entry without knowing about the other, and the merge
                 // combines two arrays by position, which pairs one entry's name with another's ports.
                 // The alias *is* the name the suite resolves, so the resolved entry has one spelling
-                // of it rather than two that can disagree (T-249).
+                // of it rather than two that can disagree .
                 const view = {
                     realms: ['marine'],
                     groups: [{name: 'marine.orchestrator', handlerCount: 1, layer: 'orchestrator'}],
@@ -394,7 +394,7 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 // carried all the way into the tree: a stale CR that still held the list form resolved
                 // to an entry called `0` with no `externalName`, and the apply failed with
                 // `Missing key value for ?key?` — a message that named neither the field nor the CR
-                // (F-403). The declaration is checked where it is read, so the failure says which
+                // (@@F-403). The declaration is checked where it is read, so the failure says which
                 // field, and what it should be.
                 const view = {
                     realms: ['marine'],
@@ -447,13 +447,13 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
             },
 
             async function aCollectionIsMergedByName(assert: IAssert) {
-                // The other half of T-249: `externalServices` was the collection a tenant's CR and a
+                // The other half: `externalServices` was the collection a tenant's CR and a
                 // suite's config both declare, and these are the ones a *realm* declares beside the
                 // suite's. Keyed by the name each entry carries, so the two sources combine — a realm
                 // adds an entry the suite never named, and one that names an entry the suite declared
                 // adds its own fields to it instead of writing a second object of the same name. A list
                 // could only concatenate, which is two Secrets called `shop-db` by the time the tree is
-                // built (T-257).
+                // built .
                 const view = {
                     realms: ['shop'],
                     groups: [{name: 'shop.orchestrator', handlerCount: 1, layer: 'orchestrator'}],
@@ -652,7 +652,7 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 assert.equal(
                     await resolveNodes(undefined, find),
                     undefined,
-                    // Not an empty list: a plan with no nodes is what D-470 refuses later, and saying
+                    // Not an empty list: a plan with no nodes is what @@D-470 refuses later, and saying
                     // so by leaving the field unset is what lets the caller keep its own fallback.
                     'and a deployment that names neither leaves the question open',
                 );

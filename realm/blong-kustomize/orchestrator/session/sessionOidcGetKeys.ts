@@ -4,20 +4,8 @@ import type {JsonWebKey} from 'node:crypto';
 import {sessionPublicKey} from '../../sessionToken.ts';
 
 /**
- * session.oidc.getKeys — the key set a minted session is verified with.
- *
- * The public half of the gateway's own sign key, published where the discovery document says it is
- * (`session.jwksUri`). This is the whole of what makes a minted token verifiable: the framework reads
- * the key set once per issuer, keeps it, and checks every bearer against it — so a session survives a
- * restart and a second replica, because the pair belongs to the suite and not to a process
- * (T-252 is the same reasoning for the pair itself; `kustomizeGatewayKeysEnsure` generates it).
- *
- * Only the public half is published, by `publicSessionJwk` — the same filter the framework's login
- * realm applies before it answers its own key set, and the reason `gateway.config()` is protected
- * there: the private half must never leave the process (D-448).
- *
- * Public like the discovery document beside it: a key set is fetched before verification, and it is
- * public key material by definition.
+ * session.oidc.getKeys — the key set a minted session is verified with, publishing only the public
+ * half (@@D-448).
  */
 export default handler(({gateway, errors}) => {
     return {

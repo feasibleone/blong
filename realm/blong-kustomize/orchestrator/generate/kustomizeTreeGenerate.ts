@@ -6,23 +6,8 @@ import {clusterNodeNames, planFor, planOptionsOf, resolveNodes} from '../../plan
 import {readSpecFile} from '../../spec.ts';
 
 /**
- * kustomize.tree.generate — derive the plan and write the kustomize tree.
- *
- * `outputDir` defaults to the realm config's `outputDir`, then to
- * `system/kustomize` under the current working directory (the suite root when
- * the `k8s` intent runs there). The directory is replaced, not merged, so a
- * regenerated tree never keeps a stale file.
- *
- * `specFile` is the CR the operator is generating for, if there is one: it is read here rather than
- * in the planner so the planner stays free of the filesystem, and it wins only where it names a
- * field (T-234).
- *
- * `layout` is named by the caller, by the realm config, or by the realm's own `k8s` activation
- * (`orchestrator/deploy.ts`), which asks for `base`: the half a repository keeps, with no node and no
- * artifact in it, so dev or CI can generate it without a cluster (T-294). The fallback for a caller that
- * names none at all — an in-process call, a spec — is `flat`, one directory of composed objects, which is
- * what the operator materializes and compares with the cluster (D-395, D-488). `local` writes the deploy's
- * half beside a base that is already there, and `split` writes both halves from one tree (D-475, T-295).
+ * kustomize.tree.generate — derive the plan and write the kustomize tree: `outputDir`, `layout` and
+ * `specFile` decide which half is written (@@D-395 @@D-475 @@D-488).
  */
 /** The node a base-only generation is derived with: the base holds no node, so a stand-in is enough. */
 const STAND_IN_NODE = 'fill-node';

@@ -5,19 +5,8 @@ import {ARTIFACT_READY} from './fill.ts';
 import type {ISuiteArtifact} from './plan.ts';
 
 /**
- * artifact.ts — where a suite's artifact comes from, and where it lands.
- *
- * Two callers share these steps: the operator, which fetches an artifact into its own cache and plans
- * from it, and a node's fill Job, which stages an artifact beside the directory it will occupy and
- * renames it into place. They must agree about where a suite lives and what makes an artifact whole, so
- * the pieces — unpack, link, make portable, mark, retain — are each defined once and differ only in what
- * the caller passes: a literal for the operator, a variable for the fill script.
- *
- * The link script is why none of this is a plain copy: Rush's deploy output carries `create-links.js`
- * instead of symlinks, because an archive cannot hold them, and the links it writes are absolute —
- * computed from the directory the script runs in. Those links are then rewritten as relative ones, which
- * is what makes the artifact readable from wherever a caller places it: a mount path stops being
- * something the artifact has to agree with (D-476).
+ * artifact.ts — where a suite's artifact comes from and where it lands, shared by the operator and a
+ * node's fill Job; the links are rewritten relative (@@D-476).
  */
 
 /**
@@ -26,8 +15,8 @@ import type {ISuiteArtifact} from './plan.ts';
  * The container runs this realm's own `fill.ts` — the file the operator imports — so the code inside a fill
  * Job and the code in the operator's process are one program rather than two that have to agree. It used to
  * be shell text: `curl`, `unzip`, `find`, `ls` and `mv` in the framework image, two of which the image
- * installed for nothing else (D-518). The name is a constant, so an upgrade patches the object rather than
- * replacing it (D-410).
+ * installed for nothing else (@@D-518). The name is a constant, so an upgrade patches the object rather than
+ * replacing it (@@D-410).
  */
 export const FILL_MODULE = {name: 'fill-script', file: 'fill.mts', mountPath: '/script'} as const;
 
@@ -57,7 +46,7 @@ export const fillModuleMount = (): Record<string, unknown> => ({
  * line breaks would be replaced with spaces and the text re-wrapped at the width, and a program that
  * arrived that way would not parse. kustomize re-emits the value it parsed, so the flattening would
  * survive into the cluster. Base64 is one line, which no style can fold, and the kubelet decodes it back
- * into a file of exactly the bytes the realm wrote (D-518). The object itself is the generator's, so that
+ * into a file of exactly the bytes the realm wrote (@@D-518). The object itself is the generator's, so that
  * it carries the labels every other object of a tree carries.
  */
 export const fillModuleData = (): Record<string, string> => ({
@@ -69,7 +58,7 @@ export const fillModuleData = (): Record<string, string> => ({
  *
  * The settings and the marker live in `fill.ts` now, and both names stay reachable from here because the
  * tree and the operator both ask this module for them — and because the mounted copy is that same file
- * (D-518).
+ * (@@D-518).
  */
 export {ARTIFACT_READY, FILL_ENV, fillArtifact, keepNewest, type IFillRequest} from './fill.ts';
 
@@ -92,7 +81,7 @@ export const artifactToken = (value: string): string =>
  * Never the version alone. A rebuilt artifact can ship different files under an unchanged version, which
  * is exactly the case a dev cluster hits on every redeploy — and the version alone would name two
  * different trees identically, so the second artifact would be read as if it were the first, or written
- * over the directory a reader is attached to (D-468, D-469). An artifact that names neither a digest nor
+ * over the directory a reader is attached to (@@D-468 @@D-469). An artifact that names neither a digest nor
  * a stamp falls back to the version, the shape every caller used before the identity existed.
  */
 export const artifactIdentity = (version: string, artifact?: ISuiteArtifact): string => {

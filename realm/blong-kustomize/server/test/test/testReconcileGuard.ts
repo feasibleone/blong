@@ -3,19 +3,8 @@ import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 import {crListingScope} from '../../../orchestrator/controller/kustomizeReconcileRun.ts';
 
 /**
- * server/test/test/testReconcileGuard.ts — what a reconcile pass refuses.
- *
- * A pass has two origins: the registry this process loaded, and a CR it was handed. The registry one
- * means "reconcile the suite this process is", so a process that is the *realm* rather than a suite
- * has no tree of its own to apply — running the realm's own CLI against a cluster planned the realm's
- * bare ports and deployed them into the namespace it was pointed at, which the cluster showed as
- * Deployments called `blong`, `codec` and `kustomize` beside the suite's own (F-406). Nothing
- * complained, because a pass reports what it created.
- *
- * The realm's own test process is exactly that shape, which is why this needs no cluster: it declares
- * no suite entry, so the pass refuses before it reaches an adapter.
- *
- * Registered as the `test.reconcile.guard` group (`integration.watch.test` in `index.ts`).
+ * server/test/test/testReconcileGuard.ts — what a reconcile pass refuses; a registry pass with no
+ * suite entry would deploy the realm's own bare ports (@@F-406).
  */
 export default handler(({lib: {group}, handler: {kustomizeReconcileRun}}) => ({
     testReconcileGuard: ({name = 'reconcile guard'}: {name?: string} = {}) =>
@@ -45,7 +34,7 @@ export default handler(({lib: {group}, handler: {kustomizeReconcileRun}}) => ({
                 // The page's Reconcile button is this caller: it sends `from: 'cr'` and no namespace,
                 // because a deployment page lists a suite it did not have to name. An operator is
                 // configured with one namespace and installed for suites in others, so the pass has
-                // to read the CRs it can see rather than the namespace it happens to know (T-328).
+                // to read the CRs it can see rather than the namespace it happens to know .
                 assert.deepEqual(
                     crListingScope({configured: 'blong-system', held: 0}),
                     {scope: 'any namespace', namespaced: false},

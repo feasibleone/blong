@@ -24,7 +24,7 @@ const generationRoot = (configured?: string): string =>
  * Beside the suite's entry point is where the deploy layout puts a package's own files, so that is asked
  * first; the suite's name is what a CR calls it, so that is asked second; and one bounded walk answers for
  * a layout neither guess knows. Absent is a real answer: an artifact packaged before anything generated a
- * tree has none, and the pass then writes the tree whole as it always did (T-298).
+ * tree has none, and the pass then writes the tree whole as it always did .
  */
 const shippedBase = (artifact: string, entry: string, suite: string): string | undefined => {
     const beside = join(dirname(entry), 'system', 'kustomize', 'base');
@@ -38,36 +38,8 @@ const shippedBase = (artifact: string, entry: string, suite: string): string | u
 };
 
 /**
- * kustomize.suite.generate — write the tree for a CR, by loading that suite's artifact.
- *
- * This is the piece that lets one operator serve every tenant (D-395, T-234). The plan for a suite
- * is derived from *that suite's* registry — which realms it loads, which layers they expose, which
- * namespaces they answer for — so the process that plans it has to be running that suite's code.
- * The operator does not, and must not: it is installed once per cluster, while the suite it
- * reconciles arrives as an artifact. So the work happens in a short-lived child: this process
- * fetches the artifact (D-398), writes the CR's spec beside it, and runs the framework's own CLI
- * over it with the `k8s` intent, which is the intent that introspects a registry, writes a tree and
- * exits.
- *
- * The child is the CLI this process was launched with (`process.argv[1]`) rather than a name looked
- * up on `PATH`, so the operator generates with the framework version it is running, and not with
- * whatever else is installed beside it. That is the right entry for every process the framework
- * starts — a suite entry, re-run with a different suite and the `k8s` intent.
- *
- * It is the wrong one for the realm's own CLI, whose `argv[1]` is a *realm* command line and not a
- * framework entry: re-running it with a suite entry as its first positional answers with the realm's
- * usage text, so a pass run through `blong-kustomize reconcile --from=cr` fetched its artifact and
- * then died in the child. Hence the override: the CLI names the framework bin it is built on, and
- * everything else keeps the version it was launched with.
- *
- * Since the artifact carries the tree's *base* — the half generated in dev or CI, holding nothing this
- * deploy owns — the child writes only the overlay: the base is copied into the output directory first, the
- * child runs with `layout=local`, and the two halves are materialized into the objects the pass compares
- * with the cluster (D-488, T-298). That is what makes the design that runs the one that was deployed
- * rather than the one this image's generator would have written. An artifact with no base falls back to the
- * child writing the tree whole, which is what every pass did before — and that fallback *names* `flat`
- * rather than taking a default: a pass applies what the child wrote, while the default a repository wants is
- * the half a pass cannot apply (D-490).
+ * kustomize.suite.generate — write the tree for a CR by loading that suite's artifact in a child
+ * (@@D-395 @@D-398 @@D-488 @@D-490).
  */
 export const CHILD_ENTRY_ENV = 'KUSTOMIZE_CHILD_ENTRY';
 
@@ -77,7 +49,7 @@ export const CHILD_ENTRY_ENV = 'KUSTOMIZE_CHILD_ENTRY';
  * Exported because the one argument that differs between the two paths decides whether a pass applies a tree
  * or a design half: an artifact that ships the base gets the overlay written beside it, one that does not
  * gets the tree whole, and neither path leaves that to a default — the layout a repository wants is the
- * half a pass cannot apply (D-490).
+ * half a pass cannot apply (@@D-490).
  */
 export const suiteGenerateArgs = ({
     entry,
@@ -144,7 +116,7 @@ export default handler(({handler}) => ({
                 artifact: spec.suiteVolume?.artifact,
                 cacheDir,
                 // The same number the volumes are kept by, because the two caches hold the same thing and
-                // an operator's cache is per suite (D-471, T-286).
+                // an operator's cache is per suite (@@D-471).
                 retention: spec.suiteVolume?.retention ?? DEFAULT_RETENTION,
             },
             $meta,
@@ -153,7 +125,7 @@ export default handler(({handler}) => ({
         const entry = artifactEntry(fetched.dir, spec.entry);
         // The half the artifact ships, and the half only this deploy knows. A base present means the child
         // writes the overlay alone; a base absent means the artifact predates the split and the child writes
-        // the tree whole (T-298).
+        // the tree whole .
         const base = shippedBase(fetched.dir, entry, suite);
         if (base) {
             // Replaced rather than merged: the output directory is per *suite* while a base belongs to one
@@ -164,7 +136,7 @@ export default handler(({handler}) => ({
             // deployment brings is written by the overlay, and the overlay reaches a service by the path
             // its folder has (`../services/<name>`), so a folder the artifact ships has to be in the
             // output directory for that reference to resolve. A folder the artifact does not ship is
-            // generated by the child instead, which is what keeps an older artifact deployable (D-504).
+            // generated by the child instead, which is what keeps an older artifact deployable (@@D-504).
             const shippedServices = join(dirname(base), 'services');
             if (existsSync(shippedServices)) {
                 // A service the declaration switched off is left behind, folder and all. The overlay
@@ -172,7 +144,7 @@ export default handler(({handler}) => ({
                 // every folder under `services/` whether the overlay names it or not, and an object
                 // nothing stamps a namespace for lands in the client's own namespace, where the
                 // operator's account is refused: the pass fails instead of retiring the service
-                // (F-480, D-514).
+                // (@@F-480 @@D-514).
                 const switchedOff = new Set(
                     Object.entries(spec.services ?? {})
                         .filter(([, value]) => value === false)
@@ -206,7 +178,7 @@ export default handler(({handler}) => ({
             // child as well: a `k8s` run with an interval starts reconciling — it opened a
             // cluster-wide watch of every `BlongDeployment`, failed on it (`listClusterCustomObject`
             // of an undefined client, because a generation run builds no cluster client) and threw,
-            // which took the pass down and the operator process with it (T-229's family: a rejected
+            // which took the pass down and the operator process with it (a rejected
             // dispatch ends the process rather than failing the call). Strip the keys rather than
             // pass a curated environment: the child needs the pod's environment for everything else
             // — the namespace it resolves names in, the release files it reads.
@@ -229,7 +201,7 @@ export default handler(({handler}) => ({
         }
         // What a pass applies, composed from everything the child wrote: the two halves without kustomize
         // (`materializeSplitTree`), and the service folders beside them — which are what a deployment opts
-        // in, and which no pass would apply if this read the halves alone (D-504).
+        // in, and which no pass would apply if this read the halves alone (@@D-504).
         const tree = materializeGeneratedTree(outputDir);
         return {outputDir, tree, artifact: fetched.dir, files: [...tree.keys()]};
     },

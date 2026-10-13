@@ -1,29 +1,6 @@
 /**
- * materialize.ts — turn a split tree's two halves back into the objects a deploy applies.
- *
- * A split tree is not a tree the operator can apply directly: its base holds a `PLACEHOLDER` where a
- * value the deploy owns belongs, and the objects whose *name* the deploy owns live there as templates
- * the overlay instantiates. Kustomize is what normally composes the two, but the operator is a process
- * in the cluster: it reads objects and compares them with the cluster (D-395), and it does not ship a
- * kustomize binary. So it composes here, in JS, over the two halves it already has (D-488, T-296).
- *
- * The plan is deliberately not an argument: everything this needs is in the overlay — the suffix an
- * instance's real name is built from, and the patch carrying the values the base left out. That is also
- * what makes the committed base the design that runs: a base from an older revision materializes with
- * the values of *this* deploy, not with what the current generator would have written.
- *
- * Per path of the base:
- *
- * - a template the overlay instantiates becomes one object per instance, named with the instance's
- *   `nameSuffix` and patched with what its kustomization holds;
- * - an object the overlay patches is merged with that patch;
- * - everything else is the base's object as it stands;
- * - and each object is re-stamped, because the fingerprint travels in the patch: a base fingerprint is
- *   the hash of a placeholder, which would read as "changed" to whoever compares next.
- *
- * Kustomization files are skipped: they are build instructions, and the templates are shapes rather than
- * objects. Everything the base holds besides those is an object, which is what the split promises — and
- * what the round trip against {@link buildKustomizeTree} checks, object for object.
+ * materialize.ts — compose a split tree's two halves into the objects a deploy applies, in JS because
+ * the operator ships no kustomize (@@D-395 @@D-488).
  */
 import {existsSync} from 'node:fs';
 import {join} from 'node:path';
@@ -40,20 +17,8 @@ import {
 const parsedPatch = (patch: string): unknown => parse(patch) as unknown;
 
 /**
- * The merge keys kustomize's schema gives the lists a generated object can carry.
- *
- * A narrowed mirror of the upstream schema, which is the honest half of D-488: the composer a human
- * runs is `kubectl kustomize`, the operator composes the same tree in JS, and the JS half therefore has
- * to know what upstream knows about the lists a generated object holds — and nothing more, because a
- * schema for every kind is what this deliberately avoids.
- *
- * A rule names the *tail* of a list's path, and the longest match wins, because one field is keyed
- * differently in two places: a container's `ports` merge on `containerPort` while a Service's merge on
- * `port`, and only the path tells them apart. `key` is the field the entries merge on. A list of scalars
- * needs no rule — a strategic merge replaces it, which is what a Job's `args` wants — and a list of maps
- * that no rule names is refused rather than guessed at. An Ingress's `rules` and the `paths` inside them
- * are deliberately absent: the binary replaces both lists rather than merging them, which the step that
- * holds this table to it shows, so a patch carrying one is refused instead of composed (D-517).
+ * The merge keys kustomize's schema gives the lists a generated object can carry — the JS half of
+ * @@D-488, and nothing more (@@D-517).
  */
 export const LIST_MERGE_RULES: Array<{kind?: string; path: string[]; key: string}> = [
     // The pod specs of every workload a tree writes: a Deployment, a DaemonSet, a StatefulSet, a Job and
@@ -98,7 +63,7 @@ const listRuleAt = (at: IMergeAt): {kind?: string; path: string[]; key: string} 
  * of maps that all carry a `name` merges by it, anything else is replaced — was right for the shapes the split
  * happens to write today and wrong wherever upstream keys a list by something else, which is a difference
  * nothing would have reported: the pass would compose one object and a human's `kubectl apply -k` another
- * (F-480). The refusal names the path, and the patch that carries one is the overlay's, written by this
+ * (@@F-480). The refusal names the path, and the patch that carries one is the overlay's, written by this
  * realm, so the failure points at a line this realm can fix.
  */
 const mergeInto = (target: unknown, patch: unknown, at: IMergeAt): unknown => {
@@ -118,7 +83,7 @@ const mergeInto = (target: unknown, patch: unknown, at: IMergeAt): unknown => {
         // The patch's entries come first, in the patch's own order, and the base's entries the patch did
         // not touch follow. A strategic merge moves a list element it patches to the front rather than
         // leaving it where it was — a fact the generator already works around when it writes a list (the
-        // fill Job's environment carries the whole list, D-481) and one this has to copy rather than
+        // fill Job's environment carries the whole list, @@D-481) and one this has to copy rather than
         // improve on, because the composer the operator runs and the composer a human's `apply -k` runs
         // have to produce the same object.
         const untouched = [...target];
@@ -247,23 +212,8 @@ const withNamespace = (resource: KustomizeResource, namespace?: string): Kustomi
 };
 
 /**
- * The objects a pass applies for a tree a deployment generated: the halves it wrote, and the service
- * folders that sit beside them — each stamped with the namespace the deployment owns.
- *
- * A service is not in the base — a deployment opts one in, and a folder holds what that deployment
- * brings (D-504) — so composing the two halves alone left every service object out of the tree the pass
- * reconciles: an opted-in service's workload was never applied, and everything live that belonged to one
- * read as obsolete, so the pass pruned the alias and the credentials copy the runbook had just written.
- *
- * A split carries no namespace either, because it is the *deployment's*: the suite's objects take the
- * namespace the CR was declared in, and a service's the namespace that CR names (D-506). The overlay's two
- * children declare them — `suite/kustomization.yaml` and `backing/kustomization.yaml` — which is kustomize's
- * own mechanism, and the reason the stamping has to happen here as well: the operator composes the halves
- * in JS instead, so nothing else would put a namespace on an object at all, and every one of them would
- * read as changed and land in the process's own namespace.
- *
- * Read from the directory rather than passed in, because what is written there *is* the tree: `base/`,
- * `local/`, and one folder per service. A tree that has no halves is read whole.
+ * The objects a pass applies for a generated tree: the halves and the service folders beside them,
+ * each stamped with the namespace the deployment owns (@@D-504 @@D-506).
  */
 export const materializeGeneratedTree = (dir: string): KustomizeTree => {
     const half = (name: string): KustomizeTree =>
@@ -278,7 +228,7 @@ export const materializeGeneratedTree = (dir: string): KustomizeTree => {
     // under `services/` — composed a service the deployment never asked for: an artifact ships the
     // folders of the suite it was built with, and a CR that switched one off left its objects in the
     // plan, in no namespace at all, so the pass applied them in the client's own namespace or was
-    // refused there (F-480). Kustomize ignores a folder nothing references, and so must this.
+    // refused there (@@F-480). Kustomize ignores a folder nothing references, and so must this.
     const backing = declared('backing/kustomization.yaml');
     const services = backing?.['namespace'] as string | undefined;
     const referenced = (Array.isArray(backing?.['resources']) ? backing['resources'] : [])
@@ -313,7 +263,7 @@ export const materializeGeneratedTree = (dir: string): KustomizeTree => {
 
 /**
  * Compose a base and its overlay into the object set a deploy applies: the same objects kustomize would
- * render, which for one plan is the flat tree (D-473, D-475).
+ * render, which for one plan is the flat tree (@@D-475).
  */
 export const materializeSplitTree = (
     base: KustomizeTree,
@@ -383,7 +333,7 @@ export const materializeSplitTree = (
 
     // And what the overlay holds as an object of its own is one the deploy applies. The namespace a
     // service runs in and the rights the operator has there exist only because a deployment brings one,
-    // so they are the overlay's rather than the base's (D-504) — and a composition that took only
+    // so they are the overlay's rather than the base's (@@D-504) — and a composition that took only
     // instances and patches from the overlay left both out of the tree a pass reconciles, which the
     // applied-set test caught as two ids missing.
     for (const [path, resource] of overlay) {

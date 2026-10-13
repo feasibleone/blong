@@ -103,6 +103,7 @@
     "activationEvents": [
         "onFileSystem:restfs",
         "onFileSystemAccess:restfs",
+        "onTerminal:bash",
         "onUri"
     ],
     "dependencies": {

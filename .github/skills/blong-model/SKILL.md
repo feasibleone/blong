@@ -39,8 +39,8 @@ Canonical framework rules + pitfalls + archetype: `.github/skills/_shared/conven
 **Using** the model system: declaring `IModelSpec` objects, wiring them into a realm component
 handler, mock data for Storybook, and dropdown references. For internals see **blong-model-dev**;
 for concept/architecture see
-[blong-browser Model concept](../../docs/blong/docs/concepts/blong-model.md) and
-[Model Pattern](../../docs/blong/docs/patterns/blong-model.md).
+[blong-browser Model concept](../../../docs/blong/docs/concepts/blong-model.md) and
+[Model Pattern](../../../docs/blong/docs/patterns/blong-model.md).
 
 ---
 

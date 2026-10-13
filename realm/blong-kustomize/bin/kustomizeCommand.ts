@@ -1,17 +1,6 @@
 /**
- * The realm CLI's own vocabulary: its usage text, and how a command line names a method.
- *
- * It lives beside the entry point rather than inside it, and that is not a matter of taste. The
- * framework's `isCliEntry` guard exists so a `bin/*.ts` can be imported by a test without running a
- * command — but a test under a *layer folder* is a module the loader imports on every load, `cli`
- * included (recording handler folders is what `Registry.describe()` reads). So a test importing the
- * entry point puts the entry's own `await runCli(...)` on the load path it is waiting for: the entry
- * is mid-evaluation, the loader awaits this module, and this module's import of the entry awaits the
- * entry. Node reports that as an unsettled top-level await and exits 13 with no output at all, which
- * is a deadlock wearing a hang's clothes (F-394).
- *
- * Keeping everything worth testing here means the entry point has no inbound import, and a test can
- * drive the commands without arming that trap.
+ * The realm CLI's own vocabulary: its usage text and how a command line names a method, kept out of
+ * the entry point so a test can import one without arming the deadlock (@@F-394).
  */
 import type {ParsedArgs} from '@feasibleone/blong-gogo/cli.ts';
 

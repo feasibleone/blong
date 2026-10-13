@@ -2,7 +2,7 @@
  * The operator's Deployments page, driven against a deployed operator.
  *
  * What it proves is the last mile rather than the page: the process that answers the deployment read API
- * is the one serving the UI (D-434's install-level host), so a browser reaching the operator's gateway
+ * is the one serving the UI (@@D-523's install-level host), so a browser reaching the operator's gateway
  * gets the portal, logs in with a cluster identity, and reads the cluster's Deployments back through
  * `kustomize.deployment.find`. Temporary while the committed shape is decided.
  */
@@ -23,7 +23,7 @@ test.describe('Operator deployment page', () => {
     // The `Created` cell is the cluster's timestamp for the Deployment object — the one thing on
     // this page that changes while nothing about the deployment does — so it is redacted rather
     // than budgeted for: the budget this config asks for is the size of noise, because a difference
-    // on the page is exactly what this screenshot exists to show (F-507).
+    // on the page is exactly what this screenshot exists to show (@@F-507).
     browseModel(test, expect, {
         subject: 'kustomize',
         object: 'deployment',

@@ -1,20 +1,8 @@
 import {model} from '@feasibleone/blong';
 
 /**
- * meta/model/kustomizeDeploymentModel.ts — the Deployments page.
- *
- * The rows are the cluster's Deployments, read back through
- * `kustomize.deployment.find`, which proxies to the Kubernetes adapter. That is why this
- * spec is smaller than a CRUD model: there is no table, so there is no `add` and no
- * `remove` handler, and there is no detail entity — the realm's state *is* the Kubernetes
- * objects its plan generates and its operator converges, and a second copy of that state
- * in a database is the duplication this realm exists to avoid.
- *
- * The one action that changes anything is Reconcile, and it changes it in the cluster
- * rather than here. It calls `kustomize.reconcile.run` with `apply`, and it confirms
- * first: a page anyone with cluster access can open should not write on a stray click. It
- * never sends `prune`, so nothing is deleted from the UI — removal stays the one thing
- * that takes an explicit, separate word.
+ * meta/model/kustomizeDeploymentModel.ts — the Deployments page, read back through
+ * `kustomize.deployment.find`; its one action is Reconcile, which confirms first and never prunes.
  */
 export default model(
     () =>
@@ -82,10 +70,10 @@ export default model(
                             // objects this page lists were generated for the suite a CR declares, and
                             // a pass from the registry origin reconciles the install this process *is*
                             // instead — a plan built before its artifact is materialized, which names
-                            // no volume identity and waits on a fill Job that never exists (F-502).
+                            // no volume identity and waits on a fill Job that never exists (@@F-502).
                             // The tenant is left to the handler: a suite's own portal is configured
                             // with its namespace, and the operator's portal is answered about whatever
-                            // CRs it can see, with the answer naming which one it read (T-328).
+                            // CRs it can see, with the answer naming which one it read .
                             params: {apply: true, from: 'cr'},
                             refresh: true,
                         },
