@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { ARTIFACT_READY } from './fill.ts';
-import type { ISuiteArtifact } from './plan.ts';
+import {createHash} from 'node:crypto';
+import {existsSync, readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {ARTIFACT_READY} from './fill.ts';
+import type {ISuiteArtifact} from './plan.ts';
 
 /**
  * artifact.ts — where a suite's artifact comes from and where it lands, shared by the operator and a
@@ -65,7 +65,7 @@ export const fillModuleData = (): Record<string, string> => ({
  * tree and the operator both ask this module for them — and because the mounted copy is that same file
  * (@@D-518).
  */
-export { ARTIFACT_READY, FILL_ENV, fillArtifact, keepNewest, type IFillRequest } from './fill.ts';
+export {ARTIFACT_READY, FILL_ENV, fillArtifact, keepNewest, type IFillRequest} from './fill.ts';
 
 /**
  * The short token one artifact's directories carry: eight characters of its digest, or a digest of the

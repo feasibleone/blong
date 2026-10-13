@@ -26,3 +26,7 @@ empty string. The extension's own instructions told readers to send HTTP Basic c
 server implements auth false or jwt only, and the quick-start showed a flat restfs.baseUrl where the
 code reads the workspace map keyed by name; both documents were corrected while the F4 post was
 written, and the three behaviour gaps remain.
+
+## Retired
+
+- T-339 — done 2026-10-13

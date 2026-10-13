@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 
 /**
- * The `@@` cross-reference spike: hover a token in a source file, a doc page or a
+ * The `@@` cross-reference feature: hover a token in a source file, a doc page or a
  * skill, and see the memory entry or page it names; click it to open; F12 to jump to
  * the entry's own line.
  *
@@ -96,16 +96,6 @@ function exportFromCli(root: string): Promise<IMemoryIndex | null> {
     });
 }
 
-/** Read a checked-in fixture, for when the CLI is not on PATH. */
-function fixtureIndex(root: string): IMemoryIndex | null {
-    const fixture = path.join(root, 'plans', 'memory-prose', 'spike', 'index.json');
-    try {
-        return JSON.parse(fs.readFileSync(fixture, 'utf8')) as IMemoryIndex;
-    } catch {
-        return null;
-    }
-}
-
 /** The reference index, loaded once and remembered. */
 async function getIndex(): Promise<{index: IMemoryIndex; root: string} | null> {
     if (cached !== undefined) {
@@ -126,7 +116,7 @@ async function getIndex(): Promise<{index: IMemoryIndex; root: string} | null> {
               }
           })()
         : null;
-    const index = fromOverride ?? (await exportFromCli(root)) ?? fixtureIndex(root);
+    const index = fromOverride ?? (await exportFromCli(root));
     cached = index ? {index, root} : null;
     if (!index) {
         vscode.window.setStatusBarMessage(
@@ -245,57 +235,8 @@ function tokensIn(document: vscode.TextDocument, index: IMemoryIndex, root: stri
     return found;
 }
 
-/** The markdown `memory://` renders: an entry, or a doc/skill page. */
-function renderMemoryDocument(uri: vscode.Uri, index: IMemoryIndex, root: string): string {
-    const kind = uri.authority;
-    const key = decodeURIComponent(uri.path.replace(/^\//, ''));
-
-    if (kind === 'entry') {
-        const id = key.toUpperCase();
-        const entry = index.entries[id];
-        if (entry) {
-            const also = entry.alsoIn?.length ? `\n\n_also in:_ ${entry.alsoIn.join(', ')}` : '';
-            return `# ${id} — ${entry.title}\n\n> _${entry.date} · ${entry.area} · ${entry.status}_
-
-${entry.body}${also}
-
----
-
-\`${entry.file}:${entry.line}\``;
-        }
-        const retired = index.retired?.[id];
-        if (retired) {
-            return `# ${id} — retired\n\n${retired.fate}\n\n---\n\n\`${retired.file}\``;
-        }
-        return `# ${id}\n\nNo entry with this id. Run \`blong-dev memory refs --dangling\`.`;
-    }
-
-    const page = kind === 'doc' ? index.docs[key] : index.skills[key];
-    if (!page) {
-        return `# ${key}\n\nNo such ${kind}.`;
-    }
-    try {
-        const text = fs.readFileSync(path.join(root, page.file), 'utf8');
-        const body = text.replace(/^---\n[\s\S]*?\n---\n/, '');
-        const anchor = uri.fragment ? `\n\n_Section: #${uri.fragment}_` : '';
-        return `<!-- ${page.file} -->${anchor}\n\n${body}`;
-    } catch {
-        return `# ${page.title}\n\n${page.file} could not be read.`;
-    }
-}
-
 /** Register the providers that make `@@` tokens navigable. */
 export function registerMemoryReferences(context: vscode.ExtensionContext): void {
-    const contentProvider = vscode.workspace.registerTextDocumentContentProvider('memory', {
-        async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
-            const loaded = await getIndex();
-            if (!loaded) {
-                return '# No reference index\n\n`blong-dev memory export` did not run.';
-            }
-            return renderMemoryDocument(uri, loaded.index, loaded.root);
-        },
-    });
-
     const linkProvider = vscode.languages.registerDocumentLinkProvider(
         {scheme: '*'},
         {
@@ -365,11 +306,5 @@ export function registerMemoryReferences(context: vscode.ExtensionContext): void
     watcher.onDidCreate(invalidate);
     watcher.onDidDelete(invalidate);
 
-    context.subscriptions.push(
-        contentProvider,
-        linkProvider,
-        hoverProvider,
-        definitionProvider,
-        watcher,
-    );
+    context.subscriptions.push(linkProvider, hoverProvider, definitionProvider, watcher);
 }

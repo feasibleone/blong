@@ -46,28 +46,6 @@
                 "group": "watch",
                 "reveal": "never"
             }
-        },
-        {
-            "options": {
-                "cwd": "${workspaceFolder}/ext/rest-fs"
-            },
-            "type": "npm",
-            "script": "watch-tests",
-            "problemMatcher": "$tsc-watch",
-            "isBackground": true,
-            "presentation": {
-                "reveal": "never",
-                "group": "watchers"
-            },
-            "group": "build"
-        },
-        {
-            "options": {
-                "cwd": "${workspaceFolder}/ext/rest-fs"
-            },
-            "label": "tasks: watch-tests",
-            "dependsOn": ["npm: watch", "npm: watch-tests"],
-            "problemMatcher": []
         }
     ]
 }
