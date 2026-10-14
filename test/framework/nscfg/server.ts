@@ -14,7 +14,14 @@ export default server(blong => ({
             },
         },
         integration: {
-            nscfg: {},
+            nscfg: {
+                // Declared by the suite for its child, never by the realm's own
+                // source: the loader must accept a key the parent gave the module,
+                // or a realm that reads its configuration from its suite — how a
+                // suite tells a realm what its pages render — fails to start
+                // (@@D-554).
+                fromSuite: 'suite-value',
+            },
             watch: {
                 test: ['test.cfg.get'],
             },

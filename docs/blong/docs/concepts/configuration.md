@@ -54,15 +54,20 @@ export default adapter(blong => ({
 The load checks each module's config block against it and fails at startup with the offending path,
 so an override addressed one key too shallow — `--kustomize.outputDir` where the port is
 `kustomize.deploy` — is named rather than dropped in silence. A key is allowed when the module
-declared it, when it is one of the module's children, when it names a port the module registered, or
-when the module's own source config names it.
+declared it, when it is one of the module's children, when it names a port the module registered,
+when the module's own source config names it, when the module's parent declared it in its block for
+this module, or when it is one of the keys the load itself merged in — a handler group's own
+`config.ts` becomes a key of its realm's block. The last two are why a suite root may configure a
+child realm (`commander: {showParentRow: true}`) without the realm repeating the key.
 
 Two limits are deliberate. A module that declares no schema has no way to say which keys are
 legitimate, so its own keys cannot be judged — only the platform root narrows the check to the keys
 the command line introduced, because a shared rc file carries keys for every suite in the
-repository. And the schema is used for unknown keys and types only: `required` keys and unknown keys
-inside a declared nested object are not enforced yet, because the schemas the repository ships are
-still incomplete.
+repository. That narrowing is empty under the `cli` intent, where the command line is the command's
+interface rather than configuration: `runCli` parses those flags itself and passes them as handler
+params, so a flag that also lands in the config is not an override. And the schema is used for
+unknown keys and types only: `required` keys and unknown keys inside a declared nested object are
+not enforced yet, because the schemas the repository ships are still incomplete.
 
 The check runs as the process loads, and again before a reloaded snapshot is installed: an rc edit
 that introduces an unknown key is refused, the previous configuration stays in place, and the

@@ -140,9 +140,9 @@ export default adapter(blong => ({
 ```
 
 The check is composed from the module's structure as well as the schema, so a child key, a
-registered port's name and a key the module's own source names are legitimate without being
-declared. See the [configuration concept](../concepts/configuration.md#validation) for the two
-deliberate limits.
+registered port's name, a key the module's own source names, a key its parent declared for it and a
+handler group's config key are legitimate without being declared. See the
+[configuration concept](../concepts/configuration.md#validation) for the two deliberate limits.
 
 ## Where the configuration came from
 

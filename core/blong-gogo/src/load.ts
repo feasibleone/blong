@@ -1479,6 +1479,11 @@ export default async function loadRealm<T extends TSchema>(
             : [];
 
     let realm: IRealm;
+    // The keys the block had before the children loaded, so the allow-list can tell
+    // a key the loader merged in (a handler group's own `config.ts` becomes a key of
+    // its realm's block, under the group's folder name) from one the source or a
+    // parent declared (@@D-554).
+    const keysOnEntry = new Set(Object.keys(mergedConfig));
     for (let item of items
         .concat(children.map(trackChild) as [])
         .concat(extraChildren)
@@ -1828,16 +1833,19 @@ export default async function loadRealm<T extends TSchema>(
      * Unknown keys are always judged; the type checks only apply where the module
      * declared a `validation` schema. The allow-list is what the module's
      * structure legitimises: one key per child module (a layer folder, a named
-     * realm), one per port it registered (`kustomize.deploy`), and the keys its
-     * own source config blocks name. It is read here rather than before the loop
-     * because a port's name — the key an override addresses it by — is only known
-     * once its layer has loaded (@@F-370 @@D-547).
+     * realm), one per port it registered (`kustomize.deploy`), the keys its own
+     * source config blocks name, the keys its parent declared for it, and the keys
+     * the loader itself merged in while the children loaded. It is read here rather
+     * than before the loop because a port's name — the key an override addresses it
+     * by — and a handler group's config key are only known once the children have
+     * loaded (@@F-370 @@D-547 @@D-554).
      *
      * At the platform root the unknown-key check is narrowed to the keys the
      * command line introduced: a shared rc file carries keys for every suite in
      * the repository, and those are the developer's own settings, not a mistake.
      * A nested module is judged on all of its keys, since an override reaches it
-     * by name.
+     * by name — and a `cli` run judges none of them, because there the command
+     * line is the command's interface rather than configuration (@@D-555).
      */
     {
         const allow = new Set<string>();
@@ -1856,6 +1864,24 @@ export default async function loadRealm<T extends TSchema>(
         for (const child of frameworkChildren) addChild(child);
         for (const block of declaredBlocks)
             if (block && typeof block === 'object') Object.keys(block).forEach(addKey);
+        // The keys the parent declared for this module. The block this module was
+        // handed *is* the parent's block for it — `merge` puts `parentConfig`
+        // last — so each of its top-level keys was written as `<name>.<key>`: by
+        // the parent's own config, or by an rc file or the command line
+        // addressing the parent. A suite root configuring a child realm this way
+        // (`commander: {showParentRow: true}`) is how a realm is told what its
+        // pages render, so the key is legitimate here even though the module's
+        // own source never names it (@@D-554). At the platform root this is a
+        // string — the entry, not a block — and the module's own declared config
+        // is the whole story.
+        if (parentConfig && typeof parentConfig === 'object')
+            Object.keys(parentConfig).forEach(addKey);
+        // Keys the loader merged into the block while the children loaded. A handler
+        // group that carries its own `config.ts` gets a key of its realm's block, under
+        // the group's folder name (`orchestrator/cfg/config.ts` → `cfg`), and nothing in
+        // the realm's source names it — the group is structure, and the key is how the
+        // group is configured (@@D-554).
+        for (const key of Object.keys(mergedConfig)) if (!keysOnEntry.has(key)) addKey(key);
         // A port registered under this module (`kustomize.deploy`) is addressed by
         // its name, so its name is a legitimate key here.
         const ports = (api?.registry as {ports?: {keys: () => Iterable<string>}} | undefined)
@@ -1864,13 +1890,27 @@ export default async function loadRealm<T extends TSchema>(
             if (typeof portId === 'string' && portId.startsWith(name + '.'))
                 addKey(portId.slice(name.length + 1));
         }
-        const cliKeys = typeof parentConfig === 'string' ? configRuntime?.sources?.argv : undefined;
+        // Which keys the unknown-key check may name. At the platform root that is the
+        // command line and only the command line — a shared rc file carries keys for
+        // every suite in the repository, and those are the developer's own settings,
+        // not a mistake. Under `cli` the set is empty: there the process's command line
+        // is the command's interface, `runCli` parses those flags itself and passes them
+        // as handler params, so a flag that also lands in the config (`--value`,
+        // `--output`) is not an override, and judging it named every command flag an
+        // unknown key (@@D-555). A nested module is judged on all of its keys, since an
+        // override reaches it by name.
+        const rootKeys =
+            typeof parentConfig === 'string'
+                ? new Set<string>(
+                      configNames.includes('cli') ? [] : (configRuntime?.sources?.argv ?? []),
+                  )
+                : undefined;
         const validateBlock = (block: unknown): void => {
             const issues = validateConfigBlock(
                 block,
                 mod.validation,
                 allow,
-                cliKeys ? {onlyUnknownKeys: new Set(cliKeys)} : {},
+                rootKeys ? {onlyUnknownKeys: rootKeys} : {},
             );
             if (issues.length) throw new Error(formatConfigIssues(name, issues));
         };
