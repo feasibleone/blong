@@ -58,7 +58,7 @@ open (39)
 - `F-524` · core/blong-gogo — The config reload was never attached to the watcher
 - `F-527` · core/blong-gogo — The config allow-list missed the keys the loader and the parent write
 
-resolved (34)
+resolved (35)
 
 - `F-094` · core/blong-gogo — Knex `table.list` prefixed table names with the subject twice
 - `F-095` · core/blong-gogo — tap's order-sensitive snapshots broke on an appended `id` field
@@ -101,6 +101,8 @@ resolved (34)
 - `F-508` · core/blong-gogo — The session check never passes the resolution, so its fix cannot live
   there
 - `F-509` · core/blong-gogo — A module-level hand-over never reached the resolver
+- `F-528` · core/blong-gogo — A test serving on the default port reports a busy port as a shutdown
+  failure
 
 <!-- /memory:index -->
 
@@ -1161,3 +1163,33 @@ ports 1 of 4 immediately, which is what a working mechanism failing looks like.
 Fixed by deletion: the module-level hand-over went away with the abandoned design, which the
 codec-level skip replaced. The lesson stands and was the reason to prefer configuration the
 components read over process-wide state.
+
+### F-528 — A test serving on the default port reports a busy port as a shutdown failure
+
+> _2026-10-14 · core/blong-gogo · resolved_
+
+The graceful-shutdown spawn test failed in CI builds 618 and 619 ("exit code 0 (graceful shutdown),
+got 1") and passed locally every time. It was recorded as a timing suspicion, but the cause was the
+port: the `blong-hello` fixture serves on the framework's default gateway port (8080), and the job
+runs every project's tests on one runner (`rush ci-test --parallelism=max`), so a sibling project's
+server holds 8080 often enough. Occupying 8080 locally reproduces the failure exactly — the CLI dies
+of `EADDRINUSE` with exit 1, before its shutdown handler is installed, so it looks indistinguishable
+from a graceful shutdown that did not happen.
+
+Two things made it take a second investigation rather than a glance. The test asserted only the exit
+code and the stderr marker, so the failure reported (`got 1`) carried none of the child's output;
+and the CI job's log cannot be downloaded for this repository without admin rights (the API answers
+"Must have admin rights to Repository"), so the published failure report is the only evidence — and
+it keeps just the first failing assertion's message. The lesson: a test that binds a fixed port
+asserts about whichever other process the machine happens to be running, and a test that spawns a
+process should put that process's output in its failure message.
+
+The test now asks for an OS-chosen gateway port, waits for the readiness line instead of a fixed
+10-second delay before sending SIGTERM, forces an exit with SIGKILL if the teardown hangs, and
+appends the child's stderr and the last stdout lines to the message. It also runs in under a second
+instead of ten. A signal that arrives mid-start is no longer possible: the readiness line is logged
+after `platform.start()` returned, which is when the handler is installed.
+
+Resolved by the test rewrite in this change: OS-chosen gateway port, signal sent on the readiness
+line, SIGKILL watchdog, and the child's output in the failure message. Verified by occupying 8080
+and re-running (3/3, 0.8s) and by the full suite (782/782).

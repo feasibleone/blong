@@ -24,7 +24,6 @@ open (28)
 - `F-273` · tools/blong-dev — Joining a report failure to the history by name
 - `F-280` · tools/blong-dev — CI=1 locally stops at a sudo prompt from playwright
   install --with-deps
-- `F-314` · tools/blong-dev — A timed-out suite leaves its dev server holding the port
 - `F-317` · tools/blong-dev — The format pass re-wrapped the user's own Manual list
 - `F-324` · tools/blong-dev — Node type stripping rejects TS parameter properties
 - `F-325` · tools/blong-dev — A cached stats read made a finished ingest look stuck
@@ -40,6 +39,7 @@ open (28)
 - `F-512` · tools/blong-dev — A link rewrite refused in silence: the column pointed at the bracket
 - `F-515` · tools/blong-dev — A prune wrote a ledger heading the file's own check rejects
 - `F-516` · tools/blong-dev — An untracked file is invisible to the reference linter
+- `F-314` · tools/blong-dev — A timed-out suite leaves its dev server holding the port
 
 resolved (7)
 
@@ -215,17 +215,6 @@ e2e leg runs a fixture's playwright command, both abandoned at the prompt before
 collected, plus a detour looking for the sudo in the package's own scripts, where it does not
 appear.
 
-### F-314 — A timed-out suite leaves its dev server holding the port
-
-> _2026-09-29 · tools/blong-dev · open_
-
-When a Playwright or tap run is cut off by a timeout, the dev server it started keeps listening: the
-next run that needs the same port fails with an address-already-in-use error, and in this session
-that showed up as three failures in core/blong-gogo's graceful-shutdown spawn test rather than as a
-port problem — the spawned CLI could not bind 8080 because a blong dev server from an earlier
-aborted run still had it. Check the port before reading a spawn-test failure as a code failure, and
-prefer a suite that owns its ports over one that competes for the defaults.
-
 ### F-317 — The format pass re-wrapped the user's own Manual list
 
 > _2026-09-29 · tools/blong-dev · open_
@@ -396,6 +385,22 @@ so a marker written into a longer header fails in silence — the first attempt 
 and the linter went on complaining. Two improvements would remove the trap: the scan could say how
 many untracked files it skipped, and test files could be excluded the way cspell already excludes
 them, because a test that exercises the linter necessarily carries ids that cannot resolve.
+
+### F-314 — A timed-out suite leaves its dev server holding the port
+
+> _2026-09-29 · tools/blong-dev · open_
+
+When a Playwright or tap run is cut off by a timeout, the dev server it started keeps listening: the
+next run that needs the same port fails with an address-already-in-use error, and in this session
+that showed up as three failures in core/blong-gogo's graceful-shutdown spawn test rather than as a
+port problem — the spawned CLI could not bind 8080 because a blong dev server from an earlier
+aborted run still had it. Check the port before reading a spawn-test failure as a code failure, and
+prefer a suite that owns its ports over one that competes for the defaults.
+
+The spawn test in `core/blong-gogo` no longer serves on a fixed port (it asks the OS for one and
+waits for the readiness line before sending SIGTERM), so this trap can no longer show up as a failed
+graceful shutdown — which is what it looked like in builds 618 and 619 (@@F-528). The trap itself
+stands for every other suite: an aborted run leaves its server holding the default port.
 
 ## Resolved
 

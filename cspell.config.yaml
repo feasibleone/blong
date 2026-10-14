@@ -108,6 +108,7 @@ words:
   - drpp
   - dukpt
   - EACCES
+  - EADDRINUSE
   - ECDH
   - ECONNREFUSED
   - EEST
