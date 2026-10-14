@@ -18,11 +18,13 @@ import {
     KIND_FILE,
     KIND_PREFIX,
     KIND_PURPOSE,
+    KIND_SECTIONS,
     KIND_TITLE,
     MAX_LINE_LENGTH,
     RETIRED_SECTION,
     SECTION_FOR_STATUS,
     SKELETON_SECTIONS,
+    ledgerIdOf,
     type IMemoryDoc,
     type IMemoryEntry,
     type IMemoryMeta,
@@ -83,7 +85,7 @@ export function insertEntry(doc: IMemoryDoc, heading: string, block: readonly st
     let structure = parseDoc(doc.lines);
     let section = structure.sections.find(candidate => candidate.heading === heading);
     if (!section) {
-        doc.lines = appendSection(doc.lines, heading);
+        doc.lines = insertSection(doc.lines, doc.kind, heading);
         structure = parseDoc(doc.lines);
         section = structure.sections.find(candidate => candidate.heading === heading)!;
     }
@@ -91,6 +93,30 @@ export function insertEntry(doc: IMemoryDoc, heading: string, block: readonly st
     const before = doc.lines[at - 1];
     const lead = before !== undefined && before.trim() !== '' ? [''] : [];
     doc.lines.splice(at, 0, ...lead, ...block, '');
+}
+
+/**
+ * Add a missing section at its canonical position.
+ *
+ * `KIND_SECTIONS` fixes the order a kind's sections appear in, so a section appended
+ * at the end can contradict it — the first restored entry wrote `## Done` below
+ * `## Retired`, where the format wants it above. The section is placed before the
+ * first existing one that ranks after it, and appended only when nothing does;
+ * `appendSection` stays for `## Retired`, which is last in every kind.
+ */
+function insertSection(lines: readonly string[], kind: MemoryKind, heading: string): string[] {
+    const order = KIND_SECTIONS[kind];
+    const wanted = order.indexOf(heading);
+    const next = [...lines];
+    // A heading the kind does not declare has no canonical place, so it is appended
+    // as before; `check` warns about it separately, which is where that belongs.
+    const before =
+        wanted === -1
+            ? undefined
+            : parseDoc(next).sections.find(candidate => order.indexOf(candidate.heading) > wanted);
+    if (!before) return appendSection(next, heading);
+    next.splice(before.start, 0, `## ${heading}`, '');
+    return next;
 }
 
 /** Remove an entry, leaving the surrounding blank lines to `renderLines`. */
@@ -119,11 +145,34 @@ export function retireEntry(doc: IMemoryDoc, id: string, fate: string): void {
     spaceSectionHeadings(doc.lines);
 }
 
+/**
+ * Drop a retired id's ledger line, so the id can hold an entry again.
+ *
+ * `check` rejects an id that is both an entry and a retired id — a number either
+ * belongs to an entry or it does not — so putting an entry back under a retired
+ * number has to take the ledger line with it. Returns the fate the line recorded,
+ * so a caller can say what it replaced, or `undefined` when the id held no line.
+ */
+export function clearRetired(doc: IMemoryDoc, id: string): string | undefined {
+    const wanted = id.toUpperCase();
+    let fate: string | undefined;
+    doc.lines = doc.lines.filter(line => {
+        if (ledgerIdOf(line) !== wanted) return true;
+        fate = line
+            .trim()
+            .split('—')
+            .slice(1)
+            .join('—')
+            .trim();
+        return false;
+    });
+    return fate || undefined;
+}
+
 /** The section an entry with this status belongs in. */
 export function sectionForStatus(status: string): string {
     return SECTION_FOR_STATUS[status] ?? 'Open';
 }
-
 /** The paragraph lines of a body supplied as text. */
 export function bodyLines(text: string): string[] {
     if (text.trim() === '') return [];
@@ -189,7 +238,41 @@ export function canonicalise(doc: IMemoryDoc): void {
         );
     }
     spaceSectionHeadings(doc.lines);
+    orderSections(doc);
     refreshIndex(doc);
+}
+
+/**
+ * Put the sections in the order the kind declares.
+ *
+ * `KIND_SECTIONS` is the file order — `Done` above `Retired` for a todo — and a
+ * section an older version appended at the end can sit out of it. Only whole section
+ * blocks move; the title and the index above them stay where they are.
+ */
+function orderSections(doc: IMemoryDoc): void {
+    const structure = parseDoc(doc.lines);
+    if (structure.sections.length < 2) return;
+    const order = KIND_SECTIONS[doc.kind];
+    const rank = (heading: string): number => {
+        const at = order.indexOf(heading);
+        return at === -1 ? order.length : at;
+    };
+    const ranked = structure.sections.map(section => ({
+        heading: section.heading,
+        rank: rank(section.heading),
+    }));
+    if (ranked.every((item, at) => item.rank >= (ranked[at - 1]?.rank ?? -1))) return;
+
+    const first = structure.sections[0]!.start;
+    const last = structure.sections[structure.sections.length - 1]!.end;
+    const blocks = [...structure.sections]
+        .sort((a, b) => rank(a.heading) - rank(b.heading))
+        .map(section => doc.lines.slice(section.start, section.end + 1));
+    doc.lines = [
+        ...doc.lines.slice(0, first),
+        ...blocks.flatMap(block => [...block, '']),
+        ...doc.lines.slice(last + 1),
+    ];
 }
 
 /**

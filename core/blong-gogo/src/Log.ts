@@ -2,7 +2,7 @@ import {withProgress} from '@feasibleone/blong-lib';
 import {Internal, type ICallLog, type ILog, type ILogger} from '@feasibleone/blong/types';
 import {createCallChannel} from '@feasibleone/semantic-log/capability';
 import {callerSite, messageMatches} from '@feasibleone/semantic-log/emitter';
-import {pino, type Logger, type LoggerOptions, type TransportSingleOptions} from 'pino';
+import {pino, type Level, type Logger, type LoggerOptions, type TransportSingleOptions} from 'pino';
 import {monotonicFactory} from 'ulidx';
 import {callRecord, configureCallTrace, type CallTraceConfig} from './callTrace.ts';
 import type {CacacheTransportOptions} from './pino-cacache.js';
@@ -117,6 +117,17 @@ const PRETTY_TRANSPORT = (refs?: boolean): TransportSingleOptions<Record<string,
 
 export default class Log extends Internal implements ILog {
     #logger: Logger;
+    /**
+     * Children created at this process's default level, so a runtime level change
+     * reaches them too.
+     *
+     * A pino child takes its level when it is created, so `#logger.level = …`
+     * alone would leave every component's already-built logger at the old
+     * threshold. Only a child whose caller named no level of its own is tracked:
+     * a component that asked for `warn` keeps it, and follows its own config
+     * instead (`Internal.setLogLevel`).
+     */
+    #defaultLevelChildren: Set<Logger> = new Set();
     #config: LogConfig = {
         level: 'info',
         transport: PRETTY_TRANSPORT(),
@@ -179,11 +190,28 @@ export default class Log extends Internal implements ILog {
         return this.#logger.child(...params) as Logger<T>;
     }
 
+    /**
+     * Change the process's default level at runtime.
+     *
+     * Applied to the root logger and to every child that was created at the
+     * default level; a child that named its own level keeps it. This is what a
+     * config reload calls when `log.level` changes, so a level change needs no
+     * restart.
+     */
+    public setLevel(level: Level | 'silent'): void {
+        this.#config.level = level as LoggerOptions['level'];
+        this.#logger.level = level;
+        for (const child of this.#defaultLevelChildren) child.level = level;
+    }
+
     public logger(
         level: LoggerOptions['level'] = this.#config.level,
         bindings: object,
     ): ReturnType<ILog['logger']> {
         const child = this.#logger.child(bindings, {level});
+        // A child that named no level of its own follows the process default, so a
+        // later `setLevel` has to reach it (see `#defaultLevelChildren`).
+        if (level === this.#config.level) this.#defaultLevelChildren.add(child);
         // The caller of the messages `log.callSite` names. pino has no hook that sees a message:
         // `logMethod` is not inherited by a child, and a formatter is handed the fields without
         // the text — so the match is made here, where the framework builds the logger it hands

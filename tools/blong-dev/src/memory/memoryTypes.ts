@@ -47,6 +47,14 @@ export const KIND_STATUSES: Record<MemoryKind, readonly string[]> = {
  */
 export const RETIRED_SECTION = 'Retired';
 
+/** A `## Retired` ledger line: `- F-101 — superseded by F-090 (2026-08-01)`. */
+export const LEDGER_LINE = /^-\s*(?<id>[FTD]-\d{3})\s*—\s*\S/;
+
+/** The id a ledger line records, or `null` when the line is not one. */
+export function ledgerIdOf(line: string): string | null {
+    return LEDGER_LINE.exec(line.trim())?.groups?.['id'] ?? null;
+}
+
 /** Sections a kind may use, in file order. */
 export const KIND_SECTIONS: Record<MemoryKind, readonly string[]> = {
     friction: ['Open', 'Resolved', RETIRED_SECTION],
@@ -95,7 +103,8 @@ export const KIND_TITLE: Record<MemoryKind, string> = {
 
 /** The sentence that opens a fresh file. */
 export const KIND_PURPOSE: Record<MemoryKind, string> = {
-    friction: 'Things that took unexpected effort to implement or fix, and the lesson that came out of them.',
+    friction:
+        'Things that took unexpected effort to implement or fix, and the lesson that came out of them.',
     todo: 'Work that is deferred, unfinished, or spotted and not done yet.',
     decision: 'Decisions that were taken, with the reasoning the code does not show.',
 };

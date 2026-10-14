@@ -191,9 +191,12 @@ layer file takes the ordinary hot-reload path instead.
 
 1. **File change detected** (chokidar, existing Watch logic).
 2. **Determine change type**: config file vs handler file vs layer file.
-3. If a config file changed: a. Re-run `ConfigRuntime.reload()`. b. Compute the diff per adapter
-   namespace. c. For each affected adapter: call `configChanged` if present; else stop it and create
-   it again. d. Emit structured log event `watch.config.reload`. e. Emit test re-run event (existing
+3. If a config file changed: a. Re-run `ConfigRuntime.reload()`, which first runs the registered
+   validator and, if it throws, keeps the previous snapshot, reports the rejection and returns an
+   empty diff. b. Compute the diff per adapter namespace. c. For each affected adapter: call
+   `configChanged` if present; else stop it and create it again. d. Apply a changed log level — the
+   process logger is re-pointed and a component whose `logLevel` changed has its logger re-created.
+   e. Emit structured log event `watch.config.reload`. f. Emit test re-run event (existing
    behaviour).
 4. If a handler/layer file changed: existing hot-reload path, unchanged.
 
@@ -231,8 +234,10 @@ empty-diff early return, so a reload whose diff is empty still produces one.
 3. **Don't** expect a reload to reach handler code, or to re-resolve the intent list, or to override
    a `--key=value` from the command line — the intent blocks are frozen at start and argv is
    re-applied last on every merge.
-4. **Don't** rely on a reload for a key that no port owns: a log-level change produces a diff and no
-   action at all.
+4. **Don't** rely on a reload for a key that no adapter owns, except a log level. `log.level` is
+   applied directly — the process logger's threshold is re-pointed — and a component whose own
+   `logLevel` changed has its logger re-created; neither restarts anything. Every other key that no
+   port owns produces a diff and no action at all.
 
 **Real example** (`core/config-hot-reload/configReload/server/test/test/testConfigGet.ts`):
 
@@ -255,9 +260,12 @@ export default handler(({lib: {group}, handler: {configGet}}) => ({
 
 ## Future Ideas
 
-1. **Schema-validated config reload** — run TypeBox validation on the new config snapshot before
-   applying it. If validation fails, reject the reload and log a structured error, preventing
-   invalid configuration from being applied even transiently.
+1. **Schema-validated config reload** — done. The declared `validation` schemas are checked as the
+   process loads and again before a reloaded snapshot is installed: a candidate that introduces an
+   unknown top-level key or a type mismatch is refused, the previous configuration stays in place,
+   and `ConfigRuntime` reports the rejection. What is still loose is the schema's own completeness —
+   `required` keys and nested unknown keys are not enforced yet, so completing the shipped schemas
+   is a tracked todo.
 
 2. **Config change history** — keep a bounded ring buffer of config diffs (name, timestamp, changed
    keys, affected adapters) accessible via the debug REST API. Developers can query what changed and

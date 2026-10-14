@@ -9,10 +9,12 @@ import type {
     ITypedError,
     PortHandlerBound,
 } from '@feasibleone/blong/types';
+import type {TSchema} from 'typebox';
 import type net from 'node:net';
 import PQueue from 'p-queue';
 
 import ConfigRuntime from './ConfigRuntime.ts';
+import {formatConfigIssues, validateConfigBlock} from './configValidation.ts';
 import {isExpectedError, portLogCalls} from './lib.ts';
 import loop from './loop.ts';
 import {
@@ -165,6 +167,27 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
     }
 
     async init(...configs: object[]): Promise<void> {
+        // Validate the port's own config slice against the schema it declared
+        // (`validation`), the counterpart of the realm-level check in `load.ts`.
+        // Opt-in: the slice a port receives is its parent's declaration of it, so
+        // a port with no schema cannot tell a parent-declared key (`backend` gets
+        // `host`, `protocol`, `imports` from its realm) from an override. Only a
+        // declared schema asserts which keys belong. Its activation keys and the
+        // two the loader injects are added, because those are the port's own.
+        const declared = (this as {validation?: TSchema}).validation;
+        if (declared) {
+            const allowed = ['id', 'pkg', ...Object.keys(this.activeConfig() as object)];
+            for (const config of configs) {
+                const issues = validateConfigBlock(config, declared, allowed);
+                if (issues.length)
+                    throw new Error(
+                        formatConfigIssues(
+                            String((config as {id?: unknown}).id ?? this.configBase),
+                            issues,
+                        ),
+                    );
+            }
+        }
         this.config = this._api.render([this.activeConfig(), ...configs]) as Config<T, C>;
         this.log = this._createLog?.(this.config.logLevel || 'info', {
             ...this.config.log,

@@ -23,6 +23,52 @@ See the [configuration pattern](../patterns/configuration.md) for the merge chai
 the framework's own components, and the [layer patterns](../patterns/layer.md) for the component,
 group and realm levels a realm author writes.
 
+## Where the configuration came from
+
+A root load writes one record naming what it read: the rc files, in merge order; the environment
+variable names it matched; and the command-line keys that carried a value. Names only — never
+values, so a secret in an rc file or an environment variable is not copied into a log line.
+
+```text
+info  blong config event config.load
+  files: ["/repo/.blong_devrc"]
+  env: ["BLONG_MASTER_KEY"]
+  argv: ["log"]
+```
+
+## Validation
+
+A realm, suite, adapter or orchestrator may declare the keys its config block accepts, as a TypeBox
+schema:
+
+```typescript
+export default adapter(blong => ({
+    extends: 'adapter.knex',
+    validation: blong.type.Object({
+        namespace: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
+        logLevel: blong.type.Optional(blong.type.String()),
+    }),
+}));
+```
+
+The load checks each module's config block against it and fails at startup with the offending path,
+so an override addressed one key too shallow — `--kustomize.outputDir` where the port is
+`kustomize.deploy` — is named rather than dropped in silence. A key is allowed when the module
+declared it, when it is one of the module's children, when it names a port the module registered, or
+when the module's own source config names it.
+
+Two limits are deliberate. A module that declares no schema has no way to say which keys are
+legitimate, so its own keys cannot be judged — only the platform root narrows the check to the keys
+the command line introduced, because a shared rc file carries keys for every suite in the
+repository. And the schema is used for unknown keys and types only: `required` keys and unknown keys
+inside a declared nested object are not enforced yet, because the schemas the repository ships are
+still incomplete.
+
+The check runs as the process loads, and again before a reloaded snapshot is installed: an rc edit
+that introduces an unknown key is refused, the previous configuration stays in place, and the
+rejection is reported. The same check survives the edit because a module's validator re-reads its
+block from the candidate snapshot with a getter threaded down through the load.
+
 ## Reloading
 
 The merged configuration is a live object: with the watcher enabled, a change to a watched rc file
@@ -36,3 +82,7 @@ with a hook, not handler code — a handler's `config` argument is a snapshot ta
 assembled. And it cannot re-resolve the intent list or override a command-line value; it moves
 values within the file layers. The [config hot reload rationale](../rationale/config-hot-reload.md)
 has the detail, and the [watch concept](./watch.md) covers the file watching itself.
+
+A log level is the one setting no port owns, so it is applied directly instead: a change to
+`log.level` re-points the process logger's threshold, and a component whose own `logLevel` changed
+has its logger re-created — neither restarts anything.

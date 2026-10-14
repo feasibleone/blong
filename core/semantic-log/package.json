@@ -27,7 +27,7 @@
     },
     "dependencies": {
         "cacache": "^20.0.4",
-        "fastify": "^5.12.3",
+        "fastify": "^5.12.7",
         "ulidx": "^2.4.1"
     },
     "devDependencies": {

@@ -25,18 +25,20 @@ active (24)
 - `D-299` · tools/blong-dev — Fixed the trace chunk bug rather than documenting it
 - `D-335` · tools/blong-dev — The memory index stores entries verbatim, with no LLM ingest
 - `D-337` · tools/blong-dev — Reranking stays on, and it is where the search latency goes
-- `D-343` · tools/blong-dev — Closing a todo removes it, while a friction or a decision is kept
 - `D-345` · tools/blong-dev — The cspell dictionary is sorted case-insensitively, by code unit
 - `D-426` · tools/blong-dev — Glossary managed in a marker-delimited region
 - `D-342` · tools/blong-dev — Docs and skills are knowledge pages in the same bank, keyed by path
 - `D-480` · tools/blong-dev — One test keeps the legacy type tag on purpose
 - `D-484` · tools/blong-dev — The hook skips what no tool reads, visibly
-- `D-538` · tools/blong-dev — Prose: summary comment plus @@ reference, markdown as source of truth
 - `D-539` · tools/blong-dev — Cross-references are never qualified; a collision is renumbered
+- `D-550` · tools/blong-dev — close keeps the entry; retire removes it and leaves the ledger line
+- `D-538` · tools/blong-dev — Prose: summary comment plus @@ reference, markdown as source of truth
 
-superseded (1)
+superseded (3)
 
 - `D-270` · tools/blong-dev — A watched test run echoes tap, a captured one does not
+- `D-343` · tools/blong-dev — Closing a todo removes it, while a friction or a decision is kept
+- `D-549` · tools/blong-dev — A closed todo keeps its id; --keep keeps its body
 
 <!-- /memory:index -->
 
@@ -293,19 +295,6 @@ reason for the entry. Revisit when the tree outgrows the waiting, and prefer a p
 in `memory search` over a bank-level change: the setting is per bank, so flipping it would silently
 slow — or speed up — every other caller.
 
-### D-343 — Closing a todo removes it, while a friction or a decision is kept
-
-> _2026-10-01 · tools/blong-dev · active_
-
-Closing treats the three kinds differently, deliberately. A friction and a decision keep their entry
-under Resolved or Superseded, because the lesson outlives the status and the id is never reused; a
-todo is removed from the file and forgotten from the bank, unless --keep writes it to the Done
-section, because the record of finished work is the commit. reopen() now drops the machine-written
-"Superseded by ..." line, since an active entry claiming a successor is a claim nothing supports;
-the free-text --note and --reason paragraphs stay, because deleting prose an author wrote would lose
-more than it fixes. A superseded decision still names its successor only in prose, so the link is
-one-directional.
-
 ### D-345 — The cspell dictionary is sorted case-insensitively, by code unit
 
 > _2026-10-01 · tools/blong-dev · active_
@@ -368,6 +357,38 @@ what it actually read. `blong-dev lint --files` still refuses a path no tool rea
 names it, which is F-327 lesson and a different question from what git staged. Paths owned by no
 Rush project (the skills, `cspell.config.yaml`) are named as not linted by this hook.
 
+### D-539 — Cross-references are never qualified; a collision is renumbered
+
+> _2026-10-13 · tools/blong-dev · active_
+
+A memory reference in a comment is `@@F-014` and nothing else — no `@scope` qualifier. Ambiguity
+(the same id held by two files) is a different failure from the dangling reference that retirement
+fixes: retirement answers an id that no longer exists (55 such references exist in the tree today),
+while ambiguity follows from ids being allocated per file. Allocation stays per file, so two
+branches adding notes in different packages do not fight over one counter; a genuine collision is
+reported as an error by `blong-dev memory refs --dangling` and repaired with
+`memory renumber <id>@<scope> --to <new-id>`, which retires the old number in the ledger and points
+it at the new entry. The qualified form stays where it already lives: the CLI's own addressing
+(`memory show F-014@root`, which has always taken `id@scope`). See `plans/memory-prose/PLAN.md`.
+
+### D-550 — close keeps the entry; retire removes it and leaves the ledger line
+
+> _2026-10-14 · tools/blong-dev · active_
+
+Closing an entry and retiring one are two verbs, and the difference is the record rather than a
+flag. `close` keeps the entry and gives it its terminal status - a friction `resolved`, a todo
+`done`, a decision `superseded` by the `--by`/`--reason` it names - appending `--note` for the
+outcome; the body is never dropped, whatever the kind. `retire` is for an entry that should not be
+in the files at all (a duplicate, a mis-filing, work that was cancelled): it removes the entry and
+leaves its id in the `## Retired` ledger line, recording `--reason` in the fate, with `--purge` to
+drop the line as well - the only thing that frees a number.
+
+This replaces the `--keep` flag and the special case that made a bare `close` on a todo behave
+differently from the other two kinds (D-343, D-549). A body that a close could drop, and only for
+one of the three kinds, was the trap that lost T-341 and T-217: the caller had to know the kind
+before knowing whether the details would survive. `prune` stays as the checked batch form - a
+mandatory reason, and a refusal while any file still cites the id.
+
 ### D-538 — Prose: summary comment plus @@ reference, markdown as source of truth
 
 > _2026-10-13 · tools/blong-dev · active_
@@ -382,26 +403,11 @@ relative markdown link, and the `@@doc:`/`@@skill:` spelling exists only for fil
 a link: source, YAML, shell, code comments. Markdown stays the source of truth; hover, links and
 go-to-definition in VS Code come from the existing `undertree.rest-fs` extension reading a derived
 index (`blong-dev memory export`), never the reverse, so there is no second writer and no move away
-from the readable files. Ids are monotonic and a closed or pruned entry leaves a retired-ledger
-line, so an old reference resolves to a warning that names its successor instead of dangling or
-silently pointing at a new entry; `close` retires a todo rather than deleting it. The entry meta
-line keeps its shape — "changed" is answered by git, not a new field — so the format and `check` do
-not change. The full rationale, the command surface and the sequencing are in
-`plans/memory-prose/PLAN.md`.
-
-### D-539 — Cross-references are never qualified; a collision is renumbered
-
-> _2026-10-13 · tools/blong-dev · active_
-
-A memory reference in a comment is `@@F-014` and nothing else — no `@scope` qualifier. Ambiguity
-(the same id held by two files) is a different failure from the dangling reference that retirement
-fixes: retirement answers an id that no longer exists (55 such references exist in the tree today),
-while ambiguity follows from ids being allocated per file. Allocation stays per file, so two
-branches adding notes in different packages do not fight over one counter; a genuine collision is
-reported as an error by `blong-dev memory refs --dangling` and repaired with
-`memory renumber <id>@<scope> --to <new-id>`, which retires the old number in the ledger and points
-it at the new entry. The qualified form stays where it already lives: the CLI's own addressing
-(`memory show F-014@root`, which has always taken `id@scope`). See `plans/memory-prose/PLAN.md`.
+from the readable files. Ids are monotonic and an entry leaves the file only through `retire` or
+`prune`, which leave a retired-ledger line, so an old reference resolves to a warning that names its
+successor instead of dangling or silently pointing at a new entry. The entry meta line keeps its
+shape — "changed" is answered by git, not a new field — so the format and `check` do not change. The
+full rationale, the command surface and the sequencing are in `plans/memory-prose/PLAN.md`.
 
 ## Superseded
 
@@ -426,3 +432,44 @@ failure view and the artifacts without a wall of TAP.
 
 Superseded: the echoed-artifact design is gone. A watched run now keeps tap's own live reporter and
 writes its stream to tap.raw.tap; the structured report belongs to a captured run.
+
+### D-343 — Closing a todo removes it, while a friction or a decision is kept
+
+> _2026-10-01 · tools/blong-dev · superseded_
+
+Closing treats the three kinds differently, deliberately. A friction and a decision keep their entry
+under Resolved or Superseded, because the lesson outlives the status and the id is never reused; a
+todo is removed from the file and forgotten from the bank, unless --keep writes it to the Done
+section, because the record of finished work is the commit. reopen() now drops the machine-written
+"Superseded by ..." line, since an active entry claiming a successor is a claim nothing supports;
+the free-text --note and --reason paragraphs stay, because deleting prose an author wrote would lose
+more than it fixes. A superseded decision still names its successor only in prose, so the link is
+one-directional.
+
+close keeps every kind; removal is retire now
+
+Superseded by `D-550`.
+
+### D-549 — A closed todo keeps its id; --keep keeps its body
+
+> _2026-10-14 · tools/blong-dev · superseded_
+
+Closing a todo keeps its ledger line but drops its body, and that is what happened to T-341 and
+T-217: both were closed without --keep while their ids were cited in code, so the entries became
+one-line Retired records and the detail was unrecoverable through the CLI. Two fixes.
+
+First, closing never frees an id and the id is never handed out again: D-538's ledger already
+guaranteed this, and a stale note claiming otherwise is what led to the mistake. What closing drops
+is the body, not the number.
+
+Second, a body dropped without --keep should be recoverable, so `add` now clears a retired id's
+ledger line when the id is given explicitly (memoryEdit.clearRetired). `memory check` rejects an id
+that is both an entry and a ledger line, so an explicit re-add has to take the line with it;
+`add --id T-341 --body-file <recovered>` is therefore the recovery path, and it reports the fate the
+line recorded. The same pass fixed where a missing section lands: insertEntry appended a section
+created on demand, so the first restored entry wrote `## Done` below `## Retired`, and `format` now
+reorders sections to the kind's canonical order (orderSections) instead of leaving it.
+
+the --keep flag is gone; retire is the removing verb
+
+Superseded by `D-550`.

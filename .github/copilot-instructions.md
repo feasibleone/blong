@@ -65,9 +65,15 @@ it permanently either by better instructions or improved tooling.
   for any other reason. Describe them as instructions about what needs to be done and include
   important context.
 
-- **Close what you finish.** `blong-dev memory close <id>` when a friction is fixed, a todo is done
-  (removed) or a decision is superseded (`--by <id>` / `--reason <text>`), with `--note` for the
-  sentence explaining the outcome. End the work with `blong-dev memory check`.
+- **Close what you finish.** `blong-dev memory close <id>` keeps the entry and gives it its terminal
+  status — a friction is `resolved`, a todo `done`, a decision `superseded` (`--by <id>` /
+  `--reason <text>`) — with `--note` for the sentence explaining the outcome, so the record of the
+  work survives. `blong-dev memory retire <id>` is the other verb: it removes an entry that should
+  not be in the files at all (a duplicate, a mis-filing, work that was cancelled), leaving its id in
+  a `## Retired` ledger line. Neither frees the id — the ledger keeps it, and a citation of it still
+  resolves as a warning naming its fate — except `retire --purge`, which does.
+  `add <kind> --id <id> --body-file <file>` takes an id back from the ledger if you retired one you
+  still need. End the work with `blong-dev memory check`.
 
 - **Lint markdown as well as code.** `blong-dev lint --files <paths>` runs cspell, eslint, tsc **and
   markdownlint** (`.markdownlint.jsonc`: 100 columns, to match prettier). Markdown formatting
@@ -291,12 +297,9 @@ there.
 
 ## [ANCHOR_TOKENS]
 
-Search markers — add where they aid locating framework patterns.
-
-```typescript
-// @framework-archetype: HANDLER
-// @framework-skills: blong-handler, blong-validation
-```
+Search markers — add where they aid locating framework patterns. Use the @@ patterns described in
+[CRITICAL_PROSE]. If it takes significant time to discover how a framework patterns works, add an
+anchor to find it faster the next time.
 
 ---
 

@@ -63,6 +63,10 @@ open (54)
 - `T-334` · cross-cutting — Convert remaining source prose to summary + @@ references
 - `T-338` · cross-cutting — The memory files mention 57 ids whose entries are gone
 
+done (1)
+
+- `T-342` · ci — Decide the cache payload shape before landing step 2
+
 <!-- /memory:index -->
 
 ## Manual
@@ -85,7 +89,6 @@ open (54)
 - produce FAQ
 - budget instructions
 - kukum has no library-function primitive
-- reduce long comments in code with full cross references to memory and short descriptions
 - avoid the method naming pitfall that fails to find local method when using the dot notation (try
   to disable this notation)
 - move knex.connect to base class
@@ -706,3 +709,30 @@ reader following one finds nothing. Rework each sentence so it does not cite a n
 name the lesson, or the entry that now carries it — and then decide whether audit belongs in the
 pre-commit hook, since today only check and refs run there, which is how 57 of them accumulated
 unnoticed.
+
+## Done
+
+### T-342 — Decide the cache payload shape before landing step 2
+
+> _2026-10-14 · ci · done_
+
+Step 2 of the CI cache plan waits on a choice that run 38593732609 turned into a real decision
+rather than a mechanical one, and it is the user's to make. The archive holds 208 877 files and its
+save costs 41m22s, while a local `tar` plus `zstd` of the same tree takes 2.8s, a restore of that
+same 767 MB takes 20s in six jobs and the 271 MB Playwright archive saves in 6s — so the price is
+per enumerated file, about 12 ms each, and the `build / audit` job pays the same rate for 20m40s
+through the `**/audit/auditResults.json` glob of its `Upload Audit Results` step. Narrowing
+`CACHE_PATHS` to the store plus `*/dist` and `*/.rush` therefore takes 208 877 files to 85 358 and
+still leaves roughly seventeen minutes of save, which is why the choice matters. The options are to
+pack the store into a single `deps.tar.zst` and cache that one file, which keeps the warm cache the
+user asked for and turns the save into an upload measured in seconds; to pack and narrow the list at
+the same time; to narrow alone; or to drop the pnpm cache and have every job install from the npm
+registry in parallel. The recommendation is to pack, in both `rush.yaml` and `release-docker.yaml`
+because the two share one key and have to agree on the payload, and to fix the audit glob in the
+same change, since it is twenty minutes of billed runner time per run for one small file. Nothing of
+step 2 is written yet: the diagnosis is F-522, the strategy is D-545 and D-546, and the
+implementation is one edit to `CACHE_PATHS` plus a pack step and an unpack step.
+
+Decided and implemented: the store travels as one deps.tar.zst, the derived trees leave the payload,
+and the audit job gates on a ci-audit script with its glob narrowed. Both workflow files updated in
+infitx-org/actions, awaiting push.

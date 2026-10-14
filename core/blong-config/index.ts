@@ -27,6 +27,46 @@ type Config = {
     merge?: object;
 };
 
+/**
+ * What a load read, reported to the caller so a process can say where its
+ * configuration came from. Names only — never values, so a secret in an rc file
+ * or an environment variable is not copied into a log line.
+ *
+ * `files` are the rc files `rc` actually found and read, in the order it merged
+ * them; `env` are the environment variable names it matched (by the
+ * `BLONG_<suffix>_` / `BLONG_<suite>_<suffix>_` prefixes, plus the four the
+ * loader reads itself); `argv` are the command-line keys (without the leading
+ * dashes) that carried a value.
+ */
+export interface ConfigSources {
+    files: string[];
+    env: string[];
+    argv: string[];
+}
+
+/**
+ * The environment variable names a load consumed, in a stable order.
+ *
+ * The prefixes are the ones `rc` matches against when it is asked for a name
+ * (`name + '_'`, compared case-insensitively), plus the four the loader reads
+ * directly. Collected here rather than read off `process.env` by the caller, so
+ * one definition of "what this load read" exists.
+ */
+function collectEnv(names: string[]): string[] {
+    const env = (globalThis as {process?: {env?: Record<string, string | undefined>}}).process?.env;
+    if (!env) return [];
+    const prefixes = names.map(name => `${name}_`.toLowerCase());
+    const direct = ['BLONG_PLATFORM', 'BLONG_METHOD', 'BLONG_ENV', 'BLONG_MASTER_KEY'];
+    return Object.keys(env)
+        .filter(
+            key =>
+                env[key] !== undefined &&
+                (direct.includes(key) ||
+                    prefixes.some(prefix => key.toLowerCase().startsWith(prefix))),
+        )
+        .sort();
+}
+
 function load({
     params,
     app,
@@ -36,6 +76,7 @@ function load({
     config,
     context,
     defaultConfig,
+    onSources,
 }: {
     params?: object;
     app?: string;
@@ -45,6 +86,8 @@ function load({
     config?: Config | Config[];
     context?: object;
     defaultConfig?: Config;
+    /** Called once with what the load read (files, env names, argv keys). */
+    onSources?: (sources: ConfigSources) => void;
 } = {}) {
     const argv = merge([{}, minimist(process.argv.slice(2))], {convert: true}) as unknown as {
         _: string[];
@@ -87,8 +130,21 @@ function load({
     if (!configName) {
         baseConfig.configName = configName = `blong_${suite.replace(/[-/\\]/g, '_')}_${suffix}`;
     }
-    configs.push(rc(`blong_${suffix}`, {}, argv, parse));
-    configs.push(rc(configName, {}, argv, parse));
+    const rcShared = rc(`blong_${suffix}`, {}, argv, parse) as Config & {configs?: string[]};
+    const rcSuite = rc(configName, {}, argv, parse) as Config & {configs?: string[]};
+    configs.push(rcShared);
+    configs.push(rcSuite);
+
+    // Report what the load read, before the merge throws away the bookkeeping
+    // keys `rc` adds (`configs`, `config`). Files are deduplicated because an
+    // argv `--config=` is appended by both calls.
+    onSources?.({
+        files: [...new Set([...(rcShared.configs ?? []), ...(rcSuite.configs ?? [])])],
+        env: collectEnv([`blong_${suffix}`, configName]),
+        argv: Object.keys(argv)
+            .filter(key => key !== '_')
+            .sort(),
+    });
 
     configs.unshift(baseConfig);
 

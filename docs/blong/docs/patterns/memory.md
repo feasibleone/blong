@@ -41,8 +41,9 @@ derived: the CLI writes it, and `check` fails when it drifts from the entries.
 blong-dev memory add friction --area core/blong-gogo --title "…" --body "…"
 blong-dev memory add todo --area cross-cutting --title "…" --body-file body.md
 blong-dev memory edit F-014 --body-file body.md                       # correct one (never hand-edit)
-blong-dev memory close F-014 --note "fixed in b1f3c9a"                # resolved / done / superseded
+blong-dev memory close F-014 --note "fixed in b1f3c9a"                # resolved, entry kept
 blong-dev memory close D-018 --by D-042 --reason "the union is no longer debounced"
+blong-dev memory retire F-014 --reason "never a real defect"          # removed, id left in the ledger
 blong-dev memory reopen F-014                                          # it came back
 blong-dev memory move F-014 --area core/semantic-log                    # it belongs elsewhere
 blong-dev memory prune F-101,F-102 --reason "duplicated by F-090"
@@ -52,12 +53,12 @@ blong-dev memory prune F-101,F-102 --reason "duplicated by F-090"
 nor a reserved label. For a long body use `--body-file`; `--date` and `--status` override the
 defaults (today, and the first status of the kind).
 
-`close` treats the three kinds differently, because their ids mean different things. A friction and
-a decision keep their entry — under `Resolved` and `Superseded`, still searchable, the resolution or
-the successor named in the body — because the lesson outlives the status and the id is never reused.
-A todo is _removed_ from the file and its document is deleted from the index: the work is done and
-the record of it is the commit. `--keep` writes it to `## Done` instead, which keeps it findable at
-the cost of a file that grows forever.
+`close` keeps the entry, whatever the kind: the reasoning outlives the status, and the id is never
+reused. A friction becomes `resolved`, a todo `done`, a decision `superseded` by the successor its
+`--by`/`--reason` name, and all three stay readable where they are. An entry that should not be in
+the files at all — a duplicate, a mis-filing, work that was cancelled — is `retire`d instead: the
+entry goes and only its id stays, as a `## Retired` line. `retire` takes `--reason` for the fate the
+line records, and `--purge` to drop the line too, which is the only thing that frees a number.
 
 ## Reading them
 
@@ -276,13 +277,13 @@ heading moved and whose replacement is unambiguous, and reports rather than gues
 
 ## Retiring an id
 
-A closed todo, a pruned entry or a renumbered one leaves a line in `## Retired`, and its number is
-never reused, so a reference that outlived the entry stays diagnosable. `close` retires a todo
+A retired entry, a pruned one or a renumbered one leaves a line in `## Retired`, and its number is
+never reused, so a reference that outlived the entry stays diagnosable. `retire` removes one entry
 (`--purge` deletes it outright), `prune` refuses an id any file cites (`--force` retires it anyway),
 and `renumber <id> --to <new-id>` fixes a collision:
 
 ```bash
-blong-dev memory close T-123                       # a todo: retired as "done <date>"
+blong-dev memory retire T-123 --reason "superseded by the new flow"   # the id stays in the ledger
 blong-dev memory prune F-101 --reason "duplicated by F-090"
 blong-dev memory renumber D-001 --to D-050         # the old id stays in the ledger, pointing at the new
 ```

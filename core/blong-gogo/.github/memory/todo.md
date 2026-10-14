@@ -14,7 +14,6 @@ open (17)
 - `T-154` · core/blong-gogo — The slow-step margin does not reach the registry's start steps
 - `T-183` · core/blong-gogo — Log the gateway's effective port whether or not it was configured
 - `T-195` · core/blong-gogo — Five helper modules still log a load error in their group folders
-- `T-217` · core/blong-gogo — Warn when a CLI config key matches no realm, port or framework key
 - `T-225` · core/blong-gogo — A watch reply arrives empty across the request boundary
 - `T-228` · core/blong-gogo — The k8s adapter's list answer carries no kind or apiVersion
 - `T-250` · core/blong-gogo — An unreachable database can kill a process by event
@@ -25,6 +24,12 @@ open (17)
 - `T-316` · core/blong-gogo — Debug mode should answer what the ACL guard would run for a call
 - `T-321` · core/blong-gogo — The shutdown bound and the pod grace are the same 30 seconds
 - `T-333` · core/blong-gogo — The realm-declaration tests are red on HEAD too
+- `T-340` · core/blong-gogo — Enforce required and nested config keys once the schemas are complete
+
+done (2)
+
+- `T-341` · core/blong-gogo — Validate a config reload and reject an invalid snapshot
+- `T-217` · core/blong-gogo — Warn when a CLI config key matches no realm, port or framework key
 
 <!-- /memory:index -->
 
@@ -103,17 +108,6 @@ prints Watch error loading X probably a generic source code was put in a handler
 is five error-level entries every suite run and trains a reader to ignore the stream that expected
 errors were just cleaned up. Either the loader should skip a module that exports no handler and no
 library, or those files should become libraries.
-
-### T-217 — Warn when a CLI config key matches no realm, port or framework key
-
-> _2026-10-05 · core/blong-gogo · open_
-
-A config override addressed one level too shallow is dropped in silence, which cost a long
-investigation (F-370). The loader merges argv into the runtime config and then hands each port only
-`mergedConfig[realm][port]`, so any key outside that slice is invisible: no validation error and no
-log line. Emit a warning (or at least a debug log) when `--x.y=z` matches no realm, port or
-framework key, so the next author sees the mistake in the first run instead of concluding that
-config overrides do not work.
 
 ### T-225 — A watch reply arrives empty across the request boundary
 
@@ -257,3 +251,58 @@ a realm the suite declares, under the cli intent, at lines 146 and 166. Deciding
 or the loader is wrong needs its own session — a load of a fixture suite whose declared realm is not
 in the registry is either a discovery bug or a fixture that no longer matches what the loader does.
 It was found while verifying the split and left untouched.
+
+### T-340 — Enforce required and nested config keys once the schemas are complete
+
+> _2026-10-14 · core/blong-gogo · open_
+
+Config validation currently checks unknown top-level keys and type mismatches. Two checks are
+deliberately deferred because the declared `validation` schemas predate enforcement and are
+incomplete: `required` keys (testClient requires a `test` key its config never sets) and unknown
+keys inside a declared nested object (`backend` gets `host`/`protocol`/`imports` from its realm,
+none named in the schema). To finish: complete the schemas the repository ships (codec, adapter,
+login, testClient, the framework realms), then enable the two checks in
+`core/blong-gogo/src/configValidation.ts` - the schema is sealed only at the top level there, and
+`required` errors are filtered in `validateConfigBlock`. Expect the same boot-failure sweep that
+F-523 recorded; a suite that fails is a schema to complete, not a check to weaken.
+
+## Done
+
+### T-341 — Validate a config reload and reject an invalid snapshot
+
+> _2026-10-14 · core/blong-gogo · done_
+
+The startup path validates every module's config block, but a hot reload is not validated:
+ConfigRuntime.reload() builds the new snapshot, installs it and then notifies subscribers, so an rc
+edit that introduces an unknown key is applied. The decision was to reject such a reload and keep
+the previous snapshot. To finish: give ConfigRuntime a validator hook run before the snapshot is
+installed, and collect one validator per module during the load. Each validator needs a getter that
+re-derives its block from a candidate snapshot - capturing the parent's getter as a closure is the
+natural way, which means threading the getter (or a path) through loadRealm's recursion; its call
+sites are the loader's child calls and folderAnalysis' wrapper. Until then, document that only
+startup is validated.
+
+Done. ConfigRuntime gained setValidator, run before the installed snapshot: a rejected candidate
+keeps the previous configuration, reports the rejection and yields an empty diff. The loader
+collects one validator per module through a block getter threaded down the recursion, and the
+watcher is attached at the end of the load because it did not exist where it was attached before.
+Verified end to end with the watcher on. Design: D-548; the wiring defect found on the way: F-524.
+
+### T-217 — Warn when a CLI config key matches no realm, port or framework key
+
+> _2026-10-14 · core/blong-gogo · done_
+
+A config override addressed one level too shallow is dropped in silence, which cost a long
+investigation (@@F-370). The loader merges argv into the runtime config and then hands each port
+only `mergedConfig[realm][port]`, so any key outside that slice is invisible: no validation error
+and no log line. Emit a warning (or at least a debug log) when `--x.y=z` matches no realm, port or
+framework key, so the next author sees the mistake in the first run instead of concluding that
+config overrides do not work.
+
+Implemented, more strongly than asked: a --x.y=z whose x matches no realm, port or framework key now
+fails startup with the offending path named (@@D-547), and a key addressed one level too shallow
+inside a realm or port is caught too (@@F-370). The one case deliberately left out of the check is
+an rc-file key at the platform root, because a shared rc carries keys for every suite in the
+repository.
+
+## Retired

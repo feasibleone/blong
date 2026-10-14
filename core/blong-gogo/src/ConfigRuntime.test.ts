@@ -403,3 +403,64 @@ test('liveLayerConfig — an unchanged version does not re-merge', async t => {
     t.equal(merges, 2, 'and then caches again');
     t.end();
 });
+
+// ---------------------------------------------------------------------------
+// reload validation (@@D-548)
+// ---------------------------------------------------------------------------
+
+/** A runtime whose base config can be mutated to make the next merge differ. */
+async function mutableRuntime(): Promise<{
+    runtime: ConfigRuntime;
+    base: {name: string; configNames: string[]; reloadProbe: string};
+}> {
+    const base = {name: 'probe', configNames: ['dev'], reloadProbe: 'a'};
+    const runtime = new ConfigRuntime(base, [], 'probe');
+    await runtime.load();
+    return {runtime, base};
+}
+
+test('a reload the validator rejects is not installed', async t => {
+    const {runtime, base} = await mutableRuntime();
+    const before = runtime.rawSnapshot;
+    const version = runtime.version;
+    runtime.setValidator(next => {
+        if ((next as {reloadProbe?: string}).reloadProbe === 'b')
+            throw new Error('unknown key in the candidate snapshot');
+    });
+    base.reloadProbe = 'b';
+
+    const diff = await runtime.reload();
+
+    t.equal(diff.size, 0, 'a rejected reload reports an empty diff');
+    t.equal(runtime.rawSnapshot, before, 'the previous snapshot is kept');
+    t.equal(runtime.version, version, 'and the version is unchanged');
+});
+
+test('a reload the validator accepts is installed', async t => {
+    const {runtime, base} = await mutableRuntime();
+    const before = runtime.rawSnapshot;
+    let validated = 0;
+    runtime.setValidator(() => {
+        validated += 1;
+    });
+    base.reloadProbe = 'b';
+
+    const diff = await runtime.reload();
+
+    t.equal(validated, 1, 'the validator ran once');
+    t.ok(diff.has('reloadProbe'), 'the change is in the diff');
+    t.not(runtime.rawSnapshot, before, 'a new snapshot is installed');
+});
+
+test('an unchanged reload does not call the validator', async t => {
+    const {runtime} = await mutableRuntime();
+    let validated = 0;
+    runtime.setValidator(() => {
+        validated += 1;
+    });
+
+    const diff = await runtime.reload();
+
+    t.equal(diff.size, 0, 'nothing changed');
+    t.equal(validated, 0, 'so there is nothing to validate');
+});

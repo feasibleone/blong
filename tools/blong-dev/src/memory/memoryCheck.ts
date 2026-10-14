@@ -21,6 +21,7 @@ import {
     MAX_LINE_LENGTH,
     MAX_TITLE_LENGTH,
     SECTION_FOR_STATUS,
+    ledgerIdOf,
     type IMemoryDoc,
 } from './memoryTypes.ts';
 
@@ -40,14 +41,6 @@ export interface ICheckContext {
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
-/** A `## Retired` ledger line: `- F-101 — superseded by F-090 (2026-08-01)`. */
-const LEDGER_LINE = /^-\s*(?<id>[FTD]-\d{3})\s*—\s*\S/;
-
-/** The id a ledger line records, or `null` when the line is not one. */
-function ledgerId(line: string): string | null {
-    return LEDGER_LINE.exec(line.trim())?.groups?.['id'] ?? null;
-}
 
 /** True when the line must stay on one line: fences, tables, headings, comments. */
 function mustStayOnOneLine(line: string): boolean {
@@ -138,7 +131,7 @@ export function checkDoc(doc: IMemoryDoc, context: ICheckContext): IProblem[] {
     // retired id in the same file — a number either belongs to an entry or it does not.
     const ledger = new Map<string, number>();
     doc.lines.forEach((line, index) => {
-        const retired = ledgerId(line);
+        const retired = ledgerIdOf(line);
         if (!retired) return;
         if (ledger.has(retired)) report(index + 1, `the ledger records ${retired} twice`);
         ledger.set(retired, index + 1);

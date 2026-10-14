@@ -24,7 +24,8 @@
  *                        [--body <text> | --body-file <file>] [--status <status>] [--id <id>]
  *   blong-dev memory list [--kind <kind>] [--area <area>] [--status <status>] [--search <text>] [--json]
  *   blong-dev memory show <id|id@scope> [--json]
- *   blong-dev memory close <id|id@scope> [--note <text>] [--keep] [--by <id>] [--reason <text>]
+ *   blong-dev memory close <id|id@scope> [--note <text>] [--by <id>] [--reason <text>]
+ *   blong-dev memory retire <id|id@scope> [--reason <text>] [--purge]
  *   blong-dev memory reopen <id|id@scope>
  *   blong-dev memory move <id|id@scope> --area <area>
  *   blong-dev memory index [--check] [--files a.md,b.md] [--semantic] [--dry-run]
@@ -80,6 +81,7 @@ import {
     applyEntries,
     bodyLines,
     canonicalise,
+    clearRetired,
     ensureDoc,
     ensureManualSection,
     entryLines,
@@ -125,6 +127,7 @@ import {
     ENTRY_HEADING,
     KIND_PREFIX,
     KIND_STATUSES,
+    LEDGER_LINE,
     MAX_TITLE_LENGTH,
     SECTION_FOR_STATUS,
     type IMemoryDoc,
@@ -142,7 +145,8 @@ const USAGE = [
     'blong-dev memory list [--kind <kind>] [--area <area>] [--status <status>] [--search <text>] [--json]',
     'blong-dev memory show <id|id@scope> [--json]',
     'blong-dev memory edit <id|id@scope> [--title <title>] [--body <text>|--body-file <file>] [--status <status>]',
-    'blong-dev memory close <id|id@scope> [--note <text>] [--keep] [--by <id>] [--reason <text>] [--purge]',
+    'blong-dev memory close <id|id@scope> [--note <text>] [--by <id>] [--reason <text>]',
+    'blong-dev memory retire <id|id@scope> [--reason <text>] [--purge]',
     'blong-dev memory renumber <id|id@scope> --to <id>',
     'blong-dev memory comply [--since <ref>] [--json]',
     'blong-dev memory reopen <id|id@scope>',
@@ -190,9 +194,6 @@ const TOPIC_AREAS: Record<string, string> = {
 };
 
 type Options = Map<string, string>;
-
-/** A `## Retired` ledger line: `- F-101 — superseded by F-090 (2026-08-01)`. */
-const LEDGER_LINE = /^-\s*(?<id>[FTD]-\d{3})\s*—\s*\S/;
 
 /** Resolve a kind from a CLI word, or `null`. */
 function kindOf(value: string | undefined): MemoryKind | null {
@@ -430,6 +431,14 @@ async function add(root: string, args: string[], options: Options): Promise<void
 
     const doc = ensureDoc(root, area, kind);
     assertMigrated(doc);
+    // An explicit id may be one the ledger holds as retired — an entry a `close`
+    // reduced to a ledger line, being put back with a body recovered from elsewhere.
+    // `check` rejects an id that is both an entry and a retired id, so the line goes
+    // with it; the fate it recorded is reported so the caller sees what it replaced.
+    if (options.get('id')) {
+        const previous = clearRetired(doc, id);
+        if (previous) process.stdout.write(`# ${id} taken back from the ledger — ${previous}\n`);
+    }
     insertEntry(
         doc,
         SECTION_FOR_STATUS[status] ?? 'Open',
@@ -556,36 +565,21 @@ function show(root: string, id: string | undefined, flags: Set<string>): void {
     process.stdout.write(`${block.join('\n')}\n`);
 }
 
-async function close(
-    root: string,
-    id: string | undefined,
-    options: Options,
-    flags: Set<string>,
-): Promise<void> {
+/**
+ * Give an entry its terminal status, keeping it.
+ *
+ * The reasoning outlives the status, so the entry stays: a friction is `resolved`, a
+ * todo is `done`, a decision is `superseded` by the `--by`/`--reason` it names, and
+ * `--note` says what the outcome was. An entry that should not be in the files at all
+ * is `retire`d instead, which removes it and leaves only its id in the ledger.
+ */
+async function close(root: string, id: string | undefined, options: Options): Promise<void> {
     if (!id) fail('memory close needs an id');
     const found = findEntry(root, id);
     if (!found) fail(`no entry with id ${id}`);
     const {doc, entry} = found;
     const note = options.get('note');
     assertMigrated(doc);
-
-    if (doc.kind === 'todo' && !flags.has('keep')) {
-        const date = (options.get('date') ?? today()).trim();
-        removeEntry(doc, entry);
-        if (flags.has('purge')) {
-            process.stdout.write(`# ${entry.id} done and purged\n`);
-        } else {
-            // The entry is gone; the id is not. It stays resolvable as "done <date>", so a
-            // reference that outlived the work is a warning, not a dangling mystery.
-            retireEntry(doc, entry.id, `done ${date}`);
-            process.stdout.write(`# ${entry.id} done and retired\n`);
-        }
-        refreshIndex(doc);
-        writeDoc(doc);
-        process.stdout.write(`# ${entry.title}\n`);
-        await forget([entry.id]);
-        return;
-    }
 
     const additions: Array<readonly string[]> = [];
     let status = doc.kind === 'friction' ? 'resolved' : 'done';
@@ -602,6 +596,44 @@ async function close(
     setStatus(doc, entry, status, appendParagraphs(entry.body, additions));
     process.stdout.write(`# ${entry.id} ${status}\n# ${entry.title}\n`);
     await ingest(root, [{doc, id: entry.id}]);
+}
+
+/**
+ * Take an entry out of the files, leaving its id in the ledger.
+ *
+ * Where `close` keeps the entry under its terminal status, retiring removes it: the
+ * entry never belonged — a duplicate, a mis-filing, work that was cancelled — so there
+ * is no record worth keeping. The number is not freed: the `## Retired` line keeps it,
+ * so a reference that outlives the entry is a warning naming its fate rather than a
+ * dangling mystery or a silent pointer at a later entry that took the number. `--purge`
+ * drops the line too and frees the number, for something that never belonged in a
+ * reviewable form at all.
+ */
+async function retire(
+    root: string,
+    id: string | undefined,
+    options: Options,
+    flags: Set<string>,
+): Promise<void> {
+    if (!id) fail('memory retire needs an id');
+    const found = findEntry(root, id);
+    if (!found) fail(`no entry with id ${id}`);
+    const {doc, entry} = found;
+    assertMigrated(doc);
+    const reason = options.get('reason')?.trim();
+    const fate = `retired ${today()}${reason ? ` — ${reason}` : ''}`;
+
+    removeEntry(doc, entry);
+    if (flags.has('purge')) {
+        process.stdout.write(`# ${entry.id} retired and purged — the number is free again\n`);
+    } else {
+        retireEntry(doc, entry.id, fate);
+        process.stdout.write(`# ${entry.id} retired — ${fate}\n`);
+    }
+    refreshIndex(doc);
+    writeDoc(doc);
+    process.stdout.write(`# ${entry.title}\n`);
+    await forget([entry.id]);
 }
 
 /** The paragraph `close` writes when a decision is superseded by another. */
@@ -2260,7 +2292,9 @@ export async function memory(args: string[]): Promise<void> {
             case 'edit':
                 return await edit(root, positionals[1], options);
             case 'close':
-                return await close(root, positionals[1], options, flags);
+                return await close(root, positionals[1], options);
+            case 'retire':
+                return await retire(root, positionals[1], options, flags);
             case 'renumber':
                 return await renumber(root, positionals[1], options);
             case 'comply':

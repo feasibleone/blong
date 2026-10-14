@@ -220,10 +220,21 @@ export default class SemanticLog extends Internal implements ILog {
      * Everything else about the child — the bindings, the component's name, the
      * face — is the base's.
      */
+    /**
+     * Change the process threshold at runtime.
+     *
+     * Delegates to the base, which re-points the root logger and every component
+     * logger that inherited the process level. This is what a config reload calls
+     * when the log level changes, so a level change needs no restart.
+     */
+    public setLevel(level: LogLevel): void {
+        this.#config.level = level;
+        this.#base.setLevel(thresholdOf(level) as LevelName | number);
+    }
+
     public child<T extends string>(
         ...params: Parameters<PinoLogger<never>['child']>
-    ): PinoLogger<T> {
-        const [bindings, options] = params as unknown as [
+    ): PinoLogger<T> {        const [bindings, options] = params as unknown as [
             Record<string, unknown> | undefined,
             {level?: Level | 'silent' | number} | undefined,
         ];

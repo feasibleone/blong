@@ -16,6 +16,7 @@ import {
     addManualItems,
     applyEntries,
     bodyLines,
+    canonicalise,
     ensureDoc,
     entryLines,
     insertEntry,
@@ -90,6 +91,54 @@ test('insertEntry appends to the named section and creates a missing one', async
         'section appended',
     );
     t.equal(grown.entries[1]?.section, 'Superseded', 'entry in the new section');
+    t.end();
+});
+
+test('insertEntry creates a missing section where the kind puts it', async t => {
+    // `Done` belongs above `Retired` in a todo file, so creating it is not an append.
+    // The first restored entry wrote it below the ledger, which is the defect.
+    const doc = docFrom(
+        '# Todo\n\n## Open\n\n## Retired\n\n- T-001 — done 2026-01-01\n',
+        'todo',
+    );
+    insertEntry(
+        doc,
+        'Done',
+        entryLines('T-002', 'finished', {date: '2026-01-02', area: 'x', status: 'done'}, [
+            'The body.',
+        ]),
+    );
+
+    const structure = parseDoc(doc.lines);
+    t.same(
+        structure.sections.map(section => section.heading),
+        ['Open', 'Done', 'Retired'],
+        'in the order the kind declares',
+    );
+    t.equal(structure.entries[0]?.title, 'finished', 'and the entry lands in it');
+    t.match(doc.lines.join('\n'), /## Done\n\n### T-002/, 'with the blank line the format wants');
+    t.end();
+});
+
+test('canonicalise repairs a file whose sections are out of order', async t => {
+    // An older version appended a section it created, so a file in the tree can carry
+    // the ledger above `Done`; `format` is the repair path and has to move it.
+    const doc = docFrom(
+        '# Todo\n\n## Open\n\n## Retired\n\n- T-001 — done 2026-01-01\n\n## Done\n\n' +
+            '### T-002 — finished\n_2026-01-02 · x · done_\n\nThe body.\n',
+        'todo',
+    );
+    canonicalise(doc);
+
+    const structure = parseDoc(doc.lines);
+    t.same(
+        structure.sections.map(section => section.heading),
+        ['Open', 'Done', 'Retired'],
+        'the sections are in the order the kind declares',
+    );
+    t.equal(structure.entries[0]?.title, 'finished', 'the entry survives the move');
+    t.same(structure.entries[0]?.body, ['The body.'], 'with its body');
+    t.match(doc.lines.join('\n'), /- T-001 — done 2026-01-01/, 'and the ledger line too');
     t.end();
 });
 

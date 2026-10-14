@@ -23,6 +23,7 @@ import type {
     ConfigSubscriber,
     FactoryPhaseMode,
     IConfigRuntime,
+    IConfigSources,
 } from '@feasibleone/blong/types';
 import merge from 'ut-function.merge';
 
@@ -278,6 +279,8 @@ export default class ConfigRuntime implements IConfigRuntime {
     readonly #subscribers: Set<ConfigSubscriber> = new Set();
 
     #rawSnapshot: object = {};
+    #sources: IConfigSources | undefined;
+    #validator?: (next: object) => void;
     #proxy: object;
     #updateProxy: (next: object) => void;
     #version = 0;
@@ -308,6 +311,11 @@ export default class ConfigRuntime implements IConfigRuntime {
         return this.#rawSnapshot;
     }
 
+    /** What the last load read (rc files, env names, argv keys). */
+    public get sources(): IConfigSources | undefined {
+        return this.#sources;
+    }
+
     /** Bumped whenever the effective config is replaced; see `IConfigRuntime`. */
     public get version(): number {
         return this.#version;
@@ -319,9 +327,14 @@ export default class ConfigRuntime implements IConfigRuntime {
         // built from, the framework's existing convention — so a config step that cannot see them
         // leaves every process reading the `dev` file whatever it was asked to be (Phase 15 E).
         const intents = (this.#baseConfig as {configNames?: string[]}).configNames;
+        const onSources = (sources: IConfigSources): void => {
+            this.#sources = sources;
+        };
         const loaded = loadBlong(
-            intents?.length ? {env: intents.join(','), ...blongConfig} : blongConfig,
-        );
+            intents?.length
+                ? {env: intents.join(','), ...blongConfig, onSources}
+                : {...blongConfig, onSources},
+        ) as object;
         return merge({}, this.#baseConfig, ...this.#configs, loaded);
     }
 
@@ -341,9 +354,11 @@ export default class ConfigRuntime implements IConfigRuntime {
     /**
      * Reload config in-place:
      *  1. Load a fresh config snapshot
-     *  2. Compute the diff against the previous snapshot
-     *  3. Update the proxy backing store
-     *  4. Notify all subscribers
+     *  2. Run the registered validator, if any — a rejection leaves the current
+     *     configuration in place and the reload is not applied
+     *  3. Compute the diff against the previous snapshot
+     *  4. Update the proxy backing store
+     *  5. Notify all subscribers
      */
     public async reload(): Promise<ConfigDiff> {
         const prev = this.#rawSnapshot;
@@ -352,6 +367,18 @@ export default class ConfigRuntime implements IConfigRuntime {
 
         // Only do work when something actually changed
         if (diff.size > 0) {
+            if (this.#validator) {
+                try {
+                    this.#validator(next);
+                } catch (error) {
+                    // A rejected reload keeps the previous snapshot and reports an
+                    // empty diff, so the caller neither installs nor acts on the
+                    // change. This module has no logger of its own — the same reason
+                    // a subscriber error is reported here.
+                    console.error('[ConfigRuntime] config reload rejected:', error);
+                    return new Map();
+                }
+            }
             this.#rawSnapshot = next;
             this.#version += 1;
             this.#updateProxy(next);
@@ -370,6 +397,14 @@ export default class ConfigRuntime implements IConfigRuntime {
 
     public diff(prev: object, next: object): ConfigDiff {
         return deepDiff(prev, next);
+    }
+
+    /**
+     * Register a validator that every reload must pass before its snapshot is
+     * installed. Throwing rejects the reload (@@D-548).
+     */
+    public setValidator(fn: (next: object) => void): void {
+        this.#validator = fn;
     }
 
     /**

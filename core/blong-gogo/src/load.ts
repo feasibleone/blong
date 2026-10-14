@@ -24,6 +24,7 @@ import {Type, type TSchema} from 'typebox';
 import merge from 'ut-function.merge';
 import {methodParts} from './lib.ts';
 
+import {formatConfigIssues, validateConfigBlock} from './configValidation.ts';
 import {devEncryptKey, devSignKey} from './devKeys.ts';
 import {GENERATED_PAIR_WARNING, resolveGatewayPair} from './gatewayKeys.ts';
 import layerProxy from './layerProxy.ts';
@@ -417,10 +418,25 @@ export default async function loadRealm<T extends TSchema>(
          * Filled for the platform root and inherited by every load beneath it.
          */
         loadedRealmUrls?: Set<string>;
+        /**
+         * The reload validators, one per module, filled as each module validates
+         * its own config block and read by the root's validator hook, which
+         * `ConfigRuntime` runs before installing a reloaded snapshot (@@D-548).
+         */
+        configValidators?: Array<(snapshot: object) => void>;
     } & {
         [key: string]: {init?: () => Promise<unknown>};
     },
     rootKind?: 'server' | 'browser',
+    /**
+     * Re-derives this module's config block from a whole candidate snapshot, so
+     * the module's check runs against a reload as well as at startup. The root's
+     * getter is the snapshot itself; a child's is its parent's getter indexed by
+     * the child's name, which is why it is threaded through the recursion — the
+     * alternative, a path, could not survive `loadRealm`'s re-entry for a realm
+     * wrapped in its own minimal suite (@@D-548).
+     */
+    blockOf: (snapshot: object) => unknown = snapshot => snapshot,
 ): Promise<IRegistry> {
     // Wrap the manifest in a proxy that auto-creates Deferred values on first
     // read and resolves them on first write. This lets callers pass a plain
@@ -484,6 +500,11 @@ export default async function loadRealm<T extends TSchema>(
                     parentConfig,
                     configNames,
                     manifest,
+                    // A wrapper replaces the realm at the same level, so the block
+                    // getter is unchanged; `api`/`rootKind` stay undefined as before.
+                    undefined,
+                    undefined,
+                    blockOf,
                 );
             } else {
                 // Server realm — single platform if no browser.ts alongside, else two-platform server half
@@ -516,6 +537,11 @@ export default async function loadRealm<T extends TSchema>(
                     parentConfig,
                     configNames,
                     manifest,
+                    // A wrapper replaces the realm at the same level, so the block
+                    // getter is unchanged; `api`/`rootKind` stay undefined as before.
+                    undefined,
+                    undefined,
+                    blockOf,
                 );
             }
         } else {
@@ -566,6 +592,9 @@ export default async function loadRealm<T extends TSchema>(
         api = {
             platform: platformApi,
             manifest,
+            // One reload validator per module, filled as each module validates its
+            // own config block and read by the root's validator hook (@@D-548).
+            configValidators: [],
         } as unknown as typeof api;
         // Retained so the "an intent's `false` wins" reconciliation can re-assert
         // these after every source has merged (see below).
@@ -999,7 +1028,12 @@ export default async function loadRealm<T extends TSchema>(
             return fn;
         });
     }
-    loadedConfigs.push(...activeConfigs(mod, configNames, platformApi.configs));
+    // The module's own config blocks for the active intents. Captured (rather
+    // than inlined into `loadedConfigs`) because the keys they name are what
+    // makes the config validation's allow-list: a key the module's own source
+    // declares is legitimate, whatever its `validation` schema happens to say.
+    const declaredBlocks = activeConfigs(mod, configNames, platformApi.configs);
+    loadedConfigs.push(...declaredBlocks);
     const configPromise = platformApi.loadConfig(
         {
             name,
@@ -1103,11 +1137,13 @@ export default async function loadRealm<T extends TSchema>(
      * reference instead, and asked for by name through `describe().realmConfig`.
      */
 
-    // Wire ConfigRuntime into Watch so config-file changes trigger in-process
-    // reload via ConfigRuntime.reload() instead of restarting the process.
+    // Publish the runtime on the shared api, which `layerProxy` reads while the
+    // children load. The watcher is attached later, at the end of this load: it is
+    // a component of its own and does not exist yet here, so attaching it now was a
+    // no-op and a config-file change was answered with "ConfigRuntime not attached;
+    // config change ignored" (@@D-548).
     if (configRuntime) {
         api!.configRuntime = configRuntime;
-        api!.watch?.setConfigRuntime?.(configRuntime);
     }
     let logger: ILogger | undefined = api?.log?.logger(
         mergedConfig[rootKind === 'browser' ? 'browser' : 'server']?.load?.logLevel,
@@ -1454,6 +1490,11 @@ export default async function loadRealm<T extends TSchema>(
         if (typeof item === 'string' && platformApi.platform !== 'server') continue;
         const itemName = typeof item === 'string' ? platformApi.basename(item) : item.name;
         const config: Record<string, unknown> = mergedConfig[itemName] as Record<string, unknown>;
+        // This child's block in a candidate snapshot is the parent's block indexed
+        // by the child's name — the getter a reload validator re-runs it with
+        // (@@D-548).
+        const childBlockOf = (snapshot: object): unknown =>
+            (blockOf(snapshot) as Record<string, unknown> | undefined)?.[itemName];
         logger?.debug?.(
             {$meta: {mtid: 'event', method: config ? 'child.load' : 'child.skip'}},
             typeof item === 'string' ? item : item.name + '()',
@@ -1668,6 +1709,68 @@ export default async function loadRealm<T extends TSchema>(
                                 const clusterUrl = (api!.log as {clusterUrl?: string} | undefined)
                                     ?.clusterUrl;
                                 if (clusterUrl !== undefined) manifest.clusterUrl = clusterUrl;
+                                // The configuration's provenance, in a single line: which rc
+                                // files were read, which environment variables supplied values
+                                // and which command-line keys were applied. Written once, from
+                                // the root load, through the log the config just configured —
+                                // `sources` is populated only when a ConfigRuntime exists, which
+                                // is the root only. Names, never values, so a secret is not
+                                // copied here.
+                                const sources = configRuntime?.sources;
+                                if (sources) {
+                                    const level =
+                                        ((mergedConfig as {log?: {level?: unknown}}).log
+                                            ?.level as Parameters<ILog['logger']>[0]) ?? 'info';
+                                    api!.log?.logger(level, {name, context: 'config'}).info?.({
+                                        $meta: {mtid: 'event', method: 'config.load'},
+                                        ...sources,
+                                    });
+                                }
+                                // A level is the one config value no port owns, so the reload
+                                // path cannot reach it through `applyConfigReload`. Applied
+                                // here instead, without restarting anything: `log.level`
+                                // re-points the process logger, a `<component>.logLevel`
+                                // re-points that component's logger (a port's own level is a
+                                // restart, which `applyConfigReload` already does).
+                                configRuntime?.subscribe((diff, next) => {
+                                    const config = next as Record<string, unknown>;
+                                    const levelAt = (...path: string[]): unknown =>
+                                        path.reduce<unknown>(
+                                            (node, key) =>
+                                                node && typeof node === 'object'
+                                                    ? (node as Record<string, unknown>)[key]
+                                                    : undefined,
+                                            config,
+                                        );
+                                    for (const key of diff.keys()) {
+                                        if (key === 'log.level' || key === 'log.logLevel') {
+                                            const level = levelAt('log', 'level');
+                                            if (level !== undefined)
+                                                api!.log?.setLevel?.(
+                                                    level as Parameters<ILog['logger']>[0],
+                                                );
+                                        } else if (key === `${rootKind}.load.logLevel`) {
+                                            const level = levelAt(rootKind, 'load', 'logLevel');
+                                            if (level !== undefined)
+                                                logger = api!.log?.logger(
+                                                    level as Parameters<ILog['logger']>[0],
+                                                    {name, context: `${defKind}`},
+                                                );
+                                        } else if (key.endsWith('.logLevel')) {
+                                            const componentName = key.slice(0, -'.logLevel'.length);
+                                            // A port's own level is a restart, which
+                                            // `applyConfigReload` already performs; only a
+                                            // top-level framework component is re-pointed here.
+                                            if (componentName.includes('.')) continue;
+                                            const component = api![componentName] as
+                                                | {setLogLevel?: (level: unknown) => void}
+                                                | undefined;
+                                            const level = levelAt(componentName, 'logLevel');
+                                            if (component?.setLogLevel && level !== undefined)
+                                                component.setLogLevel(level);
+                                        }
+                                    }
+                                });
                             }
                         } else if (
                             ['solution', 'server', 'browser'].includes(
@@ -1689,6 +1792,7 @@ export default async function loadRealm<T extends TSchema>(
                                     manifest,
                                     api,
                                     rootKind,
+                                    childBlockOf,
                                 ),
                             );
                         } else if (typeof fn === 'function') {
@@ -1717,6 +1821,81 @@ export default async function loadRealm<T extends TSchema>(
         }
     }
     realm ||= new RealmImpl(mergedConfig, api!, rootKind);
+    /**
+     * Validate this module's own config block, now that its children and ports
+     * are known.
+     *
+     * Unknown keys are always judged; the type checks only apply where the module
+     * declared a `validation` schema. The allow-list is what the module's
+     * structure legitimises: one key per child module (a layer folder, a named
+     * realm), one per port it registered (`kustomize.deploy`), and the keys its
+     * own source config blocks name. It is read here rather than before the loop
+     * because a port's name — the key an override addresses it by — is only known
+     * once its layer has loaded (@@F-370 @@D-547).
+     *
+     * At the platform root the unknown-key check is narrowed to the keys the
+     * command line introduced: a shared rc file carries keys for every suite in
+     * the repository, and those are the developer's own settings, not a mistake.
+     * A nested module is judged on all of its keys, since an override reaches it
+     * by name.
+     */
+    {
+        const allow = new Set<string>();
+        const addKey = (key: unknown): void => {
+            if (typeof key === 'string' && key) allow.add(key);
+        };
+        const addChild = (child: unknown): void => {
+            const childName =
+                typeof child === 'string'
+                    ? platformApi.basename(child)
+                    : (child as {name?: string} | undefined)?.name;
+            addKey(childName);
+        };
+        for (const child of children) addChild(child);
+        for (const child of extraChildren) addChild(child);
+        for (const child of frameworkChildren) addChild(child);
+        for (const block of declaredBlocks)
+            if (block && typeof block === 'object') Object.keys(block).forEach(addKey);
+        // A port registered under this module (`kustomize.deploy`) is addressed by
+        // its name, so its name is a legitimate key here.
+        const ports = (api?.registry as {ports?: {keys: () => Iterable<string>}} | undefined)
+            ?.ports;
+        for (const portId of ports?.keys() ?? []) {
+            if (typeof portId === 'string' && portId.startsWith(name + '.'))
+                addKey(portId.slice(name.length + 1));
+        }
+        const cliKeys = typeof parentConfig === 'string' ? configRuntime?.sources?.argv : undefined;
+        const validateBlock = (block: unknown): void => {
+            const issues = validateConfigBlock(
+                block,
+                mod.validation,
+                allow,
+                cliKeys ? {onlyUnknownKeys: new Set(cliKeys)} : {},
+            );
+            if (issues.length) throw new Error(formatConfigIssues(name, issues));
+        };
+        // The same check guards a reload: its validator re-reads this module's
+        // block from the candidate snapshot with the getter threaded down from the
+        // root, so an rc edit that introduces an unknown key is refused rather than
+        // applied (@@D-548).
+        api!.configValidators?.push((snapshot: object) => validateBlock(blockOf(snapshot)));
+        // Startup: fail now, on the block just merged.
+        validateBlock(mergedConfig);
+    }
+    // The reload hook, registered at the platform root — the one load where a
+    // `ConfigRuntime` exists. Every module's validator is collected by now: a
+    // module validates only after its children have loaded.
+    if (isPlatformRoot && configRuntime) {
+        configRuntime.setValidator?.(snapshot => {
+            for (const validate of api!.configValidators ?? []) validate(snapshot);
+        });
+        // Attach the runtime to the watcher here rather than at the top of the
+        // load: `watch` is one of the components built by the loop above, so it
+        // does not exist earlier — a change to a watched rc file used to be
+        // answered with "ConfigRuntime not attached; config change ignored"
+        // (@@D-548).
+        api?.watch?.setConfigRuntime?.(configRuntime);
+    }
     if (!api?.registry) throw new Error('Registry not found in loaded modules');
     // What each realm declared about itself, handed to the registry by reference (D-433): a realm
     // loads after the root's config has merged, so nothing that is copied while the config is built

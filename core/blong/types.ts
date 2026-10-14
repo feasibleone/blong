@@ -174,6 +174,15 @@ export interface ILog {
      * running here: a deployment points its readers at one elsewhere.
      */
     clusterUrl?: string;
+    /**
+     * Change the process's own log level at runtime.
+     *
+     * The reconfiguration path calls this when `log.level` changes, so a level
+     * change takes effect without a restart. Present only on the implementations
+     * whose threshold is a single mutable value (`Log`, `SemanticLog`); absent
+     * means the change takes effect on the next start.
+     */
+    setLevel?: (level: Level | 'silent') => void;
 }
 
 /**
@@ -253,11 +262,32 @@ export type ConfigSubscriber = (
  *                 (useful in tests that explicitly verify the anti-pattern is caught)
  */
 export type FactoryPhaseMode = 'throw' | 'collect';
+
+/**
+ * What a config load read: the rc files, the environment variable names and the
+ * command-line keys. Names only — never values — so a secret is not copied into
+ * a log line. Reported once per load by {@link IConfigRuntime.sources}.
+ */
+export interface IConfigSources {
+    /** rc files actually read, in merge order. */
+    files: string[];
+    /** Environment variable names the load matched. */
+    env: string[];
+    /** Command-line keys (without leading dashes) that carried a value. */
+    argv: string[];
+}
+
 export interface IConfigRuntime {
     /** Current effective config, exposed as a live proxy */
     readonly snapshot: object;
     /** Raw (non-proxy) snapshot of the current effective config */
     readonly rawSnapshot: object;
+    /**
+     * What the last load read — the rc files, environment variable names and
+     * command-line keys — or `undefined` before the first load. Published so a
+     * process can record where its configuration came from in one line.
+     */
+    readonly sources?: IConfigSources;
     /**
      * Monotonic counter, bumped whenever the effective config is replaced.
      *
@@ -278,6 +308,16 @@ export interface IConfigRuntime {
     diff(prev: object, next: object): ConfigDiff;
     /** Register a subscriber to be called after every successful reload */
     subscribe(fn: ConfigSubscriber): () => void;
+    /**
+     * Register the check a reload must pass before its snapshot is installed.
+     *
+     * Called with the candidate snapshot *before* it replaces the current one;
+     * throw to reject the reload, which keeps the previous configuration. The
+     * loader registers a validator that re-runs every module's config-block check,
+     * so an rc edit that introduces an unknown key is refused rather than applied
+     * (@@D-548). Absent means a reload is applied unchecked.
+     */
+    setValidator?(fn: (next: object) => void): void;
     /** Enter the config factory phase */
     enterConfig(mode?: FactoryPhaseMode): void;
     /** Exit the config factory phase */
@@ -1525,6 +1565,17 @@ export abstract class Internal {
             this.log = this.#log.logger(result.logLevel, {name: this.constructor.name});
         return result;
     };
+    /**
+     * Re-apply a log level from a config reload.
+     *
+     * A component's logger is built once, at construction, from the level its
+     * config named; a reload that changes `logLevel` reaches it here, so the new
+     * threshold is used without restarting the component. A component built with
+     * no `ILog` has nothing to re-point, so this is a no-op there.
+     */
+    public setLogLevel(level: Level): void {
+        if (this.#log) this.log = this.#log.logger(level, {name: this.constructor.name});
+    }
     public async stop(): Promise<unknown> {
         return this;
     }

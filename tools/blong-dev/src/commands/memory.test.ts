@@ -291,6 +291,118 @@ t.test('the memory command layer', async t => {
         );
     });
 
+    await t.test('an add with an explicit id takes the id back from the ledger', async t => {
+        const repo = tempRepo();
+        t.teardown(repo.restore);
+
+        await capture(() =>
+            memory(['add', 'todo', '--title', 'A task worth keeping', '--area', 'cross-cutting']),
+        );
+        await capture(() => memory(['retire', 'T-001', '--reason', 'never a real task']));
+        const retired = readFileSync(join(repo.dir, '.github/memory/todo.md'), 'utf8');
+        t.match(
+            retired,
+            /## Retired\n\n- T-001 — retired \d{4}-\d{2}-\d{2} — never a real task/,
+            'retire leaves only a ledger line, so the body is the part that is dropped',
+        );
+
+        const body = join(repo.dir, 'recovered.md');
+        writeFileSync(body, 'The detail the retire dropped.\n');
+        const {out, code} = await capture(() =>
+            memory([
+                'add',
+                'todo',
+                '--id',
+                'T-001',
+                '--status',
+                'done',
+                '--title',
+                'A task worth keeping',
+                '--area',
+                'cross-cutting',
+                '--body-file',
+                body,
+            ]),
+        );
+
+        t.equal(code, undefined, 'the restore succeeds');
+        t.match(
+            out,
+            /# T-001 taken back from the ledger — retired \d{4}-\d{2}-\d{2} — never a real task/,
+            'the caller is told what the ledger line said',
+        );
+        const restored = readFileSync(join(repo.dir, '.github/memory/todo.md'), 'utf8');
+        t.notMatch(restored, /^- T-001/m, 'the ledger line is gone');
+        t.match(restored, /### T-001 — A task worth keeping/, 'the entry is back');
+        t.match(restored, /The detail the retire dropped\./, 'with the body it was given');
+        t.notMatch(
+            restored,
+            /T-001 is both an entry and a retired id/,
+            'nothing left to complain about',
+        );
+    });
+
+    await t.test('close keeps the entry and its body', async t => {
+        const repo = tempRepo();
+        t.teardown(repo.restore);
+
+        await capture(() =>
+            memory([
+                'add',
+                'todo',
+                '--title',
+                'Finished work',
+                '--area',
+                'cross-cutting',
+                '--body',
+                'What it took.',
+            ]),
+        );
+        const {out} = await capture(() =>
+            memory(['close', 'T-001', '--note', 'shipped in the release']),
+        );
+
+        t.match(out, /# T-001 done/, 'the terminal status is reported');
+        const written = readFileSync(join(repo.dir, '.github/memory/todo.md'), 'utf8');
+        t.match(written, /## Done/, 'the entry moves to the terminal section');
+        t.match(written, /### T-001 — Finished work/, 'and stays');
+        t.match(written, /What it took\./, 'with its body intact');
+        t.match(written, /shipped in the release/, 'and the note');
+        t.notMatch(written, /^- T-001/m, 'while the ledger stays empty');
+    });
+
+    await t.test('a section created for an entry keeps the order the kind declares', async t => {
+        const repo = tempRepo();
+        t.teardown(repo.restore);
+
+        // `## Retired` exists (a retired todo put it there) and `## Done` does not, so
+        // the first `done` entry is the case that wrote it below the ledger instead of
+        // above it.
+        await capture(() =>
+            memory(['add', 'todo', '--title', 'Retire me', '--area', 'cross-cutting']),
+        );
+        await capture(() => memory(['retire', 'T-001']));
+        await capture(() =>
+            memory([
+                'add',
+                'todo',
+                '--status',
+                'done',
+                '--title',
+                'Done first',
+                '--area',
+                'cross-cutting',
+            ]),
+        );
+
+        const written = readFileSync(join(repo.dir, '.github/memory/todo.md'), 'utf8');
+        const doneAt = written.indexOf('## Done');
+        const retiredAt = written.indexOf('## Retired');
+        t.ok(doneAt !== -1, 'the section is created');
+        t.ok(doneAt < retiredAt, 'and above the ledger, where the kind puts it');
+        t.match(written, /## Open\n\n## Done/, 'with the blank line the format wants');
+    });
+
     await t.test('refs --fix-superseded follows the successor an entry names', async t => {
         const repo = tempRepo();
         t.teardown(repo.restore);

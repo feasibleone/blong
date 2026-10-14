@@ -440,6 +440,20 @@ export class LogBase {
     }
 
     /**
+     * Change the process threshold at runtime.
+     *
+     * Re-points the root logger so a record written through it is filtered by the
+     * new level. A component logger keeps the threshold it was built with — the
+     * emitter binds a component's level when its logger is created and wraps it in
+     * a child per caller — so a component whose own `logLevel` changed is re-created
+     * by the runtime instead (`Internal.setLogLevel`).
+     */
+    public setLevel(level: LevelName | number): void {
+        this.options.level = level;
+        this.logger.setLevel(level);
+    }
+
+    /**
      * The call channel's logger for a component, created on first use.
      *
      * Always built at `info`, whatever the process threshold is: the call records

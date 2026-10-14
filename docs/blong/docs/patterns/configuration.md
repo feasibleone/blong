@@ -121,3 +121,30 @@ rpcServer: # configuration for the internal RPC calls
     host: 0.0.0.0 # listen address
     port: 8091 # listen port
 ```
+
+## Validation
+
+Declare the keys a component accepts, and the load checks the merged config against them — an
+unknown key or a type mismatch fails startup with the offending path named:
+
+```typescript
+// realm/adapter/db.ts
+export default adapter(blong => ({
+    extends: 'adapter.knex',
+    validation: blong.type.Object({
+        namespace: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
+        logLevel: blong.type.Optional(blong.type.String()),
+    }),
+    activation: {default: {namespace: 'db/$subject'}},
+}));
+```
+
+The check is composed from the module's structure as well as the schema, so a child key, a
+registered port's name and a key the module's own source names are legitimate without being
+declared. See the [configuration concept](../concepts/configuration.md#validation) for the two
+deliberate limits.
+
+## Where the configuration came from
+
+A root load writes one `config.load` record naming the rc files, the environment variable names and
+the command-line keys it read — names only, never values.
