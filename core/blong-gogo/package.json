@@ -83,7 +83,7 @@
         "tinyglobby": "^0.2.16",
         "typebox": "^1.1.5",
         "ulidx": "^2.4.1",
-        "undici": "^8.12.1",
+        "undici": "^8.11.2",
         "ut-bitsyntax": "^6.2.7",
         "ut-dns-discovery": "^6.2.3",
         "ut-function.cbc": "^1.1.6",
