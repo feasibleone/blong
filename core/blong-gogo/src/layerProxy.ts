@@ -101,6 +101,7 @@ function createHandlerClosure(
             schema: target.result.schema,
         };
         for (let what of others) {
+            // process the injected library functions first @@doc:patterns/handler#injected-library-functions
             switch (`${typeof what}:${kind(what)}`) {
                 case 'object:lib':
                     merge(lib, what);
