@@ -7,21 +7,23 @@ description:
     an existing one, or reviewing a doc to decide what tier it belongs to.
 ---
 
-# Blong Blog Maintenance
+# Blong docs
+
+## Blong Blog Maintenance
 
 When a new important feature is developed, a blog entry can be prepared in `docs/blong/blog/` The
 blog entries are 1-2 pages long with a brief pitch at the beginning and some visual content like
-mermaid diagrams, screenshots or tables. They include references to the full documentation. For
-example see the `2026-09-24-draw-the-sequence-diagram-from-what-actually-ran` post.
+mermaid diagrams, screenshots, tables or stories. They include references to the full documentation.
+For example see the `2026-09-24-draw-the-sequence-diagram-from-what-actually-ran` post.
 
 The purpose of the blog is to highlight innovative ideas in Blong or new substantial features it
 implemented. The entries should not discuss how Blong advances by resolving its own frictions but
 instead highlight the rationale of the advanced ideas that are implemented and their impact on the
 functionality or the developer or user experience.
 
-# Blong Documentation Maintenance
+## Blong Documentation Maintenance
 
-## Overview
+### Overview
 
 The Blong documentation site lives at `docs/blong/docs/`. Documentation is organised into three
 tiers that serve different audiences and purposes:
@@ -40,9 +42,9 @@ Keeping the tiers separate ensures:
 
 ---
 
-## Tier definitions
+### Tier definitions
 
-### Rationale (`rationale/`)
+#### Rationale (`rationale/`)
 
 **Answers the question:** "Why does this exist and why is it designed this way?"
 
@@ -69,7 +71,7 @@ sections.
 
 ---
 
-### Concepts (`concepts/`)
+#### Concepts (`concepts/`)
 
 **Answers the question:** "What is this feature and what does it do?"
 
@@ -94,7 +96,7 @@ whether to read the pattern doc.
 
 ---
 
-### Patterns (`patterns/`)
+#### Patterns (`patterns/`)
 
 **Answers the question:** "How do I implement this?"
 
@@ -121,7 +123,7 @@ A pattern doc does **not** contain philosophical discussion or design rationale.
 
 ---
 
-## Writing a new doc
+### Writing a new doc
 
 1. **Determine the tier** first.
     - If you are explaining _why_ a decision was made → `rationale/`.
@@ -149,7 +151,7 @@ A pattern doc does **not** contain philosophical discussion or design rationale.
 
 ---
 
-## Reviewing an existing doc
+### Reviewing an existing doc
 
 When a doc has grown too long or mixes concerns:
 
@@ -164,7 +166,7 @@ with code examples** → move the examples to the pattern doc.
 
 ---
 
-## Cross-references
+### Cross-references
 
 Standard link patterns:
 
@@ -183,14 +185,14 @@ description.
 
 ---
 
-## Visual content
+### Visual content
 
 A diagram is often the shortest way to say what a page is for, and a screenshot is the only way to
 show a UI feature. Prefer a **mermaid block written inline in the page** over a rendered image: the
 docs site has the mermaid theme enabled, and a mermaid block is theme-aware, translatable,
 searchable and reviewable in a diff. Reach for an image only for a real screenshot.
 
-### Generated vs hand-written
+#### Generated vs hand-written
 
 Two kinds of visual live side by side, and the difference matters when you edit a page:
 
@@ -214,7 +216,7 @@ blong-dev docs check                 # regenerate, compare, restore; non-zero wh
 Run `blong-dev docs check` before you call a docs change done, and commit the diff if it reports an
 artefact as stale. It restores what it found, so it is safe on a dirty tree.
 
-### Marker convention
+#### Marker convention
 
 A generated block that lives **inside** a page is written between a marker pair, so the generator
 knows exactly which region to own and a reviewer can see what is generated:
@@ -233,7 +235,7 @@ write the marker pair and the surrounding prose yourself, then run `blong-dev do
 existing artefacts use a more specific marker (`OBSERVED FLOWS: transfer.single`); the register
 records the exact one per entry.
 
-### Verifying diagrams
+#### Verifying diagrams
 
 A mermaid diagram is parsed in the **browser**, not at build time, so a broken one compiles, serves
 and passes every test — the reader just sees an error box where the picture should be. Check them in
@@ -271,7 +273,7 @@ Two habits that avoid most breakage, both learned the hard way:
   and a check to enforce it. `blong-dev docs verify` visits blog posts as well as docs pages, so an
   inline diagram is covered by the same count check either way.
 
-### Images
+#### Images
 
 Site-wide assets (favicon, logo, social card) live in `docs/blong/static/img/`. Images a **page**
 embeds live next to the tier that shows them:
@@ -304,7 +306,7 @@ rows with a search term, mask the minted ids and clocks, and clip to the element
 
 ---
 
-### Embedding a story
+#### Embedding a story
 
 A picture answers "what does this look like"; a story answers "what does this do". When a page's
 point is the second one, embed the story rather than photograph it — and keep the picture as the
@@ -325,10 +327,11 @@ Note the `poster` shape: an image is in the build only when something imports it
 
 The tag needs no import in a `.md` or `.mdx` page: `docs/blong/src/theme/MDXComponents.jsx`
 registers it for the docs and the blog alike. `site` names a site in
-`docs/blong/storybook-sites.json` (`browser`, `suite`, `log`) and `id` is the story id Storybook puts
-in its own URL. The full attribute table — `height`, `globals`, `chrome`, `poster`, and what each is
-for — is the [Storybook pattern](../../../docs/blong/docs/patterns/blong-browser.md#embedding-a-story),
-which is where a reader looks too; keep the two in step rather than growing a second table here.
+`docs/blong/storybook-sites.json` (`browser`, `suite`, `log`) and `id` is the story id Storybook
+puts in its own URL. The full attribute table — `height`, `globals`, `chrome`, `poster`, and what
+each is for — is the
+[Storybook pattern](../../../docs/blong/docs/patterns/blong-browser.md#embedding-a-story), which is
+where a reader looks too; keep the two in step rather than growing a second table here.
 
 Three rules about _when_ to embed, because an embed costs a frame, a page load and a dependency on a
 build output:
@@ -348,8 +351,8 @@ Publishing is one command in the docs package, and it is a step of a deploy rath
 cd docs/blong && npm run stage-storybook    # build every site into static/storybook/
 ```
 
-The staged trees are 10 to 30 MB each and are **not committed** (`docs/blong/.gitignore`), so a plain
-`npm run build` — the shape CI runs — has none of them: every embed renders its poster, and
+The staged trees are 10 to 30 MB each and are **not committed** (`docs/blong/.gitignore`), so a
+plain `npm run build` — the shape CI runs — has none of them: every embed renders its poster, and
 `blong-dev docs verify` counts the embeds that rendered rather than the stories they would have
 loaded. Two checks belong to the publish and both are worth knowing about:
 
@@ -362,12 +365,12 @@ One sharp edge, recorded because it wastes an hour: `docusaurus serve` rewrites 
 to `/storybook/<name>` and `iframe.html?id=…` to `iframe`, so a published Storybook's relative
 bundles 404 (they resolve one directory too high) and the preview gets no story id @@F-534 @@D-559.
 `docs/blong`'s `npm run serve` is `blong-dev docs serve`, which serves the build the way the
-published site does, and `npm run serve:docusaurus` is the one that does not. `npm start` serves
-the Storybooks too, and `blong-dev docs verify` loads every embedded story.
+published site does, and `npm run serve:docusaurus` is the one that does not. `npm start` serves the
+Storybooks too, and `blong-dev docs verify` loads every embedded story.
 
 ---
 
-## Docusaurus conventions
+### Docusaurus conventions
 
 The docs site uses [Docusaurus](https://docusaurus.io/).
 
