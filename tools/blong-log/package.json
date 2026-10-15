@@ -30,7 +30,7 @@
         "ci-test": "rc=0; blong-dev test || rc=$?; node --run storybook:test:ci || rc=$?; exit $rc",
         "storybook": "storybook dev -p 6006",
         "storybook:test": "test-storybook",
-        "storybook:test:ci": "blong-dev browsers || exit 1; SBLOG=${TMPDIR:-/tmp}/blong-log-storybook-$$.log; storybook dev --ci --quiet --loglevel warn --port 6006 >\"$SBLOG\" 2>&1 & SERVER=$!; for i in $(seq 1 120); do curl -sf -o /dev/null http://127.0.0.1:6006 && break; sleep 1; done; npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill $SERVER 2>/dev/null; if [ $EXIT -ne 0 ]; then echo '--- storybook dev log ---'; cat \"$SBLOG\"; fi; rm -f \"$SBLOG\"; exit $EXIT",
+        "storybook:test:ci": "blong-dev browsers || exit 1; mkdir -p .ci-report; SBLOG=.ci-report/storybook.log; SBDEV=${TMPDIR:-/tmp}/blong-log-storybook-$$.log; storybook dev --ci --quiet --loglevel warn --port 6006 >\"$SBDEV\" 2>&1 & SERVER=$!; for i in $(seq 1 120); do curl -sf -o /dev/null http://127.0.0.1:6006 && break; sleep 1; done; FORCE_COLOR=0 NO_COLOR=1 npx test-storybook --url http://127.0.0.1:6006 >\"$SBLOG\" 2>&1; EXIT=$?; kill $SERVER 2>/dev/null; if [ $EXIT -ne 0 ]; then echo '--- storybook test log ---'; cat \"$SBLOG\"; echo '--- storybook dev log ---'; cat \"$SBDEV\"; else SBSUM=$(grep -E '^(Test Suites|Tests|Snapshots):' \"$SBLOG\" | tr -s ' ' | tr '\\n' ';' | sed 's/;$//;s/;/; /g'); [ -z \"$SBSUM\" ] && SBSUM='(the log carries no summary line)'; echo \"# storybook: $SBSUM\"; echo \"# storybook log: $SBLOG\"; fi; rm -f \"$SBDEV\"; exit $EXIT",
         "test": "blong-dev test",
         "visual:update": "npm run storybook:test -- --updateSnapshot"
     },

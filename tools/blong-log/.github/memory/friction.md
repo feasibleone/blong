@@ -46,4 +46,13 @@ temp file, and prints that file only when the test runner fails — the log carr
 results, and the server's output is still there for the failure that needs it. Verified by running
 the script: 22 story tests pass and no banner or Vite line reaches the log.
 
+Fixing the server left the larger half: the runner's own report — a `PASS` line, every story with
+its `✓ smoke-test`, and jest's summary — was most of the log. It now goes to
+`.ci-report/storybook.log`, which the workflow already uploads with `tools/*/.ci-report`; the script
+prints one summary line and that path, and dumps the file when the runner fails, which is the shape
+the tap leg already has. The runner also needs `FORCE_COLOR=0 NO_COLOR=1`: jest colours the
+`Test Suites:` label, so an anchored grep matched nothing and the first attempt printed an empty
+summary line. Verified end to end: two lines for the storybook leg, 22 tests and 21 snapshots
+passing, tap 82 pass.
+
 ## Resolved

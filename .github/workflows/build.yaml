@@ -23,7 +23,7 @@ jobs:
       pull-requests: write
     uses: infitx-org/actions/.github/workflows/rush.yaml@main
     with:
-      ci-test-jobs: 2
+      ci-test-jobs: 4
     secrets:
       REPORT_TOKEN: ${{ secrets.REPORT_TOKEN }}
       CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}

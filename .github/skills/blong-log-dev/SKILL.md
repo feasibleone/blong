@@ -186,10 +186,16 @@ Playwright-based visual regression tests.
 cd tools/blong-log
 npm run storybook          # dev server at http://localhost:6006
 npm run storybook:test     # visual regression (needs Storybook serving)
-npm run storybook:test:ci  # build static → serve → test → exit
+npm run storybook:test:ci  # serve quietly, test, exit — the leg `ci-test` runs
 npm run visual:update      # refresh baselines after intentional visual changes
 npm test                   # tap unit tests (buffer, server, udp-receiver)
 ```
+
+In CI the leg prints one summary line and the path of its log; the runner's whole output is kept in
+`.ci-report/storybook.log`, which the workflow uploads with the rest of the package's `.ci-report/`,
+and it is printed instead of the summary when the runner fails. That is the shape the tap leg
+already has — full TAP in `.ci-report/`, a compact view in the log once `CI` is set — and the leg is
+still missing from the aggregate report, which @@T-188 keeps.
 
 PNG baselines live in `src/client/__image_snapshots__/`; sample data in
 `src/client/__fixtures__/data.ts`; story definitions in `src/client/LogViewer.stories.tsx`; config
