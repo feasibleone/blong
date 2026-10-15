@@ -85,7 +85,7 @@
                   "flexGrow": "0",
                   "flexShrink": "1",
                   "flexDirection": "row",
-                  "overflow": "visible",
+                  "overflow": "clip",
                   "childCount": 7,
                   "children": [
                     {

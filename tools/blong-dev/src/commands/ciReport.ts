@@ -8,8 +8,12 @@
  *
  * Usage:
  *   blong-dev ci-report [--out <dir>] [--baseline <file>] [--base-history <file>]
+ *                      [--tests-outcome success|failure]
  *
  * Environment (all set by the workflow in CI, optional locally):
+ *   CI_TESTS_OUTCOME — the test step's own outcome. `failure` makes the report name every package
+ *     that has a `ci-test` script and produced no report, which is how a suite that never ran stops
+ *     being invisible in a run that is red for another reason @@F-530
  *   CI_BASE_METRICS / CI_BASE_HISTORY — base-branch copies of the committed files
  *   CI_REPORTS_BASE — Pages URL of the reports repository; when set (and a
  *     workflow + run number are known) the report links every published report,
@@ -43,6 +47,7 @@ import {renderCiReport, type IReportLinks} from '../report/renderReport.ts';
 import {REPORT_DIR, repoRoot} from '../report/reportPaths.ts';
 import {formatDurationMs} from '../report/reportTypes.ts';
 import {writeCiReport} from '../report/reportWrite.ts';
+import {collectSilentProjects} from '../report/silentProjects.ts';
 import {runTool, type RunOptions} from '../utils/runTool.ts';
 import {toolEnv} from '../utils/toolPath.ts';
 
@@ -120,6 +125,18 @@ export async function ciReport(args: string[]): Promise<void> {
     const projects = readRushProjects(root);
     const reports = collectReports(root);
     const coverage = readLcov(join(root, 'coverage', 'lcov.info'));
+    // The test step's outcome, so a red run can name the packages that never reported. A green run
+    // cannot contain a skipped project — the skip is what a failure causes — so the list is asked
+    // for only when the step failed @@F-530.
+    const testsOutcome = readFlag(args, '--tests-outcome') ?? process.env['CI_TESTS_OUTCOME'] ?? '';
+    const silentProjects =
+        testsOutcome === 'failure'
+            ? collectSilentProjects(
+                  root,
+                  projects,
+                  reports.map(report => report.package),
+              )
+            : [];
 
     // The base branch's baseline and history are read before anything is summarised,
     // because two parts of the report are comparisons against them: the per-package
@@ -194,6 +211,7 @@ export async function ciReport(args: string[]): Promise<void> {
         run,
         links,
         totalPackages: projects.length,
+        silentProjects,
     });
     writeReportFile(markdown, outDir);
     // 5. Rebuild the committed baseline + history as "base branch + this run".
@@ -227,6 +245,13 @@ export async function ciReport(args: string[]): Promise<void> {
     }
     if (totals.newFailures > 0) {
         process.stdout.write(`# ${totals.newFailures} new failure(s) (green on the base branch)\n`);
+    }
+    if (silentProjects.length > 0) {
+        process.stdout.write(
+            `# ${silentProjects.length} package(s) ran no tests: ` +
+                silentProjects.map(project => project.projectFolder).join(', ') +
+                '\n',
+        );
     }
     if (bundle) {
         process.stdout.write(

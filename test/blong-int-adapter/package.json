@@ -6,7 +6,7 @@
     "scripts": {
         "build": "true",
         "ci-lint": "blong-dev lint",
-        "ci-test": "../../test/integration/wait.sh && blong-dev test",
+        "ci-test": "rc=0; ../../test/integration/wait.sh || rc=$?; blong-dev test || rc=$?; exit $rc",
         "test": "blong-dev test"
     },
     "dependencies": {

@@ -25,6 +25,10 @@ open (13)
 - `T-314` · tools/blong-dev — blong-dev sql should time a statement and show its plan
 - `T-315` · tools/blong-dev — blong-dev log should summarise calls by method, count and duration
 
+done (1)
+
+- `T-346` · tools/blong-dev — Name the projects that ran no tests in the CI report
+
 <!-- /memory:index -->
 
 ## Open
@@ -192,6 +196,29 @@ reference case: the party suite's browser leg makes roughly 450 gateway calls, a
 expensive method was guesswork until a hand-written version of this was run against eight thousand
 entries; the entries also outlive the process, so this is the only way to ask the question about a
 run that has finished — including the tap artifact of a CI run, which carries the same lines.
+
+## Done
+
+### T-346 — Name the projects that ran no tests in the CI report
+
+> _2026-10-15 · tools/blong-dev · done_
+
+A project whose `ci-test` fails before it produces a `.ci-report/` is invisible in the CI summary:
+the report counts the packages that reported, so a package whose e2e tests never ran reads exactly
+like one that has no tests (blong-int-adapter did this for months — @@F-530).
+
+Make it visible. The report tooling (`blong-dev ci-report`) should list the projects that have a
+`ci-test` script and produced no report, at least when the tests step failed, and the workflow
+should pass that step's outcome (`steps.test.outcome`) to the report step for it. Rush writes each
+project's output to `.rush/temp/chunked-rush-logs/<project>.ci-test.chunks.jsonl` in the project
+folder, which is enough to tell "the command ran and failed" from "the command never ran" — the
+chunk format is one JSON object per line with `kind` and `text`. Failing the job with that list
+named is the point: today the only trace of a 180-second wait that timed out is the log of the
+project that failed, and the aggregated report says nothing.
+
+Implemented in tools/blong-dev: report/silentProjects.ts with the render section and the
+CI_TESTS_OUTCOME gate (the shared workflow passes steps.test.outcome), so a red run names every
+package that has a ci-test and no report, distinguishing ran-and-stopped from never-ran.
 
 ## Retired
 

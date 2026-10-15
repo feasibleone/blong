@@ -24,7 +24,7 @@ open (12)
 - `F-339` · core/blong-browser — Photographing Editor stories: play races, late toasts and the debug
   inspector
 
-resolved (15)
+resolved (16)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -47,6 +47,8 @@ resolved (15)
 - `F-226` · core/blong-browser — A diagram capture followed the element position, not its size
 - `F-307` · core/blong-browser — A fresh app build in the served root made six Playwright tests
   flaky
+- `F-532` · core/blong-browser — A failed explorer fetch took the page down as an unhandled
+  rejection
 
 <!-- /memory:index -->
 
@@ -442,3 +444,29 @@ artifacts a run writes into its own package.
 
 Fixed: the dist folder joined the server.watch.ignored list in defineBlongViteConfig, next to the
 other artifacts a run writes into its own package.
+
+### F-532 — A failed explorer fetch took the page down as an unhandled rejection
+
+> _2026-10-15 · core/blong-browser · resolved_
+
+The explorer's three load paths dropped their rejections. `loadRows` awaited `listChildren` in a
+`try` with only a `finally`, and its effect called it as `void loadRows()`; `loadTreeChildren` and
+the viewer's `getNode(...).then(...)` had no catch either. The handler proxy had already put the
+failure in the app's error dialog, so the page had no reason to die — but the rejection escaped into
+the browser, which is where it did damage: the Playwright fixture treats a `pageerror` as fatal
+("Rejects as soon as the page throws"), so a backend hiccup aborted a test with `Error: Vault Error`
+and a 60-second timeout instead of letting it fail the assertion that names the drill — and because
+the fatal path wins, the recorded browser errors (the 500 on `commander.branch.list`) were buried
+under a page error rather than read as the cause.
+
+It was found by forcing a backend failure: with the vault adapter pointed at a dead port, the drill
+fails, the dialog appears, and the test died of `pageerror: Vault Error` — `jsonrpcEmpty` and the
+same page error also appeared when the whole suite ran in parallel and the gateway answered a drill
+with an empty response. All three paths now catch, log and return an empty result, so the panel
+shows no rows and the failure is the assertion (with the browser errors attached). Verified: no
+`pageerror` in the forced failures any more, and `tsc`, `cspell` and `eslint` clean for the package.
+
+Fixed in Commander.tsx: the three load paths (branch list, tree children, node/viewer fetch) catch,
+log and return an empty result, so a backend failure no longer becomes a page error. Verified by
+forcing a vault failure (0 page errors, adapter restored) with tsc, cspell and eslint clean for
+core/blong-browser.

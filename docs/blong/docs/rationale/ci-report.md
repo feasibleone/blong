@@ -77,6 +77,14 @@ tests as JSON and markdown, and the traces. It is built only for a red run and t
 is removed first, so a green build cannot leave a stale bundle behind for someone to debug months
 later.
 
+One absence is named rather than left to be inferred. The table can only carry the packages that
+reported, and Rush skips the dependents of a project that failed — so a suite that died before it
+could report, and one that never started, both look like silence. When the test step's own outcome
+is a failure the report therefore lists every package that has a `ci-test` script and no slice for
+the run, and tells the two apart by what Rush recorded of it: the command ran and stopped, or it
+never ran at all. The gate is the step's outcome, passed in as `CI_TESTS_OUTCOME`, because a green
+run cannot contain a skipped project — the skip is what a failure causes.
+
 Flaky tests are surfaced rather than averaged away. They are counted in their own column, marked in
 the result icon, listed as `🟡 flaky` in the failures table, and separated inside the bundle —
 because the alternative, one passing count with the retries hidden inside it, is a build whose

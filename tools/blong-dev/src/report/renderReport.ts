@@ -25,6 +25,7 @@ import type {IFailure} from './aggregate.ts';
 import type {ICoverage} from './coverage.ts';
 import {lineCoveragePct} from './coverage.ts';
 import {metricsCoveragePct, type IMetrics} from './metrics.ts';
+import type {ISilentProject} from './silentProjects.ts';
 import {
     formatDurationDeltaMs,
     formatDurationMs,
@@ -85,8 +86,36 @@ export interface IRenderOptions {
     run?: number;
     /** Package count from rush.json, used to report packages without results. */
     totalPackages?: number;
+    /** Packages whose `ci-test` produced no report, on a run that failed. */
+    silentProjects?: readonly ISilentProject[];
     /** Omitted when publishing is not configured; the links column is then dropped. */
     links?: IReportLinks | null;
+}
+
+/**
+ * Say which packages ran no tests, and how far each got.
+ *
+ * This is the one failure the report cannot count: a suite that never ran contributes nothing to
+ * any number above it, so a red run whose tables are empty is otherwise indistinguishable from a
+ * red run in a package nobody notices is missing (F-530).
+ */
+function renderSilentProjects(lines: string[], silent: readonly ISilentProject[]): void {
+    if (silent.length === 0) return;
+    lines.push('', '### Packages that ran no tests', '');
+    lines.push(
+        'Each of these has a `ci-test` script and no report for this run, which is what a suite that',
+        'failed before it could report — or one Rush skipped after another project failed — looks',
+        'like in every count above.',
+        '',
+    );
+    lines.push('| Package | Folder | What happened |', '| --- | --- | --- |');
+    for (const project of silent) {
+        const what =
+            project.state === 'stopped'
+                ? 'the command ran and stopped before writing a report'
+                : 'the command never ran — Rush skips the dependents of a project that failed';
+        lines.push(`| \`${project.packageName}\` | \`${project.projectFolder}\` | ${what} |`);
+    }
 }
 
 /** `5676` reads as `5,676`: counts here are large enough to need the separator. */
@@ -282,6 +311,7 @@ export function renderCiReport(options: IRenderOptions): string {
     if (reports.length === 0) {
         lines.push('## CI Summary', '');
         lines.push('No package produced a `.ci-report/` report — did the test step run?', '');
+        renderSilentProjects(lines, options.silentProjects ?? []);
         return lines.join('\n');
     }
 
@@ -352,6 +382,8 @@ export function renderCiReport(options: IRenderOptions): string {
     if (reportLinks.length > 0) lines.push('', reportLinks.join(' · '));
 
     if (missing > 0) lines.push('', `> ${missing} package(s) produced no test report.`);
+
+    renderSilentProjects(lines, options.silentProjects ?? []);
 
     // Tests that did not run are the quietest failure mode there is: they are absent
     // from every count above, so the only way to notice a suite that stopped running

@@ -284,7 +284,16 @@ export function Commander({
                 (nodeData.__treeKey as string) ??
                 String(nodeData.name ?? nodeData.sourceName ?? 'source');
             const parent = nodeData;
-            const children = await listChildren(level, parent);
+            const children = await listChildren(level, parent).catch(error => {
+                // The handler proxy has already put this failure in the app's error dialog; what
+                // must not happen is the rejection escaping the component. An unhandled rejection
+                // in a render effect takes the render tree down, and the Playwright fixture treats
+                // a page error as fatal — so a backend that is briefly unavailable read as a broken
+                // UI and aborted the test with a page error instead of failing an assertion that
+                // named the drill (@@F-532).
+                console.error('[blong] commander tree load failed', error);
+                return [];
+            });
             return children.map(child =>
                 withParentContext(parent, {
                     ...child,
@@ -331,7 +340,13 @@ export function Commander({
         setRows([]);
         setLoading(true);
         try {
-            const children = await listChildren(level, parent);
+            const children = await listChildren(level, parent).catch(error => {
+                // Reported, not rethrown: the error dialog already carries the backend's answer,
+                // and an unhandled rejection here kills the page — which the Playwright fixture
+                // reads as a broken UI rather than as the failed drill it is (@@F-532).
+                console.error('[blong] commander branch load failed', error);
+                return [];
+            });
             // A stale (out-of-order) fetch must not overwrite the current rows.
             if (token !== loadTokenRef.current) return;
             const parentKey = selected.key;
@@ -360,14 +375,21 @@ export function Commander({
         const {source, levelIndex, node} = viewerNode;
         const level = source.levels[levelIndex];
         return () =>
-            getNode(level, node).then(result => {
-                // Levels without an `open` return the node itself (with internal
-                // `parent.*`/`__*` context) — strip it so viewers show only data.
-                if (result && typeof result === 'object' && !Array.isArray(result)) {
-                    return cleanLeafNode(result as Record<string, unknown>);
-                }
-                return result;
-            });
+            getNode(level, node)
+                .then(result => {
+                    // Levels without an `open` return the node itself (with internal
+                    // `parent.*`/`__*` context) — strip it so viewers show only data.
+                    if (result && typeof result === 'object' && !Array.isArray(result)) {
+                        return cleanLeafNode(result as Record<string, unknown>);
+                    }
+                    return result;
+                })
+                .catch(error => {
+                    // Same as the tree and the branch list: the dialog has the backend's answer,
+                    // and the page must survive the failure (@@F-532).
+                    console.error('[blong] commander node load failed', error);
+                    return undefined;
+                });
     }, [viewerNode, getNode]);
 
     const isViewerOpen = viewerNode !== null;
