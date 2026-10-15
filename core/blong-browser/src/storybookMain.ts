@@ -149,6 +149,20 @@ export function defineBlongStorybookMain(options: IBlongStorybookMainOptions): S
                     // JSON-RPC mode, terminates `/rpc` for the page.  Inert in a
                     // build, where `configureServer` never runs.
                     .concat(storybookBackend()),
+                // A realm child is an `async function ui() {…}`, and the loader finds
+                // that child's config block by the function's own name — a child
+                // whose name minification dropped is skipped in silence, so a
+                // built Storybook serves a platform with no `ui` realm: the model
+                // page stories then die in `getPort('ui.portal')` before they
+                // render, while the dev server (which keeps the names) is fine.
+                // `output.keepNames` was tried first and changed nothing on this
+                // Vite — the bundle came back byte-identical — so names are kept by
+                // not minifying, which is what the app build does for the same
+                // reason (`defineBlongViteConfig`) @@F-537.
+                build: {
+                    ...config.build,
+                    minify: false,
+                },
                 define: {
                     ...config.define,
                     'process.env': {},

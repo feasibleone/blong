@@ -198,6 +198,7 @@ Two kinds of visual live side by side, and the difference matters when you edit 
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | **Generated**    | A test or script renders it: sequence diagrams from a real run, screenshots from Playwright, architecture diagrams from the live registry | Edit the **generator** or the code it reads, then regenerate. Never edit the file by hand. |
 | **Hand-written** | Authored mermaid written into the page while reading the code and the surrounding docs                                                    | Edit the markdown, the same as prose.                                                      |
+| **Embedded**     | A Storybook story, served live from the published Storybook that ships beside the site                                                    | Edit the tag's attributes; publish with `blong-dev docs storybook`.                        |
 
 Generated artefacts are committed to the repository and refreshed on demand, so the docs build stays
 a plain Docusaurus build. The register is
@@ -300,6 +301,69 @@ navigation its baseline uses — and with `docsOnly` it adds no new snapshot fil
 Without `BLONG_CAPTURE_DOCS=1` the same spec still runs as a smoke test and writes nothing, so a CI
 run never overwrites a committed picture. Make a capture deterministic before committing it: pin the
 rows with a search term, mask the minted ids and clocks, and clip to the element the page is about.
+
+---
+
+### Embedding a story
+
+A picture answers "what does this look like"; a story answers "what does this do". When a page's
+point is the second one, embed the story rather than photograph it — and keep the picture as the
+embed's `poster`, so the reader sees something before a Storybook has to boot:
+
+```mdx
+<StorybookStory
+    site="browser"
+    id="editor--design"
+    title="Editor/Design"
+    poster={require('./img/editor-design.png').default}
+/>
+```
+
+Note the `poster` shape: an image is in the build only when something imports it, so a poster is a
+`require`, not a path. Written as `poster="./img/editor-design.png"` it looks right and 404s, and
+`docs verify` reports it as an image that did not load.
+
+The tag needs no import in a `.md` or `.mdx` page: `docs/blong/src/theme/MDXComponents.jsx`
+registers it for the docs and the blog alike. `site` names a site in
+`docs/blong/storybook-sites.json` (`browser`, `suite`, `log`) and `id` is the story id Storybook puts
+in its own URL. The full attribute table — `height`, `globals`, `chrome`, `poster`, and what each is
+for — is the [Storybook pattern](../../../docs/blong/docs/patterns/blong-browser.md#embedding-a-story),
+which is where a reader looks too; keep the two in step rather than growing a second table here.
+
+Three rules about _when_ to embed, because an embed costs a frame, a page load and a dependency on a
+build output:
+
+- **One or two per page, where the page's argument is.** A guide of prose and pictures does not need
+  a live frame in every section; the section a reader would otherwise have to run a command for is
+  the one that earns it.
+- **`globals` instead of prose about how to see it.** A page about a variant embeds the variant
+  (`globals="theme:wood"`), a page about a language embeds the language (`globals="language:bg"`),
+  and neither asks the reader to find a toolbar item.
+- **A page that documents the story toolbar wants `chrome`**, because the toolbar is Storybook's own
+  UI, outside the story canvas. Everywhere else the canvas is what the application looks like.
+
+Publishing is one command in the docs package, and it is a step of a deploy rather than of a build:
+
+```bash
+cd docs/blong && npm run stage-storybook    # build every site into static/storybook/
+```
+
+The staged trees are 10 to 30 MB each and are **not committed** (`docs/blong/.gitignore`), so a plain
+`npm run build` — the shape CI runs — has none of them: every embed renders its poster, and
+`blong-dev docs verify` counts the embeds that rendered rather than the stories they would have
+loaded. Two checks belong to the publish and both are worth knowing about:
+
+- **Staging resolves every embed** against the `index.json` the build itself wrote, so a renamed
+  story fails the publish rather than leaving a reader with an empty frame.
+- **`docs verify` loads each embedded story** when its site is staged and waits for the story to
+  render — the only check that catches a preview which cannot boot without a Storybook dev server.
+
+One sharp edge, recorded because it wastes an hour: `docusaurus serve` rewrites `/storybook/<name>/`
+to `/storybook/<name>` and `iframe.html?id=…` to `iframe`, so a published Storybook's relative
+bundles 404 (they resolve one directory too high) and the preview gets no story id @@F-534 @@D-559.
+`docs/blong`'s `npm run serve` is `blong-dev docs serve`, which serves the build the way the
+published site does, and `npm run serve:docusaurus` is the one that does not. `npm start` serves
+the Storybooks too, and `blong-dev docs verify` loads every embedded story.
 
 ---
 

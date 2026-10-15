@@ -70,4 +70,19 @@ describe('defineBlongStorybookMain', () => {
             expect(allow).toContain('/custom/root');
         });
     });
+
+    /**
+     * Names are load-bearing in a realm tree: a child is an `async function ui() {…}` and the
+     * loader finds that child's config block by the function's own name, so a build that minifies
+     * the names away serves a platform whose realms are silently absent — the model page stories
+     * then fail in `getPort('ui.portal')` before they render, and the dev server, which keeps the
+     * names, shows nothing wrong. This test is the guard on that: the flag is the whole fix.
+     */
+    it('keeps function names by not minifying the build', () => {
+        const main = defineBlongStorybookMain({importMetaDirname: process.cwd()});
+        const config = (main.viteFinal as (c: unknown) => {build: {minify: boolean}})({
+            build: {sourcemap: true},
+        });
+        expect(config.build.minify).toBe(false);
+    });
 });

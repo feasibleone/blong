@@ -4,6 +4,11 @@
 # Production
 /build
 
+# The Storybooks the pages embed (`storybook-sites.json`), staged by `npm run stage-storybook`.
+# A build output of the packages they belong to — 10 to 30 MB each — so it is rebuilt for a deploy
+# rather than committed, and a plain `npm run build` renders each embed's poster instead.
+/static/storybook
+
 # Generated files
 .docusaurus
 .cache-loader

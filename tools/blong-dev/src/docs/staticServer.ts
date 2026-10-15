@@ -8,8 +8,10 @@
  * the caller start `docusaurus serve` in a second terminal and keep it alive.
  *
  * It is deliberately not a general-purpose server: no range requests, no caching
- * headers, no directory listing. Its only caller is a verification run that already
- * knows exactly which pages it is going to ask for.
+ * headers, no directory listing. Its callers are a verification run that already
+ * knows exactly which pages it is going to ask for, and `blong-dev docs serve` for a
+ * reader who wants to look at the built site — including the Storybook frames a page
+ * embeds, which is the one thing a general-purpose server gets wrong here @@D-559.
  */
 
 import {createReadStream, existsSync, statSync} from 'node:fs';
@@ -19,6 +21,7 @@ import {extname, join, resolve, sep} from 'node:path';
 /** Content types the build actually contains. Anything else is served as a download. */
 const CONTENT_TYPES: Record<string, string> = {
     '.css': 'text/css; charset=utf-8',
+    '.eot': 'application/vnd.ms-fontobject',
     '.gif': 'image/gif',
     '.html': 'text/html; charset=utf-8',
     '.ico': 'image/x-icon',
@@ -32,9 +35,15 @@ const CONTENT_TYPES: Record<string, string> = {
     '.svg': 'image/svg+xml',
     '.ttf': 'font/ttf',
     '.txt': 'text/plain; charset=utf-8',
+    // A published Storybook ships the sources its bundles were built from, which the browser only
+    // asks for when a reader opens devtools; `text/plain` keeps that a readable response rather
+    // than a download, and never executes them.
+    '.ts': 'text/plain; charset=utf-8',
+    '.tsx': 'text/plain; charset=utf-8',
     '.webp': 'image/webp',
     '.woff': 'font/woff',
     '.woff2': 'font/woff2',
+    '.xml': 'application/xml; charset=utf-8',
 };
 
 /** A running server, and how to stop it. */
@@ -76,13 +85,14 @@ function resolveFile(root: string, pathname: string): string | undefined {
 }
 
 /**
- * Serve `root` on an ephemeral loopback port.
+ * Serve `root` on a loopback port.
  *
- * Port 0 rather than a fixed one so two verification runs cannot collide, which also
- * means the caller must use the returned {@link IStaticServer.origin} rather than an
- * address it assumed.
+ * The default port, 0, means an ephemeral one, so two verification runs cannot collide — which is
+ * also why a caller must use the returned {@link IStaticServer.origin} rather than an address it
+ * assumed. `blong-dev docs serve` is the one caller that names a port, because a reader has to be
+ * able to type the address.
  */
-export async function serveStatic(root: string): Promise<IStaticServer> {
+export async function serveStatic(root: string, port = 0): Promise<IStaticServer> {
     const notFound = join(root, '404.html');
     const server = createServer((request, response) => {
         const pathname = (request.url ?? '/').split(/[?#]/)[0];
@@ -102,7 +112,7 @@ export async function serveStatic(root: string): Promise<IStaticServer> {
 
     await new Promise<void>((ready, failed) => {
         server.once('error', failed);
-        server.listen(0, '127.0.0.1', ready);
+        server.listen(port, '127.0.0.1', ready);
     });
     const address = server.address();
     if (address === null || typeof address === 'string') {

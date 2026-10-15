@@ -19,11 +19,20 @@
  *   blong-dev docs list [--json]
  *   blong-dev docs generate [--only <id[,id]>] [--filter <glob>] [--dry-run]
  *   blong-dev docs check    [--only <id[,id]>] [--filter <glob>]
+ *   blong-dev docs verify   [--base <url>] [--filter <glob>] [--json]
+ *   blong-dev docs storybook [--only <name[,name]>] [--no-build] [--dry-run]
+ *   blong-dev docs serve    [--port <port>] [--dir <path>]
  *
  * `check` is the gate: it snapshots every destination, regenerates, and **restores** the
  * originals, so it reports staleness without leaving a dirty tree. It exits non-zero when an
  * artefact differs from what its generator produces, which is the signal that somebody edited a
  * generated file or changed the code the diagram is drawn from.
+ *
+ * `verify` and `storybook` are the two halves of the same idea on different media. `verify`
+ * opens every page in a browser and proves that what the markdown declares — diagrams, pictures,
+ * embedded stories — is what the reader gets. `storybook` builds the Storybooks the pages embed
+ * from (`docs/blong/storybook-sites.json`) and resolves every embed's story id against what the
+ * build serves, because those trees are never committed and a plain docs build has none of them.
  *
  * The generators are deterministic by design — a call is placed by the counter path its caller
  * assigned, and no count comes from the clock — so an up-to-date artefact regenerates to the same
@@ -36,6 +45,12 @@ import {dirname, join, relative} from 'node:path';
 import stripJsonComments from 'strip-json-comments';
 
 import {serveStatic} from '../docs/staticServer.ts';
+import {
+    STORYBOOK_MANIFEST,
+    loadStorybookSites,
+    stageStorybooks,
+    stagedStoryIds,
+} from '../docs/storybookSites.ts';
 import {findBlogPages, findVisualPages} from '../docs/visualPages.ts';
 import {repoRoot} from '../report/reportPaths.ts';
 
@@ -394,6 +409,114 @@ function check(root: string, args: string[]): void {
     process.exit(1);
 }
 
+/** Parse the flags `storybook` accepts. */
+function parseStorybookOptions(args: string[]): {only: string[]; build: boolean; dryRun: boolean} {
+    const options = {only: [] as string[], build: !args.includes('--no-build'), dryRun: false};
+    for (let index = 0; index < args.length; index++) {
+        const arg = args[index];
+        if (arg === '--only') {
+            const value = args[++index];
+            if (value === undefined) {
+                process.stderr.write('blong-dev docs: --only needs a site name\n');
+                process.exit(1);
+            }
+            options.only.push(...value.split(',').filter(Boolean));
+        } else if (arg.startsWith('--only=')) {
+            options.only.push(...arg.slice('--only='.length).split(',').filter(Boolean));
+        } else if (arg === '--dry-run') {
+            options.dryRun = true;
+        }
+    }
+    return options;
+}
+
+/**
+ * `blong-dev docs storybook [--only <name[,name]>] [--no-build] [--dry-run]`
+ *
+ * Build every published Storybook and stage it into `docs/blong/static/storybook/<name>/`, which
+ * is where the docs site serves it from — in `npm start`, in `npm run build`, in `npm run serve`
+ * and in `npm run deploy` — and then resolve every `<StorybookStory>` in the docs and the blog
+ * against what each staged site's own `index.json` serves.
+ *
+ * The staged tree is not committed (it is a build output, tens of megabytes), so this is a step of
+ * the deploy rather than of the build: `docs/blong`'s `deploy` script runs it first, and a docs
+ * build without it renders each embed's poster instead of a live story. Running it standalone is
+ * how a page's embed is checked before a deploy.
+ */
+function storybook(root: string, args: string[]): void {
+    const options = parseStorybookOptions(args);
+    const all = loadStorybookSites(root);
+    let sites = all;
+    if (options.only.length > 0) {
+        const wanted = new Set(options.only);
+        const unknown = options.only.filter(name => !all.some(site => site.name === name));
+        if (unknown.length > 0) {
+            process.stderr.write(
+                `blong-dev docs: unknown Storybook site(s): ${unknown.join(', ')}\n` +
+                    `Known sites: ${all.map(site => site.name).join(', ')}\n`,
+            );
+            process.exit(1);
+        }
+        sites = all.filter(site => wanted.has(site.name));
+    }
+
+    if (!stageStorybooks(root, sites, {build: options.build, dryRun: options.dryRun})) {
+        process.stderr.write(
+            `blong-dev docs: the Storybooks were not staged — see ${STORYBOOK_MANIFEST} and the ` +
+                'embed reported above\n',
+        );
+        process.exit(1);
+    }
+    if (options.dryRun) return;
+    process.stdout.write(
+        `blong-dev docs: ${sites.length} Storybook(s) staged and every embed resolved\n`,
+    );
+}
+
+/**
+ * `blong-dev docs serve [--port <port>] [--dir <path>]`
+ *
+ * Serve the built site with the same static server `docs verify` loads, which resolves an
+ * extension-less route to `<route>.html` and ignores the query string, so a page and the Storybook
+ * frame it embeds are both served the way the published site serves them. Docusaurus's own `serve`
+ * cannot: it rewrites `/storybook/<name>/` to `/storybook/<name>` and `iframe.html?id=…` to
+ * `iframe`, which resolves a published Storybook's relative bundles one directory above where they
+ * live and hands the preview a URL with no story id @@F-534 @@D-559.
+ */
+async function serve(root: string, args: string[]): Promise<void> {
+    const port = Number(valueOf(args, '--port') ?? '3000');
+    const dir = join(root, valueOf(args, '--dir') ?? 'docs/blong/build');
+    if (!Number.isInteger(port) || port < 0 || port > 65535) {
+        process.stderr.write(`blong-dev docs: --port needs a port number, got "${port}"\n`);
+        process.exit(1);
+    }
+    if (!existsSync(join(dir, 'index.html'))) {
+        process.stderr.write(
+            `blong-dev docs: ${relative(root, dir)} has no index.html — run \`npm run build\` in ` +
+                'docs/blong first\n',
+        );
+        process.exit(1);
+    }
+    const server = await serveStatic(dir, port).catch((error: Error) => {
+        process.stderr.write(
+            `blong-dev docs: cannot serve on port ${port} — ${error.message}\n` +
+                'Pass another one, e.g. `npm run serve -- --port 3010`.\n',
+        );
+        process.exit(1);
+    });
+    process.stdout.write(
+        `blong-dev docs: serving ${relative(root, dir)}/ at ${server.origin}/\n` +
+            `  a Storybook staged for a deploy is at ${server.origin}/storybook/<name>/ ` +
+            '(`blong-dev docs storybook` stages one)\n' +
+            '  Ctrl-C to stop\n',
+    );
+    process.on('SIGINT', () => {
+        void server.close().then(() => process.exit(0));
+    });
+    // The server holds the event loop open until the signal above; nothing else to do here.
+    await new Promise(() => undefined);
+}
+
 /**
  * `blong-dev docs verify [--base <url>] [--filter <glob>] [--json]`
  *
@@ -436,6 +559,15 @@ async function verify(root: string, args: string[]): Promise<void> {
     }
     const blocks = pages.reduce((total, page) => total + page.blocks, 0);
     const imageCount = pages.reduce((total, page) => total + page.images, 0);
+    const storyCount = pages.reduce((total, page) => total + page.stories, 0);
+
+    // Which Storybooks this run can load a story from. Nothing is staged in CI or in a docs-only
+    // build, and an unusable site is not a defect there: the embed's poster is the page's answer.
+    const staged = new Set(
+        loadStorybookSites(root)
+            .filter(site => stagedStoryIds(root, site) !== undefined)
+            .map(site => site.name),
+    );
 
     // The build is required when no base is given: verifying a stale build would report on a site
     // nobody is looking at.
@@ -465,6 +597,9 @@ async function verify(root: string, args: string[]): Promise<void> {
         route: string;
         drawn: number;
         blocks: number;
+        storiesRendered: number;
+        stories: number;
+        storiesFailed: string[];
         errors: string[];
         imagesFailed: string[];
     }> = [];
@@ -485,15 +620,40 @@ async function verify(root: string, args: string[]): Promise<void> {
                     waitUntil: 'domcontentloaded',
                     timeout: 30_000,
                 });
-                const drawn = await waitForDiagrams(tab, page.blocks);
+                const drawn = await waitForCount(
+                    tab,
+                    '.docusaurus-mermaid-container svg',
+                    page.blocks,
+                );
+                const storiesRendered = await waitForCount(
+                    tab,
+                    '[data-storybook-id]',
+                    page.stories,
+                );
+                const storiesFailed = await storiesThatFailedToRender(context, origin, tab, staged);
                 const imagesFailed = await imagesThatFailedToLoad(tab);
-                if (drawn < page.blocks || errors.length > 0 || imagesFailed.length > 0) {
-                    failures.push({...page, drawn, errors, imagesFailed});
+                if (
+                    drawn < page.blocks ||
+                    storiesRendered < page.stories ||
+                    storiesFailed.length > 0 ||
+                    errors.length > 0 ||
+                    imagesFailed.length > 0
+                ) {
+                    failures.push({
+                        ...page,
+                        drawn,
+                        storiesRendered,
+                        storiesFailed,
+                        errors,
+                        imagesFailed,
+                    });
                 }
             } catch (error) {
                 failures.push({
                     ...page,
                     drawn: 0,
+                    storiesRendered: 0,
+                    storiesFailed: [],
                     errors: [(error as Error).message.split('\n')[0]],
                     imagesFailed: [],
                 });
@@ -509,20 +669,31 @@ async function verify(root: string, args: string[]): Promise<void> {
 
     if (asJson) {
         process.stdout.write(
-            `${JSON.stringify({pages: pages.length, blocks, failures}, null, 4)}\n`,
+            `${JSON.stringify({pages: pages.length, blocks, storyCount, failures}, null, 4)}\n`,
         );
     } else if (failures.length === 0) {
         process.stdout.write(
-            `blong-dev docs: ${blocks} diagram(s) and ${imageCount} image(s) on ${pages.length} ` +
-                'page(s) all rendered\n',
+            `blong-dev docs: ${blocks} diagram(s), ${storyCount} embedded story(ies) and ` +
+                `${imageCount} image(s) on ${pages.length} page(s) all rendered` +
+                (staged.size === 0
+                    ? storyCount === 0
+                        ? ''
+                        : ' (no Storybook is staged, so only the embeds were counted)'
+                    : `, and every embedded story loaded (Storybooks staged: ` +
+                      `${[...staged].sort().join(', ')})`) +
+                '\n',
         );
     } else {
         process.stderr.write(`\nblong-dev docs: ${failures.length} page(s) were not sound:\n`);
         for (const failure of failures) {
             process.stderr.write(
-                `  ${failure.file} — drew ${failure.drawn} of ${failure.blocks}\n`,
+                `  ${failure.file} — drew ${failure.drawn} of ${failure.blocks}, ` +
+                    `rendered ${failure.storiesRendered} of ${failure.stories} embedded story(ies)\n`,
             );
             for (const error of failure.errors) process.stderr.write(`      ${error}\n`);
+            for (const story of failure.storiesFailed) {
+                process.stderr.write(`      story did not render: ${story}\n`);
+            }
             for (const image of failure.imagesFailed) {
                 process.stderr.write(`      image did not load: ${image}\n`);
             }
@@ -538,20 +709,112 @@ function valueOf(args: string[], flag: string): string | undefined {
     return args.find(arg => arg.startsWith(`${flag}=`))?.slice(flag.length + 1);
 }
 
-/** Wait until a page has drawn at least `expected` diagrams, or the budget runs out. */
-async function waitForDiagrams(
+/** Wait until a page shows at least `expected` elements matching `selector`, or the budget runs out. */
+async function waitForCount(
     page: import('@playwright/test').Page,
+    selector: string,
     expected: number,
     budgetMs = 15_000,
 ): Promise<number> {
     const deadline = Date.now() + budgetMs;
-    let drawn = 0;
+    let found = 0;
     while (Date.now() < deadline) {
-        drawn = await page.locator('.docusaurus-mermaid-container svg').count();
-        if (drawn >= expected) return drawn;
+        found = await page.locator(selector).count();
+        if (found >= expected) return found;
         await new Promise(resolve => setTimeout(resolve, 250));
     }
-    return drawn;
+    return found;
+}
+
+/**
+ * The embedded stories on a page that a staged Storybook did not render.
+ *
+ * Counting the embeds a page renders proves the markdown got through the MDX parser; it says
+ * nothing about the story behind one. Three things routinely break that and are invisible to every
+ * other check: a story id the staged build no longer serves, a published Storybook whose preview
+ * cannot boot standalone — fixtures, a codec, a module the dev server used to provide — and a realm
+ * whose child never loaded, which now happens when a build minifies away the function name the
+ * loader finds its config block by @@F-537. All of them look identical from the outside: a frame that
+ * stays empty on a published page.
+ *
+ * Judging it needs two waits, and the second is the one that was missing: `#storybook-root` gains a
+ * child as soon as the story's own decorator renders its *placeholder* ("Loading Blong platform…"),
+ * so a frame that is about to fail is already non-empty — a check that stops there reports a broken
+ * story as a rendered one (measured: it did, for the model pages of the suite site). So the story is
+ * given a moment to reach its final state, and what it says then is what is judged: Storybook's own
+ * "No Preview" for an id it cannot find, the placeholder still standing for a platform that never
+ * started, and the console errors Storybook and the platform log when a render throws.
+ *
+ * A site that is not staged is skipped rather than failed: nothing was built to load, and the
+ * embed's poster is what the page shows.
+ */
+async function storiesThatFailedToRender(
+    context: import('@playwright/test').BrowserContext,
+    origin: string,
+    page: import('@playwright/test').Page,
+    staged: Set<string>,
+): Promise<string[]> {
+    const embeds = await page.$$eval('[data-storybook-site][data-storybook-id]', elements =>
+        elements.map(element => ({
+            site: element.getAttribute('data-storybook-site') ?? '',
+            id: element.getAttribute('data-storybook-id') ?? '',
+        })),
+    );
+    const problems: string[] = [];
+    for (const embed of embeds) {
+        if (!staged.has(embed.site)) continue;
+        // The URL the embed itself opens, canvas only, which is the one a reader's frame loads.
+        const url =
+            `${origin}/storybook/${embed.site}/iframe.html?id=${encodeURIComponent(embed.id)}` +
+            '&viewMode=story';
+        const tab = await context.newPage();
+        const logged: string[] = [];
+        tab.on('pageerror', error => logged.push(error.message));
+        tab.on('console', message => {
+            if (message.type() === 'error') logged.push(message.text());
+        });
+        try {
+            await tab.goto(url, {waitUntil: 'domcontentloaded', timeout: 30_000});
+            await tab.waitForFunction(
+                () => (document.querySelector('#storybook-root')?.children.length ?? 0) > 0,
+                undefined,
+                {timeout: 20_000},
+            );
+            await tab.waitForTimeout(2_000);
+            const faults = await tab.evaluate(() => {
+                const root = document.querySelector<HTMLElement>('#storybook-root');
+                const text = document.body.innerText.replace(/\s+/g, ' ');
+                return [
+                    text.includes('No Preview') ? 'Storybook found no story for this id' : '',
+                    /^Loading /.test((root?.innerText ?? '').trim())
+                        ? 'the story never got past its loading placeholder'
+                        : '',
+                ].filter(Boolean);
+            });
+            for (const message of logged) {
+                if (
+                    /Error rendering story|Failed to load Blong platform|Cannot read properties/i.test(
+                        message,
+                    )
+                ) {
+                    faults.push(message.split('\n')[0].slice(0, 200));
+                }
+            }
+            if (faults.length > 0) {
+                problems.push(
+                    `${embed.site}/${embed.id} — ${faults.join('; ')}. The page loads ${url}`,
+                );
+            }
+        } catch (error) {
+            problems.push(
+                `${embed.site}/${embed.id} — ${(error as Error).message.split('\n')[0]}. ` +
+                    `The page loads ${url}`,
+            );
+        } finally {
+            await tab.close();
+        }
+    }
+    return problems;
 }
 
 /**
@@ -625,6 +888,12 @@ export async function docs(args: string[]): Promise<void> {
         case 'verify':
             await verify(root, rest);
             break;
+        case 'storybook':
+            storybook(root, rest);
+            break;
+        case 'serve':
+            await serve(root, rest);
+            break;
         case undefined:
         case '--help':
         case '-h':
@@ -635,7 +904,10 @@ export async function docs(args: string[]): Promise<void> {
                     '  blong-dev docs generate [--only <id[,id]>] [--filter <glob>] [--dry-run]\n' +
                     '  blong-dev docs check    [--only <id[,id]>] [--filter <glob>]\n' +
                     '  blong-dev docs verify   [--base <url>] [--filter <glob>] [--json]\n' +
-                    `\nRegister: ${MANIFEST}\n`,
+                    '  blong-dev docs storybook [--only <name[,name]>] [--no-build] [--dry-run]\n' +
+                    '  blong-dev docs serve    [--port <port>] [--dir <path>]\n' +
+                    `\nRegister: ${MANIFEST}\n` +
+                    `Storybooks: ${STORYBOOK_MANIFEST}\n`,
             );
             break;
         default:

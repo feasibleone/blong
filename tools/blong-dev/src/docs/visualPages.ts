@@ -11,6 +11,13 @@
  * - **An image reference is not checked by anything either.** `onBrokenLinks: 'throw'` guards
  *   internal links, not pictures: a page can point at a file that was never committed and build
  *   clean, with the reader getting a broken-image icon.
+ * - **An embedded story renders nothing when the page's own markdown is broken.**
+ *   `<StorybookStory>` is a markdown page's one piece of JSX, so a tag the MDX parser drops — an
+ *   unescaped `<` in the prose around it, a tag split across two lines — takes the story with it
+ *   and leaves the page reading as if it never had one. Counting the embeds the markdown declares
+ *   against the elements that rendered is what catches it. The story itself is not loaded here:
+ *   the published Storybook is a build output that a plain docs build does not stage, so the
+ *   check is about the embed, and `blong-dev docs storybook` is the one that resolves the ids.
  *
  * That leaves a browser visit as the only check, and a visit needs to know what to expect: how many
  * diagrams a page owes, and whether it has pictures at all. A page that failed to parse a block
@@ -31,6 +38,8 @@ export interface IVisualPage {
     blocks: number;
     /** How many images the page embeds. */
     images: number;
+    /** How many stories the page embeds with `<StorybookStory>`. */
+    stories: number;
 }
 
 /** A fenced block that opens with the mermaid info string. */
@@ -38,6 +47,9 @@ const MERMAID_FENCE = /^```mermaid\s*$/gm;
 
 /** A markdown image reference. */
 const IMAGE = /!\[[^\]]*\]\([^)\s]+/g;
+
+/** A line that opens or closes a fenced block of any language. */
+const FENCE = /^\s*(?:```|~~~)/;
 
 /** How many mermaid blocks `markdown` contains. */
 export function countMermaidBlocks(markdown: string): number {
@@ -53,6 +65,44 @@ export function countMermaidBlocks(markdown: string): number {
  */
 export function countImages(markdown: string): number {
     return markdown.match(IMAGE)?.length ?? 0;
+}
+
+/** The tag a page embeds a story with. */
+const STORYBOOK_EMBED = /<StorybookStory\b/g;
+
+/**
+ * `markdown` with every fenced block and inline code span emptied out.
+ *
+ * A page about a feature may quote one — the Storybook pattern doc shows the embed tag it
+ * describes — and a quoted example is an illustration, not an embed. This is the same rule the
+ * `@@` reference scan follows: inside backticks, a token is being shown rather than used.
+ *
+ * Fenced blocks are replaced line for line, so the result can be read position by position; inline
+ * spans are dropped from what is left.
+ */
+export function stripCode(markdown: string): string {
+    const lines: string[] = [];
+    let inFence = false;
+    for (const line of markdown.split('\n')) {
+        if (FENCE.test(line)) {
+            inFence = !inFence;
+            lines.push('');
+            continue;
+        }
+        lines.push(inFence ? '' : line);
+    }
+    return lines.join('\n').replace(/`[^`\n]*`/g, '');
+}
+
+/**
+ * How many stories `markdown` embeds.
+ *
+ * Counted outside code, so the tag a how-to quotes does not make the page owe a story — and the
+ * same reading is what the embed check uses to decide which tags have to resolve to a real story id
+ * (`tools/blong-dev/src/docs/storybookSites.ts`).
+ */
+export function countStorybookEmbeds(markdown: string): number {
+    return stripCode(markdown).match(STORYBOOK_EMBED)?.length ?? 0;
 }
 
 /**
@@ -102,9 +152,10 @@ function pagesUnder(
         const markdown = readFileSync(path, 'utf8');
         const blocks = countMermaidBlocks(markdown);
         const images = countImages(markdown);
-        if (blocks === 0 && images === 0) continue;
+        const stories = countStorybookEmbeds(markdown);
+        if (blocks === 0 && images === 0 && stories === 0) continue;
         const file = relative(dir, path).split('\\').join('/');
-        pages.push({file, route: routeFor(file, markdown), blocks, images});
+        pages.push({file, route: routeFor(file, markdown), blocks, images, stories});
     }
     return pages;
 }

@@ -10,7 +10,14 @@
 
 import t from 'tap';
 
-import {blogSlug, countImages, countMermaidBlocks, routeForDocsFile} from './visualPages.ts';
+import {
+    blogSlug,
+    countImages,
+    countMermaidBlocks,
+    countStorybookEmbeds,
+    routeForDocsFile,
+    stripCode,
+} from './visualPages.ts';
 
 t.test('countMermaidBlocks counts only mermaid fences', t => {
     t.equal(countMermaidBlocks(''), 0, 'nothing in, nothing counted');
@@ -61,6 +68,61 @@ t.test('countImages counts image references', t => {
         countImages('[a link](./page.md) is not an image\n'),
         0,
         'a plain link is not an image',
+    );
+    t.end();
+});
+
+t.test('countStorybookEmbeds counts the embeds a page owes', t => {
+    t.equal(countStorybookEmbeds('prose only\n'), 0, 'prose embeds nothing');
+    t.equal(
+        countStorybookEmbeds('<StorybookStory site="browser" id="editor--toolbar" />\n'),
+        1,
+        'one tag is one embed',
+    );
+    t.equal(
+        countStorybookEmbeds('<StorybookStory site="a" id="x" />\n\ntext\n\n<StorybookStory site="b" id="y" />\n'),
+        2,
+        'two tags are two embeds',
+    );
+    t.equal(
+        countStorybookEmbeds('```mdx\n<StorybookStory site="a" id="x" />\n```\n'),
+        0,
+        'a tag quoted in a fence is an example, not an embed — the pattern doc shows the tag itself',
+    );
+    t.equal(
+        countStorybookEmbeds('the `<StorybookStory>` tag in backticks is prose\n'),
+        0,
+        'a tag in an inline span is being named rather than used',
+    );
+    t.equal(
+        countStorybookEmbeds('<StorybookStory\n    site="a"\n    id="x"\n/>\n'),
+        1,
+        'a tag spread over several lines is still one embed',
+    );
+    t.equal(
+        countStorybookEmbeds('~~~\n<StorybookStory site="a" id="x" />\n~~~\n'),
+        0,
+        'a tilde fence quotes code just as a backtick fence does',
+    );
+    t.end();
+});
+
+t.test('stripCode empties quoted code and leaves the rest of the page alone', t => {
+    t.equal(stripCode('a `b` c'), 'a  c', 'an inline span is dropped');
+    t.equal(
+        stripCode('```ts\nconst a = 1;\n```\nkept\n'),
+        '\n\n\nkept\n',
+        'a fenced block keeps its lines so positions survive, with its content gone',
+    );
+    t.equal(
+        stripCode('one\n\n```ts\nconst a = 1;\n```\n\ntwo\n'),
+        'one\n\n\n\n\n\ntwo\n',
+        'the text before and after a fence is untouched',
+    );
+    t.equal(
+        stripCode('a fence `with an odd backtick\n'),
+        'a fence `with an odd backtick\n',
+        'an unclosed span is not a span, so the line survives intact',
     );
     t.end();
 });

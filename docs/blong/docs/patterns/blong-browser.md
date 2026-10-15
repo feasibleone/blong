@@ -250,9 +250,95 @@ cd core/blong-browser && npm run storybook   # port 6006
 cd demo/blong-marine  && npm run storybook   # port 6007
 ```
 
-Storybook is not published as a site yet, so there is nothing here to link to;
-`npm run ci-storybook` in any of those packages builds the static output (`storybook-static/`,
-gitignored) that a published build would serve.
+The stories those commands serve are also **published beside these pages**, from the same origin, so
+a page can embed one and the reader gets the component running rather than a picture of it:
+
+<StorybookStory
+    site="browser"
+    id="editor--toolbar"
+    title="The Editor's toolbar, with four realm actions in its left slot"
+/>
+
+### Embedding a story
+
+A page embeds a story with one tag, and no import — `docs/blong/src/theme/MDXComponents.jsx`
+registers it for every page, docs and blog alike. `site` is one of the sites in
+`docs/blong/storybook-sites.json` and `id` is the story id Storybook puts in its own URL
+(`?path=/story/<id>`).
+
+```mdx
+<StorybookStory site="browser" id="editor--toolbar" title="The Editor's toolbar" />
+```
+
+| Attribute | What it does                                                                              |
+| --------- | ----------------------------------------------------------------------------------------- |
+| `site`    | Which published Storybook to read the story from. Required.                               |
+| `id`      | The story id, as in `?path=/story/<id>`. Required.                                        |
+| `title`   | Caption under the frame, and the frame's accessible name.                                 |
+| `height`  | Frame height, a CSS length. Defaults to 480px, or 640px with `chrome`.                    |
+| `globals` | Storybook globals to open the story from, e.g. `theme:wood,language:bg`.                  |
+| `chrome`  | Show Storybook's own UI — sidebar and story toolbar — instead of the bare story canvas.   |
+| `poster`  | A picture to show until the reader asks for the live story, which then opens on a click.  |
+
+Three of those are worth a sentence each.
+
+**`globals` is how a page shows a variant rather than a default.** The same story opened at
+`theme:wood` is the wood skin of the same editor, `language:bg` renders its toolbar in Bulgarian and
+`direction:rtl` mirrors the layout — so a page about a variant embeds the variant instead of
+describing where to click to see it. The value is the same one a Storybook URL takes, and it
+outranks the choices a reader's browser has stored from an earlier visit.
+
+**`poster` is the honest default on a heavy page.** Given one, the embed shows the committed
+screenshot the page already has and opens the story on a click: the reader is not made to wait for a
+Storybook frame to decide whether they want it, and a build with no Storybook staged still shows a
+picture. The published trees are not committed — `npm run deploy` stages them, a plain
+`npm run build` does not — so a page that shows nothing but a live frame is a page that renders an
+empty box in a docs-only build.
+
+The poster is written as an import rather than a path, because Docusaurus copies an image into the
+build only when something imports it:
+
+```mdx
+<StorybookStory poster={require('./img/editor-toolbar.png').default} … />
+```
+
+A plain `poster="./img/editor-toolbar.png"` looks right and 404s — the build has no such file — which
+the `docs verify` run reports as an image that did not load.
+
+**`chrome` is for the page about the toolbar.** The story toolbar is Storybook's own UI, outside the
+story canvas, so the only way to show it is to embed the manager rather than the frame. Use it in
+the pages that document the toolbar, and leave it out everywhere else: the canvas is what the
+application looks like.
+
+### Publishing
+
+The sites, their packages and their build commands are the register
+`docs/blong/storybook-sites.json`; staging builds each one and copies it into
+`docs/blong/static/storybook/<name>/`, which Docusaurus serves verbatim under `/storybook/<name>/`:
+
+```bash
+cd docs/blong
+npm run stage-storybook                    # build and stage every site
+npm run stage-storybook -- --only browser  # one site, which is what a page about a widget needs
+npm run serve                              # /storybook/browser/iframe.html is live
+```
+
+`npm run serve` here is not `docusaurus serve`, and the difference matters the moment a page embeds
+a story: `docusaurus serve` rewrites `/storybook/<name>/` to `/storybook/<name>` and
+`iframe.html?id=…` to `iframe`, so a published Storybook's relative bundles resolve one directory
+too high (every script 404s) and the preview is handed a URL with no story id (nothing renders).
+`npm run serve` is `blong-dev docs serve`, which serves the build the way the published site does;
+`npm run serve:docusaurus` keeps the Docusaurus one for anything that does not embed a story.
+
+Two sites rather than one composed build, because a Storybook has exactly one preview file: a
+component story is rendered by this package's preview (its in-file `withDispatch` fixtures, no
+platform) and a model page story by a realm's (a platform, a mock adapter, the toolbar). Composing
+them would render one of the two against the wrong fixtures — so the split follows the two previews
+the packages already have.
+
+Staging also **checks every embed**: each `<StorybookStory>` in the docs and the blog has to name a
+known site and a story id that the staged site's own `index.json` serves, so a story renamed in a
+package fails the publish rather than leaving a reader with an empty frame.
 
 Two Storybook patterns exist:
 

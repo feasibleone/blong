@@ -54,7 +54,7 @@ open (42)
 - `F-525` · ci — A mis-indented line broke the shared workflow for every caller
 - `F-526` · ci — A 24-hour release-age policy, not the cache, blocked the install
 
-resolved (31)
+resolved (33)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -89,6 +89,8 @@ resolved (31)
 - `F-471` · ci — The e2e wait step hides its reason in the diagnostics artifact
 - `F-376` · cross-cutting — Rush deploy honours .npmignore, a deployment is not a publish
 - `F-488` · cross-cutting — The publish allow-lists release packages without their entry points
+- `F-535` · docs — A relative img src in JSX is not an asset the build copies
+- `F-534` · docs — docusaurus serve drops the query from an iframe URL
 
 <!-- /memory:index -->
 
@@ -1137,3 +1139,32 @@ blong-dev publish check, with a unit test of the reader and a repo-level gate in
 it fails on a fixture whose whitelist hides a declared subpath. Residual findings are T-323: the
 declared targets under dist/ exist only after a build, and blong-openapi declares a browser half it
 does not have.
+
+### F-535 — A relative img src in JSX is not an asset the build copies
+
+> _2026-10-15 · docs · resolved_
+
+Docusaurus copies an image into the build only when something imports it: a markdown reference goes
+through webpack and lands in `assets/images/` under a hashed name, while a plain relative src in JSX
+(poster="./img/editor-toolbar.png") asks for a path the build never wrote, so the poster 404s and
+the reader gets a broken-image icon. Pass the import instead —
+poster={require('./img/editor-toolbar.png').default} — which is what the component's JSDoc, the
+Storybook pattern doc and the blong-docs skill now say. The first `blong-dev docs verify` run over
+the new embeds reported exactly this (image did not load), which is the check to trust over a
+browser glance.
+
+### F-534 — docusaurus serve drops the query from an iframe URL
+
+> _2026-10-15 · docs · resolved_
+
+`docusaurus serve` — which docs/blong used to run as `npm run serve` — rewrites URLs to clean ones:
+a Storybook frame URL such as the iframe entry point with its id query becomes a query-less path,
+and the `/storybook/<name>/` directory URL loses its trailing slash. The first loses the story id,
+so the preview renders its "No Preview" notice; the second makes a published Storybook's relative
+module imports resolve one directory above where they live, so every manager bundle 404s (measured:
+/storybook/sb-manager/globals-runtime.js is 404 where
+/storybook/browser/sb-manager/globals-runtime.js is 200). It cost a debugging cycle because it looks
+like a broken embed: the page was right, the component was right, the server was rewriting the URL.
+The dev server (`npm start`) serves the same URLs untouched and a static host does too. Fixed by
+pointing docs/blong's `npm run serve` at `blong-dev docs serve` @@D-559; the Docusaurus one stays as
+`npm run serve:docusaurus`.

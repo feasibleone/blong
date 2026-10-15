@@ -95,8 +95,13 @@
     min-width: 200px;
 }
 
-@media (max-width: 960px) {
-    .p-menubar {
-        flex-grow: 1;
-    }
+/* The menubar is a strip, like the tab strip above: it keeps its natural height and the body
+   below it takes the free space. PrimeReact's mobile mode (≤960px) hides the root list behind
+   the button, and this rule used to ask for `flex-grow: 1` there — which, in the portal's
+   *column* layout, grows the bar's height rather than its width. Measured: 341px below 960px
+   against the 42px it is meant to be, so a narrow frame showed a mostly empty bar. Growth is a
+   regression, not a design (@@D-142 @@F-538): the height is restored here rather than in a
+   baseline. */
+.p-menubar {
+    flex-shrink: 0;
 }

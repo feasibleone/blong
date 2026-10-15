@@ -121,6 +121,23 @@ story, so the story always renders the variant it names. The checkout contains p
 from the same page — `editor--glass` and `editor--wood`, plus a toolbar and a tilt pair — which is
 the cheapest way to confirm that a change to one variant did not disturb the other.
 
+Both halves of that pair, embedded side by side. They are the same story, the same page and the same
+schema; only the variant differs — which is the whole claim a scoped stylesheet has to make:
+
+<StorybookStory
+    site="browser"
+    id="editor--glass"
+    title="Editor/Glass — the glass variant"
+    height="620px"
+/>
+
+<StorybookStory
+    site="browser"
+    id="editor--wood"
+    title="Editor/Wood — the same story in the wood variant"
+    height="620px"
+/>
+
 A reviewer can also switch theme, palette and text direction from the story toolbar (see
 [the story toolbar](./blong-browser.md#the-story-toolbar)), which writes the same app-store
 selection the portal's own theme switcher writes. A hero story that sets `parameters.theme` keeps

@@ -13,7 +13,10 @@ running. The interactive examples live in the `Editor/…` story group under
 `demo/blong-marine` Coral entity, captured by `demo/blong-marine/test/docs.play.ts`.
 
 The stories are runnable: `cd core/blong-browser && npm run storybook` serves them on port 6006 (the
-conventions are in the [Storybook pattern](../patterns/blong-browser.md#storybook-pattern)).
+conventions are in the [Storybook pattern](../patterns/blong-browser.md#storybook-pattern)). Three
+of them are also embedded below, **live from the published Storybook** — the toolbar, design mode
+and the cascaded dropdowns — each showing its committed picture first and opening the running
+component on a click. The rest are one section away from their story's name.
 
 The Editor with a record loaded — a tabbed portal, the toolbar, and a form whose widgets are all
 derived from the model's schema: a text field, a select-button group, dropdowns, a number spinner, a
@@ -71,6 +74,16 @@ mode, the Save / Reset pair in both enabled and untouched states, and the extra 
 button slots. The `Toolbar` story fills the left slot with four realm actions beside Save and Reset:
 
 ![The editor toolbar with four realm actions in its left-hand slot](./img/editor-toolbar.png)
+
+The same story, live — press any toolbar button and the editor behind it answers:
+
+<StorybookStory
+    site="browser"
+    id="editor--toolbar"
+    title="Editor/Toolbar — the left slot filled with four realm actions"
+    height="560px"
+    poster={require('./img/editor-toolbar.png').default}
+/>
 
 ---
 
@@ -245,6 +258,16 @@ in place of Save, and the `PropertyEditor` on the right for the field the play f
 
 ![Design mode: gripped cards and a property panel open beside the form](./img/editor-design.png)
 
+Live: the grips answer to a drag, and the property panel edits the field the story selected.
+
+<StorybookStory
+    site="browser"
+    id="editor--design"
+    title="Editor/Design — card grips and the property panel, running"
+    height="620px"
+    poster={require('./img/editor-design.png').default}
+/>
+
 ---
 
 ## 8. Master-Detail
@@ -301,6 +324,19 @@ See the `Editor/CascadedDropdowns` story. Its three fields are the continent →
 and the open city list holds the one city of the selected country rather than all ten:
 
 ![Cascaded dropdowns with the city list filtered to the selected country](./img/editor-cascaded-dropdowns.png)
+
+The cascade is the part a picture cannot show: open _Country_, pick one, and the city list below it
+narrows to that country's cities.
+
+<!-- cspell:ignore cascadeddropdowns -->
+
+<StorybookStory
+    site="browser"
+    id="editor-cascadeddropdowns--cascaded-dropdowns"
+    title="Editor/CascadedDropdowns — continent, country and city, filtering each other"
+    height="520px"
+    poster={require('./img/editor-cascaded-dropdowns.png').default}
+/>
 
 ---
 

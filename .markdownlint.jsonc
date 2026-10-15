@@ -7,6 +7,12 @@
         "code_blocks": false,
         "tables": false,
     },
+    // MDX components are markdown here: `<StorybookStory … />` embeds a story from the published
+    // Storybook, and the docs pages use it the way they use `![…](…)`. Listed by name so a real
+    // stray HTML tag is still reported.
+    "MD033": {
+        "allowed_elements": ["StorybookStory"],
+    },
     // The user's own todo items (the `## Manual` section of the root todo) are
     // kept exactly as written, and they contain bare URLs.
     "MD034": false,

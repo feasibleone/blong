@@ -265,6 +265,17 @@ Coral picture is filtered to `Staghorn` by the spec used in the test, which is w
 Species and Habitat differ only in their `IModelSpec`. Nothing beyond the spec above draws any of
 it.
 
+The other half of a model page is the one the pictures do not show — a form nobody wrote either. The
+`create` block in the spec above is what the toolbar's Create button runs, and this is the page it
+opens, live:
+
+<StorybookStory
+    site="suite"
+    id="marine-coral--new"
+    title="Marine/Coral/New — the generated create page, before anything is typed"
+    height="620px"
+/>
+
 The images are written by `demo/blong-marine/test/docs.play.ts`, which opens each page and captures
 it only under `BLONG_CAPTURE_DOCS=1`; the `blong-docs` skill documents the conventions for
 publishing one.

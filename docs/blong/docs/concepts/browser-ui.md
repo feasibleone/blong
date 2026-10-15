@@ -171,3 +171,14 @@ three presentation items exist because no story renders the portal menubar that 
 switchers, and the backend/role items exist because a model page is the same page whether its rows
 came from `meta/fixture` or from a database. See
 [the story toolbar](../patterns/blong-browser.md#the-story-toolbar).
+
+The shell itself, live from the published Storybook — the menubar, the tab strip, and the pages
+inside it (`marine-portal--marine`, from `suite/blong-suite`):
+
+<StorybookStory
+    site="suite"
+    id="marine-portal--marine"
+    title="The portal shell with a realm's navigation, tabs and pages"
+    height="620px"
+    poster={require('./img/portal-shell.png').default}
+/>

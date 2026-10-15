@@ -1,0 +1,62 @@
+{
+    "$comment": [
+        "Register of the Storybooks the documentation site publishes beside its pages.",
+        "",
+        "A page can embed a story live instead of a picture of it (`<StorybookStory>`, see the",
+        "blong-docs skill). That needs the story to be served from somewhere, and the answer is",
+        "the docs site itself: each site here is built by its own package and staged into",
+        "`static/storybook/<name>/`, so it is published by the same `npm run deploy` and served",
+        "from the same origin as the page that embeds it @@D-556.",
+        "",
+        "The staged tree is NOT committed: it is a build output, 10-30 MB per site, ignored by",
+        "`docs/blong/.gitignore`, and rebuilt by `blong-dev docs storybook` before a deploy. So a",
+        "plain `npm run build` — the CI shape — still builds the site without it, every embed",
+        "degrades to its poster, and `blong-dev docs verify` counts the embeds that rendered",
+        "rather than the stories they would have loaded.",
+        "",
+        "Read and used by `blong-dev docs storybook`",
+        "(tools/blong-dev/src/docs/storybookSites.ts):",
+        "  blong-dev docs storybook [--only <name[,name]>] [--no-build] [--dry-run]",
+        "",
+        "Fields:",
+        "  name     the directory name under static/storybook/, and the `site` of an embed",
+        "  title    what the site is, for the command's summary",
+        "  package  repository-relative package the build runs in (its working directory)",
+        "  command  build command, run in `package`; it must write `output`",
+        "  output   directory the command writes, relative to `package`",
+        "",
+        "Adding a site is adding an entry here and embedding `site=\"<name>\"`. A story id an",
+        "embed names is checked against the staged site's own `index.json` on every publish, so a",
+        "renamed story is caught by the build rather than by a reader.",
+        "",
+        "Two sites rather than one composed build: a component story is rendered by",
+        "blong-browser's own preview (its in-file `withDispatch` fixtures, no platform) and a model",
+        "page story by a realm's (a platform, a mock adapter, the toolbar). One preview file per",
+        "Storybook is what decides which of the two a story gets, so composing them would render",
+        "the component stories against the wrong fixtures @@D-557."
+    ],
+    "version": 1,
+    "sites": [
+        {
+            "name": "browser",
+            "title": "blong-browser: the component library's own stories",
+            "package": "core/blong-browser",
+            "command": "node --run build-storybook",
+            "output": "storybook-static"
+        },
+        {
+            "name": "suite",
+            "title": "the suite: generated model pages and the portal",
+            "package": "suite/blong-suite",
+            "command": "node --run build-storybook",
+            "output": "storybook-static"
+        },
+        {
+            "name": "log",
+            "title": "blong-log: the log viewer",
+            "package": "tools/blong-log",
+            "command": "node --run build-storybook",
+            "output": "storybook-static"
+        }
+    ]
+}
