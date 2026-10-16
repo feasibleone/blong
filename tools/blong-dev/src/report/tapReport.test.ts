@@ -103,6 +103,52 @@ test('an expiry of a file names the file, not the run', t => {
     t.end();
 });
 
+/**
+ * The shape of build #625: the child for one file was killed by a signal before it emitted any
+ * TAP, so the file reported no tests at all and tap recorded no exit code — the signal is the only
+ * thing that says what happened (@@F-549).
+ */
+const killedFile = {
+    name: 'src/memory/memoryFormat.test.ts',
+    ok: false,
+    time: 4089.582,
+    diag: {stdio: 'pipe', exitCode: null, signal: 'SIGILL'},
+};
+
+test('a file whose child was killed names the signal that killed it', t => {
+    const report = buildTapRun({suites: [killedFile]}, 1);
+
+    const failure = report.suites[0]?.tests[0];
+    t.equal(failure?.name, 'src/memory/memoryFormat.test.ts', 'the file is the failure');
+    t.match(failure?.message, /exited with signal SIGILL/, 'the signal is named, not an exit code');
+    t.equal(report.counts.failed, 1, 'and the run is never reported green');
+    t.end();
+});
+
+test('how the process ended is stated in the message, code first', t => {
+    const messageOf = (diag: {stdio?: string; exitCode?: number | null; signal?: string | null}) =>
+        buildTapRun({suites: [{name: 'index.test.ts', ok: false, diag}]}, 1).suites[0]?.tests[0]
+            ?.message;
+
+    t.match(messageOf({stdio: 'pipe', exitCode: 1}), /exited with code 1/, 'an exit code is named');
+    t.match(
+        messageOf({stdio: 'pipe', exitCode: null, signal: 'SIGILL'}),
+        /exited with signal SIGILL/,
+        'a signal stands in when the code is null',
+    );
+    t.match(
+        messageOf({stdio: 'pipe', exitCode: 0, signal: 'SIGTERM'}),
+        /exited with code 0/,
+        'and the code wins when tap recorded both',
+    );
+    t.match(
+        messageOf({stdio: 'pipe'}),
+        /exited with code unknown/,
+        'with neither, the wording of a run that said nothing is kept',
+    );
+    t.end();
+});
+
 test('a run that died without a failing test says where the reason is', t => {
     const report = buildTapRun(
         {

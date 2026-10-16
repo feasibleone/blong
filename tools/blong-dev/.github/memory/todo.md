@@ -27,9 +27,10 @@ open (15)
 - `T-351` · tools/blong-dev — docs serve --dir should accept an absolute path
 - `T-357` · tools/blong-dev — Confirm the published summary carries every leg
 
-done (1)
+done (2)
 
 - `T-346` · tools/blong-dev — Name the projects that ran no tests in the CI report
+- `T-358` · tools/blong-dev — Render the killing signal in the failure message
 
 <!-- /memory:index -->
 
@@ -252,6 +253,22 @@ project that failed, and the aggregated report says nothing.
 Implemented in tools/blong-dev: report/silentProjects.ts with the render section and the
 CI_TESTS_OUTCOME gate (the shared workflow passes steps.test.outcome), so a red run names every
 package that has a ci-test and no report, distinguishing ran-and-stopped from never-ran.
+
+### T-358 — Render the killing signal in the failure message
+
+> _2026-10-16 · tools/blong-dev · done_
+
+@@F-549 holds the diagnosis: tapReport.ts renders `test process exited with code unknown` and drops
+`diag.signal`, so a child killed by SIGILL reads as an unknown exit while the field naming the cause
+class sits in the same diag block. Render the signal when the exit code is null (and keep the exit
+code when neither is present), then add a fixture for the 625 shape — a suite whose diag carries
+`signal: SIGILL` and no tests — beside the existing synthesised-case tests. Re-measure afterwards on
+the next red run of that shape: the tool should state the cause class in its first answer, which is
+the half of the cost @@F-546 records as not yet dropped.
+
+Done: buildTapRun renders the signal, five unit cases pin the wording, and the live acceptance run
+still answers #622. Still unverified end to end: a new published bundle, since the 625 artifact
+predates the fix.
 
 ## Retired
 

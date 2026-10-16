@@ -63,7 +63,15 @@ interface ITapDiagnostics {
     diff?: string;
     compare?: string;
     stdio?: string;
-    exitCode?: number;
+    /** `null` when the child was signalled rather than exiting — tap's own wording. */
+    exitCode?: number | null;
+    /**
+     * The signal that killed the test process, when one did.
+     *
+     * A killed child has no exit code, so this is the field that names the cause class; tap prints
+     * it in the diagnostics, and a message built from the exit code alone drops it (@@F-549).
+     */
+    signal?: string | null;
     at?: ITapLocation;
     /**
      * Name of the test whose budget expired, when this entry *is* an expiry.
@@ -166,6 +174,21 @@ function handleSummary(handles: ITapDiagnostics['handles']): string | undefined 
     return `still open when the budget expired: ${parts.join(', ')}`;
 }
 
+/**
+ * How the test process ended, as the diagnostics record it.
+ *
+ * A child killed by a signal has no exit code, and reading only the code reported the one failure
+ * tap had just described in full as an unknown exit — sending a reader back to the raw stream for
+ * a field the report already held (@@F-549). Both forms keep the phrase `exited with`, which is
+ * what `ci/diagnose.ts` reads to pick the runner's stderr over the stream as the better evidence
+ * for a failure the report does not explain.
+ */
+function exitMessage(diag: ITapDiagnostics): string {
+    if (typeof diag.exitCode === 'number') return `test process exited with code ${diag.exitCode}`;
+    if (diag.signal) return `test process exited with signal ${diag.signal}`;
+    return 'test process exited with code unknown';
+}
+
 /** Human readable message for a failing assertion, suite or expired budget. */
 function failureMessage(diag: ITapDiagnostics | undefined): string | undefined {
     if (!diag) return undefined;
@@ -175,7 +198,7 @@ function failureMessage(diag: ITapDiagnostics | undefined): string | undefined {
     else {
         const parts: string[] = [];
         if (diag.compare) parts.push(`assertion failed (${diag.compare})`);
-        if (diag.stdio) parts.push(`test process exited with code ${diag.exitCode ?? 'unknown'}`);
+        if (diag.stdio) parts.push(exitMessage(diag));
         if (diag.diff) parts.push(diag.diff.trimEnd());
         if (parts.length > 0) lines.push(parts.join('\n'));
     }

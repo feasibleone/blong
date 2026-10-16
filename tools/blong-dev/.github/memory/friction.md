@@ -45,7 +45,7 @@ open (32)
 - `F-547` · tools/blong-dev — A suite-wide run can show silentProjects failing
 - `F-548` · tools/blong-dev — A published summary written before the last leg lags one leg
 
-resolved (7)
+resolved (8)
 
 - `F-080` · tools/blong-dev — `blong-dev` CLI not built
 - `F-090` · tools/blong-dev — `blong-dev` was not built, so `npm run ci-lint` could not find it
@@ -54,6 +54,7 @@ resolved (7)
 - `F-327` · tools/blong-dev — lint --files silently checks nothing when given a list
 - `F-385` · tools/blong-dev — A targeted lint of a skill file reports three words that predate it
 - `F-442` · tools/blong-dev — A closed todo's id is handed to the next entry
+- `F-549` · tools/blong-dev — The failure message hides the signal that killed the child
 
 <!-- /memory:index -->
 
@@ -561,3 +562,25 @@ lesson still stands for a different loss - a bare close drops the body - and it 
 workspace instructions and D-549, with add taking an explicit id back from the ledger.
 
 close no longer drops a body, so --keep is not needed; refuse a reused id instead
+
+### F-549 — The failure message hides the signal that killed the child
+
+> _2026-10-16 · tools/blong-dev · resolved_
+
+Run 625 of Build failed on exactly one test file: the tap child for src/memory/memoryFormat.test.ts
+was killed with SIGILL after 4089ms, before it emitted any TAP (`1..0 # no tests found`, `tests: 0`,
+`exitCode: null`). The signal is in the very same diagnostics block as the exit code tap prints in
+the raw stream and in tap.json, but tapReport.ts builds the message as
+`test process exited with code unknown` and drops `diag.signal` — so `blong-dev ci failures`
+reported `unknown — nothing in the evidence points at a cause` while the one field naming the cause
+class was already captured. A second consequence: `--full` prints the raw block, so the signal is
+visible only to a reader who knows to look for it there. Fix on the publisher side
+(report/tapReport.ts): append the signal when there is one, e.g.
+`test process exited with signal SIGILL`, and add the row to the interpretation table of the
+blong-ci skill.
+
+Fixed in report/tapReport.ts: exitMessage renders the signal when the exit code is null, the
+exited-with stem is kept so ci/diagnose.ts still prefers the runner stderr over the stream, and the
+625 shape is covered by a new case in tapReport.test.ts and a signal precedent in
+ci/diagnose.test.ts. Rebuilding run 625 from its artifact now prints test process exited with signal
+SIGILL instead of code unknown.

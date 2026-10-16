@@ -353,3 +353,61 @@ test('a run with no bundle is not reported as green without a witness', async t 
     );
     t.end();
 });
+
+/**
+ * The shape of #625: the bundle explains its one failure with the signal that killed the child, and
+ * what the child wrote while dying is on its stderr (@@F-549).
+ */
+const SIGNAL_BUNDLE: IFailuresJson = {
+    ...bundleOf(),
+    totals: {packages: 1, tests: 1, failed: 1, flaky: 0, newFailures: 0},
+    packages: [
+        {
+            package: 'blong-dev',
+            path: 'tools/blong-dev',
+            runners: ['tap'],
+            counts: {total: 1159, passed: 1156, failed: 1, flaky: 0, skipped: 2, todo: 0},
+            failures: [
+                {
+                    suite: 'src/memory/memoryFormat.test.ts',
+                    test: 'src/memory/memoryFormat.test.ts',
+                    status: 'failed',
+                    runner: 'tap',
+                    message: 'test process exited with signal SIGILL',
+                },
+            ],
+        },
+    ],
+};
+
+/** An artifact that holds the stream and the stderr of the killed child. */
+function killedEvidence(): IArtifactEvidence {
+    return {
+        ...evidenceOf(),
+        excerpt: () => '# Subtest: src/memory/memoryFormat.test.ts\n    1..0 # no tests found',
+        stderr: path =>
+            path === 'tools/blong-dev' ? 'Fatal error: Illegal instruction (core dumped)' : undefined,
+    };
+}
+
+test('a failure the report explains with a signal still prefers the stderr', async t => {
+    const diagnosis = await diagnose({
+        target: TARGET,
+        bundle: SIGNAL_BUNDLE,
+        operations: [],
+        history: [625],
+        evidence: killedEvidence(),
+        artifactDir: 'dev/ci/625',
+    });
+
+    const pkg = diagnosis.packages[0];
+    t.equal(pkg?.path, 'tools/blong-dev', 'the package is located in the artifact');
+    t.equal(
+        pkg?.failures[0]?.message,
+        'test process exited with signal SIGILL',
+        'the reason the bundle carried is kept',
+    );
+    t.match(pkg?.failures[0]?.evidence, /^from tap-stderr\.txt:/, 'the crash message goes first');
+    t.equal(pkg?.failures[0]?.source, 'artifact', 'and is credited to the artifact');
+    t.end();
+});

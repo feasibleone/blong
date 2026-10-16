@@ -97,6 +97,7 @@ words:
   - dfsp
   - DFSPs
   - dgram
+  - diag
   - dialog
   - Diebold
   - dismissable
@@ -334,6 +335,7 @@ words:
   - shutil
   - Siderastreidae
   - SIGALRM
+  - SIGILL
   - singularize
   - SMPP
   - softwaregroup

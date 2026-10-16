@@ -782,6 +782,17 @@ prompt before the fix. The reduction came from the tool and not from the prompt,
 evidence that a _fix_ shortens a class of question rather than one question: the same measurement on
 622's shape has not dropped yet, because its bundle still predates the publisher fix.
 
+Measured again on run 625 — the first red run published after the publisher fix, and the same shape
+as 622: one test file killed before it emitted TAP. The publisher half of the fix did land, since
+the bundle carries the message and a 23-line excerpt, so the first call alone printed the failing
+file, the reason and the raw block, and the extra `--full` call 622 still needed is gone. The cost
+did not fall with it: the run took twenty-one terminal commands, because the message read
+`test process exited with code unknown` while `signal: SIGILL` — the one field naming the cause
+class — sat in the same diagnostics block and was dropped by `tapReport.ts` (@@F-549). That is the
+sharpened lesson, and it holds past this command: evidence the tool can print is not a cause it can
+state, so the agent returned to the artifacts to recover a field the tool already had. The next
+measurement is the same question on the next red run after @@F-549 is fixed.
+
 ## Resolved
 
 ### F-083 — The workspace markdown validator mis-resolves two link forms

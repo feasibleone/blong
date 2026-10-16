@@ -140,8 +140,9 @@ function applyEvidence(
             const fromRunner = evidence.excerpt(failure);
             const fromStderr = evidence.stderr(pkg.path);
             // A process that exited without a reason in its report is the case the stream cannot
-            // answer, so what it wrote to stderr goes first (@@F-543).
-            const preferStderr = /exited with code/i.test(failure.message ?? '');
+            // answer, so what it wrote to stderr goes first (@@F-543). That includes a process a
+            // signal killed, which the report names with the signal instead of a code (@@F-549).
+            const preferStderr = /exited with (?:code|signal)/i.test(failure.message ?? '');
             const chosen = preferStderr && fromStderr ? fromStderr : (fromRunner ?? fromStderr);
             if (chosen) {
                 failure.evidence =
