@@ -15,10 +15,10 @@
  * each result labelled with the producer that wrote it.
  *
  * The staging directory lives under `.ci-report/` (which every run clears) rather than in
- * the published directory, and only `index.html` and `summary.json` are copied into the
- * published one, so a report generated again after a later producer — the ordinary case,
- * since one package's test script runs its browser tests and its handler tests in turn —
- * merges instead of replacing what is already there.
+ * the published directory, and only `index.html`, Allure's `summary.json` and our own
+ * `package-summary.json` are written into the published one, so a report generated again after
+ * a later producer — the ordinary case, since one package's test script runs its browser tests
+ * and its handler tests in turn — merges instead of replacing what is already there.
  */
 
 import {
@@ -37,7 +37,7 @@ import {basename, join} from 'node:path';
 import {runTool} from '../utils/runTool.ts';
 import {toolEnv} from '../utils/toolPath.ts';
 import {historyFile, readHistory, sliceForPackage, writeSlice} from './history.ts';
-import {writePackagePage} from './packagePage.ts';
+import {writePackagePage, writePackageSummary} from './packagePage.ts';
 import {PUBLISH_DIR, REPORT_DIR, packageName, repoRoot, reportDir} from './reportPaths.ts';
 
 /**
@@ -283,6 +283,10 @@ export async function publishAllureReport(
         if (exitCode !== 0) return {published: false, producers: dirs.length};
 
         publishGenerated(stagingOut, publishDir);
+        // Our own summary beside Allure's, so a tool reads the package's verdict and its test
+        // time without parsing either document: the page renderer writes the same file when
+        // there is no Allure report to publish (@@D-562).
+        writePackageSummary(cwd);
         return {
             published: true,
             producers: dirs.length,

@@ -24,6 +24,10 @@ import {
     type TestStatus,
 } from './reportTypes.ts';
 import {clearRun, writeRun} from './reportWrite.ts';
+// The raw stream of the run — tap's own `ok`/`not ok` tree with its `# Subtest:` nesting —
+// kept beside the structured report because some reasons exist only there: an expired
+// budget reaches the JSON as a synthetic case, and a killed file not at all.
+import {RAW_TAP_FILE} from './tapExcerpt.ts';
 
 /** Maximum number of failure details printed to the console. */
 const MAX_CONSOLE_DETAILS = 10;
@@ -33,16 +37,6 @@ const MAX_MESSAGE_CHARS = 400;
 
 /** Maximum number of captured lines dumped when the TAP stream is unusable. */
 const MAX_FALLBACK_LINES = 40;
-
-/**
- * File inside `.ci-report/` holding the raw TAP stream of the last run.
- *
- * The raw stream is what carries the test process's own records — the framework
- * logs a suite prints — because the reporter's JSON does not include them. It is
- * also tap's own view of the run: the `ok`/`not ok` tree with `# Subtest:`
- * nesting. A watched run echoes it; a captured one keeps it as an artifact.
- */
-const RAW_TAP_FILE = 'tap.raw.tap';
 
 /** File inside `.ci-report/` holding tap's structured report. */
 const TAP_JSON_FILE = 'tap.json';
@@ -71,6 +65,24 @@ interface ITapDiagnostics {
     stdio?: string;
     exitCode?: number;
     at?: ITapLocation;
+    /**
+     * Name of the test whose budget expired, when this entry *is* an expiry.
+     *
+     * tap synthesises a failing case called `timeout!` for it and puts the name of the
+     * expired test here — the file's own name for the root test, or `TAP` for the run's
+     * budget. It is the only field that separates "the budget ran out" from "an assertion
+     * failed", so without it a timed-out suite reached the report as a failure with no
+     * message at all (@@F-539).
+     */
+    expired?: string;
+    /**
+     * What was still open when tap gave up: servers, sockets and child processes.
+     *
+     * A `ChildProcess` in this list is what says the test died with work in flight rather
+     * than in a deadlock, which is the difference between "this runner was slow" and "this
+     * step hangs" (@@F-540).
+     */
+    handles?: Array<{type?: string}>;
 }
 
 interface ITapCase {
@@ -127,15 +139,49 @@ export function parseTapJson(stdout: string): ITapJsonReport | null {
     return null;
 }
 
-/** Human readable message for a failing assertion or suite. */
+/** What an expired budget is called in a report, in tap's own terms. */
+function timeoutMessage(expired: string): string {
+    const subject = expired === 'TAP' ? "the run's own budget" : `the budget of ${expired}`;
+    return `timeout: ${subject} expired while this test was still running`;
+}
+
+/**
+ * The handles still open when the budget expired, counted by type.
+ *
+ * tap dumps the whole handle list into the diagnostics, which is hundreds of lines of
+ * socket bookkeeping in the middle of a report. The *shape* is what carries the signal:
+ * a `ChildProcess` means the test was waiting on something it had spawned, so the step
+ * that never returned is a spawned tool rather than a deadlock (@@F-540).
+ */
+function handleSummary(handles: ITapDiagnostics['handles']): string | undefined {
+    if (!handles?.length) return undefined;
+    const counts = new Map<string, number>();
+    for (const handle of handles) {
+        const type = handle?.type ?? 'handle';
+        counts.set(type, (counts.get(type) ?? 0) + 1);
+    }
+    const parts = [...counts.entries()]
+        .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+        .map(([type, count]) => `${type}×${count}`);
+    return `still open when the budget expired: ${parts.join(', ')}`;
+}
+
+/** Human readable message for a failing assertion, suite or expired budget. */
 function failureMessage(diag: ITapDiagnostics | undefined): string | undefined {
     if (!diag) return undefined;
-    if (diag.message) return diag.message;
-    const parts: string[] = [];
-    if (diag.compare) parts.push(`assertion failed (${diag.compare})`);
-    if (diag.stdio) parts.push(`test process exited with code ${diag.exitCode ?? 'unknown'}`);
-    if (diag.diff) parts.push(diag.diff.trimEnd());
-    return parts.length > 0 ? parts.join('\n') : undefined;
+    const lines: string[] = [];
+    if (diag.expired !== undefined) lines.push(timeoutMessage(diag.expired));
+    if (diag.message) lines.push(diag.message);
+    else {
+        const parts: string[] = [];
+        if (diag.compare) parts.push(`assertion failed (${diag.compare})`);
+        if (diag.stdio) parts.push(`test process exited with code ${diag.exitCode ?? 'unknown'}`);
+        if (diag.diff) parts.push(diag.diff.trimEnd());
+        if (parts.length > 0) lines.push(parts.join('\n'));
+    }
+    const handles = handleSummary(diag.handles);
+    if (handles) lines.push(handles);
+    return lines.length > 0 ? lines.join('\n') : undefined;
 }
 
 function locationOf(diag: ITapDiagnostics | undefined): Pick<ITestEntry, 'file' | 'line'> {
@@ -197,7 +243,10 @@ function collectSuite(
         out.push({
             name: [...childGroups, entry.name ?? '(unnamed assert)'].join(' › '),
             status,
-            ...locationOf(entry.diag),
+            // A synthesised case — the `timeout!` tap writes when a budget expires — has
+            // diagnostics but no location of its own, and the group's own `at` is then the
+            // only pointer to the line whose budget expired (@@F-539).
+            ...locationOf(entry.diag?.at ? entry.diag : suite.diag),
             message: failureMessage(entry.diag),
             stack: entry.diag?.stack,
         });
@@ -279,6 +328,15 @@ export function buildTapRun(
             {
                 name: `tap exited with code ${exitCode} without reporting a failing test`,
                 status: 'failed',
+                // tap writes its report before its own verdict, so a run it killed — an
+                // expired budget, a crash — leaves its failure out of the file. Saying where
+                // the reason *is* is the whole value of this entry: the raw stream beside the
+                // report carries the `timeout!` line, the `expired:` name and the coverage
+                // gates that failed with it (@@F-539).
+                message:
+                    `tap exited with code ${exitCode} and its own report names no failing ` +
+                    'test, which is what a run killed by an expired budget or a crash looks ' +
+                    'like; see tap.raw.tap in the same directory for the reason.',
             },
         ];
         suites.push({name: '(unparsed)', status: 'failed', counts: countTests(tests), tests});

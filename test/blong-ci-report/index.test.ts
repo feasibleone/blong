@@ -7,7 +7,7 @@
  * `npm run report:local`.
  */
 
-import {mkdirSync, mkdtempSync, readFileSync, rmSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
@@ -448,6 +448,22 @@ test('the failures bundle carries the provenance an agent reads first', async t 
     const outDir = join(dir, 'out');
     try {
         createFixtureWorkspace(dir);
+        // The raw stream beside the report is where a tap failure's reason comes from: the
+        // structured report says which test failed and not why, and for a run tap killed it
+        // does not name the failure at all (@@F-539).
+        writeFileSync(
+            join(dir, 'tools/fake-flaky/.ci-report/tap.raw.tap'),
+            [
+                '    # Subtest: the retry group',
+                '        ok 1 - the fixture is loaded',
+                '        not ok 2 - retries a transient failure',
+                '          ---',
+                '          compare: ===',
+                '          ...',
+                '    not ok 1 - the retry group',
+                '',
+            ].join('\n'),
+        );
         const reports = collectReports(dir);
         const failures = collectFailures(
             reports,
@@ -477,7 +493,12 @@ test('the failures bundle carries the provenance an agent reads first', async t 
             packages: Array<{
                 package: string;
                 runners: string[];
-                failures: Array<{test: string; runner: string; history?: {kind: string}}>;
+                failures: Array<{
+                    test: string;
+                    runner: string;
+                    history?: {kind: string};
+                    evidence?: string;
+                }>;
             }>;
         };
 
@@ -506,6 +527,15 @@ test('the failures bundle carries the provenance an agent reads first', async t 
             /logs in as the seeded user\*\* — `realm\/fake-fail\/test\/logs-in-as-the-seeded-user\.play\.ts:42` — `recurring`/,
             'the human summary says it too',
         );
+        t.match(
+            json.packages
+                .find(entry => entry.package === 'fake-flaky')
+                ?.failures.find(failure => failure.test === 'retries a transient failure')
+                ?.evidence,
+            /not ok 2 - retries a transient failure/,
+            'the raw stream around the failure is in the bundle',
+        );
+        t.match(summary, /The raw stream around it:/, 'and the human summary quotes it as well');
         t.end();
     } finally {
         rmSync(dir, {recursive: true, force: true});

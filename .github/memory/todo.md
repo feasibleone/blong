@@ -66,12 +66,14 @@ open (57)
 - `T-348` · skills — Give the blong-docs skill one h1, or lint the skills
 - `T-349` · ci — Publish a Storybook preview per pull request
 
-done (4)
+done (6)
 
 - `T-342` · ci — Decide the cache payload shape before landing step 2
 - `T-188` · ci — The Storybook leg produces no .ci-report slice
 - `T-352` · ci — Publish a package's non-tap leg failure in the bundle
 - `T-353` · ci — Drop the in-file 60s tap timeouts in two packages
+- `T-356` · ci — Make red mean a failed test, not a flaky one
+- `T-355` · ci — Build blong-dev ci, the publisher fix and the blong-ci skill
 
 <!-- /memory:index -->
 
@@ -859,3 +861,87 @@ scoping that lint to the named files is the other half of the fix.
 
 Both 60s ceilings are gone, so the runner --timeout=240 decides. Scoping kukum.source.check is not
 available, because tsc must check the whole package; that is recorded as D-560.
+
+### T-356 — Make red mean a failed test, not a flaky one
+
+> _2026-10-16 · ci · done_
+
+`blong-dev ci failures` calls a run red whenever its bundle names a test, so a run whose only
+abnormal entry is a flaky retry that passed the second attempt — GitHub conclusion success, run 621
+— is reported as red, and a reader is told the release pull request is blocked when it is not. Pick
+one rule and make the whole chain follow it: keep flaky out of the list that decides publishing and
+of `red`, or keep it in and make the verdict line and the blong-ci skill say the run passed with a
+flake. Either way the claim in `site.ts` that a green run publishes no bundle, and the skill's entry
+for a flaky status, must follow the chosen rule; the package's published `summary.json` already
+carries `status: passed` next to `retries: 1`, which is the shape the bundle could copy. Add run 621
+as a fixture: its verdict must agree with `gh run view 38750588310 --json conclusion`.
+
+Done the first way T-356 offered: flaky stays in the bundle and stops deciding red.
+
+### T-355 — Build blong-dev ci, the publisher fix and the blong-ci skill
+
+> _2026-10-16 · ci · done_
+
+The work agreed on 2026-10-16 after the run 622 analysis, in the order it is worth doing.
+
+First the publisher, because it makes everything after it cheap: `failures.json` gains a `message`,
+a `location`, a trimmed evidence excerpt and the `leg` for each failure, and a package whose non-tap
+leg failed is published as failed rather than passed. That closes @@T-352 and is what turns the
+ordinary diagnosis into a single HTTP request.
+
+Then `blong-dev ci` under `tools/blong-dev/src/ci/`: target resolution (an open release-please PR to
+its head sha to the run that built it), a client for the reports site (`failures/<workflow>/<n>/`,
+the per-package pages for a previous run's verdict and duration), a `gh api` wrapper for jobs, job
+logs and artifacts, selective artifact extraction that keeps only the failing packages' `.ci-report`
+files, and a raw-tap reason parser that reports the failing `not ok`, `expired:`, the last `ok`
+before it, the `at.fileName/lineNumber/source` tap already prints, the per-test `# time=` and the
+coverage ERROR lines that are consequences rather than causes. Classification compares the package
+with its previous published run; the artifact is cached under gitignored `dev/ci/<run>/`. Register
+it in `cli.ts` and `usage.ts`.
+
+Target resolution has to skip runs that published nothing — in progress, cancelled (run 623 was
+cancelled on 2026-10-16 and published nothing), or green, since a green run publishes no failure
+bundle at all — and fall back to the newest run that does have a report, saying which run it used
+and why the newer ones were passed over. `failures/<workflow>/latest/failures.json` is the stable
+alias for that run and is what the test leans on: it still resolves to run 622 and the same two
+packages, which is the truth the explicit `--run 622` variant asserts.
+
+Then `.github/skills/blong-ci/SKILL.md` following the frontmatter template in
+`.github/skills/_shared/conventions.md`: the default target rule, one command first, the
+interpretation table (tap `timeout!` and `expired:` mean the file budget expired, in-file
+`setTimeout` overrides the runner's `--timeout=240` per @@D-247, coverage errors are consequences, a
+streaming story's image snapshot is timing-dependent, a package has several legs and only some write
+the report), the us-or-the-runner comparison rule, and the output contract.
+
+The files are tested with unit fixtures for the parser and the site client and with an acceptance
+test that uses run 622 as ground truth (three failed operations, the leg gap, two timeouts and one
+snapshot) and run 621 as its "was green" counterpart.
+
+Finally the path is validated with a fresh-context subagent, which is the only test of the thing
+that was actually wrong: it took 35 tool calls to answer "check the failure in the last build". The
+subagent is given no context beyond the sentence a user would type —
+`check the failure in the last build of blong` — with no mention of the skill, the command, the run
+number or this plan, because the question is whether the skill's description routes an agent to it
+and whether the tool answers in one call. The verdict is judged against the known truth of run 622
+plus whatever run the agent resolved for itself: three failing operations including the storybook
+leg the bundle used to omit, the blong-cli file budget expiring after four of its five tests,
+kukum's gateway test stalling inside `kukum.source.check`, and the FilteredServer image snapshot
+that only differs because the story streams on a timer. Pass means at most four tool calls and two
+turns against that 35-call baseline, the skill loaded, `blong-dev ci failures` the first thing
+reached for, and a verdict that names the budget and the file setting it instead of calling a loaded
+runner a regression. Every call the agent had to make that the tool should have made is a tool gap
+and every step it improvised is a skill gap, and each becomes a friction or a todo entry rather than
+a note in the chat. Two variants follow the main run: an explicit `--pr 200` for the non-default
+target path, and a green run for the no-failure path, which must not invent one. Run it twice with a
+fresh subagent each time, since one sample of routing proves nothing, and refresh the skill index
+(`blong-dev memory index --semantic --sources skill`) first so the skill is findable by meaning and
+not only by name. The default prompt and the explicit one ask different questions: the explicit
+`--run 622` variant must land on 622, while the default one must land on the newest run that has a
+report and say so — when that run is green, the same prompt becomes the no-failure case.
+
+Every step landed: the publisher carries the failure message, its location and a raw-stream excerpt
+(tapExcerpt.ts) and a non-tap leg publishes its own slice; blong-dev ci is a command group
+(failures, runs, history) with the release-please PR as its default target and --full for the
+artifact; .github/skills/blong-ci/SKILL.md documents the interpretation; the fixture is run 622 with
+run 621 as its green counterpart; and the fresh-context subagent validation ran four variants and
+found three real defects, all fixed.

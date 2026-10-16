@@ -28,6 +28,7 @@ import type {IFailure} from './aggregate.ts';
 import type {IFailureHistory} from './provenance.ts';
 import {PUBLISH_DIR, REPORT_DIR} from './reportPaths.ts';
 import {hasRun, type IReport, type TestStatus} from './reportTypes.ts';
+import {RAW_TAP_FILE, tapExcerpt} from './tapExcerpt.ts';
 
 /** Maximum characters of a failure message inlined into `summary.md`. */
 const MAX_SUMMARY_MESSAGE = 1200;
@@ -168,6 +169,7 @@ function syntheticResult(failure: IFailure): Record<string, unknown> {
 function renderFailuresSummary(
     failuresByPackage: Map<string, IFailure[]>,
     meta: IFailuresBundleMeta,
+    evidenceFor: (failure: IFailure) => string | undefined,
 ): string {
     const lines: string[] = ['# Failed tests', ''];
     const runText = [
@@ -205,6 +207,12 @@ function renderFailuresSummary(
                     '',
                 );
             }
+            const evidence = evidenceFor(failure);
+            if (evidence) {
+                lines.push('', '  The raw stream around it:', '', '  ```tap');
+                lines.push(...evidence.split('\n').map(line => `  ${line}`));
+                lines.push('  ```', '');
+            }
         }
         lines.push('');
     }
@@ -224,31 +232,83 @@ interface IFailuresJsonPackage {
      */
     runners: string[];
     counts: IReport['counts'];
-    failures: Array<{
-        suite: string;
-        test: string;
-        status: TestStatus;
-        /** The runner this test failed under, since one package can have several. */
-        runner: string;
-        /**
-         * Where the test stands in the base branch's recent history, when it could be
-         * matched there. `new` means main was green on it, which is the field that
-         * decides whether this run's failure is this branch's doing.
-         */
-        history?: IFailureHistory;
-        file?: string;
-        line?: number;
-        message?: string;
-        stack?: string;
-        trace?: string;
-        logTraceId?: string;
-    }>;
+    failures: IFailuresJsonFailure[];
+}
+
+/** One failure as `failures.json` carries it. */
+export interface IFailuresJsonFailure {
+    suite: string;
+    test: string;
+    status: TestStatus;
+    /** The runner this test failed under, since one package can have several. */
+    runner: string;
+    /**
+     * Where the test stands in the base branch's recent history, when it could be
+     * matched there. `new` means main was green on it, which is the field that
+     * decides whether this run's failure is this branch's doing.
+     */
+    history?: IFailureHistory;
+    file?: string;
+    line?: number;
+    message?: string;
+    stack?: string;
+    trace?: string;
+    logTraceId?: string;
+    /**
+     * The raw stream around the failure: the assertions before it, the failing line and
+     * the diagnostics after it, with tap's handle dump collapsed to a count.
+     *
+     * It is here because a bundle that names a failure and not its reason sends the
+     * reader to the `reports` artifact, which is 44MB, to answer a question the stream
+     * beside the report already answers (@@F-539).
+     */
+    evidence?: string;
+}
+
+/** The whole `failures.json` document, as the CI site publishes it. */
+export interface IFailuresJson {
+    schema: number;
+    generatedAt: string;
+    repository: string;
+    workflow: string;
+    run: number;
+    commit: string;
+    runUrl: string;
+    totals: {
+        packages: number;
+        tests: number;
+        failed: number;
+        flaky: number;
+        newFailures: number;
+    };
+    allure: string;
+    packages: IFailuresJsonPackage[];
+}
+
+/**
+ * The raw stream of a package, read at most once per bundle.
+ *
+ * One file can hold the evidence of every failure in its package, and the stream runs to
+ * hundreds of kilobytes, so it is read once and re-used rather than per failure.
+ */
+function evidenceFinder(root: string): (failure: IFailure) => string | undefined {
+    const streams = new Map<string, string | null>();
+    return failure => {
+        if (failure.runner !== 'tap') return undefined;
+        if (!streams.has(failure.path)) {
+            const file = join(root, failure.path, REPORT_DIR, RAW_TAP_FILE);
+            streams.set(failure.path, existsSync(file) ? readFileSync(file, 'utf8') : null);
+        }
+        const raw = streams.get(failure.path);
+        return raw ? tapExcerpt(raw, failure.name) : undefined;
+    };
 }
 
 function buildFailuresJson(
     reports: readonly IReport[],
     failuresByPackage: Map<string, IFailure[]>,
     meta: IFailuresBundleMeta,
+    evidenceFor: (failure: IFailure) => string | undefined,
 ): string {
     const entries: IFailuresJsonPackage[] = [];
     for (const [pkg, failures] of failuresByPackage) {
@@ -267,19 +327,23 @@ function buildFailuresJson(
                 skipped: 0,
                 todo: 0,
             },
-            failures: failures.map(failure => ({
-                suite: failure.suite,
-                test: failure.name,
-                status: failure.status,
-                runner: failure.runner,
-                ...(failure.history ? {history: failure.history} : {}),
-                ...(failure.file ? {file: failure.file} : {}),
-                ...(failure.line ? {line: failure.line} : {}),
-                ...(failure.message ? {message: failure.message} : {}),
-                ...(failure.stack ? {stack: failure.stack} : {}),
-                ...(failure.trace ? {trace: `traces/${failure.trace}`} : {}),
-                ...(failure.logTraceId ? {logTraceId: failure.logTraceId} : {}),
-            })),
+            failures: failures.map(failure => {
+                const evidence = evidenceFor(failure);
+                return {
+                    suite: failure.suite,
+                    test: failure.name,
+                    status: failure.status,
+                    runner: failure.runner,
+                    ...(failure.history ? {history: failure.history} : {}),
+                    ...(failure.file ? {file: failure.file} : {}),
+                    ...(failure.line ? {line: failure.line} : {}),
+                    ...(failure.message ? {message: failure.message} : {}),
+                    ...(failure.stack ? {stack: failure.stack} : {}),
+                    ...(failure.trace ? {trace: `traces/${failure.trace}`} : {}),
+                    ...(failure.logTraceId ? {logTraceId: failure.logTraceId} : {}),
+                    ...(evidence ? {evidence} : {}),
+                };
+            }),
         });
     }
 
@@ -404,8 +468,9 @@ export async function buildFailuresBundle(
 
     const failuresJson = join(publishDir, 'failures.json');
     const summaryMd = join(publishDir, 'failures.md');
-    writeFileSync(failuresJson, buildFailuresJson(reports, failuresByPackage, meta));
-    writeFileSync(summaryMd, renderFailuresSummary(failuresByPackage, meta));
+    const evidenceFor = evidenceFinder(root);
+    writeFileSync(failuresJson, buildFailuresJson(reports, failuresByPackage, meta, evidenceFor));
+    writeFileSync(summaryMd, renderFailuresSummary(failuresByPackage, meta, evidenceFor));
 
     if (synthesised > 0) {
         process.stdout.write(

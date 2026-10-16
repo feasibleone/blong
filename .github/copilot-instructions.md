@@ -389,6 +389,7 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Capturing a flow's sequence diagram        | **blong-flow-diagram**                                |
 | Writing or reviewing documentation         | **blong-docs**                                        |
 | Parties, RBAC, users, auth, resource graph | **blong-core**                                        |
+| Diagnosing a CI build failure              | **blong-ci**                                          |
 
 ## [KEY_PATTERNS]
 
@@ -664,7 +665,7 @@ ss -tlnp | grep -E ':8180|:9092|:27017|:3306|:9000|:8200|:6379'
 
 Any port not listed in the output means that service is not yet started.
 
-### dev tooling (blong-dev proxy / trace / log / sql / cspell / glossary)
+### dev tooling (blong-dev ci / proxy / trace / log / sql / cspell / glossary)
 
 The `blong-dev` CLI ships helpers for talking to a running gateway and for maintaining the
 repository's own configuration files:
@@ -695,6 +696,14 @@ repository's own configuration files:
 - **`blong-dev log`** — fetch log entries that the `pino-cacache` transport stored on disk. Pass a
   ULID to fetch one entry. Implemented in `tools/blong-dev/src/commands/log.ts` on top of `cacache`.
   See the **blong-log** skill for full usage.
+
+- **`blong-dev ci`** — diagnose a CI run from the documents that run published: which operations
+  failed, why (a raw TAP stream, a leg's jest log, the runner's stderr), and what the same package
+  did in the run before it, which is what separates a regression from a runner that was slow.
+  Defaults to the release-please PR; `--pr <n>`/`--run <n>` name another, `--full` reads the
+  `reports` artifact, `--json` prints the machine document. Implemented in `tools/blong-dev/src/ci/`
+  on top of the `<pkg>/.ci-report/` contract; the **blong-ci** skill carries the vocabulary it
+  prints. Example: `blong-dev ci failures --run 622`.
 
 - **`blong-dev sql`** — run SQL queries against the local dev database (use this instead of a MySQL
   CLI locally or `kubectl exec` into a pod). Reuses `.blong_devrc` (default key `srv.db`); derives

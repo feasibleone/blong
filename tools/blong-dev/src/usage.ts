@@ -13,6 +13,7 @@ export const USAGE_LINES: readonly string[] = [
     '  blong-dev report vitest      Convert coverage/vitest.json into .ci-report/ (--input <file>)',
     '  blong-dev report jest        Convert jest --json output into .ci-report/ (--input, --runner)',
     '  blong-dev ci-report          Aggregate .ci-report/ into the CI report, failures bundle and metrics',
+    '  blong-dev ci <verb>          Diagnose a CI run from its published reports (failures/runs/history)',
     '  blong-dev playwright [args]  Run Playwright tests in current package',
     '  blong-dev browsers           Install the Playwright browsers this package launches',
     '  blong-dev proxy [opts]       MLE proxy for curl (--port/--target/--username/--password)',

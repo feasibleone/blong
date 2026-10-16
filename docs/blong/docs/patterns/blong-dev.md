@@ -26,6 +26,7 @@ own configuration (`.blong_devrc`, `rush.json`, `cspell.config.yaml`, the memory
 | `playwright [args]` | Running the browser suite and then assembling its Allure report and CI contract by hand.      |
 | `report <runner>`   | Turning another runner's raw output (vitest) into the same CI contract.                       |
 | `ci-report`         | Aggregating every package's report into the one file CI publishes, with metrics and a bundle. |
+| `ci <verb>`         | Diagnosing a red run: which operations failed, why, and whether the run before was green.     |
 | `proxy`             | The gateway speaks MLE; curl does not.                                                        |
 | `trace <trace.zip>` | Unzipping a Playwright trace and reading JSON lines to find out which step failed.            |
 | `log [ulid]`        | Log lines that only existed live, in a terminal that has been closed.                         |
@@ -56,6 +57,31 @@ vitest (such as `blong-browser`) feeds the _same_ `.ci-report/` contract, which 
 `ci-report` aggregate a monorepo whose packages do not share a runner. `report jest` does the same
 for a leg that is jest underneath — the Storybook test runner beside tap in `tools/blong-log`, whose
 `--json` output is the document vitest already writes.
+
+## Diagnosing a CI run
+
+```bash
+blong-dev ci failures                  # the release-please PR, newest completed run
+blong-dev ci failures --pr 200         # another pull request
+blong-dev ci failures --run 622        # one run by number
+blong-dev ci failures --full           # + the reasons, read from the reports artifact
+blong-dev ci runs --limit 10           # recent runs and what failed in each
+blong-dev ci history blong-cli         # one package's verdict and test time, run by run
+```
+
+`ci-report` writes the documents; `ci failures` reads them back and answers the question a red run
+raises. Three sources are merged, because each is the only witness to something: the run's failure
+bundle (which packages and tests failed, and how they stand against the base branch), the job log's
+operation summary (an operation that failed while publishing no report of its own — the leg-gap of
+build #622), and, behind `--full`, the `reports` artifact (the raw TAP stream a timeout is only
+readable from, and a leg's own jest log).
+
+With no flag it diagnoses the release-please pull request, which is the run that decides whether a
+release can go out, and it says which run it chose and what it passed over — an in-progress or
+cancelled run published nothing. It stays read-only (a diagnosis is not a fix), and it is
+deliberately hypothesis-shaped: a verdict names the numbers it rests on, and a failure nothing
+explains is left as `unknown` with the note saying what would settle it. See the `blong-ci` skill
+for the vocabulary it reads.
 
 ## The dictionary
 

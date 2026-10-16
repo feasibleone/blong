@@ -14,7 +14,15 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {test} from 'tap';
 
-import {renderPackagePage, writePackagePage} from './packagePage.ts';
+import {
+    PACKAGE_SUMMARY_FILE,
+    PACKAGE_SUMMARY_PATH,
+    parsePackageSummary,
+    renderPackagePage,
+    summaryOf,
+    writePackagePage,
+    writePackageSummary,
+} from './packagePage.ts';
 import type {IReport} from './reportTypes.ts';
 
 /** A tap-only report with one failing and one passing test, plus an HTML-heavy name. */
@@ -125,6 +133,79 @@ test('renderPackagePage reports the tests, and what the run waited for', async t
         /8m 41s outside them/,
         'and names what the run waited for beside it, rather than adding it to the tests',
     );
+    t.end();
+});
+
+test('the page carries the summary a tool reads, and the heading it falls back to', async t => {
+    const report = reportOf();
+    const html = renderPackagePage(report);
+
+    const embedded = parsePackageSummary(html);
+    t.equal(embedded?.package, 'blong-lib', 'the package');
+    t.equal(embedded?.status, 'failed', 'the verdict');
+    t.same(embedded?.counts, report.counts, 'the counts');
+    t.equal(embedded?.testsMs, 1200, 'the tests time a tool can compare with another run');
+    t.equal(embedded?.runs[0]?.runner, 'tap', 'and the legs, so a tool can name the failing one');
+    t.end();
+});
+
+test('a page published before the summary block is read from its heading', t => {
+    const older = `<!doctype html><html><body>
+<h1>blong-cli ❌ 11 passed, 1 failed (12 total) · 1m 10s of tests (22s outside them)</h1>
+</body></html>`;
+
+    const parsed = parsePackageSummary(older);
+    t.equal(parsed?.package, 'blong-cli', 'the package is the first word');
+    t.equal(parsed?.status, 'failed', 'the icon is the verdict');
+    t.same(
+        parsed?.counts,
+        {passed: 11, failed: 1, flaky: 0, skipped: 0, todo: 0, total: 12},
+        'the counts are read from the same line a person reads',
+    );
+    t.equal(parsed?.testsMs, 70_000, 'and `1m 10s` is 70000ms');
+    t.equal(parsed?.outsideTestsMs, 22_000, 'with the wait beside it');
+    t.same(parsed?.runs, [], 'no legs, since the heading does not carry them');
+
+    t.equal(
+        parsePackageSummary('<html><body>nothing to read</body></html>'),
+        undefined,
+        'and a page with no heading yields nothing',
+    );
+    t.end();
+});
+
+test('a green heading parses as cleanly as a red one', t => {
+    const green = parsePackageSummary(
+        '<h1>blong-lib ✅ 12 passed, 0 failed, 1 flaky, 2 skipped (15 total) · 340ms of tests</h1>',
+    );
+
+    t.equal(green?.status, 'passed', 'the verdict');
+    t.same(
+        green?.counts,
+        {passed: 12, failed: 0, flaky: 1, skipped: 2, todo: 0, total: 15},
+        'every count the renderer can write',
+    );
+    t.equal(green?.testsMs, 340, 'a sub-second duration');
+    t.end();
+});
+
+test('writePackageSummary publishes the document a tool reads without parsing HTML', async t => {
+    const cwd = mkdtempSync(join(tmpdir(), 'blong-package-summary-'));
+    try {
+        mkdirSync(join(cwd, '.ci-report'), {recursive: true});
+        writeFileSync(join(cwd, '.ci-report', 'report.json'), JSON.stringify(reportOf()));
+
+        const written = writePackageSummary(cwd);
+        const published = JSON.parse(
+            readFileSync(join(cwd, '.ci-report', 'publish', PACKAGE_SUMMARY_FILE), 'utf8'),
+        ) as unknown;
+
+        t.equal(written.written, true, 'the summary is written');
+        t.equal(written.path, PACKAGE_SUMMARY_PATH, 'at the path a tool fetches');
+        t.same(published, summaryOf(reportOf()), 'and holds what the page embeds');
+    } finally {
+        rmSync(cwd, {recursive: true, force: true});
+    }
     t.end();
 });
 
