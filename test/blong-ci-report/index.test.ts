@@ -14,6 +14,7 @@ import {join} from 'node:path';
 import {
     buildAggregateSummary,
     buildFailuresBundle,
+    buildJestShapedRun,
     buildMetricsSnapshot,
     buildTapRun,
     buildVitestRun,
@@ -29,11 +30,14 @@ import {
     rebuildMetrics,
     renderCiReport,
     reportOf,
+    runnersOf,
     sliceForPackage,
+    withRun,
     writeCiReport,
     writeReport,
     type IMetrics,
     type IReport,
+    type IRunReport,
 } from '@feasibleone/blong-dev';
 import {test} from 'tap';
 
@@ -253,6 +257,34 @@ test('buildVitestRun maps statuses and failures', async t => {
     t.equal(failure?.name, 'Widget › applies the theme', 'describe blocks prefix the test name');
     t.equal(failure?.message, "expected 'dark' to be 'light'", 'failure message');
     t.equal(failure?.line, 22, 'failure line');
+    t.end();
+});
+
+test('a jest leg reports under its own name and fails the package it belongs to', async t => {
+    const base = {package: 'blong-log', path: 'tools/blong-log'};
+    // The tap leg of the same package, passing: what a storybook failure has to stand out
+    // against, since a package reads from the worst of its runs.
+    const tap: IRunReport = {
+        runner: 'tap',
+        status: 'passed',
+        counts: {total: 82, passed: 82, failed: 0, flaky: 0, skipped: 0, todo: 0},
+        generatedAt: '2026-10-15T19:20:00.000Z',
+        suites: [],
+    };
+    const storybook = buildJestShapedRun(
+        readFixture('vitest.json'),
+        'storybook',
+        '/repo/tools/blong-log',
+    );
+    const pkg = withRun(withRun(null, tap, base), storybook, base);
+
+    t.same(runnersOf(pkg), ['tap', 'storybook'], 'the package keeps a slice per leg');
+    t.equal(pkg.status, 'failed', 'the failing leg decides the status, not the tap run');
+    t.equal(pkg.counts.total, 86, 'both legs counted');
+
+    const failure = collectFailures([pkg])[0];
+    t.equal(failure?.name, 'Widget › applies the theme', 'the failing assertion is named');
+    t.equal(failure?.message, "expected 'dark' to be 'light'", 'with the runner own message');
     t.end();
 });
 

@@ -24,6 +24,22 @@ const path = require('path');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const fs = require('fs');
 
+/**
+ * Stories that are still moving when the fixed delay above ends, and how long each needs
+ * before it is at rest (@@F-541).
+ *
+ * Without this the shot is taken mid-stream, and the comparison then measures how many rows
+ * the machine managed to deliver rather than whether the table renders: the same story is
+ * green on a fast runner and red on a loaded one. The hook is handed no story parameters
+ * (only `id`, `title` and `name`), so the requirement is declared here, beside the
+ * exclusion list below; the story's own `chromatic.delay` covers Chromatic's snapshots.
+ */
+const SETTLE_MS = {
+    // Streams one row per 500ms and stops after ten, so it is at rest about five seconds
+    // after mount. The margin covers a runner whose timers are slower than the nominal cadence.
+    'logviewer--filtered-server': 8000,
+};
+
 /** @type {import('@storybook/test-runner').TestRunnerConfig} */
 module.exports = {
     async postVisit(page, context) {
@@ -158,6 +174,10 @@ module.exports = {
 
         // ── Visual snapshot test ──────────────────────────────────────────
         if (!['logviewer--performance-test'].includes(context.id)) {
+            // A story that is still streaming is shot once it is at rest (@@F-541).
+            const settleMs = SETTLE_MS[context.id];
+            if (settleMs) await page.waitForTimeout(settleMs);
+
             // Full-page screenshot comparison — saves real PNG files
             const screenshot = await page.screenshot({fullPage: true});
             expect(screenshot).toMatchImageSnapshot({

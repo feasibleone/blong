@@ -52,7 +52,9 @@ const run = (args: string[]): {stdout: string; stderr: string; status: number | 
     return {stdout: result.stdout, stderr: result.stderr, status: result.status};
 };
 
-t.setTimeout(60_000);
+// No budget of its own: `blong-dev test` hands tap a `--timeout` sized for an integration
+// entry point, and a tighter 60s ceiling expired in the middle of this file on a loaded
+// shared runner rather than on a hang (@@D-247 @@F-540).
 
 t.test('a command dispatches in-process and prints its result on stdout', t => {
     const {stdout, stderr, status} = run(['slug', 'get', '--value=Hello, World!', '--output=text']);

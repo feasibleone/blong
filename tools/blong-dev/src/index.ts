@@ -39,4 +39,4 @@ export {
     writeRun,
 } from './report/reportWrite.ts';
 export {buildTapRun, parseTapJson, renderTapConsole} from './report/tapReport.ts';
-export {buildVitestRun, readVitestJson, VITEST_JSON} from './report/vitestReport.ts';
+export {buildJestShapedRun, buildVitestRun, readVitestJson, VITEST_JSON} from './report/vitestReport.ts';

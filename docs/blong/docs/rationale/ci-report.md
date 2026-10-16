@@ -42,14 +42,16 @@ The columns that carry decisions rather than counts:
 ## Three runners, one contract
 
 The monorepo does not agree on a test runner, and that is deliberate: tap for the framework
-packages, Playwright with Allure for the browser suites, vitest for `blong-browser`. What they agree
-on is the **contract** — a per-package slice in `.ci-report/` — which each adapter writes:
+packages, Playwright with Allure for the browser suites, vitest for `blong-browser`, jest for the
+Storybook leg beside tap in `tools/blong-log`. What they agree on is the **contract** — a
+per-package slice in `.ci-report/` — which each adapter writes:
 
 | Runner              | Adapter                                    | Who writes it          |
 | ------------------- | ------------------------------------------ | ---------------------- |
 | tap                 | `report/tapReport.ts`                      | `blong-dev test`       |
 | Playwright + Allure | `report/allurePublish.ts`                  | `blong-dev playwright` |
 | vitest              | `report/vitestReport.ts` (`report vitest`) | the package itself     |
+| jest + Storybook    | `report/vitestReport.ts` (`report jest`)   | `tools/blong-log`      |
 
 Aggregation is then a sum over slices, not a runner-specific reader, which is the property that
 keeps a new package cheap: choose a runner, wire its adapter, and the report learns nothing new. The

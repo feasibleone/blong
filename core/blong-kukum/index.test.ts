@@ -18,7 +18,9 @@ const manifest: Record<string, unknown> = {};
 const serverPlatform = await load(serverSuite, 'blong-kukum', 'blong-kukum', intents, manifest);
 await serverPlatform.start({});
 
-tap.setTimeout(60_000);
+// The budget is the runner's own: `blong-dev test` passes a `--timeout` sized for an
+// integration entry point, and the 60s ceiling set here expired inside the gateway test on
+// a loaded shared runner rather than on a hang (@@D-247 @@F-540).
 
 await tap.test('kukum (server)', async (test: Test) => {
     await serverPlatform.test(test);

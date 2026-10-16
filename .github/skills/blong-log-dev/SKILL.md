@@ -191,11 +191,15 @@ npm run visual:update      # refresh baselines after intentional visual changes
 npm test                   # tap unit tests (buffer, server, udp-receiver)
 ```
 
-In CI the leg prints one summary line and the path of its log; the runner's whole output is kept in
-`.ci-report/storybook.log`, which the workflow uploads with the rest of the package's `.ci-report/`,
-and it is printed instead of the summary when the runner fails. That is the shape the tap leg
-already has — full TAP in `.ci-report/`, a compact view in the log once `CI` is set — and the leg is
-still missing from the aggregate report, which @@T-188 keeps.
+In CI the leg prints one summary line and the path of its log. `test-storybook` writes its own
+results to `.ci-report/storybook.json` (`--json --outputFile`) and the leg converts them with
+`blong-dev report jest --input .ci-report/storybook.json --runner storybook --status $EXIT`, so the
+storybook tests reach the aggregate report, the metrics and the failures bundle as a run of their
+own instead of living only in `.ci-report/storybook.log`. Passing `--status` is what keeps a leg
+that dies before the runner writes anything from being reported green (@@F-539). That is the shape
+the tap leg already has — a structured report plus a compact view in the log and the full stream
+kept for the artifact upload — plus the log itself, which is printed instead of the summary when
+the runner fails.
 
 PNG baselines live in `src/client/__image_snapshots__/`; sample data in
 `src/client/__fixtures__/data.ts`; story definitions in `src/client/LogViewer.stories.tsx`; config

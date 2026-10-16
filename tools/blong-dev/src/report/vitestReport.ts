@@ -4,6 +4,9 @@
  * vitest runs are driven by `npm run ci-test` in each vitest-based package
  * (`core/blong-browser` today); this module is the only place that knows the
  * shape of `coverage/vitest.json`.
+ *
+ * jest writes the same document, so {@link buildJestShapedRun} is shared with the legs that
+ * are jest underneath — `blong-dev report jest` names them with their own runner name.
  */
 
 import {existsSync, readFileSync} from 'node:fs';
@@ -89,10 +92,27 @@ function testEntry(assertion: IVitestAssertion): ITestEntry {
 
 /** Build the `IRunReport` for a completed vitest run. */
 export function buildVitestRun(vitest: IVitestJson | null, cwd: string): IRunReport {
+    return buildJestShapedRun(vitest, 'vitest', cwd);
+}
+
+/**
+ * Build a run slice from jest-shaped JSON, under the name of the leg that produced it.
+ *
+ * The runner name is the caller's because the *leg*, not the library, is what a reader of
+ * the report needs to see: `test-storybook` is jest, and a slice called `jest` in
+ * `tools/blong-log` would not say which leg failed. Before this, that leg's result lived
+ * only in its own log, so a failure there left the package reading as passed in the
+ * aggregate, the metrics and the failures bundle (@@F-539).
+ */
+export function buildJestShapedRun(
+    json: IVitestJson | null,
+    runner: string,
+    cwd: string,
+): IRunReport {
     const root = repoRoot(cwd);
     const suites: ISuiteEntry[] = [];
 
-    for (const file of vitest?.testResults ?? []) {
+    for (const file of json?.testResults ?? []) {
         const name = file.name ? file.name.replace(root + '/', '') : '(unknown file)';
         const tests: ITestEntry[] = [];
         if (file.message?.trim()) {
@@ -114,7 +134,7 @@ export function buildVitestRun(vitest: IVitestJson | null, cwd: string): IRunRep
 
     const counts = countTests(suites.flatMap(suite => suite.tests));
     return {
-        runner: 'vitest',
+        runner,
         status: statusOf(counts),
         counts,
         generatedAt: new Date().toISOString(),

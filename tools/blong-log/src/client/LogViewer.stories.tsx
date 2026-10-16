@@ -611,6 +611,11 @@ export const PerformanceTest: Story = {
  * Set filters (level, service name, trace ID, has error) and watch as subsequent
  * messages match only the filter criteria. The mock server filters new messages
  * based on the received filter before sending them to the client.
+ *
+ * The stream is bounded: it stops after ten messages, so the table reaches a settled
+ * state a few seconds after mount instead of growing for half a minute. The visual test
+ * photographs that state, and a table that is still receiving rows makes the shot
+ * depend on how fast the runner got there rather than on how the table renders (@@F-541).
  */
 interface WsMockFilters {
     level?: string;
@@ -637,7 +642,8 @@ function FilteredServerStory(): React.ReactElement {
             CLOSED = 3;
             private intervalId: NodeJS.Timeout | null = null;
             private messageCount = 0;
-            private maxMessages = 50;
+            // Bounded so the story is at rest before the visual test shoots it (@@F-541).
+            private maxMessages = 10;
             private filters: WsMockFilters = {};
 
             constructor(url: string) {
@@ -852,5 +858,14 @@ function FilteredServerStory(): React.ReactElement {
 }
 
 export const FilteredServer: Story = {
+    parameters: {
+        // Chromatic waits this long before its own snapshot; the local test-runner keeps the
+        // same wait in `.storybook/test-runner.cjs`, because it is handed no story
+        // parameters (@@F-541). The stream ends about five seconds after mount, so this
+        // leaves a margin.
+        chromatic: {
+            delay: 8000,
+        },
+    },
     render: FilteredServerStory,
 };

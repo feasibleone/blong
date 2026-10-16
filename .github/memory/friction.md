@@ -54,7 +54,7 @@ open (42)
 - `F-525` · ci — A mis-indented line broke the shared workflow for every caller
 - `F-526` · ci — A 24-hour release-age policy, not the cache, blocked the install
 
-resolved (33)
+resolved (35)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -91,6 +91,8 @@ resolved (33)
 - `F-488` · cross-cutting — The publish allow-lists release packages without their entry points
 - `F-535` · docs — A relative img src in JSX is not an asset the build copies
 - `F-534` · docs — docusaurus serve drops the query from an iframe URL
+- `F-539` · ci — A red run's bundle names fewer legs than the run
+- `F-540` · ci — An in-file tap timeout undercuts the runner's budget
 
 <!-- /memory:index -->
 
@@ -1168,3 +1170,40 @@ like a broken embed: the page was right, the component was right, the server was
 The dev server (`npm start`) serves the same URLs untouched and a static host does too. Fixed by
 pointing docs/blong's `npm run serve` at `blong-dev docs serve` @@D-559; the Docusaurus one stays as
 `npm run serve:docusaurus`.
+
+### F-539 — A red run's bundle names fewer legs than the run
+
+> _2026-10-16 · ci · resolved_
+
+The red run 622 of Build published `totals.packages: 2` and neither failure carried a message, while
+the run's own summary block named three failing operations. blong-log failed its storybook leg (an
+image snapshot) and is published as passed, because only the tap, vitest and Playwright legs write
+`.ci-report/report.json` and that file is all the bundle reads; the storybook leg leaves
+`storybook.log` and an exit code. The two entries that are present are tap's own words —
+`tap exited with code 1 without reporting a failing test` and `timeout!` — which name the verdict
+and not what was running when the budget ran out. The reason is in the raw stream: `tap.raw.tap`
+beside each report, where the last emitted assertion and tap's `expired: index.test.ts` line show
+which budget expired and where. Fetch it from the run's `reports` artifact with `gh run download`;
+the published per-package page renders the same report the bundle already had, so it adds nothing.
+
+Resolved: the storybook leg reports a slice of its own into .ci-report, so a failing leg decides the
+package status and reaches the bundle with the jest message; the raw tap stream is still where a
+timeout is read.
+
+### F-540 — An in-file tap timeout undercuts the runner's budget
+
+> _2026-10-16 · ci · resolved_
+
+`blong-dev test` passes `--timeout=240` so that a tap entry point is never judged by a budget
+smaller than its own startup (@@D-247), and both files that failed in run 622 replace that budget at
+runtime: `t.setTimeout(60_000)` in `demo/blong-cli/index.test.ts`, `tap.setTimeout(60_000)` in
+`core/blong-kukum/index.test.ts`. tap hands one number to the root test and to its children, so the
+expiry lands in the middle of the file rather than isolating a hang: blong-cli expired after four of
+its five tests and 51.6s of spawned CLI runs, and kukum's gateway test ended at 60044ms while
+`kukum.source.check` — a package-wide lint run for a request that names one file — was still going.
+Both files had passed on the previous run at 26.7s and 1m50s, and took 70s and 5m43s in this one, so
+the in-file 60s is a budget a loaded shared runner crosses rather than a ceiling only a hang
+reaches.
+
+Resolved: the in-file setTimeout ceilings are gone from both test files, so the budget the runner
+passes applies instead.

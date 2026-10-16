@@ -53,7 +53,9 @@ applied per-package over `git diff --cached`.
 view — enough that a failing suite is readable without reaching for `--reporter`. `playwright` wraps
 the browser runner and builds the Allure report; `report vitest` exists so a package that runs
 vitest (such as `blong-browser`) feeds the _same_ `.ci-report/` contract, which is what lets
-`ci-report` aggregate a monorepo whose packages do not share a runner.
+`ci-report` aggregate a monorepo whose packages do not share a runner. `report jest` does the same
+for a leg that is jest underneath — the Storybook test runner beside tap in `tools/blong-log`, whose
+`--json` output is the document vitest already writes.
 
 ## The dictionary
 
