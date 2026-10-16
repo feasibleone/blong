@@ -109,6 +109,19 @@ export async function playwright(args: string[]): Promise<void> {
     // reported has one document rather than two.
     if (existsSync(resultsDir)) {
         const traceFiles = readdirSync(resultsDir).filter(f => f.endsWith('-attachment.zip'));
+
+        // This leg's slice goes in before the publish that renders from it: the published summary
+        // and page are rendered from `report.json` as it stands, so publishing first left every
+        // browser package's summary one leg behind — the report holding `tap` and `playwright`
+        // while the summary a diagnosis compares held `tap` alone (@@F-548). The tap and jest
+        // paths publish after their slice for the same reason.
+        const parsed = parseResults(resultsDir, traceFiles);
+        writeRun(toRun(parsed.tests, parsed.durationMs), cwd);
+
+        // Generate the single-file Allure report published for this package, plus
+        // the `.ci-report/` contract consumed by `blong-dev ci-report`. The report is
+        // merged from every producer's results, so a package whose handler tests also
+        // reported has one document rather than two.
         const published = await publishAllureReport(cwd, {
             baseHistory: process.env['CI_BASE_HISTORY'],
             run: (command, args, dir) => runTool(command, args, {cwd: dir, env: toolEnv(dir)}),
@@ -120,9 +133,6 @@ export async function playwright(args: string[]): Promise<void> {
         } else if (published.page) {
             console.log(`Report page: ${published.page} (no Allure results)`);
         }
-
-        const parsed = parseResults(resultsDir, traceFiles);
-        writeRun(toRun(parsed.tests, parsed.durationMs), cwd);
     }
 
     // ── Coverage collection ──────────────────────────────────────────────────

@@ -133,7 +133,11 @@ The command lives in `tools/blong-dev/src/ci/`, one module per question, with te
 
 The report documents themselves are produced by `blong-dev ci-report` — the bundle's fields, the
 per-package page and its embedded summary. Change them together: `failuresBundle.ts` and
-`packagePage.ts` are what this command reads.
+`packagePage.ts` are what this command reads. One ordering rule holds across all of them: a
+published document rendered from `report.json` must be written _after_ the last leg writes its
+slice, or it describes the package as it stood one leg earlier — the summary of every browser
+package lagged that way until `commands/playwright.ts` published after its slice rather than before
+it (`@@F-548`).
 
 ## Testing a change to this path
 
