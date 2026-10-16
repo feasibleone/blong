@@ -194,6 +194,7 @@ words:
   - librdkafka
   - libstdc
   - lightgreen
+  - lightningcss
   - linted
   - Liquibase
   - logviewer
