@@ -43,6 +43,12 @@ function stubAllure(): {
 } {
     const calls: string[][] = [];
     const staged: string[][] = [];
+    // The shape Allure writes: the whole application as a base64 `data:` URL in the page.
+    const bundle = Buffer.from('console.log("allure main");\n');
+    const page =
+        '<!doctype html><html><body>' +
+        `<script   src="data:text/javascript;base64,${bundle.toString('base64')}"></script>` +
+        '</body></html>';
     return {
         calls,
         staged,
@@ -51,7 +57,7 @@ function stubAllure(): {
             const out = args[args.indexOf('-o') + 1];
             staged.push(readdirSync(args[args.length - 1]));
             mkdirSync(join(out), {recursive: true});
-            writeFileSync(join(out, 'index.html'), 'report');
+            writeFileSync(join(out, 'index.html'), page);
             writeFileSync(join(out, 'summary.json'), '{}');
             return 0;
         },
@@ -95,7 +101,21 @@ test('publishAllureReport merges every producer into one report', async t => {
     t.equal(args[0], 'awesome');
     t.ok(args.includes('--single-file'), 'the published report is a single file');
     t.equal(args[args.indexOf('--history-path') + 1], join(cwd, '.ci-report', 'history.jsonl'));
-    t.ok(existsSync(join(cwd, '.ci-report', 'publish', 'index.html')), 'the report was published');
+    const publishedPage = join(cwd, '.ci-report', 'publish', 'index.html');
+    t.ok(existsSync(publishedPage), 'the report was published');
+
+    // The application bundle is the same in every report, so it is not inlined: the page
+    // references a content-addressed file beside it, which the reports repository
+    // deduplicates across packages and runs (@@D-563).
+    const page = readFileSync(publishedPage, 'utf8');
+    t.equal(page.includes('data:text/javascript'), false, 'the bundle is not inlined');
+    t.match(page, /src="\.\/allure-main-[0-9a-f]{16}\.js"/, 'the page points at a file beside it');
+    t.ok(published.mainBundle, 'the result names the bundle the page loads');
+    t.ok(
+        existsSync(join(cwd, '.ci-report', 'publish', published.mainBundle!)),
+        'and the bundle is published with it',
+    );
+    t.ok((published.savedBytes ?? 0) > 0, 'the page is smaller than Allure wrote it');
     t.equal(
         existsSync(join(cwd, '.ci-report', '.allure-merge')),
         false,

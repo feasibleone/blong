@@ -1,7 +1,7 @@
 import {existsSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 
-import {publishAllureReport} from '../report/allurePublish.ts';
+import {describeAllurePublish, publishAllureReport} from '../report/allurePublish.ts';
 import {packageName} from '../report/reportPaths.ts';
 import {countTests, statusOf, type ITestEntry} from '../report/reportTypes.ts';
 import {clearRun, writeRun} from '../report/reportWrite.ts';
@@ -113,9 +113,7 @@ export async function report(args: string[]): Promise<void> {
         baseHistory: process.env['CI_BASE_HISTORY'],
     });
     if (published.published) {
-        process.stdout.write(
-            `# allure report: ${published.reportDir} (${published.producers} producer(s))\n`,
-        );
+        process.stdout.write(`# allure report: ${describeAllurePublish(published)}\n`);
     } else if (published.page) {
         process.stdout.write(`# report page: ${published.page} (no Allure results)\n`);
     }

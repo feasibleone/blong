@@ -2,7 +2,7 @@ import {copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync} 
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-import {publishAllureReport} from '../report/allurePublish.ts';
+import {describeAllurePublish, publishAllureReport} from '../report/allurePublish.ts';
 import {
     countTests,
     statusOf,
@@ -127,9 +127,7 @@ export async function playwright(args: string[]): Promise<void> {
             run: (command, args, dir) => runTool(command, args, {cwd: dir, env: toolEnv(dir)}),
         });
         if (published.published) {
-            console.log(
-                `Allure report: ${published.reportDir} (${published.producers} producer(s))`,
-            );
+            console.log(`Allure report: ${describeAllurePublish(published)}`);
         } else if (published.page) {
             console.log(`Report page: ${published.page} (no Allure results)`);
         }

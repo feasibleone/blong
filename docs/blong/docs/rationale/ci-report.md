@@ -58,6 +58,21 @@ keeps a new package cheap: choose a runner, wire its adapter, and the report lea
 coverage half of this story — how the three runners' line data is merged — belongs to
 [code coverage](../concepts/code-coverage.md).
 
+## One page plus one shared bundle
+
+Allure renders a "single-file" report by inlining its whole application into the page: about 3.5 MB
+of a 4.8 MB document. That bundle is byte-for-byte identical in every report built by one Allure
+version — only the report data changes per run — so `blong-dev` patches the page after Allure writes
+it. The bundle becomes a content-addressed file (`allure-main-<hash>.js`), and the pages reference
+one copy of it: the CI workflow sets `BLONG_ALLURE_MAIN_URL=../../../_assets/allure` and
+`BLONG_ALLURE_MAIN_DIR=_assets/allure`, so every package writes the bundle into that one directory
+and every page, from any tool and any run, loads the same URL three levels up at the site root. The
+reports repository therefore stores one file instead of a multi-megabyte copy per package, and a
+browser downloads and caches it once for all reports. A run without those variables keeps the file
+beside the page, which is what makes a locally opened report self-contained. Upstream declined the
+change that would have done this inside Allure itself
+([allure3#353](https://github.com/allure-framework/allure3/pull/353)).
+
 ## History, provenance, and the question "is this new?"
 
 A failure is only useful if the reader can tell whether it predates the branch, so each failing test

@@ -27,10 +27,11 @@ open (15)
 - `T-351` · tools/blong-dev — docs serve --dir should accept an absolute path
 - `T-357` · tools/blong-dev — Confirm the published summary carries every leg
 
-done (2)
+done (3)
 
 - `T-346` · tools/blong-dev — Name the projects that ran no tests in the CI report
 - `T-358` · tools/blong-dev — Render the killing signal in the failure message
+- `T-361` · tools/blong-dev — Host one shared Allure bundle for every published report
 
 <!-- /memory:index -->
 
@@ -269,6 +270,24 @@ the half of the cost @@F-546 records as not yet dropped.
 Done: buildTapRun renders the signal, five unit cases pin the wording, and the live acceptance run
 still answers #622. Still unverified end to end: a new published bundle, since the 625 artifact
 predates the fix.
+
+### T-361 — Host one shared Allure bundle for every published report
+
+> _2026-10-17 · tools/blong-dev · done_
+
+`BLONG_ALLURE_MAIN_URL` lets every published page load one hosted copy instead of its own bundle,
+but nothing publishes that copy yet. The default already takes the storage win: each page gets a
+content-addressed `allure-main-<hash>.js` in its publish directory, and the reports repository
+deduplicates the identical blobs across packages, runs and alias mirrors. What is missing for the
+variable to be useful is a stable location written once per run (a deploy-report input that lands
+the file beside the docs tree, or a step that uploads it), plus the workflow setting the variable
+before the tests run so the pages reference it. Until then the relative reference is the default and
+the variable is the escape hatch; verify it on one tool's report first, because a wrong URL breaks
+every report at once.
+
+Implemented as the shared directory mode of externalizeAllureMain: the workflow sets
+BLONG_ALLURE_MAIN_URL and BLONG_ALLURE_MAIN_DIR, the bundle is written once and deploy-report copies
+it to docs/_assets through its new assets input.
 
 ## Retired
 

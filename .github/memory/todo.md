@@ -81,40 +81,6 @@ done (6)
 
 ## Manual
 
-- A backtick inside a **double**-quoted argument is command substitution. Writing
-  `blong-dev memory add decision --title "db is not an intent"` executed `db` as a command and
-  stored a mangled title, and a grep pattern containing backticks left the terminal waiting on a `>`
-  continuation prompt. Single-quote any argument that carries backticks, and keep backticks out of
-  grep patterns (use `.` wildcards instead).
-- `blong <entry> [intents]` resolves a **relative** entry against the runner's own directory
-  (`core/blong-gogo/src/`), so `suite/blong-suite/index.ts` fails with
-  `Cannot find package 'suite'`. Pass an absolute path. A run that "produced no output" may simply
-  have died this way — grep for the error, do not conclude the command was silent.
-- A `--flag value` pair is read by minimist as the flag's value, so a positional that follows a flag
-  is swallowed unless it is quoted or reordered: put intents before flags, or use `--flag=value`.
-- `kubectl run` needs `--restart=Never` and often `--overrides` to reproduce a Job's container
-  exactly. `kubectl logs` still works on a completed pod; `exec` does not.
-- **Quote any argument carrying an apostrophe, and prefer a phrase without one.** A message written
-  as `'the suite's own pods'` terminates the string and the parse error surfaces far away (TS1002 in
-  the file the string was edited into). This bit twice while editing test assertion messages.
-- **When a command is also a name, drop the `cd … &&` prefix.** `blong-dev …` in a package directory
-  emits a raw `\b` instead of the `-` in the command name (`blong\bdev`), so the output is
-  unreadable in the transcript; or the tool echoes the whole line. Run it without the prefix.
-- **A `blong-dev memory add --title` over ~70 characters prints the usage hint of another subcommand
-  (`memory prune <id,id>`) instead of an error**, and the entry is silently _not_ written. The same
-  happens when the body is very long. Check `memory list --kind …` after adding: the entry is only
-  real if the id comes back.
-- **`CI=1` implies the full CI shape, including the Playwright browser preflight.** Locally
-  `CI=1 blong-dev playwright` (and `node --run test` in a package whose e2e leg shells out to
-  playwright) runs `playwright install --with-deps`, which stops at a `[sudo] password` prompt no
-  agent session can answer — the run looks hung, and `> logfile` stays empty. Always prefix
-  `CI=1 PLAYWRIGHT_SKIP_INSTALL=1`. (Repo-side friction F-280; hit again on 2026-10-14.)
-- **The `blong` on PATH is the watch variant in dev: it never exits on its own.** A boot check such
-  (`blong <entry> dev|cli --exit=true`) serves, prints the loader output, then waits for file
-  changes — so a bare run looks like a hang and a `timeout` is always needed. The line that says the
-  work finished is `Completed running '<…>'. Waiting for file changes before restarting…`; read the
-  log after that. For a run that ends by itself, drive the package's tap entry instead
-  (`node <entry>/index.test.ts`, `node nscfg/index.test.ts`), which exits when its group finishes.
 - F-306
 - F-308
 - F-303
@@ -859,9 +825,9 @@ of the runner. Deferred on purpose when the CI build was repaired, since reporti
 `.ci-report/storybook.log` (its own file in the directory a bridge would read), and prints one
 summary line from it, so the count a slice needs is already in the log the CI artifact uploads.
 
-Closed by the bridge it proposed: test-storybook writes .ci-report/storybook.json with
---json --outputFile, blong-dev report jest converts it under --runner storybook, and the leg
-passes --status so a non-zero exit always leaves a failing slice.
+Closed by the bridge it proposed: test-storybook writes .ci-report/storybook.json with --json
+--outputFile, blong-dev report jest converts it under --runner storybook, and the leg passes
+--status so a non-zero exit always leaves a failing slice.
 
 ### T-352 — Publish a package's non-tap leg failure in the bundle
 
@@ -882,8 +848,8 @@ message, so the bundle no longer names two legs of a three-failure run.
 > _2026-10-16 · ci · done_
 
 Remove or raise the in-file `setTimeout(60_000)` in `demo/blong-cli/index.test.ts` and
-`core/blong-kukum/index.test.ts` so the runner's `--timeout=240` decides (@@D-247). Both files
-ran 2.5x longer on the shared runner than on the previous run and expired there; kukum's expiry was
+`core/blong-kukum/index.test.ts` so the runner's `--timeout=240` decides (@@D-247). Both files ran
+2.5x longer on the shared runner than on the previous run and expired there; kukum's expiry was
 inside `kukum.source.check`, which lints the whole package for a request that names one file, so
 scoping that lint to the named files is the other half of the fix.
 

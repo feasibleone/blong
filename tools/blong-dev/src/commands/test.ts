@@ -1,7 +1,7 @@
 import {rmSync} from 'node:fs';
 import {join} from 'node:path';
 
-import {publishAllureReport} from '../report/allurePublish.ts';
+import {describeAllurePublish, publishAllureReport} from '../report/allurePublish.ts';
 import {runTap} from '../report/tapReport.ts';
 import {toolEnv} from '../utils/toolPath.ts';
 
@@ -74,9 +74,7 @@ export async function test(args: string[]): Promise<void> {
         baseHistory: process.env['CI_BASE_HISTORY'],
     });
     if (published.published) {
-        process.stdout.write(
-            `# allure report: ${published.reportDir} (${published.producers} producer(s))\n`,
-        );
+        process.stdout.write(`# allure report: ${describeAllurePublish(published)}\n`);
     } else if (published.page) {
         process.stdout.write(`# report page: ${published.page} (no Allure results)\n`);
     }

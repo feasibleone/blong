@@ -247,6 +247,16 @@ Hard rules — apply first, never contradict.
 - If you must use double quotes around a command containing an exclamation mark (!), you must escape
   it with a backslash (\!) to avoid the error "bash: !: event not found"
 
+## [CRITICAL_ENVIRONMENT]
+
+Unless otherwise evident, you are operating in the DEV environment, where the following applies:
+
+- The `blong` on PATH is the `node --watch` variant, run `bl` instead
+- `.blong_devrc` in the blong folder contains some local configuration
+- The `blong-dev` k3d cluster is usually up, but can be started with the `ks` alias
+- Do not stage, unstage or commit on your own, unless prompted
+- Avoid ambient stash operations, only scope them to what you touched
+
 ## [CORE_PARADIGMS]
 
 - **Handler-runtime pattern.** Handlers = isolated functions; framework adds config, validation, API

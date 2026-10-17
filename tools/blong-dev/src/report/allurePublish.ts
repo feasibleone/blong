@@ -36,6 +36,7 @@ import {basename, join} from 'node:path';
 
 import {runTool} from '../utils/runTool.ts';
 import {toolEnv} from '../utils/toolPath.ts';
+import {configuredBundle, externalizeAllureMain} from './allureMain.ts';
 import {historyFile, readHistory, sliceForPackage, writeSlice} from './history.ts';
 import {writePackagePage, writePackageSummary} from './packagePage.ts';
 import {PUBLISH_DIR, REPORT_DIR, packageName, repoRoot, reportDir} from './reportPaths.ts';
@@ -64,6 +65,26 @@ export interface IAllurePublishResult {
      * package whose runners never reported to Allure (see {@link writePackagePage}).
      */
     page?: string;
+    /**
+     * Source the page loads the Allure application from, when the inlined bundle was
+     * moved out of `index.html` (see {@link externalizeAllureMain}): a file beside the
+     * page, or the one shared copy every report references.
+     */
+    mainBundle?: string;
+    /** Bytes that bundle occupied inside the page before it was moved out. */
+    savedBytes?: number;
+}
+
+/**
+ * Where a published report landed, for the commands that print it.
+ *
+ * It names the external bundle as well, because that is what decides how much of the
+ * reports repository a run writes: the same file name is shared by every report of the
+ * same Allure version (@@D-563).
+ */
+export function describeAllurePublish(result: IAllurePublishResult): string {
+    const bundle = result.mainBundle ? `, ${result.mainBundle}` : '';
+    return `${result.reportDir} (${result.producers} producer(s)${bundle})`;
 }
 
 /** Every results directory of this package that holds something, in producer order. */
@@ -283,6 +304,12 @@ export async function publishAllureReport(
         if (exitCode !== 0) return {published: false, producers: dirs.length};
 
         publishGenerated(stagingOut, publishDir);
+        // The application bundle inlined into the page is byte-for-byte the same in every
+        // report of one Allure version, so it is moved out of the page under a
+        // content-addressed name — beside the page, or once into a directory every report
+        // shares — and the reports repository then holds one blob for all of them (@@D-563).
+        const bundle = configuredBundle(repoRoot(cwd));
+        const external = externalizeAllureMain(join(publishDir, 'index.html'), bundle);
         // Our own summary beside Allure's, so a tool reads the package's verdict and its test
         // time without parsing either document: the page renderer writes the same file when
         // there is no Allure report to publish (@@D-562).
@@ -291,6 +318,9 @@ export async function publishAllureReport(
             published: true,
             producers: dirs.length,
             reportDir: ALLURE_PUBLISH_DIR,
+            ...(external.bytes > 0
+                ? {mainBundle: external.reference ?? external.files[0], savedBytes: external.bytes}
+                : {}),
         };
     } finally {
         // The staged copies are large and the published report is a single file; nothing

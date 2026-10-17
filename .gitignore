@@ -129,6 +129,9 @@ vitest-report
 .ci-report
 report-data
 ci-failures
+# The bundle every published report references, written once per run by `blong-dev`
+# when the workflow points it at a shared directory (`_assets/allure`).
+/_assets
 /metrics.json
 /ci-report.md
 

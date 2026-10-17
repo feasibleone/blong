@@ -25,6 +25,7 @@ import {
 import {basename, dirname, join} from 'node:path';
 
 import type {IFailure} from './aggregate.ts';
+import {configuredBundle, externalizeAllureMain} from './allureMain.ts';
 import type {IFailureHistory} from './provenance.ts';
 import {PUBLISH_DIR, REPORT_DIR} from './reportPaths.ts';
 import {hasRun, type IReport, type TestStatus} from './reportTypes.ts';
@@ -464,6 +465,9 @@ export async function buildFailuresBundle(
         const allureSummary = join(dirname(indexHtml), 'summary.json');
         if (existsSync(allureSummary))
             copyFileSync(allureSummary, join(publishDir, 'summary.json'));
+        // Same bundle, same reason as a package report: it is identical in every report of
+        // one Allure version, so it travels as one content-addressed file (@@D-563).
+        externalizeAllureMain(join(publishDir, 'index.html'), configuredBundle(root));
     }
 
     const failuresJson = join(publishDir, 'failures.json');
