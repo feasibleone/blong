@@ -73,6 +73,12 @@ beside the page, which is what makes a locally opened report self-contained. Ups
 change that would have done this inside Allure itself
 ([allure3#353](https://github.com/allure-framework/allure3/pull/353)).
 
+Allure's template also embeds a Google Analytics tag for its own property, and its plugin offers no
+option to change or drop it. The same patch step rewrites that tag: `BLONG_ALLURE_GA_ID` points the
+report at another measurement ID, and `BLONG_ALLURE_GA_ID=off` removes the analytics scripts, so an
+internal report is not counted anywhere it was not meant to be. Unset — the default — the page keeps
+the tag Allure wrote.
+
 ## History, provenance, and the question "is this new?"
 
 A failure is only useful if the reader can tell whether it predates the branch, so each failing test

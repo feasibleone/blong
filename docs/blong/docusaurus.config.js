@@ -6,6 +6,13 @@
 
 import {themes as prismThemes} from 'prism-react-renderer';
 
+// Page-view analytics for the published site. The build is what decides, so a maintainer or
+// a deploy sets the measurement ID in its environment: unset — the default — builds the site
+// with no analytics at all, which keeps a local `npm run build` and `npm start` silent. The
+// reports this repository publishes read the same variable family (`BLONG_ALLURE_GA_ID`),
+// but deliberately not the same name (@@D-565).
+const trackingID = (process.env.BLONG_DOCS_GA_ID ?? '').trim();
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
     title: 'Blong',
@@ -75,6 +82,10 @@ const config = {
                 theme: {
                     customCss: './src/css/custom.css',
                 },
+                // Only added when a measurement ID was given: the preset enables the plugin
+                // for whatever it is handed, including an empty string, which would build a
+                // site that reports nowhere.
+                ...(trackingID ? {gtag: {trackingID, anonymizeIP: true}} : {}),
             }),
         ],
     ],

@@ -36,6 +36,7 @@ import {basename, join} from 'node:path';
 
 import {runTool} from '../utils/runTool.ts';
 import {toolEnv} from '../utils/toolPath.ts';
+import {configuredAnalytics, rewriteAllureAnalytics} from './allureAnalytics.ts';
 import {configuredBundle, externalizeAllureMain} from './allureMain.ts';
 import {historyFile, readHistory, sliceForPackage, writeSlice} from './history.ts';
 import {writePackagePage, writePackageSummary} from './packagePage.ts';
@@ -310,6 +311,9 @@ export async function publishAllureReport(
         // shares — and the reports repository then holds one blob for all of them (@@D-563).
         const bundle = configuredBundle(repoRoot(cwd));
         const external = externalizeAllureMain(join(publishDir, 'index.html'), bundle);
+        // Allure's template always carries its own analytics property; a run points it at
+        // another measurement ID, or removes it (@@D-564).
+        rewriteAllureAnalytics(join(publishDir, 'index.html'), configuredAnalytics());
         // Our own summary beside Allure's, so a tool reads the package's verdict and its test
         // time without parsing either document: the page renderer writes the same file when
         // there is no Allure report to publish (@@D-562).
