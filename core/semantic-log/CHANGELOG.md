@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/feasibleone/blong/compare/semantic-log-v1.6.0...semantic-log-v1.6.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* config validation and hot reload ([c6c0761](https://github.com/feasibleone/blong/commit/c6c0761145ba935072cd727547c13afddfdf7362))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/semantic-log-v1.5.0...semantic-log-v1.6.0) (2026-10-13)
 
 

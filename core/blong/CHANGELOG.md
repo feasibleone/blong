@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.33.1](https://github.com/feasibleone/blong/compare/blong-v1.33.0...blong-v1.33.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* config validation and hot reload ([c6c0761](https://github.com/feasibleone/blong/commit/c6c0761145ba935072cd727547c13afddfdf7362))
+* injected library functions in kukum ([cb63c44](https://github.com/feasibleone/blong/commit/cb63c44b324a81629e20f3a7b730146d44a5259c))
+
 ## [1.33.0](https://github.com/feasibleone/blong/compare/blong-v1.32.0...blong-v1.33.0) (2026-10-13)
 
 
