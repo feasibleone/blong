@@ -75,13 +75,14 @@ active (61)
 - `D-561` · ci — The CI diagnosis command and skill take this shape
 - `D-562` · ci — A published package summary sits beside the page
 
-superseded (4)
+superseded (5)
 
 - `D-171` · ci — The metrics commit carries skip ci
 - `D-318` · cross-cutting — The rebuild follows the last write, and a lagging read falls back
 - `D-323` · cross-cutting — Atomicity stops at the handler boundary, and that boundary is the
   topology
 - `D-336` · cross-cutting — The bank embedding model is the one irreversible choice
+- `D-569` · ci — How to make CI test the framework build of its own commit
 
 <!-- /memory:index -->
 
@@ -1116,3 +1117,22 @@ re-embedding is owed.
 
 Evidence in plans/memory-index/embedding-model-comparison.md, harness and results in
 plans/memory-index/eval/.
+
+### D-569 — How to make CI test the framework build of its own commit
+
+> _2026-10-17 · ci · superseded_
+
+F-555 can be fixed three ways and the choice is the user's, because it changes shared infrastructure
+that four repositories run on. Option A carries each project's dist as a per-run artifact, uploaded
+by setup and downloaded by the jobs that need it, leaving the lockfile-keyed cache to the pnpm store
+and the per-project .rush trees; it is the durable fix and the one recommended. Option B sets
+NODE_OPTIONS=--conditions=blong-dev on the test jobs so CI resolves core/blong/types.ts the way the
+dev shell does, which makes the suites test framework source and leaves the default condition of the
+exports map untested. Option C bumps the cache key prefix once, which unblocks the current run and
+brings the trap back on the next types.ts change. Until one is applied, Build stays red for the
+release pull request and no change to a runtime export or runtime logic in types.ts reaches CI.
+
+Option A was applied on 2026-10-17 in infitx-org/actions: rush.yaml and release-docker.yaml pack the
+dist trees of the run into a build artifact, the lockfile-keyed cache keeps only the dependency
+store and the .rush trees, publish-package and chromatic read the artifact of their own run, and
+setup-node in the release workflow now builds on every release so that artifact always exists.

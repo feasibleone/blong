@@ -68,7 +68,7 @@ open (59)
 - `T-359` · ci — Find why a tap child dies with SIGILL before it runs
 - `T-360` · ci — Say when the previous run failed the same way
 
-done (6)
+done (7)
 
 - `T-342` · ci — Decide the cache payload shape before landing step 2
 - `T-188` · ci — The Storybook leg produces no .ci-report slice
@@ -76,6 +76,7 @@ done (6)
 - `T-353` · ci — Drop the in-file 60s tap timeouts in two packages
 - `T-356` · ci — Make red mean a failed test, not a flaky one
 - `T-355` · ci — Build blong-dev ci, the publisher fix and the blong-ci skill
+- `T-365` · ci — Carry */dist as a per-run artifact in the shared Rush workflow
 
 <!-- /memory:index -->
 
@@ -934,3 +935,20 @@ Every step landed: the publisher carries the failure message, its location and a
 artifact; .github/skills/blong-ci/SKILL.md documents the interpretation; the fixture is run 622 with
 run 621 as its green counterpart; and the fresh-context subagent validation ran four variants and
 found three real defects, all fixed.
+
+### T-365 — Carry */dist as a per-run artifact in the shared Rush workflow
+
+> _2026-10-17 · ci · done_
+
+Pick one of the three fixes recorded in the decision entry on the stale CI dist and apply it in
+infitx-org/actions/.github/workflows/rush.yaml. The recommended one is to build the artifact
+handoff: in the setup job upload every */dist tree with actions/upload-artifact, and in the tests,
+chromatic, audit and lint jobs download it before running, so the archive cached under
+hashFiles('common/config/rush/pnpm-lock.yaml') carries only common/temp/deps.tar.zst and the
+per-project .rush trees. Refresh the comment above CACHE_PATHS to say why the dist is no longer in
+it, and grep for other repositories in this workspace that reuse rush.yaml before changing the
+interface. The build for the release pull request stays red until this lands.
+
+Done with the decision entry: pack and upload in setup (rush.yaml) and setup-node
+(release-docker.yaml), download and unpack in every job that reads the tree, and both cache lists
+stay identical as their comments require.

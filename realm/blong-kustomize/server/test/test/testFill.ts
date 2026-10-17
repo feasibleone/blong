@@ -24,7 +24,19 @@ import {
     relativizeLinks,
     unpackZip,
 } from '../../../fill.ts';
-import {FILL_SOURCE, minifiedFill} from '../../../scripts/minifyFill.ts';
+
+/**
+ * The minifier is imported where it is used, not at the top of this file.
+ *
+ * Every process that loads the realm imports the files of `server/test` — the loader
+ * decides a layer's activation after it has imported the layer, because a handler is
+ * only known once it is executed. `scripts/minifyFill.ts` imports `@swc/core`, which is
+ * a dev dependency and therefore absent from the deploy tree, so a top-level import
+ * took the operator down with `ERR_MODULE_NOT_FOUND` the moment it booted
+ * (`@@F-563`). Nothing in this file needs the minifier until the case that compares
+ * the committed copy runs.
+ */
+const loadMinifier = () => import('../../../scripts/minifyFill.ts');
 
 /**
  * server/test/test/testFill.ts — the step that brings an artifact to where it is read from.
@@ -366,9 +378,12 @@ export default handler(({lib: {group}}) => ({
                         /\/\*|^\s*\/\//m,
                         'and no comment travels into the ConfigMap',
                     );
+                    // Resolved here rather than at the top of the file: a release process imports
+                    // this handler too, and its deploy tree carries no minifier (`@@F-563`).
+                    const minifier = await loadMinifier();
                     assert.equal(
                         shipped,
-                        minifiedFill(readFileSync(FILL_SOURCE, 'utf8')),
+                        minifier.minifiedFill(readFileSync(minifier.FILL_SOURCE, 'utf8')),
                         'and the committed copy is what the minifier writes today, so editing the ' +
                             'source without running sync-fill-module fails here',
                     );
