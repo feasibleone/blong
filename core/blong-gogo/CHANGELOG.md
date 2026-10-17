@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.40.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.40.0...blong-gogo-v1.40.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* CI failures ([1848195](https://github.com/feasibleone/blong/commit/1848195d9b2f8365ddf5e5461dfc83536cece38c))
+* config validation and hot reload ([4789ec1](https://github.com/feasibleone/blong/commit/4789ec10f0057e34442d3b0b6f43d760b0b02210))
+* config validation and hot reload ([c6c0761](https://github.com/feasibleone/blong/commit/c6c0761145ba935072cd727547c13afddfdf7362))
+* dependency ([33c38e3](https://github.com/feasibleone/blong/commit/33c38e3da4a055135ab348f80364be9f529962ad))
+* dependency ([e30a388](https://github.com/feasibleone/blong/commit/e30a388fa6919320138a4b09605d382f2f03c0e5))
+* injected library functions in kukum ([cb63c44](https://github.com/feasibleone/blong/commit/cb63c44b324a81629e20f3a7b730146d44a5259c))
+* test build ([31026bf](https://github.com/feasibleone/blong/commit/31026bfab8c6b815793f78591500647f98e5f20d))
+* update graceful shutdown test to handle port conflicts and improve error reporting ([9abdd6d](https://github.com/feasibleone/blong/commit/9abdd6dd601c22d8df9057f6d5df65194bc60579))
+
 ## [1.40.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.39.0...blong-gogo-v1.40.0) (2026-10-13)
 
 

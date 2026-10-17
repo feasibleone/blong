@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.33.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.32.0...blong-docs-v1.33.0) (2026-10-17)
+
+
+### Features
+
+* blong-dev ci ([9b267e3](https://github.com/feasibleone/blong/commit/9b267e32f480c9b9ea0d3cf5f6c7f2fa59ac2d41))
+
+
+### Bug Fixes
+
+* analytics ([7c0a2a5](https://github.com/feasibleone/blong/commit/7c0a2a56f9f1cfc01b33ef932d76c818afe803bd))
+* ci failures ([5c112d4](https://github.com/feasibleone/blong/commit/5c112d4defe9e996661d37d7489b960a2919117e))
+* CI failures ([99950aa](https://github.com/feasibleone/blong/commit/99950aaf074ba747a17ae6797bf68505a36c680a))
+* CI shared assets ([49404b7](https://github.com/feasibleone/blong/commit/49404b70b0c522992e5a7741db52d2da3944ea9f))
+* config validation and hot reload ([4789ec1](https://github.com/feasibleone/blong/commit/4789ec10f0057e34442d3b0b6f43d760b0b02210))
+* config validation and hot reload ([c6c0761](https://github.com/feasibleone/blong/commit/c6c0761145ba935072cd727547c13afddfdf7362))
+
 ## [1.32.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.31.0...blong-docs-v1.32.0) (2026-10-13)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.1](https://github.com/feasibleone/blong/compare/blong-kopi-v1.19.0...blong-kopi-v1.19.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* injected library functions in kukum ([cb63c44](https://github.com/feasibleone/blong/commit/cb63c44b324a81629e20f3a7b730146d44a5259c))
+
 ## [1.19.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.18.0...blong-kopi-v1.19.0) (2026-10-11)
 
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.12.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.11.0...blong-dev-v1.12.0) (2026-10-17)
+
+
+### Features
+
+* blong-dev ci ([9b267e3](https://github.com/feasibleone/blong/commit/9b267e32f480c9b9ea0d3cf5f6c7f2fa59ac2d41))
+
+
+### Bug Fixes
+
+* analytics ([7c0a2a5](https://github.com/feasibleone/blong/commit/7c0a2a56f9f1cfc01b33ef932d76c818afe803bd))
+* ci failures ([5c112d4](https://github.com/feasibleone/blong/commit/5c112d4defe9e996661d37d7489b960a2919117e))
+* CI failures ([99950aa](https://github.com/feasibleone/blong/commit/99950aaf074ba747a17ae6797bf68505a36c680a))
+* ci reporting ([26f7b98](https://github.com/feasibleone/blong/commit/26f7b988dc206a485e935630eb1adc2075bb133b))
+* CI shared assets ([49404b7](https://github.com/feasibleone/blong/commit/49404b70b0c522992e5a7741db52d2da3944ea9f))
+* config validation and hot reload ([c6c0761](https://github.com/feasibleone/blong/commit/c6c0761145ba935072cd727547c13afddfdf7362))
+* injected library functions in kukum ([cb63c44](https://github.com/feasibleone/blong/commit/cb63c44b324a81629e20f3a7b730146d44a5259c))
+* render signal in failure messages for killed processes ([659fb5e](https://github.com/feasibleone/blong/commit/659fb5e6cc1f1907a50e12b00e8e44e11abad486))
+* update graceful shutdown test to handle port conflicts and improve error reporting ([9abdd6d](https://github.com/feasibleone/blong/commit/9abdd6dd601c22d8df9057f6d5df65194bc60579))
+
 ## [1.11.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.10.0...blong-dev-v1.11.0) (2026-10-13)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.25.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.25.0...blong-browser-v1.25.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* ci failures ([5c112d4](https://github.com/feasibleone/blong/commit/5c112d4defe9e996661d37d7489b960a2919117e))
+
 ## [1.25.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.24.0...blong-browser-v1.25.0) (2026-10-13)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.4](https://github.com/feasibleone/blong/compare/blong-commander-v1.2.3...blong-commander-v1.2.4) (2026-10-17)
+
+
+### Bug Fixes
+
+* ci failures ([5c112d4](https://github.com/feasibleone/blong/commit/5c112d4defe9e996661d37d7489b960a2919117e))
+
 ## [1.2.3](https://github.com/feasibleone/blong/compare/blong-commander-v1.2.2...blong-commander-v1.2.3) (2026-10-11)
 
 

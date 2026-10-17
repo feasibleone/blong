@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.1](https://github.com/feasibleone/blong/compare/test-v1.16.0...test-v1.16.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* config validation and hot reload ([4789ec1](https://github.com/feasibleone/blong/commit/4789ec10f0057e34442d3b0b6f43d760b0b02210))
+
 ## [1.16.0](https://github.com/feasibleone/blong/compare/test-v1.15.0...test-v1.16.0) (2026-09-24)
 
 

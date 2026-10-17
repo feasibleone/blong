@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/feasibleone/blong/compare/blong-config-v1.2.1...blong-config-v1.2.2) (2026-10-17)
+
+
+### Bug Fixes
+
+* config validation and hot reload ([c6c0761](https://github.com/feasibleone/blong/commit/c6c0761145ba935072cd727547c13afddfdf7362))
+
 ## [1.2.1](https://github.com/feasibleone/blong/compare/blong-config-v1.2.0...blong-config-v1.2.1) (2026-09-10)
 
 
