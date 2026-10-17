@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -15,7 +15,7 @@ type KnexQb = any;
  * effective rows are the same ones `access.acl.list` reports, so the read-only
  * "Access" tab of the role page and the API agree by construction.
  */
-export default handler(({handler: {accessAclList}}) => ({
+export default handler(({lib: {aclMatrixRows}, handler: {accessAclList}}) => ({
     async accessRoleGet(params: {roleId?: string}, $meta: IMeta): Promise<Record<string, unknown>> {
         const qb: KnexQb = this.config?.context?.queryBuilder;
         if (!qb) throw new Error('Database not available');
@@ -28,7 +28,7 @@ export default handler(({handler: {accessAclList}}) => ({
                 $meta,
             );
             result.effective = acl.items;
-            result.matrix = await model.aclMatrixRows(qb, principalId);
+            result.matrix = await aclMatrixRows(qb, principalId);
         }
         return result;
     },

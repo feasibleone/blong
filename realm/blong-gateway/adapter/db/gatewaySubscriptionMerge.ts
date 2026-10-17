@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import {newUuid, uuidBuf} from './gatewayUuid.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -13,7 +13,7 @@ type KnexQb = any;
  * token authorization) follow from the subscribed bundle.  The graph edge +
  * refresh go through the shared `core.triple.merge` helper (P3).
  */
-export default handler(() => ({
+export default handler(({lib: {newUuid, uuidBuf}}) => ({
     async gatewaySubscriptionMerge(
         params: {
             subscription?: Record<

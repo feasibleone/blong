@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 
+import {library} from '@feasibleone/blong';
+
 export type IJwk = {
     kid?: string;
     alg?: string;
@@ -25,7 +27,7 @@ export interface IOidcConfiguration {
  * reached, letting callers fall back to hardcoded endpoints.  All endpoints come
  * back as absolute URLs per the OIDC spec.
  */
-export async function discoverOidcConfiguration(
+async function discoverOidcConfiguration(
     discoveryUrl: string,
 ): Promise<IOidcConfiguration | undefined> {
     try {
@@ -44,7 +46,7 @@ export async function discoverOidcConfiguration(
  * claims.  The returned object contains standardized claims (sub, name, given_name,
  * family_name, email, email_verified, picture, ...).
  */
-export async function fetchUserInfo(
+async function fetchUserInfo(
     userinfoEndpoint: string,
     accessToken: string,
 ): Promise<Record<string, unknown> | undefined> {
@@ -65,7 +67,7 @@ export async function fetchUserInfo(
  * algorithm).  Throws on malformed tokens, unknown keys, bad signatures or
  * audience mismatch.
  */
-export function verifyIdToken(
+function verifyIdToken(
     token: string,
     jwks: {keys?: IJwk[]},
     audience: string,
@@ -109,3 +111,20 @@ export function verifyIdToken(
 
     return payload;
 }
+
+/**
+ * The Google/OIDC helpers of the `access.db` group.
+ *
+ * Injected library functions: a handler reads them from `lib` and takes the type
+ * from here, so the call sites stay typed:
+ *
+ *     const oidc = lib as unknown as OidcLib;
+ *     await oidc.discoverOidcConfiguration(url);
+ */
+export type OidcLib = {
+    discoverOidcConfiguration: typeof discoverOidcConfiguration;
+    fetchUserInfo: typeof fetchUserInfo;
+    verifyIdToken: typeof verifyIdToken;
+};
+
+export default library((): OidcLib => ({discoverOidcConfiguration, fetchUserInfo, verifyIdToken}));

@@ -1,8 +1,7 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 import {type GoogleConfig, type GoogleFlow} from './google.ts';
-import {discoverOidcConfiguration, fetchUserInfo, verifyIdToken} from './oidc.ts';
 
 type KnexQb = any;
 
@@ -26,7 +25,15 @@ type KnexQb = any;
 export default handler(
     ({
         errors,
-        lib: {crockfordEncode, googleConfig},
+        lib: {
+            bufToUuid,
+            crockfordEncode,
+            discoverOidcConfiguration,
+            fetchUserInfo,
+            googleConfig,
+            uuidBuf,
+            verifyIdToken,
+        },
         handler: {accessRegistrationAdd, accessPermissionList},
     }) =>
         async function accessIdentityCheck(
@@ -54,7 +61,7 @@ export default handler(
             // reusable default (the local mock in dev), and a suite can override it via
             // `srv.db.google` — the suite override wins.
             const google = {
-                ...(googleConfig<GoogleConfig>() ?? {}),
+                ...(googleConfig() ?? {}),
                 ...((this.config as {google?: object} | undefined)?.google ?? {}),
             };
             if (!google.clientId || !google.clientSecret) {
@@ -170,7 +177,7 @@ export default handler(
                         },
                         $meta,
                     );
-                    userIdBuf = account.uuidBuf(registered.userId);
+                    userIdBuf = uuidBuf(registered.userId);
                     isNewUser = true;
                 }
             }
@@ -179,7 +186,7 @@ export default handler(
                 roleBits: number[];
                 actions: string[];
                 permissionMap: string;
-            }>({userId: account.bufToUuid(userIdBuf)}, $meta);
+            }>({userId: bufToUuid(userIdBuf)}, $meta);
 
             return {userId: crockfordEncode(userIdBuf), permissionMap, actions, isNewUser};
         },

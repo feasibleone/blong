@@ -20,12 +20,14 @@ const suite: PrimitiveDescriptor = {
                 path: 'server.ts',
                 content: `import {server} from '@feasibleone/blong';
 
+/**
+ * The framework loads blong-server (\`srv\`) from this package's manifest — it is
+ * declared in \`dependencies\` below — so the suite does not name it as a child.
+ * The \`dev\` block still carries its config slot.
+ */
 export default server(() => ({
     url: import.meta.url,
     children: [
-        async function srv() {
-            return import('@feasibleone/blong-server/server.ts');
-        },
         async function ${name}() {
             return import('./index.ts');
         },
@@ -57,6 +59,10 @@ export default browser(() => ({
     "private": true,
     "type": "module",
     "exports": {"./server.ts": "./server.ts"},
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-server": "workspace:^1.0.0"
+    },
     "scripts": {"build": "true", "ci-lint": "blong-dev lint", "ci-test": "blong-dev test"}
 }
 `,

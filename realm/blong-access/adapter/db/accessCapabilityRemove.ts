@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -8,17 +8,17 @@ type KnexQb = any;
  * `access.capability.remove` — delete a capability, its graph edges and its
  * resource row.
  */
-export default handler(() => ({
+export default handler(({lib: {binHex, listEdgeObjectIds}}) => ({
     async accessCapabilityRemove(
         params: {capabilityId?: string},
         $meta: IMeta,
     ): Promise<{success: boolean}> {
         const qb: KnexQb = this.config?.context?.queryBuilder;
         if (!qb) throw new Error('Database not available');
-        const hex = model.binHex(params.capabilityId);
+        const hex = binHex(params.capabilityId);
         if (!hex) return {success: true};
         const buf = Buffer.from(hex, 'hex');
-        const actionIds = await model.listEdgeObjectIds(qb, hex, 'hasAction');
+        const actionIds = await listEdgeObjectIds(qb, hex, 'hasAction');
         // One transaction, one rebuild at the end of it.  The old shape rebuilt the
         // paths after removing the `hasAction` edges and then removed the
         // granted-to-role `hasCapability` edges, so those grants stayed in every

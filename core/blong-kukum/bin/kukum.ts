@@ -44,6 +44,8 @@ Usage
       --subject=NAME      realm name (triple subject)
       --object=NAME       entity name (triple object)
       --predicate=NAME    action for a handler triple (add, find, …)
+      --name=NAME         artifact name that has no triple (a library function/bundle)
+      --members=a,b       member functions of a \`bindings\` library bundle
       --kind=KIND         primitive kind (see \`primitive find\`)
       --layer=NAME        layer folder
       --group=NAME        handler group folder
@@ -57,6 +59,9 @@ Usage
 
 Examples
   kukum handler add --subject=demo --object=item --predicate=add --kind=api --dry-run
+  kukum library add --name=itemFormat --kind=function --layer=orchestrator --group=item
+  kukum library add --name=itemLib --kind=bindings --members=itemSplit,itemJoin
+  kukum library check --target=../blong-access     # plain modules in group folders
   kukum seed add --subject=demo --object=item --kind=test
   kukum source check --files=orchestrator/kukum/handlers.ts
 `;
@@ -148,6 +153,14 @@ function paramFlags(argv: Argv): OperationParams {
         layer: argv.layer ? String(argv.layer) : undefined,
         group: argv.group ? String(argv.group) : undefined,
         platform: (argv.platform as 'server' | 'browser' | undefined) ?? undefined,
+        name: argv.name ? String(argv.name) : undefined,
+        members:
+            argv.members === undefined
+                ? undefined
+                : String(argv.members)
+                      .split(',')
+                      .map(member => member.trim())
+                      .filter(Boolean),
         path: argv.path ? String(argv.path) : undefined,
         dryRun: Boolean(argv['dry-run']),
         force: Boolean(argv.force),

@@ -350,6 +350,7 @@ not a TTY, and exits non-zero when diagnostics contain errors.
 | primitive      | kinds                                                                    |
 | -------------- | ------------------------------------------------------------------------ |
 | `handler`      | `api`, `library`, `db`, `super`, `libBindings`                           |
+| `library`      | `function`, `bindings`                                                   |
 | `layer`        | `server`, `browser`, `custom`                                            |
 | `orchestrator` | `dispatch`, `init`, `schedule`                                           |
 | `adapter`      | `http`, `tcp`, `knex`, `webhook`, `mongodb`, `k8s`, `s3`, `mock`, `base` |
@@ -387,6 +388,9 @@ default).
 
 ```bash
 kukum handler add --subject=shop --object=order --predicate=add --kind=api --dry-run
+kukum library add --name=orderFormat --kind=function --layer=orchestrator --group=order
+kukum library add --name=orderLib --kind=bindings --members=orderSplit,orderJoin
+kukum library check --target=../blong-access     # plain modules in group folders
 kukum schema add --subject=shop --object=order --kind=table
 kukum test add --subject=shop --object=order --kind=playwright
 kukum handler edit --path=orchestrator/shop/shopOrderAdd.ts --content="$(cat new.ts)"
@@ -403,6 +407,14 @@ prompt that says "enhance this later" should record the intent this way rather t
 ### Hard rules
 
 - **Do not invent a predicate** — `add`/`edit`/`find`/`get`/`check` are the vocabulary.
+- **A file in a handler-group folder is a handler or a `library()`** — nothing else. A plain module
+  there makes the loader log an error on every run; `kukum library check --target=DIR` finds them.
+  Several helpers that share a concern belong in **one** `bindings` bundle, never one file each.
+- **Type a group's `lib` once, not per handler** — a group folder may hold `handlerGroup.ts`
+  (`export const handler = handlerGroup<TheGroupLib>()`), a name the loader skips so it is never
+  loaded as a handler, and every handler in the folder then destructures `lib` with those types.
+  TypeScript has no folder-scoped ambient declarations; a module augmentation applies to the whole
+  program.
 - **A realm name must be a single lowercase word** (`shop`, not `my-shop` or `myShop`): the template
   substitutes `$subject` into identifiers and derives seed method names from
   `<subject><Object>Merge`. A suite name is lowerCamelCase (`blongMarine`) — the check that enforces

@@ -1,14 +1,21 @@
 /**
  * Shared persistence helpers for the access UI models (`access.db` group).
  *
- * Plain module (like `account.ts`) imported directly by the `access.db`
- * handlers. Handlers reach `core.resource.ensure` by delegation
- * (`super.coreResourceEnsure`, which is how a library realm is called), pass the
- * knex query builder in, and every helper works on that alone.
+ * Injected library functions: every member below is handed to the group's
+ * handlers as `lib.<member>`, and a handler takes the type from `AccessModelLib`
+ * so its call sites stay typed:
+ *
+ *     const model = lib as unknown as AccessModelLib;
+ *
+ * Handlers reach `core.resource.ensure` by delegation (`super.coreResourceEnsure`,
+ * which is how a library realm is called), pass the knex query builder in, and
+ * every helper works on that alone.
  */
-import {type IMeta} from '@feasibleone/blong';
+import crypto from 'node:crypto';
 
-import * as account from './account.ts';
+import {type IMeta, library} from '@feasibleone/blong';
+
+import {type CredentialParams} from './password.ts';
 
 type KnexQb = any;
 
@@ -55,7 +62,7 @@ export type AclHost = {
  * row.  `joinResourceNames` covers the two resource id columns; the action name
  * needs its own lookup because `access_action`'s PK is the resource itself.
  */
-export async function attachAclNames<T extends Record<string, unknown>>(
+async function attachAclNames<T extends Record<string, unknown>>(
     qb: KnexQb,
     rows: T[],
 ): Promise<Array<T & {principalName?: string; actionName?: string; targetName?: string}>> {
@@ -95,14 +102,14 @@ export async function attachAclNames<T extends Record<string, unknown>>(
  * How a graph resource is labelled in the ACL dropdowns and in the ACL matrix:
  * `<short type>: <resource name>`, so an administrator can tell the kinds apart.
  */
-export function resourceLabel(typeAlias: string, resourceName: string): string {
+function resourceLabel(typeAlias: string, resourceName: string): string {
     const shortOf = new Map(
         Object.entries(SHORT_TYPE_ALIASES).map(([short, full]) => [full, short]),
     );
     return `${shortOf.get(typeAlias) ?? typeAlias}: ${resourceName}`;
 }
 
-export async function resourceOptions(
+async function resourceOptions(
     qb: KnexQb,
     typeAliases: string[],
 ): Promise<Array<{value: string; label: string}>> {
@@ -123,14 +130,14 @@ export async function resourceOptions(
 }
 
 /** The standard CRUD predicates a capability can grant in the action pivot grid. */
-export const STANDARD_CRUD_PREDICATES = ['find', 'get', 'add', 'edit', 'remove'] as const;
+const STANDARD_CRUD_PREDICATES = ['find', 'get', 'add', 'edit', 'remove'] as const;
 
 /**
  * Highest usable role bit.  `access_role.roleBit` is the bit *position* of the
  * role in a minted token's `per` permission mask (`access.permission.list` packs
  * it into a 1024-bit mask), so the whole space has to stay inside it.
  */
-export const ROLE_BIT_MAX = 1023;
+const ROLE_BIT_MAX = 1023;
 
 /** Result of the shared `access.role.ensure` helper (see `accessRoleEnsure.ts`). */
 export type EnsuredRole = {role: {roleId: string; roleName: string; roleBit: number}};
@@ -139,7 +146,7 @@ export type EnsuredRole = {role: {roleId: string; roleName: string; roleBit: num
  * Short type names used by ACL declarations, seeds and UI dropdowns, mapped to
  * the full `core_type.typeAlias` of the entity they refer to.
  */
-export const SHORT_TYPE_ALIASES: Record<string, string> = {
+const SHORT_TYPE_ALIASES: Record<string, string> = {
     user: 'access.user',
     role: 'access.role',
     capability: 'access.capability',
@@ -156,7 +163,7 @@ export const SHORT_TYPE_ALIASES: Record<string, string> = {
  * Returns `undefined` for empty values. The wire representation of binary
  * columns is base64 (see the knex adapter `prepareResultRow`).
  */
-export function binHex(value: Buffer | string | undefined): string | undefined {
+function binHex(value: Buffer | string | undefined): string | undefined {
     if (value === undefined || value === null) return undefined;
     if (Buffer.isBuffer(value)) return value.toString('hex');
     if (typeof value === 'string') {
@@ -171,16 +178,13 @@ export function binHex(value: Buffer | string | undefined): string | undefined {
 }
 
 /** Convert a `binary(16)` value to its base64 wire representation. */
-export function bufToBase64(value: Buffer | string | undefined): string | undefined {
+function bufToBase64(value: Buffer | string | undefined): string | undefined {
     if (value === undefined || value === null) return undefined;
     return Buffer.isBuffer(value) ? value.toString('base64') : value;
 }
 
 /** Fetch the `core_resource.resourceName` for a resource-backed entity row. */
-export async function resourceNameFor(
-    qb: KnexQb,
-    resourceId: Buffer | string,
-): Promise<string | null> {
+async function resourceNameFor(qb: KnexQb, resourceId: Buffer | string): Promise<string | null> {
     const hex = binHex(resourceId);
     if (!hex) return null;
     const row = (await qb('core_resource')
@@ -193,7 +197,7 @@ export async function resourceNameFor(
  * Enrich rows with the resource name for their resource-backed key, e.g.
  * `{roleId, roleBit, description}` → `{..., roleName}`.
  */
-export async function joinResourceNames<T extends Record<string, unknown>>(
+async function joinResourceNames<T extends Record<string, unknown>>(
     qb: KnexQb,
     rows: T[],
     idField: string,
@@ -222,7 +226,7 @@ export async function joinResourceNames<T extends Record<string, unknown>>(
  * Object ids (hex) of the graph edges `subjectId -predicate-> objectId`
  * (`core_triple`). Returns `[]` when the subject has no such edges.
  */
-export async function listEdgeObjectIds(
+async function listEdgeObjectIds(
     qb: KnexQb,
     subjectId: Buffer | string,
     predicateName: string,
@@ -241,7 +245,7 @@ export async function listEdgeObjectIds(
  * with their resource name and serialized as base64 ids (matching the wire
  * format the model pivot tables expect).
  */
-export async function edgeRowsWithNames<T extends Record<string, unknown>>(
+async function edgeRowsWithNames<T extends Record<string, unknown>>(
     qb: KnexQb,
     subjectId: Buffer | string,
     predicateName: string,
@@ -268,9 +272,7 @@ export async function edgeRowsWithNames<T extends Record<string, unknown>>(
  * for actions with a non-CRUD predicate (e.g. `accessSessionClose`) and for
  * anything not matching the `access` + `Entity` + capitalised predicate shape.
  */
-export function crudActionParts(
-    actionName: string,
-): {entity: string; predicate: string} | undefined {
+function crudActionParts(actionName: string): {entity: string; predicate: string} | undefined {
     for (const p of STANDARD_CRUD_PREDICATES) {
         const suffix = p[0].toUpperCase() + p.slice(1);
         if (actionName.length > suffix.length && actionName.endsWith(suffix)) {
@@ -281,7 +283,7 @@ export function crudActionParts(
 }
 
 /** `accessUser` + `find` → `accessUserFind`. */
-export function crudActionName(entityName: string, predicate: string): string {
+function crudActionName(entityName: string, predicate: string): string {
     return `${entityName}${predicate[0].toUpperCase()}${predicate.slice(1)}`;
 }
 
@@ -296,7 +298,7 @@ export function crudActionName(entityName: string, predicate: string): string {
  *   not of the `access` + `Entity` + capitalised predicate shape), each with a
  *   `granted` boolean, shown in the "Other Actions" card inside the Action tab.
  */
-export async function capabilityActionRows(
+async function capabilityActionRows(
     qb: KnexQb,
     capabilityId: Buffer | string,
 ): Promise<{action: Array<Record<string, unknown>>; otherAction: Array<Record<string, unknown>>}> {
@@ -344,7 +346,7 @@ export async function capabilityActionRows(
  * exists (the CRUD actions are not pre-seeded) and returns its hex id.
  * Non-ticked columns and rows without an `entityName` are skipped.
  */
-export async function crudPivotActionIds(
+async function crudPivotActionIds(
     qb: KnexQb,
     coreResourceEnsure: (
         params: Record<string, unknown>,
@@ -390,7 +392,7 @@ export async function crudPivotActionIds(
  * change back on failure is the same guarantee the generic CRUD's own edge sync
  * gives (`syncGraphEdges` in the knex adapter, which this mirrors).
  */
-export async function syncEdges(
+async function syncEdges(
     qb: KnexQb,
     subjectId: Buffer | string,
     predicateName: string,
@@ -439,7 +441,7 @@ export async function syncEdges(
  * serialized like the knex adapter: binary `userId` as base64, `credentialId`
  * as-is.
  */
-export async function listCredentials(
+async function listCredentials(
     qb: KnexQb,
     userId: Buffer | string,
 ): Promise<Array<Record<string, unknown>>> {
@@ -463,15 +465,18 @@ export async function listCredentials(
  * this when the form actually submitted a `credential` array (see the
  * `accessUserEdit` guard).
  */
-export async function syncCredentials(
+async function syncCredentials(
     qb: KnexQb,
     deps: {
         hashPassword: (
             password: string,
             salt: string,
-            source?: Record<string, unknown> | null,
+            source?: Partial<CredentialParams> | null,
         ) => {hash: string; params: Record<string, unknown>};
-        credentialPolicyParams: (qb: KnexQb, type: string) => Promise<Record<string, unknown>>;
+        credentialPolicyParams: (
+            qb: KnexQb,
+            type: string,
+        ) => Promise<Partial<CredentialParams> | null>;
     },
     userIdHex: string,
     rows: Array<Record<string, unknown>>,
@@ -499,7 +504,7 @@ export async function syncCredentials(
                 row.credentialType === 'google'
                     ? (row.googleSubjectId as string) || ''
                     : ((row.password ?? row.secret) as string) || '';
-            const salt = account.newUuid();
+            const salt = crypto.randomUUID();
             const policyParams = await deps.credentialPolicyParams(qb, row.credentialType);
             const {hash, params} = deps.hashPassword(secret, salt, policyParams);
             await qb('access_credential').insert({
@@ -524,7 +529,7 @@ export async function syncCredentials(
  * The verbs the ACL matrix exposes as tri-state columns. A cell is `''` (no
  * rule — the entity/verb is governed by RBAC alone), `allow` or `deny`.
  */
-export const ACL_MATRIX_PREDICATES = STANDARD_CRUD_PREDICATES;
+const ACL_MATRIX_PREDICATES = STANDARD_CRUD_PREDICATES;
 
 /** One row of the ACL matrix: a (target scope, entity) pair with verb cells. */
 export type AclMatrixRow = {
@@ -565,9 +570,7 @@ function aclRuleKey(actionHex: string, targetHex: string): string {
  * register (`party.person.edit`) — the ACL matches action names with the dots
  * ignored, so the matrix must read them the same way.
  */
-export function aclActionParts(
-    actionName: string,
-): {entity: string; predicate: string} | undefined {
+function aclActionParts(actionName: string): {entity: string; predicate: string} | undefined {
     const segments = actionName.split('.');
     if (segments.length > 1) {
         const predicate = segments[segments.length - 1];
@@ -593,7 +596,7 @@ export function aclActionParts(
  * dot-stripped name would make the runtime's pattern lookup pick either one, and
  * a rule pointing at the other would silently not apply.
  */
-export async function aclActionResourceId(
+async function aclActionResourceId(
     qb: KnexQb,
     coreResourceEnsure: AclMatrixDeps['coreResourceEnsure'],
     entityName: string,
@@ -638,10 +641,7 @@ export async function aclActionResourceId(
  * so a bare `core_resource.resourceName` would never match its option and the
  * stored rules would render as an empty row.
  */
-export async function aclMatrixRows(
-    qb: KnexQb,
-    principalId: Buffer | string,
-): Promise<AclMatrixRow[]> {
+async function aclMatrixRows(qb: KnexQb, principalId: Buffer | string): Promise<AclMatrixRow[]> {
     const hex = binHex(principalId);
     if (!hex) return [];
     const rows = (await qb('access_acl as ab')
@@ -712,7 +712,7 @@ export async function aclMatrixRows(
  * explicitly forbidden record is released. Rules of other principals and
  * `record`-kind rules are never touched.
  */
-export async function syncAclMatrix(
+async function syncAclMatrix(
     qb: KnexQb,
     deps: AclMatrixDeps,
     principalId: Buffer | string,
@@ -791,3 +791,66 @@ export async function syncAclMatrix(
             .ignore();
     }
 }
+
+/**
+ * The ACL/UI model helpers, as a handler sees them: `lib as unknown as AccessModelLib`.
+ *
+ * One bundle rather than a file per helper: these functions share the knex query
+ * builder argument and the `core_resource` conventions, and a handler usually
+ * needs several of them at once.
+ */
+export type AccessModelLib = {
+    attachAclNames: typeof attachAclNames;
+    resourceLabel: typeof resourceLabel;
+    resourceOptions: typeof resourceOptions;
+    STANDARD_CRUD_PREDICATES: typeof STANDARD_CRUD_PREDICATES;
+    ROLE_BIT_MAX: typeof ROLE_BIT_MAX;
+    SHORT_TYPE_ALIASES: typeof SHORT_TYPE_ALIASES;
+    binHex: typeof binHex;
+    bufToBase64: typeof bufToBase64;
+    resourceNameFor: typeof resourceNameFor;
+    joinResourceNames: typeof joinResourceNames;
+    listEdgeObjectIds: typeof listEdgeObjectIds;
+    edgeRowsWithNames: typeof edgeRowsWithNames;
+    crudActionParts: typeof crudActionParts;
+    crudActionName: typeof crudActionName;
+    capabilityActionRows: typeof capabilityActionRows;
+    crudPivotActionIds: typeof crudPivotActionIds;
+    syncEdges: typeof syncEdges;
+    listCredentials: typeof listCredentials;
+    syncCredentials: typeof syncCredentials;
+    ACL_MATRIX_PREDICATES: typeof ACL_MATRIX_PREDICATES;
+    aclActionParts: typeof aclActionParts;
+    aclActionResourceId: typeof aclActionResourceId;
+    aclMatrixRows: typeof aclMatrixRows;
+    syncAclMatrix: typeof syncAclMatrix;
+};
+
+export default library(
+    (): AccessModelLib => ({
+        attachAclNames,
+        resourceLabel,
+        resourceOptions,
+        STANDARD_CRUD_PREDICATES,
+        ROLE_BIT_MAX,
+        SHORT_TYPE_ALIASES,
+        binHex,
+        bufToBase64,
+        resourceNameFor,
+        joinResourceNames,
+        listEdgeObjectIds,
+        edgeRowsWithNames,
+        crudActionParts,
+        crudActionName,
+        capabilityActionRows,
+        crudPivotActionIds,
+        syncEdges,
+        listCredentials,
+        syncCredentials,
+        ACL_MATRIX_PREDICATES,
+        aclActionParts,
+        aclActionResourceId,
+        aclMatrixRows,
+        syncAclMatrix,
+    }),
+);

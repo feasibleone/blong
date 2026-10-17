@@ -35,7 +35,7 @@ export default server(() => ({
             // served `index.ts` need it — so the framework would otherwise
             // auto-load its knex adapter and die on `Unknown database kukum`
             // before the first primitive is reached (F-294).
-            framework: {realms: {server: false}},
+            framework: {realms: {srv: false}},
         },
     },
 }));

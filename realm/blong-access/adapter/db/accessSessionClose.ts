@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -26,7 +26,7 @@ const CLOSE_ACTION_ID = 'access.session.close'.toLowerCase().replaceAll('.', '')
  * refused because `login.token.refresh` / `access.session.verify` reject
  * revoked sessions.
  */
-export default handler(({errors}) => ({
+export default handler(({lib: {binHex}, errors}) => ({
     async accessSessionClose(
         params: {sessionId?: string; userId?: string},
         $meta: IMeta,
@@ -53,11 +53,11 @@ export default handler(({errors}) => ({
             cookieHash: null,
         });
         if (targetSessionId) {
-            const hex = model.binHex(targetSessionId);
+            const hex = binHex(targetSessionId);
             if (!hex) return {success: false};
             await q.where('sessionId', Buffer.from(hex, 'hex'));
         } else if (params.userId) {
-            const userHex = model.binHex(params.userId);
+            const userHex = binHex(params.userId);
             if (!userHex) return {success: false};
             await q.where('userId', Buffer.from(userHex, 'hex'));
         } else {

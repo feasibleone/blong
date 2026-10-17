@@ -35,6 +35,13 @@ export interface OperationParams {
     layer?: string;
     group?: string;
     platform?: 'server' | 'browser';
+    /**
+     * The name of an artifact that has no triple of its own — a library function
+     * or a library bundle file.
+     */
+    name?: string;
+    /** The member functions a `bindings` library bundle declares, for `kukum library add`. */
+    members?: string[];
     params?: Record<string, unknown>;
     instructions?: string[];
     dryRun?: boolean;
@@ -132,7 +139,11 @@ export function contextOf(id: string, params: OperationParams): PrimitiveContext
         layer: params.layer,
         group: params.group,
         platform: params.platform ?? 'server',
-        params: params.params ?? {},
+        params: {
+            ...(params.params ?? {}),
+            ...(params.name === undefined ? {} : {name: params.name}),
+            ...(params.members === undefined ? {} : {members: params.members}),
+        },
     };
 }
 

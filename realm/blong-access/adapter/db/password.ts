@@ -20,7 +20,41 @@ export type PasswordParams = CredentialParams & {
     digest: string;
 };
 
+/**
+ * The parameters as a row carries them.
+ *
+ * `access_credential.credentialParamsJSON` is a `stringNull` column, so the
+ * database hands back the JSON **text** — the knex adapter converts only binary
+ * columns. Accepting a string here is what makes a stored credential verify
+ * with the parameters that produced it, instead of falling back to `config`
+ * (F-553: a database whose rows were hashed under other parameters stopped
+ * authenticating after the config's iterations changed, while a fresh database
+ * passed for the wrong reason).
+ */
+export type StoredCredentialParams = Partial<CredentialParams> | string | null | undefined;
+
 type KnexQb = any;
+
+/**
+ * Parse a stored parameter document, tolerating what the column returns.
+ *
+ * `string` is the ordinary case (a `stringNull` column carries JSON text) and an
+ * object is what a JSON-typed column or a caller hands over. A document that does
+ * not parse is treated as absent, so the config fallback still decides rather than
+ * verification throwing on a corrupt row.
+ */
+function readParams(source: StoredCredentialParams): Partial<CredentialParams> | null {
+    if (source === null || source === undefined) return null;
+    if (typeof source !== 'string') return source;
+    try {
+        const parsed: unknown = JSON.parse(source);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? (parsed as Partial<CredentialParams>)
+            : null;
+    } catch {
+        return null;
+    }
+}
 
 /**
  * Credential-function helpers for the access realm.
@@ -31,19 +65,49 @@ type KnexQb = any;
  * the function name) are stored on the credential row as JSON so verification
  * always re-uses the exact parameters that produced the secret.
  */
-export default library(({config}) => {
+/**
+ * The credential-function helpers as a handler sees them, destructured from
+ * `lib`: `handler(({lib: {verifyPassword}}) => …)`.
+ */
+export type PasswordLib = {
+    /** Resolve credential params from a source (e.g. access policy) with config fallback. */
+    resolveCredentialParams(source?: StoredCredentialParams): PasswordParams;
+    /** Hash a password with the given (or default) params. */
+    hashPassword(
+        password: string,
+        salt: string,
+        source?: StoredCredentialParams,
+    ): {hash: string; params: PasswordParams};
+    /** Constant-compare a password against a stored hash using the stored params. */
+    verifyPassword(
+        password: string,
+        hash: string,
+        salt: string,
+        params?: StoredCredentialParams,
+    ): boolean;
+    /** Read the active policy's credential parameters for a credential type. */
+    credentialPolicyParams(
+        qb: KnexQb,
+        credentialType: string,
+    ): Promise<Partial<CredentialParams> | null>;
+};
+
+export default library(({config}): PasswordLib => {
     const defaults = (config?.password ?? {}) as Partial<PasswordParams>;
-    const resolve = (source?: Partial<CredentialParams> | null): PasswordParams => ({
-        function: (source?.function as string | undefined) ?? defaults.function ?? 'hash',
-        algorithm: (source?.algorithm as string | undefined) ?? defaults.algorithm ?? 'pbkdf2',
-        iterations: (source?.iterations as number | undefined) ?? defaults.iterations ?? 100000,
-        keyLength: (source?.keyLength as number | undefined) ?? defaults.keyLength ?? 64,
-        digest: (source?.digest as string | undefined) ?? defaults.digest ?? 'sha512',
-    });
+    const resolve = (source?: StoredCredentialParams): PasswordParams => {
+        const stored = readParams(source);
+        return {
+            function: (stored?.function as string | undefined) ?? defaults.function ?? 'hash',
+            algorithm: (stored?.algorithm as string | undefined) ?? defaults.algorithm ?? 'pbkdf2',
+            iterations: (stored?.iterations as number | undefined) ?? defaults.iterations ?? 100000,
+            keyLength: (stored?.keyLength as number | undefined) ?? defaults.keyLength ?? 64,
+            digest: (stored?.digest as string | undefined) ?? defaults.digest ?? 'sha512',
+        };
+    };
 
     return {
         /** Resolve credential params from a source (e.g. access policy) with config fallback. */
-        resolveCredentialParams(source?: Partial<CredentialParams> | null): PasswordParams {
+        resolveCredentialParams(source?: StoredCredentialParams): PasswordParams {
             return resolve(source);
         },
 
@@ -56,7 +120,7 @@ export default library(({config}) => {
         hashPassword(
             password: string,
             salt: string,
-            source?: Partial<CredentialParams> | null,
+            source?: StoredCredentialParams,
         ): {hash: string; params: PasswordParams} {
             const params = resolve(source);
             if (params.function !== 'hash' || params.algorithm !== 'pbkdf2') {
@@ -75,7 +139,7 @@ export default library(({config}) => {
             password: string,
             hash: string,
             salt: string,
-            params?: Partial<CredentialParams> | null,
+            params?: StoredCredentialParams,
         ): boolean {
             const p = resolve(params);
             if (p.function !== 'hash' || p.algorithm !== 'pbkdf2') return false;

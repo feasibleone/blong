@@ -32,7 +32,13 @@ export type GoogleConfig = {
  * `server.ts`), so every suite that includes the access realm reuses the same defaults —
  * the local mock in `dev`, real Google endpoints (or an override) elsewhere.
  */
-export default library(({config}) => {
+/** The Google helpers as a handler sees them, destructured from `lib`. */
+export type GoogleLib = {
+    /** Return the effective Google OAuth client config from the realm `db.google` slice. */
+    googleConfig(): GoogleConfig;
+};
+
+export default library(({config}): GoogleLib => {
     const google = (config?.google ?? {}) as GoogleConfig;
     return {
         /** Return the effective Google OAuth client config from the realm `db.google` slice. */

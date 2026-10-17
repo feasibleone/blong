@@ -1,8 +1,7 @@
-import {handler} from '@feasibleone/blong';
+import {handler} from './handlerGroup.ts';
 
-import {SHORT_TYPE_ALIASES, type EnsuredRole} from './accessModel.ts';
-import * as account from './account.ts';
-import {type CredentialParams, type PasswordParams} from './password.ts';
+import {type EnsuredRole} from './accessModel.ts';
+import {type CredentialParams} from './password.ts';
 
 type KnexQb = any;
 
@@ -25,13 +24,26 @@ async function resourceByName(qb: KnexQb, name: string, typeAlias: string): Prom
         .where('r.resourceName', name)
         .first('r.resourceId')) as {resourceId: Buffer} | undefined;
     if (!row) throw new Error(`Seed references an unknown ${typeAlias} named "${name}"`);
-    return account.bufToUuid(row.resourceId);
+    // Dashed UUID from the binary column — the group library's `bufToUuid`, spelled
+    // out because this helper runs outside the handler factory.
+    return row.resourceId
+        .toString('hex')
+        .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
 }
 
 export default handler(
     ({
         handler: {'db/accessRoleEnsure': accessRoleEnsure},
-        lib: {hashPassword, credentialPolicyParams, ulid, crockfordDecode},
+        lib: {
+            SHORT_TYPE_ALIASES,
+            credentialPolicyParams,
+            crockfordDecode,
+            hashPassword,
+            newUuid,
+            splitNames,
+            ulid,
+            uuidBuf,
+        },
     }) => ({
         async accessAuthorizationMerge(
             params: {
@@ -134,7 +146,7 @@ export default handler(
             // 1. Process capabilities and their actions first
             if (params.capability) {
                 for (const [capabilityName, actionList] of Object.entries(params.capability)) {
-                    const actionNames = account.splitNames(actionList);
+                    const actionNames = splitNames(actionList);
                     for (const actionName of actionNames) {
                         const {resourceId: actionId} = (await super.coreResourceEnsure(
                             {
@@ -169,7 +181,7 @@ export default handler(
             // 2. Process roles and their capabilities
             if (params.role) {
                 for (const [roleName, capabilityList] of Object.entries(params.role)) {
-                    const capabilityNames = account.splitNames(capabilityList);
+                    const capabilityNames = splitNames(capabilityList);
                     // A role the merge names must exist: `access.role.ensure`
                     // allocates the bit when the role is new (it used to be
                     // hardcoded to 0 and silently skipped instead).
@@ -219,22 +231,23 @@ export default handler(
                     // email across restarts.
                     if (userDef.emailAddress !== undefined) {
                         await qb('access_user')
-                            .where('userId', account.uuidBuf(userId))
+                            .where('userId', uuidBuf(userId))
                             .update({emailAddress: userDef.emailAddress});
                     }
 
                     // Create credential if password is provided
                     if (userDef.password) {
-                        const salt = userDef.credentialSalt ?? account.newUuid();
+                        const salt = userDef.credentialSalt ?? newUuid();
                         // Credential params come from the active policy; config.password is the fallback.
                         const policyParams = await credentialPolicyParams(qb, 'password');
-                        const {hash, params: credentialParams} = hashPassword<{
-                            hash: string;
-                            params: PasswordParams;
-                        }>(userDef.password, salt, policyParams);
+                        const {hash, params: credentialParams} = hashPassword(
+                            userDef.password,
+                            salt,
+                            policyParams,
+                        );
                         await qb('access_credential')
                             .insert({
-                                userId: account.uuidBuf(userId),
+                                userId: uuidBuf(userId),
                                 credentialType: 'password',
                                 credentialHash: hash,
                                 credentialSalt: salt,
@@ -248,7 +261,7 @@ export default handler(
 
                     // Assign roles
                     if (userDef.roles) {
-                        const roleNames = account.splitNames(userDef.roles);
+                        const roleNames = splitNames(userDef.roles);
                         for (const roleName of roleNames) {
                             const {role: ensuredRole} = await accessRoleEnsure<EnsuredRole>(
                                 {role: {roleName}},
@@ -329,7 +342,7 @@ export default handler(
                     if (ids.size) {
                         await qb('core_triple')
                             .where('predicateName', predicateName)
-                            .whereIn('subjectId', [...ids].map(account.uuidBuf))
+                            .whereIn('subjectId', [...ids].map(uuidBuf))
                             .delete();
                     }
                 }
@@ -368,9 +381,7 @@ export default handler(
                                   rule.targetType ??
                                   'party.unit',
                           );
-                    for (const actionName of account.splitNames(
-                        rule.actions ?? rule.action ?? '',
-                    )) {
+                    for (const actionName of splitNames(rule.actions ?? rule.action ?? '')) {
                         const {resourceId: actionId} = (await super.coreResourceEnsure(
                             {
                                 name: actionName,
@@ -384,9 +395,9 @@ export default handler(
                         await qb('access_acl')
                             .insert({
                                 aclId: Buffer.from(crockfordDecode(ulid())),
-                                principalId: account.uuidBuf(principalId),
-                                actionId: account.uuidBuf(actionId),
-                                targetId: account.uuidBuf(targetId),
+                                principalId: uuidBuf(principalId),
+                                actionId: uuidBuf(actionId),
+                                targetId: uuidBuf(targetId),
                                 targetKind: wildcard ? 'all' : (rule.targetKind ?? 'record'),
                                 effect: rule.effect ?? 'allow',
                                 isActive: 1,

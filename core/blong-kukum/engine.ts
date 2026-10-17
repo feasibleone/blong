@@ -94,6 +94,20 @@ export interface PrimitiveDescriptor {
     defaultKind: string;
     /** Root-relative directories to scan for `find`. */
     roots: string[];
+    /**
+     * Existing instances when they do not sit directly in `roots`.
+     *
+     * `find` scans one level of each root, which is enough for a primitive whose
+     * artifacts are a file in a known folder. A library lives one level deeper,
+     * in a group folder whose name the descriptor cannot guess, so it says how to
+     * look instead.
+     */
+    discover?(host: PrimitiveHost, root: string): Promise<string[]>;
+    /**
+     * A target-wide guardrail: what is wrong across the whole realm/suite, not in
+     * one artifact. Run by `check` beside the per-instance lint.
+     */
+    audit?(options: {host: PrimitiveHost; root: string}): Promise<string[]> | string[];
     /** Files to generate, with content. */
     files(ctx: PrimitiveContext): PrimitiveFile[];
     /**
@@ -393,6 +407,7 @@ export async function find(
     descriptor: PrimitiveDescriptor,
     root: string,
 ): Promise<string[]> {
+    if (descriptor.discover) return (await descriptor.discover(host, root)).sort();
     const found: string[] = [];
     for (const searchRoot of descriptor.roots) {
         const dir = host.join(root, searchRoot);

@@ -1,7 +1,7 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
 import {type EnsuredRole} from './accessModel.ts';
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 import {type PasswordParams} from './password.ts';
 
 type KnexQb = any;
@@ -18,7 +18,7 @@ export default handler(
     ({
         errors,
         handler: {'db/accessRoleEnsure': accessRoleEnsure},
-        lib: {hashPassword, credentialPolicyParams},
+        lib: {credentialPolicyParams, hashPassword, newUuid, splitNames, uuidBuf},
     }) => ({
         async accessAccountAdd(
             params: {
@@ -66,16 +66,17 @@ export default handler(
 
             // Credential — password (PBKDF2) or Google subject id
             if (params.password) {
-                const salt = account.newUuid();
+                const salt = newUuid();
                 // Credential params come from the active policy; config.password is the fallback.
                 const policyParams = await credentialPolicyParams(qb, 'password');
-                const {hash, params: credentialParams} = hashPassword<{
-                    hash: string;
-                    params: PasswordParams;
-                }>(params.password, salt, policyParams);
+                const {hash, params: credentialParams} = hashPassword(
+                    params.password,
+                    salt,
+                    policyParams,
+                );
                 await qb('access_credential')
                     .insert({
-                        userId: account.uuidBuf(userId),
+                        userId: uuidBuf(userId),
                         credentialType: 'password',
                         credentialHash: hash,
                         credentialSalt: salt,
@@ -88,7 +89,7 @@ export default handler(
             } else if (params.googleSubjectId) {
                 await qb('access_credential')
                     .insert({
-                        userId: account.uuidBuf(userId),
+                        userId: uuidBuf(userId),
                         credentialType: 'google',
                         credentialHash: params.googleSubjectId,
                         credentialSalt: '',
@@ -102,7 +103,7 @@ export default handler(
             // helper (P3), which also refreshes `access_path` once.
             const triples: Array<{subjectId: string; predicateName: string; objectId: string}> = [];
             if (params.roles) {
-                const roleNames = account.splitNames(params.roles);
+                const roleNames = splitNames(params.roles);
                 for (const roleName of roleNames) {
                     // Roles are never created here with a hardcoded bit any more:
                     // `access.role.ensure` allocates one when the role is new and

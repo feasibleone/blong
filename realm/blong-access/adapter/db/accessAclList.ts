@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -25,8 +25,11 @@ type AclRow = {
 
 /** Binary id of a resource given as a base64, hex or dashed UUID string. */
 function toBuffer(value: string | undefined): Buffer | undefined {
-    const hex = model.binHex(value);
-    return hex ? Buffer.from(hex, 'hex') : undefined;
+    if (!value) return undefined;
+    // The same normalisation the group library's `binHex` applies, spelled out
+    // here because this helper runs outside the handler factory.
+    const decoded = Buffer.from(value, 'base64');
+    return decoded.length === 16 ? decoded : Buffer.from(value.replace(/-/g, ''), 'hex');
 }
 
 /**
@@ -44,7 +47,7 @@ function toBuffer(value: string | undefined): Buffer | undefined {
  * to the inherited principals — `role`, `unit`, `capability`), `principalId`
  * (base64/hex/dashed; defaults to the caller) and an optional `action` filter.
  */
-export default handler(({lib: {crockfordDecode}}) => ({
+export default handler(({lib: {bufToBase64, crockfordDecode, resourceNameFor}}) => ({
     async accessAclList(
         params: {principalType?: string; principalId?: string; action?: string},
         $meta: IMeta,
@@ -58,7 +61,7 @@ export default handler(({lib: {crockfordDecode}}) => ({
             toBuffer(params.principalId) ??
             (actorId ? Buffer.from(crockfordDecode(actorId)) : undefined);
         if (!principalId) throw new Error('Missing principal identity');
-        const principalName = await model.resourceNameFor(qb, principalId);
+        const principalName = await resourceNameFor(qb, principalId);
 
         // The principals whose rules apply: the principal itself plus — for a
         // user — its roles, its units and those units' ancestors.
@@ -129,19 +132,19 @@ export default handler(({lib: {crockfordDecode}}) => ({
 
         const explicitRows: AclRow[] = explicit.map(row => ({
             aclId: String(row.aclId),
-            principalId: model.bufToBase64(row.principalId as Buffer) ?? '',
+            principalId: bufToBase64(row.principalId as Buffer) ?? '',
             principalName: String(row.principalName),
             actionName: String(row.actionName),
-            targetId: model.bufToBase64(row.targetId as Buffer) ?? '',
+            targetId: bufToBase64(row.targetId as Buffer) ?? '',
             targetName: String(row.targetName),
             targetKind: String(row.targetKind),
             effect: String(row.effect),
             source: 'explicit' as const,
         }));
         const implicitRows: AclRow[] = implicit.map(row => ({
-            principalId: model.bufToBase64(row.principalId as Buffer) ?? '',
+            principalId: bufToBase64(row.principalId as Buffer) ?? '',
             principalName: String(row.principalName),
-            targetId: model.bufToBase64(row.targetId as Buffer) ?? '',
+            targetId: bufToBase64(row.targetId as Buffer) ?? '',
             targetName: String(row.targetName),
             targetKind: 'scope',
             effect: 'allow',
@@ -155,7 +158,7 @@ export default handler(({lib: {crockfordDecode}}) => ({
 
         return {
             items,
-            principalId: model.bufToBase64(principalId) ?? undefined,
+            principalId: bufToBase64(principalId) ?? undefined,
             principalName: principalName ?? undefined,
         };
     },

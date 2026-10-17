@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -17,7 +17,7 @@ type KnexQb = any;
  * `person: null` — the profile page then falls back to no personal details).
  */
 export default handler(
-    ({lib: {crockfordDecode}}) =>
+    ({lib: {crockfordDecode, edgeRowsWithNames}}) =>
         async function accessProfileGet(
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             _params: Record<string, never>,
@@ -60,7 +60,7 @@ export default handler(
                 .where('propertyName', 'preferredLanguage')
                 .first();
 
-            const roles = await model.edgeRowsWithNames(
+            const roles = await edgeRowsWithNames(
                 qb,
                 userIdBuf,
                 'hasRole',

@@ -3,28 +3,19 @@ import {server} from '@feasibleone/blong';
 /**
  * index.ts — standalone server bootstrap for `$subject` integration tests.
  *
- * Wires the runtime infrastructure (blong-server, login, core, access) around
- * the `$subject` realm and enables RBAC on the gateway so access-control is
- * enforced. The realm reuses blong-server's subject orchestrator + db adapter.
+ * Only the `$subject` realm is a child. The runtime realms it reuses —
+ * blong-server (`srv`), login, core and access — are loaded by the framework from
+ * this package's manifest (`frameworkRealms` in the loader), so naming them here
+ * again would register every handler twice. The `dev` blocks below still name
+ * them, because a config block is where a realm is configured and not a child
+ * declaration.
+ *
+ * RBAC is enforced on the gateway: the access realm resolves the caller's allowed
+ * actions, and a call without one is answered 403.
  */
 export default server(() => ({
     url: import.meta.url,
     children: [
-        /** Built-in blong-server realm: RPC, validation orchestrator, DB adapter */
-        async function srv() {
-            return import('@feasibleone/blong-server/server.ts');
-        },
-        async function login() {
-            return import('@feasibleone/blong-login/server.ts');
-        },
-        /** Core realm — provides core.resource / core.triple for RBAC seeds */
-        async function core() {
-            return import('@feasibleone/blong-core/server.ts');
-        },
-        /** Access realm — provides authZ tables used with core.triple hierarchy */
-        async function access() {
-            return import('@feasibleone/blong-access/server.ts');
-        },
         /** `$subject` management realm */
         async function $subject() {
             return import('./server.ts');

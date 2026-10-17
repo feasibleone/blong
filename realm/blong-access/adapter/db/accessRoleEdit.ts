@@ -1,6 +1,7 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {type AclMatrixRow} from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -15,7 +16,7 @@ type KnexQb = any;
  * scope × CRUD grid of the Access tab, where an empty cell removes the rule and
  * therefore releases whatever the hierarchy granted implicitly.
  */
-export default handler(({errors, lib: {ulid, crockfordDecode}}) => ({
+export default handler(({errors, lib: {binHex, crockfordDecode, syncAclMatrix, ulid}}) => ({
     async accessRoleEdit(
         params: {
             role?: {
@@ -24,7 +25,7 @@ export default handler(({errors, lib: {ulid, crockfordDecode}}) => ({
                 roleBit?: number | string | null;
                 description?: string;
             };
-            matrix?: model.AclMatrixRow[];
+            matrix?: AclMatrixRow[];
         },
         $meta: IMeta,
     ): Promise<unknown> {
@@ -36,7 +37,7 @@ export default handler(({errors, lib: {ulid, crockfordDecode}}) => ({
         // of already-minted tokens, so re-pointing it would silently change
         // what those tokens authorize.  A form that posts the loaded bit is
         // fine; a different one is refused.
-        const hex = model.binHex(role.roleId);
+        const hex = binHex(role.roleId);
         if (!hex) throw new Error('Invalid role id');
         const submitted = role.roleBit;
         const blank = submitted === undefined || submitted === null || submitted === '';
@@ -67,7 +68,7 @@ export default handler(({errors, lib: {ulid, crockfordDecode}}) => ({
                 .update({resourceName: roleName});
         }
         if (Array.isArray(matrix)) {
-            await model.syncAclMatrix(
+            await syncAclMatrix(
                 qb,
                 {
                     // `core.resource.ensure` lives in `core`, a library realm this

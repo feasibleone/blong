@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -19,7 +19,7 @@ const _minPasswordLength = 8;
  * `access.identity.check`) Google auto-registration.
  */
 export default handler(
-    ({errors, handler: {accessAccountAdd, partyPersonAdd}}) =>
+    ({lib: {uuidBuf}, errors, handler: {accessAccountAdd, partyPersonAdd}}) =>
         async function accessRegistrationAdd(
             params: {
                 emailAddress: string;
@@ -86,9 +86,9 @@ export default handler(
             if (!qb) throw new Error('Database not available');
             await qb('core_triple')
                 .insert({
-                    subjectId: account.uuidBuf(userId),
+                    subjectId: uuidBuf(userId),
                     predicateName: 'hasProfile',
-                    objectId: account.uuidBuf(personIdHex),
+                    objectId: uuidBuf(personIdHex),
                 })
                 .onConflict()
                 .ignore();

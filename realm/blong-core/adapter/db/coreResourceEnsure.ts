@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import {bufToUuid, ensureType, newUuid, nextCounter, uuidBuf} from './core.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -38,7 +38,7 @@ type KnexQb = any;
  * `core.db` handler group, imported by the `srv.db` knex adapter.
  */
 export default handler(
-    () =>
+    ({lib: {bufToUuid, ensureType, newUuid, nextCounter, uuidBuf}}) =>
         async function coreResourceEnsure(
             params: {
                 name: string;

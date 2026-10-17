@@ -1,7 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as account from './account.ts';
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -16,7 +15,7 @@ type KnexQb = any;
  * Wire: `access.session.create` — called by `login.token.create` (and the
  * client-credentials variant) right after the credential check succeeds.
  */
-export default handler(() => ({
+export default handler(({lib: {binHex, newUuid}}) => ({
     async accessSessionCreate(
         params: {
             userId: string; // base64/hex of the raw binary(16) user key
@@ -34,14 +33,14 @@ export default handler(() => ({
     ): Promise<{sessionId: string; userId: string}> {
         const qb: KnexQb = this.config?.context?.queryBuilder;
         if (!qb) throw new Error('Database not available');
-        const userHex = model.binHex(params.userId);
+        const userHex = binHex(params.userId);
         if (!userHex) throw new Error('Invalid userId for session create');
         // Normalise to the DB storage byte order: the cross-realm bus delivers
         // binary(base64) values in the logical/crockford order, while the FK
         // columns store the mysql2 UUID byte order — so reverse the 16 bytes.
         const userIdBuf = Buffer.from(userHex, 'hex');
         userIdBuf.reverse();
-        const sessionId = params.sessionId ?? account.newUuid();
+        const sessionId = params.sessionId ?? newUuid();
         const now = new Date();
         await qb('access_session').insert({
             sessionId: Buffer.from(sessionId.replace(/-/g, ''), 'hex'),

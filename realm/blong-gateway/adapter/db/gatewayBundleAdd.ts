@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import {newUuid, uuidBuf} from './gatewayUuid.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -14,7 +14,7 @@ type KnexQb = any;
  * reusing that role's resource id, making the bundle create/edit pages work
  * end-to-end.
  */
-export default handler(() => ({
+export default handler(({lib: {newUuid, uuidBuf}}) => ({
     async gatewayBundleAdd(
         params: {bundle?: Record<string, unknown>},
         $meta: IMeta,

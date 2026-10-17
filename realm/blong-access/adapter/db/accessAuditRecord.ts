@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -34,7 +34,7 @@ export interface IAuditEntry {
  *
  * Wire: `access.audit.record`.
  */
-export default handler(({lib: {ulid, crockfordDecode}}) => ({
+export default handler(({lib: {binHex, crockfordDecode, ulid}}) => ({
     async accessAuditRecord(
         params: {audit: IAuditEntry[]},
         _$meta: IMeta,
@@ -45,7 +45,7 @@ export default handler(({lib: {ulid, crockfordDecode}}) => ({
         if (!entries.length) return {inserted: 0, auditIds: []};
         const auditIds = entries.map(() => ulid());
         const rows = entries.map((entry, index) => {
-            const userHex = entry.userId ? model.binHex(entry.userId) : undefined;
+            const userHex = entry.userId ? binHex(entry.userId) : undefined;
             return {
                 auditId: Buffer.from(crockfordDecode(auditIds[index])),
                 userId: userHex ? Buffer.from(userHex, 'hex') : null,

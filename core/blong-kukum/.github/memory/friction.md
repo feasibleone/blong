@@ -13,7 +13,7 @@ open (2)
 - `F-211` · core/blong-kukum — A package that hosts a generated fixture must declare what the
   fixture imports
 
-resolved (14)
+resolved (15)
 
 - `F-122` · core/blong-kukum — A record-driven route map collapsed onto one empty key
 - `F-123` · core/blong-kukum — `realm add` needs a single-word realm name
@@ -30,6 +30,7 @@ resolved (14)
 - `F-300` · core/blong-kukum — Two generated templates were wrong in ways only the runtime could
   show
 - `F-301` · core/blong-kukum — An end-to-end assertion passed off a stale artifact
+- `F-552` · core/blong-kukum — The kukum CLI still needs a database named kukum
 
 <!-- /memory:index -->
 
@@ -257,3 +258,19 @@ leg with --report so the tap slice is written by the run being asserted.
 
 Fixed: the realm leg runs blong-dev test --report, so the tap slice is written by the run the
 assertions read; the .ci-report and coverage exclusions stay.
+
+### F-552 — The kukum CLI still needs a database named kukum
+
+> _2026-10-17 · core/blong-kukum · resolved_
+
+F-294 is marked resolved, but running bin/kukum.ts now fails at startup with Unknown database kukum
+before any primitive is reached, because the cli suite still pulls in the srv.db knex adapter.
+Creating that database locally (CREATE DATABASE IF NOT EXISTS kukum) makes every command work, which
+is how this session drove library find and library check. The remaining fix is the one F-294
+described: a suite that does not depend on blong-server, or a cli intent that does not activate the
+db adapter.
+
+Resolved before this session's check: cli.ts disables the framework realm by its real name
+(framework.realms.srv = false), not server. The kukum database was dropped and every command still
+runs (primitive find lists the catalogue, library check audits a realm), so the CLI needs no schema
+of its own.

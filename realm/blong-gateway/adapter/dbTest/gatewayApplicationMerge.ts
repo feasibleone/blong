@@ -1,7 +1,5 @@
 import {type IMeta, handler} from '@feasibleone/blong';
 
-import {uuidBuf} from '../db/gatewayUuid.ts';
-
 // The knex query builder is intentionally untyped here (matches the realm's db handlers).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type KnexQb = any;
@@ -58,7 +56,12 @@ export default handler(() => ({
                     typeAlias: 'gateway.application',
                     table: 'gateway_application',
                     extraColumns: {
-                        ownerUserId: row.ownerUserId ? uuidBuf(row.ownerUserId) : null,
+                        ownerUserId: row.ownerUserId
+                            ? // UUID → BINARY(16): the `gatewayUuid` library belongs to the
+                              // `db` group, so this seed spells it out rather than
+                              // importing across groups.
+                              Buffer.from(row.ownerUserId.replace(/-/g, ''), 'hex')
+                            : null,
                         applicationType: row.applicationType ?? 'oauth2_client',
                         description: row.description ?? 'Seeded application',
                         isActive: isActive ? 1 : 0,

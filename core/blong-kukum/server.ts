@@ -9,8 +9,9 @@ import {realm} from '@feasibleone/blong';
  * needs filesystem access, which the browser platform stubs out.
  *
  * It does NOT reuse blong-server's db adapter: kukum operates on source files
- * and the live registry, never on tables. The `srv` realm is still loaded by
- * `index.ts` because the gateway/rpc infrastructure lives there.
+ * and the live registry, never on tables. The `srv` realm is still loaded for a
+ * served process, because the gateway/rpc infrastructure lives there — and the
+ * `kukum` command turns it off instead, by its framework name.
  */
 export default realm(() => ({
     url: import.meta.url,
@@ -18,7 +19,7 @@ export default realm(() => ({
         // The layers the `kukum` command runs with (D-436): the primitive API is an orchestrator, and
         // its handlers throw typed errors from the `error` layer. No adapter is named because the
         // realm has none — it reads source files and the live registry, and the CLI suite says the
-        // same thing from the other side (`framework.realms: {server: false}`, so blong-server's knex
+        // same thing from the other side (`framework.realms: {srv: false}`, so blong-server's knex
         // adapter is never loaded and the process does not die on a database it never wanted).
         cli: {error: {}, orchestrator: {}},
         default: {},

@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -11,7 +11,7 @@ type KnexQb = any;
  * `core_resource` and the `hasAction` edges are returned as the `action` pivot
  * rows (standard CRUD booleans) and `otherAction` rows (non-CRUD actions).
  */
-export default handler(() => ({
+export default handler(({lib: {binHex, bufToBase64, capabilityActionRows, resourceNameFor}}) => ({
     async accessCapabilityGet(
         params: {capabilityId?: string},
         $meta: IMeta,
@@ -24,15 +24,15 @@ export default handler(() => ({
             capabilityName?: string;
             description?: string;
         };
-        const hex = model.binHex(params.capabilityId ?? capability.capabilityId);
+        const hex = binHex(params.capabilityId ?? capability.capabilityId);
         if (hex) {
             result.capability = {
                 ...capability,
-                capabilityId: model.bufToBase64(capability.capabilityId),
+                capabilityId: bufToBase64(capability.capabilityId),
                 capabilityName:
-                    (await model.resourceNameFor(qb, hex)) ?? capability.capabilityName ?? null,
+                    (await resourceNameFor(qb, hex)) ?? capability.capabilityName ?? null,
             };
-            const {action, otherAction} = await model.capabilityActionRows(qb, hex);
+            const {action, otherAction} = await capabilityActionRows(qb, hex);
             result.action = action;
             result.otherAction = otherAction;
         }

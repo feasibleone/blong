@@ -1,32 +1,39 @@
 import crypto from 'node:crypto';
 
+import {library} from '@feasibleone/blong';
+
 type KnexQb = any;
 
 /**
  * Shared DB helpers for the core realm — UUID <-> BINARY(16) conversion and
- * `core_type`/`core_resource` graph utilities.  Imported directly by the
- * `core.db` handlers (plain module, not a handler itself).
+ * `core_type`/`core_resource` graph utilities.
+ *
+ * Injected: every handler of the `core.db` group receives them from `lib` and
+ * takes the type from here, so the call sites stay typed:
+ *
+ *     const core = lib as unknown as CoreLib;
+ *     const {resourceId} = await core.ensureType(queryBuilder, 'party.unit');
  */
 
 /** Convert a UUID string to a BINARY(16) Buffer for MySQL. */
-export function uuidBuf(uuid: string): Buffer {
+function uuidBuf(uuid: string): Buffer {
     return Buffer.from(uuid.replace(/-/g, ''), 'hex');
 }
 
 /** Read a BINARY(16) value from MySQL and return a hex (dashed) UUID string. */
-export function bufToUuid(buf: Buffer | string): string {
+function bufToUuid(buf: Buffer | string): string {
     if (typeof buf === 'string') return buf;
     const hex = buf.toString('hex');
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 /** Generate a random UUID v4 string. */
-export function newUuid(): string {
+function newUuid(): string {
     return crypto.randomUUID();
 }
 
 /** Ensure a core_type row exists for the given alias, returning its integer typeId. */
-export async function ensureType(qb: KnexQb, typeAlias: string): Promise<number> {
+async function ensureType(qb: KnexQb, typeAlias: string): Promise<number> {
     const row = await qb.select('typeId').from('core_type').where({typeAlias}).first();
     if (row) return row.typeId;
     await qb('core_type').insert({typeAlias}).onConflict().ignore();
@@ -58,7 +65,7 @@ export async function ensureType(qb: KnexQb, typeAlias: string): Promise<number>
  *
  * Throws when the space is exhausted rather than wrapping around.
  */
-export async function nextCounter(
+async function nextCounter(
     qb: KnexQb,
     table: string,
     column: string,
@@ -99,3 +106,14 @@ async function writeCounter(qb: KnexQb, counterName: string, counterValue: numbe
         .onConflict('counterName')
         .merge({counterValue: qb.raw('GREATEST(counterValue, ?)', [counterValue])});
 }
+
+/** The core.db helpers, as a handler sees them: `lib as unknown as CoreLib`. */
+export type CoreLib = {
+    uuidBuf: typeof uuidBuf;
+    bufToUuid: typeof bufToUuid;
+    newUuid: typeof newUuid;
+    ensureType: typeof ensureType;
+    nextCounter: typeof nextCounter;
+};
+
+export default library((): CoreLib => ({uuidBuf, bufToUuid, newUuid, ensureType, nextCounter}));

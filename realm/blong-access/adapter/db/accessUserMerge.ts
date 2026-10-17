@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -23,7 +23,7 @@ type KnexQb = any;
  * Wire: `access.user.merge` — called by a realm's seed (through `super`), never
  * by the generic CRUD, which owns its own resource lifecycle.
  */
-export default handler(({errors}) => ({
+export default handler(({lib: {bufToUuid}, errors}) => ({
     async accessUserMerge(
         params: {
             user?: Array<{
@@ -93,7 +93,7 @@ export default handler(({errors}) => ({
                 : qb('access_user').insert(insert).onConflict('userId').ignore());
 
             merged.push({
-                userId: account.bufToUuid(resource.resourceId),
+                userId: bufToUuid(resource.resourceId),
                 resourceName: row.resourceName,
                 typeAlias: row.typeAlias,
                 clientId: row.clientId ?? null,

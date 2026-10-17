@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -22,7 +22,7 @@ type KnexQb = any;
  * the caller, their roles and their units, so such a rule would match nobody);
  * targets are the records and scopes they point at.
  */
-export default handler(() => ({
+export default handler(({lib: {crudActionParts, resourceOptions}}) => ({
     async accessDropdownList(
         params: Record<string, unknown>,
         $meta: IMeta,
@@ -35,18 +35,18 @@ export default handler(() => ({
             .select('r.resourceName as actionName')) as Array<{actionName: string}>;
         const entities = new Set<string>();
         for (const row of rows) {
-            const parts = model.crudActionParts(row.actionName ?? '');
+            const parts = crudActionParts(row.actionName ?? '');
             if (parts) entities.add(parts.entity);
         }
         return {
             ...base,
             'access.crudEntity': [...entities].sort().map(name => ({value: name, label: name})),
-            'access.aclPrincipal': await model.resourceOptions(qb, [
+            'access.aclPrincipal': await resourceOptions(qb, [
                 'access.user',
                 'access.role',
                 'party.unit',
             ]),
-            'access.aclTarget': await model.resourceOptions(qb, [
+            'access.aclTarget': await resourceOptions(qb, [
                 'party.unit',
                 'party.organization',
                 'party.person',

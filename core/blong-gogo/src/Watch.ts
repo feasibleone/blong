@@ -69,6 +69,18 @@ const isLayerActivation = (filename: string): boolean =>
 const isConfig = (filename: string): boolean => /^config\.[mc]?[tj]sx?$/i.test(filename);
 const isPlay = (filename: string): boolean => /\.play\.[mc]?[tj]sx?$/i.test(filename);
 const isTest = (filename: string): boolean => /\.test\.[mc]?[tj]sx?$/i.test(filename);
+/**
+ * The handler-group factory a folder may hold for typing its injected libraries.
+ *
+ * `handlerGroup.ts` defines the `handler` its siblings import (`handlerGroup<L>()`),
+ * so it is a plain module — no default export the loader could classify — and it
+ * must not be loaded as a handler, nor reported as a plain module in a group.
+ */
+const isHandlerGroup = (filename: string): boolean =>
+    /^handlerGroup\.[mc]?[tj]sx?$/i.test(filename);
+
+/** The predicate above, exported so a test pins the convention (like `affectedNamespaces`). */
+export {isHandlerGroup};
 
 const prefixRE: RegExp = /(?:\d+-)?(.*)/;
 
@@ -427,6 +439,7 @@ export default class Watch extends Internal implements IWatch {
                     isCode(entry.name) &&
                     !isLayerActivation(entry.name) &&
                     !isConfig(entry.name) &&
+                    !isHandlerGroup(entry.name) &&
                     !isPlay(entry.name) &&
                     !isTest(entry.name),
             );
@@ -541,6 +554,7 @@ export default class Watch extends Internal implements IWatch {
             if (
                 isCode(filename) &&
                 !isLayerActivation(this.#platform.basename(filename)) &&
+                !isHandlerGroup(this.#platform.basename(filename)) &&
                 !isPlay(this.#platform.basename(filename)) &&
                 !isTest(this.#platform.basename(filename))
             ) {

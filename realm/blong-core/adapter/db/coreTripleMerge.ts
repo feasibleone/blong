@@ -1,6 +1,6 @@
-import {type IMeta, type IPathRefresh, handler} from '@feasibleone/blong';
+import {type IMeta, type IPathRefresh} from '@feasibleone/blong';
 
-import {uuidBuf} from './core.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -26,7 +26,7 @@ const DEFAULT_PATH_REFRESH = 'access_pathRefresh';
  * `access.account.add`).
  */
 export default handler(
-    () =>
+    ({lib: {uuidBuf}}) =>
         async function coreTripleMerge(
             params: {
                 triples: Array<{

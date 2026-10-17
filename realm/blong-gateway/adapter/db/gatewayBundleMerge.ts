@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import {splitNames, uuidBuf} from './gatewayUuid.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -17,7 +17,7 @@ type KnexQb = any;
  * graph edges through the shared `core.triple.merge` helper (P3), so the seed
  * no longer hand-rolls `core_triple` inserts or `access_pathRefresh()`.
  */
-export default handler(() => ({
+export default handler(({lib: {splitNames, uuidBuf}}) => ({
     async gatewayBundleMerge(
         params: {
             /** capabilityName → comma-separated action names. */

@@ -5,9 +5,22 @@ import type {ConfigDiff} from '@feasibleone/blong/types';
 import {
     affectedNamespaces,
     applyConfigReload,
+    isHandlerGroup,
     type IReloadablePort,
     type IReloadRegistry,
 } from './Watch.ts';
+
+// ---------------------------------------------------------------------------
+// isHandlerGroup
+// ---------------------------------------------------------------------------
+
+test('isHandlerGroup — only the group factory stem is skipped', async t => {
+    t.ok(isHandlerGroup('handlerGroup.ts'), 'handlerGroup.ts is a group factory');
+    t.ok(isHandlerGroup('handlerGroup.mts'), 'the module variants too');
+    t.notOk(isHandlerGroup('accessRoleEnsure.ts'), 'a handler is not');
+    t.notOk(isHandlerGroup('handlerGroupSchema.ts'), 'only the exact stem');
+    t.notOk(isHandlerGroup('handlerGroups.ts'), 'and not a plural lookalike');
+});
 
 // ---------------------------------------------------------------------------
 // affectedNamespaces

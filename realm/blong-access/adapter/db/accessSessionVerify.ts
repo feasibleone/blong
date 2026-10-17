@@ -1,8 +1,7 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
 import {type AclHost} from './accessModel.ts';
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -56,7 +55,7 @@ const SINGLE_RECORD_PREDICATES = new Set(['get', 'edit', 'remove']);
  *
  * Wire: `access.session.verify`.
  */
-export default handler(({errors}) => ({
+export default handler(({lib: {binHex, bufToUuid}, errors}) => ({
     async accessSessionVerify(
         params: {
             sessionId?: string;
@@ -84,7 +83,7 @@ export default handler(({errors}) => ({
         if (!qb) throw new Error('Database not available');
         const sessionId =
             params.sessionId ?? ($meta?.auth as {sessionId?: string} | undefined)?.sessionId;
-        const hex = model.binHex(sessionId as Buffer | string | undefined);
+        const hex = binHex(sessionId as Buffer | string | undefined);
         if (!hex) throw errors.sessionNotFound({params: {reason: 'notFound'}});
         const session = (await qb('access_session')
             .select('access_session.*', 'u.isActive as userIsActive')
@@ -179,7 +178,7 @@ export default handler(({errors}) => ({
             sessionId: sessionId as string,
             // Dashed UUID of the stored bytes — directly usable by
             // `access.permission.list` (`uuidBuf` round-trips to the DB order).
-            userId: account.bufToUuid(session.userId),
+            userId: bufToUuid(session.userId),
             tokenHash: session.tokenHash,
             ...(verdict.guarded && {
                 acl: {

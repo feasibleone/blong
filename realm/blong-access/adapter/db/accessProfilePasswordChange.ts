@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 import {type PasswordParams} from './password.ts';
 
 type KnexQb = any;
@@ -16,7 +16,10 @@ type KnexQb = any;
  * password does not sign the user out.
  */
 export default handler(
-    ({errors, lib: {crockfordDecode, verifyPassword, hashPassword, credentialPolicyParams}}) =>
+    ({
+        errors,
+        lib: {credentialPolicyParams, crockfordDecode, hashPassword, newUuid, verifyPassword},
+    }) =>
         async function accessProfilePasswordChange(
             params: {currentPassword: string; newPassword: string},
             $meta: IMeta,
@@ -61,12 +64,13 @@ export default handler(
             }
 
             // 4. Rotate: deactivate the old active row, insert the new hash.
-            const salt = account.newUuid();
+            const salt = newUuid();
             const policyParams = await credentialPolicyParams(qb, 'password');
-            const {hash, params: credentialParams} = hashPassword<{
-                hash: string;
-                params: PasswordParams;
-            }>(params.newPassword, salt, policyParams);
+            const {hash, params: credentialParams} = hashPassword(
+                params.newPassword,
+                salt,
+                policyParams,
+            );
 
             await qb('access_credential')
                 .where('userId', userIdBuf)

@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -11,14 +11,14 @@ type KnexQb = any;
  * credential rows, any session rows, the `access_user` row and finally the
  * `core_resource` row.
  */
-export default handler(() => ({
+export default handler(({lib: {binHex, listEdgeObjectIds}}) => ({
     async accessUserRemove(params: {userId?: string}, $meta: IMeta): Promise<{success: boolean}> {
         const qb: KnexQb = this.config?.context?.queryBuilder;
         if (!qb) throw new Error('Database not available');
-        const hex = model.binHex(params.userId);
+        const hex = binHex(params.userId);
         if (!hex) return {success: true};
         const buf = Buffer.from(hex, 'hex');
-        const roleIds = await model.listEdgeObjectIds(qb, hex, 'hasRole');
+        const roleIds = await listEdgeObjectIds(qb, hex, 'hasRole');
         // One transaction, and one rebuild at the end of it: the paths lose the
         // user only if its edges really are gone, and a failure leaves neither half
         // applied.  The rebuild comes before the `core_resource` delete because

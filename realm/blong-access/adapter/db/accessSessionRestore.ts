@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -25,7 +25,7 @@ const DEFAULT_INACTIVITY_TIMEOUT = 30 * 60;
  *
  * Wire: `access.session.restore`.
  */
-export default handler(() => ({
+export default handler(({lib: {bufToUuid}}) => ({
     async accessSessionRestore(
         params: {
             cookieHash: string;
@@ -100,10 +100,10 @@ export default handler(() => ({
         }
         return {
             valid: true,
-            sessionId: account.bufToUuid(session.sessionId),
+            sessionId: bufToUuid(session.sessionId),
             // Dashed UUID of the stored bytes — directly usable by
             // `access.permission.list` (`uuidBuf` round-trips to the DB order).
-            userId: account.bufToUuid(session.userId),
+            userId: bufToUuid(session.userId),
             credentialId: session.credentialId,
         };
     },

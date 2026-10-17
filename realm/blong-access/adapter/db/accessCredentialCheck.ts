@@ -1,9 +1,11 @@
-import {handler} from '@feasibleone/blong';
-
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 
 export default handler(
-    ({errors, lib: {crockfordEncode, verifyPassword}, handler: {accessPermissionList}}) =>
+    ({
+        errors,
+        lib: {bufToUuid, crockfordEncode, verifyPassword},
+        handler: {accessPermissionList},
+    }) =>
         async function accessCredentialCheck(
             params: {username: string; password: string},
             $meta: Record<string, unknown>,
@@ -53,9 +55,10 @@ export default handler(
                 throw errors.credentialNotFound();
             }
 
-            // 3. Verify password using the credential parameters stored on the row
-            // (`credentialParamsJSON` is parsed to an object by the knex adapter;
-            // fall back to config.password when it was not persisted).
+            // 3. Verify password using the credential parameters stored on the row.
+            // `credentialParamsJSON` is JSON text (the adapter converts binary columns
+            // only), which `verifyPassword` parses; when the row carries none, the
+            // config's `password` block decides.
             if (
                 !verifyPassword(
                     params.password,
@@ -72,7 +75,7 @@ export default handler(
                 roleBits: number[];
                 actions: string[];
                 permissionMap: string;
-            }>({userId: account.bufToUuid(user.userId)}, $meta);
+            }>({userId: bufToUuid(user.userId)}, $meta);
 
             return {
                 userId: crockfordEncode(user.userId),

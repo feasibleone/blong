@@ -16,7 +16,7 @@ import {
 /**
  * `kukum.<primitive>.add` — scaffold a primitive.
  *
- * One file serves all fourteen primitives: the file name is the part of the
+ * One file serves every primitive: the file name is the part of the
  * endpoint path that differs — the predicate — and the primitive id is an
  * argument. The platform is read off `this` because that is where the runtime
  * put it, never captured in the factory.

@@ -1,7 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 
 /**
  * `access.role.ensure` — the **one door** for creating a role: it creates the
@@ -31,7 +30,7 @@ import * as account from './account.ts';
  *
  * Wire: `access.role.ensure` — shared helper in the `access.db` handler group.
  */
-export default handler(({errors}) => ({
+export default handler(({lib: {ROLE_BIT_MAX, uuidBuf}, errors}) => ({
     async accessRoleEnsure(
         params: {
             role?: {
@@ -51,7 +50,7 @@ export default handler(({errors}) => ({
         const requested = blank ? undefined : Number(role.roleBit);
         if (
             requested !== undefined &&
-            (!Number.isInteger(requested) || requested < 0 || requested > model.ROLE_BIT_MAX)
+            (!Number.isInteger(requested) || requested < 0 || requested > ROLE_BIT_MAX)
         ) {
             throw errors.roleBitInvalid({params: {roleBit: String(role.roleBit)}});
         }
@@ -83,12 +82,12 @@ export default handler(({errors}) => ({
                 },
                 // No bit submitted → the framework allocates one and fails
                 // loudly if the row still cannot be written.
-                allocate: {column: 'roleBit', max: model.ROLE_BIT_MAX},
+                allocate: {column: 'roleBit', max: ROLE_BIT_MAX},
             },
             $meta,
         )) as {resourceId: string};
         const row = (await qb('access_role')
-            .where('roleId', account.uuidBuf(resourceId))
+            .where('roleId', uuidBuf(resourceId))
             .first('roleBit')) as {roleBit?: number | null} | undefined;
         if (row?.roleBit === undefined || row.roleBit === null) {
             throw new Error(`The role "${roleName}" has no access_role row after ensure`);

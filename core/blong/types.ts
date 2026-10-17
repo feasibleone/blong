@@ -1589,6 +1589,67 @@ export const handler = <T = Record<string, unknown>, C = AdapterContext>(
 ): Definition<T, C> => Object.defineProperty(definition, Kind, {value: 'handler'});
 
 /**
+ * The api a {@link handlerGroup} callback receives: `handler`'s own api with the
+ * group's library members typed on `lib`.
+ *
+ * `IHandlerProxy.lib` is `ILib & {[name: string]: LibFn}`, which is the shape the
+ * lib proxy hands back but drops a library function's parameters and return type
+ * and cannot express a constant at all.
+ */
+export type HandlerGroupApi<L, T = Record<string, unknown>> = Omit<IHandlerProxy<T>, 'lib'> & {
+    lib: L & ILib;
+};
+
+/**
+ * `handler` with a handler group's injected library members typed.
+ *
+ * A group keeps one factory in its own folder, in `handlerGroup.ts` — a name the
+ * loader skips, so it is never loaded as a handler — and the group's bundles are
+ * named in one type intersection instead of an annotation (or a cast) in every
+ * handler:
+ *
+ * ```typescript
+ * // <realm>/adapter/db/handlerGroup.ts
+ * export type AccessDbLib = AccessModelLib & AccountLib;
+ * export const handler = handlerGroup<AccessDbLib>();
+ * ```
+ *
+ * ```typescript
+ * // <realm>/adapter/db/accessCredentialCheck.ts, beside it
+ * handler(({lib: {verifyPassword}, errors}) => async function …)
+ * ```
+ *
+ * Destructuring is the point: each name is checked against `L` where it is
+ * written, so a member the group does not provide fails the build, and at run
+ * time the member is still read through the lib proxy, whose error names the
+ * members that do exist. There is no directory-scoped ambient typing in
+ * TypeScript — a `declare global` or a module augmentation in a folder applies to
+ * the whole *program*, so a folder-local library type would be promised to every
+ * group in the realm. One `handlerGroup` per group is the seam that scopes it.
+ */
+
+/** A handler definition whose api has the group's library members typed. */
+export type HandlerGroupCallback<L, T = Record<string, unknown>, C = AdapterContext> = (
+    api: HandlerGroupApi<L, T>,
+) => ReturnType<ImportProxyCallback<T, C>>;
+
+/**
+ * The {@link handlerGroup} parameter: the framework's own `Definition` shape with
+ * the typed api. `object` stays in the union on purpose — it is what keeps the
+ * contextual typing of a returned method permissive (the framework's `handler`
+ * has it too).
+ */
+export type HandlerGroupDefinition<L, T = Record<string, unknown>, C = AdapterContext> =
+    | object
+    | HandlerGroupCallback<L, T, C>
+    | HandlerGroupCallback<L, T, C>[];
+
+export const handlerGroup =
+    <L, T = Record<string, unknown>>() =>
+    (definition: HandlerGroupDefinition<L, T>): Definition<T, AdapterContext> =>
+        handler(definition as Definition<T, AdapterContext>);
+
+/**
  * Browser-side equivalent of `handler`.  Use this to define a component handler
  * in a realm's `component/` layer.  Functionally identical to `handler` — the
  * distinction is semantic and makes intent clear in code review.
@@ -1693,6 +1754,7 @@ export const kind = (what: {[Kind]: Kinds | undefined}): Kinds => what[Kind] || 
 
 export default {
     handler,
+    handlerGroup,
     library,
     validation,
     api,

@@ -194,7 +194,7 @@ API handlers use `subjectObjectPredicate` format:
 
 Realm: `user` with namespaces `identity`, `permission`, `user`
 
-```
+```text
 user/
 ├── orchestrator/
 │   ├── identityDispatch.ts
@@ -229,6 +229,10 @@ kukum handler get --kind=api                                                # cu
 kukum handler add --subject=shop --object=order --predicate=add --kind=library
 kukum handler add --subject=shop --object=order --predicate=add --kind=db
 kukum handler edit --path=orchestrator/shop/shopOrderAdd.ts --instructions="handle idempotency"
+
+kukum library add --name=orderFormat --kind=function --group=order          # one helper
+kukum library add --name=orderLib --kind=bindings --members=orderSplit,orderJoin
+kukum library check --target=../blong-access                                # plain modules
 ```
 
 The result, for reference, is exactly the shape below.
@@ -273,14 +277,65 @@ export default library(
 );
 ```
 
-> **Library return types are `unknown`** (`LibFn` = `<T>(...params: unknown[]) => T`) — annotate at
-> the call site:
+**A helper file in a handler group must default-export a `library()`.** A plain module there makes
+the loader log an error-level line on every run; `kukum library check --target=DIR` finds those
+files. Two shapes, and the second is the one to reach for past the first helper:
+
+- `kukum library add --kind=function --name=<helperName>` — one helper, one file.
+- `kukum library add --kind=bindings --name=<bundleName> --members=a,b,c` — **one file for every
+  helper of a concern**. A file per helper stops paying off for short functions: it is another `lib`
+  merge and another file to open, and no reader benefits.
+
+A bundle keeps the helpers typed. Export the bundle's type beside the factory, bind it **once per
+handler group** in that group's own `handlerGroup.ts`, and every handler in the folder then
+destructures the members it uses — no annotation, no cast, no extra indentation:
+
+```typescript
+// adapter/db/handlerGroup.ts — in the group folder; the loader skips this file name
+import {handlerGroup} from '@feasibleone/blong';
+import type {AccessModelLib} from './accessModel.ts';
+import type {AccountLib} from './account.ts';
+
+export type AccessDbLib = AccessModelLib & AccountLib;
+export const handler = handlerGroup<AccessDbLib>();
+```
+
+```typescript
+// adapter/db/accessRoleEnsure.ts — the handler keeps its normal shape
+import {handler} from './handlerGroup.ts';
+
+export default handler(({errors, lib: {binHex, ROLE_BIT_MAX}}) => ({
+    async accessRoleEnsure(params: {…}, $meta: IMeta) {
+        if (params.roleBit > ROLE_BIT_MAX) throw errors.roleBitInvalid();
+        return binHex(params.roleId);
+    },
+}));
+```
+
+- `handlerGroup<L>()` types `lib` as `L & ILib`, so functions keep their parameters and return type,
+  generics work without a call-site type argument, **and constants keep their value type**.
+- **Destructure.** Each name is checked against `L` where it is written, so a member the group does
+  not provide fails the build; at run time the destructure still goes through the lib proxy, whose
+  error names the members that do exist.
+- **There is no directory-scoped ambient typing in TypeScript.** A `declare global` or a module
+  augmentation in a folder applies to the whole _program_: inside one realm's tsconfig a folder's
+  `ILib` augmentation would be promised to every other group too, which only compiles until the
+  first call. One typed factory per group is the seam that actually scopes the type.
+
+`ILib`'s own members (`ulid`, `crockfordEncode`, `merge`, …) are already typed on `ILib`, so no
+bundle needs to list them; `handlerGroup` intersects them in.
+
+> **Without a typed group factory, a destructured member is `LibFn`**
+> (`<T>(...params: unknown[]) => T`) — annotate at the call site:
 >
 > - Destructure the result via a call-site generic:
 >   `const {hash, params} = hashPassword<{hash: string; params: P}>(...)`.
 > - `return libFn(...)` works only when the enclosing fn has a declared return type.
 > - Type-only imports (`import {type P} from './password.ts'`) are erased at runtime — safe, keep
 >   DRY.
+>
+> With `handlerGroup<…>()` none of this applies: the member carries the bundle's own signature, so
+> `hashPassword(...)` infers its result and a type argument is an error.
 
 ### Library as a configurable-bindings bundle (soft dependencies)
 
@@ -406,7 +461,7 @@ handler(
 
 ### Folder Structure
 
-```
+```text
 orchestrator/
 ├── dispatch.ts
 └── entity/
@@ -695,7 +750,7 @@ file in any handler folder to define configuration for all handlers in that fold
 supports activation-based config (`default`, `dev`, `prod`, etc.) using the same pattern as
 `server.ts`, keeping environment-specific values co-located with the handlers that use them.
 
-```
+```text
 realmname/
 └── orchestrator/
     └── payment/

@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -15,7 +15,7 @@ type KnexQb = any;
  * `otherAction` arrays (when present). Ticked CRUD columns on the `action`
  * pivot row ensure the `accessCapability<predicate>` action resources.
  */
-export default handler(() => ({
+export default handler(({lib: {binHex, crudPivotActionIds, syncEdges}}) => ({
     async accessCapabilityEdit(
         params: {
             capability?: {capabilityId?: string; capabilityName?: string; description?: string};
@@ -36,7 +36,7 @@ export default handler(() => ({
         const {capability = {}, action, otherAction} = params;
         const {capabilityName, ...capabilityColumns} = capability;
         const result = await super.exec({...params, capability: capabilityColumns}, $meta);
-        const hex = model.binHex(capability.capabilityId);
+        const hex = binHex(capability.capabilityId);
         if (!hex) throw new Error('Invalid capability id');
         if (
             typeof capabilityName === 'string' ||
@@ -56,7 +56,7 @@ export default handler(() => ({
                         .update({resourceName: capabilityName});
                 }
                 if (Array.isArray(action) || Array.isArray(otherAction)) {
-                    const crudIds = await model.crudPivotActionIds(
+                    const crudIds = await crudPivotActionIds(
                         trx,
                         (p: any, m: IMeta) => super.coreResourceEnsure(p, m, trx),
                         action ?? [],
@@ -64,9 +64,9 @@ export default handler(() => ({
                     );
                     const otherIds = (otherAction ?? [])
                         .filter(r => r.granted)
-                        .map(r => model.binHex(r.actionId))
+                        .map(r => binHex(r.actionId))
                         .filter((x): x is string => !!x);
-                    await model.syncEdges(trx, hex, 'hasAction', [...crudIds, ...otherIds]);
+                    await syncEdges(trx, hex, 'hasAction', [...crudIds, ...otherIds]);
                 }
             });
         }

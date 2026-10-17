@@ -1,7 +1,7 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
+import {handler} from './handlerGroup.ts';
 import {type GoogleConfig} from './google.ts';
-import {discoverOidcConfiguration} from './oidc.ts';
 
 /**
  * Client-safe Google OAuth configuration.
@@ -22,7 +22,7 @@ import {discoverOidcConfiguration} from './oidc.ts';
  * so the browser always sees the config matching the server-side flow.
  */
 export default handler(
-    ({lib: {googleConfig}}) =>
+    ({lib: {discoverOidcConfiguration, googleConfig}}) =>
         async function accessGoogleGet(
             _params: Record<string, never>,
             _$meta: IMeta,
@@ -33,7 +33,7 @@ export default handler(
             redirectUri: string | null;
         }> {
             const google = {
-                ...(googleConfig<GoogleConfig>() ?? {}),
+                ...(googleConfig() ?? {}),
                 ...((this.config as {google?: object} | undefined)?.google ?? {}),
             };
             if (!google.clientId || !google.baseUrl) {

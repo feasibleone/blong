@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -15,14 +15,14 @@ type KnexQb = any;
  *
  * Wire: `access.session.rotate` — called by `login.token.refresh`.
  */
-export default handler(() => ({
+export default handler(({lib: {binHex}}) => ({
     async accessSessionRotate(
         params: {sessionId: string; tokenHash: string},
         $meta: IMeta,
     ): Promise<{success: boolean}> {
         const qb: KnexQb = this.config?.context?.queryBuilder;
         if (!qb) throw new Error('Database not available');
-        const hex = model.binHex(params.sessionId);
+        const hex = binHex(params.sessionId);
         if (!hex) return {success: false};
         const updated = await qb('access_session')
             .where('sessionId', Buffer.from(hex, 'hex'))

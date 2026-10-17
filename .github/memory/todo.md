@@ -86,19 +86,14 @@ done (6)
 - F-303
 - F-244
 - playwright webp, strict screenshot tolerance
-- T-195
 - T-276
 - F-490
-- Adopt https://github.com/allure-framework/allure3/pull/353
 - Adopt https://mastra.ai/integrations/frameworks/vite-react
-- embed storybook in docs
 - sync modified memory during commit
-- config validation with explanation
 - config hot reload log level
 - blong operator should log the deployment details
 - produce FAQ
 - budget instructions
-- kukum has no library-function primitive
 - avoid the method naming pitfall that fails to find local method when using the dot notation (try
   to disable this notation)
 - move knex.connect to base class

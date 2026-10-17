@@ -3,17 +3,15 @@ import {server} from '@feasibleone/blong';
 /**
  * index.ts — standalone bootstrap for the kukum realm.
  *
- * Deliberately minimal: `srv` provides the rpc/gateway infrastructure, and
- * `kukum` provides the API. No login/core/access and no database — the kukum
- * API must be usable without any backend so an agent can scaffold a realm
- * before that realm has a schema.
+ * Deliberately minimal: `srv` (the framework realm that provides the rpc/gateway
+ * infrastructure) is loaded from this package's manifest by `frameworkRealms`, so
+ * only `kukum` is a child. The `dev` block still gives `srv` its config slot. No
+ * login/core/access and no database — the kukum API must be usable without any
+ * backend so an agent can scaffold a realm before that realm has a schema.
  */
 export default server(() => ({
     url: import.meta.url,
     children: [
-        async function srv() {
-            return import('@feasibleone/blong-server/server.ts');
-        },
         async function kukum() {
             return import('./server.ts');
         },

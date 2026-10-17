@@ -44,6 +44,8 @@ kukum instruction find --target=.
 | `--subject=NAME`      | realm name (the triple subject) — must be lowerCamelCase    |
 | `--object=NAME`       | entity name (the triple object)                             |
 | `--predicate=NAME`    | handler triple predicate (must be a standard one)           |
+| `--name=NAME`         | artifact name with no triple — a library function or bundle |
+| `--members=a,b`       | member functions of a `bindings` library bundle             |
 | `--kind=KIND`         | primitive kind (see `kukum primitive find`)                 |
 | `--layer`, `--group`  | layer / handler-group folder                                |
 | `--platform`          | `server` \| `browser`                                       |
@@ -73,6 +75,7 @@ kukum.<cross-cutting endpoint>      see the table below
 | `suite`        | `blong-suite`         | `default`                                                                |
 | `layer`        | `blong-layer`         | `server`, `browser`, `custom`                                            |
 | `handler`      | `blong-handler`       | `api`, `library`, `db`, `super`, `libBindings`                           |
+| `library`      | `blong-handler`       | `function`, `bindings`                                                   |
 | `orchestrator` | `blong-orchestrator`  | `dispatch`, `init`, `schedule`                                           |
 | `adapter`      | `blong-adapter`       | `http`, `tcp`, `knex`, `webhook`, `mongodb`, `k8s`, `s3`, `mock`, `base` |
 | `error`        | `blong-error`         | `layer`, `inline`, `librarySet`                                          |
@@ -86,6 +89,12 @@ kukum.<cross-cutting endpoint>      see the table below
 
 `kukum primitive find` returns this table plus each primitive's summary and default kind, so an
 agent can discover the surface at runtime instead of being fed it.
+
+`library` is the injected-library-function primitive: `function` is one helper in its own file,
+`bindings` is a bundle of helpers that share a concern in **one** file (`--members=a,b`), because a
+file per helper stops paying off after the second one. `kukum library check --target=DIR` is the
+guardrail that finds a plain module (no `export default`) in a handler-group folder — the shape the
+loader logs an error for on every run — and names the command that converts it.
 
 | Cross-cutting endpoint   | Answers                                                      |
 | ------------------------ | ------------------------------------------------------------ |

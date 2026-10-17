@@ -1,7 +1,7 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
-import * as account from './account.ts';
+import {type AclMatrixRow, type EnsuredRole} from './accessModel.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -15,11 +15,14 @@ type KnexQb = any;
  * `access_acl` rules of the new role are written by `syncAclMatrix`.
  */
 export default handler(
-    ({handler: {'db/accessRoleEnsure': accessRoleEnsure}, lib: {ulid, crockfordDecode}}) => ({
+    ({
+        handler: {'db/accessRoleEnsure': accessRoleEnsure},
+        lib: {binHex, bufToBase64, crockfordDecode, syncAclMatrix, ulid, uuidBuf},
+    }) => ({
         async accessRoleAdd(
             params: {
                 role?: {roleName?: string; roleBit?: number | string | null; description?: string};
-                matrix?: model.AclMatrixRow[];
+                matrix?: AclMatrixRow[];
             },
             $meta: IMeta,
         ): Promise<Record<string, unknown>> {
@@ -28,14 +31,11 @@ export default handler(
             // `access.role.ensure` allocates the bit when the form leaves it
             // blank and refuses one taken by another role — the returned bit is
             // the one the role actually owns (a bit never moves).
-            const {role: created} = await accessRoleEnsure<model.EnsuredRole>(
-                {role: params.role},
-                $meta,
-            );
-            const roleHex = model.binHex(created.roleId);
+            const {role: created} = await accessRoleEnsure<EnsuredRole>({role: params.role}, $meta);
+            const roleHex = binHex(created.roleId);
             if (!roleHex) throw new Error('Could not resolve role resource id');
             if (Array.isArray(params.matrix) && params.matrix.length) {
-                await model.syncAclMatrix(
+                await syncAclMatrix(
                     qb,
                     {
                         // `core.resource.ensure` lives in `core`, a library realm this
@@ -52,7 +52,7 @@ export default handler(
             }
             return {
                 role: {
-                    roleId: model.bufToBase64(account.uuidBuf(created.roleId)),
+                    roleId: bufToBase64(uuidBuf(created.roleId)),
                     roleName: created.roleName,
                     roleBit: created.roleBit,
                     description: params.role?.description ?? null,

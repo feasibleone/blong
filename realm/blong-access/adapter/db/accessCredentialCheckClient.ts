@@ -1,6 +1,4 @@
-import {handler} from '@feasibleone/blong';
-
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 
 /**
  * Verify an OAuth client_credentials grant for an application.
@@ -25,7 +23,11 @@ import * as account from './account.ts';
  * `login.token.create` mints the token's `sub` claim from them.
  */
 export default handler(
-    ({errors, lib: {crockfordEncode, verifyPassword}, handler: {accessPermissionList}}) =>
+    ({
+        errors,
+        lib: {bufToUuid, crockfordEncode, verifyPassword},
+        handler: {accessPermissionList},
+    }) =>
         async function accessCredentialCheckClient(
             params: {clientId: string; clientSecret: string},
             $meta: Record<string, unknown>,
@@ -106,7 +108,7 @@ export default handler(
                 roleBits: number[];
                 actions: string[];
                 permissionMap: string;
-            }>({userId: account.bufToUuid(subjectId)}, $meta);
+            }>({userId: bufToUuid(subjectId)}, $meta);
 
             return {
                 applicationId: crockfordEncode(subjectId),

@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 import {type PasswordParams} from './password.ts';
 
 type KnexQb = any;
@@ -14,7 +14,7 @@ type KnexQb = any;
  * parameters and verification path (`access.credential.checkClient`).
  */
 export default handler(
-    ({lib: {hashPassword, credentialPolicyParams}}) =>
+    ({lib: {credentialPolicyParams, hashPassword, newUuid, uuidBuf}}) =>
         async function accessCredentialAdd(
             params: {
                 /** The subject resource id (hex UUID) the credential belongs to. */
@@ -36,12 +36,9 @@ export default handler(
                 params.credentialType === 'google'
                     ? (params.googleSubjectId ?? '')
                     : (params.secret ?? '');
-            const salt = account.newUuid();
+            const salt = newUuid();
             const policyParams = await credentialPolicyParams(qb, params.credentialType);
-            const {hash, params: credentialParams} = hashPassword<{
-                hash: string;
-                params: PasswordParams;
-            }>(secret, salt, policyParams);
+            const {hash, params: credentialParams} = hashPassword(secret, salt, policyParams);
 
             // Rotate: deactivate any previously active credential of the same
             // subject + type so the new one becomes the single active credential.
@@ -50,13 +47,13 @@ export default handler(
             // of stacking a second active row (which would break `.first()`
             // verification that reads the oldest active credential).
             await qb('access_credential')
-                .where('userId', account.uuidBuf(params.subjectResourceId))
+                .where('userId', uuidBuf(params.subjectResourceId))
                 .where('credentialType', params.credentialType)
                 .update({isActive: 0});
 
             await qb('access_credential')
                 .insert({
-                    userId: account.uuidBuf(params.subjectResourceId),
+                    userId: uuidBuf(params.subjectResourceId),
                     credentialType: params.credentialType,
                     credentialHash: hash,
                     credentialSalt: salt,

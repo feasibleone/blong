@@ -1,6 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import {newUuid, uuidBuf} from './gatewayUuid.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -16,7 +16,7 @@ type KnexQb = any;
  * re-registering the same clientId is idempotent — the existing resource is
  * reused and `access.credential.add` rotates the active secret.
  */
-export default handler(({errors, lib: {crockfordDecode, crockfordEncode}}) => ({
+export default handler(({errors, lib: {crockfordDecode, crockfordEncode, newUuid, uuidBuf}}) => ({
     async gatewayApplicationRegister(
         params: {
             /** ClientId / application display name. */

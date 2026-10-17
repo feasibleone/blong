@@ -23,7 +23,10 @@ export default library(
             const descriptor = descriptorFor(id);
             const ctx = contextOf(id, params);
             const base = baseResult(id, 'check', ctx);
-            const messages = [...(descriptor.check?.(ctx) ?? [])];
+            const messages = [
+                ...(descriptor.check?.(ctx) ?? []),
+                ...((await descriptor.audit?.({host, root})) ?? []),
+            ];
             const instances = await findInstances(host, descriptor, root);
             const diagnostics = await diagnose(host, root, instances);
             return {...base, messages, diagnostics};

@@ -1,7 +1,6 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta} from '@feasibleone/blong';
 
-import * as model from './accessModel.ts';
-import * as account from './account.ts';
+import {handler} from './handlerGroup.ts';
 
 type KnexQb = any;
 
@@ -11,11 +10,11 @@ type KnexQb = any;
  *
  * Reuses `core.resource.ensure` (the generic knex `add` cannot create the
  * resource row for a `uidNotNull` PK) and writes the `hasAction` edges with their
- * rebuild in `model.syncEdges`. Ticked CRUD columns on the `action` pivot row
+ * rebuild in `syncEdges`. Ticked CRUD columns on the `action` pivot row
  * ensure the `accessCapability<predicate>` action resources and include them;
  * `granted` `otherAction` rows are included as-is.
  */
-export default handler(() => ({
+export default handler(({lib: {binHex, bufToBase64, crudPivotActionIds, syncEdges, uuidBuf}}) => ({
     async accessCapabilityAdd(
         params: {
             capability?: {capabilityName?: string; description?: string};
@@ -48,9 +47,9 @@ export default handler(() => ({
             },
             $meta,
         )) as {resourceId: string};
-        const capabilityIdHex = model.binHex(resourceId);
+        const capabilityIdHex = binHex(resourceId);
         if (!capabilityIdHex) throw new Error('Could not resolve capability resource id');
-        const crudIds = await model.crudPivotActionIds(
+        const crudIds = await crudPivotActionIds(
             qb,
             // The helper has no `super` of its own, so the binding is closed over here.
             (p: any, m: IMeta) => super.coreResourceEnsure(p, m),
@@ -59,15 +58,15 @@ export default handler(() => ({
         );
         const otherIds = (params.otherAction ?? [])
             .filter(r => r.granted)
-            .map(r => model.binHex(r.actionId))
+            .map(r => binHex(r.actionId))
             .filter((x): x is string => !!x);
         const all = [...crudIds, ...otherIds];
         if (all.length) {
-            await model.syncEdges(qb, capabilityIdHex, 'hasAction', all);
+            await syncEdges(qb, capabilityIdHex, 'hasAction', all);
         }
         return {
             capability: {
-                capabilityId: model.bufToBase64(account.uuidBuf(resourceId)),
+                capabilityId: bufToBase64(uuidBuf(resourceId)),
                 capabilityName: name,
                 description: capability.description ?? null,
             },

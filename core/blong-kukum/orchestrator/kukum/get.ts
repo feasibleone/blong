@@ -1,4 +1,5 @@
 import {library} from '@feasibleone/blong';
+import {isStampedFile} from '@feasibleone/blong-lib/template';
 import {planTemplate, withMarker} from '../../engine.ts';
 import {
     baseResult,
@@ -50,7 +51,10 @@ export default library(
             }
             const files = descriptor.files(ctx).map(file => ({
                 path: file.path,
-                content: withMarker(file.content),
+                // Only a source carries the generated marker. `plan` asks the same
+                // question before writing, and stamping a `package.json` produced
+                // an `import` line above its first brace.
+                content: isStampedFile(file.path) ? withMarker(file.content) : file.content,
                 action: 'template',
                 handWritten: false,
             }));

@@ -21,11 +21,12 @@ open (8)
   refresh
 - `F-428` · realm/blong-access — Three traps on the way to a local login leak test
 
-resolved (3)
+resolved (4)
 
 - `F-296` · realm/blong-access — The gateway does not read the paths the RBAC pages say it reads
 - `F-297` · realm/blong-access — The ACL documentation promised a deny that the guard can ignore
 - `F-357` · realm/blong-access — The dbTest seed merge appends, so a stale edge survives a seed edit
+- `F-553` · realm/blong-access — The login flow test fails with credentials.mismatch on HEAD
 
 <!-- /memory:index -->
 
@@ -196,3 +197,28 @@ longer needed, because the next boot repairs the database (verified: accessModel
 hasAction edges, exactly the list in meta/dbTest/accessAuthorizationMerge.yaml). A tap step
 (checkReplaceRetractsDroppedAction) shrinks and restores testManagement's list and reads the effect
 through a fresh login, so a changed list can no longer leave an orphan action behind.
+
+### F-553 — The login flow test fails with credentials.mismatch on HEAD
+
+> _2026-10-17 · realm/blong-access · resolved_
+
+Running the package suite here fails in access.credential.check with credentials.mismatch, and it
+fails identically with every file of this change stashed, so it is the environment rather than the
+refactor: the dev database holds 26 active password credentials for testUser, and all of them verify
+against testPassword with their stored salt and 100000 iterations, so the check is receiving
+different parameters at run time (the dev and integration config set password iterations to 1, which
+is what a string credentialParamsJSON would fall back to). The consequence for this session is that
+the suite cannot confirm a handler change; the realm was verified by loading it instead (kukum CLI,
+no load errors) plus tsc and lint. Worth fixing before the suite is trusted again: either the
+adapter should parse the JSON column on this query path, or the check should read the stored params
+explicitly.
+
+Root cause confirmed and fixed in the password library rather than the environment.
+credentialParamsJSON is a stringNull column, so the row hands back JSON text; the knex adapter
+converts binary columns only, and verifyPassword treated the text as an object with no members,
+falling back to config.password (iterations 1) while the rows were hashed at 100000. CI never saw it
+because a fresh database hashes every row with the config in force, so the fallback and the stored
+document agree there. The library now parses the stored document (tolerating an object too, and a
+corrupt one falls back), which also makes profile password change and client-secret verification
+honour the row. The access suite passes locally: 70/70, including a new password.test.ts that pins a
+stored count differing from the config.

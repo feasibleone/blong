@@ -10,8 +10,7 @@ import {PRIMITIVES} from '../../primitives/index.ts';
  * implements it — one per endpoint, beside this file. The file name is the
  * endpoint path with the `kukum` namespace dropped, which is also the name the
  * lib proxy registers: `kukum.source.get` is `sourceGet.ts`, and
- * `kukum.<primitive>.add` — one file serving all fourteen primitives — is
- * `add.ts`.
+ * `kukum.<primitive>.add` — one file serving every primitive — is `add.ts`.
  *
  * `layerProxy` normalises every object key with `methodId` (lower-cased, dots
  * removed), which is exactly what the gateway sends for `/rpc/kukum/handler/add`

@@ -19,10 +19,34 @@ import {
 } from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {test} from 'tap';
+import {afterEach, beforeEach, test} from 'tap';
 
 import {ALLURE_PUBLISH_DIR, publishAllureReport} from './allurePublish.ts';
 import {packageName} from './reportPaths.ts';
+
+/**
+ * This file tests the self-contained layout: a bundle beside the page.
+ *
+ * CI runs the suite with the shared-bundle variables set, because the workflow publishes one copy
+ * for every report (@@D-563). A test that inherited them would describe a layout it does not
+ * assert — which is how build #627 went red the run after they were added (@@F-551). The test
+ * states its own environment and restores what it found.
+ */
+const SHARED_BUNDLE = ['BLONG_ALLURE_MAIN_URL', 'BLONG_ALLURE_MAIN_DIR'] as const;
+let savedEnvironment: Array<string | undefined> = [];
+
+beforeEach(() => {
+    savedEnvironment = SHARED_BUNDLE.map(name => process.env[name]);
+    for (const name of SHARED_BUNDLE) delete process.env[name];
+});
+
+afterEach(() => {
+    SHARED_BUNDLE.forEach((name, index) => {
+        const value = savedEnvironment[index];
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+    });
+});
 
 /** A package directory with the results one or more producers left behind. */
 function packageWith(resultsDirs: Record<string, string[]>): string {
