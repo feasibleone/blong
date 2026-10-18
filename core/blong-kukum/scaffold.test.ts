@@ -128,6 +128,11 @@ t.test('scaffolds a full realm through the API', {skip: skipped}, async t => {
         `src/stories/${Object}.stories.tsx`,
         `src/stories/${SUBJECT[0].toUpperCase()}${SUBJECT.slice(1)}.stories.tsx`,
         `meta/fixture/${SUBJECT}Fixture.ts`,
+        // The Test runs console the `test-ui` intent links: the catalog, the page
+        // and the browser page handler that lazy-loads it.
+        `src/pages/${SUBJECT}TestRunCatalog.ts`,
+        `src/pages/${SUBJECT}TestRunPage.tsx`,
+        `browser/orchestrator/component/${SUBJECT}TestRun.ts`,
     ]) {
         t.ok(existsSync(join(REALM_ROOT, testEntry)), `template file ${testEntry} exists`);
     }

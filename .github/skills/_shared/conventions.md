@@ -239,27 +239,27 @@ a planning run sees. `release` and `cli` name nothing: a deployed process takes 
 `--<realm>.<layer>` flags its plan wrote, and a CLI names the layers it uses, because it may need
 one adapter rather than a realm's whole runtime set.
 
-| Folder                 | Server intent                    | Browser intent |
-| ---------------------- | -------------------------------- | -------------- |
-| `api`                  | `default`                        | `default`      |
-| `init`                 | `default`                        | `default`      |
-| `meta`                 | `default`                        | `default`      |
-| `server/init`          | `default`                        | —              |
-| `browser/init`         | —                                | `default`      |
-| `browser/api`          | —                                | `default`      |
-| `browser/orchestrator` | —                                | `default`      |
-| `backend`              | —                                | `default`      |
-| `component`            | —                                | `default`      |
-| `action` / `actions`   | —                                | `default`      |
-| `error`                | `microservice`, `k8s`, `upgrade` | —              |
-| `adapter`              | `microservice`, `k8s`, `upgrade` | —              |
-| `orchestrator`         | `microservice`, `k8s`, `upgrade` | —              |
-| `gateway`              | `microservice`, `k8s`            | —              |
-| `server/api`           | `microservice`, `k8s`            | —              |
-| `sim`                  | `integration`                    | —              |
-| `server/test`          | `integration`                    | —              |
-| `test`                 | —                                | `integration`  |
-| `browser/test`         | —                                | `integration`  |
+| Folder                 | Server intent                    | Browser intent           |
+| ---------------------- | -------------------------------- | ------------------------ |
+| `api`                  | `default`                        | `default`                |
+| `init`                 | `default`                        | `default`                |
+| `meta`                 | `default`                        | `default`                |
+| `server/init`          | `default`                        | —                        |
+| `browser/init`         | —                                | `default`                |
+| `browser/api`          | —                                | `default`                |
+| `browser/orchestrator` | —                                | `default`                |
+| `backend`              | —                                | `default`                |
+| `component`            | —                                | `default`                |
+| `action` / `actions`   | —                                | `default`                |
+| `error`                | `microservice`, `k8s`, `upgrade` | —                        |
+| `adapter`              | `microservice`, `k8s`, `upgrade` | —                        |
+| `orchestrator`         | `microservice`, `k8s`, `upgrade` | —                        |
+| `gateway`              | `microservice`, `k8s`            | —                        |
+| `server/api`           | `microservice`, `k8s`            | —                        |
+| `sim`                  | `integration`                    | —                        |
+| `server/test`          | `integration`                    | —                        |
+| `test`                 | —                                | `integration`, `test-ui` |
+| `browser/test`         | —                                | `integration`, `test-ui` |
 
 > Server tap tests live in `server/test/`; browser tap tests in `browser/test/`; the top-level
 > `test/` folder is a browser layer holding Playwright `*.play.ts`.

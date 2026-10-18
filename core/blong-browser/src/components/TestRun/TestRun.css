@@ -1,0 +1,1079 @@
+/* TestRun — dense theme-aware console. All colours come from PrimeReact theme variables. */
+
+.blong-test-run {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 8px;
+    overflow: hidden;
+    container-type: inline-size;
+    background: var(--surface-ground, #f8f9fa);
+    color: var(--text-color);
+    font-family: var(--font-family,
+            -apple-system,
+            BlinkMacSystemFont,
+            'Segoe UI',
+            Roboto,
+            Helvetica,
+            Arial,
+            sans-serif);
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.blong-test-run button {
+    font-family: inherit;
+}
+
+/* ── Status bar ─────────────────────────────────────────────────────────── */
+
+.blong-test-run__status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: none;
+    min-height: 40px;
+    padding: 0 10px;
+}
+
+.blong-test-run__identity {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+}
+
+.blong-test-run__run-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.blong-test-run__method {
+    color: var(--text-color-secondary);
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.blong-test-run__state {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.blong-test-run__state i {
+    width: 10px;
+    font-size: 9px;
+    text-align: center;
+}
+
+.blong-test-run__state--pending {
+    color: var(--text-color-secondary);
+}
+
+.blong-test-run__state--running {
+    color: var(--blue-600, #2563eb);
+}
+
+.blong-test-run__state--completed {
+    color: var(--green-600, #16a34a);
+}
+
+.blong-test-run__state--failed {
+    color: var(--red-600, #dc2626);
+}
+
+.blong-test-run__elapsed,
+.blong-test-run__step-count,
+.blong-test-run__assertions-summary,
+.blong-test-run__concurrency {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    font-size: 11px;
+}
+
+.blong-test-run__elapsed {
+    color: var(--text-color-secondary);
+}
+
+.blong-test-run__failed-count {
+    color: var(--red-500);
+}
+
+.blong-test-run__assertions-summary {
+    display: inline-flex;
+    gap: 6px;
+}
+
+.blong-test-run__passed {
+    color: var(--green-600, #16a34a);
+}
+
+.blong-test-run__threw {
+    color: var(--red-500);
+}
+
+.blong-test-run__threw.is-zero {
+    color: var(--text-color-secondary);
+    opacity: 0.7;
+}
+
+.blong-test-run__concurrency {
+    color: var(--text-color-secondary);
+    opacity: 0.8;
+}
+
+.blong-test-run__progress {
+    width: 120px;
+    height: 6px;
+    flex: none;
+    overflow: hidden;
+    background: var(--surface-200, #e2e8f0);
+    border-radius: 3px;
+}
+
+.blong-test-run__progress-fill {
+    display: block;
+    height: 100%;
+    background: var(--primary-color);
+    transition: width 180ms ease;
+}
+
+.blong-test-run__controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+}
+
+.blong-test-run__controls .p-button {
+    padding: 2px 6px;
+    font-size: 10px;
+}
+
+/* ── Body and cards ─────────────────────────────────────────────────────── */
+
+.blong-test-run__split {
+    flex: 1;
+    min-height: 0;
+}
+
+.blong-test-run__split .p-splitter-panel,
+.blong-test-run__body .p-splitter-panel {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+}
+
+.blong-test-run__body {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.blong-test-run__main {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+}
+
+.blong-test-run__side {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+}
+
+.blong-test-run__main>.blong-deck,
+.blong-test-run__side>.blong-deck {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+.blong-test-run__card.p-card {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+}
+
+.blong-test-run__card .p-card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    padding: 8px;
+}
+
+.blong-test-run__card .p-card-title {
+    flex: none;
+    margin: 0 0 6px;
+    color: var(--text-color-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.blong-test-run__card .p-card-content {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    padding: 0;
+}
+
+.blong-test-run__card .blong-card__body {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+}
+
+/* ── Tree-table ─────────────────────────────────────────────────────────── */
+
+.blong-test-run__tree {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.blong-test-run__tree-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    padding-bottom: 4px;
+}
+
+.blong-test-run__filters {
+    display: flex;
+    gap: 2px;
+}
+
+.blong-test-run__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 20px;
+    padding: 0 7px;
+    border: 1px solid var(--surface-border);
+    border-radius: 10px;
+    background: var(--surface-card);
+    color: var(--text-color-secondary);
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.blong-test-run__chip.is-active {
+    border-color: var(--primary-color);
+    background: var(--primary-50, #eff6ff);
+    color: var(--primary-color);
+}
+
+.blong-test-run__chip i {
+    font-size: 9px;
+}
+
+.blong-test-run__search {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    color: var(--text-color-secondary);
+}
+
+.blong-test-run__search i {
+    font-size: 10px;
+}
+
+.blong-test-run__search .p-inputtext {
+    width: 110px;
+    height: 20px;
+    padding: 0 6px;
+    font-size: 10px;
+}
+
+.blong-test-run__grid {
+    display: grid;
+    grid-template-columns: minmax(150px, 1.4fr) 46px 56px minmax(140px, 2fr);
+    align-items: center;
+    column-gap: 6px;
+    padding: 0 4px;
+}
+
+.blong-test-run__ruler {
+    flex: none;
+    height: 20px;
+    border-bottom: 1px solid var(--surface-border);
+    color: var(--text-color-secondary);
+    font-size: 9px;
+}
+
+.blong-test-run__ruler .blong-test-run__track {
+    height: 100%;
+    background: transparent;
+    overflow: visible;
+}
+
+.blong-test-run__tick {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--surface-300, #cbd5e1);
+}
+
+.blong-test-run__tick-label {
+    position: absolute;
+    top: 2px;
+    left: 0;
+    transform: translateX(-50%);
+    padding: 0 2px;
+    background: var(--surface-card);
+    white-space: nowrap;
+}
+
+.blong-test-run__rows {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    outline: none;
+}
+
+.blong-test-run__rows:focus-visible {
+    box-shadow: inset 0 0 0 1px var(--primary-color);
+}
+
+.blong-test-run__row {
+    height: 24px;
+    border-left: 2px solid transparent;
+    border-radius: 3px;
+}
+
+.blong-test-run__row--group {
+    background: var(--surface-50, #f8fafc);
+    font-weight: 600;
+}
+
+.blong-test-run__row--step {
+    cursor: pointer;
+}
+
+.blong-test-run__row--step:hover,
+.blong-test-run__row.is-hovered {
+    background: var(--surface-hover, var(--surface-100, #f1f5f9));
+}
+
+.blong-test-run__row.is-selected {
+    border-left-color: var(--primary-color);
+    background: var(--surface-hover, var(--surface-100, #f1f5f9));
+}
+
+.blong-test-run__row--failed .blong-test-run__label {
+    color: var(--red-500);
+}
+
+.blong-test-run__name {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.blong-test-run__label {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.blong-test-run__chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-color-secondary);
+    cursor: pointer;
+}
+
+.blong-test-run__chevron i {
+    font-size: 9px;
+}
+
+.blong-test-run__status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 12px;
+    height: 12px;
+    font-size: 10px;
+    text-align: center;
+}
+
+.blong-test-run__row--pending .blong-test-run__status {
+    color: var(--text-color-secondary);
+    opacity: 0.65;
+}
+
+.blong-test-run__row--running .blong-test-run__status {
+    color: var(--primary-color);
+}
+
+.blong-test-run__row--completed .blong-test-run__status {
+    color: var(--green-500);
+}
+
+.blong-test-run__row--failed .blong-test-run__status {
+    color: var(--red-500);
+}
+
+.blong-test-run__count {
+    margin-left: 4px;
+    color: var(--text-color-secondary);
+    font-size: 10px;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+}
+
+.blong-test-run__muted {
+    margin-left: 4px;
+    color: var(--text-color-secondary);
+    font-size: 9px;
+    font-weight: 400;
+}
+
+.blong-test-run__assertions,
+.blong-test-run__duration {
+    color: var(--text-color-secondary);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.blong-test-run__assertions.is-failed {
+    color: var(--red-500);
+    font-weight: 600;
+}
+
+.blong-test-run__bar-cell {
+    min-width: 0;
+}
+
+.blong-test-run__track {
+    position: relative;
+    width: 100%;
+    height: 12px;
+    overflow: hidden;
+    border-radius: 3px;
+}
+
+.blong-test-run__bar {
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    display: flex;
+    min-width: 2px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--green-500);
+}
+
+.blong-test-run__bar--pending {
+    background: var(--surface-300, #cbd5e1);
+}
+
+.blong-test-run__bar--running {
+    background: var(--primary-color);
+    background-image: linear-gradient(45deg,
+            rgba(255, 255, 255, 0.18) 25%,
+            transparent 25%,
+            transparent 50%,
+            rgba(255, 255, 255, 0.18) 50%,
+            rgba(255, 255, 255, 0.18) 75%,
+            transparent 75%,
+            transparent);
+    background-size: 8px 8px;
+    animation: blong-test-run-stripes 1s linear infinite;
+}
+
+.blong-test-run__bar--failed {
+    background: var(--red-500);
+}
+
+.blong-test-run__bar--group {
+    top: 3px;
+    bottom: 3px;
+    opacity: 0.8;
+    background-image: none;
+    animation: none;
+}
+
+.blong-test-run__bar--critical {
+    background-image: repeating-linear-gradient(45deg,
+            rgba(255, 255, 255, 0.35) 0 3px,
+            transparent 3px 7px);
+}
+
+.blong-test-run__queue-line {
+    position: absolute;
+    top: 50%;
+    height: 2px;
+    transform: translateY(-50%);
+    border-radius: 1px;
+    background: var(--surface-400, #94a3b8);
+    opacity: 0.65;
+}
+
+.blong-test-run__bar-fail {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--red-700, #b91c1c);
+}
+
+.blong-test-run__now {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--primary-color);
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+.blong-test-run__bar-empty {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: var(--surface-300, #cbd5e1);
+}
+
+.blong-test-run__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+@keyframes blong-test-run-stripes {
+    from {
+        background-position: 0 0;
+    }
+
+    to {
+        background-position: 8px 0;
+    }
+}
+
+/* ── Graph ──────────────────────────────────────────────────────────────── */
+
+.blong-test-run__graph {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.blong-test-run__graph-main {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    align-items: flex-start;
+    gap: 8px 10px;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.blong-test-run__graph-controls {
+    display: flex;
+    flex: 0 0 100%;
+    justify-content: flex-end;
+    gap: 2px;
+}
+
+.blong-test-run__loose {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 6px 8px;
+    flex: 1 1 290px;
+    min-width: 0;
+}
+
+.blong-test-run__loose-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+}
+
+.blong-test-run__loose-arrow {
+    font-size: 8px;
+    color: var(--text-color-secondary);
+}
+
+.blong-test-run__graph-svg {
+    flex: none;
+    cursor: grab;
+    touch-action: none;
+}
+
+.blong-test-run__graph-svg:active {
+    cursor: grabbing;
+}
+
+.blong-test-run__graph-node {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: 128px;
+    height: 26px;
+    padding: 0 8px;
+    border: 1px solid var(--surface-border);
+    border-radius: 5px;
+    background: var(--surface-card);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 11px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.blong-test-run__graph-node--running {
+    border-color: var(--primary-color);
+}
+
+.blong-test-run__graph-node--completed {
+    border-color: var(--green-500);
+}
+
+.blong-test-run__graph-node--failed {
+    border-color: var(--red-500);
+}
+
+.blong-test-run__graph-node:hover,
+.blong-test-run__graph-node.is-selected {
+    border-color: var(--primary-color);
+}
+
+.blong-test-run__graph-node.is-selected {
+    border-width: 2px;
+}
+
+.blong-test-run__graph-node-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--surface-400, #94a3b8);
+    flex: none;
+}
+
+.blong-test-run__graph-node--running .blong-test-run__graph-node-dot {
+    background: var(--primary-color);
+}
+
+.blong-test-run__graph-node--completed .blong-test-run__graph-node-dot {
+    background: var(--green-500);
+}
+
+.blong-test-run__graph-node--failed .blong-test-run__graph-node-dot {
+    background: var(--red-500);
+}
+
+.blong-test-run__graph-node-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.blong-test-run__graph-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 1px solid var(--surface-border);
+    border-radius: 3px;
+    background: var(--surface-card);
+    color: var(--text-color-secondary);
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.blong-test-run__graph-button i {
+    font-size: 9px;
+}
+
+.blong-test-run__graph-button:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.blong-test-run__graph-empty,
+.blong-test-run__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-width: 120px;
+    min-height: 40px;
+    color: var(--text-color-secondary);
+    font-size: 11px;
+}
+
+.blong-test-run__node {
+    cursor: pointer;
+    outline: none;
+}
+
+.blong-test-run__node rect {
+    fill: var(--surface-card);
+    stroke: var(--surface-border);
+    stroke-width: 1;
+}
+
+.blong-test-run__node--running rect {
+    stroke: var(--primary-color);
+}
+
+.blong-test-run__node--completed rect {
+    stroke: var(--green-500);
+}
+
+.blong-test-run__node--failed rect {
+    stroke: var(--red-500);
+}
+
+.blong-test-run__node.is-selected rect {
+    stroke: var(--primary-color);
+    stroke-width: 2;
+}
+
+.blong-test-run__node.is-hovered rect {
+    stroke: var(--primary-color);
+    stroke-width: 1.8;
+}
+
+.blong-test-run__node.is-critical rect {
+    stroke-dasharray: 3 2;
+}
+
+.blong-test-run__node.is-dim {
+    opacity: 0.35;
+}
+
+.blong-test-run__node:focus-visible rect {
+    stroke: var(--primary-color);
+    stroke-width: 2;
+}
+
+.blong-test-run__node-dot {
+    fill: var(--surface-400, #94a3b8);
+}
+
+.blong-test-run__node--running .blong-test-run__node-dot {
+    fill: var(--primary-color);
+}
+
+.blong-test-run__node--completed .blong-test-run__node-dot {
+    fill: var(--green-500);
+}
+
+.blong-test-run__node--failed .blong-test-run__node-dot {
+    fill: var(--red-500);
+}
+
+.blong-test-run__node-label {
+    fill: var(--text-color);
+    font-family: inherit;
+    font-size: 11px;
+    pointer-events: none;
+}
+
+.blong-test-run__edge {
+    fill: none;
+    stroke: var(--surface-400, #94a3b8);
+    stroke-width: 1.2;
+    cursor: pointer;
+}
+
+.blong-test-run__edge--pending {
+    stroke-dasharray: 3 3;
+    opacity: 0.6;
+}
+
+.blong-test-run__edge.is-active {
+    stroke: var(--primary-color);
+    stroke-width: 1.8;
+}
+
+/* ── Error banner ───────────────────────────────────────────────────────── */
+
+.blong-test-run__error-banner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    padding: 4px 10px;
+    border: 1px solid var(--red-200, #fecaca);
+    border-radius: 6px;
+    background: var(--red-50, #fef2f2);
+    color: var(--red-700, #b91c1c);
+    font-size: 11px;
+}
+
+/* ── Details panel ──────────────────────────────────────────────────────── */
+
+.blong-test-run__details {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.blong-test-run__details-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.blong-test-run__details-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.blong-test-run__details-meta {
+    color: var(--text-color-secondary);
+    font-size: 10px;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+}
+
+.blong-test-run__details-header .blong-test-run__graph-button {
+    margin-left: auto;
+}
+
+.blong-test-run__tabs {
+    display: flex;
+    gap: 2px;
+    flex: none;
+    padding: 4px 8px 0;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.blong-test-run__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--text-color-secondary);
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.blong-test-run__tab.is-active {
+    border-bottom-color: var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.blong-test-run__tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: var(--red-100, #fee2e2);
+    color: var(--red-600, #dc2626);
+    font-size: 8px;
+}
+
+.blong-test-run__details-body {
+    flex: 1;
+    min-height: 0;
+    padding: 8px 10px;
+    overflow: auto;
+}
+
+.blong-test-run__code {
+    margin: 0;
+    padding: 6px;
+    overflow: auto;
+    border-radius: 3px;
+    background: var(--surface-50, #f8fafc);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.blong-test-run__progress-tree {
+    margin: 0;
+    padding-left: 10px;
+    list-style: none;
+}
+
+.blong-test-run__progress-node {
+    padding: 1px 0;
+}
+
+.blong-test-run__progress-node--region>.blong-test-run__progress-label {
+    font-weight: 600;
+}
+
+.blong-test-run__progress-node--point>.blong-test-run__progress-label::before {
+    content: '· ';
+    color: var(--text-color-secondary);
+}
+
+.blong-test-run__progress-label {
+    font-size: 11px;
+}
+
+.blong-test-run__progress-data {
+    display: block;
+    padding-left: 12px;
+    color: var(--text-color-secondary);
+    font-size: 9px;
+}
+
+.blong-test-run__logs {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.blong-test-run__log {
+    display: grid;
+    grid-template-columns: 54px 52px 1fr;
+    gap: 6px;
+    padding: 2px 0;
+    border-bottom: 1px solid var(--surface-100, #f1f5f9);
+    font-size: 10px;
+}
+
+.blong-test-run__log-time,
+.blong-test-run__log-level {
+    color: var(--text-color-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.blong-test-run__log-step {
+    margin-right: 6px;
+    color: var(--text-color-secondary);
+    font-size: 9px;
+}
+
+.blong-test-run__log--warn .blong-test-run__log-level {
+    color: var(--orange-500, #f97316);
+}
+
+.blong-test-run__log--error .blong-test-run__log-level {
+    color: var(--red-500);
+}
+
+.blong-test-run__log--assert .blong-test-run__log-level {
+    color: var(--green-600, #16a34a);
+}
+
+.blong-test-run__log--assert-failed .blong-test-run__log-level,
+.blong-test-run__log--assert-failed .blong-test-run__log-message {
+    color: var(--red-600, #dc2626);
+}
+
+.blong-test-run__log-message {
+    overflow-wrap: anywhere;
+}
+
+.blong-test-run__source {
+    margin-left: 6px;
+    color: var(--primary-color);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
+}
+
+.blong-test-run__error-message {
+    color: var(--red-600, #dc2626);
+    font-weight: 600;
+}
+
+.blong-test-run__error-type {
+    padding: 2px 0 6px;
+    color: var(--text-color-secondary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+}
+
+/* ── Narrow and reduced motion ──────────────────────────────────────────── */
+
+@container (max-width: 1024px) {
+    .blong-test-run {
+        overflow: auto;
+    }
+
+    .blong-test-run__split {
+        min-height: 640px;
+    }
+
+    .blong-test-run__grid {
+        grid-template-columns: minmax(130px, 1fr) 40px 50px minmax(150px, 1.4fr);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .blong-test-run__bar--running {
+        animation: none;
+    }
+
+    .blong-test-run__progress-fill {
+        transition: none;
+    }
+}

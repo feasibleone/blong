@@ -40,5 +40,31 @@ export default browser(blong => ({
             login: {},
             $subject: {},
         },
+        // The Test runs console ships only with the `test-ui` intent: the page
+        // handler is always discovered, but a normal portal does not link it.
+        'test-ui': {
+            ui: {
+                portal: {
+                    portal: {
+                        menu: [
+                            {
+                                id: 'test',
+                                title: 'Test',
+                                items: [
+                                    {
+                                        title: 'Test runs',
+                                        method: '$subject.test.run',
+                                        icon: 'pi pi-play',
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                },
+            },
+            blong: {},
+            login: {},
+            $subject: {},
+        } as never,
     },
 }));

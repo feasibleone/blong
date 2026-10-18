@@ -18,6 +18,10 @@ export default server(() => ({
         async function access() {
             return import('./server.ts');
         },
+        /** Server-hosted test runner (test intents only) */
+        async function testRealm() {
+            return import('@feasibleone/blong-test/server.ts');
+        },
     ],
     config: {
         default: {
@@ -38,8 +42,10 @@ export default server(() => ({
             core: {},
             login: {},
             access: {},
+            testRealm: {},
         },
         integration: {
+            testRealm: {},
             // Short access-token TTL + long inactivity so the session-reload /
             // login-popup Playwright tests can observe expiry without breaking
             // other flows (refresh keeps sessions active: inactivity > access TTL).
@@ -68,6 +74,14 @@ export default server(() => ({
                     'test.profile.flow',
                 ],
             },
+        },
+        // Playwright drives the UI; the server does not need to run every test group on boot, and
+        // those runs share the database with the server-hosted Test runs console.
+        playwright: {
+            watch: {test: []},
+        },
+        'test-ui': {
+            testRealm: {},
         },
     },
 }));

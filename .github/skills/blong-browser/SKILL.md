@@ -3,13 +3,14 @@ name: blong-browser
 description:
     Implement, extend, or debug the blong-browser React/TypeScript component library and portal
     framework. blong-browser is a Blong realm that lives in `core/blong-browser/`. Use this skill
-    whenever working on UI components, Editor/Form/Explorer/Report pages, widgets, portal
-    navigation, schema-driven forms, action wiring, Storybook stories, or any blong-browser
-    adapter/orchestrator code — even if the user just says "add a page", "fix the widget", or "show
-    this in a tab". For multi-language support, translations, or i18n, use the blong-i18n skill. For
-    developing or improving the model system itself, use the blong-model-dev skill. For using the
-    model to implement CRUD pages in a realm, use the blong-model skill. For visual theme variants
-    (glass/wood, design-matching, textures, PrimeReact overlay styling), use the blong-theme skill.
+    whenever working on UI components, Editor/Form/Explorer/Report pages, widgets, Test runs
+    console, portal navigation, schema-driven forms, action wiring, Storybook stories, or any
+    blong-browser adapter/orchestrator code — even if the user just says "add a page", "fix the
+    widget", or "show this in a tab". For multi-language support, translations, or i18n, use the
+    blong-i18n skill. For developing or improving the model system itself, use the blong-model-dev
+    skill. For using the model to implement CRUD pages in a realm, use the blong-model skill. For
+    visual theme variants (glass/wood, design-matching, textures, PrimeReact overlay styling), use
+    the blong-theme skill.
 ---
 
 # blong-browser Skill
@@ -55,7 +56,7 @@ scalar-array, vector-array) · Blong-native (adapters/orchestrators + Zustand, n
 
 ## Package structure
 
-```
+```text
 core/blong-browser/
   browser.ts              ← realm entry point (import in suite's browser.ts)
   storybook.tsx           ← withBlong(browser, options) decorator + defineBlongStorybookPreview() factory
@@ -157,7 +158,7 @@ The `handler` property on the proxy is wrapped with a JS Proxy that automaticall
 `App` accepts an `IHandlerProxy` and wraps everything in `BlongProvider` + `Theme`, then renders the
 `Portal` shell:
 
-```
+```text
 App
   └── BlongProvider  (handlerProxy, schemaRegistry, TanStack QueryClient)
         └── Theme
@@ -648,6 +649,31 @@ no specific params or meta are needed: `handler['method.name']({}, {})`.
 | `Permission`   | Render children only if `checkPermission(key)` passes                      |
 | `Login`        | Login form; calls `auth.login` action on submit                            |
 | `Theme`        | PrimeReact theme loader; registers custom locales; activates active locale |
+| `TestRun`      | In-app test console: tree-table, timeline, graph and details               |
+| `TestRunPage`  | Run view with a guarded catalog picker and a run loader                    |
+
+---
+
+## Test runs console
+
+`src/components/TestRun/` is the in-app test console. `TestRun` is the pure view of an
+`ITestRunModel`; `TestRunPage` adds a catalog picker and the loader that turns a catalog method into
+a step array. The page never calls a method the catalog does not list.
+
+- **Browser entry** — `load(method)` returns the group's step array; the page runs it through an
+  in-page executor and reduces its events with `reduceTestRunEvent`.
+- **Server entry** — the catalog names `host: 'server'`; the host supplies an
+  `ITestRunServerTransport` (`start`, `eventFind`, `snapshotGet`, `cancel`) and
+  `PollingTestRunSource` reads the event page from a cursor.
+- **Guard** — the catalog is the display guard. On the server the matching allowlist is
+  `testRealm.testRun.serverGroups`; a method outside the catalog is never loaded.
+- **Stories** — `Components/TestRun` has `Page`, `Replay`, `Live`, `Completed`, `Failure`, `Dense`,
+  `Collapsed`, `Pending`, `Empty`, `Error`, `Narrow` and `Details`.
+
+The whole feature is scaffolded by `core/blong-kopi` and documented in the docs
+[concept](../../../docs/blong/docs/concepts/test-run.md) and
+[pattern](../../../docs/blong/docs/patterns/test-run.md). Use the **blong-test** skill for the
+server group and its `testRealm` configuration.
 
 ---
 

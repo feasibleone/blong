@@ -1,0 +1,9 @@
+# The Test runs console's server-side methods live in this realm, so their test permission is
+# seeded here too. The Admin test role is additive; this capability only adds the four gateway
+# actions the console calls, and the shared srv.db adapter merges this asset with
+# `access.authorization.merge`.
+replace: true
+role:
+  Admin: testRunServer
+capability:
+  testRunServer: test.run.start,test.run.eventFind,test.run.snapshotGet,test.run.cancel

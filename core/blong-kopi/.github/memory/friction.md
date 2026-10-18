@@ -12,12 +12,13 @@ open (1)
 - `F-359` · core/blong-kopi — kopi stamps an unchanged-marker import that fails the shared eslint
   config
 
-resolved (3)
+resolved (4)
 
 - `F-105` · core/blong-kopi — The realm template duplicated the RBAC merge handler instead of
   reusing it
 - `F-302` · core/blong-kopi — A token substitution rewrote an English word
 - `F-305` · core/blong-kopi — The generated Open story opened a record the fixture did not have
+- `F-572` · core/blong-kopi — Duplicate test dispatch claims the test namespace
 
 <!-- /memory:index -->
 
@@ -76,3 +77,13 @@ pass.
 
 Fixed: the fixture keys its rows 1 and 2, the story comment names the fixture, and the descriptor
 notice states that the Open record must exist in the fixture.
+
+### F-572 — Duplicate test dispatch claims the test namespace
+
+> _2026-10-18 · core/blong-kopi · resolved_
+
+A scaffolded realm's test.run.start returned 500 with Cannot read properties of undefined (reading
+runId). The handler was never called: the realm's own auto-provisioned test dispatch and the
+framework realms' dispatches all claim the test namespace, and the gateway used the last one
+registered. The loader now loads the framework realms before any suite child, so the suite's test
+runner is last. A realm that hosts the Test runs console relies on that order.

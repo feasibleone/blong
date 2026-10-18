@@ -75,7 +75,7 @@ async function buildMenuModel(
                 );
                 const firstMethod =
                     typeof firstChild === 'string' ? firstChild : (firstChild?.method ?? '');
-                const groupId = firstMethod.split('.')[0] || '';
+                const groupId = action.id ?? firstMethod.split('.')[0] ?? '';
                 return {
                     label: action.title,
                     icon: action.icon,

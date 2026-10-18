@@ -76,7 +76,7 @@ done (7)
 - `T-353` · ci — Drop the in-file 60s tap timeouts in two packages
 - `T-356` · ci — Make red mean a failed test, not a flaky one
 - `T-355` · ci — Build blong-dev ci, the publisher fix and the blong-ci skill
-- `T-365` · ci — Carry */dist as a per-run artifact in the shared Rush workflow
+- `T-365` · ci — Carry \*/dist as a per-run artifact in the shared Rush workflow
 
 <!-- /memory:index -->
 
@@ -94,19 +94,15 @@ done (7)
 - config hot reload log level
 - blong operator should log the deployment details
 - produce FAQ
-- budget instructions
+- align `blong-realm` and `blong-suite` skills with kukum
 - avoid the method naming pitfall that fails to find local method when using the dot notation (try
   to disable this notation)
 - move knex.connect to base class
 - load and report from registry intent
 - show test progress along a sequence diagram or graph
-- log the config files and env vars that were loaded
 - base image with the dependencies only
-- multi-segment-naming
 - F-442 closed/resolved/superseded memory moved to done.md, keep highest counter
-- intents pivot
-- promote tee usage
-- promote high cardinality jargon and Bislama
+- intents pivot table
 - local table creation order
 - check login.expire.deleteAfter, access.session.close
 - generate .http files
@@ -125,12 +121,9 @@ done (7)
 - match and mask
 - transient form fields
 - table widget dual role / no singleton
-- stable keys
 - remove axios
 - playwright test runner for backend tests
 - telemetry
-- blong-kustomize, see
-  https://github.com/kubernetes-sigs/kustomize/blob/master/examples/remoteBuild.md
 - same queries are repeated in multiple places, they should be refactored into a single function
 - avatar photo upload (initials-only for now — per user decision)
 - commander ui enhancements for admin tasks
@@ -936,13 +929,13 @@ artifact; .github/skills/blong-ci/SKILL.md documents the interpretation; the fix
 run 621 as its green counterpart; and the fresh-context subagent validation ran four variants and
 found three real defects, all fixed.
 
-### T-365 — Carry */dist as a per-run artifact in the shared Rush workflow
+### T-365 — Carry \*/dist as a per-run artifact in the shared Rush workflow
 
 > _2026-10-17 · ci · done_
 
 Pick one of the three fixes recorded in the decision entry on the stale CI dist and apply it in
 infitx-org/actions/.github/workflows/rush.yaml. The recommended one is to build the artifact
-handoff: in the setup job upload every */dist tree with actions/upload-artifact, and in the tests,
+handoff: in the setup job upload every \*/dist tree with actions/upload-artifact, and in the tests,
 chromatic, audit and lint jobs download it before running, so the archive cached under
 hashFiles('common/config/rush/pnpm-lock.yaml') carries only common/temp/deps.tar.zst and the
 per-project .rush trees. Refresh the comment above CACHE_PATHS to say why the dist is no longer in

@@ -21,12 +21,14 @@ open (8)
   refresh
 - `F-428` · realm/blong-access — Three traps on the way to a local login leak test
 
-resolved (4)
+resolved (6)
 
 - `F-296` · realm/blong-access — The gateway does not read the paths the RBAC pages say it reads
 - `F-297` · realm/blong-access — The ACL documentation promised a deny that the guard can ignore
 - `F-357` · realm/blong-access — The dbTest seed merge appends, so a stale edge survives a seed edit
 - `F-553` · realm/blong-access — The login flow test fails with credentials.mismatch on HEAD
+- `F-569` · realm/blong-access — A handler in an unactivated group folder is never loaded
+- `F-570` · realm/blong-access — The portal fixture must be requested to navigate and log in
 
 <!-- /memory:index -->
 
@@ -222,3 +224,27 @@ document agree there. The library now parses the stored document (tolerating an 
 corrupt one falls back), which also makes profile password change and client-secret verification
 honour the row. The access suite passes locally: 70/70, including a new password.test.ts that pins a
 stored count differing from the config.
+
+### F-569 — A handler in an unactivated group folder is never loaded
+
+> _2026-10-18 · realm/blong-access · resolved_
+
+The catalog handler was first placed in browser/orchestrator/testRun, a new group folder the access
+browser realm config did not activate, so the module never loaded and the page call fell through to
+the server and returned Not Found. Moving it into the active component group fixed it. A test prefix
+on the basename is not the cause: a later testRunCatalogGet.ts in component loaded and logged
+normally. Check the handler-group activation before suspecting the filename.
+
+The catalog handler lives in the active component group; the lesson is to check handler-group
+activation before the filename.
+
+### F-570 — The portal fixture must be requested to navigate and log in
+
+> _2026-10-18 · realm/blong-access · resolved_
+
+A Playwright spec that destructures only page never runs the portal fixture, so the page stays
+about:blank and every selector times out. Destructure portal and use portal.page; the fixture is
+lazy and the extra argument is what triggers navigation and login.
+
+The access TestRun spec requests the portal fixture and uses portal.page, so navigation and login
+run.

@@ -364,6 +364,7 @@ words:
   - tapjs
   - teardown
   - testrealm
+  - testrun
   - Tileable
   - tinyint
   - TINYTEXT
@@ -379,6 +380,7 @@ words:
   - treetable
   - typebox
   - ulidx
+  - unactivated
   - unannounce
   - uncleanly
   - unconfigured

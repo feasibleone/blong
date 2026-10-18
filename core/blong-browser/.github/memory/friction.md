@@ -25,7 +25,7 @@ open (13)
   inspector
 - `F-537` · core/blong-browser — A minified Storybook build drops every realm child
 
-resolved (17)
+resolved (22)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -51,6 +51,11 @@ resolved (17)
 - `F-532` · core/blong-browser — A failed explorer fetch took the page down as an unhandled
   rejection
 - `F-538` · core/blong-browser — The portal menubar grew to 341px below 960px
+- `F-567` · core/blong-browser — Hidden page throttles the replay clock
+- `F-568` · core/blong-browser — Storybook preview play has no usable userEvent
+- `F-573` · core/blong-browser — Test menu hid model pages and reused an id
+- `F-566` · core/blong-browser — Chain executor is server-only today
+- `F-576` · core/blong-browser — Single-panel PrimeReact Splitter throws
 
 <!-- /memory:index -->
 
@@ -508,3 +513,67 @@ so the guard does not depend on paddings or the theme.
 
 The media query rule was removed so the menubar keeps its natural height, and
 core/blong-browser/test/portalMenubar.play.ts compares two viewport widths to keep it that way.
+
+### F-567 — Hidden page throttles the replay clock
+
+> _2026-10-18 · core/blong-browser · resolved_
+
+While inspecting the Replay story through the browser tool, the page had document.visibilityState
+hidden; Chrome throttled the 100ms clock interval to roughly one tick per second, so the replay
+appeared stuck at 40ms while step events still fired. The component was correct; a visible tab runs
+normally. When a live story looks stuck, check document.visibilityState before suspecting the clock
+or the reducer.
+
+Understood: hidden tabs throttle timers; the replay is correct in a visible tab.
+
+### F-568 — Storybook preview play has no usable userEvent
+
+> _2026-10-18 · core/blong-browser · resolved_
+
+Viewing the MidRun story in the Storybook preview ran its play function with a play context whose
+`userEvent` is not the `@testing-library/user-event` instance, so `userEvent.click` threw "is not a
+function". Import `userEvent` from `@testing-library/user-event` and call `userEvent.setup()` inside
+the play function, keeping `canvasElement` from the context. The custom `{canvas, userEvent}` play
+type used by the older stories describes the test-runner context, not the preview one.
+
+Fixed by importing userEvent and calling userEvent.setup() in the play function.
+
+### F-573 — Test menu hid model pages and reused an id
+
+> _2026-10-18 · core/blong-browser · resolved_
+
+Adding the Test runs menu under test-ui hid every access model page from the portal. The model
+aggregator merged the suite's portal slice over its generated menu, and the shallow merge replaced
+the menu array. After the menus were composed instead, the Test group derived the same
+portal-menu-access id as the Access model group because its first child is access.test.run. Menus
+now merge, and a group can set an explicit id.
+
+The model aggregator now composes configured menu groups with the generated ones, and the Test group
+sets id: test.
+
+### F-566 — Chain executor is server-only today
+
+> _2026-10-18 · core/blong-browser · resolved_
+
+TestExecutor imports node:assert and node:events for a value, and blong-gogo/chain.ts is pinned as
+server-only by browserEagerImports.test.ts, so a browser-hosted run cannot reuse the existing chain
+wrapper. The browser test layer also auto-activates only under the integration intent, while a dev
+server runs dev. Both facts were found while planning the Test UI. Phase 2 makes the executor
+isomorphic (injected assert, no node:events) and adds a dedicated test-ui activation instead of
+reusing integration.
+
+The executor is now isomorphic (executor.ts with an injected assert and no node:events), and the
+test and browser/test layers activate under test-ui; the browser source runs it in the page.
+
+### F-576 — Single-panel PrimeReact Splitter throws
+
+> _2026-10-18 · core/blong-browser · resolved_
+
+PrimeReact Splitter throws Cannot read properties of undefined (reading size) when it has one panel,
+which is what a vertical body/details splitter has while the details panel is closed. The console
+renders the steps/dependencies splitter alone when details are closed, and only adds the outer
+vertical splitter when details open. The panel heights also need the deck to be height 100% or the
+cards stop at their content.
+
+The vertical splitter is rendered only while details are open; the body splitter renders alone when
+closed, and the deck is given height 100%.

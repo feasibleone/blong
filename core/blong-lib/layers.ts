@@ -38,8 +38,8 @@ export const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: objec
     'server/api': {server: {microservice: true, k8s: true}},
     sim: {server: {integration: true}},
     'server/test': {server: {integration: true}},
-    test: {browser: {integration: true}},
-    'browser/test': {browser: {integration: true}},
+    test: {browser: {integration: true, 'test-ui': true}},
+    'browser/test': {browser: {integration: true, 'test-ui': true}},
 };
 
 /** All well-known layer folder names, in declaration order. */

@@ -1,4 +1,4 @@
-import nodeAssert from 'node:assert';
+import type nodeAssert from 'node:assert';
 
 declare module 'node:assert' {
     function snapshot(value?: unknown, name?: string, opts?: {mask?: string[]}): void;
@@ -262,6 +262,20 @@ export interface IProgressRegion extends IRegionMark {
 /** One entry of an invocation's `progress` list. */
 export type IProgressEntry = IProgressPoint | IProgressRegion;
 
+/** Assertions a step made: calls, and how many of those threw. */
+export interface ITestAssertionCounts {
+    total: number;
+    threw: number;
+}
+
+/** One assertion call, as the executor recorded it. */
+export interface IAssertion {
+    message: string;
+    passed: boolean;
+    timestamp: number;
+    source?: ISourceLocation;
+}
+
 /**
  * One node of the progress tree a report is drawn from (PRD R26/R27).
  *
@@ -305,6 +319,8 @@ export interface ITestProgress {
     steps: Map<string, IStepProgress>;
     /** Group hierarchy information */
     groups: IGroupProgress[];
+    /** Assertion calls across the run, counted as they happen. */
+    assertions: ITestAssertionCounts;
 }
 
 /**
@@ -337,6 +353,10 @@ export interface IStepProgress {
     dependents: string[];
     /** Source code location */
     sourceLocation?: ISourceLocation;
+    /** Assertion calls this step made. */
+    assertions?: ITestAssertionCounts;
+    /** Assertion calls in execution order, with their messages and source pointers. */
+    assertionLog?: IAssertion[];
     /** Step output/result */
     result?: unknown;
     /** Error information if step failed */
@@ -445,6 +465,8 @@ export interface ITestEvents {
     'step:start': (stepName: string, progress: IStepProgress) => void;
     'step:end': (stepName: string, progress: IStepProgress) => void;
     'step:error': (stepName: string, error: Error, progress: IStepProgress) => void;
+    /** An edge the step just discovered through the context proxy. */
+    'step:dependency': (edge: IDependencyEdge) => void;
 }
 
 // ============================================================================
@@ -457,6 +479,11 @@ export interface ITestEvents {
 export interface ITestExecutorConfig {
     /** Maximum number of steps to run in parallel */
     concurrency?: number;
+    /**
+     * Assert object handed to each step. Required: the server entry supplies `node:assert`, the
+     * browser entry supplies a browser-safe fallback (or a host-provided object).
+     */
+    assert?: typeof nodeAssert;
     /** Whether to capture stack traces (performance impact) */
     captureStackTraces?: boolean;
     /** Test framework to use (tap, node:test, etc.) */

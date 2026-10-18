@@ -87,8 +87,8 @@ before writing anything.
   schema is created in each database. List them as **early children** (`srv`, `login`, `core`,
   `access`, …) so a realm loaded later can reach their helpers with `super.<name>` (prototype-chain
   delegation) and hand over its transaction; never import their package, and never expect a `lib`
-  binding to reach them. `blong-party` is deliberately _not_ a library realm — it holds business data
-  that must not be copied per database.
+  binding to reach them. `blong-party` is deliberately _not_ a library realm — it holds business
+  data that must not be copied per database.
 
 Canonical framework rules + layer table: `.github/skills/_shared/conventions.md` →
 `[CRITICAL_GUARDRAILS]`, `[LAYER_DEFAULTS_TABLE]`, `[CONFIG_EXAMPLE]`. Siblings: **blong-layer**,
@@ -117,6 +117,11 @@ The shape, for orientation only:
   `@feasibleone/blong-browser` factories. See **storybook-v10-setup** and **blong-model**.
 - **Errors and tests** — `error/error.ts`; `server/test/test/` (tap), `browser/test/test/` (tap),
   `test/` (Playwright `*.play.ts`, a browser layer).
+- **Test runs console** — `src/pages/<subject>TestRunCatalog.ts`,
+  `src/pages/<subject>TestRunPage.tsx` and `browser/orchestrator/component/<subject>TestRun.ts`,
+  linked only by the `test-ui` menu. The catalog and `testRealm.testRun.serverGroups` both name
+  `test.<object>`; add a new entity's group to both. See the docs
+  [pattern](../../../docs/blong/docs/patterns/test-run.md).
 
 Reference realms: `realm/blong-access`, `realm/blong-party`, `realm/blong-gateway` (canonical
 blong-server reuse); `suite/blong-suite` shows wiring multiple realms into one suite.
@@ -125,10 +130,10 @@ blong-server reuse); `suite/blong-suite` shows wiring multiple realms into one s
 
 An adapter or orchestrator that must shape its own deployment declares a `k8s` activation block
 co-located in its layer file — `k8sReplicas`, `k8sResources`, `k8sPorts`, `k8sIngresses`,
-`k8sSecrets`, `k8sAssets`, `k8sVolumes`, `k8sEnv`, `k8sManifests`. `blong-kustomize` merges them into
-the deployment plan — the collections a name identifies are maps keyed by that name, so one realm
-adds to another's rather than colliding — and an ingress with no `serviceName` binds to the owning
-deployment's Service. See `[K8S_CONTRIB]` in `_shared/conventions.md`.
+`k8sSecrets`, `k8sAssets`, `k8sVolumes`, `k8sEnv`, `k8sManifests`. `blong-kustomize` merges them
+into the deployment plan — the collections a name identifies are maps keyed by that name, so one
+realm adds to another's rather than colliding — and an ingress with no `serviceName` binds to the
+owning deployment's Service. See `[K8S_CONTRIB]` in `_shared/conventions.md`.
 
 ## Recommended skill set for creating a realm
 

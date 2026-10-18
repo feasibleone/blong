@@ -85,6 +85,26 @@ export {
     SocialLoginButton,
     type ISocialLoginButtonProps,
 } from './components/SocialLoginButton/SocialLoginButton.js';
+export {TestRun} from './components/TestRun/TestRun.js';
+export {
+    BrowserTestRunSource,
+    pendingBrowserRun,
+    projectBrowserRun,
+} from './components/TestRun/browserTestRunSource.js';
+export type {IBrowserTestRunOptions} from './components/TestRun/browserTestRunSource.js';
+export {TestRunPage} from './components/TestRun/TestRunPage.js';
+export type {
+    ITestRunCatalogEntry,
+    ITestRunPageProps,
+} from './components/TestRun/TestRunPage.js';
+export {createTestRunCatalogHandler} from './components/TestRun/testRunCatalogHandler.js';
+export type {ITestRunCatalogSettings} from './components/TestRun/testRunCatalogHandler.js';
+export {PollingTestRunSource} from './components/TestRun/pollingTestRunSource.js';
+export type {
+    IPollingTestRunOptions,
+    ITestRunEventPage,
+    ITestRunServerTransport,
+} from './components/TestRun/pollingTestRunSource.js';
 export {Text} from './components/Text/Text.js';
 export {
     Theme,
@@ -199,6 +219,36 @@ export type {IMenuItem, IPortalConfig, IPortalState, ITab} from './types/portal.
 export type {IAuthState, IUserProfile, PermissionMap} from './types/permission.js';
 
 export type {ISchemaDocument, ISchemaRegistry} from './types/schema.js';
+
+export type {
+    ITestAssertionCounts,
+    ITestAssertionModel,
+    ITestEdgeModel,
+    ITestGraphEdgeLayout,
+    ITestGraphLayout,
+    ITestGraphNodeLayout,
+    ITestGroupModel,
+    ITestLogEntryModel,
+    ITestLogRowModel,
+    ITestProgressTreeNode,
+    ITestRunCounts,
+    ITestRunEvent,
+    ITestRunModel,
+    ITestRunRecording,
+    ITestRunRowLayout,
+    ITestRunSource,
+    ITestRunTreeLayout,
+    ITestRunViewProps,
+    ITestSourceLinkConfig,
+    ITestSourcePointer,
+    ITestStepError,
+    ITestStepModel,
+    TestRunFilter,
+    TestRunHost,
+    TestRunOrder,
+    TestRunStatus,
+    TestStepStatus,
+} from './types/testRun.js';
 
 export type {ILayoutResult, IResolvedCard, LayoutConfig} from './hooks/useLayout.js';
 

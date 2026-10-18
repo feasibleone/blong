@@ -59,6 +59,9 @@ src/stories/$Object.stories.tsx      Browse/Open/New/Report stories for the mode
 src/stories/$Subject.stories.tsx     the whole portal shell
 server/test/test/test$Object.ts       server tap flow (login + add with line + find)
 browser/test/test/test$Object.flow.ts browser HTTP-level access-control flow
+src/pages/$subjectTestRunCatalog.ts   Test runs catalog — the only groups the console may start
+src/pages/$subjectTestRunPage.tsx     Test runs page — picker, browser loader and server transport
+browser/orchestrator/component/$subjectTestRun.ts  the `$subject.test.run` portal page handler
 test/$subject.play.ts          Playwright (cleanupModel + browse + create/edit with detail-tab screenshots)
 index.ts, index.browser.ts, index.html.ts, browser-test.ts, index.test.ts
 vite.config.ts, playwright.config.ts, package.json
@@ -73,6 +76,10 @@ Generated output is **not** scaffolded — the realm produces its own. `node_mod
 template's own `.github/memory` are excluded by the shared `TEMPLATE_FILES_IGNORE` list
 (`@feasibleone/blong-lib/template`), which `createRealm`, the publish bundler and `blong-kukum` all
 read. The realm's memory files appear the first time `blong-dev memory add` runs in it.
+
+The Test runs page is linked from the `test-ui` menu only. Its catalog is the display guard and
+`testRealm.testRun.serverGroups` (in `index.ts`) is the server execution guard; both name the
+scaffold's `test.$object` group. When you add another entity's test group, add it to both lists.
 
 ## After scaffolding — the rename steps
 

@@ -56,5 +56,14 @@ export default browser(blong => ({
                 test: ['test.authorization.flow', 'test.session.flow'],
             },
         },
+        'test-ui': {
+            testClient: {
+                backend: {
+                    namespace: ['access', 'login'],
+                },
+            },
+            login: {},
+            access: {},
+        },
     },
 }));

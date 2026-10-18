@@ -1,12 +1,28 @@
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
+/** The JSON shape the server accepts for a binary permission map (a serialised Buffer). */
+type PermissionMapData = {type: 'Buffer'; data: number[]};
+
+function decodeBase64(value: string, url = false): PermissionMapData {
+    const base64 = url ? value.replaceAll('-', '+').replaceAll('_', '/') : value;
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const binary = atob(padded);
+    return {type: 'Buffer', data: Array.from(binary, character => character.charCodeAt(0))};
+}
+
+function emptyPermissionMap(length: number): PermissionMapData {
+    return {type: 'Buffer', data: new Array<number>(length).fill(0)};
+}
+
 /**
  * Decode a JWT's payload to extract the `per` claim (base64-encoded permissionMap).
  */
-function decodePermissionMap(token: string): Buffer {
+function decodePermissionMap(token: string): PermissionMapData {
     const payload = token.split('.')[1];
-    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    return Buffer.from(decoded.per, 'base64');
+    const decoded = JSON.parse(String.fromCharCode(...decodeBase64(payload, true).data)) as {
+        per: string;
+    };
+    return decodeBase64(decoded.per);
 }
 
 /**
@@ -24,12 +40,26 @@ function getHttpStatus(err: unknown): number | undefined {
 
 export default handler(
     ({lib: {group}, handler: {loginTokenCreate, accessAuthorizationList, accessTestPrivate}}) => ({
-        testAuthorizationFlow: ({name = 'authorization flow browser'}: {name?: string} = {}) =>
+        testAuthorizationFlow: ({
+            name = 'authorization flow browser',
+            hasSession = false,
+        }: {name?: string; hasSession?: boolean} = {}) =>
             group(name)([
                 // ── Pre-login tests (no MLE token stored yet) ──
 
-                // 1. No auth: call protected endpoint without any token → 401
+                // 1. No auth: call protected endpoint without any token → 401.
+                //    A host page that is already signed in exercises the
+                //    authenticated path instead.
                 async function httpNoAuth(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                    if (hasSession) {
+                        const result = await accessTestPrivate<{success: boolean}>({}, $meta);
+                        assert.equal(
+                            result.success,
+                            true,
+                            'accessTestPrivate succeeds with the host session',
+                        );
+                        return;
+                    }
                     try {
                         await accessTestPrivate({}, $meta);
                         assert.fail('accessTestPrivate should have thrown without auth');
@@ -128,9 +158,9 @@ export default handler(
 
                 // Empty permissionMap → expect empty actions
                 async function browserEmptyMap(assert: IAssert, {$meta}: {$meta: IMeta}) {
-                    const empty = Buffer.alloc(1, 0);
+                    const empty = emptyPermissionMap(1);
                     const actions = await accessAuthorizationList<string[]>(
-                        {permissionMap: empty},
+                        {permissionMap: empty as never},
                         $meta,
                     );
                     assert.ok(Array.isArray(actions), 'Result is an array for empty map');
@@ -139,10 +169,10 @@ export default handler(
 
                 // Non-matching role bits → expect empty actions
                 async function browserNoMatchBits(assert: IAssert, {$meta}: {$meta: IMeta}) {
-                    const buf = Buffer.alloc(128, 0);
-                    buf[120] = 0x01; // set bit 960 — no role covers this
+                    const buf = emptyPermissionMap(128);
+                    buf.data[120] = 0x01; // set bit 960 — no role covers this
                     const actions = await accessAuthorizationList<string[]>(
-                        {permissionMap: buf},
+                        {permissionMap: buf as never},
                         $meta,
                     );
                     assert.ok(Array.isArray(actions), 'Result is an array');

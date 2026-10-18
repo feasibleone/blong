@@ -21,6 +21,10 @@ active (10)
   backend modes
 - `D-568` · core/blong-kopi — The realm template names only $subject, not the framework realms
 
+superseded (1)
+
+- `D-579` · core/blong-kopi — Test runner must load after framework realms
+
 <!-- /memory:index -->
 
 ## Active
@@ -153,3 +157,13 @@ child from the suite the kukum suite primitive writes; its generated package.jso
 `@feasibleone/blong-server`, without which frameworkRealms would skip it.
 
 ## Superseded
+
+### D-579 — Test runner must load after framework realms
+
+> _2026-10-18 · core/blong-kopi · superseded_
+
+This decision was first implemented by naming the framework realms as children before testRealm in
+the template's server suite. It is superseded because the order belongs to the loader: blong-gogo
+D-580 loads the framework realms before any suite child, so the template names only its own realm
+and the test runner. The constraint that remains is testRealm.testDispatch loading last, because a
+realm's auto-provisioned test dispatch has no test.run.start handler.

@@ -114,5 +114,29 @@ export default browser(blong => ({
                 },
             },
         } as never,
+        'test-ui': {
+            ui: {
+                portal: {
+                    portal: {
+                        menu: [
+                            {
+                                id: 'test',
+                                title: 'Test',
+                                items: [
+                                    {
+                                        title: 'Test runs',
+                                        method: 'access.test.run',
+                                        icon: 'pi pi-play',
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                },
+            },
+            blong: {},
+            login: {},
+            access: {},
+        } as never,
     },
 }));

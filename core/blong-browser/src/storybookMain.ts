@@ -27,6 +27,7 @@ import type {StorybookConfig} from '@storybook/react-vite';
 import {createRequire} from 'node:module';
 import {dirname, resolve} from 'node:path';
 import {storybookBackend, storybookBackendDefine} from './storybookBackend.ts';
+import {sourceLinkDefine} from './sourceLinkDefine.ts';
 
 /**
  * Name of the app-only plugin that stubs a realm's `meta/fixture` modules.
@@ -167,6 +168,7 @@ export function defineBlongStorybookMain(options: IBlongStorybookMainOptions): S
                     ...config.define,
                     'process.env': {},
                     ...storybookBackendDefine(),
+                    ...sourceLinkDefine(resolve(importMetaDirname, '..')),
                 },
                 resolve: {
                     ...config.resolve,

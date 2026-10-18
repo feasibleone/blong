@@ -26,7 +26,10 @@
         "ci-lint": "blong-dev lint",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
     },
-    "dependencies": {},
+    "dependencies": {
+        "@feasibleone/blong-browser": "workspace:^1.0.0",
+        "@feasibleone/blong-chain": "workspace:^1.0.0"
+    },
     "devDependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
         "@feasibleone/blong-dev": "workspace:*",

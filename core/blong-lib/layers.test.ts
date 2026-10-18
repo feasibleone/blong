@@ -17,6 +17,7 @@ const KNOWN_INTENTS: readonly string[] = [
     'default',
     'dev',
     'integration',
+    'test-ui',
     'playwright',
     'ci',
     'release',

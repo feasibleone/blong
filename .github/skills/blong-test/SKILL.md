@@ -3,9 +3,9 @@ name: blong-test
 description:
     Write automated tests for Blong handlers using parallel test execution. Tests run in parallel by
     default with automatic dependency detection via thenable proxies. Supports assertions, error
-    testing, and test reuse. Use this skill whenever writing any test handler in Blong, including
-    test-driven development, API testing, or verifying business logic — even if the user just says
-    'add a test' or 'write tests for this'.
+    testing, test reuse and the server-hosted Test runs runner. Use this skill whenever writing any
+    test handler in Blong, including test-driven development, API testing, or verifying business
+    logic — even if the user just says 'add a test' or 'write tests for this'.
 ---
 
 # Implementing Tests
@@ -719,6 +719,38 @@ npm test
 # Run specific test
 npm test -- testUserAdd
 ```
+
+## Server-hosted test runs
+
+A test group can be started from the portal's Test runs console instead of the tap runner. The
+server side is `realm/blong-test`:
+
+```typescript
+children: [
+    async function testRealm() {
+        return import('@feasibleone/blong-test/server.ts');
+    },
+],
+config: {
+    integration: {
+        testRealm: {testRun: {serverGroups: ['test.widget']}},
+    },
+    'test-ui': {
+        testRealm: {testRun: {serverGroups: ['test.widget']}},
+    },
+},
+```
+
+- `testRealm.testRun.serverGroups` is the execution allowlist; `test.run.start` refuses a method it
+  does not name. The browser catalog is the display guard, not a substitute for it.
+- The framework realms load before the suite's children, so `testRealm.testDispatch` is the last
+  port to claim the `test` namespace and receives the call. Do not add framework realms as children
+  of a generated realm to fix the order.
+- The `test.run.*` gateway routes and their `testRunServer` capability come from `blong-test`; its
+  seed grants it to the `Admin` test role. A realm does not need `skipAuthorize` or a seed of its
+  own.
+- The browser side calls `backend/test.run.*`; the backend adapter strips the prefix so the gateway
+  sees `test.run.start`. See the docs [pattern](../../../docs/blong/docs/patterns/test-run.md).
 
 ## Best Practices
 

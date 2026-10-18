@@ -15,6 +15,11 @@ open (5)
   separately
 - `T-198` · realm/blong-access — The access short-type map must learn a new table's kind
 
+done (2)
+
+- `T-370` · realm/blong-access — Make the authorization flow runnable from the Test runs page
+- `T-371` · realm/blong-access — Give the server test runner a gateway dispatch port
+
 <!-- /memory:index -->
 
 ## Open
@@ -98,3 +103,28 @@ matrix seed. The design question is whether a product realm should be able to ex
 a shared realm cannot know the tables of the products it ships with, and the alternative — naming
 the full alias everywhere — makes the ACL seeds the one place that already knows the realm's type
 naming.
+
+## Done
+
+### T-370 — Make the authorization flow runnable from the Test runs page
+
+> _2026-10-18 · realm/blong-access · done_
+
+The console catalog first listed only the session flow. testAuthorizationFlow.ts used Buffer, which
+a browser page does not have, and its first step assumed no MLE token and expected a 401, which a
+signed-in portal makes impossible. It was made browser-safe with Uint8Array and atob and host-aware
+for the pre-login assertions, then added back to accessTestRunCatalog and the testGroups map. Both
+flows are browser-safe and host-aware; the access spec captures the session and authorization runs.
+
+### T-371 — Give the server test runner a gateway dispatch port
+
+> _2026-10-18 · realm/blong-access · done_
+
+The server runner lives in realm/blong-test (orchestrator/testRun/testRunner.ts,
+orchestrator/testDispatch.ts, gateway/test validations, server/testRunController.ts). The blocker
+was on the browser side: the remote.bindingFailed error was created by core/blong-gogo/src/Remote.ts
+in sender(), reached from _getMethod/busMethod and the browser handlerProxy; the ui realm Remote
+used by useBlong().handler had no sender for test.run.start. The resolution is the backend route:
+the browser page calls backend/test.run.*, the backend adapter strips the prefix, the gateway
+validations expose the methods, and the blong-test testDispatch port runs the group. Access
+Playwright captures the server-hosted run.

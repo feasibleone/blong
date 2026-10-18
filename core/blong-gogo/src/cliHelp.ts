@@ -24,6 +24,7 @@ Well-known intents:
   dev            Development features only — introspection, error detail, dev keys
   microservice   Run a realm on its own — its adapters, orchestrators, listeners
   integration    Integration testing — test layers, watch + test reruns (exits when CI is set)
+  test-ui        Browser test console — loads the browser test layer without the CI runner
   release        The deployment block — cluster resolution, in-process self-dispatch, no dev refs
   cli            Run a command in-process and exit
   k8s            Write a deployment tree instead of serving and exit

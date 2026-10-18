@@ -39,6 +39,7 @@ the one to edit when a block changes, so the summary here cannot drift from it.
 | `dev`          | develop: a developer's defaults for a run somebody is watching | Long-running                                                 |
 | `microservice` | run the realm: the layers that make it work                    | Long-running                                                 |
 | `integration`  | test it: the layers a test needs, plus watch/test mode         | Long-running; reruns tests on change; exits when `CI` is set |
+| `test-ui`      | show the Test runs console: browser test layers, no CI runner  | No effect on lifetime                                        |
 | `release`      | be deployed: the one block uat, staging and production share   | Long-running                                                 |
 | `k8s`          | plan a suite: write its deployment tree instead of serving     | **Short-lived** — exits after its work                       |
 | `upgrade`      | bring a database up to date: schema sync plus production seeds | **Short-lived** — exits when done                            |
@@ -50,12 +51,15 @@ Two of these ask for something the _environment_ may also supply, which is why t
 phrased as a request rather than a list: `debug` has no block of its own, and `ci` is appended by
 the framework whenever the process runs on CI.
 
+`test-ui` is the narrow one: it activates the browser `test` layers so a portal can offer the
+[Test runs console](./test-run.md) without turning on the integration runner and its database work.
+
 The `cli` intent is what a realm CLI runs on — see the [realm CLI pattern](../patterns/cli.md) for
 how to build one and what the framework provides.
 
-### What each of the three layer intents means
+### What each layer intent means
 
-`default`, `microservice` and `integration` are the only names the layer table
+`default`, `microservice` and `integration` are the main names the layer table
 (`core/blong-lib/layers.ts`) uses, and each answers a different question:
 
 - `microservice` — does this process _run_ the realm? Its adapters, orchestrators, listeners and the
@@ -63,6 +67,8 @@ how to build one and what the framework provides.
 - `integration` — does this process _test_ it? The simulators, the tap machinery and the browser
   test layers, on top of the layers above.
 - `default` — nothing decides: the plumbing every process carries (`api`, `init`, `meta`).
+- `test-ui` — only the browser test layers, for a portal that shows a test console without the
+  integration runner.
 
 **`release` names no layer.** A deployed process is activated by the flags its plan wrote into its
 container args — one `--<realm>.<layer>` per selector the deployment was split on — so each pod runs

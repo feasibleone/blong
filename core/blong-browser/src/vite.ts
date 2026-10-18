@@ -27,6 +27,8 @@ import {fileURLToPath} from 'node:url';
 import gzipPlugin from 'rollup-plugin-gzip';
 import {type Plugin, type UserConfig, defineConfig, mergeConfig} from 'vite';
 import {brotliCompressSync} from 'zlib';
+import {packageRootOf, sourceLinkDefine} from './sourceLinkDefine.ts';
+import {sourceMapRegister} from './sourceMapRegister.ts';
 
 const dir = (url: string) => dirname(url.replace(/file:\//g, ''));
 
@@ -119,7 +121,8 @@ export function defineBlongViteConfig({
 }: IBlongViteOptions): ReturnType<typeof defineConfig> {
     const base: UserConfig = {
         base: '/s/',
-        plugins: [react(), dropFixtures()],
+        plugins: [react(), dropFixtures(), sourceMapRegister()],
+        define: sourceLinkDefine(packageRootOf(importMetaUrl)),
         build: {
             minify: false,
             assetsInlineLimit: 0,

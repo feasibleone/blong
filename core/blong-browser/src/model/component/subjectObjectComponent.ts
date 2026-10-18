@@ -1,6 +1,7 @@
 import type {IAdapter, IComponent, IHandlerProxy, IModelSpec} from '@feasibleone/blong';
 import {withDefaults} from '@feasibleone/blong-mock';
 import type {IPortalConfig} from '../../index.js';
+import {mergePortalConfigs} from '../../portalConfig.js';
 import {subjectObjectBrowse} from './subjectObjectBrowse.js';
 import {subjectObjectNew} from './subjectObjectNew.js';
 import {subjectObjectOpen} from './subjectObjectOpen.js';
@@ -45,18 +46,20 @@ export default async function component(
     }
 
     components.portalConfigGet = async () => {
-        return blong.lib.merge(
-            {},
-            {
-                menu: Object.entries(this.config!.context?.menus || {}).map(([subject, items]) => ({
-                    title: subject,
-                    items,
-                })),
-                title: 'Blong',
-                name: 'blong-portal',
-            },
-            this.config!.portal,
+        const portal = (this.config!.portal ?? {}) as Partial<IPortalConfig>;
+        const generatedMenu = Object.entries(this.config!.context?.menus || {}).map(
+            ([subject, items]) => ({title: subject, items}),
         );
+        // The suite's `ui.portal.portal.menu` adds groups to the menu the models
+        // generate; it must not replace it. `merge` shallow-copies arrays, so a
+        // suite that adds `Test` used to hide every model page.
+        const {menu} = mergePortalConfigs([{menu: generatedMenu}, portal]);
+        return {
+            ...portal,
+            name: portal.name ?? 'blong-portal',
+            title: portal.title ?? 'Blong',
+            ...(menu ? {menu} : {}),
+        };
     };
 
     return components;

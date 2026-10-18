@@ -1,0 +1,77 @@
+/* TestRunPage — the picker bar above the console. Theme variables only. */
+
+.blong-test-run-page {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 8px;
+    overflow: hidden;
+    background: var(--surface-ground, #f8f9fa);
+    color: var(--text-color);
+    font-family: var(--font-family,
+            -apple-system,
+            BlinkMacSystemFont,
+            'Segoe UI',
+            Roboto,
+            Helvetica,
+            Arial,
+            sans-serif);
+    font-size: 12px;
+}
+
+.blong-test-run-page__bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+    min-height: 40px;
+    padding: 0 10px;
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    background: var(--surface-card, #fff);
+}
+
+.blong-test-run-page__title {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.blong-test-run-page__picker {
+    min-width: 220px;
+}
+
+.blong-test-run-page__error {
+    margin-left: auto;
+    overflow: hidden;
+    color: var(--red-600, #dc2626);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.blong-test-run-page__console {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.blong-test-run-page__console>.blong-test-run {
+    flex: 1;
+    min-width: 0;
+}
+
+.blong-test-run-page__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    background: var(--surface-card);
+    color: var(--text-color-secondary);
+    font-size: 11px;
+}

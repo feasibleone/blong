@@ -125,6 +125,9 @@ it permanently either by better instructions or improved tooling.
   `blong-dev memory refs --dangling` is the linter, `refs --summary` the per-package ledger,
   `comply` the gate on a memory change, and `export` the index the editor reads. See
   `[CRITICAL_PROSE]`.
+- When redirecting or piping potentially long running commands, use also `tee` to capture their
+  output in the same set of temp files. This helps avoiding a second long run to troubleshoot via
+  their output.
 
 ## [CRITICAL_PROSE]
 
@@ -210,7 +213,7 @@ Hard rules — apply first, never contradict.
   used to merge config overrides.
 - **Glossary** use focused high cardinality and unambiguous words or word combinations to refer to
   the same concept across the codebase and the prose. Coin new ones when needed and avoid words that
-  mean too many things (blong-dev glossary).
+  mean too many things (blong-dev glossary). Invent jargon or use Bislama words when out of options.
 - **Never import handlers directly.** Cross-handler deps via `handler()` proxy (`runtime.handler`);
   direct imports break IoC.
 - **Prefer injected library functions** when feasible for reusing logic across handlers (see
@@ -256,6 +259,7 @@ Unless otherwise evident, you are operating in the DEV environment, where the fo
 - The `blong-dev` k3d cluster is usually up, but can be started with the `ks` alias
 - Do not stage, unstage or commit on your own, unless prompted
 - Avoid ambient stash operations, only scope them to what you touched
+- You operate in automatic context compaction environment, do not worry about budget
 
 ## [CORE_PARADIGMS]
 

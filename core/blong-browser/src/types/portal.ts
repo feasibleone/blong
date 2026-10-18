@@ -25,6 +25,12 @@ export interface ITab {
 export type IMenuItem =
     | IAction
     | {
+          /**
+           * Stable, language-independent id for the group. Defaults to the first
+           * child method's subject; set it when that would collide with another
+           * group (the `Test` group's first child is an `access.*` method).
+           */
+          id?: string;
           title: string;
           permission?: string;
           icon?: string;

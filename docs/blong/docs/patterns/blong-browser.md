@@ -237,6 +237,12 @@ const schema = await schemaRegistry.resolve('marine.coral');
 
 ---
 
+## Test runs console
+
+A realm can contribute an in-app test console: `TestRun` renders the run model, and `TestRunPage`
+adds a catalog picker with browser and server hosts. The page is linked only under the `test-ui`
+intent. See [Test runs](./test-run.md) for the catalog, transport and server configuration.
+
 ## Storybook Pattern
 
 Every package that renders components ships a Storybook, and it is the **live** half of these docs:
@@ -267,18 +273,22 @@ registers it for every page, docs and blog alike. `site` is one of the sites in
 (`?path=/story/<id>`).
 
 ```mdx
-<StorybookStory site="browser" id="editor--toolbar" title="The Editor's toolbar" />
+<StorybookStory
+    site="browser"
+    id="editor--toolbar"
+    title="The Editor's toolbar"
+/>
 ```
 
-| Attribute | What it does                                                                              |
-| --------- | ----------------------------------------------------------------------------------------- |
-| `site`    | Which published Storybook to read the story from. Required.                               |
-| `id`      | The story id, as in `?path=/story/<id>`. Required.                                        |
-| `title`   | Caption under the frame, and the frame's accessible name.                                 |
-| `height`  | Frame height, a CSS length. Defaults to 480px, or 640px with `chrome`.                    |
-| `globals` | Storybook globals to open the story from, e.g. `theme:wood,language:bg`.                  |
-| `chrome`  | Show Storybook's own UI — sidebar and story toolbar — instead of the bare story canvas.   |
-| `poster`  | A picture to show until the reader asks for the live story, which then opens on a click.  |
+| Attribute | What it does                                                                             |
+| --------- | ---------------------------------------------------------------------------------------- |
+| `site`    | Which published Storybook to read the story from. Required.                              |
+| `id`      | The story id, as in `?path=/story/<id>`. Required.                                       |
+| `title`   | Caption under the frame, and the frame's accessible name.                                |
+| `height`  | Frame height, a CSS length. Defaults to 480px, or 640px with `chrome`.                   |
+| `globals` | Storybook globals to open the story from, e.g. `theme:wood,language:bg`.                 |
+| `chrome`  | Show Storybook's own UI — sidebar and story toolbar — instead of the bare story canvas.  |
+| `poster`  | A picture to show until the reader asks for the live story, which then opens on a click. |
 
 Three of those are worth a sentence each.
 
@@ -302,8 +312,8 @@ build only when something imports it:
 <StorybookStory poster={require('./img/editor-toolbar.png').default} … />
 ```
 
-A plain `poster="./img/editor-toolbar.png"` looks right and 404s — the build has no such file — which
-the `docs verify` run reports as an image that did not load.
+A plain `poster="./img/editor-toolbar.png"` looks right and 404s — the build has no such file —
+which the `docs verify` run reports as an image that did not load.
 
 **`chrome` is for the page about the toolbar.** The story toolbar is Storybook's own UI, outside the
 story canvas, so the only way to show it is to embed the manager rather than the frame. Use it in

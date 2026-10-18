@@ -1427,7 +1427,15 @@ export default async function loadRealm<T extends TSchema>(
                   async (): Promise<unknown> => {
                       const value = await (child as () => Promise<unknown>)();
                       const url = (value as {url?: unknown} | undefined)?.url;
-                      if (typeof url === 'string') loadedRealmUrls.add(normaliseUrl(url));
+                      if (typeof url === 'string') {
+                          // Framework realms load first now, so a suite that still names one
+                          // as a child reaches this wrapper after the realm is already in the
+                          // tree. Returning nothing makes the loop skip it rather than register
+                          // every handler twice.
+                          const normalised = normaliseUrl(url);
+                          if (loadedRealmUrls.has(normalised)) return undefined;
+                          loadedRealmUrls.add(normalised);
+                      }
                       return value;
                   },
                   'name',
@@ -1484,10 +1492,16 @@ export default async function loadRealm<T extends TSchema>(
     // its realm's block, under the group's folder name) from one the source or a
     // parent declared (@@D-554).
     const keysOnEntry = new Set(Object.keys(mergedConfig));
+    // The framework realms are the foundation: they load before the suite's own
+    // children. A suite that names one of them as a child still gets it once —
+    // `loadedRealmUrls` skips the duplicate — but the order is the loader's. This
+    // matters for a shared namespace such as `test`: the last port to claim it
+    // serves the method, and a suite's test runner must load after the framework
+    // realms that also contribute test groups.
     for (let item of items
+        .concat(frameworkChildren)
         .concat(children.map(trackChild) as [])
-        .concat(extraChildren)
-        .concat(frameworkChildren)) {
+        .concat(extraChildren)) {
         // Deliberately `platformApi.platform` here, not `rootKind`: this gate decides how a
         // folder-string child is *resolved*, and browser suites in the tap runner rely on the
         // server-side resolution (their folder layers must still load, or the browser test

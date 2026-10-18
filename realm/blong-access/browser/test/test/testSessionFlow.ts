@@ -29,7 +29,10 @@ export default handler(
         lib: {group},
         handler: {loginTokenCreate, loginTokenRefresh, loginTokenRestore, accessTestPrivate},
     }) => ({
-        testSessionFlow: ({name = 'session flow browser'}: {name?: string} = {}) =>
+        testSessionFlow: ({
+            name = 'session flow browser',
+            hasSession = false,
+        }: {name?: string; hasSession?: boolean} = {}) =>
             group(name)([
                 // 1. Login over HTTP — session + tokens.
                 async function login(assert: IAssert, {$meta}: {$meta: IMeta}) {
@@ -75,8 +78,18 @@ export default handler(
                     assert.equal(result.success, true, 'protected call succeeds after refresh');
                 },
 
-                // 4. Restore without a cookie → refused with an auth-classified error.
+                // 4. Restore: without a cookie it is refused with an auth-classified
+                //    error; a host page that is already signed in exercises the
+                //    successful restore instead.
                 async function restoreNoCookie(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                    if (hasSession) {
+                        const restored = await loginTokenRestore<{access_token: string}>({}, $meta);
+                        assert.ok(
+                            restored.access_token,
+                            'restore with the host session returns a token',
+                        );
+                        return;
+                    }
                     try {
                         await loginTokenRestore({}, $meta);
                         assert.fail('login.token.restore should fail without a cookie');
