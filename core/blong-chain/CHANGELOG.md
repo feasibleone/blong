@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.13.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.12.0...blong-chain-v1.13.0) (2026-10-19)
+
+
+### Features
+
+* test console ([f87e501](https://github.com/feasibleone/blong/commit/f87e5012713df35631a7939886d1b2e0894c4a81))
+
+
+### Bug Fixes
+
+* CI failures ([691a611](https://github.com/feasibleone/blong/commit/691a6117d53a3db31b218c114636bf86e77decdb))
+
 ## [1.12.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.11.2...blong-chain-v1.12.0) (2026-10-11)
 
 
