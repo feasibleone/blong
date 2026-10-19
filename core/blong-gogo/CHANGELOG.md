@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.41.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.40.1...blong-gogo-v1.41.0) (2026-10-19)
+
+
+### Features
+
+* test console ([f87e501](https://github.com/feasibleone/blong/commit/f87e5012713df35631a7939886d1b2e0894c4a81))
+
 ## [1.40.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.40.0...blong-gogo-v1.40.1) (2026-10-17)
 
 

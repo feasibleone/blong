@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/feasibleone/blong/compare/blong-party-v1.7.3...blong-party-v1.8.0) (2026-10-19)
+
+
+### Features
+
+* test console ([f87e501](https://github.com/feasibleone/blong/commit/f87e5012713df35631a7939886d1b2e0894c4a81))
+
 ## [1.7.3](https://github.com/feasibleone/blong/compare/blong-party-v1.7.2...blong-party-v1.7.3) (2026-10-11)
 
 
