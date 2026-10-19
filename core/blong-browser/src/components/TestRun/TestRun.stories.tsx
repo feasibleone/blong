@@ -1,8 +1,7 @@
 import type {IAssert} from '@feasibleone/blong';
 import type {Meta, StoryObj} from '@storybook/react-vite';
-import {within} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import {useEffect, useRef, useState, type ReactNode} from 'react';
+import {userEvent, within} from 'storybook/test';
 import type {ITestRunModel, ITestRunRecording} from '../../types/testRun.js';
 import {Button} from '../Button/Button.js';
 import {BrowserTestRunSource, pendingBrowserRun} from './browserTestRunSource.js';
@@ -14,8 +13,8 @@ import {
     sessionFlowRun,
 } from './fixtures/sessionFlow.js';
 import {TestRun} from './TestRun.js';
-import {TestRunPage} from './TestRunPage.js';
 import {emptyTestRun, recordingDuration, reduceTestRunEvent, replayTo} from './testRunModel.js';
+import {TestRunPage} from './TestRunPage.js';
 
 /**
  * TestRun stories — the live replay, the frozen milestones the console must survive, and the
@@ -274,7 +273,9 @@ export const MidRun: Story = {
         const user = userEvent.setup();
         await user.click(await view.findByTestId('test-run-step-refreshToken'));
         await user.click(await view.findByText('Details'));
-        await view.findByText('run started');
+        // The recording carries no log events, so the Log tab is empty at mid-run; this proves
+        // the selected step's details opened @@F-577.
+        await view.findByText('No log entries or assertions');
     },
 };
 

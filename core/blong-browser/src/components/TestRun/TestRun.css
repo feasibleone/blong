@@ -323,6 +323,7 @@
     border-bottom: 1px solid var(--surface-border);
     color: var(--text-color-secondary);
     font-size: 9px;
+    overflow: hidden;
 }
 
 .blong-test-run__ruler .blong-test-run__track {
@@ -655,7 +656,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    width: 128px;
+    /* width: 128px; */
     height: 26px;
     padding: 0 8px;
     border: 1px solid var(--surface-border);

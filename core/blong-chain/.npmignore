@@ -32,4 +32,11 @@
 # ---------------------------------------------------------------------------
 !index.ts
 !index.d.ts
+!browser.ts
+!browser-assert.ts
+!emitter.ts
+!executor.ts
+!progress.ts
+!runRegistry.ts
+!sourceMap.ts
 !test-types.ts

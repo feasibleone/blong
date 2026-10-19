@@ -90,7 +90,7 @@ test('layersActivation', t => {
             'microservice groups them',
         );
         // The browser platform has no deployment split — the app is the process — so its layers ride
-        // whenever it loads, while the test layers stay `integration`-only.
+        // whenever it loads, while the test layers stay behind an explicit testing intent.
         t.match(
             block,
             /\| `backend` +\| — +\| default +\|/,
@@ -98,8 +98,8 @@ test('layersActivation', t => {
         );
         t.match(
             block,
-            /\| `browser\/test` +\| — +\| integration +\|/,
-            'a browser test layer is not',
+            /\| `browser\/test` +\| — +\| integration, test-ui +\|/,
+            'a browser test layer needs a testing intent',
         );
         t.end();
     });

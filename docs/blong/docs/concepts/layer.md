@@ -70,6 +70,7 @@ flowchart LR
         direction TB
         browser-default-intent["default"] --- browser-default-layers["api · init · meta · backend · component · action · actions · browser/api · browser/init · browser/orchestrator"]
         browser-integration-intent["integration"] --- browser-integration-layers["test · browser/test"]
+        browser-test-ui-intent["test-ui"] --- browser-test-ui-layers["test · browser/test"]
     end
 ```
 
@@ -78,27 +79,27 @@ regardless of intents, and every other name is an intent that must be active. `c
 entry here: a command names the layers it needs itself, in the `cli` block of the realm whose
 handlers it     dispatches (D-436).
 
-| Folder                 | Server active in           | Browser active in |
-| ---------------------- | -------------------------- | ----------------- |
-| `api`                  | default                    | default           |
-| `init`                 | default                    | default           |
-| `meta`                 | default                    | default           |
-| `backend`              | —                          | default           |
-| `component`            | —                          | default           |
-| `action`               | —                          | default           |
-| `actions`              | —                          | default           |
-| `browser/api`          | —                          | default           |
-| `browser/init`         | —                          | default           |
-| `browser/orchestrator` | —                          | default           |
-| `error`                | microservice, k8s, upgrade | —                 |
-| `adapter`              | microservice, k8s, upgrade | —                 |
-| `orchestrator`         | microservice, k8s, upgrade | —                 |
-| `gateway`              | microservice, k8s          | —                 |
-| `server/api`           | microservice, k8s          | —                 |
-| `sim`                  | integration                | —                 |
-| `server/test`          | integration                | —                 |
-| `test`                 | —                          | integration       |
-| `browser/test`         | —                          | integration       |
+| Folder                 | Server active in           | Browser active in    |
+| ---------------------- | -------------------------- | -------------------- |
+| `api`                  | default                    | default              |
+| `init`                 | default                    | default              |
+| `meta`                 | default                    | default              |
+| `backend`              | —                          | default              |
+| `component`            | —                          | default              |
+| `action`               | —                          | default              |
+| `actions`              | —                          | default              |
+| `browser/api`          | —                          | default              |
+| `browser/init`         | —                          | default              |
+| `browser/orchestrator` | —                          | default              |
+| `error`                | microservice, k8s, upgrade | —                    |
+| `adapter`              | microservice, k8s, upgrade | —                    |
+| `orchestrator`         | microservice, k8s, upgrade | —                    |
+| `gateway`              | microservice, k8s          | —                    |
+| `server/api`           | microservice, k8s          | —                    |
+| `sim`                  | integration                | —                    |
+| `server/test`          | integration                | —                    |
+| `test`                 | —                          | integration, test-ui |
+| `browser/test`         | —                          | integration, test-ui |
 
 <!-- END LAYER ACTIVATION -->
 
