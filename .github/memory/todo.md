@@ -68,7 +68,7 @@ open (59)
 - `T-359` · ci — Find why a tap child dies with SIGILL before it runs
 - `T-360` · ci — Say when the previous run failed the same way
 
-done (7)
+done (8)
 
 - `T-342` · ci — Decide the cache payload shape before landing step 2
 - `T-188` · ci — The Storybook leg produces no .ci-report slice
@@ -77,6 +77,7 @@ done (7)
 - `T-356` · ci — Make red mean a failed test, not a flaky one
 - `T-355` · ci — Build blong-dev ci, the publisher fix and the blong-ci skill
 - `T-365` · ci — Carry \*/dist as a per-run artifact in the shared Rush workflow
+- `T-407` · docs — Document the label-column pattern in the doc site
 
 <!-- /memory:index -->
 
@@ -92,6 +93,9 @@ done (7)
 - doc publishing
 - hindsight: store explore results
 - planning skill
+- meta/model meta/type should the validated
+- optimize blong boot in browser
+- feedback widget
 - Adopt https://mastra.ai/integrations/frameworks/vite-react
 - sync modified memory during commit
 - config hot reload log level
@@ -946,3 +950,17 @@ interface. The build for the release pull request stays red until this lands.
 Done with the decision entry: pack and upload in setup (rush.yaml) and setup-node
 (release-docker.yaml), download and unpack in every job that reads the tree, and both cache lists
 stay identical as their comments require.
+
+### T-407 — Document the label-column pattern in the doc site
+
+> _2026-10-25 · docs · done_
+
+A pattern doc is owed for what the code now does: a foreign-key column names its display field
+(`widget.body`), the read asks for it with `labels`, the adapter projects it from the target's own
+metadata, and the column filters through a dropdown. It belongs in the pattern tier beside the model
+docs, with the adapter override caveat (delegate to `super.exec`) and the fallback to the option
+map.
+
+docs/blong/docs/patterns/foreign-key-labels.md describes the body/labels contract, where the label
+column comes from, the two-keys-to-one-table alias, the super.exec caveat for a read override, and a
+table of the column options.

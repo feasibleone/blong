@@ -1,0 +1,24 @@
+resourceType: sport.cycle
+key: cycleId
+cycle:
+    - name: Paris 2024
+      cycleName: Paris 2024
+      cycleStartYear: 2021
+      cycleEndYear: 2024
+      gamesName: Games of the XXXIII Olympiad
+      cycleStatus: closed
+      sourceName: IOC
+    - name: Milano Cortina 2026
+      cycleName: Milano Cortina 2026
+      cycleStartYear: 2023
+      cycleEndYear: 2026
+      gamesName: XXV Olympic Winter Games
+      cycleStatus: active
+      sourceName: IOC
+    - name: Los Angeles 2028
+      cycleName: Los Angeles 2028
+      cycleStartYear: 2025
+      cycleEndYear: 2028
+      gamesName: Games of the XXXIV Olympiad
+      cycleStatus: active
+      sourceName: IOC

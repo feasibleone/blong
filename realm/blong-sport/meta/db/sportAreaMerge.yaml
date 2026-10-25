@@ -1,0 +1,15 @@
+resourceType: sport.area
+key: areaId
+area:
+    - name: Sports Medicine
+      areaName: Sports Medicine
+      areaStatus: active
+    - name: Sports Psychology
+      areaName: Sports Psychology
+      areaStatus: active
+    - name: Physiotherapy and Kinesiotherapy
+      areaName: Physiotherapy and Kinesiotherapy
+      areaStatus: active
+    - name: Other
+      areaName: Other
+      areaStatus: active

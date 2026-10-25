@@ -7,6 +7,7 @@ language: en-GB
 # fragments.
 ignoreRegExpList: [ semlog://\S+ ]
 words:
+  - Abyssal
   - ACMR
   - Acropora
   - Acroporidae
@@ -40,6 +41,9 @@ words:
   - avvio
   - azooxanthellate
   - BAAI
+  - backticked
+  - Barnaby
+  - baselined
   - bdep
   - behavior
   - behavioral
@@ -76,8 +80,12 @@ words:
   - confirmpopup
   - CONTRIB
   - coredns
+  - Corin
+  - Coxless
   - cpuprofile
+  - CRGC
   - crockford
+  - CSKA
   - cutoff
   - daemonset
   - dapr
@@ -88,6 +96,7 @@ words:
   - dedup
   - deepwater
   - DELEGATOR
+  - Delphine
   - Dendrophylliidae
   - denoise
   - deployers
@@ -100,6 +109,7 @@ words:
   - diag
   - dialog
   - Diebold
+  - Dimitrov
   - dismissable
   - DMMT
   - Dockerfiles
@@ -136,6 +146,8 @@ words:
   - FULLTEXT
   - Fungiidae
   - GBIF
+  - Georgi
+  - Georgieva
   - getaddrinfo
   - Ginglymostoma
   - gitops
@@ -183,8 +195,10 @@ words:
   - kalin
   - kalinkrustev
   - kcadm
+  - KCSU
   - keepalive
   - keyblock
+  - Kinesiotherapy
   - knex
   - kopi
   - kubeconfig
@@ -193,6 +207,8 @@ words:
   - kustomization
   - kustomizations
   - labeled
+  - Lanternfish
+  - Levski
   - librdkafka
   - libstdc
   - lightgreen
@@ -202,9 +218,11 @@ words:
   - logviewer
   - LONGTEXT
   - Mandarinfish
+  - Marlin
   - mdns
   - mediumint
   - MEDIUMTEXT
+  - memoise
   - mesophotic
   - meterprobe
   - microservicerc
@@ -231,6 +249,7 @@ words:
   - mysqladmin
   - namespaceable
   - nematocysts
+  - Nerida
   - networkpolicies
   - node-rdkafka
   - nodedir
@@ -242,6 +261,7 @@ words:
   - ntlm
   - Nunito
   - ocellaris
+  - Octopus
   - oidc
   - ollama
   - onnxruntime
@@ -266,12 +286,14 @@ words:
   - persistentvolumeclaim
   - persistentvolumeclaims
   - persistentvolumes
+  - Petrova
   - pino
   - pkce
   - pkill
   - placeholderize
   - pnpmfile
   - Poppins
+  - Porpoise
   - Pred
   - primefaces
   - primeflex
@@ -327,7 +349,9 @@ words:
   - Scleractinia
   - sdev
   - seagrass
+  - Seagrass
   - Segoe
+  - Sela
   - selectbutton
   - semlog
   - Semlog
@@ -365,6 +389,8 @@ words:
   - teardown
   - testrealm
   - testrun
+  - thumbindex
+  - Tidepool
   - Tileable
   - tinyint
   - TINYTEXT
@@ -414,6 +440,7 @@ words:
   - webcamera
   - WHATWG
   - worldtimeapi
+  - Wrasse
   - xyflow
   - YHHHHCC
   - ZCMK

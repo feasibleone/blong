@@ -1,0 +1,87 @@
+resourceType: sport.sport
+key: sportId
+sport:
+    - name: Athletics
+      sportName: Athletics
+      sportIntlName: Athletics
+      sportCode: ATH
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC
+    - name: Swimming
+      sportName: Swimming
+      sportIntlName: Swimming
+      sportCode: SWM
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC
+    - name: Gymnastics
+      sportName: Gymnastics
+      sportIntlName: Gymnastics
+      sportCode: GYM
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC
+    - name: Rowing
+      sportName: Rowing
+      sportIntlName: Rowing
+      sportCode: ROW
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC
+    - name: Boxing
+      sportName: Boxing
+      sportIntlName: Boxing
+      sportCode: BOX
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC
+    - name: Wrestling
+      sportName: Wrestling
+      sportIntlName: Wrestling
+      sportCode: WRE
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC
+    - name: Weightlifting
+      sportName: Weightlifting
+      sportIntlName: Weightlifting
+      sportCode: WLF
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC
+    - name: Judo
+      sportName: Judo
+      sportIntlName: Judo
+      sportCode: JUD
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC
+    - name: Fencing
+      sportName: Fencing
+      sportIntlName: Fencing
+      sportCode: FEN
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC
+    - name: Shooting
+      sportName: Shooting
+      sportIntlName: Shooting
+      sportCode: SHO
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC
+    - name: Cycling
+      sportName: Cycling
+      sportIntlName: Cycling
+      sportCode: CYC
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC
+    - name: Volleyball
+      sportName: Volleyball
+      sportIntlName: Volleyball
+      sportCode: VOL
+      sportKind: olympic
+      sportStatus: active
+      sourceName: IOC

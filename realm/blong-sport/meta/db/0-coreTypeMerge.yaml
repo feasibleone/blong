@@ -1,0 +1,13 @@
+# The asset's method name decides the target table: this must be
+# `coreTypeMerge` to write `core.type`. The `0-` prefix sorts it before every
+# instance seed, so each alias exists before a row references it.
+key: typeAlias
+type:
+    - typeAlias: sport.sport
+    - typeAlias: sport.discipline
+    - typeAlias: sport.category
+    - typeAlias: sport.cycle
+    - typeAlias: sport.area
+    - typeAlias: sport.competition
+    - typeAlias: sport.document
+    - typeAlias: sport.award

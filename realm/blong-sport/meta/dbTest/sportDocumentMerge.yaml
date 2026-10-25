@@ -1,0 +1,31 @@
+resourceType: sport.document
+key: documentId
+document:
+    - name: Olympic Quota Confirmation 2024
+      documentTitle: Olympic Quota Confirmation 2024
+      documentNumber: BOC-2024-0042
+      documentType: decision
+      issueDate: '2024-05-14'
+      documentStatus: valid
+      documentFormat: pdf
+      sourceName: Bulgarian Olympic Committee
+      referenceUrl: https://example.org/documents/BOC-2024-0042.pdf
+      documentNote: Quota confirmation issued for an Olympic athlete
+    - name: Coach Certification Register Extract
+      documentTitle: Coach Certification Register Extract
+      documentNumber: MYS-LIC-7781
+      documentType: certificate
+      issueDate: '2023-02-01'
+      validUntilDate: '2027-02-01'
+      issuerName: Ministry of Youth and Sports
+      documentStatus: valid
+      documentFormat: pdf
+      sourceName: MYS register of certified personnel
+    - name: European Championship Protocol
+      documentTitle: European Championship Protocol
+      documentNumber: EC-ATH-2022-PROT
+      documentType: protocol
+      issueDate: '2022-08-21'
+      documentStatus: historical
+      documentFormat: pdf
+      sourceName: European Athletics

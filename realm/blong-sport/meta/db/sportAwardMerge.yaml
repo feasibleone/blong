@@ -1,0 +1,21 @@
+resourceType: sport.award
+key: awardId
+award:
+    - name: Order of Stara Planina
+      awardName: Order of Stara Planina
+      awardCategory: state
+      awardLevel: classI
+      awardStatus: active
+      awardNote: State award for exceptional contribution to the country
+    - name: BOC Honorary Award
+      awardName: BOC Honorary Award
+      awardCategory: olympic
+      awardLevel: plaque
+      awardStatus: active
+      awardNote: Awarded by the Bulgarian Olympic Committee
+    - name: International Recognition
+      awardName: International Recognition
+      awardCategory: international
+      awardLevel: diploma
+      awardStatus: active
+      awardNote: Recognition by an international sports organisation

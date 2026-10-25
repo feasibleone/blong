@@ -254,7 +254,6 @@ Hard rules — apply first, never contradict.
 
 Unless otherwise evident, you are operating in the DEV environment, where the following applies:
 
-- The `blong` on PATH is the `node --watch` variant, run `bl` instead
 - `.blong_devrc` in the blong folder contains some local configuration
 - The `blong-dev` k3d cluster is usually up, but can be started with the `ks` alias
 - Do not stage, unstage or commit on your own, unless prompted
