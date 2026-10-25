@@ -1,890 +1,54 @@
-import {ActionButton} from '../components/ActionButton/ActionButton.js';
+/**
+ * The table widget: rows, paging, selection, editing mode and the toolbar around them.
+ *
+ * What a cell reads and how it edits lives in `./table/cells.tsx`; the pure
+ * derivations in `./table/model.ts`; the state a table owns in `./table/useTableList`,
+ * `./table/useTableRows`, `./table/useTableDropdowns` and `./table/useRowDrafts`; the
+ * toolbar template and the paginator have their own files. What is left here is the
+ * decisions only a table can make — which mode it is in, which rows are editable, and
+ * where an edit goes. `@@D-620`
+ */
 import {useFormatValue} from '../hooks/useFormat.js';
-import type {FormatFn, FormatType} from '../lib/format.js';
-import label from '../lib/label.js';
 import {
-    Calendar,
-    Checkbox,
     Column,
     DataTable,
-    Dropdown,
-    FileUpload,
-    InputMask,
-    InputNumber,
-    InputText,
-    InputTextarea,
-    MultiSelect,
-    Password,
-    RadioButton,
-    SelectButton,
-    Toolbar,
     type DataTableSelectionChangeParams,
+    Dropdown,
+    InputText,
+    Toolbar,
 } from '../primereact/index.js';
 
-import type {
-    ICycleCellState,
-    IDropdownOption,
-    IEnrichedFieldSchema,
-    IWidgetProps,
-    IWidgetToolbarButton,
-} from '@feasibleone/blong';
-import {useQuery} from '@tanstack/react-query';
-import React, {createContext, use, useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import type {IEnrichedFieldSchema, IWidgetProps, IWidgetToolbarButton} from '@feasibleone/blong';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Button} from '../components/Button/Button.js';
 import {useBlongFormState} from '../components/Form/FormContext.js';
 import {Text} from '../components/Text/Text.js';
 import {useBlong} from '../context/BlongContext.js';
-import {dropdownRegistry} from '../model/dropdownRegistry.js';
-import {dateIn, dateOut} from './DateWidget.js';
-
-type Row = Record<string, unknown>;
-type DropdownOption = {value: unknown; label: string; [k: string]: unknown};
-
-const KEY = '__key';
-
-/**
- * The picks a row has made while it is being edited, by row key.
- *
- * PrimeReact keeps an editing row's draft to itself and memoizes the body cell, so
- * re-rendering the table does not reach a cell whose list depends on a sibling — the
- * context does, because a consumer re-renders whatever its memoized ancestors decide.
- * See `rowDrafts` for why the table has to remember the picks at all. `@@D-617`
- */
-const RowDraftContext = createContext<Record<string, Row>>({});
-
-function resolveWidgetType(schema: IEnrichedFieldSchema): string {
-    if (schema.widget?.type) return schema.widget.type;
-    // A column that names a dropdown (or a static option list) holds a key, not the
-    // text a reader wants: render the option's label, never the stored id. @@D-612
-    if (schema.widget?.dropdown) return 'dropdown';
-    if (schema.widget?.options) return 'select';
-    if (schema.widget?.cycle || schema.widget?.states) return 'cycle';
-    if (schema.action) return 'action';
-    if (schema.type === 'boolean') return 'boolean';
-    if (schema.type === 'number') return 'number';
-    if (schema.type === 'integer') return 'integer';
-    if (schema.format === 'date-time') return 'dateTime';
-    if (schema.format === 'date') return 'date';
-    return 'input';
-}
-
-/**
- * Named state sets for a `cycle` cell — the boolean cases a pivot toggles.
- * Clicking the cell advances to the next state, so the column needs no
- * row-edit mode.  The empty state renders as a blank cell and is named
- * `Not set` (also the cell's `title`, which tests read).
- */
-const CYCLE_PRESETS: Record<string, ICycleCellState[]> = {
-    // check → cross → empty
-    'tri-state': [
-        {value: true, icon: 'pi pi-check text-green-500', label: 'Yes'},
-        {value: false, icon: 'pi pi-times text-red-500', label: 'No'},
-        {value: null, label: 'Not set'},
-    ],
-    // check → empty
-    'check-empty': [
-        {value: true, icon: 'pi pi-check text-green-500', label: 'Yes'},
-        {value: null, label: 'Not set'},
-    ],
-    // check → cross (a value is always set)
-    'check-cross': [
-        {value: true, icon: 'pi pi-check text-green-500', label: 'Yes'},
-        {value: false, icon: 'pi pi-times text-red-500', label: 'No'},
-    ],
-};
-
-function resolveCycleStates(schema: IEnrichedFieldSchema): ICycleCellState[] {
-    const cfg = schema.widget as {cycle?: string; states?: ICycleCellState[]} | undefined;
-    if (cfg?.states?.length) return cfg.states;
-    if (cfg?.cycle && CYCLE_PRESETS[cfg.cycle]) return CYCLE_PRESETS[cfg.cycle];
-    return CYCLE_PRESETS['tri-state'];
-}
-
-function isCycleCell(schema: IEnrichedFieldSchema): boolean {
-    return schema.widget?.type === 'cycle' || !!schema.widget?.cycle || !!schema.widget?.states;
-}
-
-/** Cycle values compare loosely, so `true`/`1` and `null`/`undefined` are one state. */
-function sameCycleValue(a: unknown, b: unknown): boolean {
-    if (a == null || b == null) return (a ?? null) === (b ?? null);
-    if (typeof a === 'boolean' || typeof b === 'boolean') return Boolean(a) === Boolean(b);
-    return a === b;
-}
-
-function currentCycleState(states: ICycleCellState[], value: unknown): ICycleCellState | undefined {
-    return states.find(s => sameCycleValue(s.value, value));
-}
-
-/** An unset cell advances to the first state of the cycle. */
-function nextCycleState(states: ICycleCellState[], value: unknown): ICycleCellState {
-    const index = states.findIndex(s => sameCycleValue(s.value, value));
-    return states[(index + 1) % states.length];
-}
-
-function getColumnOptions(
-    schema: IEnrichedFieldSchema,
-    dropdowns?: Record<string, unknown[]>,
-): DropdownOption[] {
-    const raw =
-        schema.widget?.options ?? (schema.widget?.dropdown && dropdowns?.[schema.widget.dropdown]);
-    if (!Array.isArray(raw)) return [];
-    return raw as DropdownOption[];
-}
-
-/**
- * Narrow a pick-list's options to the row they are offered for.
- *
- * `optionsFilter: {optionProperty: rowField}` is the explicit form, and several
- * pairs are a conjunction. `parent` is the shorthand for the common case, where the
- * option carries the key under the field's own name — or under `parent`, which is
- * how the form-level cascade already works, so both conventions are honoured. A row
- * field with no value yet leaves the list whole: the first pick must not be blocked
- * by the very value it is about to set. @@D-615
- */
-function optionsForRow(
-    options: DropdownOption[],
-    schema: IEnrichedFieldSchema,
-    row: Row | undefined,
-): DropdownOption[] {
-    if (!row) return options;
-    const filter = schema.widget?.optionsFilter;
-    if (filter) {
-        return options.filter(option => {
-            const candidate = option as unknown as Record<string, unknown>;
-            return Object.entries(filter).every(([optionProperty, rowField]) => {
-                const want = row[rowField];
-                if (want === undefined || want === null || want === '') return true;
-                return String(candidate[optionProperty]) === String(want);
-            });
-        });
-    }
-    const parent = schema.widget?.parent;
-    if (!parent) return options;
-    const want = row[parent];
-    if (want === undefined || want === null || want === '') return options;
-    return options.filter(option => {
-        const candidate = option as unknown as Record<string, unknown>;
-        return candidate[parent] === want || candidate['parent'] === want;
-    });
-}
-
-/**
- * The fields a pick writes beside its key: the label the column shows (`widget.body`)
- * and whatever `widget.lookup` copies from the option — so a saved row never carries
- * a label that disagrees with its key. `@@D-614`
- */
-function pickPatch(
-    fieldSchema: IEnrichedFieldSchema,
-    options: DropdownOption[],
-    picked: unknown,
-): Row {
-    const pick = options.find(option => option.value === picked);
-    if (!pick) return {};
-    const patch: Row = {};
-    const bodyField = fieldSchema.widget?.body;
-    if (bodyField) patch[bodyField] = pick.label;
-    for (const [optionKey, rowField] of Object.entries(fieldSchema.widget?.lookup ?? {})) {
-        patch[rowField] = (pick as Record<string, unknown>)[optionKey];
-    }
-    return patch;
-}
-
-function resolveColumns(
-    widget: IWidgetProps['schema']['widget'],
-    items: IWidgetProps['schema']['items'],
-): {
-    field: string;
-    header: string;
-    filter?: boolean;
-    sortable?: boolean;
-    fieldSchema: IEnrichedFieldSchema;
-}[] {
-    const properties = items?.properties as Record<string, IEnrichedFieldSchema> | undefined;
-    const cols = widget?.columns;
-
-    if (cols && Array.isArray(cols)) {
-        return cols.map(c => ({
-            field: c,
-            header: label(properties?.[c]?.title, c)!,
-            filter: !!(properties?.[c] as Record<string, unknown>)?.filter,
-            sortable: !!(properties?.[c] as Record<string, unknown>)?.sort,
-            fieldSchema: properties?.[c] ?? {},
-        }));
-    }
-    if (cols && typeof cols === 'object') {
-        return Object.entries(cols).map(([field, cfg]) => ({
-            field,
-            header: label((cfg as Record<string, unknown>)?.title as string, field)!,
-            fieldSchema: properties?.[field] ?? {},
-        }));
-    }
-    const hidden = new Set(widget?.hidden ?? []);
-    const show = cols ? (Array.isArray(cols) ? cols : Object.keys(cols)) : null;
-    if (properties) {
-        return Object.entries(properties)
-            .filter(([field]) => !hidden.has(field) && (!show || show.includes(field)))
-            .map(([field, schema]) => ({
-                field,
-                header: label(schema.title, field)!,
-                filter: !!(schema as Record<string, unknown>).filter,
-                sortable: !!(schema as Record<string, unknown>).sort,
-                fieldSchema: schema,
-            }));
-    }
-    return [];
-}
-
-function newRow(colFields: string[], properties?: Record<string, IEnrichedFieldSchema>): Row {
-    const row: Row = {};
-    for (const field of colFields) {
-        const schema = properties?.[field];
-        if (schema && 'default' in (schema as Record<string, unknown>)) {
-            row[field] = (schema as Record<string, unknown>).default;
-        } else if (schema?.type === 'boolean' || schema?.widget?.type === 'boolean') {
-            row[field] = false;
-        } else if (
-            schema?.type === 'number' ||
-            schema?.type === 'integer' ||
-            ['number', 'integer', 'currency', 'percent'].includes(schema?.widget?.type ?? '')
-        ) {
-            row[field] = null;
-        } else {
-            row[field] = '';
-        }
-    }
-    row[KEY] = Math.random().toString();
-    return row;
-}
-
-function renderBody(
-    widgetType: string,
-    field: string,
-    rowData: Row,
-    cellId: string,
-    options: DropdownOption[],
-    keyFieldName: string,
-    fieldSchema: IEnrichedFieldSchema,
-    onCycle: ((value: unknown) => void) | undefined,
-    format: FormatFn,
-): React.ReactNode {
-    const value = rowData[field];
-
-    switch (widgetType) {
-        case 'action':
-            return (
-                <ActionButton
-                    label={String(value)}
-                    className="p-button-link p-0"
-                    action={fieldSchema?.action}
-                    params={{
-                        [keyFieldName]: rowData[keyFieldName],
-                        id: rowData[keyFieldName],
-                        current: rowData,
-                    }}
-                />
-            );
-
-        case 'cycle': {
-            // Click-to-cycle cell: no row-edit mode, so each click commits the next
-            // state straight into the form value.  `title` names the current
-            // state, which is also what the Playwright helper matches on.
-            const states = resolveCycleStates(fieldSchema);
-            const state = currentCycleState(states, value);
-            return (
-                <span
-                    data-testid={cellId}
-                    className="blong-cycle cursor-pointer"
-                    title={state?.label ?? 'Not set'}
-                    onClick={event => {
-                        event.stopPropagation();
-                        onCycle?.(nextCycleState(states, value).value);
-                    }}
-                >
-                    {state?.icon ? <i className={state.icon} /> : <span>&nbsp;</span>}
-                </span>
-            );
-        }
-        case 'password':
-            return <span data-testid={cellId}>{value ? '*'.repeat(10) : ''}</span>;
-        case 'file': {
-            // A stored file is a name, or a record carrying its own url. The link is
-            // only offered when the column says the value is downloadable: a url
-            // built from a path that is not there would be a broken link. @@D-615
-            const raw = rowData[field];
-            const items = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]) as Array<
-                string | Record<string, unknown>
-            >;
-            if (!items.length) return <span data-testid={cellId} />;
-            const pathField = fieldSchema.widget?.pathField ?? 'hash';
-            const basePath = fieldSchema.widget?.basePath ?? '';
-            const rowPath = rowData[pathField];
-            const rowHref = rowPath ? `${basePath}${String(rowPath)}` : undefined;
-            return (
-                <span data-testid={cellId}>
-                    {items.map((item, index) => {
-                        const record = typeof item === 'string' ? undefined : item;
-                        const text = String(
-                            record?.name ?? record?.fileName ?? record?.label ?? item ?? '',
-                        );
-                        const href = record
-                            ? ((record.objectURL ?? record.url ?? rowHref) as string | undefined)
-                            : rowHref;
-                        return (
-                            // One cell may hold two files of the same name and url, so
-                            // the position is part of the only identity available.
-                            // eslint-disable-next-line @eslint-react/no-array-index-key
-                            <React.Fragment key={`${text}-${href ?? ''}-${index}`}>
-                                {index > 0 && ', '}
-                                {fieldSchema.widget?.download && href ? (
-                                    <a
-                                        href={String(href)}
-                                        download={text}
-                                        className="text-inherit"
-                                    >
-                                        {text}
-                                    </a>
-                                ) : (
-                                    text
-                                )}
-                            </React.Fragment>
-                        );
-                    })}
-                </span>
-            );
-        }
-        case 'radio':
-            return (
-                <span data-testid={cellId}>
-                    <RadioButton
-                        checked={Boolean(value)}
-                        disabled
-                        readOnly
-                    />
-                </span>
-            );
-        case 'selectTableRadio':
-            return (
-                <span
-                    data-testid={cellId}
-                    onClick={event => {
-                        event.stopPropagation();
-                        onCycle?.(!value);
-                    }}
-                >
-                    <RadioButton
-                        checked={Boolean(value)}
-                        readOnly
-                        // Without a commit path the cell cannot write, so it should not
-                        // look as if it could: a read-only card still renders the flag.
-                        disabled={onCycle === undefined}
-                    />
-                </span>
-            );
-        case 'dropdown': {
-            // The row carries the label the backend joined beside the key, so the
-            // cell needs no options at all. Options are the fallback for a table
-            // whose data has no label column. @@D-614
-            const bodyField = fieldSchema.widget?.body;
-            const label = bodyField ? rowData[bodyField] : undefined;
-            if (label != null) return <span data-testid={cellId}>{String(label)}</span>;
-            const item = options.find(o => o.value === value);
-            return (
-                <span data-testid={cellId}>
-                    {item?.label ?? (value != null ? String(value) : '')}
-                </span>
-            );
-        }
-        case 'dropdownTree': {
-            function findLabel(nodes: DropdownOption[], v: unknown): string | undefined {
-                for (const n of nodes) {
-                    if (n.key === v || n.value === v) return n.label;
-                    if (Array.isArray(n.children)) {
-                        const found = findLabel(n.children as DropdownOption[], v);
-                        if (found != null) return found;
-                    }
-                }
-            }
-            return (
-                <span data-testid={cellId}>
-                    {findLabel(options, value) ?? (value != null ? String(value) : '')}
-                </span>
-            );
-        }
-        case 'multiSelect':
-        case 'multiSelectTree': {
-            const bodyField = fieldSchema.widget?.body;
-            const label = bodyField ? rowData[bodyField] : undefined;
-            if (label != null) {
-                return (
-                    <span data-testid={cellId}>
-                        {Array.isArray(label) ? label.join(', ') : String(label)}
-                    </span>
-                );
-            }
-            const arr = Array.isArray(value) ? (value as unknown[]) : [];
-            const labels = arr.map(v => options.find(o => o.value === v)?.label ?? String(v));
-            return <span data-testid={cellId}>{labels.join(', ')}</span>;
-        }
-        case 'select': {
-            const bodyField = fieldSchema.widget?.body;
-            const label = bodyField ? rowData[bodyField] : undefined;
-            if (label != null) return <span data-testid={cellId}>{String(label)}</span>;
-            const item = options.find(o => o.value === value);
-            return (
-                <span data-testid={cellId}>
-                    {item?.label ?? (value != null ? String(value) : '')}
-                </span>
-            );
-        }
-        case 'date':
-        case 'time':
-        case 'dateTime': {
-            if (value == null) return <span data-testid={cellId} />;
-            return (
-                <span data-testid={cellId}>
-                    {format(value, widgetType as FormatType, fieldSchema.widget?.formatOptions)}
-                </span>
-            );
-        }
-        case 'number':
-        case 'integer':
-        case 'currency':
-        case 'percent':
-            return (
-                <span
-                    data-testid={cellId}
-                    className="block text-right"
-                >
-                    {value == null
-                        ? ''
-                        : format(
-                              value,
-                              widgetType as FormatType,
-                              fieldSchema.widget?.formatOptions,
-                              fieldSchema.widget?.useGrouping,
-                          )}
-                </span>
-            );
-        default:
-            if (value != null && fieldSchema.widget?.translation) {
-                return (
-                    <span data-testid={cellId}>
-                        <Text>{String(value)}</Text>
-                    </span>
-                );
-            }
-            return <span data-testid={cellId}>{value != null ? String(value) : ''}</span>;
-    }
-}
-
-/**
- * One editing cell, rendered as a consumer of the row's recorded picks.
- *
- * A memoized cell in PrimeReact does not re-render when the table around it does, so
- * the list a cell offers is otherwise fixed at the moment the row entered edit mode —
- * whole, for a row that is still empty. Reading the picks from the context brings the
- * new list to the cell that depends on them. `@@D-617`
- */
-function RowCellEditor({
-    rowData,
-    options,
-    fieldSchema,
-    render,
-}: {
-    rowData: Row;
-    options: DropdownOption[];
-    fieldSchema: IEnrichedFieldSchema;
-    render: (editedRow: Row, options: DropdownOption[]) => React.ReactNode;
-}) {
-    const drafts = use(RowDraftContext);
-    const draft = drafts[String(rowData[KEY])];
-    const editedRow = draft ? {...rowData, ...draft} : rowData;
-    return <>{render(editedRow, optionsForRow(options, fieldSchema, editedRow))}</>;
-}
-
-/**
- * One cell that edits in place.
- *
- * The value it shows is its own, held here until the commit has round-tripped through
- * the form: an input bound straight to the committed value loses keystrokes whenever a
- * re-render lands between two of them, and what is on screen must never lag the
- * keyboard. Every change still commits as it happens. `@@D-618`
- */
-function InlineCellEditor({
-    rowData,
-    field,
-    options,
-    fieldSchema,
-    render,
-    commit,
-}: {
-    rowData: Row;
-    field: string;
-    options: DropdownOption[];
-    fieldSchema: IEnrichedFieldSchema;
-    render: (args: {
-        rowData: Row;
-        options: DropdownOption[];
-        onDraft: (value: unknown) => void;
-    }) => React.ReactNode;
-    commit: (value: unknown) => void;
-}) {
-    const committed = rowData[field];
-    const [draft, setDraft] = useState<unknown>(committed);
-    const focusedRef = useRef(false);
-    // A value that changes from outside — a load, a reset, a different row in the same
-    // slot — wins over what was typed, but only while the cell is not being used: the
-    // committed value arrives a render after the keystroke that caused it, so adopting
-    // it mid-typing would replace the text with the value it is about to become.
-    useEffect(() => {
-        if (focusedRef.current) return;
-        // eslint-disable-next-line @eslint-react/set-state-in-effect
-        setDraft(committed);
-    }, [committed]);
-    const editedRow = {...rowData, [field]: draft};
-    return (
-        <div
-            onFocus={() => {
-                focusedRef.current = true;
-            }}
-            onBlur={() => {
-                focusedRef.current = false;
-            }}
-        >
-            {render({
-                rowData: editedRow,
-                options: optionsForRow(options, fieldSchema, editedRow),
-                onDraft: (value: unknown) => {
-                    setDraft(value);
-                    commit(value);
-                },
-            })}
-        </div>
-    );
-}
-
-function renderEditor(
-    widgetType: string,
-    fieldSchema: IEnrichedFieldSchema,
-    field: string,
-    rowData: Row,
-    cellId: string,
-    cellName: string,
-    editorCallback: (v: unknown) => void,
-    options: DropdownOption[],
-): React.ReactNode {
-    const value = rowData[field];
-
-    switch (widgetType) {
-        case 'integer':
-            return (
-                <InputNumber
-                    inputId={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    value={value == null ? null : Number(value)}
-                    onValueChange={e => editorCallback(e.value)}
-                    className="w-full"
-                    inputClassName="w-full text-right"
-                    showButtons
-                    min={fieldSchema.minimum}
-                    max={fieldSchema.maximum}
-                />
-            );
-        case 'number':
-            return (
-                <InputNumber
-                    inputId={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    value={value == null ? null : Number(value)}
-                    onValueChange={e => editorCallback(e.value)}
-                    className="w-full"
-                    inputClassName="w-full text-right"
-                    min={fieldSchema.minimum}
-                    max={fieldSchema.maximum}
-                />
-            );
-        case 'currency':
-        case 'percent':
-            return (
-                <InputNumber
-                    inputId={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    value={value == null ? null : Number(value)}
-                    onValueChange={e => editorCallback(e.value)}
-                    className="w-full"
-                    inputClassName="w-full text-right"
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={4}
-                    min={fieldSchema.minimum}
-                    max={fieldSchema.maximum}
-                />
-            );
-        case 'dropdown':
-        case 'dropdownTree':
-            return (
-                <Dropdown
-                    inputId={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    value={value}
-                    options={options}
-                    // The label and the `lookup` fields a pick carries are applied by
-                    // the caller: a row being edited keeps them on PrimeReact's copy,
-                    // a row edited in place writes them with the value. `@@D-614`
-                    onChange={e => editorCallback(e.value)}
-                    className="w-full blong-dropdown"
-                    showClear={!fieldSchema.fieldRequired}
-                    placeholder="Select…"
-                    filter={options.length > 8}
-                />
-            );
-        case 'multiSelect':
-        case 'multiSelectTree':
-            return (
-                <MultiSelect
-                    inputId={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    value={Array.isArray(value) ? value : []}
-                    options={options}
-                    onChange={e => editorCallback(e.value)}
-                    className="w-full blong-multiselect"
-                    display="chip"
-                    placeholder="Select…"
-                />
-            );
-        case 'select':
-            return (
-                <SelectButton
-                    id={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    value={value}
-                    options={options}
-                    onChange={e => editorCallback(e.value)}
-                    className="white-space-nowrap"
-                />
-            );
-        case 'password':
-            return (
-                <Password
-                    inputId={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    value={value != null ? String(value) : ''}
-                    onInput={e => editorCallback(e.currentTarget.value)}
-                    className="w-full"
-                    inputClassName="w-full"
-                    feedback={false}
-                />
-            );
-        case 'date':
-            return (
-                <Calendar
-                    inputId={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    showOnFocus={false}
-                    value={value != null ? dateIn(value as string | Date) : null}
-                    onChange={e =>
-                        editorCallback(e.value instanceof Date ? dateOut(e.value) : e.value)
-                    }
-                    showIcon
-                    className="w-full"
-                />
-            );
-        case 'time':
-            return (
-                <Calendar
-                    inputId={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    showOnFocus={false}
-                    value={value != null ? new Date(value as string) : new Date(1970, 0, 1)}
-                    onChange={e => editorCallback(e.value)}
-                    timeOnly
-                    showIcon
-                    className="w-full"
-                />
-            );
-        case 'dateTime':
-            return (
-                <Calendar
-                    inputId={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    showOnFocus={false}
-                    value={value != null ? dateIn(value as string | Date) : null}
-                    onChange={e =>
-                        editorCallback(e.value instanceof Date ? dateOut(e.value) : e.value)
-                    }
-                    showTime
-                    showIcon
-                    className="w-full"
-                />
-            );
-        case 'mask':
-            return (
-                <InputMask
-                    id={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    value={value != null ? String(value) : ''}
-                    onChange={e => editorCallback(e.value)}
-                    mask={fieldSchema.widget?.mask ?? ''}
-                    className="w-full"
-                />
-            );
-        case 'boolean':
-        case 'checkbox':
-            return (
-                // data-testid mirrors the display cell (`${tableId}-${row}-${field}`)
-                // so tests can target the boolean cell editor for check/uncheck.
-                <span
-                    data-testid={cellId}
-                    onClick={e => e.stopPropagation()}
-                >
-                    <Checkbox
-                        inputId={cellId}
-                        checked={Boolean(value)}
-                        onChange={e => editorCallback(e.checked)}
-                    />
-                </span>
-            );
-        case 'radio':
-            return (
-                <span
-                    data-testid={cellId}
-                    onClick={e => e.stopPropagation()}
-                >
-                    <RadioButton
-                        inputId={cellId}
-                        checked={Boolean(value)}
-                        onChange={e => editorCallback(e.checked)}
-                    />
-                </span>
-            );
-        case 'file':
-            return (
-                <FileUpload
-                    mode="basic"
-                    id={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    accept={fieldSchema.widget?.accept}
-                    chooseLabel="Choose"
-                    onSelect={e => editorCallback([...(e.files ?? [])])}
-                />
-            );
-        case 'text':
-        case 'textArea':
-            return (
-                <InputTextarea
-                    id={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    value={value != null ? String(value) : ''}
-                    onChange={e => editorCallback(e.target.value)}
-                    autoFocus
-                    className="w-full"
-                    rows={2}
-                />
-            );
-        default:
-            // input, chips, autocomplete, dateRange, etc.
-            return (
-                <InputText
-                    id={cellId}
-                    name={cellName}
-                    data-testid={cellId}
-                    value={value != null ? String(value) : ''}
-                    onChange={e => editorCallback(e.target.value)}
-                    autoFocus
-                    className="w-full"
-                />
-            );
-    }
-}
-
-function resolveParentField(parent?: string): string | undefined {
-    if (!parent) return undefined;
-    if (parent.startsWith('$.selected.')) return parent.slice('$.selected.'.length);
-    return parent;
-}
-
-/**
- * Extract the stable key value from a parent selection row.
- * Uses `keyFieldName` as the primary key field.
- * `keyFieldName` defaults to 'id' in the widget config, so this value
- * is always valid when the widget is properly configured.
- */
-function getParentKeyValue(
-    parentRow: Record<string, unknown> | null,
-    keyFieldName: string,
-): unknown {
-    if (!parentRow) return null;
-    return parentRow[keyFieldName];
-}
-
-// ── Template resolution helpers (for widget.toolbar params) ──────────────────
-
-function getPath(obj: unknown, path: string): unknown {
-    if (!obj || typeof obj !== 'object') return undefined;
-    const parts = path.split('.');
-    let cur: unknown = obj;
-    for (const part of parts) {
-        if (cur === null || cur === undefined) return undefined;
-        cur = (cur as Record<string, unknown>)[part];
-    }
-    return cur;
-}
-
-function resolveToolbarParams(
-    params: Record<string, unknown> | string | undefined,
-    context: Record<string, unknown>,
-): Record<string, unknown> | undefined {
-    if (params === undefined || params === null) return undefined;
-    if (typeof params === 'string') {
-        const singleExpr = params.trim().match(/^\$\{([^}]+)\}$/);
-        if (singleExpr) {
-            const val = getPath(context, singleExpr[1].trim());
-            if (val !== null && typeof val === 'object') return val as Record<string, unknown>;
-            return {value: val};
-        }
-        const resolved = params.replace(/\$\{([^}]+)\}/g, (_, expr) => {
-            const v = getPath(context, (expr as string).trim());
-            return v === undefined || v === null
-                ? ''
-                : typeof v === 'object'
-                  ? JSON.stringify(v)
-                  : String(v);
-        });
-        return {value: resolved};
-    }
-    return Object.fromEntries(
-        Object.entries(params).map(([k, v]) => {
-            if (typeof v === 'string') {
-                const r = resolveToolbarParams(v, context);
-                return [k, r?.value !== undefined ? r.value : r];
-            }
-            return [k, v];
-        }),
-    );
-}
-
-function evalToolbarEnabled(
-    enabled: IWidgetToolbarButton['enabled'],
-    selection: Row[],
-    currentRow: Row | null,
-): boolean {
-    if (enabled === 'current') return currentRow !== null;
-    if (enabled === 'selected') return selection.length > 0 || currentRow !== null;
-    return enabled !== false;
-}
+import {
+    InlineCellEditor,
+    RowCellEditor,
+    RowDraftContext,
+    renderBody,
+    renderEditor,
+} from './table/cells.jsx';
+import {
+    KEY,
+    type Row,
+    getColumnOptions,
+    getParentKeyValue,
+    isCycleCell,
+    newRow,
+    pickPatch,
+    resolveColumns,
+    resolveParentField,
+    resolveWidgetType,
+} from './table/model.js';
+import {TablePaginator} from './table/paginator.jsx';
+import {evalToolbarEnabled, resolveToolbarParams} from './table/toolbar.js';
+import {useRowDrafts} from './table/useRowDrafts.js';
+import {useTableDropdowns} from './table/useTableDropdowns.js';
+import {type ITableListOptions, useTableList} from './table/useTableList.js';
+import {useTableRows} from './table/useTableRows.js';
 
 export function TableWidget({
     id,
@@ -914,153 +78,33 @@ export function TableWidget({
     const widgetToolbarRight = schema.widget?.toolbarRight ?? [];
     const isListMode = !!listAction;
 
-    // listAction-mode state
-    const [searchInput, setSearchInput] = useState('');
-    const [committedSearch, setCommittedSearch] = useState('');
-    const [columnFilterInputs, setColumnFilterInputs] = useState<Record<string, string>>({});
-    const [committedFilters, setCommittedFilters] = useState<Record<string, string>>({});
-    const [listSortField, setListSortField] = useState<string | null>(null);
-    const [listSortOrder, setListSortOrder] = useState<1 | -1>(1);
-    const [listFirst, setListFirst] = useState(0);
-    const [listPageSize, setListPageSize] = useState(initialPageSize);
-    const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
     const {handler} = useBlong();
     const format = useFormatValue();
 
-    // Columns whose cell declares `widget.dropdown` need their options to render a
-    // label: without them the cell falls back to the stored value, and a resource
-    // id is a base64 string that means nothing to a reader. The caller may pass a
-    // map, and the model pages do not — so load what is missing through the portal
-    // orchestrator, the same call the dropdown widgets make.
-    const columnDropdownKeys = useMemo(
-        () =>
-            cols
-                .map(col => properties?.[col.field]?.widget?.dropdown)
-                .filter((key): key is string => typeof key === 'string' && key.length > 0),
-        [cols, properties],
-    );
-    const [loadedDropdowns, setLoadedDropdowns] = useState<Record<string, unknown[]>>({});
-    useEffect(() => {
-        const missing = columnDropdownKeys.filter(
-            key => !dropdowns?.[key] && !loadedDropdowns[key],
-        );
-        if (!missing.length) return;
-        if (typeof handler?.portalDropdownList !== 'function') return;
-        let cancelled = false;
-        Promise.all(
-            missing.map(name =>
-                (
-                    handler.portalDropdownList({names: [name]}, {}) as Promise<
-                        Record<string, unknown>
-                    >
-                )
-                    .then(
-                        result => [name, Array.isArray(result[name]) ? result[name] : []] as const,
-                    )
-                    .catch(() => [name, []] as const),
-            ),
-        ).then(entries => {
-            if (!cancelled) setLoadedDropdowns(prev => ({...prev, ...Object.fromEntries(entries)}));
-        });
-        return () => {
-            cancelled = true;
-        };
-    }, [columnDropdownKeys, dropdowns, loadedDropdowns, handler]);
+    // The option lists a cell needs to show a label, and a pivot's slot rows: the
+    // caller may pass them, otherwise they are loaded once through the portal.
+    const {
+        resolvedDropdowns,
+        signature: dropdownSignature,
+        labelFields,
+        pivotOptions,
+    } = useTableDropdowns({
+        columns: colFields,
+        properties: properties as
+            | Record<string, {widget?: {dropdown?: string; body?: string}}>
+            | undefined,
+        dropdowns,
+        pivotDropdown: (schema.widget?.pivot as {dropdown?: string} | undefined)?.dropdown,
+        load:
+            typeof handler.portalDropdownList === 'function'
+                ? (names: string[]) =>
+                      handler.portalDropdownList({names}, {}) as Promise<Record<string, unknown>>
+                : undefined,
+    });
 
-    /** The caller's map wins; the loaded one fills the gaps. */
-    const resolvedDropdowns = useMemo(
-        () => ({...loadedDropdowns, ...dropdowns}),
-        [loadedDropdowns, dropdowns],
-    );
-
-    /**
-     * The row fields some other column's list is narrowed by — a column's
-     * `optionsFilter` row side, or its `parent`.
-     *
-     * A row being edited keeps its draft to itself until the row is saved, and the
-     * cell editors are mounted when the row enters edit mode, so a cell that filters
-     * on a sibling would keep the list it computed at that moment. For a new row that
-     * is the whole list, because the sibling is still empty — the pick that should
-     * narrow it then changes nothing on screen. The table therefore remembers those
-     * picks itself and re-renders when one changes, which is what lets the dependent
-     * cell recompute its list. @@D-617
-     */
-    const cascadeFields = useMemo(() => {
-        const fields = new Set<string>();
-        for (const col of cols) {
-            const widget = col.fieldSchema.widget;
-            if (widget?.parent) fields.add(widget.parent);
-            for (const rowField of Object.values(widget?.optionsFilter ?? {})) {
-                fields.add(String(rowField));
-            }
-        }
-        return fields;
-    }, [cols]);
-    const [rowDrafts, setRowDrafts] = useState<Record<string, Row>>({});
-    const recordRowDraft = useCallback(
-        (row: Row, field: string, value: unknown) => {
-            if (!cascadeFields.has(field)) return;
-            const key = String(row[KEY]);
-            setRowDrafts(prev => ({...prev, [key]: {...prev[key], [field]: value}}));
-        },
-        [cascadeFields],
-    );
-
-    /**
-     * What the rendered rows depend on, beyond the data itself: the number of
-     * options per label column. PrimeReact keeps a rendered row as it is and does
-     * not redraw it when only the cell `body` callback changes, so options that
-     * arrive after the first paint would leave the stored id on screen forever. A
-     * key that changes when the counts change remounts the table exactly once, and
-     * is constant for a table without label columns. @@D-612
-     */
-    const dropdownSignature = columnDropdownKeys
-        .map(key => `${key}:${resolvedDropdowns[key]?.length ?? 0}`)
-        .join('|');
-
-    /**
-     * The label columns the model reads instead of the keys. A list read asks the
-     * backend for them, so a row arrives with its names attached and no cell has to
-     * be resolved on the fly. @@D-614
-     */
-    const labelFields = useMemo(
-        () =>
-            cols
-                .map(col => col.fieldSchema.widget?.body)
-                .filter((field): field is string => typeof field === 'string'),
-        [cols],
-    );
-
-    // Pivot tables source their rows from a named dropdown. When the caller did
-    // not supply the options via the `dropdowns` prop (e.g. model pages), load
-    // them on demand through the portal orchestrator so the pivot rows render.
-    const [pivotOptions, setPivotOptions] = useState<Row[] | undefined>(undefined);
-    const pivotDropdownKey = (schema.widget?.pivot as {dropdown?: string} | undefined)?.dropdown;
-    useEffect(() => {
-        if (!pivotDropdownKey) return;
-        if (dropdowns?.[pivotDropdownKey]) return; // caller provided the options
-        let cancelled = false;
-        const loader = (name: string): Promise<IDropdownOption[]> =>
-            (
-                handler.portalDropdownList({names: [name]}, {}) as Promise<Record<string, unknown>>
-            ).then(result => {
-                const data = result[name];
-                return (Array.isArray(data) ? data : []) as IDropdownOption[];
-            });
-        dropdownRegistry
-            .get(pivotDropdownKey, loader)
-            .then(data => {
-                if (!cancelled) setPivotOptions(data as Row[]);
-            })
-            .catch(() => {
-                // Error surfaced by the central dispatch wrapper; render without rows.
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [pivotDropdownKey, dropdowns, handler]);
+    // A cascade inside a row that is still being edited: the picks the row has made are
+    // kept here so the cell that depends on them can recompute its list. @@D-617
+    const {rowDrafts, recordRowDraft, clearRowDrafts} = useRowDrafts(cols);
 
     // Subscribe to table selections from FormStateContext (slow-changing — only updates on
     // row selection events, never on keystrokes).  Falls back gracefully to undefined when
@@ -1081,195 +125,67 @@ export function TableWidget({
               | undefined)
         : undefined;
 
-    // In listAction mode, reset paging and include master filter in server params
-    // when parent selection changes. In non-listAction mode, client-side filtering applies.
-    const prevParentKeyForPagingRef = useRef<unknown>(undefined);
+    /** The keys the server narrows a cascaded list by, from the selected parent row. */
+    const cascadeFilter = useMemo(() => {
+        if (!isListMode || !parentFieldName || !masterMapping || !parentSelection) return undefined;
+        return Object.fromEntries(
+            Object.entries(masterMapping).map(([ownKey, parentKey]) => [
+                ownKey,
+                parentSelection.row[parentKey],
+            ]),
+        );
+    }, [isListMode, parentFieldName, masterMapping, parentSelection]);
 
-    // Reset paging when the cascaded parent selection changes (listAction mode).
-    // Compare using the row's keyField value for stable identity (not object reference).
+    // A list table reads its rows from the server: search, filters, sort and page are
+    // one hook, so what is left here is which rows the page shows.
+    const list = useTableList({
+        listAction,
+        listParams,
+        resultSet,
+        reportParams,
+        reportMode,
+        labelFields,
+        cascadeFilter,
+        pageSize: initialPageSize,
+        handler: handler as unknown as ITableListOptions['handler'],
+    });
+
+    const {setFirst: resetPage} = list;
+
+    // A new parent row starts at the first page and forgets the selected one: both
+    // described the previous parent.
+    const prevParentKeyForPagingRef = useRef<unknown>(undefined);
     useEffect(() => {
         if (!isListMode || !parentFieldName) return;
         const curKey = getParentKeyValue(parentSelection?.row ?? null, keyFieldName);
         if (prevParentKeyForPagingRef.current === curKey) return;
         prevParentKeyForPagingRef.current = curKey;
-        // eslint-disable-next-line @eslint-react/set-state-in-effect
-        setListFirst(0);
+        resetPage(0);
         // eslint-disable-next-line @eslint-react/set-state-in-effect
         setSingleSelected(null);
-    }, [isListMode, parentFieldName, parentSelection?.row, keyFieldName]);
+    }, [isListMode, parentFieldName, parentSelection?.row, keyFieldName, resetPage]);
 
-    // Reset paging when report params change (new "Run Report" submission).
+    // A new report run starts at the first page too.
     const prevReportParamsRef = useRef<Record<string, unknown> | undefined>(undefined);
     useEffect(() => {
         if (!isListMode || !reportMode) return;
         if (prevReportParamsRef.current === reportParams) return;
         prevReportParamsRef.current = reportParams;
-        if (reportParams !== undefined) {
-            // eslint-disable-next-line @eslint-react/set-state-in-effect
-            setListFirst(0);
-        }
-    }, [isListMode, reportMode, reportParams]);
+        if (reportParams !== undefined) resetPage(0);
+    }, [isListMode, reportMode, reportParams, resetPage]);
 
-    const mergedListParams = useMemo(() => {
-        const filterBy = Object.fromEntries(
-            Object.entries(committedFilters).filter(([, v]) => v !== ''),
-        );
-        // In listAction mode with parent cascade, send master filter keys as server-side params
-        const cascadeFilter: Record<string, unknown> = {};
-        if (isListMode && parentFieldName && masterMapping && parentSelection) {
-            for (const [ownKey, parentKey] of Object.entries(masterMapping)) {
-                cascadeFilter[ownKey] = parentSelection.row[parentKey];
-            }
-        }
-        return {
-            ...(listParams ?? {}),
-            // Report params are merged before cascade/column filters so column filters take precedence
-            ...(reportParams ?? {}),
-            ...cascadeFilter,
-            ...(labelFields.length > 0 ? {labels: labelFields} : {}),
-            ...(Object.keys(filterBy).length > 0 ? {filterBy} : {}),
-            ...(committedSearch ? {search: committedSearch} : {}),
-            ...(listSortField
-                ? {orderBy: [{field: listSortField, dir: listSortOrder === 1 ? 'ASC' : 'DESC'}]}
-                : {}),
-            paging: {pageSize: listPageSize, pageNumber: Math.floor(listFirst / listPageSize) + 1},
-        };
-    }, [
-        listParams,
-        reportParams,
-        isListMode,
-        parentFieldName,
-        masterMapping,
-        parentSelection,
-        committedFilters,
-        committedSearch,
-        listSortField,
-        listSortOrder,
-        listFirst,
-        listPageSize,
-        labelFields,
-    ]);
-
-    type ListResult = Record<string, unknown>;
-    const {data: listQueryData, isFetching: listLoading} = useQuery<ListResult>({
-        queryKey: [listAction, mergedListParams],
-        queryFn: () => handler[listAction](mergedListParams, {}) as Promise<ListResult>,
-        // In report mode, wait until the user submits params (reportParams becomes defined)
-        enabled: isListMode && (!reportMode || reportParams !== undefined),
-        staleTime: 0,
-        placeholderData: previousData => previousData,
-    });
-
-    const listRows: Row[] = useMemo(() => {
-        if (!listQueryData) return [];
-        if (resultSet && Array.isArray((listQueryData as Record<string, unknown>)[resultSet])) {
-            return (listQueryData as Record<string, unknown>)[resultSet] as Row[];
-        }
-        if (Array.isArray(listQueryData)) return listQueryData as Row[];
-        return [];
-    }, [listQueryData, resultSet]);
-
-    const listTotal: number = useMemo(() => {
-        if (!listQueryData) return 0;
-        const pagination = (listQueryData as {pagination?: {recordsTotal?: number}}).pagination;
-        return typeof pagination?.recordsTotal === 'number'
-            ? pagination.recordsTotal
-            : listRows.length;
-    }, [listQueryData, listRows.length]);
-
-    const handleSearchChange = useCallback((v: string) => {
-        setSearchInput(v);
-        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-        searchDebounceRef.current = setTimeout(
-            () => {
-                setCommittedSearch(v);
-                setListFirst(0);
-            },
-            v === '' ? 0 : 350,
-        );
-    }, []);
-
-    const handleColumnFilterChange = useCallback((field: string, v: string) => {
-        setColumnFilterInputs(prev => ({...prev, [field]: v}));
-        if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
-        filterDebounceRef.current = setTimeout(
-            () => {
-                setCommittedFilters(prev => {
-                    const next = {...prev, [field]: v};
-                    if (v === '') delete next[field];
-                    return next;
-                });
-                setListFirst(0);
-            },
-            v === '' ? 0 : 350,
-        );
-    }, []);
-
-    // ── Rows source (form-value vs listAction) ────────────────────────────
-    const rows: Row[] = isListMode
-        ? listRows
-        : (Array.isArray(value) ? (value as Row[]) : []).map((r, i) => ({
-              ...r,
-              [KEY]: (r as Row)[KEY] ?? i,
-          }));
-
-    // ── Pivot transformation ───────────────────────────────────────────────
-    // When widget.pivot is configured, overlay existing data onto a fixed set
-    // of rows derived from `examples` (static) or a named `dropdown` (dynamic).
-    // The `join` map describes how pivot row fields map to actual data row fields.
+    // ── Pivot and filter columns ──────────────────────────────────────────
     const pivotCfg = schema.widget?.pivot as
         | {examples?: Row[]; dropdown?: string; join?: Record<string, string>; defaults?: Row}
         | undefined;
+    /** The slots a pivot overlays stored rows onto: its examples, or a named dropdown. */
     const pivotBaseRows: Row[] | undefined = pivotCfg
         ? (pivotCfg.examples ??
           (pivotCfg.dropdown
               ? ((dropdowns?.[pivotCfg.dropdown] as Row[] | undefined) ?? pivotOptions ?? undefined)
               : undefined))
         : undefined;
-    const pivotJoinDataFields = new Set<string>(Object.values(pivotCfg?.join ?? {}));
-
-    const baseRows: Row[] = pivotBaseRows
-        ? (() => {
-              const joinEntries = Object.entries(pivotCfg!.join ?? {});
-              return pivotBaseRows.map((pivotRow, i) => {
-                  const found = rows.find(r =>
-                      joinEntries.every(([pivotKey, rowKey]) => pivotRow[pivotKey] === r[rowKey]),
-                  );
-                  // `defaults` seeds the non-join fields of a slot with no stored
-                  // data (e.g. a tri-state cell starting as `inherit`).  Stored
-                  // data wins over the default.
-                  if (found) return {...pivotCfg!.defaults, ...found, [KEY]: `pivot-${i}`};
-                  // Build an empty row seeded with the join field values
-                  const seeded: Row = {...pivotCfg!.defaults, [KEY]: `pivot-${i}`};
-                  for (const [pivotKey, rowKey] of joinEntries) {
-                      seeded[rowKey] = pivotRow[pivotKey];
-                  }
-                  return seeded;
-              });
-          })()
-        : rows;
-
-    // Client-side cascaded filtering (non-listAction mode only).
-    // In listAction mode, the cascade filter is sent to the server via mergedListParams.
-    const filteredRows = useMemo(
-        () =>
-            !isListMode && parentFieldName && masterMapping
-                ? parentSelection
-                    ? baseRows.filter(r =>
-                          Object.entries(masterMapping).every(
-                              ([ownKey, parentKey]) => r[ownKey] === parentSelection.row[parentKey],
-                          ),
-                      )
-                    : []
-                : baseRows,
-        [isListMode, parentFieldName, masterMapping, parentSelection, baseRows],
-    );
-
-    // ── Column filters ─────────────────────────────────────────────────────
-    // One filter input per `filter: true` column, in both modes: a list table
-    // sends the values to the server as `filterBy`, a form/pivot table filters
-    // its rows here.  The form case is display-only — it never touches the form
-    // value, so hiding a row cannot drop data on save.
+    /** One filter input per `filter: true` column, in both modes. */
     const filterFields = useMemo(() => cols.filter(c => c.filter).map(c => c.field), [cols]);
     /** A pick-list column filters on its key, exactly; a text column on a substring. */
     const pickFields = useMemo(
@@ -1281,45 +197,32 @@ export function TableWidget({
             ),
         [cols],
     );
-    const displayRows = useMemo(() => {
-        if (isListMode || filterFields.length === 0) return filteredRows;
-        const active = filterFields
-            .map(field => [field, committedFilters[field] ?? ''] as const)
-            .filter(([, text]) => text !== '');
-        if (active.length === 0) return filteredRows;
-        return filteredRows.filter(row =>
-            active.every(([field, text]) =>
-                pickFields.has(field)
-                    ? String(row[field] ?? '') === text
-                    : String(row[field] ?? '')
-                          .toLocaleLowerCase()
-                          .includes(text.toLocaleLowerCase()),
-            ),
-        );
-    }, [isListMode, filteredRows, filterFields, pickFields, committedFilters]);
 
-    /**
-     * Sorting a form table reorders the view, not the value: a detail list keeps the
-     * order the record was saved in, and the row key still identifies the row, so a
-     * cell edit lands on the right one. The list mode sorts through the server.
-     * @@D-615
-     */
-    const [formSortField, setFormSortField] = useState<string | null>(null);
-    const [formSortOrder, setFormSortOrder] = useState<1 | -1>(1);
-    const sortedRows = useMemo(() => {
-        if (isListMode || !formSortField) return displayRows;
-        const direction = formSortOrder;
-        return [...displayRows].sort((left, right) => {
-            const a = left[formSortField];
-            const b = right[formSortField];
-            // Empties last in either direction: a missing value says nothing about
-            // its order among the values that exist.
-            if (a == null || a === '') return b == null || b === '' ? 0 : 1;
-            if (b == null || b === '') return -1;
-            if (typeof a === 'number' && typeof b === 'number') return (a - b) * direction;
-            return String(a).localeCompare(String(b)) * direction;
-        });
-    }, [isListMode, displayRows, formSortField, formSortOrder]);
+    // Which rows the page shows: the form value in a detail table, the server's page
+    // in a list, a fixed slot set in a pivot — then the cascade, the column filters
+    // and the view sort. A form table narrows and sorts what it holds; a list table
+    // asks the server to.
+    const {
+        rows,
+        sortedRows,
+        visibleRows,
+        sortField: formSortField,
+        sortOrder: formSortOrder,
+        onSortChange: onFormSortChange,
+        pivotJoinDataFields,
+    } = useTableRows({
+        value,
+        listRows: list.rows,
+        isListMode,
+        pivotCfg,
+        pivotBaseRows,
+        parentFieldName,
+        masterMapping,
+        parentSelection,
+        filterFields,
+        pickFields,
+        committedFilters: list.committedFilters,
+    });
 
     const [editingRows, setEditingRows] = useState<Record<string, boolean>>({});
     const [pendingEdit, setPendingEdit] = useState<Record<string, boolean> | null>(null);
@@ -1380,10 +283,10 @@ export function TableWidget({
         const curKey = getParentKeyValue(parentSelection?.row ?? null, keyFieldName);
         if (prevParentKeyForAutoSelectRef.current === curKey) return;
         prevParentKeyForAutoSelectRef.current = curKey;
-        if (filteredRows.length > 0) {
+        if (visibleRows.length > 0) {
             // eslint-disable-next-line @eslint-react/set-state-in-effect
-            setSingleSelected(filteredRows[0]);
-            fireSingleSelect(filteredRows[0]);
+            setSingleSelected(visibleRows[0]);
+            fireSingleSelect(visibleRows[0]);
         } else {
             // eslint-disable-next-line @eslint-react/set-state-in-effect
             setSingleSelected(null);
@@ -1394,7 +297,7 @@ export function TableWidget({
         parentSelection,
         parentFieldName,
         schema.widget?.autoSelect,
-        filteredRows,
+        visibleRows,
         fireSingleSelect,
         onSelect,
         keyFieldName,
@@ -1408,12 +311,15 @@ export function TableWidget({
         setEditingRows(prev => ({...prev, ...pendingEdit}));
     }, [pendingEdit]);
 
-    const onRowEditChange = useCallback((e: {data: Record<string, boolean>}) => {
-        // A row that is no longer being edited leaves no picks behind: a cancelled
-        // edit must not narrow the next one. @@D-617
-        setRowDrafts({});
-        setEditingRows(e.data);
-    }, []);
+    const onRowEditChange = useCallback(
+        (e: {data: Record<string, boolean>}) => {
+            // A row that is no longer being edited leaves no picks behind: a cancelled
+            // edit must not narrow the next one. @@D-617
+            clearRowDrafts();
+            setEditingRows(e.data);
+        },
+        [clearRowDrafts],
+    );
 
     /**
      * Write one row back into the form value.  For a pivot table the row may not
@@ -1439,10 +345,10 @@ export function TableWidget({
 
     const onRowEditComplete = useCallback(
         (e: {newData: Row}) => {
-            setRowDrafts({});
+            clearRowDrafts();
             onChange(mergeRow(e.newData));
         },
-        [mergeRow, onChange],
+        [mergeRow, onChange, clearRowDrafts],
     );
 
     /**
@@ -1542,19 +448,19 @@ export function TableWidget({
                 style={{position: 'absolute', left: '0.5rem', pointerEvents: 'none'}}
             />
             <InputText
-                value={searchInput}
-                onChange={e => handleSearchChange(e.target.value)}
+                value={list.searchInput}
+                onChange={e => list.onSearchChange(e.target.value)}
                 placeholder="Search…"
                 data-testid="browse-search"
                 style={{width: '9rem', paddingLeft: '1.75rem'}}
             />
-            {searchInput && (
+            {list.searchInput && (
                 <Button
                     icon="pi pi-times"
                     className="p-button-text p-button-sm"
                     style={{position: 'absolute', right: 0, padding: '0.25rem'}}
                     type="button"
-                    onClick={() => handleSearchChange('')}
+                    onClick={() => list.onSearchChange('')}
                 />
             )}
         </span>
@@ -1648,7 +554,7 @@ export function TableWidget({
                     dataKey={dataKeyField}
                     size="small"
                     emptyMessage="No rows."
-                    loading={isListMode ? listLoading : undefined}
+                    loading={isListMode ? list.loading : undefined}
                     lazy={isListMode}
                     rowClassName={rowClass}
                     selection={isSingleSelect ? singleSelected : selected}
@@ -1665,21 +571,24 @@ export function TableWidget({
                     metaKeySelection={false}
                     removableSort
                     sortField={
-                        isListMode ? (listSortField ?? undefined) : (formSortField ?? undefined)
+                        isListMode ? (list.sortField ?? undefined) : (formSortField ?? undefined)
                     }
-                    sortOrder={isListMode ? listSortOrder : formSortOrder}
+                    sortOrder={isListMode ? list.sortOrder : formSortOrder}
                     onSort={
                         isListMode
                             ? (e: {sortField: string; sortOrder: number}) => {
                                   const order = (e.sortOrder ?? 0) as 0 | 1 | -1;
-                                  setListSortField(order === 0 ? null : (e.sortField ?? null));
-                                  setListSortOrder(order === 0 ? 1 : order);
-                                  setListFirst(0);
+                                  list.onSortChange(
+                                      order === 0 ? null : (e.sortField ?? null),
+                                      order === 0 ? 1 : order,
+                                  );
                               }
                             : (e: {sortField: string; sortOrder: number}) => {
                                   const order = (e.sortOrder ?? 0) as 0 | 1 | -1;
-                                  setFormSortField(order === 0 ? null : (e.sortField ?? null));
-                                  setFormSortOrder(order === 0 ? 1 : order);
+                                  onFormSortChange(
+                                      order === 0 ? null : (e.sortField ?? null),
+                                      order === 0 ? 1 : order,
+                                  );
                               }
                     }
                 >
@@ -1719,10 +628,10 @@ export function TableWidget({
                                                 // the same way the cell is edited — typing a
                                                 // substring can never match an id.
                                                 <Dropdown
-                                                    value={columnFilterInputs[field] ?? ''}
+                                                    value={list.columnFilterInputs[field] ?? ''}
                                                     options={options}
                                                     onChange={e =>
-                                                        handleColumnFilterChange(
+                                                        list.onColumnFilterChange(
                                                             field,
                                                             (e.value as string) ?? '',
                                                         )
@@ -1736,9 +645,9 @@ export function TableWidget({
                                                 />
                                             ) : (
                                                 <InputText
-                                                    value={columnFilterInputs[field] ?? ''}
+                                                    value={list.columnFilterInputs[field] ?? ''}
                                                     onChange={e =>
-                                                        handleColumnFilterChange(
+                                                        list.onColumnFilterChange(
                                                             field,
                                                             e.target.value,
                                                         )
@@ -1936,78 +845,14 @@ export function TableWidget({
                     )}
                 </DataTable>
             </RowDraftContext>
-            {isListMode && listTotal > 0 && (
-                <div
-                    className="blong-table-paginator"
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        padding: '0.5rem',
-                        justifyContent: 'center',
-                        userSelect: 'none',
-                        flexShrink: 0,
-                    }}
-                >
-                    <Button
-                        icon="pi pi-angle-double-left"
-                        className="p-button-text p-button-sm"
-                        type="button"
-                        disabled={listFirst === 0}
-                        onClick={() => setListFirst(0)}
-                    />
-                    <Button
-                        icon="pi pi-angle-left"
-                        className="p-button-text p-button-sm"
-                        type="button"
-                        disabled={listFirst === 0}
-                        onClick={() => setListFirst(Math.max(0, listFirst - listPageSize))}
-                    />
-                    <span style={{padding: '0 0.5rem', fontSize: '0.875rem'}}>
-                        {Math.floor(listFirst / listPageSize) + 1} /{' '}
-                        {Math.ceil(listTotal / listPageSize)}
-                    </span>
-                    <Button
-                        icon="pi pi-angle-right"
-                        className="p-button-text p-button-sm"
-                        type="button"
-                        disabled={listFirst + listPageSize >= listTotal}
-                        onClick={() => setListFirst(listFirst + listPageSize)}
-                    />
-                    <Button
-                        icon="pi pi-angle-double-right"
-                        className="p-button-text p-button-sm"
-                        type="button"
-                        disabled={listFirst + listPageSize >= listTotal}
-                        onClick={() =>
-                            setListFirst((Math.ceil(listTotal / listPageSize) - 1) * listPageSize)
-                        }
-                    />
-                    <select
-                        value={listPageSize}
-                        onChange={e => {
-                            setListPageSize(Number(e.target.value));
-                            setListFirst(0);
-                        }}
-                        style={{
-                            marginLeft: '0.5rem',
-                            background: 'var(--surface-overlay)',
-                            color: 'var(--text-color)',
-                            border: '1px solid var(--surface-border)',
-                            borderRadius: 'var(--border-radius)',
-                            padding: '0.2rem',
-                        }}
-                    >
-                        {[10, 25, 50, 100].map(n => (
-                            <option
-                                key={n}
-                                value={n}
-                            >
-                                {n}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+            {isListMode && list.total > 0 && (
+                <TablePaginator
+                    first={list.first}
+                    pageSize={list.pageSize}
+                    total={list.total}
+                    onFirstChange={list.setFirst}
+                    onPageSizeChange={list.setPageSize}
+                />
             )}
         </div>
     );
