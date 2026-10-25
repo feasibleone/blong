@@ -321,6 +321,12 @@ test('vault-dev — mounts, secrets, and masked secret viewer', async ({portal})
         portal.page.locator('.p-datatable-tbody tr').filter({hasText: 'commander-demo'}).first(),
     ).toBeVisible({timeout: 15_000});
     await filterRows(portal.page, 'commander-demo');
+    // The filter narrows the table, never the navigator, so the mount's children
+    // still list every key in the shared engine — `blong-int-adapter` writes
+    // `secret/blong-test/…` into it. Collapse the drilled mount, as the redis-keys
+    // shot does: the highlighted `secret/` stays as evidence of the drill and the
+    // table still shows the seeded secret under its filter. @@D-262 @@D-622
+    await collapseSelectedNode(portal.page);
     await expect(portal.page).toHaveScreenshot('explore-vault-secrets.png');
     await clearFilter(portal.page);
     // Open the seeded secret → masked secret viewer (no error; values are masked
@@ -404,6 +410,12 @@ test('kafka-dev — topics and message viewer', async ({portal}) => {
     // deterministic parts: the value is the seed's own JSON.
     await filterRows(portal.page, 'hello from blong-integration');
     await redactCellParts(portal.page, [1, 5], [VOLATILE_NUMBER]);
+    // The message level's tree nodes are labelled by offset, and the filter narrows
+    // the table only: every message `blong-int-adapter`'s producer tests append to
+    // this topic becomes another child. Collapse the drilled topic for the reason
+    // the redis-keys shot does, leaving the highlighted topic as the drill evidence.
+    // @@D-262 @@D-622
+    await collapseSelectedNode(portal.page);
     await expect(portal.page).toHaveScreenshot('explore-kafka-messages.png');
 });
 

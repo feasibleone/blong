@@ -62,7 +62,7 @@ open (50)
 - `F-590` · ci — memory refs skips an untracked package
 - `F-593` · cross-cutting — memory edit rewrote emphasis in entries it did not touch
 
-resolved (39)
+resolved (40)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -105,6 +105,7 @@ resolved (39)
 - `F-544` · ci — A flaky retry makes a green run look red
 - `F-545` · ci — ci history cannot read a package page Allure replaced
 - `F-555` · ci — CI tests run against a dist cached under a lockfile-only key
+- `F-597` · cross-cutting — The k3d Kafka broker OOMs and looks like a broken port mapping
 
 <!-- /memory:index -->
 
@@ -1470,3 +1471,21 @@ common/temp/build.tar.zst and uploads it as the build artifact of the run, which
 the tree downloads and unpacks. Verified by rebuilding core/blong/dist locally and running the
 blong-access and blong-gateway suites with NODE_OPTIONS cleared: 70/70 and 21/21 through the same
 resolution CI uses.
+
+### F-597 — The k3d Kafka broker OOMs and looks like a broken port mapping
+
+> _2026-10-25 · cross-cutting · resolved_
+
+The local k3d broker is OOMKilled about every four hours at its 512Mi memory limit (39 restarts in
+two weeks), and the container keeps no volume, so each restart loses the topic and the postStart
+hook recreates and re-seeds it. A commander explore run that lands in that window fails the whole
+webServer with node-rdkafka `Local: Broker transport failure`, which looks like a broken port
+mapping: the k3d port 9092 is exposed and open, and the broker answers `kafka-topics` from inside
+the pod throughout. Check `kubectl describe pod -l app=kafka` for
+`Last State: Terminated, Reason: OOMKilled` before touching ports, wait for the rollout, and read
+the topic's offsets with `kafka-get-offsets` before re-seeding by hand. CI is unaffected — a fresh
+cluster on every run — so the limit stays as it is and the lesson is local-only.
+
+No change: the OOM is local-only (CI runs a fresh cluster) and the limit stays. The diagnostic order
+— describe the pod for OOMKilled, wait for the rollout, then read offsets — is the part worth
+keeping.

@@ -48,9 +48,16 @@ export default handler(
                         typeof result.access_token === 'string' && result.access_token.length > 0,
                         'login returns a non-empty access token',
                     );
+                    // The map carries the action *resource names* the seed declares, not
+                    // handler names: `accessPermissionList` reads `core_resource.resourceName`
+                    // for the caller's `access.effectiveAction` paths, and the RBAC seed
+                    // writes the dotted method (`sport.athlete.add`). The gateway normalises
+                    // to `methodId` form only when it authorizes a route
+                    // (`accessAuthorizationList`), so the handler name `sportAthleteAdd` never
+                    // appears in this list.
                     assert.ok(
-                        result.permissions.includes('sportAthleteAdd'),
-                        'testAdmin permission map includes sportAthleteAdd',
+                        result.permissions.includes('sport.athlete.add'),
+                        'testAdmin permission map includes the sport.athlete.add action',
                     );
                     return result;
                 },
@@ -177,13 +184,18 @@ export default handler(
                         $meta,
                     );
                     assert.ok(sport?.sportId, 'the sport seed is present');
+                    // The name this call creates, kept so the filter below can name the row
+                    // it is about: a dev database keeps every competition an earlier run
+                    // added, and a page of five rows in no order would leave this one out
+                    // once Athletics holds more than five.
+                    const competitionName = `Label Projection ${Date.now()}`;
                     const added = await sportCompetitionAdd<{competition: {competitionId: string}}>(
                         {
                             competition: {
                                 // `type.uuid()` is submitted as its literal placeholder
                                 // marker; the adapter mints the real key from it.
                                 competitionId: 'uuid',
-                                competitionName: `Label Projection ${Date.now()}`,
+                                competitionName,
                                 competitionKind: 'olympicGames',
                                 competitionStatus: 'active',
                                 sportId: sport.sportId,
@@ -213,7 +225,7 @@ export default handler(
                         const filtered = await sportCompetitionFind<Array<Record<string, any>>>(
                             {
                                 paging: {pageNumber: 1, pageSize: 5},
-                                filterBy: {sportId: sport.sportId},
+                                filterBy: {sportId: sport.sportId, competitionName},
                                 labels: ['sportName'],
                             },
                             $meta,

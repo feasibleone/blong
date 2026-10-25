@@ -26,5 +26,11 @@ test.describe('Party Unit', () => {
         editFields: {
             'unit.unitName': 'Test Playwright Unit Edited',
         },
+        // Pin the edit test to the record this spec created. Without it the edit test
+        // opens the first row of the unfiltered table, and a bootstrap table has no
+        // server-side order to rely on — the ids are generated uuids, so MySQL's
+        // natural order changes between runs and the shot could open a seeded unit
+        // (`Head Office`) instead. The baseline was captured with the created row.
+        search: 'Test Playwright Unit',
     });
 });

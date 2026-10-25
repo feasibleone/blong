@@ -27,5 +27,13 @@ test.describe('Marine Family', () => {
         editFields: {
             'family.familyName': 'Test Playwright Family Edited',
         },
+        // Pin the edit test to the family this spec created. Without it the edit test
+        // opens the first row of the unfiltered family table — a *seeded* family
+        // (`Acroporidae`, the one `Staghorn Coral` belongs to) — and renames it. The
+        // rename lands in the shared model mock, so every later capture that shows the
+        // family tree or a species' `familyId` label sees the edited name instead: that
+        // is what took `species.play.ts` and `portal.play.ts` red whenever the family
+        // spec happened to run first.
+        search: 'Test Playwright Family',
     });
 });

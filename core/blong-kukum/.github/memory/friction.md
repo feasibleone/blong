@@ -14,7 +14,7 @@ open (3)
   fixture imports
 - `F-571` · core/blong-kukum — Template comment closed by a glob token
 
-resolved (15)
+resolved (16)
 
 - `F-122` · core/blong-kukum — A record-driven route map collapsed onto one empty key
 - `F-123` · core/blong-kukum — `realm add` needs a single-word realm name
@@ -32,6 +32,7 @@ resolved (15)
   show
 - `F-301` · core/blong-kukum — An end-to-end assertion passed off a stale artifact
 - `F-552` · core/blong-kukum — The kukum CLI still needs a database named kukum
+- `F-596` · core/blong-kukum — A stale fixture baseline reads as four failures and hid its own cause
 
 <!-- /memory:index -->
 
@@ -284,3 +285,29 @@ Resolved before this session's check: cli.ts disables the framework realm by its
 (framework.realms.srv = false), not server. The kukum database was dropped and every command still
 runs (primitive find lists the catalogue, library check audits a realm), so the CLI needs no schema
 of its own.
+
+### F-596 — A stale fixture baseline reads as four failures and hid its own cause
+
+> _2026-10-25 · core/blong-kukum · resolved_
+
+CI run 634 failed the e2e suite on "the Playwright suite exits 0" and nothing else: the tap test
+asserts the nested suite's exit status and keeps its output to itself, so the reason existed only in
+a local re-run. Reproduced locally in the same shape. The nested create tests failed on a screenshot
+(`e2e-gadget-new-filled.png`, a small layout shift left over from the UI work that never refreshed
+these baselines), and because the create test captures before it saves, no record was created — so
+the edit tests then found "No rows.", the toolbar's Edit button stayed disabled and they timed out
+waiting for `.blong-editor`. One stale baseline reads as four unrelated failures, two of them
+timeouts, and the status-only assertion said nothing about any of them.
+
+The baselines were refreshed with the documented `node --run kukum:fixture:update`. A single update
+run deletes `*-cleanup-confirm-linux.png`: the cleanup test captures the confirmation only when it
+finds a row to delete, and a run that starts from a swept table captures nothing, so Playwright
+prunes the baseline as obsolete. Restore those two files and run the update a second time — by then
+the first run has created the rows — and the captures land. The edit-test screenshots are stable
+across two runs byte for byte, which is what makes them safe to commit.
+
+The test now prints the tail of the nested output when the exit status is non-zero, so the next
+failure of this shape names its own cause.
+
+Baselines refreshed with kukum:fixture:update and the nested output is now printed when the exit
+status is non-zero.

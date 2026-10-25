@@ -13,6 +13,10 @@ open (3)
   neighbours list
 - `T-287` · realm/blong-commander — The row filter is invisible in the observed flow
 
+done (1)
+
+- `T-411` · realm/blong-commander — Vault and Kafka explore trees list the other job's data
+
 <!-- /memory:index -->
 
 ## Open
@@ -48,3 +52,32 @@ one. Adding a checkpoint for the selection would change the committed flow artif
 `observedBranchList.play.ts` writes, which needs the cluster to regenerate, so it was left out of
 the change that introduced the filter. Until then the shown count is observable only from the
 returned rows.
+
+## Done
+
+### T-411 — Vault and Kafka explore trees list the other job's data
+
+> _2026-10-25 · realm/blong-commander · done_
+
+CI run 634 failed two explore shots in blong-commander, and neither is a UI change: the navigator
+tree carries the other job's data. The vault-secrets shot drills into `secret/` and filters the
+table to `commander-demo`, but the tree still lists the mount's children, and `blong-int-adapter`'s
+Vault tests write `secret/blong-test` — so an extra key appears whenever those tests ran first on
+the same cluster. The kafka-messages shot names the topic and filters the message table, but the
+message level's tree nodes are labelled by offset, so the eight messages `blong-int-adapter`'s
+producer tests append to `blong-integration` turn one child into ten.
+
+The kafka shot had a second difference: two rows carry the seeded value, because the deployment's
+`lifecycle.postStart` hook and the `kafka-topic-init` Job both seed the topic and both guard on
+reading zero seed messages first — a read-then-produce race that breaks the one-message invariant
+D-074 records. One seeder is enough: the postStart hook covers the first start as well as a restart
+that recreates the topic, so the Job can create the topic and leave the seeding to the hook.
+
+The shot-side fix follows D-262: collapse the drilled node after filtering, as the redis-keys shot
+did, so the tree stops depending on who else wrote to the backend. Both changes need a baseline
+sweep of `explore-vault-secrets.png` and `explore-kafka-messages.png`, which has to run where the
+tests are compared.
+
+Both shots collapse the drilled node (D-622), and the kafka-topic-init Job no longer seeds, leaving
+the postStart hook as the only seeder. Verified with 8 extra topic messages and an extra
+secret/blong-test key present: both shots pass. Baselines re-captured.

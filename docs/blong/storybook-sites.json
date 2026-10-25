@@ -52,6 +52,13 @@
             "output": "storybook-static"
         },
         {
+            "name": "sport",
+            "title": "blong-sport",
+            "package": "suite/blong-sport",
+            "command": "node --run build-storybook",
+            "output": "storybook-static"
+        },
+        {
             "name": "log",
             "title": "blong-log: the log viewer",
             "package": "tools/blong-log",

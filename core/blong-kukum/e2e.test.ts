@@ -277,6 +277,13 @@ t.test(
             return;
         }
 
+        if (status !== 0) {
+            // The nested suite's reason lives only in its own output, which CI keeps
+            // nowhere else — a bare exit status is the failure this test used to
+            // report. Print the tail so the run's log says which step broke.
+            const tail = output.trim().split('\n').slice(-40).join('\n');
+            t.comment(`Playwright exited ${status}. Last lines of its output:\n${tail}`);
+        }
         t.equal(status, 0, 'the Playwright suite exits 0');
         t.match(output, new RegExp(`${ADDED_NAME} › browse`), 'the added entity was browsed');
     },
