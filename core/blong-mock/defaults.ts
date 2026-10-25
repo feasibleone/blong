@@ -21,6 +21,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
     const objectTitle = spec.objectTitle ?? capital(object);
     const keyField = spec.keyField ?? `${object}Id`;
     const nameField = spec.nameField ?? `${object}.${object}Name`;
+    const openLayout = spec.openLayout ?? 'edit';
 
     // ── Master-detail (IModelSpec.details) ─────────────────────────────────
     // Each detail entity becomes an array property at the SAME level as the
@@ -77,6 +78,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
             objectTitle,
             keyField,
             nameField,
+            openLayout,
             public: false,
             details: spec.details ?? [],
             schema: {

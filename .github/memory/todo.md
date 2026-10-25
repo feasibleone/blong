@@ -89,6 +89,9 @@ done (7)
 - playwright webp, strict screenshot tolerance
 - T-276
 - F-490
+- doc publishing
+- hindsight: store explore results
+- planning skill
 - Adopt https://mastra.ai/integrations/frameworks/vite-react
 - sync modified memory during commit
 - config hot reload log level
@@ -101,7 +104,6 @@ done (7)
 - load and report from registry intent
 - show test progress along a sequence diagram or graph
 - base image with the dependencies only
-- F-442 closed/resolved/superseded memory moved to done.md, keep highest counter
 - intents pivot table
 - local table creation order
 - check login.expire.deleteAfter, access.session.close
@@ -122,7 +124,6 @@ done (7)
 - transient form fields
 - table widget dual role / no singleton
 - remove axios
-- playwright test runner for backend tests
 - telemetry
 - same queries are repeated in multiple places, they should be refactored into a single function
 - avatar photo upload (initials-only for now — per user decision)

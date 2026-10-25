@@ -60,6 +60,11 @@ export default handler(() => ({
                 typeAlias: 'party.person',
                 table: 'party_person',
                 extraColumns: {
+                    // The resource label of a person is the full name — a producer of a
+                    // person must supply it, or the label stays empty. `@@D-602`
+                    personName: [params.firstName, params.middleName, params.lastName]
+                        .filter(Boolean)
+                        .join(' '),
                     firstName: params.firstName,
                     middleName: params.middleName ?? null,
                     lastName: params.lastName,

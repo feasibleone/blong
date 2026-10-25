@@ -47,6 +47,7 @@ export type WidgetType =
     | 'dropdownTree'
     | 'select'
     | 'selectTable'
+    | 'selectTableRadio'
     | 'multiSelect'
     | 'multiSelectTree'
     | 'multiSelectPanel'
@@ -84,6 +85,63 @@ export interface IWidgetConfig {
     fetch?: string;
     /** Named dropdown key — loads options via portalDropdownList */
     dropdown?: string;
+    /**
+     * Name of the sibling field that holds the display text of this one.
+     *
+     * A foreign-key column stores a key, and a key is not what a reader wants. The
+     * backend projects the label beside it (a join, not a lookup per cell), and the
+     * column renders that field instead of the key, while the key stays what the
+     * table reports — in the filter, in the editor and in the form value. Editing
+     * the cell writes both, so the label never lags behind the key. @@D-614
+     */
+    body?: string;
+    /**
+     * Fields copied from the chosen option into the row, as `{optionProperty:
+     * rowField}`. For the case `body` does not cover: a pick that also fixes a
+     * second value of the row (a code, a unit, a partner name).
+     */
+    lookup?: Record<string, string>;
+    /**
+     * Narrow a pick-list's options to those whose property equals the row's value
+     * of another field, as `{optionProperty: rowField}` — a discipline list limited
+     * to the chosen sport, for example. The list is unfiltered while the row field
+     * is empty, so the first pick is never blocked. `parent` remains the shorthand
+     * for the case where the option carries the key under the field's own name.
+     */
+    optionsFilter?: Record<string, string>;
+    /**
+     * Render a text cell through the translation dictionary. A column holding
+     * vocabulary the UI translates (a status, a kind) sets it; a column holding a
+     * name or a free note does not, so a person's surname is never looked up.
+     */
+    translation?: boolean;
+    /**
+     * Formatting overrides for a date, time, number, currency or percent cell, as
+     * `Intl` options per type — the same formatter the rest of the UI uses, so a
+     * table and a form show one value alike. @@D-615
+     */
+    formatOptions?: {
+        date?: Intl.DateTimeFormatOptions;
+        time?: Intl.DateTimeFormatOptions;
+        dateTime?: Intl.DateTimeFormatOptions;
+        number?: Intl.NumberFormatOptions;
+        currency?: Intl.NumberFormatOptions & {currency?: string};
+        percent?: Intl.NumberFormatOptions;
+    };
+    /**
+     * Field holding the value this cell had before the change (an audit or an import
+     * preview pairs the two). When it differs from the current value the cell shows
+     * both — the new one first — so a reader sees what moved. @@D-615
+     */
+    compare?: string;
+    /**
+     * Render a `file` cell as a link that downloads the file. The url is the item's
+     * own (`objectURL` / `url`) or, failing that, `basePath` + the row's `pathField`.
+     * Without it the cell lists the file names, which is all a reader can act on.
+     */
+    download?: boolean;
+    /** Row field holding the stored path of a file (default `hash`). */
+    pathField?: string;
     /** Options list for static select/multiSelect/select/tree widgets.
      * Flat options use `{value, label}`. TreeNode-style options use `{key, label, children}`. */
     options?: Array<{
@@ -102,6 +160,13 @@ export interface IWidgetConfig {
     autoSelect?: boolean;
     /** Copy-to-clipboard icon (input widget) */
     copy?: boolean;
+    /**
+     * Thousands separator in a numeric input. The `number` widget groups by
+     * default and takes `false` to switch it off; the `integer` widget does not
+     * group and takes `true` to switch it on, because an integer here is a year, a
+     * rank or a count far more often than an amount. @@D-613
+     */
+    useGrouping?: boolean;
     /** Mask pattern (mask widget) */
     mask?: string;
     /** Column definitions for table widget */

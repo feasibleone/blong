@@ -264,7 +264,7 @@ export function defineBlongConfig(
             // The Portal helpers keep failing fast: they pass their own
             // BLONG_ELEMENT_TIMEOUT for the missing-element case they are about.
             timeout: 15_000,
-            toHaveScreenshot: {maxDiffPixelRatio: 0.01},
+            toHaveScreenshot: {maxDiffPixelRatio: 0.001},
         },
         outputDir: '.playwright/results',
         reporter: reporter ?? [

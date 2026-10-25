@@ -76,6 +76,70 @@ export const CascadedDropdowns: StoryFn = () => (
     />
 );
 
+/**
+ * The same cascade declared the other way round: `optionsFilter` names which
+ * property of the option the parent field must match, so the option list does not
+ * have to carry the key under the parent field's own name — and a field can depend
+ * on more than one sibling.
+ */
+export const OptionsFilter: StoryFn = () => (
+    <Editor
+        schema={{
+            properties: {
+                continent: {title: 'Continent', widget: {type: 'dropdown', dropdown: 'continent'}},
+                country: {
+                    title: 'Country (optionsFilter)',
+                    widget: {
+                        type: 'dropdown',
+                        dropdown: 'country',
+                        optionsFilter: {continent: 'continent'},
+                    },
+                },
+                city: {
+                    title: 'City (optionsFilter)',
+                    widget: {
+                        type: 'dropdown',
+                        dropdown: 'city',
+                        optionsFilter: {country: 'country'},
+                    },
+                },
+            },
+        }}
+        cards={{
+            edit: {
+                label: undefined,
+                className: 'xl:col-3',
+                widgets: ['continent', 'country', 'city'],
+            },
+        }}
+        dropdowns={{continent: continents, country: countries, city: cities}}
+        editable
+        editMode
+        layout="edit"
+        layouts={{edit: ['edit']}}
+    />
+);
+
+// Exercised by the table-column set's runner scope:
+// `npx test-storybook --includeTags table-columns`.
+OptionsFilter.tags = ['table-columns'];
+
+OptionsFilter.play = async ({canvas, userEvent}) => {
+    const body = within(document.body);
+    const continentField = (await canvas.findByText('Continent')).closest(
+        '.field.grid',
+    ) as HTMLElement;
+    await userEvent.click(within(continentField).getByRole('button'));
+    const europeOption = body.queryByText('Europe');
+    if (europeOption) await userEvent.click(europeOption);
+    await new Promise(resolve => setTimeout(resolve, 150));
+    const countryField = canvas.getByText('Country (optionsFilter)').closest(
+        '.field.grid',
+    ) as HTMLElement;
+    await userEvent.click(within(countryField).getByRole('button'));
+    await new Promise(resolve => setTimeout(resolve, 150));
+};
+
 CascadedDropdowns.play = async ({canvas, userEvent}) => {
     const body = within(document.body);
 

@@ -81,7 +81,6 @@ export default model(
                     },
                     edit: {
                         label: 'Species Details',
-                        className: 'col-12 md:col-8',
                         widgets: [
                             'species.speciesName',
                             'species.scientificName',

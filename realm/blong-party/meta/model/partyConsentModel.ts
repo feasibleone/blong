@@ -68,7 +68,6 @@ export default model(
                     },
                     details: {
                         label: 'Consent Details',
-                        className: 'col-12',
                         widgets: [
                             'consent.consentName',
                             'consent.consentType',

@@ -14,9 +14,13 @@ export default handler(() => ({
                 // The hierarchy lives in `core_triple` and is declared here as
                 // `edges`, so the models can manage it as pivot arrays and the
                 // generic CRUD keeps it in sync (`core.path` refresh included).
+                // `core_resource.resourceName` mirrors the full name, so every
+                // dropdown label and every ACL target reads as a person rather
+                // than a surname. `personName` is filled by the form and the
+                // seeds. `@@D-602`
                 'party.person': {
                     order: 300,
-                    resource: {nameColumn: 'lastName'},
+                    resource: {nameColumn: 'personName'},
                     edges: [
                         {
                             // Membership: person → unit.

@@ -104,7 +104,6 @@ export default model(
                     },
                     edit: {
                         label: 'ACL Rule',
-                        className: 'col-12 md:col-8',
                         widgets: [
                             'acl.principalId',
                             'acl.actionId',

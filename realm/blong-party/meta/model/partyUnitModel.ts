@@ -52,7 +52,6 @@ export default model(
                     },
                     details: {
                         label: 'Unit Details',
-                        className: 'col-12',
                         widgets: ['unit.unitName', 'unit.unitType', 'unit.notes'],
                     },
                     /**

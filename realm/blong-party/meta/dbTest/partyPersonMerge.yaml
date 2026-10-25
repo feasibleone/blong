@@ -2,6 +2,7 @@ resourceType: party.person
 key: personId
 person:
   - name: John Doe
+    personName: John Doe
     firstName: John
     middleName: Robert
     lastName: Doe
@@ -12,6 +13,7 @@ person:
     occupation: Software Engineer
     notes: Primary contact for technical integrations
   - name: Jane Smith
+    personName: Jane Smith
     firstName: Jane
     lastName: Smith
     birthDate: '1990-07-22'
@@ -20,6 +22,7 @@ person:
     nationality: GB
     occupation: Financial Analyst
   - name: Carlos Garcia
+    personName: Carlos Garcia
     firstName: Carlos
     lastName: Garcia
     birthDate: '1978-11-02'
@@ -28,6 +31,7 @@ person:
     nationality: ES
     occupation: Branch Manager
   - name: Mei Chen
+    personName: Mei Chen
     firstName: Mei
     lastName: Chen
     birthDate: '1995-05-18'
@@ -36,6 +40,7 @@ person:
     nationality: CN
     occupation: Compliance Officer
   - name: Ahmed Hassan
+    personName: Ahmed Hassan
     firstName: Ahmed
     lastName: Hassan
     birthDate: '1982-09-30'

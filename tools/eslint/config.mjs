@@ -14,6 +14,10 @@ export default defineConfig([
             '.heft/**',
             'allure-results/**',
             'allure-report/**',
+            // The published CI report is a generated bundle of the Allure client,
+            // copied into the package by a run. Linting it reported 2717 errors in
+            // a file nobody edits, hiding the ones that matter. @@F-589
+            '.ci-report/**',
             '.tap/**',
             'dist/**',
             'storybook-static/**',

@@ -113,7 +113,6 @@ export function CoralOpen({schema, coralId}: {schema: IEnrichedSchema; coralId: 
                 main: {
                     label: 'Coral Details',
                     widgets: ['coral.coralName', 'coral.familyId', 'coral.maxDepth'],
-                    className: 'col-12 md:col-8',
                 },
                 notes: {
                     label: 'Notes',

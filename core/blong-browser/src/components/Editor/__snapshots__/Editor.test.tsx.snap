@@ -4674,7 +4674,7 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -5734,7 +5734,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -6794,7 +6794,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -7854,7 +7854,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -8914,7 +8914,7 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -16460,7 +16460,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -17519,7 +17519,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -18579,7 +18579,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -19639,7 +19639,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -20699,7 +20699,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -22279,7 +22279,7 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -23896,7 +23896,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -24970,7 +24970,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>
@@ -26043,7 +26043,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                                   data-pc-section="bodycell"
                                   role="cell"
                                 >
-                                  No available options
+                                  No rows.
                                 </td>
                               </tr>
                             </tbody>

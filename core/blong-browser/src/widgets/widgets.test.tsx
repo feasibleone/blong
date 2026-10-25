@@ -3,6 +3,7 @@
  * Widgets are rendered directly with the required IWidgetProps.
  */
 import type {IWidgetProps} from '@feasibleone/blong';
+import {useState} from 'react';
 import {describe, expect, it, vi} from 'vitest';
 import {FormStateContext} from '../components/Form/FormContext.js';
 import {act, fireEvent, render, screen} from '../test/render.js';
@@ -37,6 +38,7 @@ type WidgetProps = {
     readOnly?: boolean;
     disabled?: boolean;
     onSelect?: (fieldName: string, selection: unknown) => void;
+    dropdowns?: Record<string, unknown[]>;
 };
 
 function mkProps(overrides: WidgetProps = {}) {
@@ -470,6 +472,21 @@ describe('MaskWidget', () => {
     });
 });
 
+/** A table that keeps the rows it adds — the widget itself is controlled. */
+function StatefulTable({onChange, ...props}: IWidgetProps) {
+    const [value, setValue] = useState<unknown>(props.value);
+    return (
+        <TableWidget
+            {...props}
+            value={value}
+            onChange={next => {
+                setValue(next);
+                onChange?.(next);
+            }}
+        />
+    );
+}
+
 describe('TableWidget', () => {
     it('renders empty table with no rows', () => {
         const {container} = render(
@@ -490,6 +507,349 @@ describe('TableWidget', () => {
             />,
         );
         expect(container.querySelector('.blong-table-widget')).toBeTruthy();
+    });
+
+    it('renders the option label of a column that names a dropdown', () => {
+        const {container} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        items: {properties: {cycleId: {widget: {dropdown: 'sport.cycle'}}}},
+                        widget: {type: 'table', columns: ['cycleId']},
+                    },
+                    dropdowns: {'sport.cycle': [{value: 'a1', label: 'Paris 2024'}]},
+                    value: [{cycleId: 'a1'}],
+                })}
+            />,
+        );
+        expect(container.textContent).toContain('Paris 2024');
+        expect(container.textContent).not.toContain('a1');
+    });
+
+    it('renders the projected label column without loading any options', () => {
+        const {container} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        items: {
+                            properties: {
+                                sportId: {widget: {dropdown: 'sport.sport', body: 'sportName'}},
+                            },
+                        },
+                        widget: {type: 'table', columns: ['sportId']},
+                    },
+                    value: [{sportId: 'dGhlLWtleQ==', sportName: 'Athletics'}],
+                })}
+            />,
+        );
+        expect(container.textContent).toContain('Athletics');
+        expect(container.textContent).not.toContain('dGhlLWtleQ==');
+    });
+
+    it('gives a pick-list column a dropdown filter', () => {
+        const {container} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        items: {
+                            properties: {
+                                sportId: {filter: true, widget: {dropdown: 'sport.sport'}},
+                                name: {filter: true},
+                            },
+                        },
+                        widget: {type: 'table', columns: ['sportId', 'name']},
+                    },
+                    dropdowns: {'sport.sport': [{value: 'a1', label: 'Athletics'}]},
+                    value: [{sportId: 'a1', name: 'Summer Series'}],
+                })}
+            />,
+        );
+        const pickFilter = container.querySelector('[data-testid$="-filter-sportId"]');
+        expect(pickFilter?.className).toContain('p-dropdown');
+        const textFilter = container.querySelector('[data-testid$="-filter-name"]');
+        expect(textFilter?.tagName).toBe('INPUT');
+    });
+
+    it('sorts a form table on screen without touching the stored order', () => {
+        const onChange = vi.fn();
+        const {container} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        items: {properties: {name: {}, qty: {sort: true}}},
+                        widget: {type: 'table', columns: ['name', 'qty']},
+                    },
+                    value: [
+                        {name: 'beta', qty: 2},
+                        {name: 'alpha', qty: 1},
+                    ],
+                    onChange,
+                })}
+            />,
+        );
+        const headers = Array.from(container.querySelectorAll('th'));
+        const qtyIndex = headers.findIndex(th => /qty/i.test(th.textContent ?? ''));
+        expect(qtyIndex).toBeGreaterThan(0);
+        fireEvent.click(headers[qtyIndex]);
+        const cells = Array.from(container.querySelectorAll('.p-datatable-tbody tr')).map(row =>
+            row.querySelector(`td:nth-child(${qtyIndex + 1})`)?.textContent,
+        );
+        expect(cells.slice(0, 2)).toEqual(['1', '2']);
+        expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('narrows a cell editor list to the row it belongs to', () => {
+        const {container} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        items: {
+                            properties: {
+                                sportId: {widget: {dropdown: 'sport.sport'}},
+                                disciplineId: {
+                                    widget: {
+                                        dropdown: 'sport.discipline',
+                                        optionsFilter: {disciplineOf: 'sportId'},
+                                    },
+                                },
+                            },
+                        },
+                        widget: {type: 'table', columns: ['sportId', 'disciplineId']},
+                    },
+                    dropdowns: {
+                        'sport.discipline': [
+                            {value: 'd1', label: '100 m Sprint', disciplineOf: 'a1'},
+                            {value: 'd2', label: '200 m Butterfly', disciplineOf: 'a2'},
+                        ],
+                    },
+                    value: [{sportId: 'a1', disciplineId: null}],
+                })}
+            />,
+        );
+        const editButton = container.querySelector('.p-row-editor-init');
+        expect(editButton).toBeTruthy();
+        fireEvent.click(editButton!);
+        const cell = container.querySelector('[data-testid$="-0-disciplineId"]');
+        expect(cell).toBeTruthy();
+        fireEvent.click(cell!);
+        const items = Array.from(document.querySelectorAll('.p-dropdown-item')).map(
+            item => item.textContent,
+        );
+        expect(items).toContain('100 m Sprint');
+        expect(items).not.toContain('200 m Butterfly');
+    });
+
+    it('narrows the cell list of a row that is being added, once its sibling is picked', () => {
+        const {container} = render(
+            <StatefulTable
+                {...mkProps({
+                    schema: {
+                        items: {
+                            properties: {
+                                sportId: {widget: {dropdown: 'sport.sport'}},
+                                disciplineId: {
+                                    widget: {
+                                        dropdown: 'sport.discipline',
+                                        optionsFilter: {disciplineOf: 'sportId'},
+                                    },
+                                },
+                            },
+                        },
+                        widget: {type: 'table', columns: ['sportId', 'disciplineId']},
+                    },
+                    dropdowns: {
+                        'sport.sport': [
+                            {value: 'a1', label: 'Athletics'},
+                            {value: 'a2', label: 'Swimming'},
+                        ],
+                        'sport.discipline': [
+                            {value: 'd1', label: '100 m Sprint', disciplineOf: 'a1'},
+                            {value: 'd2', label: '200 m Butterfly', disciplineOf: 'a2'},
+                        ],
+                    },
+                    value: [],
+                })}
+            />,
+        );
+        // Add a row and give it a sport: the discipline list has to follow the pick,
+        // even though the row is not part of the form value yet. @@D-617
+        fireEvent.click(container.querySelector('[data-testid$="-addButton"]')!);
+        const sportCell = container.querySelector('[data-testid$="-0-sportId"]');
+        expect(sportCell).toBeTruthy();
+        fireEvent.click(sportCell!);
+        const sportOption = Array.from(document.querySelectorAll('.p-dropdown-item')).find(
+            item => item.textContent === 'Athletics',
+        );
+        expect(sportOption).toBeTruthy();
+        fireEvent.click(sportOption!);
+
+        const disciplineCell = container.querySelector('[data-testid$="-0-disciplineId"]');
+        expect(disciplineCell).toBeTruthy();
+        fireEvent.click(disciplineCell!);
+        const items = Array.from(document.querySelectorAll('.p-dropdown-item')).map(
+            item => item.textContent,
+        );
+        expect(items).toContain('100 m Sprint');
+        expect(items).not.toContain('200 m Butterfly');
+    });
+
+    it('edits a cell in place, with no row-edit column and no draft to save', () => {
+        const onChange = vi.fn();
+        const {container} = render(
+            <StatefulTable
+                {...mkProps({
+                    schema: {
+                        items: {
+                            properties: {
+                                speciesName: {},
+                                depth: {widget: {type: 'integer'}, readOnly: true},
+                            },
+                        },
+                        widget: {type: 'table', columns: ['speciesName', 'depth'], inlineEdit: true},
+                    },
+                    value: [{speciesName: 'Nerida Kelp', depth: 12}],
+                    onChange,
+                })}
+            />,
+        );
+        // The cell is its own editor: no pencil column, and the value is typed into
+        // the cell itself. @@D-618
+        expect(container.querySelector('.p-row-editor-init')).toBeNull();
+        const cell = container.querySelector('input[data-testid$="-0-speciesName"]');
+        expect(cell).toBeTruthy();
+        fireEvent.change(cell!, {target: {value: 'Corin Wrasse'}});
+        expect(onChange).toHaveBeenLastCalledWith([{speciesName: 'Corin Wrasse', depth: 12}]);
+        // A read-only column keeps reading.
+        expect(container.querySelector('input[data-testid$="-0-depth"]')).toBeNull();
+        expect(container.textContent).toContain('12');
+    });
+
+    it('writes the label a pick carries when a cell is edited in place', () => {
+        const onChange = vi.fn();
+        const {container} = render(
+            <StatefulTable
+                {...mkProps({
+                    schema: {
+                        items: {
+                            properties: {
+                                reefId: {
+                                    widget: {dropdown: 'reef', body: 'reefName', lookup: {id: 'reefKey'}},
+                                },
+                            },
+                        },
+                        widget: {type: 'table', columns: ['reefId'], inlineEdit: true},
+                    },
+                    dropdowns: {
+                        reef: [{value: 'r1', label: 'Kelp Canopy', id: 'uuid-r1'}],
+                    },
+                    value: [{reefId: null, reefName: null, reefKey: null}],
+                    onChange,
+                })}
+            />,
+        );
+        const cell = container.querySelector('[data-testid$="-0-reefId"]');
+        expect(cell).toBeTruthy();
+        fireEvent.click(cell!);
+        const option = Array.from(document.querySelectorAll('.p-dropdown-item')).find(
+            item => item.textContent === 'Kelp Canopy',
+        );
+        expect(option).toBeTruthy();
+        fireEvent.click(option!);
+        // The key, the label it stands for and every `lookup` field land together.
+        expect(onChange).toHaveBeenLastCalledWith([
+            {reefId: 'r1', reefName: 'Kelp Canopy', reefKey: 'uuid-r1'},
+        ]);
+    });
+
+    it('lists a file cell as text unless the column offers a download', () => {
+        const plain = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        items: {properties: {file: {widget: {type: 'file'}}}},
+                        widget: {type: 'table', columns: ['file']},
+                    },
+                    value: [{file: [{name: 'quota.pdf'}, {name: 'entry.pdf'}]}],
+                })}
+            />,
+        );
+        expect(plain.container.textContent).toContain('quota.pdf');
+        expect(plain.container.querySelector('a[download]')).toBeNull();
+
+        const linked = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        items: {
+                            properties: {
+                                file: {
+                                    widget: {
+                                        type: 'file',
+                                        download: true,
+                                        basePath: '/files/',
+                                    },
+                                },
+                            },
+                        },
+                        widget: {type: 'table', columns: ['file']},
+                    },
+                    value: [{file: [{name: 'quota.pdf'}], hash: 'abc123'}],
+                })}
+            />,
+        );
+        const link = linked.container.querySelector('a[download="quota.pdf"]');
+        expect(link?.getAttribute('href')).toBe('/files/abc123');
+    });
+
+    it('shows the value a cell had beside the value it has', () => {
+        const {container} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        items: {properties: {status: {widget: {compare: 'statusBefore'}}}},
+                        widget: {type: 'table', columns: ['status']},
+                    },
+                    value: [{status: 'confirmed', statusBefore: 'planned'}],
+                })}
+            />,
+        );
+        expect(container.querySelector('[data-testid$="-new"]')?.textContent).toContain(
+            'confirmed',
+        );
+        expect(container.querySelector('[data-testid$="-old"]')?.textContent).toContain('planned');
+    });
+
+    it('reads a radio cell as one boolean and toggles a select-table radio', () => {
+        const onChange = vi.fn();
+        const {container} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        items: {
+                            properties: {
+                                chosen: {widget: {type: 'selectTableRadio'}},
+                                flag: {widget: {type: 'radio'}},
+                            },
+                        },
+                        widget: {type: 'table', columns: ['chosen', 'flag']},
+                    },
+                    value: [{chosen: false, flag: true}],
+                    onChange,
+                })}
+            />,
+        );
+        const radios = container.querySelectorAll('input[type="radio"]');
+        expect(radios.length).toBe(2);
+        expect((radios[1] as HTMLInputElement).checked).toBe(true);
+        fireEvent.click(radios[0]);
+        expect(onChange).toHaveBeenCalledWith([expect.objectContaining({chosen: true})]);
+    });
+
+    it('names the empty state instead of rendering a bare table', () => {
+        const {container} = render(
+            <TableWidget {...mkProps({schema: {widget: {columns: ['name']}}, value: []})} />,
+        );
+        expect(container.textContent).toContain('No rows.');
     });
 
     it('adds a row when add button (pi-plus) clicked', () => {

@@ -1,4 +1,6 @@
 import {ActionButton} from '../components/ActionButton/ActionButton.js';
+import {useFormatValue} from '../hooks/useFormat.js';
+import type {FormatFn, FormatType} from '../lib/format.js';
 import label from '../lib/label.js';
 import {
     Calendar,
@@ -6,12 +8,14 @@ import {
     Column,
     DataTable,
     Dropdown,
+    FileUpload,
     InputMask,
     InputNumber,
     InputText,
     InputTextarea,
     MultiSelect,
     Password,
+    RadioButton,
     SelectButton,
     Toolbar,
     type DataTableSelectionChangeParams,
@@ -25,7 +29,7 @@ import type {
     IWidgetToolbarButton,
 } from '@feasibleone/blong';
 import {useQuery} from '@tanstack/react-query';
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {createContext, use, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Button} from '../components/Button/Button.js';
 import {useBlongFormState} from '../components/Form/FormContext.js';
 import {Text} from '../components/Text/Text.js';
@@ -38,8 +42,22 @@ type DropdownOption = {value: unknown; label: string; [k: string]: unknown};
 
 const KEY = '__key';
 
+/**
+ * The picks a row has made while it is being edited, by row key.
+ *
+ * PrimeReact keeps an editing row's draft to itself and memoizes the body cell, so
+ * re-rendering the table does not reach a cell whose list depends on a sibling — the
+ * context does, because a consumer re-renders whatever its memoized ancestors decide.
+ * See `rowDrafts` for why the table has to remember the picks at all. `@@D-617`
+ */
+const RowDraftContext = createContext<Record<string, Row>>({});
+
 function resolveWidgetType(schema: IEnrichedFieldSchema): string {
     if (schema.widget?.type) return schema.widget.type;
+    // A column that names a dropdown (or a static option list) holds a key, not the
+    // text a reader wants: render the option's label, never the stored id. @@D-612
+    if (schema.widget?.dropdown) return 'dropdown';
+    if (schema.widget?.options) return 'select';
     if (schema.widget?.cycle || schema.widget?.states) return 'cycle';
     if (schema.action) return 'action';
     if (schema.type === 'boolean') return 'boolean';
@@ -93,10 +111,7 @@ function sameCycleValue(a: unknown, b: unknown): boolean {
     return a === b;
 }
 
-function currentCycleState(
-    states: ICycleCellState[],
-    value: unknown,
-): ICycleCellState | undefined {
+function currentCycleState(states: ICycleCellState[], value: unknown): ICycleCellState | undefined {
     return states.find(s => sameCycleValue(s.value, value));
 }
 
@@ -114,6 +129,64 @@ function getColumnOptions(
         schema.widget?.options ?? (schema.widget?.dropdown && dropdowns?.[schema.widget.dropdown]);
     if (!Array.isArray(raw)) return [];
     return raw as DropdownOption[];
+}
+
+/**
+ * Narrow a pick-list's options to the row they are offered for.
+ *
+ * `optionsFilter: {optionProperty: rowField}` is the explicit form, and several
+ * pairs are a conjunction. `parent` is the shorthand for the common case, where the
+ * option carries the key under the field's own name — or under `parent`, which is
+ * how the form-level cascade already works, so both conventions are honoured. A row
+ * field with no value yet leaves the list whole: the first pick must not be blocked
+ * by the very value it is about to set. @@D-615
+ */
+function optionsForRow(
+    options: DropdownOption[],
+    schema: IEnrichedFieldSchema,
+    row: Row | undefined,
+): DropdownOption[] {
+    if (!row) return options;
+    const filter = schema.widget?.optionsFilter;
+    if (filter) {
+        return options.filter(option => {
+            const candidate = option as unknown as Record<string, unknown>;
+            return Object.entries(filter).every(([optionProperty, rowField]) => {
+                const want = row[rowField];
+                if (want === undefined || want === null || want === '') return true;
+                return String(candidate[optionProperty]) === String(want);
+            });
+        });
+    }
+    const parent = schema.widget?.parent;
+    if (!parent) return options;
+    const want = row[parent];
+    if (want === undefined || want === null || want === '') return options;
+    return options.filter(option => {
+        const candidate = option as unknown as Record<string, unknown>;
+        return candidate[parent] === want || candidate['parent'] === want;
+    });
+}
+
+/**
+ * The fields a pick writes beside its key: the label the column shows (`widget.body`)
+ * and whatever `widget.lookup` copies from the option — so a saved row never carries
+ * a label that disagrees with its key. `@@D-614`
+ */
+function pickPatch(
+    fieldSchema: IEnrichedFieldSchema,
+    options: DropdownOption[],
+    picked: unknown,
+): Row {
+    const pick = options.find(option => option.value === picked);
+    if (!pick) return {};
+    const patch: Row = {};
+    const bodyField = fieldSchema.widget?.body;
+    if (bodyField) patch[bodyField] = pick.label;
+    for (const [optionKey, rowField] of Object.entries(fieldSchema.widget?.lookup ?? {})) {
+        patch[rowField] = (pick as Record<string, unknown>)[optionKey];
+    }
+    return patch;
 }
 
 function resolveColumns(
@@ -191,7 +264,8 @@ function renderBody(
     options: DropdownOption[],
     keyFieldName: string,
     fieldSchema: IEnrichedFieldSchema,
-    onCycle?: (value: unknown) => void,
+    onCycle: ((value: unknown) => void) | undefined,
+    format: FormatFn,
 ): React.ReactNode {
     const value = rowData[field];
 
@@ -232,7 +306,87 @@ function renderBody(
         }
         case 'password':
             return <span data-testid={cellId}>{value ? '*'.repeat(10) : ''}</span>;
+        case 'file': {
+            // A stored file is a name, or a record carrying its own url. The link is
+            // only offered when the column says the value is downloadable: a url
+            // built from a path that is not there would be a broken link. @@D-615
+            const raw = rowData[field];
+            const items = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]) as Array<
+                string | Record<string, unknown>
+            >;
+            if (!items.length) return <span data-testid={cellId} />;
+            const pathField = fieldSchema.widget?.pathField ?? 'hash';
+            const basePath = fieldSchema.widget?.basePath ?? '';
+            const rowPath = rowData[pathField];
+            const rowHref = rowPath ? `${basePath}${String(rowPath)}` : undefined;
+            return (
+                <span data-testid={cellId}>
+                    {items.map((item, index) => {
+                        const record = typeof item === 'string' ? undefined : item;
+                        const text = String(
+                            record?.name ?? record?.fileName ?? record?.label ?? item ?? '',
+                        );
+                        const href = record
+                            ? ((record.objectURL ?? record.url ?? rowHref) as string | undefined)
+                            : rowHref;
+                        return (
+                            // One cell may hold two files of the same name and url, so
+                            // the position is part of the only identity available.
+                            // eslint-disable-next-line @eslint-react/no-array-index-key
+                            <React.Fragment key={`${text}-${href ?? ''}-${index}`}>
+                                {index > 0 && ', '}
+                                {fieldSchema.widget?.download && href ? (
+                                    <a
+                                        href={String(href)}
+                                        download={text}
+                                        className="text-inherit"
+                                    >
+                                        {text}
+                                    </a>
+                                ) : (
+                                    text
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                </span>
+            );
+        }
+        case 'radio':
+            return (
+                <span data-testid={cellId}>
+                    <RadioButton
+                        checked={Boolean(value)}
+                        disabled
+                        readOnly
+                    />
+                </span>
+            );
+        case 'selectTableRadio':
+            return (
+                <span
+                    data-testid={cellId}
+                    onClick={event => {
+                        event.stopPropagation();
+                        onCycle?.(!value);
+                    }}
+                >
+                    <RadioButton
+                        checked={Boolean(value)}
+                        readOnly
+                        // Without a commit path the cell cannot write, so it should not
+                        // look as if it could: a read-only card still renders the flag.
+                        disabled={onCycle === undefined}
+                    />
+                </span>
+            );
         case 'dropdown': {
+            // The row carries the label the backend joined beside the key, so the
+            // cell needs no options at all. Options are the fallback for a table
+            // whose data has no label column. @@D-614
+            const bodyField = fieldSchema.widget?.body;
+            const label = bodyField ? rowData[bodyField] : undefined;
+            if (label != null) return <span data-testid={cellId}>{String(label)}</span>;
             const item = options.find(o => o.value === value);
             return (
                 <span data-testid={cellId}>
@@ -258,11 +412,23 @@ function renderBody(
         }
         case 'multiSelect':
         case 'multiSelectTree': {
+            const bodyField = fieldSchema.widget?.body;
+            const label = bodyField ? rowData[bodyField] : undefined;
+            if (label != null) {
+                return (
+                    <span data-testid={cellId}>
+                        {Array.isArray(label) ? label.join(', ') : String(label)}
+                    </span>
+                );
+            }
             const arr = Array.isArray(value) ? (value as unknown[]) : [];
             const labels = arr.map(v => options.find(o => o.value === v)?.label ?? String(v));
             return <span data-testid={cellId}>{labels.join(', ')}</span>;
         }
         case 'select': {
+            const bodyField = fieldSchema.widget?.body;
+            const label = bodyField ? rowData[bodyField] : undefined;
+            if (label != null) return <span data-testid={cellId}>{String(label)}</span>;
             const item = options.find(o => o.value === value);
             return (
                 <span data-testid={cellId}>
@@ -270,40 +436,15 @@ function renderBody(
                 </span>
             );
         }
-        case 'date': {
-            if (value == null) return <span data-testid={cellId} />;
-            try {
-                const d = dateIn(value as string | Date);
-                return (
-                    <span data-testid={cellId}>
-                        {d instanceof Date ? d.toLocaleDateString() : String(value)}
-                    </span>
-                );
-            } catch {
-                return <span data-testid={cellId}>{String(value)}</span>;
-            }
-        }
-        case 'time': {
-            if (value == null) return <span data-testid={cellId} />;
-            const d = value instanceof Date ? value : new Date(value as string);
-            return (
-                <span data-testid={cellId}>
-                    {isNaN(d.getTime()) ? String(value) : d.toLocaleTimeString()}
-                </span>
-            );
-        }
+        case 'date':
+        case 'time':
         case 'dateTime': {
             if (value == null) return <span data-testid={cellId} />;
-            try {
-                const d = dateIn(value as string | Date);
-                return (
-                    <span data-testid={cellId}>
-                        {d instanceof Date ? d.toLocaleString() : String(value)}
-                    </span>
-                );
-            } catch {
-                return <span data-testid={cellId}>{String(value)}</span>;
-            }
+            return (
+                <span data-testid={cellId}>
+                    {format(value, widgetType as FormatType, fieldSchema.widget?.formatOptions)}
+                </span>
+            );
         }
         case 'number':
         case 'integer':
@@ -314,12 +455,112 @@ function renderBody(
                     data-testid={cellId}
                     className="block text-right"
                 >
-                    {value != null ? String(value) : ''}
+                    {value == null
+                        ? ''
+                        : format(
+                              value,
+                              widgetType as FormatType,
+                              fieldSchema.widget?.formatOptions,
+                              fieldSchema.widget?.useGrouping,
+                          )}
                 </span>
             );
         default:
+            if (value != null && fieldSchema.widget?.translation) {
+                return (
+                    <span data-testid={cellId}>
+                        <Text>{String(value)}</Text>
+                    </span>
+                );
+            }
             return <span data-testid={cellId}>{value != null ? String(value) : ''}</span>;
     }
+}
+
+/**
+ * One editing cell, rendered as a consumer of the row's recorded picks.
+ *
+ * A memoized cell in PrimeReact does not re-render when the table around it does, so
+ * the list a cell offers is otherwise fixed at the moment the row entered edit mode —
+ * whole, for a row that is still empty. Reading the picks from the context brings the
+ * new list to the cell that depends on them. `@@D-617`
+ */
+function RowCellEditor({
+    rowData,
+    options,
+    fieldSchema,
+    render,
+}: {
+    rowData: Row;
+    options: DropdownOption[];
+    fieldSchema: IEnrichedFieldSchema;
+    render: (editedRow: Row, options: DropdownOption[]) => React.ReactNode;
+}) {
+    const drafts = use(RowDraftContext);
+    const draft = drafts[String(rowData[KEY])];
+    const editedRow = draft ? {...rowData, ...draft} : rowData;
+    return <>{render(editedRow, optionsForRow(options, fieldSchema, editedRow))}</>;
+}
+
+/**
+ * One cell that edits in place.
+ *
+ * The value it shows is its own, held here until the commit has round-tripped through
+ * the form: an input bound straight to the committed value loses keystrokes whenever a
+ * re-render lands between two of them, and what is on screen must never lag the
+ * keyboard. Every change still commits as it happens. `@@D-618`
+ */
+function InlineCellEditor({
+    rowData,
+    field,
+    options,
+    fieldSchema,
+    render,
+    commit,
+}: {
+    rowData: Row;
+    field: string;
+    options: DropdownOption[];
+    fieldSchema: IEnrichedFieldSchema;
+    render: (args: {
+        rowData: Row;
+        options: DropdownOption[];
+        onDraft: (value: unknown) => void;
+    }) => React.ReactNode;
+    commit: (value: unknown) => void;
+}) {
+    const committed = rowData[field];
+    const [draft, setDraft] = useState<unknown>(committed);
+    const focusedRef = useRef(false);
+    // A value that changes from outside — a load, a reset, a different row in the same
+    // slot — wins over what was typed, but only while the cell is not being used: the
+    // committed value arrives a render after the keystroke that caused it, so adopting
+    // it mid-typing would replace the text with the value it is about to become.
+    useEffect(() => {
+        if (focusedRef.current) return;
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
+        setDraft(committed);
+    }, [committed]);
+    const editedRow = {...rowData, [field]: draft};
+    return (
+        <div
+            onFocus={() => {
+                focusedRef.current = true;
+            }}
+            onBlur={() => {
+                focusedRef.current = false;
+            }}
+        >
+            {render({
+                rowData: editedRow,
+                options: optionsForRow(options, fieldSchema, editedRow),
+                onDraft: (value: unknown) => {
+                    setDraft(value);
+                    commit(value);
+                },
+            })}
+        </div>
+    );
 }
 
 function renderEditor(
@@ -391,6 +632,9 @@ function renderEditor(
                     data-testid={cellId}
                     value={value}
                     options={options}
+                    // The label and the `lookup` fields a pick carries are applied by
+                    // the caller: a row being edited keeps them on PrimeReact's copy,
+                    // a row edited in place writes them with the value. `@@D-614`
                     onChange={e => editorCallback(e.value)}
                     className="w-full blong-dropdown"
                     showClear={!fieldSchema.fieldRequired}
@@ -510,6 +754,31 @@ function renderEditor(
                         onChange={e => editorCallback(e.checked)}
                     />
                 </span>
+            );
+        case 'radio':
+            return (
+                <span
+                    data-testid={cellId}
+                    onClick={e => e.stopPropagation()}
+                >
+                    <RadioButton
+                        inputId={cellId}
+                        checked={Boolean(value)}
+                        onChange={e => editorCallback(e.checked)}
+                    />
+                </span>
+            );
+        case 'file':
+            return (
+                <FileUpload
+                    mode="basic"
+                    id={cellId}
+                    name={cellName}
+                    data-testid={cellId}
+                    accept={fieldSchema.widget?.accept}
+                    chooseLabel="Choose"
+                    onSelect={e => editorCallback([...(e.files ?? [])])}
+                />
             );
         case 'text':
         case 'textArea':
@@ -631,7 +900,9 @@ export function TableWidget({
     const cols = resolveColumns(schema.widget, schema.items ?? schema);
     const colFields = cols.map(c => c.field);
     const tableId = id ?? name;
-    const properties = schema.items?.properties as Record<string, IEnrichedFieldSchema> | undefined;
+    const properties = (schema.items?.properties ?? schema.properties) as
+        | Record<string, IEnrichedFieldSchema>
+        | undefined;
 
     // ── listAction mode: external data loading ────────────────────────────
     const listAction = schema.widget?.listAction ?? '';
@@ -656,6 +927,111 @@ export function TableWidget({
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const {handler} = useBlong();
+    const format = useFormatValue();
+
+    // Columns whose cell declares `widget.dropdown` need their options to render a
+    // label: without them the cell falls back to the stored value, and a resource
+    // id is a base64 string that means nothing to a reader. The caller may pass a
+    // map, and the model pages do not — so load what is missing through the portal
+    // orchestrator, the same call the dropdown widgets make.
+    const columnDropdownKeys = useMemo(
+        () =>
+            cols
+                .map(col => properties?.[col.field]?.widget?.dropdown)
+                .filter((key): key is string => typeof key === 'string' && key.length > 0),
+        [cols, properties],
+    );
+    const [loadedDropdowns, setLoadedDropdowns] = useState<Record<string, unknown[]>>({});
+    useEffect(() => {
+        const missing = columnDropdownKeys.filter(
+            key => !dropdowns?.[key] && !loadedDropdowns[key],
+        );
+        if (!missing.length) return;
+        if (typeof handler?.portalDropdownList !== 'function') return;
+        let cancelled = false;
+        Promise.all(
+            missing.map(name =>
+                (
+                    handler.portalDropdownList({names: [name]}, {}) as Promise<
+                        Record<string, unknown>
+                    >
+                )
+                    .then(
+                        result => [name, Array.isArray(result[name]) ? result[name] : []] as const,
+                    )
+                    .catch(() => [name, []] as const),
+            ),
+        ).then(entries => {
+            if (!cancelled) setLoadedDropdowns(prev => ({...prev, ...Object.fromEntries(entries)}));
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [columnDropdownKeys, dropdowns, loadedDropdowns, handler]);
+
+    /** The caller's map wins; the loaded one fills the gaps. */
+    const resolvedDropdowns = useMemo(
+        () => ({...loadedDropdowns, ...dropdowns}),
+        [loadedDropdowns, dropdowns],
+    );
+
+    /**
+     * The row fields some other column's list is narrowed by — a column's
+     * `optionsFilter` row side, or its `parent`.
+     *
+     * A row being edited keeps its draft to itself until the row is saved, and the
+     * cell editors are mounted when the row enters edit mode, so a cell that filters
+     * on a sibling would keep the list it computed at that moment. For a new row that
+     * is the whole list, because the sibling is still empty — the pick that should
+     * narrow it then changes nothing on screen. The table therefore remembers those
+     * picks itself and re-renders when one changes, which is what lets the dependent
+     * cell recompute its list. @@D-617
+     */
+    const cascadeFields = useMemo(() => {
+        const fields = new Set<string>();
+        for (const col of cols) {
+            const widget = col.fieldSchema.widget;
+            if (widget?.parent) fields.add(widget.parent);
+            for (const rowField of Object.values(widget?.optionsFilter ?? {})) {
+                fields.add(String(rowField));
+            }
+        }
+        return fields;
+    }, [cols]);
+    const [rowDrafts, setRowDrafts] = useState<Record<string, Row>>({});
+    const recordRowDraft = useCallback(
+        (row: Row, field: string, value: unknown) => {
+            if (!cascadeFields.has(field)) return;
+            const key = String(row[KEY]);
+            setRowDrafts(prev => ({...prev, [key]: {...prev[key], [field]: value}}));
+        },
+        [cascadeFields],
+    );
+
+    /**
+     * What the rendered rows depend on, beyond the data itself: the number of
+     * options per label column. PrimeReact keeps a rendered row as it is and does
+     * not redraw it when only the cell `body` callback changes, so options that
+     * arrive after the first paint would leave the stored id on screen forever. A
+     * key that changes when the counts change remounts the table exactly once, and
+     * is constant for a table without label columns. @@D-612
+     */
+    const dropdownSignature = columnDropdownKeys
+        .map(key => `${key}:${resolvedDropdowns[key]?.length ?? 0}`)
+        .join('|');
+
+    /**
+     * The label columns the model reads instead of the keys. A list read asks the
+     * backend for them, so a row arrives with its names attached and no cell has to
+     * be resolved on the fly. @@D-614
+     */
+    const labelFields = useMemo(
+        () =>
+            cols
+                .map(col => col.fieldSchema.widget?.body)
+                .filter((field): field is string => typeof field === 'string'),
+        [cols],
+    );
 
     // Pivot tables source their rows from a named dropdown. When the caller did
     // not supply the options via the `dropdowns` prop (e.g. model pages), load
@@ -750,6 +1126,7 @@ export function TableWidget({
             // Report params are merged before cascade/column filters so column filters take precedence
             ...(reportParams ?? {}),
             ...cascadeFilter,
+            ...(labelFields.length > 0 ? {labels: labelFields} : {}),
             ...(Object.keys(filterBy).length > 0 ? {filterBy} : {}),
             ...(committedSearch ? {search: committedSearch} : {}),
             ...(listSortField
@@ -770,6 +1147,7 @@ export function TableWidget({
         listSortOrder,
         listFirst,
         listPageSize,
+        labelFields,
     ]);
 
     type ListResult = Record<string, unknown>;
@@ -892,8 +1270,15 @@ export function TableWidget({
     // sends the values to the server as `filterBy`, a form/pivot table filters
     // its rows here.  The form case is display-only — it never touches the form
     // value, so hiding a row cannot drop data on save.
-    const filterFields = useMemo(
-        () => cols.filter(c => c.filter).map(c => c.field),
+    const filterFields = useMemo(() => cols.filter(c => c.filter).map(c => c.field), [cols]);
+    /** A pick-list column filters on its key, exactly; a text column on a substring. */
+    const pickFields = useMemo(
+        () =>
+            new Set(
+                cols
+                    .filter(c => c.fieldSchema.widget?.dropdown || c.fieldSchema.widget?.options)
+                    .map(c => c.field),
+            ),
         [cols],
     );
     const displayRows = useMemo(() => {
@@ -904,12 +1289,37 @@ export function TableWidget({
         if (active.length === 0) return filteredRows;
         return filteredRows.filter(row =>
             active.every(([field, text]) =>
-                String(row[field] ?? '')
-                    .toLocaleLowerCase()
-                    .includes(text.toLocaleLowerCase()),
+                pickFields.has(field)
+                    ? String(row[field] ?? '') === text
+                    : String(row[field] ?? '')
+                          .toLocaleLowerCase()
+                          .includes(text.toLocaleLowerCase()),
             ),
         );
-    }, [isListMode, filteredRows, filterFields, committedFilters]);
+    }, [isListMode, filteredRows, filterFields, pickFields, committedFilters]);
+
+    /**
+     * Sorting a form table reorders the view, not the value: a detail list keeps the
+     * order the record was saved in, and the row key still identifies the row, so a
+     * cell edit lands on the right one. The list mode sorts through the server.
+     * @@D-615
+     */
+    const [formSortField, setFormSortField] = useState<string | null>(null);
+    const [formSortOrder, setFormSortOrder] = useState<1 | -1>(1);
+    const sortedRows = useMemo(() => {
+        if (isListMode || !formSortField) return displayRows;
+        const direction = formSortOrder;
+        return [...displayRows].sort((left, right) => {
+            const a = left[formSortField];
+            const b = right[formSortField];
+            // Empties last in either direction: a missing value says nothing about
+            // its order among the values that exist.
+            if (a == null || a === '') return b == null || b === '' ? 0 : 1;
+            if (b == null || b === '') return -1;
+            if (typeof a === 'number' && typeof b === 'number') return (a - b) * direction;
+            return String(a).localeCompare(String(b)) * direction;
+        });
+    }, [isListMode, displayRows, formSortField, formSortOrder]);
 
     const [editingRows, setEditingRows] = useState<Record<string, boolean>>({});
     const [pendingEdit, setPendingEdit] = useState<Record<string, boolean> | null>(null);
@@ -924,7 +1334,13 @@ export function TableWidget({
     const cycleOnly =
         cols.some(c => isCycleCell(c.fieldSchema)) &&
         cols.every(c => isCycleCell(c.fieldSchema) || c.fieldSchema.readOnly === true);
-    const needsRowEditor = !isListMode && editable && !cycleOnly;
+    /**
+     * A table whose cells are their own editors: no row-edit state, no pencil column,
+     * every change written into the form value as it happens. The column is the unit
+     * of refusal — a `readOnly` column still reads. `@@D-618`
+     */
+    const inlineEdit = !isListMode && editable && schema.widget?.inlineEdit === true;
+    const needsRowEditor = !isListMode && editable && !cycleOnly && !inlineEdit;
     const interactionDisabled = disabled || readOnly;
     const isSingleSelect = schema.widget?.selectionMode === 'single';
     const widgetLabel = schema.widget?.label;
@@ -992,10 +1408,12 @@ export function TableWidget({
         setEditingRows(prev => ({...prev, ...pendingEdit}));
     }, [pendingEdit]);
 
-    const onRowEditChange = useCallback(
-        (e: {data: Record<string, boolean>}) => setEditingRows(e.data),
-        [],
-    );
+    const onRowEditChange = useCallback((e: {data: Record<string, boolean>}) => {
+        // A row that is no longer being edited leaves no picks behind: a cancelled
+        // edit must not narrow the next one. @@D-617
+        setRowDrafts({});
+        setEditingRows(e.data);
+    }, []);
 
     /**
      * Write one row back into the form value.  For a pivot table the row may not
@@ -1020,14 +1438,20 @@ export function TableWidget({
     );
 
     const onRowEditComplete = useCallback(
-        (e: {newData: Row}) => onChange(mergeRow(e.newData)),
+        (e: {newData: Row}) => {
+            setRowDrafts({});
+            onChange(mergeRow(e.newData));
+        },
         [mergeRow, onChange],
     );
 
-    /** Commit one cycle-cell value straight into the form value. */
+    /**
+     * Commit one cell value straight into the form value — how a cycle cell and an
+     * in-place cell write, with the label and `lookup` fields a pick carries. `@@D-618`
+     */
     const commitCell = useCallback(
-        (rowData: Row, field: string, nextValue: unknown) =>
-            onChange(mergeRow({...rowData, [field]: nextValue})),
+        (rowData: Row, field: string, nextValue: unknown, patch?: Row) =>
+            onChange(mergeRow({...rowData, ...patch, [field]: nextValue})),
         [mergeRow, onChange],
     );
 
@@ -1207,144 +1631,311 @@ export function TableWidget({
                     style={{background: 'none'}}
                 />
             )}
-            <DataTable
-                value={displayRows}
-                editMode={!isListMode && editable ? 'row' : undefined}
-                editingRows={!isListMode && editable ? editingRows : undefined}
-                onRowEditChange={!isListMode && editable ? onRowEditChange : undefined}
-                onRowEditComplete={!isListMode && editable ? onRowEditComplete : undefined}
-                dataKey={dataKeyField}
-                size="small"
-                loading={isListMode ? listLoading : undefined}
-                lazy={isListMode}
-                rowClassName={rowClass}
-                selection={isSingleSelect ? singleSelected : selected}
-                onSelectionChange={(e: DataTableSelectionChangeParams) => {
-                    if (isSingleSelect) {
-                        const row = e.value as Row | null;
-                        setSingleSelected(row);
-                        fireSingleSelect(row);
-                    } else {
-                        setSelected(e.value as Row[]);
+            <RowDraftContext value={rowDrafts}>
+                <DataTable
+                    key={dropdownSignature}
+                    value={sortedRows}
+                    // An in-place table never enters row editing: the cells are the
+                    // editors, so there is no draft to save or cancel. @@D-618
+                    editMode={!isListMode && editable && !inlineEdit ? 'row' : undefined}
+                    editingRows={!isListMode && editable && !inlineEdit ? editingRows : undefined}
+                    onRowEditChange={
+                        !isListMode && editable && !inlineEdit ? onRowEditChange : undefined
                     }
-                }}
-                selectionMode={isSingleSelect ? 'single' : 'multiple'}
-                metaKeySelection={false}
-                removableSort={isListMode}
-                sortField={isListMode ? (listSortField ?? undefined) : undefined}
-                sortOrder={isListMode ? listSortOrder : undefined}
-                onSort={
-                    isListMode
-                        ? (e: {sortField: string; sortOrder: number}) => {
-                              const order = (e.sortOrder ?? 0) as 0 | 1 | -1;
-                              setListSortField(order === 0 ? null : (e.sortField ?? null));
-                              setListSortOrder(order === 0 ? 1 : order);
-                              setListFirst(0);
-                          }
-                        : undefined
-                }
-            >
-                {!isSingleSelect && (editable || isListMode) && !pivotBaseRows && (
-                    <Column
-                        selectionMode="multiple"
-                        style={{width: '3rem', flexGrow: 0}}
-                    />
-                )}
-                {cols.map(({field, header, filter, sortable, fieldSchema}) => {
-                    const widgetType = resolveWidgetType(fieldSchema);
-                    const options = getColumnOptions(fieldSchema, dropdowns);
-                    const isNumeric = ['number', 'integer', 'currency', 'percent'].includes(
-                        widgetType,
-                    );
-                    const isBoolType = ['boolean', 'checkbox'].includes(widgetType);
-
-                    return (
+                    onRowEditComplete={
+                        !isListMode && editable && !inlineEdit ? onRowEditComplete : undefined
+                    }
+                    dataKey={dataKeyField}
+                    size="small"
+                    emptyMessage="No rows."
+                    loading={isListMode ? listLoading : undefined}
+                    lazy={isListMode}
+                    rowClassName={rowClass}
+                    selection={isSingleSelect ? singleSelected : selected}
+                    onSelectionChange={(e: DataTableSelectionChangeParams) => {
+                        if (isSingleSelect) {
+                            const row = e.value as Row | null;
+                            setSingleSelected(row);
+                            fireSingleSelect(row);
+                        } else {
+                            setSelected(e.value as Row[]);
+                        }
+                    }}
+                    selectionMode={isSingleSelect ? 'single' : 'multiple'}
+                    metaKeySelection={false}
+                    removableSort
+                    sortField={
+                        isListMode ? (listSortField ?? undefined) : (formSortField ?? undefined)
+                    }
+                    sortOrder={isListMode ? listSortOrder : formSortOrder}
+                    onSort={
+                        isListMode
+                            ? (e: {sortField: string; sortOrder: number}) => {
+                                  const order = (e.sortOrder ?? 0) as 0 | 1 | -1;
+                                  setListSortField(order === 0 ? null : (e.sortField ?? null));
+                                  setListSortOrder(order === 0 ? 1 : order);
+                                  setListFirst(0);
+                              }
+                            : (e: {sortField: string; sortOrder: number}) => {
+                                  const order = (e.sortOrder ?? 0) as 0 | 1 | -1;
+                                  setFormSortField(order === 0 ? null : (e.sortField ?? null));
+                                  setFormSortOrder(order === 0 ? 1 : order);
+                              }
+                    }
+                >
+                    {!isSingleSelect && (editable || isListMode) && !pivotBaseRows && (
                         <Column
-                            key={field}
-                            field={field}
-                            header={
-                                filter ? (
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '0.25rem',
-                                        }}
-                                    >
+                            selectionMode="multiple"
+                            style={{width: '3rem', flexGrow: 0}}
+                        />
+                    )}
+                    {cols.map(({field, header, filter, sortable, fieldSchema}) => {
+                        const widgetType = resolveWidgetType(fieldSchema);
+                        const options = getColumnOptions(fieldSchema, resolvedDropdowns);
+                        const isPickList = !!(
+                            fieldSchema.widget?.dropdown || fieldSchema.widget?.options
+                        );
+                        const isNumeric = ['number', 'integer', 'currency', 'percent'].includes(
+                            widgetType,
+                        );
+                        const isBoolType = ['boolean', 'checkbox'].includes(widgetType);
+
+                        return (
+                            <Column
+                                key={field}
+                                field={field}
+                                header={
+                                    filter ? (
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '0.25rem',
+                                            }}
+                                        >
+                                            <Text>{header}</Text>
+                                            {isPickList ? (
+                                                // A key column filters by picking the key,
+                                                // the same way the cell is edited — typing a
+                                                // substring can never match an id.
+                                                <Dropdown
+                                                    value={columnFilterInputs[field] ?? ''}
+                                                    options={options}
+                                                    onChange={e =>
+                                                        handleColumnFilterChange(
+                                                            field,
+                                                            (e.value as string) ?? '',
+                                                        )
+                                                    }
+                                                    showClear
+                                                    placeholder="Filter…"
+                                                    className="p-inputtext-sm"
+                                                    style={{width: '100%', fontSize: '0.8125rem'}}
+                                                    onClick={e => e.stopPropagation()}
+                                                    data-testid={`${tableId}-filter-${field}`}
+                                                />
+                                            ) : (
+                                                <InputText
+                                                    value={columnFilterInputs[field] ?? ''}
+                                                    onChange={e =>
+                                                        handleColumnFilterChange(
+                                                            field,
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="Filter…"
+                                                    className="p-inputtext-sm"
+                                                    style={{width: '100%', fontSize: '0.8125rem'}}
+                                                    onClick={e => e.stopPropagation()}
+                                                    data-testid={`${tableId}-filter-${field}`}
+                                                />
+                                            )}
+                                        </div>
+                                    ) : (
                                         <Text>{header}</Text>
-                                        <InputText
-                                            value={columnFilterInputs[field] ?? ''}
-                                            onChange={e =>
-                                                handleColumnFilterChange(field, e.target.value)
-                                            }
-                                            placeholder="Filter…"
-                                            className="p-inputtext-sm"
-                                            style={{width: '100%', fontSize: '0.8125rem'}}
-                                            onClick={e => e.stopPropagation()}
-                                            data-testid={`${tableId}-filter-${field}`}
-                                        />
-                                    </div>
-                                ) : (
-                                    <Text>{header}</Text>
-                                )
-                            }
-                            sortable={sortable || isListMode}
-                            alignHeader={isNumeric ? 'right' : undefined}
-                            bodyClassName={isNumeric ? 'text-right' : undefined}
-                            body={(rowData: Row, colOptions) => {
-                                const cellId = `${tableId}-${colOptions.rowIndex}-${field}`;
-                                if (isBoolType) {
-                                    if (rowData[field] == null)
-                                        return <span data-testid={cellId} />;
-                                    return (
-                                        <span data-testid={cellId}>
-                                            <i
-                                                className={`pi ${
-                                                    rowData[field]
-                                                        ? 'pi-check text-green-500'
-                                                        : 'pi-times text-red-500'
-                                                }`}
+                                    )
+                                }
+                                sortable={sortable || isListMode}
+                                alignHeader={isNumeric ? 'right' : undefined}
+                                bodyClassName={isNumeric ? 'text-right' : undefined}
+                                body={(rowData: Row, colOptions) => {
+                                    const cellId = `${tableId}-${colOptions.rowIndex}-${field}`;
+                                    const cellName = `${tableId}[${colOptions.rowIndex}].${field}`;
+                                    /**
+                                     * A cell that edits in place *is* its editor, so it
+                                     * commits the moment it changes and there is nothing to
+                                     * compare against: the value on screen is the value in
+                                     * the form. @@D-618
+                                     */
+                                    if (
+                                        inlineEdit &&
+                                        !fieldSchema.readOnly &&
+                                        !pivotJoinDataFields.has(field)
+                                    ) {
+                                        return (
+                                            <InlineCellEditor
+                                                rowData={rowData}
+                                                field={field}
+                                                options={options}
+                                                fieldSchema={fieldSchema}
+                                                commit={(nextValue: unknown) =>
+                                                    commitCell(
+                                                        rowData,
+                                                        field,
+                                                        nextValue,
+                                                        pickPatch(fieldSchema, options, nextValue),
+                                                    )
+                                                }
+                                                render={({
+                                                    rowData: editedRow,
+                                                    options: narrowed,
+                                                    onDraft,
+                                                }) =>
+                                                    renderEditor(
+                                                        widgetType,
+                                                        fieldSchema,
+                                                        field,
+                                                        editedRow,
+                                                        cellId,
+                                                        cellName,
+                                                        onDraft,
+                                                        narrowed,
+                                                    )
+                                                }
                                             />
+                                        );
+                                    }
+                                    if (isBoolType) {
+                                        if (rowData[field] == null)
+                                            return <span data-testid={cellId} />;
+                                        return (
+                                            <span data-testid={cellId}>
+                                                <i
+                                                    className={`pi ${
+                                                        rowData[field]
+                                                            ? 'pi-check text-green-500'
+                                                            : 'pi-times text-red-500'
+                                                    }`}
+                                                />
+                                            </span>
+                                        );
+                                    }
+                                    const commit =
+                                        editable && !fieldSchema.readOnly
+                                            ? (nextValue: unknown) =>
+                                                  commitCell(rowData, field, nextValue)
+                                            : undefined;
+                                    const node = renderBody(
+                                        widgetType,
+                                        field,
+                                        rowData,
+                                        cellId,
+                                        options,
+                                        keyFieldName,
+                                        fieldSchema,
+                                        commit,
+                                        format,
+                                    );
+                                    // A cell that also carries the value it replaced shows
+                                    // both, the current one first. The old value goes
+                                    // through the same body, so a label, a date and a
+                                    // currency read alike in both halves. @@D-615
+                                    const compareField = fieldSchema.widget?.compare;
+                                    if (
+                                        !compareField ||
+                                        rowData[compareField] === undefined ||
+                                        String(rowData[compareField] ?? '') ===
+                                            String(rowData[field] ?? '')
+                                    ) {
+                                        return node;
+                                    }
+                                    return (
+                                        <span>
+                                            <span
+                                                data-testid={`${cellId}-new`}
+                                                style={{color: 'var(--teal-500)'}}
+                                            >
+                                                {node}
+                                            </span>
+                                            <span
+                                                data-testid={`${cellId}-old`}
+                                                style={{
+                                                    color: 'var(--orange-500)',
+                                                    display: 'block',
+                                                }}
+                                            >
+                                                {renderBody(
+                                                    widgetType,
+                                                    field,
+                                                    {...rowData, [field]: rowData[compareField]},
+                                                    `${cellId}-previous`,
+                                                    options,
+                                                    keyFieldName,
+                                                    fieldSchema,
+                                                    undefined,
+                                                    format,
+                                                )}
+                                            </span>
                                         </span>
                                     );
+                                }}
+                                editor={
+                                    !isListMode &&
+                                    editable &&
+                                    !fieldSchema.readOnly &&
+                                    !pivotJoinDataFields.has(field)
+                                        ? colOptions => {
+                                              const cellId = `${tableId}-${colOptions.rowIndex}-${field}`;
+                                              const cellName = `${tableId}[${colOptions.rowIndex}].${field}`;
+                                              const rowData = colOptions.rowData as Row;
+                                              return (
+                                                  <RowCellEditor
+                                                      rowData={rowData}
+                                                      options={options}
+                                                      fieldSchema={fieldSchema}
+                                                      render={(editedRow, narrowed) =>
+                                                          renderEditor(
+                                                              widgetType,
+                                                              fieldSchema,
+                                                              field,
+                                                              rowData,
+                                                              cellId,
+                                                              cellName,
+                                                              (v: unknown) => {
+                                                                  // The row being edited is
+                                                                  // PrimeReact's copy: mutating it is
+                                                                  // how the label and `lookup` fields
+                                                                  // reach `onRowEditComplete`. @@D-614
+                                                                  Object.assign(
+                                                                      rowData,
+                                                                      pickPatch(
+                                                                          fieldSchema,
+                                                                          options,
+                                                                          v,
+                                                                      ),
+                                                                  );
+                                                                  recordRowDraft(rowData, field, v);
+                                                                  colOptions.editorCallback?.(v);
+                                                              },
+                                                              narrowed,
+                                                          )
+                                                      }
+                                                  />
+                                              );
+                                          }
+                                        : undefined
                                 }
-                                return renderBody(
-                                    widgetType,
-                                    field,
-                                    rowData,
-                                    cellId,
-                                    options,
-                                    keyFieldName,
-                                    fieldSchema,
-                                    nextValue => commitCell(rowData, field, nextValue),
-                                );
-                            }}
-                            editor={
-                                !isListMode &&
-                                editable &&
-                                !fieldSchema.readOnly &&
-                                !pivotJoinDataFields.has(field)
-                                    ? colOptions => {
-                                          const cellId = `${tableId}-${colOptions.rowIndex}-${field}`;
-                                          const cellName = `${tableId}[${colOptions.rowIndex}].${field}`;
-                                          return renderEditor(
-                                              widgetType,
-                                              fieldSchema,
-                                              field,
-                                              colOptions.rowData as Row,
-                                              cellId,
-                                              cellName,
-                                              (v: unknown) => colOptions.editorCallback?.(v),
-                                              options,
-                                          );
-                                      }
-                                    : undefined
-                            }
+                            />
+                        );
+                    })}
+                    {needsRowEditor && (
+                        <Column
+                            rowEditor
+                            style={{width: '7rem', textAlign: 'center'}}
                         />
-                    );
-                })}
-                {needsRowEditor && <Column rowEditor style={{width: '7rem', textAlign: 'center'}} />}
-            </DataTable>
+                    )}
+                </DataTable>
+            </RowDraftContext>
             {isListMode && listTotal > 0 && (
                 <div
                     className="blong-table-paginator"

@@ -8,16 +8,20 @@ export default model(
                 object: 'person',
                 objectTitle: 'Person',
                 public: true,
-                nameField: 'person.lastName',
+                nameField: 'person.personName',
 
                 schema: {
                     properties: {
                         person: {
                             properties: {
+                                personName: {title: 'Full Name', required: true, filter: true},
                                 firstName: {title: 'First Name'},
                                 middleName: {title: 'Middle Name'},
                                 lastName: {title: 'Last Name'},
+                                internationalName: {title: 'International Spelling'},
                                 birthDate: {title: 'Date of Birth'},
+                                citizenship: {title: 'Citizenship'},
+                                photoUrl: {title: 'Photograph URL'},
                                 gender: {
                                     title: 'Gender',
                                     widget: {
@@ -46,7 +50,7 @@ export default model(
                                 // personId: {},
                             },
                             widget: {
-                                columns: ['firstName', 'lastName', 'nationality', 'occupation'],
+                                columns: ['personName', 'nationality', 'occupation'],
                             },
                         },
                         /** Contact details card — email, phone, mobile. */
@@ -148,12 +152,15 @@ export default model(
                     },
                     personal: {
                         label: 'Personal Info',
-                        className: 'col-12',
                         widgets: [
+                            'person.personName',
                             'person.firstName',
                             'person.middleName',
                             'person.lastName',
+                            'person.internationalName',
                             'person.birthDate',
+                            'person.citizenship',
+                            'person.photoUrl',
                             'person.gender',
                             'person.maritalStatus',
                             'person.nationality',

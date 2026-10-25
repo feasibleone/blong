@@ -125,7 +125,6 @@ export default model(
                     },
                     details: {
                         label: 'Organization Details',
-                        className: 'col-12',
                         widgets: [
                             'organization.legalName',
                             'organization.tradingName',

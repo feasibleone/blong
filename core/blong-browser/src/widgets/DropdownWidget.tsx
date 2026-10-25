@@ -34,7 +34,8 @@ function DropdownCore({
     readOnly,
     disabled,
     parentValue,
-}: IWidgetProps & {parentValue: unknown}) {
+    filterValues,
+}: IWidgetProps & {parentValue: unknown; filterValues?: Record<string, unknown>}) {
     const {
         fetch: fetchAction,
         options: staticOptions,
@@ -104,13 +105,26 @@ function DropdownCore({
 
     // Filter options by parent value (client-side cascade).
     // Supports both named-key format ({continent: 1}) and generic parent key ({parent: 1}).
-    const visibleOptions =
-        parent && parentValue !== undefined
-            ? options.filter(o => {
-                  const opt = o as unknown as Record<string, unknown>;
-                  return opt[parent] === parentValue || opt['parent'] === parentValue;
-              })
-            : options;
+    // `optionsFilter` is the explicit form — `{optionProperty: formField}` — for a list
+    // whose options carry the key under another name, or that depend on more than one
+    // field. An empty field leaves the list whole, so the first pick is never blocked.
+    // @@D-615
+    const optionsFilter = schema.widget?.optionsFilter;
+    const visibleOptions = optionsFilter
+        ? options.filter(o => {
+              const candidate = o as unknown as Record<string, unknown>;
+              return Object.entries(optionsFilter).every(([optionProperty, formField]) => {
+                  const want = filterValues?.[formField];
+                  if (want === undefined || want === null || want === '') return true;
+                  return String(candidate[optionProperty]) === String(want);
+              });
+          })
+        : parent && parentValue !== undefined
+          ? options.filter(o => {
+                const opt = o as unknown as Record<string, unknown>;
+                return opt[parent] === parentValue || opt['parent'] === parentValue;
+            })
+          : options;
 
     if (readOnly) {
         const found = visibleOptions.find(o => o.value === value);
@@ -149,16 +163,32 @@ function DropdownCore({
 function ConnectedDropdown({
     parentFieldName,
     control,
+    filterFields,
     ...props
 }: IWidgetProps & {
-    parentFieldName: string;
+    parentFieldName?: string;
     control: Control<Record<string, unknown>>;
+    filterFields?: string[];
 }) {
-    const parentValue = useWatch({control, name: parentFieldName});
+    const watched = parentFieldName ? [parentFieldName, ...(filterFields ?? [])] : filterFields;
+    const values = useWatch({
+        control,
+        name: (watched ?? []) as string[],
+    }) as unknown[] | undefined;
+    const parentValue = parentFieldName ? values?.[0] : undefined;
+    const filterValues = filterFields
+        ? Object.fromEntries(
+              filterFields.map((field, index) => [
+                  field,
+                  values?.[(parentFieldName ? 1 : 0) + index],
+              ]),
+          )
+        : undefined;
     return (
         <DropdownCore
             {...props}
             parentValue={parentValue}
+            filterValues={filterValues}
         />
     );
 }
@@ -176,12 +206,14 @@ function ConnectedDropdown({
 export function DropdownWidget(props: IWidgetProps) {
     const formCtx = useBlongForm();
     const parent = props.schema.widget?.parent;
+    const filterFields = Object.values(props.schema.widget?.optionsFilter ?? {});
 
-    if (formCtx?.control && parent) {
+    if (formCtx?.control && (parent || filterFields.length > 0)) {
         return (
             <ConnectedDropdown
                 {...props}
                 parentFieldName={parent}
+                filterFields={filterFields.length > 0 ? filterFields : undefined}
                 control={formCtx.control}
             />
         );

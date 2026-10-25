@@ -111,7 +111,6 @@ export default model(
                     },
                     edit: {
                         label: 'Capability Details',
-                        className: 'col-12 md:col-8',
                         widgets: ['capability.capabilityName', 'capability.description'],
                     },
                     // The CRUD pivot card inside the "Action" tab — no title because

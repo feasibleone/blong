@@ -1,4 +1,4 @@
-import { model } from '@feasibleone/blong';
+import {model} from '@feasibleone/blong';
 
 /**
  * meta/model/$subject$ObjectModel.ts — model spec for the `$object` entity.
@@ -96,7 +96,6 @@ export default model(
                     },
                     edit: {
                         label: '$Object Details',
-                        className: 'col-12 md:col-8',
                         widgets: ['$object.$objectName', '$object.$objectStatus'],
                     },
                 },

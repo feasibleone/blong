@@ -227,6 +227,14 @@ export interface IModelSpec {
     reports?: Record<string, IReportDefinition>;
     /** Tab layouts for editor */
     layouts?: Record<string, LayoutConfig>;
+    /**
+     * Layout the generated Open page asks the editor for. Defaults to `edit`.
+     *
+     * The Open page renders one layout, so a model that wants tabs there names its
+     * tab layout (e.g. `editThumbIndex`) and keeps `edit` flat for the create test
+     * helpers, which fill every field in one pass and cannot walk tabs.
+     */
+    openLayout?: string;
     /** Method name overrides */
     methods?: IMethodsConfig;
     /**

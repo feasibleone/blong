@@ -105,7 +105,7 @@ that a body is prose only, so nobody writes a list and then discovers MD031.
 > _2026-09-29 · tools/blong-dev · open_
 
 An earlier pass wrote \_ and \* into bodies to stop markdown parsing an identifier or a glob as
-emphasis (Registry.\_validations(), \_shared*, \*.spec.ts). It renders, but it is noise the wrapper
+emphasis (Registry.\_validations(), \_shared\_, \_.spec.ts). It renders, but it is noise the wrapper
 cannot see and the house style uses backticks, and a check for it was left out of the T-175 fix
 because it would fail eleven entries at once. Sweep them with blong-dev memory edit, writing the
 token in backticks instead, and then add the rule to checkMarkdown so the escape cannot come back.
@@ -173,8 +173,8 @@ nothing to read. The party suite's browser leg is the reference case: 163 s with
 
 The ACL investigation needed one question answered before any other: is the database the bottleneck?
 A throwaway probe connected with `mysql2`, ran a statement N times and printed milliseconds per
-call, then `EXPLAIN`ed it — and its answer (the whole per-request guard at 0.63 ms, a round trip
-at 0.08 ms, an unindexed scan of the largest graph table at 0.07 ms, a plan already using
+call, then `EXPLAIN`ed it — and its answer (the whole per-request guard at 0.63 ms, a round trip at
+0.08 ms, an unindexed scan of the largest graph table at 0.07 ms, a plan already using
 `access_acl_idx_target` with `Using index`) redirected the work away from indexes, which were never
 the cost. `blong-dev sql` should offer that directly instead of leaving the next person to write the
 probe: `--time N` runs the statement N times after a warm-up and reports milliseconds per call,
@@ -300,7 +300,7 @@ every report at once.
 
 Implemented as the shared directory mode of externalizeAllureMain: the workflow sets
 BLONG_ALLURE_MAIN_URL and BLONG_ALLURE_MAIN_DIR, the bundle is written once and deploy-report copies
-it to docs/_assets through its new assets input.
+it to docs/\_assets through its new assets input.
 
 ## Retired
 

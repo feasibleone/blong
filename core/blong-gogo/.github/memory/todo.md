@@ -28,12 +28,13 @@ open (19)
 - `T-350` · core/blong-gogo — Stop keying a realm child by its function name
 - `T-366` · core/blong-gogo — Decide whether an inactive layer is skipped before it is imported
 
-done (4)
+done (5)
 
 - `T-341` · core/blong-gogo — Validate a config reload and reject an invalid snapshot
 - `T-217` · core/blong-gogo — Warn when a CLI config key matches no realm, port or framework key
 - `T-345` · core/blong-gogo — The graceful-shutdown spawn test failed once in CI and passes locally
 - `T-195` · core/blong-gogo — Five helper modules still log a load error in their group folders
+- `T-408` · core/blong-gogo — Join the row's own resource name instead of a second query
 
 <!-- /memory:index -->
 
@@ -375,5 +376,20 @@ default-export library() bundles, and their handlers take the members from lib (
 bundle type). kukum grew a library primitive with an audit that finds a plain module in a group
 folder; it reports nothing for the three realms, and a suite load prints no Watch error-loading
 line.
+
+### T-408 — Join the row's own resource name instead of a second query
+
+> _2026-10-25 · core/blong-gogo · done_
+
+The label joins now come from the row query, but the resource-backed display name still costs an
+extra statement: `joinResourceNames` reads `core_resource` after the fetch on `find`, `get`, `add`
+and the edge rows. It is the same shape as a label join —
+`LEFT JOIN core_resource ON resourceId = <table>.<key>` selecting `resourceName as <object>Name` —
+so the read paths can fold it into the query and the write paths can keep the lookup they need to
+select a generated key back.
+
+attachResourceName folds the core_resource left join into the find and get statements, keyed by the
+declared primary key; the create and the edge rows keep the batched lookup for the reasons recorded
+in D-619. Verified by the sport and access suites (116 + 32) and the rest of the realm suites.
 
 ## Retired

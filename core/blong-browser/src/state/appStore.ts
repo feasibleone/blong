@@ -4,6 +4,7 @@
  */
 import type {ReactNode} from 'react';
 import {create} from 'zustand';
+import type {IFormatConfig} from '../lib/format.js';
 import type {ActionRegistry, IBlongError} from '../types/action.js';
 import type {IAuthState, IUserProfile, PermissionMap} from '../types/permission.js';
 import type {IPortalConfig, IPortalState, ITab} from '../types/portal.js';
@@ -100,6 +101,12 @@ export interface IAppState {
      */
     translationsByLanguage: Record<string, TranslationDict>;
     language: string;
+    /**
+     * Formatting configuration, resolved user → system → the language default by
+     * `useFormatValue` (see `lib/format.ts`). The user layer is the person's own
+     * preference and arrives with the profile; the system layer is the app's.
+     */
+    format: {user?: IFormatConfig; system?: IFormatConfig};
     actions: ActionRegistry;
     error: IBlongError | null;
     hint: IHint | null;
@@ -145,6 +152,10 @@ export interface IAppActions {
     setTranslations: (dict: TranslationDict) => void;
     setTranslationsByLanguage: (dicts: Record<string, TranslationDict>) => void;
     setLanguage: (language: string) => void;
+
+    // Formatting
+    /** Set one layer of the formatting configuration; `undefined` clears it. */
+    setFormat: (scope: 'user' | 'system', config: IFormatConfig | undefined) => void;
 
     // Actions registry
     registerActions: (actions: ActionRegistry) => void;
@@ -194,6 +205,7 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     translations: {},
     translationsByLanguage: {},
     language: 'en',
+    format: {},
     actions: {},
     error: null,
     hint: null,
@@ -318,9 +330,14 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
                     : state.translations,
         })),
 
+    // Formatting — one layer at a time; the hook resolves the chain.
+    setFormat: (scope, config) =>
+        set(state => ({
+            format: {...state.format, [scope]: config},
+        })),
+
     // Actions registry
     registerActions: actions => set(state => ({actions: {...state.actions, ...actions}})),
-
     // Error
     showError: error => {
         // Mirror the error popup (ErrorDialog) to the browser console so agents

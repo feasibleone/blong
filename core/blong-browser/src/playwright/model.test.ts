@@ -43,4 +43,31 @@ describe('captureWith', () => {
         expect(redacted).toEqual([]);
         expect(shots).toEqual(['browse.png']);
     });
+
+    it('stores the baseline as png unless a format says otherwise', async () => {
+        const shots: string[] = [];
+        await captureWith(fakeExpect(shots))(fakePage([]), 'sport-athlete-browse.png', 'browse');
+        expect(shots).toEqual(['sport-athlete-browse.png']);
+    });
+
+    it('writes a webp baseline when the format asks for one', async () => {
+        const shots: string[] = [];
+        await captureWith(fakeExpect(shots), [], {format: 'webp'})(
+            fakePage([]),
+            'sport-athlete-browse.png',
+            'browse',
+        );
+        expect(shots).toEqual(['sport-athlete-browse.webp']);
+    });
+
+    it('takes no picture for a state the spec switched off', async () => {
+        const redacted: string[] = [];
+        const shots: string[] = [];
+        await captureWith(fakeExpect(shots), ['5d78c9869d'], {
+            capture: {editDirty: false},
+        })(fakePage(redacted), 'sport-athlete-new-edit-dirty.png', 'editDirty');
+        // Neither the page walk nor the screenshot happens for a skipped state.
+        expect(redacted).toEqual([]);
+        expect(shots).toEqual([]);
+    });
 });

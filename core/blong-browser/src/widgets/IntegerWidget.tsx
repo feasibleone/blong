@@ -25,6 +25,10 @@ export function IntegerWidget({
             className={`blong-integer w-full ${error ? 'p-invalid' : ''}`}
             inputClassName="w-full text-right"
             showButtons
+            // An integer is a year, a rank or a count far more often than an amount,
+            // so grouping is opt-in here while the number widget keeps it by default.
+            // @@D-613
+            useGrouping={schema.widget?.useGrouping === true}
             min={schema.minimum}
             max={schema.maximum}
         />

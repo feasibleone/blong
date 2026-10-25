@@ -307,6 +307,10 @@ export function Chips({removable = true, allowDuplicate = true, ...props}: Chips
     );
 }
 
+// RadioButton — a single boolean as a radio, for a table cell that reads one
+export {RadioButton} from 'primereact/radiobutton';
+export type {RadioButtonProps} from 'primereact/radiobutton';
+
 // Column — showFilterMenu:true, showFilterMatchModes:true, showFilterOperator:true, showAddButton:true,
 //          showApplyButton:true, showClearButton:true, showFilterMenuOptions:true,
 //          dataType:'text', filterType:'text', maxConstraints:2, rowReorderIcon:'pi pi-bars',

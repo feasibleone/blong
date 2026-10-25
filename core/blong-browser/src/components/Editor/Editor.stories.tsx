@@ -34,6 +34,11 @@ export type StoryFn = ((args: StoryArgs) => React.ReactElement) & {
     decorators?: Array<(Story: React.ComponentType) => React.ReactElement>;
     /** Storybook parameters — `theme` opts a story into a theme variant (e.g. glass). */
     parameters?: {theme?: Partial<IThemeConfig>};
+    /**
+     * Story tags. A set shares one tag so the runner can exercise exactly it:
+     * `npx test-storybook --includeTags <tag>`.
+     */
+    tags?: string[];
 };
 
 export const Basic: StoryFn = (args = {}) => (

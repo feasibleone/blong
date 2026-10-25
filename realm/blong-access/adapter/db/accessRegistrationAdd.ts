@@ -67,6 +67,11 @@ export default handler(
                 {
                     person: {
                         personId: 'uuid',
+                        // The resource label of a person is the full name, which every
+                        // producer of a person must supply. `@@D-602`
+                        personName: [params.firstName, params.middleName, params.lastName]
+                            .filter(Boolean)
+                            .join(' '),
                         firstName: params.firstName,
                         middleName: params.middleName,
                         lastName: params.lastName,

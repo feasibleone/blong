@@ -169,7 +169,6 @@ export default model(
                     },
                     edit: {
                         label: 'Role Details',
-                        className: 'col-12 md:col-8',
                         widgets: ['role.roleName', 'role.roleBit', 'role.description'],
                     },
                     'details-effective': {label: 'Access', widgets: ['effective']},

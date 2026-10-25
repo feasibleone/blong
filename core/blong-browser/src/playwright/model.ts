@@ -63,6 +63,39 @@ export interface IFieldValue {
 
 export type FieldMap = Record<string, string | number | boolean | IFieldValue>;
 
+export type ScreenshotFormat = 'png' | 'webp';
+
+/**
+ * Which captures a helper takes. Every state defaults to `true`; a spec that only
+ * creates a record as a prerequisite for another page turns the captures off and
+ * keeps the test, so the row is still proved to save without a duplicate picture.
+ */
+export interface ICaptureOptions {
+    browse?: boolean;
+    /** The create page before anything is filled — shows the empty form. */
+    empty?: boolean;
+    /** The create page with the spec's values in it. */
+    filled?: boolean;
+    /** After the first save. */
+    saved?: boolean;
+    /** The saved record reopened — the edit form as loaded. */
+    open?: boolean;
+    /** After the edit values are typed into the reopened record. */
+    editDirty?: boolean;
+    /** After the edit save. */
+    editSaved?: boolean;
+    cleanupConfirm?: boolean;
+}
+
+export interface IScreenshotOptions {
+    /**
+     * Baseline image format. Playwright stores WebP losslessly, so a spec may pick
+     * it by name; PNG stays the default.
+     */
+    format?: ScreenshotFormat;
+    capture?: ICaptureOptions;
+}
+
 export interface IBrowseModelOptions {
     subject: string;
     object: string;
@@ -74,6 +107,8 @@ export interface IBrowseModelOptions {
      * and its header in the picture, where masking the cell would hide all three.
      */
     redact?: IRedactPattern[];
+    /** Image format and which states to capture. */
+    screenshot?: IScreenshotOptions;
 }
 
 export interface ICreateAndEditModelOptions {
@@ -205,6 +240,8 @@ export interface ICreateAndEditModelOptions {
      * detail tab), so the two do not compete for the same screenshot files.
      */
     baselinePrefix?: string;
+    /** Image format and which states to capture. */
+    screenshot?: IScreenshotOptions;
 }
 
 /**
@@ -234,6 +271,31 @@ async function detectWidgetType(page: Page, fieldId: string): Promise<string> {
     }, fieldId);
 }
 
+/**
+ * Bring a field into the DOM before it is looked for.
+ *
+ * A tabbed editor (the thumb index) renders only the active panel, so a field on
+ * another tab is absent rather than hidden: `getElementById` finds nothing and the
+ * widget detection would call it a text input. Clicking each tab in turn until the
+ * field appears is what lets one `fields` map span several tabs.
+ */
+async function revealField(page: Page, fieldId: string): Promise<void> {
+    const present = () =>
+        page.evaluate(
+            id =>
+                !!(document.getElementById(id) ?? document.querySelector(`[data-testid="${id}"]`)),
+            fieldId,
+        );
+    if (await present()) return;
+
+    const tabs = page.locator('.blong-thumbindex .p-panelmenu-header-content, .p-panelmenu-header');
+    const tabCount = await tabs.count();
+    for (let index = 0; index < tabCount; index += 1) {
+        await tabs.nth(index).click();
+        if (await present()) return;
+    }
+}
+
 /** Fill form fields, auto-detecting widget types from the DOM. */
 export async function fillFields(page: Page, fields: FieldMap): Promise<void> {
     for (const [name, raw] of Object.entries(fields)) {
@@ -241,6 +303,7 @@ export async function fillFields(page: Page, fields: FieldMap): Promise<void> {
             typeof raw === 'object' && raw !== null ? (raw as IFieldValue) : {value: raw};
         // Widget IDs use hyphens (coral-familyId) while name attrs use dots (coral.familyId)
         const fieldId = name.replace(/\./g, '-');
+        await revealField(page, fieldId);
         const widget = spec.widget ?? (await detectWidgetType(page, fieldId));
 
         switch (widget) {
@@ -263,7 +326,13 @@ export async function fillFields(page: Page, fields: FieldMap): Promise<void> {
                     .locator('.p-dropdown-item')
                     .first()
                     .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
-                await page.locator(`.p-dropdown-item:has-text("${String(spec.value)}")`).click();
+                // `.first()` on purpose: a retried create leaves a second row of the
+                // same name, so the list can hold two identical labels and a strict
+                // click would fail on a list that is merely redundant.
+                await page
+                    .locator(`.p-dropdown-item:has-text("${String(spec.value)}")`)
+                    .first()
+                    .click();
                 break;
             }
             case 'number':
@@ -534,11 +603,28 @@ export async function selectNavigatorNode(page: Page, label: string): Promise<vo
  * and the DOM it walks are elsewhere, so a unit test with a fake `expect` and a fake `page`
  * can pin that the two are called in that order, and that neither is called for nothing.
  */
-export function captureWith(expect: Expect, redact?: readonly IRedactPattern[]) {
-    return async (page: Page, name: string): Promise<void> => {
+export function captureWith(
+    expect: Expect,
+    redact?: readonly IRedactPattern[],
+    screenshot?: IScreenshotOptions,
+) {
+    const format: ScreenshotFormat = screenshot?.format ?? 'png';
+    const capture = screenshot?.capture ?? {};
+    return async (page: Page, name: string, state?: keyof ICaptureOptions): Promise<void> => {
+        if (state && capture[state] === false) return;
         if (redact?.length) await redactPageText(page, redact);
-        await expect(page).toHaveScreenshot(name);
+        await expect(page).toHaveScreenshot(withFormat(name, format));
     };
+}
+
+/**
+ * The snapshot name in the requested format.
+ *
+ * Playwright picks the encoder from the file extension, so the format is carried
+ * by the name: a `.webp` baseline is written and compared as WebP.
+ */
+function withFormat(name: string, format: ScreenshotFormat): string {
+    return format === 'webp' ? name.replace(/\.png$/, '.webp') : name;
 }
 
 /**
@@ -548,7 +634,7 @@ export function captureWith(expect: Expect, redact?: readonly IRedactPattern[]) 
 export function browseModel(test: ITestFn, expect: Expect, options: IBrowseModelOptions): void {
     const {subject, object} = options;
     const method = `${subject}.${object}.browse`;
-    const capture = captureWith(expect, options.redact);
+    const capture = captureWith(expect, options.redact, options.screenshot);
 
     test(`browse ${subject} ${object}`, async ({portal}) => {
         await portal.menuClick(method);
@@ -560,7 +646,7 @@ export function browseModel(test: ITestFn, expect: Expect, options: IBrowseModel
             await portal.page.waitForTimeout(500);
             await portal.waitForTableData();
         }
-        await capture(portal.page, `${subject}-${object}-browse.png`);
+        await capture(portal.page, `${subject}-${object}-browse.png`, 'browse');
     });
 }
 
@@ -585,10 +671,11 @@ export function createAndEditModel(
         skipCreate = false,
         redact,
         baselinePrefix,
+        screenshot,
     } = options;
     const browseMethod = `${subject}.${object}.browse`;
     const base = baselinePrefix ?? `${subject}-${object}`;
-    const capture = captureWith(expect, redact);
+    const capture = captureWith(expect, redact, screenshot);
 
     test(`create ${subject} ${object}`, async ({portal}) => {
         // An entity whose guard refuses the caller's own new record cannot be
@@ -612,11 +699,11 @@ export function createAndEditModel(
         }
 
         await portal.waitForFormLoad();
-        await capture(portal.page, `${base}-new-empty.png`);
+        await capture(portal.page, `${base}-new-empty.png`, 'empty');
 
         // Fill form fields
         await fillFields(portal.page, fields);
-        await capture(portal.page, `${base}-new-filled.png`);
+        await capture(portal.page, `${base}-new-filled.png`, 'filled');
 
         // Master-detail: switch to each detail tab, add + fill rows (pivot rows
         // are toggled in place — there is no Add button), screenshot the empty
@@ -667,7 +754,7 @@ export function createAndEditModel(
 
         // Save
         await portal.save();
-        await capture(portal.page, `${base}-new-saved.png`);
+        await capture(portal.page, `${base}-new-saved.png`, 'saved');
 
         // After a successful create the editor switches to edit mode but keeps
         // the last-visited detail tab active (master-detail layout), which hides
@@ -679,10 +766,10 @@ export function createAndEditModel(
         // Edit the same record in the same tab — verifies edit does not create a duplicate
         if (editInCreate && editFields && Object.keys(editFields).length > 0) {
             await fillFields(portal.page, editFields);
-            await capture(portal.page, `${base}-new-edit-dirty.png`);
+            await capture(portal.page, `${base}-new-edit-dirty.png`, 'editDirty');
 
             await portal.save();
-            await capture(portal.page, `${base}-new-edit-saved.png`);
+            await capture(portal.page, `${base}-new-edit-saved.png`, 'editSaved');
         }
     });
 
@@ -718,7 +805,7 @@ export function createAndEditModel(
             await portal.waitForFormLoad();
             // Wait for the API response to populate form inputs
             await portal.waitForFormData();
-            await capture(portal.page, `${base}-open.png`);
+            await capture(portal.page, `${base}-open.png`, 'open');
 
             // Master-detail: screenshot each detail tab showing the loaded rows,
             // operate on the first detail that declares editFields (proving that
@@ -784,11 +871,11 @@ export function createAndEditModel(
 
             // Fill the actual editFields (different from suffixed → form dirty)
             await fillFields(portal.page, editFields);
-            await capture(portal.page, `${base}-edit-dirty.png`);
+            await capture(portal.page, `${base}-edit-dirty.png`, 'editDirty');
 
             // Save
             await portal.save();
-            await capture(portal.page, `${base}-edit-saved.png`);
+            await capture(portal.page, `${base}-edit-saved.png`, 'editSaved');
         });
     }
 }
@@ -807,6 +894,8 @@ export interface ICleanupModelOptions {
     removeMethod: string;
     /** Volatile substrings to redact (`###`) in the confirmation capture, as in `browseModel`. */
     redact?: IRedactPattern[];
+    /** Image format; the confirmation capture is the only one this helper takes. */
+    screenshot?: IScreenshotOptions;
 }
 
 /**
@@ -822,9 +911,9 @@ export interface ICleanupModelOptions {
  * deletion.
  */
 export function cleanupModel(test: ITestFn, expect: Expect, options: ICleanupModelOptions): void {
-    const {subject, object, search, removeMethod, redact} = options;
+    const {subject, object, search, removeMethod, redact, screenshot} = options;
     const removeTestId = `action-${removeMethod.replace(/[/.]/g, '-')}`;
-    const capture = captureWith(expect, redact);
+    const capture = captureWith(expect, redact, screenshot);
 
     test(`cleanup ${subject} ${object}`, async ({portal}) => {
         await portal.menuClick(`${subject}.${object}.browse`);
@@ -836,12 +925,12 @@ export function cleanupModel(test: ITestFn, expect: Expect, options: ICleanupMod
         await portal.waitForTableData();
 
         // Delete every matching row, one at a time (the browse uses single
-        // selection, and each Delete refreshes the filtered table).  The
-        // `.p-datatable-tbody tr` locator also matches the "No available
-        // options" empty-state row, so exclude it.
-        const dataRows = portal.page
-            .locator('.p-datatable-tbody tr')
-            .filter({hasNotText: 'No available options'});
+        // selection, and each Delete refreshes the filtered table).  The empty-state
+        // row lives in the same tbody, so it is excluded by its own class rather than
+        // by its text — the message is localised and configurable.
+        const dataRows = portal.page.locator(
+            '.p-datatable-tbody tr:not(.p-datatable-emptymessage)',
+        );
         let deleted = 0;
         for (;;) {
             const count = await dataRows.count();
@@ -856,7 +945,11 @@ export function cleanupModel(test: ITestFn, expect: Expect, options: ICleanupMod
                 .locator('.p-confirm-dialog-accept')
                 .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
             if (deleted === 0) {
-                await capture(portal.page, `${subject}-${object}-cleanup-confirm.png`);
+                await capture(
+                    portal.page,
+                    `${subject}-${object}-cleanup-confirm.png`,
+                    'cleanupConfirm',
+                );
             }
             await portal.page.locator('.p-confirm-dialog-accept').click();
             deleted++;
@@ -866,7 +959,7 @@ export function cleanupModel(test: ITestFn, expect: Expect, options: ICleanupMod
                 expected => {
                     const rows = Array.from(
                         document.querySelectorAll('.p-datatable-tbody tr'),
-                    ).filter(tr => !tr.textContent?.includes('No available options'));
+                    ).filter(tr => !tr.classList.contains('p-datatable-emptymessage'));
                     return rows.length < expected;
                 },
                 count,

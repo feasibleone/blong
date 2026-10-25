@@ -136,7 +136,6 @@ export default model(
                     browse: {label: '${Entity}s', widgets: ['${ctx.object}']},
                     edit: {
                         label: '${Entity} Details',
-                        className: 'col-12 md:col-8',
                         widgets: ['${ctx.object}.${ctx.object}Name', '${ctx.object}.${ctx.object}Status'],
                     },
                 },

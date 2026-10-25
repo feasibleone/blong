@@ -185,7 +185,6 @@ export default model(
                     },
                     edit: {
                         label: 'User Details',
-                        className: 'col-12 md:col-8',
                         widgets: ['user.emailAddress', 'user.isActive'],
                     },
                     'details-effective': {label: 'Access', widgets: ['effective']},

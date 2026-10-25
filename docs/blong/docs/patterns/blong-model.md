@@ -85,7 +85,6 @@ export default model(
                     },
                     edit: {
                         label: 'Coral Details',
-                        className: 'col-12 md:col-8',
                         widgets: [
                             'coral.coralName',
                             'coral.familyId',

@@ -727,6 +727,12 @@
             "projectFolder": "test/blong-int-kustomize",
             "reviewCategory": "test",
             "tags": ["test"]
+        },
+        {
+            "packageName": "@feasibleone/blong-sport",
+            "projectFolder": "realm/blong-sport",
+            "reviewCategory": "realm",
+            "tags": ["realm"]
         }
     ]
 }

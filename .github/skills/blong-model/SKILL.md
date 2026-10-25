@@ -103,7 +103,6 @@ export default model(
                     },
                     main: {
                         label: 'Coral Details',
-                        className: 'col-12 md:col-8',
                         widgets: [
                             'coral.coralName',
                             'coral.familyId',
@@ -637,7 +636,6 @@ validation fails.
 cards: {
     main: {
         label:     'Main Details',     // card heading (omit for no heading)
-        className: 'col-12 md:col-8',  // PrimeFlex column class
         widgets:   [                   // fields to render, in order
             'entity.fieldName',
             ['entity.from', 'entity.to'], // two fields on same row

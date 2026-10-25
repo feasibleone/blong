@@ -2,8 +2,11 @@
  * Where memory files live, and which of them exist.
  *
  * The root scope is `<root>/.github/memory/`; a package scope is
- * `<root>/<projectFolder>/.github/memory/`. Package scopes come from `rush.json`
- * (never from globbing), so an area is always a real project folder.
+ * `<root>/<projectFolder>/.github/memory/`. Package scopes come from `rush.json`,
+ * plus any folder that already carries memory of its own: memory may predate the
+ * package, because a realm is planned and its decisions recorded before the
+ * scaffold writes the folder — and the scaffold writes into a folder that already
+ * has `.github/memory` without complaint.
  */
 
 import {existsSync, readdirSync} from 'node:fs';
@@ -26,9 +29,33 @@ export function isReservedArea(area: string): boolean {
     return RESERVED_AREAS.includes(area);
 }
 
-/** Every package folder listed in `rush.json`, in file order. */
+/** Root folders that never hold a package. */
+const NOT_A_PACKAGE = new Set(['common', 'dev', 'dist', 'node_modules']);
+
+/**
+ * Every package folder that can own memory: `rush.json` first, in file order,
+ * then the folders that hold memory without being a project yet.
+ */
 export function packageAreas(root: string): string[] {
-    return readRushProjects(root).map(project => project.projectFolder);
+    const projected = readRushProjects(root).map(project => project.projectFolder);
+    const known = new Set(projected);
+    for (const area of memoryFolders(root)) known.add(area);
+    return [...known];
+}
+
+/** `<category>/<folder>` paths that already hold a `.github/memory` directory. */
+function memoryFolders(root: string): string[] {
+    const found: string[] = [];
+    for (const category of readdirSync(root, {withFileTypes: true})) {
+        if (!category.isDirectory() || category.name.startsWith('.')) continue;
+        if (NOT_A_PACKAGE.has(category.name)) continue;
+        for (const folder of readdirSync(join(root, category.name), {withFileTypes: true})) {
+            if (!folder.isDirectory() || folder.name.startsWith('.')) continue;
+            const area = `${category.name}/${folder.name}`;
+            if (existsSync(join(root, area, MEMORY_DIR))) found.push(area);
+        }
+    }
+    return found;
 }
 
 /** Repository root of the workspace containing `cwd`. */

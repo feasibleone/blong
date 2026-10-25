@@ -750,25 +750,54 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
 
             switch (operation) {
                 case 'get': {
-                    const {select: _select, ...where} = params;
+                    const {select: _select, labels, ...where} = params;
                     const qb = this.config.context.queryBuilder!;
                     const binaryCols = getBinaryCols(this.config.context);
                     const opts = tableOptions(objectSchema, this.config, subject, object);
-                    let query = qb(table);
-                    for (const [key, val] of Object.entries(where)) {
-                        if (isBinaryColumn(binaryCols, table, key) && typeof val === 'string') {
-                            query = query.where(key, strToBinary(val));
-                        } else {
-                            query = query.where(key, val as string | number);
-                        }
-                    }
-                    const row = (await query.first()) as Record<string, unknown> | undefined;
                     const keyName =
                         (
                             objectSchema[subject]?.[object] as
                                 | {constraints?: {primaryKey?: string}}
                                 | undefined
                         )?.constraints?.primaryKey ?? `${object}Id`;
+                    const {query: joined, selections: labelSelections} = attachLabelJoins(
+                        qb(table),
+                        objectSchema,
+                        this.config,
+                        subject,
+                        object,
+                        table,
+                        labels,
+                    );
+                    // The row's own display name arrives with it, not from a second
+                    // statement. @@D-619
+                    const {query: named, selection: nameSelection} = attachResourceName(
+                        joined,
+                        opts,
+                        table,
+                        keyName,
+                        object,
+                    );
+                    let query = named;
+                    const joinSelections = nameSelection
+                        ? [...labelSelections, nameSelection]
+                        : labelSelections;
+                    const qualify = (key: string) =>
+                        joinSelections.length && !key.includes('.') ? `${table}.${key}` : key;
+                    for (const [key, val] of Object.entries(where)) {
+                        if (isBinaryColumn(binaryCols, table, key) && typeof val === 'string') {
+                            query = query.where(qualify(key), strToBinary(val));
+                        } else {
+                            query = query.where(qualify(key), val as string | number);
+                        }
+                    }
+                    // `*` would take the joined tables' columns too, so the base
+                    // table is named once a join is in play.
+                    const row = (await (
+                        joinSelections.length
+                            ? query.select(`${table}.*`, ...joinSelections)
+                            : query
+                    ).first()) as Record<string, unknown> | undefined;
                     // Capture the raw PK **before** `prepareResultRow` mutates
                     // the row in place (Buffers → base64 strings). The edge
                     // attachment needs the binary master key.
@@ -783,23 +812,6 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     const result: Record<string, unknown> = {
                         [object]: prepareResultRow(row, binaryCols, table),
                     };
-                    const masterRow = result[object] as Record<string, unknown> | undefined;
-                    // Resource-backed: join the display name from
-                    // `core_resource.resourceName` as `${object}Name`.
-                    if (
-                        opts.resource &&
-                        !opts.nameColumn &&
-                        masterRow &&
-                        typeof masterRow[keyName] === 'string'
-                    ) {
-                        const [joined] = await joinResourceNames(
-                            qb,
-                            [masterRow],
-                            keyName,
-                            `${object}Name`,
-                        );
-                        result[object] = joined;
-                    }
                     // Master-detail: return each FK-constrained detail table's
                     // rows as sibling arrays (e.g. `line`, `payment`) so the
                     // Open form can render them alongside the master record.
@@ -840,17 +852,51 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         offset = paging && (paging?.pageNumber - 1) * paging?.pageSize,
                         filterBy,
                         search,
+                        labels,
                         ...where
                     } = params;
                     const qb = this.config.context.queryBuilder!;
                     const binaryCols = getBinaryCols(this.config.context);
                     const opts = tableOptions(objectSchema, this.config, subject, object);
-                    let query = qb(table);
+                    const {query: joined, selections: labelSelections} = attachLabelJoins(
+                        qb(table),
+                        objectSchema,
+                        this.config,
+                        subject,
+                        object,
+                        table,
+                        labels,
+                    );
+                    // The row's own display name arrives with it, not from a second
+                    // statement. The key is the table's declared one, so a table whose
+                    // primary key is not `<object>Id` joins on the column it has.
+                    // @@D-619
+                    const {query: named, selection: nameSelection} = attachResourceName(
+                        joined,
+                        opts,
+                        table,
+                        (
+                            objectSchema[subject]?.[object] as
+                                | {constraints?: {primaryKey?: string}}
+                                | undefined
+                        )?.constraints?.primaryKey ?? `${object}Id`,
+                        object,
+                    );
+                    const joinSelections = nameSelection
+                        ? [...labelSelections, nameSelection]
+                        : labelSelections;
+                    let query = named;
+                    // A join puts a second table in the statement, so the base
+                    // table's own columns are named explicitly: `sportId` exists on
+                    // both the row and its target, and an unqualified reference is
+                    // ambiguous to MySQL.
+                    const qualify = (key: string) =>
+                        joinSelections.length && !key.includes('.') ? `${table}.${key}` : key;
                     for (const [key, val] of Object.entries({...filterBy, ...where})) {
                         if (isBinaryColumn(binaryCols, table, key) && typeof val === 'string') {
-                            query = query.where(key, strToBinary(val));
+                            query = query.where(qualify(key), strToBinary(val));
                         } else {
-                            query = query.where(key, val as string | number);
+                            query = query.where(qualify(key), val as string | number);
                         }
                     }
                     if (search) {
@@ -858,7 +904,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             objectSchema[subject]?.[object]?.properties ?? {},
                         )
                             .filter(([, prop]) => propType(prop) === 'string')
-                            .map(([key]) => key);
+                            .map(([key]) => qualify(key));
                         if (stringFields.length > 0)
                             query = query.andWhere(function () {
                                 for (const field of stringFields) {
@@ -874,16 +920,13 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         query = query.whereRaw(aclFilter.sql, aclFilter.bindings as never[]);
                     if (limit) query = query.limit(limit);
                     if (offset) query = query.offset(offset);
-                    const rows = (await query.select(select)) as Record<string, unknown>[];
-                    const prepared = prepareResultRows(rows, binaryCols, table);
-                    // Resource-backed: join the display name from
-                    // `core_resource.resourceName` as `${object}Name`.  A table
-                    // declaring `resource: {nameColumn}` keeps its real display
-                    // column — no virtual field is synthesised.
-                    if (opts.resource && !opts.nameColumn) {
-                        return joinResourceNames(qb, prepared, `${object}Id`, `${object}Name`);
-                    }
-                    return prepared;
+                    const rows = (await (joinSelections.length
+                        ? query.select([
+                              ...(select === '*' ? [`${table}.*`] : [select]),
+                              ...joinSelections,
+                          ])
+                        : query.select(select))) as Record<string, unknown>[];
+                    return prepareResultRows(rows, binaryCols, table);
                 }
                 case 'add': {
                     const {
@@ -1876,6 +1919,11 @@ function tableOptions(
  * Batched join of `core_resource.resourceName` onto rows as the given name
  * field (e.g. `roleName`). Row ids are base64/hex strings (post
  * `prepareResultRow`); rows that already carry the name field are left as-is.
+ *
+ * A read folds this into its own statement (`attachResourceName`); what remains here
+ * is the create, which has just written the resource row and needs the name it may
+ * have inherited from an existing one, and the edge rows, whose table may carry a
+ * display column of its own that must win. `@@D-619`
  */
 async function joinResourceNames(
     qb: Knex,
@@ -1903,6 +1951,117 @@ async function joinResourceNames(
         const name = names.get(strToBinary(id).toString('hex'));
         return name !== undefined ? ({...row, [nameField]: name} as Record<string, unknown>) : row;
     });
+}
+
+/**
+ * Project the row's own display name in the same statement as the row.
+ *
+ * A resource-backed table keeps its display name in `core_resource.resourceName`,
+ * keyed by the row's own key — the same shape as a label join, so a read can name it
+ * with one left join and one selection instead of a second query per result. A table
+ * declaring `resource: {nameColumn}` has a real display column and needs neither.
+ * `@@D-619`
+ */
+function attachResourceName(
+    query: Knex.QueryBuilder,
+    opts: IResolvedTableOptions,
+    table: string,
+    keyName: string,
+    object: string,
+): {query: Knex.QueryBuilder; selection?: string} {
+    if (!opts.resource || opts.nameColumn) return {query};
+    return {
+        query: query.leftJoin('core_resource', 'core_resource.resourceId', `${table}.${keyName}`),
+        selection: `core_resource.resourceName as ${object}Name`,
+    };
+}
+
+/**
+ * Attach a `LEFT JOIN` for each label a read asks for, and collect the select
+ * expressions that project them.
+ *
+ * A key column stores a key, and a key is not what a reader wants. The model names
+ * the label it wants to read (`widget.body`), the browser sends those names with
+ * the read (`labels`), and the label arrives with the row from the same SQL
+ * statement — no second query, no per-cell lookup.
+ *
+ * Both sides are derived, never trusted: a requested label must be
+ * `<fk minus Id>Name` for a foreign key the table actually declares, the target
+ * table comes from that declaration, and the label column comes from the target's
+ * own metadata — `dropdown.labelColumn`, then `resource.nameColumn`, then
+ * `core_resource.resourceName`. A name that matches no declared foreign key is
+ * ignored, so the parameter can widen no query. Every join is a left join, so a
+ * record whose key points nowhere still comes back, with the label empty.
+ * @@D-614
+ */
+function attachLabelJoins(
+    query: Knex.QueryBuilder,
+    objectSchema: IObjectSchema,
+    config: {schema?: {tables?: Record<string, number | ISchemaTable | TObject>}} | undefined,
+    subject: string,
+    object: string,
+    table: string,
+    labels: unknown,
+): {query: Knex.QueryBuilder; selections: string[]} {
+    if (!Array.isArray(labels)) return {query, selections: []};
+    const definition = resolveTableSpec(
+        objectSchema,
+        config?.schema?.tables?.[`${subject}.${object}`],
+        subject,
+        object,
+    ).definition as unknown as
+        | {
+              constraints?: {
+                  foreign?: Record<string, string | {references?: string}>;
+              };
+          }
+        | undefined;
+    const foreign = definition?.constraints?.foreign ?? {};
+    const wanted = labels.filter(
+        (name): name is string =>
+            typeof name === 'string' && /^[A-Za-z][A-Za-z0-9]*Name$/.test(name),
+    );
+    if (!wanted.length) return {query, selections: []};
+
+    let joined = query;
+    const selections: string[] = [];
+    for (const labelField of wanted) {
+        const fkColumn = `${labelField.slice(0, -'Name'.length)}Id`;
+        const declaration = foreign[fkColumn];
+        const reference = typeof declaration === 'string' ? declaration : declaration?.references;
+        const [targetSubject, targetObject] = (reference ?? '').split('.');
+        if (!targetSubject || !targetObject) continue;
+        const target = resolveTableSpec(
+            objectSchema,
+            config?.schema?.tables?.[`${targetSubject}.${targetObject}`],
+            targetSubject,
+            targetObject,
+        );
+        const targetDefinition = target.definition as unknown as
+            | {constraints?: {primaryKey?: string}}
+            | undefined;
+        const targetKey = targetDefinition?.constraints?.primaryKey ?? `${targetObject}Id`;
+        const labelColumn = target.dropdown?.labelColumn ?? target.nameColumn;
+        // The alias is derived from the key column, so two keys to one table (an
+        // athlete and a coach, both people) never collide.
+        const alias = `label_${fkColumn}`;
+        if (labelColumn) {
+            joined = joined.leftJoin(
+                {[alias]: `${targetSubject}_${targetObject}`},
+                `${alias}.${targetKey}`,
+                `${table}.${fkColumn}`,
+            );
+            selections.push(`${alias}.${labelColumn} as ${labelField}`);
+        } else if (target.resource) {
+            joined = joined.leftJoin(
+                {[alias]: 'core_resource'},
+                `${alias}.resourceId`,
+                `${table}.${fkColumn}`,
+            );
+            selections.push(`${alias}.resourceName as ${labelField}`);
+        }
+    }
+    return {query: joined, selections};
 }
 
 /**

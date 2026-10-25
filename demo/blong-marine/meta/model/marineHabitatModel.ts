@@ -94,7 +94,6 @@ export default model(
                     },
                     edit: {
                         label: 'Habitat Details',
-                        className: 'col-12 md:col-8',
                         widgets: [
                             'habitat.habitatName',
                             'habitat.habitatType',

@@ -26,7 +26,10 @@ export function NumberWidget({
             inputClassName="text-right"
             min={schema.minimum}
             max={schema.maximum}
-            useGrouping
+            // A number is an amount far more often than a year, so its thousands
+            // separator stays the default; a field that holds an identifier says so
+            // with `widget.useGrouping: false`. @@D-613
+            useGrouping={schema.widget?.useGrouping !== false}
         />
     );
 }

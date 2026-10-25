@@ -25,7 +25,7 @@ export async function subjectObjectOpen(model: IResolvedModelSpec, blong: IHandl
                 return Editor({
                     schema,
                     cards: model.cards as Record<string, ICardConfig>,
-                    layout: 'edit',
+                    layout: model.openLayout,
                     layouts: model.layouts as Record<string, LayoutConfig>,
                     loadAction: methods.get,
                     loadParams,

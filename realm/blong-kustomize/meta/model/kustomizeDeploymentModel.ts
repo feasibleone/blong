@@ -47,7 +47,6 @@ export default model(
                     },
                     edit: {
                         label: 'Deployment Details',
-                        className: 'col-12 md:col-8',
                         widgets: [
                             'deployment.deploymentName',
                             'deployment.deploymentStatus',
