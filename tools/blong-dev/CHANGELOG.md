@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.13.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.12.0...blong-dev-v1.13.0) (2026-10-25)
+
+
+### Features
+
+* improve UI ([ca46bec](https://github.com/feasibleone/blong/commit/ca46bec86fc9f8380fd7f77a5fbab7a0894639f7))
+
+
+### Bug Fixes
+
+* CI failures ([1aa856b](https://github.com/feasibleone/blong/commit/1aa856b7f3dc9082168b41162e760963638c982b))
+
 ## [1.12.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.11.0...blong-dev-v1.12.0) (2026-10-17)
 
 

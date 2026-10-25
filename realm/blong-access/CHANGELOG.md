@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/feasibleone/blong/compare/blong-access-v1.11.0...blong-access-v1.12.0) (2026-10-25)
+
+
+### Features
+
+* improve UI ([ca46bec](https://github.com/feasibleone/blong/commit/ca46bec86fc9f8380fd7f77a5fbab7a0894639f7))
+
 ## [1.11.0](https://github.com/feasibleone/blong/compare/blong-access-v1.10.1...blong-access-v1.11.0) (2026-10-19)
 
 
