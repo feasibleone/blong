@@ -221,9 +221,16 @@ wrote — the race the Job's own comment says cannot happen. The hook alone is e
 seeds the topic on every container start, including the first, and it re-seeds a topic the broker's
 restart recreated empty, so the Job now only creates the topic.
 
-Both costs land on the same two baselines (`explore-vault-secrets.png` and
-`explore-kafka-messages.png`), which were re-captured on this machine and checked to be byte
-identical across two runs before being committed.
+The masked secret-viewer shot needed the same treatment one level up, which the first CI run after
+this change showed: opening a secret re-expands the mount above it, so `secret/` listed its keys
+again and every row below shifted by one whenever another suite had written a key. There the
+selected node is the secret and the live list belongs to its parent, so `collapseSelectedNode`
+cannot reach it — `collapseNodeByLabel` clicks the expand control of the ancestor named by its path,
+which is safe here because a mount path is unique in the tree even though a redis key (`0`) was not.
+
+All three costs land on the same package's baselines (`explore-vault-secrets.png`,
+`explore-kafka-messages.png` and `explore-vault-secret.png`), which were re-captured on this machine
+and checked to be stable across runs — the vault pair with and without another suite's keys present.
 
 ## Superseded
 

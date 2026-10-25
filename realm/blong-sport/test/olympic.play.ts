@@ -80,11 +80,6 @@ test.describe('Olympic', () => {
         search: cycleName,
     });
 
-    browseModel(test, expect, {
-        subject: 'sport',
-        object: 'campaign',
-    });
-
     createAndEditModel(test, expect, {
         subject: 'sport',
         object: 'campaign',
@@ -98,6 +93,17 @@ test.describe('Olympic', () => {
             'campaign.olympicResult': 'ENT-PLAY-OL result',
         },
         search: 'ENT-PLAY-OL rating body',
+    });
+
+    // After the create, and filtered to what it wrote: `ratingOrganisationName` is a
+    // stored string column, so the server-side search narrows the table to this spec's
+    // campaign. Unfiltered, the shot pictured whatever campaigns the database held — a
+    // stale `ENT-PLAY-OL-…` row in the baseline (minted before the spec's names became
+    // fixed), another spec's row in the CI run that failed.
+    browseModel(test, expect, {
+        subject: 'sport',
+        object: 'campaign',
+        searchText: 'ENT-PLAY-OL rating body',
     });
 
     createAndEditModel(test, expect, {

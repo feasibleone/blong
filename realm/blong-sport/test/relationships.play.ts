@@ -111,11 +111,6 @@ test.describe('Relationships', () => {
         search: specialistName,
     });
 
-    browseModel(test, expect, {
-        subject: 'sport',
-        object: 'coaching',
-    });
-
     createAndEditModel(test, expect, {
         subject: 'sport',
         object: 'coaching',
@@ -132,9 +127,12 @@ test.describe('Relationships', () => {
         search: 'ENT-PLAY-RL coaching basis',
     });
 
+    // After the create, and filtered to its `basisNote`: a period is not seeded, so
+    // the unfiltered shot is an empty table on a fresh database. @@D-623
     browseModel(test, expect, {
         subject: 'sport',
-        object: 'support',
+        object: 'coaching',
+        searchText: 'ENT-PLAY-RL coaching basis',
     });
 
     createAndEditModel(test, expect, {
@@ -151,6 +149,14 @@ test.describe('Relationships', () => {
             'support.basisNote': 'ENT-PLAY-RL support basis edited',
         },
         search: 'ENT-PLAY-RL support basis',
+    });
+
+    // After the create, and filtered to its `basisNote`, for the reason the coaching
+    // shot above is filtered. @@D-623
+    browseModel(test, expect, {
+        subject: 'sport',
+        object: 'support',
+        searchText: 'ENT-PLAY-RL support basis',
     });
 
     cleanupModel(test, expect, {

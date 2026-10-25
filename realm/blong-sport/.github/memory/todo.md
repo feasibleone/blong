@@ -23,7 +23,7 @@ open (14)
 - `T-399` · realm/blong-sport — Cascade sport, discipline and category from the BOC nomenclature
 - `T-400` · realm/blong-sport — Assert one resource row and a person with two roles
 
-done (13)
+done (14)
 
 - `T-374` · realm/blong-sport — sport P1 scaffold and boot
 - `T-376` · realm/blong-sport — sport P3 schema and seeds
@@ -38,6 +38,7 @@ done (13)
 - `T-375` · realm/blong-sport — sport P2 party contribution
 - `T-398` · realm/blong-sport — Capture the athlete Results tab from a record with a participation
 - `T-384` · realm/blong-sport — sport P11 verification and close-out
+- `T-412` · realm/blong-sport — Three sport browse shots are still unfiltered and empty
 
 <!-- /memory:index -->
 
@@ -292,3 +293,19 @@ remains.
 
 P11.1 to P11.4 are all ticked in plans/sport/plan.md and section 12 is checked off item by item; the
 one clause left (one resource row, a person with two roles) is its own todo, T-400.
+
+### T-412 — Three sport browse shots are still unfiltered and empty
+
+> _2026-10-25 · realm/blong-sport · done_
+
+Three other browse shots in this realm are still unfiltered and are taken _before_ the spec creates
+the row they could show: `organisations.play.ts` (federation) and `relationships.play.ts` (coaching,
+support). They passed in CI because nothing else writes those tables, so a fresh database renders
+`No rows.` — a deterministic but empty picture, and one that breaks the moment a seed or another
+spec adds a row of that type. The fix is the one D-623 records for competition and campaign: move
+the browse test after the create and pass `searchText` naming what it wrote, then re-capture the
+baseline. Reading the browse page of an empty table also hides every column the model declares,
+which is what a browse baseline is for.
+
+Federation, coaching and support browse shots now create first and filter to their own row; all
+three baselines re-captured and verified byte-identical across runs. D-623 extended.

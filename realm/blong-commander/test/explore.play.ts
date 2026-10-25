@@ -168,6 +168,25 @@ async function collapseSelectedNode(page: Page) {
     await page.waitForTimeout(200);
 }
 
+/**
+ * Collapse an ancestor of the selected node, by its label.
+ *
+ * A drill expands the *path* to the node it opens, so after opening a secret the
+ * mount above it lists its children again and `collapseSelectedNode` cannot help:
+ * the selected node is the secret, and the live list belongs to its parent. Naming
+ * the ancestor's label is safe where it is not for the redis key (`0`, ambiguous),
+ * because a mount path is unique in the tree.
+ */
+async function collapseNodeByLabel(page: Page, label: string) {
+    await page
+        .locator('.blong-commander-tree .p-treenode-content')
+        .filter({hasText: label})
+        .first()
+        .locator('[data-pc-section="toggler"]')
+        .click();
+    await page.waitForTimeout(200);
+}
+
 /** Data rows = table rows excluding the ".." up-to-parent row. */
 const dataRows = (page: Page) =>
     page
@@ -333,6 +352,12 @@ test('vault-dev — mounts, secrets, and masked secret viewer', async ({portal})
     // by the viewer, keys are the deterministic seed → no screenshot mask).
     await openRowByText(portal.page, 'commander-demo');
     await expect(portal.page.locator('.blong-viewer-secret')).toBeVisible({timeout: 15_000});
+    // Opening the secret expands the mount above it again, so the navigator lists the
+    // engine's keys once more and every row below them shifts by one when another
+    // suite has written `secret/blong-test/…`. Collapse the mount: the breadcrumb and
+    // the selected path stay as the drill evidence, the viewer holds the values.
+    // @@D-262 @@D-622
+    await collapseNodeByLabel(portal.page, 'secret/');
     await expect(portal.page).toHaveScreenshot('explore-vault-secret.png');
 });
 

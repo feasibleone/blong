@@ -54,7 +54,7 @@
         {
             "name": "sport",
             "title": "blong-sport",
-            "package": "suite/blong-sport",
+            "package": "realm/blong-sport",
             "command": "node --run build-storybook",
             "output": "storybook-static"
         },

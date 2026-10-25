@@ -17,11 +17,6 @@ test.describe('Organisations', () => {
         removeMethod: 'sport.federation.remove',
     });
 
-    browseModel(test, expect, {
-        subject: 'sport',
-        object: 'federation',
-    });
-
     createAndEditModel(test, expect, {
         subject: 'sport',
         object: 'federation',
@@ -35,6 +30,15 @@ test.describe('Organisations', () => {
             'federation.registrationNumber': 'ENT-PLAY-FE-01-REG',
         },
         search: 'ENT-PLAY-FE-01',
+    });
+
+    // After the create, and filtered to it: nothing seeds a federation, so an
+    // unfiltered shot is `No rows.` on a fresh database — every declared column
+    // hidden — and any row another spec adds would silently join the picture. @@D-623
+    browseModel(test, expect, {
+        subject: 'sport',
+        object: 'federation',
+        searchText: 'ENT-PLAY-FE-01',
     });
 
     cleanupModel(test, expect, {

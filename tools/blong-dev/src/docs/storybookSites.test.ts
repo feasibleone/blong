@@ -15,6 +15,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import t from 'tap';
 
+import {repoRoot} from '../report/reportPaths.ts';
 import {
     checkEmbeds,
     findEmbeds,
@@ -23,7 +24,6 @@ import {
     stagedStoryIds,
     type IStorybookSite,
 } from './storybookSites.ts';
-import {repoRoot} from '../report/reportPaths.ts';
 
 /** A fake build: writes the `index.json` a real Storybook build leaves behind. */
 const FAKE_BUILD = [
@@ -77,8 +77,8 @@ t.test('the register in the repository matches what the command reads', t => {
     const sites = loadStorybookSites(repoRoot(import.meta.dirname));
     t.same(
         sites.map(site => site.name),
-        ['browser', 'suite', 'log'],
-        'the checkout publishes three Storybooks',
+        ['browser', 'suite', 'sport', 'log'],
+        'the checkout publishes four Storybooks',
     );
     for (const site of sites) {
         t.ok(existsSync(join(repoRoot(import.meta.dirname), site.package)), `${site.name} exists`);
@@ -152,7 +152,10 @@ t.test('stageStorybooks refuses a build that failed or wrote nothing', async t =
     await t.test('a build that leaves no index.json', t => {
         const {root, sites} = fixture({command: 'true'});
         t.teardown(() => rmSync(root, {recursive: true, force: true}));
-        t.notOk(stageStorybooks(root, sites, {build: true, dryRun: false}), 'the site is not a site');
+        t.notOk(
+            stageStorybooks(root, sites, {build: true, dryRun: false}),
+            'the site is not a site',
+        );
         t.end();
     });
 });
@@ -192,7 +195,11 @@ t.test('checkEmbeds says what is wrong with an embed', t => {
 
     const problems = checkEmbeds(root, sites, {requireStaged: true});
     t.equal(problems.length, 3, 'one problem per tag');
-    t.match(problems[0]!, /no site; the register holds demo/, 'a tag with no site names the register');
+    t.match(
+        problems[0]!,
+        /no site; the register holds demo/,
+        'a tag with no site names the register',
+    );
     t.match(problems[1]!, /unknown site; the register holds demo/, 'an unknown site is named');
     t.match(problems[2]!, /no story id/, 'a tag with no id says so');
     t.end();

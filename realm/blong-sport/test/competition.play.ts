@@ -51,11 +51,6 @@ test.describe('Competition', () => {
         removeMethod: 'sport.competition.remove',
     });
 
-    browseModel(test, expect, {
-        subject: 'sport',
-        object: 'competition',
-    });
-
     createAndEditModel(test, expect, {
         subject: 'sport',
         object: 'competition',
@@ -69,6 +64,19 @@ test.describe('Competition', () => {
             'competition.competitionIntlName': 'ENT-PLAY-CP International',
         },
         search: competitionName,
+    });
+
+    // After the create, and filtered to it: the table is unfiltered otherwise, so the
+    // shot showed whichever rows the database happened to hold — four accumulated
+    // `ENT-PLAY-CO-…` rows on the machine that captured the baseline, and `No rows.`
+    // on a CI runner whose first spec file had not created one yet. No competition is
+    // seeded, so there is no stable row to point at instead; the one this file makes
+    // is the only deterministic subject, which is also how `athleteTabs.play.ts`
+    // captures its browse page.
+    browseModel(test, expect, {
+        subject: 'sport',
+        object: 'competition',
+        searchText: competitionName,
     });
 
     createAndEditModel(test, expect, {
