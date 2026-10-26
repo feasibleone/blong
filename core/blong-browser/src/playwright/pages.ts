@@ -22,9 +22,16 @@
  * why this waits for the page's table before capturing, and why the `portal`
  * fixture fails a test outright when the browser throws while the page loads.
  */
-import type {Expect} from '@playwright/test';
+import type {Expect, Page, Request, Response} from '@playwright/test';
 import {captureDocs} from './docs.js';
 import type {ITestFn} from './model.js';
+
+/** How long a debounced search has to turn into a read before it is judged local. */
+const SEARCH_PROBE_MS = 600;
+/** A read the search did issue is given this long to be answered. */
+const FILTERED_READ_MS = 15_000;
+/** Stride of the poll that waits out a debounce. */
+const POLL_MS = 50;
 
 /** One page: its method, or the method plus the parts that differ for it. */
 export interface IOpenPage {
@@ -94,6 +101,64 @@ export interface IOpenPagesOptions {
 }
 
 /**
+ * Fill the browse filter and wait for the table to show the filtered rows.
+ *
+ * Typing into the box is not filtering: the box is debounced (350 ms), and only
+ * then does the table apply the term — either by asking the server again or by
+ * filtering the rows it already has. Which of the two happens decides what has to be
+ * waited for, and a capture taken too early is the bug this exists to prevent: the
+ * picture showed the *unfiltered* rows with the term typed into the box (`F-603`).
+ *
+ * The page's own first read must have settled before this is called, or that read is
+ * the one this would mistake for the search's. After the fill the two are told apart
+ * by counting reads: the search's own read arrives behind the debounce, and the answer
+ * it gets is what the capture waits for. A page that filters the rows it holds issues
+ * nothing, and the debounce is all there is to wait out.
+ *
+ * Predicting the form from the page's method name does not work, and guessing it
+ * costs a full wait when wrong: a fixed 15 s response wait turned three of a realm's
+ * client-filtered captures into timeouts on CI, where the whole test is budgeted at
+ * 20 s.
+ */
+async function fillBrowseSearch(page: Page, searchText: string, findPath: string): Promise<void> {
+    const isRead = (url: string, method: string) => method === 'POST' && url.includes(findPath);
+    let reads = 0;
+    let answers = 0;
+    const onRequest = (request: Request) => {
+        if (isRead(request.url(), request.method())) reads++;
+    };
+    const onResponse = (response: Response) => {
+        if (isRead(response.url(), response.request().method())) answers++;
+    };
+    page.on('request', onRequest);
+    page.on('response', onResponse);
+    try {
+        const readsBefore = reads;
+        const answersBefore = answers;
+        await page.getByTestId('browse-search').fill(searchText);
+        // The probe outlasts the debounce, so a page that filters the rows it holds
+        // has committed by the time this gives up: nothing more to wait for.
+        if (!(await settles(() => reads > readsBefore, page, SEARCH_PROBE_MS))) return;
+        // A read nobody answered is a page still loading; the caller's table wait
+        // reports that better than this helper could.
+        await settles(() => answers > answersBefore, page, FILTERED_READ_MS);
+    } finally {
+        page.off('request', onRequest);
+        page.off('response', onResponse);
+    }
+}
+
+/** Poll `until` in short steps, so a debounce is waited out rather than guessed at. */
+async function settles(until: () => boolean, page: Page, timeout: number): Promise<boolean> {
+    const deadline = Date.now() + timeout;
+    while (!until()) {
+        if (Date.now() > deadline) return false;
+        await page.waitForTimeout(POLL_MS);
+    }
+    return true;
+}
+
+/**
  * Register one test per page. Each opens the page from the portal menu, waits for
  * its data and captures it, so a realm states its pages as a list.
  *
@@ -127,27 +192,12 @@ export function openPages(
             const searchText = page.searchText ?? defaultSearchText;
             const wantsData = page.waitForTableData ?? waitForTableData;
             if (searchText !== undefined) {
-                // The first read has to settle **before** the box is filled: its rows are
-                // already in flight, and a search committed underneath them is answered
-                // after the capture without ever reaching it. Then the box is debounced
-                // (350 ms) and the search runs on the server, so typing is not filtering
-                // either — the answer to the filtered read is what is waited for.
+                // The page's own first read has to settle first: a read still in
+                // flight would be the one the search wait mistakes for its own.
                 // `@@F-603`
                 if (wantsData) await portal.waitForTableData();
                 const [subject, object] = page.method.split('.');
-                const filtered = portal.page
-                    .waitForResponse(
-                        response =>
-                            response.request().method() === 'POST' &&
-                            response.url().includes(`/rpc/${subject}/${object}/find`),
-                        {timeout: 15_000},
-                    )
-                    .then(() => true)
-                    .catch(() => false);
-                await portal.page.getByTestId('browse-search').fill(searchText);
-                // A page whose data method is not `<subject>.<object>.find` (a report)
-                // answers nothing this can match, so the debounce is waited out instead.
-                if (!(await filtered)) await portal.page.waitForTimeout(600);
+                await fillBrowseSearch(portal.page, searchText, `/rpc/${subject}/${object}/find`);
             }
             if (wantsData) await portal.waitForTableData();
             const target =

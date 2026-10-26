@@ -33,7 +33,7 @@ open (19)
   cell
 - `F-607` · core/blong-browser — globalSetup and globalTeardown are paths, so the harvest never ran
 
-resolved (26)
+resolved (27)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -68,6 +68,7 @@ resolved (26)
 - `F-602` · core/blong-browser — Translating data in the client had to be undone wholesale
 - `F-603` · core/blong-browser — A browse capture raced the unfiltered read
 - `F-605` · core/blong-browser — globalSetup cannot be assigned after defineConfig
+- `F-609` · core/blong-browser — A shared capture helper cannot assume which side filters
 
 <!-- /memory:index -->
 
@@ -719,3 +720,20 @@ own globalSetup/globalTeardown destructured out of the rest. Also the seed looku
 optional chaining: a test that calls the config with no options passes undefined.
 
 Hooks are built before defineConfig and spread in; the seed lookup reads use with optional chaining.
+
+### F-609 — A shared capture helper cannot assume which side filters
+
+> _2026-10-26 · core/blong-browser · resolved_
+
+A capture helper was changed to wait for the server's answer to a filtered read, assuming every
+browse applies its search by asking again. blong-realm's lists filter the rows they already hold, so
+no read was ever issued, the 15 second response wait ran to its end on every filtered page, and
+three captures crossed that realm's deliberate 20 second test budget in CI while passing locally,
+where the same pages finished just inside it. Two lessons: a helper shared by several suites cannot
+assume which side filters, and it has to leave room in the consumer's timeout, since the slowest
+consumer here budgets a whole test at 20s and its fixture setup already spends 12 of it. It now
+settles the page's first read, types, and only waits for a read's answer when the search actually
+issued one, which costs a page that filters locally one probe window of 600ms.
+
+The helper settles the page's first read, types, and waits for a read's answer only when the search
+issued one; the realm's suite is 8/8 in 16s and the sport captures still pin their row.
