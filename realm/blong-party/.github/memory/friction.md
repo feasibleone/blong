@@ -27,10 +27,11 @@ open (12)
   short
 - `F-574` · realm/blong-party — A leftover duplicate person made the ACL deny miss
 
-resolved (2)
+resolved (3)
 
 - `F-340` · realm/blong-party — RBAC is unobservable from an in-process test call
 - `F-470` · realm/blong-party — The ACL matrices are call-bound; the cost was the log analysis
+- `F-610` · realm/blong-party — An unpinned edit test compared two different records
 
 <!-- /memory:index -->
 
@@ -224,3 +225,19 @@ holds the diagnosis.
 Addressed: the call-bound finding led to the semantic-log fix (T-313 in core/semantic-log), which
 took the party browser leg from 162.8 s to 8.8 s. The database was never the cost, and the reverted
 first attempt is recorded in the decision that came with the fix.
+
+### F-610 — An unpinned edit test compared two different records
+
+> _2026-10-26 · realm/blong-party · resolved_
+
+The person spec's edit test opened the first row of the browse table, and a browse read carries no
+ordering, so the row was whatever MySQL answered first: a seeded Ahmed Hassan in one run, the person
+the google-login spec had just created in the run that produced the committed baseline. The capture
+therefore compared two different records and failed on data, not on layout. Sibling specs already
+pin their row with a search term, which is what this one lacked; it now searches its own record, and
+the record carries a full name so the term matches the row's display name rather than a notes field.
+A cleanup test was tried as well and could not delete the leftovers, because removing a party person
+fails on a foreign key from core_triple to core_resource (recorded as a todo).
+
+The edit test pins its own row by full name; the person spec passes twice on a database that already
+holds its record.
