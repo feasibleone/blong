@@ -13,5 +13,5 @@ export {useLocalStorage} from './useLocalStorage.js';
 export {usePermission} from './usePermission.js';
 export {usePortal} from './usePortal.js';
 export {useSubmit} from './useSubmit.js';
-export {useText} from './useText.js';
+export {useOptionLabel, useText} from './useText.js';
 export {useToast} from './useToast.js';

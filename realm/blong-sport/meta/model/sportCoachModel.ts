@@ -134,6 +134,7 @@ export default model(
                     editSplit: [['identity'], 'activity'],
                 },
                 browser: {
+                    navigator: false,
                     title: 'Coaches',
                     icon: 'pi pi-briefcase',
                     permission: {

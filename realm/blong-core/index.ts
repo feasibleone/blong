@@ -29,5 +29,12 @@ export default server(() => ({
             core: {},
             login: {},
         },
+        integration: {
+            watch: {
+                test: ['test.translation.flow'],
+            },
+            core: {},
+            login: {},
+        },
     },
 }));

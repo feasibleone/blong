@@ -101,6 +101,7 @@ export default model(
                     },
                 },
                 browser: {
+                    navigator: false,
                     title: 'Affiliations',
                     icon: 'pi pi-link',
                     toolbar: [

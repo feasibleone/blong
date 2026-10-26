@@ -3,6 +3,7 @@ import './LanguageSwitcher.css';
 import {useMemo} from 'react';
 import {Dropdown} from '../../primereact/index.js';
 import {useAppStore} from '../../state/appStore.js';
+import {useTranslate} from '../../hooks/useText.js';
 
 /** A selectable UI language — `value` matches the translation-dictionary key. */
 export interface ILanguageOption {
@@ -33,6 +34,7 @@ export interface ILanguageSwitcherProps {
  * two languages are configured the switcher renders nothing.
  */
 export function LanguageSwitcher({languages: languagesProp}: ILanguageSwitcherProps) {
+    const t = useTranslate();
     const language = useAppStore(s => s.language);
     const setLanguage = useAppStore(s => s.setLanguage);
     const portalConfig = useAppStore(s => s.portal.portalConfig);
@@ -62,7 +64,7 @@ export function LanguageSwitcher({languages: languagesProp}: ILanguageSwitcherPr
             onChange={e => setLanguage(e.value as string)}
             className="blong-language-switcher"
             panelClassName="blong-language-switcher__panel"
-            aria-label="Language"
+            aria-label={t('Language')}
         />
     );
 }

@@ -9,6 +9,7 @@ export default handler(() => ({
                 'core.property': 1,
                 'core.triple': 1,
                 'core.translation': 1,
+                'core.label': 1,
                 'core.path': 1,
                 'core.counter': 1,
             },

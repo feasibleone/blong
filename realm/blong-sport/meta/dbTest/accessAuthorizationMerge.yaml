@@ -15,9 +15,24 @@
 #   Manager (testManager)        — read + create/edit, no remove
 #   Customer (testViewer), Guest — read only
 #
+# No `core.*` method is listed here. The dictionary those methods read is part of
+# the portal every role sees, so the grants live in `blong-access`
+# (`meta/db/accessAuthorizationMerge.yaml`): the reads ride on `loginCapability`,
+# which every role that may log in holds, and the edits on `translationManage`,
+# which the `Admin` role holds. `blong-core` cannot ship them itself — it is a
+# library realm with no `adapter/db`, so its own seed asset would be dispatched to
+# the generic knex merge and fail at boot. `@@D-635`
+#
 # The file name is `accessAuthorizationMerge.yaml` because the seed method is
 # derived from it: the content carries the `sport` names, the method is
 # blong-access's shared `access.authorization.merge`.
+#
+# A **test** seed declares the complete action list of the capabilities it names,
+# so shortening one takes effect on an existing database instead of leaving the
+# methods it dropped behind (F-357). That is how the `core.*` grants moved out of
+# here and into `blong-access`: without `replace`, every database that had been
+# seeded once would keep them.
+replace: true
 role:
   Admin: sportManage
   Manager: sportMaintain

@@ -4,6 +4,8 @@
  */
 import type {ReactNode} from 'react';
 import {create} from 'zustand';
+import {composeTranslations} from '../i18n/bundled.js';
+import {setTranslationProvider} from '../i18n/collect.js';
 import type {IFormatConfig} from '../lib/format.js';
 import type {ActionRegistry, IBlongError} from '../types/action.js';
 import type {IAuthState, IUserProfile, PermissionMap} from '../types/permission.js';
@@ -86,6 +88,11 @@ function writeThemeSelection(selection: IThemeSelection): void {
     }
 }
 
+/** One language's database half: the label dictionary. */
+export interface ITranslationBundle {
+    label?: TranslationDict;
+}
+
 /** Complete app state */
 export interface IAppState {
     auth: IAuthState;
@@ -100,6 +107,28 @@ export interface IAppState {
      * (English falls back to an empty dict = English strings).
      */
     translationsByLanguage: Record<string, TranslationDict>;
+    /**
+     * The database half, per language: the label dictionary. Loaded after login
+     * and on a language switch, so a corrected translation needs no release. A
+     * record's own name is not here on purpose — it is translated by the query
+     * that reads it (`D-635`).
+     */
+    translationBundle: Record<string, ITranslationBundle>;
+    /**
+     * Reads one language's bundle from the server. `App` registers it from the
+     * merged portal configuration, so a suite without `blong-core` simply has
+     * none and the bundled dictionary remains the whole answer.
+     */
+    translationLoader?: (language: string) => Promise<ITranslationBundle>;
+    /**
+     * A dictionary set directly through `setTranslations`.
+     *
+     * It is the last layer and survives a language switch, which is the contract
+     * tests and Storybook rely on: set the dictionary, then set the language.
+     * `setTranslationsByLanguage` clears it, because that call declares the
+     * configuration layer instead.
+     */
+    translationOverride?: TranslationDict;
     language: string;
     /**
      * Formatting configuration, resolved user → system → the language default by
@@ -152,6 +181,14 @@ export interface IAppActions {
     setTranslations: (dict: TranslationDict) => void;
     setTranslationsByLanguage: (dicts: Record<string, TranslationDict>) => void;
     setLanguage: (language: string) => void;
+    setTranslationBundle: (language: string, bundle: ITranslationBundle) => void;
+    setTranslationLoader: (loader?: (language: string) => Promise<ITranslationBundle>) => void;
+    /**
+     * Switch language and load its database bundle when it is not loaded yet.
+     * The synchronous `setLanguage` is the one every caller keeps using; this is
+     * the awaitable form a test or the login handler wants.
+     */
+    languageActivate: (language: string) => Promise<void>;
 
     // Formatting
     /** Set one layer of the formatting configuration; `undefined` clears it. */
@@ -197,6 +234,43 @@ const initialPortal: IPortalState = {
 
 let toastIdCounter = 0;
 
+/** The bundle reads in flight, keyed by language, so a switch loads once. */
+const pendingBundles = new Map<string, Promise<ITranslationBundle>>();
+
+/**
+ * The active dictionary for a language, from every layer.
+ *
+ * Composed on every write rather than on every render: `useText` then stays one
+ * object lookup, and the collector reports exactly the dictionary the screen used.
+ */
+function appliedTranslations(
+    state: Pick<IAppState, 'translationsByLanguage' | 'translationBundle' | 'translationOverride'>,
+    language = (state as {language?: string}).language ?? 'en',
+): Pick<IAppState, 'translations'> {
+    const database: Record<string, TranslationDict> = {};
+    for (const [code, bundle] of Object.entries(state.translationBundle)) {
+        if (bundle.label) database[code] = bundle.label;
+    }
+    return {
+        translations: {
+            ...composeTranslations(language, state.translationsByLanguage, database),
+            ...(state.translationOverride ?? {}),
+        },
+    };
+}
+
+/**
+ * Mark the active language on the document.
+ *
+ * A Playwright test waits on `html[data-language]` instead of guessing how long a
+ * dictionary load takes, the same trick the portal uses for its composed config.
+ */
+function markLanguage(language: string): void {
+    if (typeof document !== 'undefined') {
+        document.documentElement.dataset.language = language;
+    }
+}
+
 export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     auth: initialAuth,
     portal: initialPortal,
@@ -204,6 +278,7 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     loader: {active: false, count: 0},
     translations: {},
     translationsByLanguage: {},
+    translationBundle: {},
     language: 'en',
     format: {},
     actions: {},
@@ -310,25 +385,67 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
         }),
 
     // Translations
-    setTranslations: dict => set({translations: dict}),
+    //
+    // The active dictionary is a layered merge — bundled, then the suite's portal
+    // configuration, then the database — so a corrected translation needs no
+    // release and the pre-session screens still translate (D-627). `setTranslations`
+    // therefore writes the configuration layer for the active language rather than
+    // replacing the table outright.
+    setTranslations: dict =>
+        set(state => ({
+            translationOverride: dict,
+            ...appliedTranslations({...state, translationOverride: dict}),
+        })),
     setTranslationsByLanguage: dicts =>
         set(state => ({
             translationsByLanguage: dicts,
+            translationOverride: undefined,
             // Re-apply the current language's dictionary immediately so the UI
             // reflects it even if the language was set before the dicts loaded.
-            translations:
-                Object.keys(dicts).length > 0 ? (dicts[state.language] ?? {}) : state.translations,
+            ...appliedTranslations({
+                ...state,
+                translationsByLanguage: dicts,
+                translationOverride: undefined,
+            }),
         })),
-    setLanguage: language =>
-        set(state => ({
-            language,
-            // When the app registered per-language dictionaries, switching the
-            // language also swaps the active translation table (English = {}).
-            translations:
-                Object.keys(state.translationsByLanguage).length > 0
-                    ? (state.translationsByLanguage[language] ?? {})
-                    : state.translations,
-        })),
+    setTranslationBundle: (language, bundle) =>
+        set(state => {
+            const translationBundle = {...state.translationBundle, [language]: bundle};
+            return state.language === language
+                ? {translationBundle, ...appliedTranslations({...state, translationBundle})}
+                : {translationBundle};
+        }),
+    setTranslationLoader: loader => set({translationLoader: loader}),
+    setLanguage: language => {
+        set(state => {
+            markLanguage(language);
+            return {language, ...appliedTranslations(state, language)};
+        });
+        // A language whose database half has not been read yet is loaded now;
+        // without a loader the bundled and configured layers are the answer.
+        const {translationLoader, translationBundle, languageActivate} = get();
+        if (translationLoader && !translationBundle[language]) void languageActivate(language);
+    },
+    languageActivate: async language => {
+        set(state => {
+            markLanguage(language);
+            return {language, ...appliedTranslations(state, language)};
+        });
+        const {translationLoader, translationBundle, setTranslationBundle} = get();
+        if (!translationLoader || translationBundle[language]) return;
+        let pending = pendingBundles.get(language);
+        if (!pending) {
+            pending = translationLoader(language).finally(() => pendingBundles.delete(language));
+            pendingBundles.set(language, pending);
+        }
+        try {
+            setTranslationBundle(language, await pending);
+        } catch {
+            // A database without the tables, or a session without permission to
+            // read them, must not break login: the bundled and configured layers
+            // stay in place and the UI keeps its English fallback.
+        }
+    },
 
     // Formatting — one layer at a time; the hook resolves the chain.
     setFormat: (scope, config) =>
@@ -367,3 +484,10 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     showHint: (target, message, error) => set({hint: {target, message, error}}),
     clearHint: () => set({hint: null}),
 }));
+
+// The collector's report reads the live store, so it answers with the language and
+// dictionary the screen actually used, without importing the store itself (`D-625`).
+setTranslationProvider(() => {
+    const state = useAppStore.getState();
+    return {language: state.language, dictionary: state.translations};
+});

@@ -100,6 +100,7 @@ export interface IBrowserConfig {
     resultSet?: string;
     /** Extra toolbar buttons */
     toolbar?: IToolbarButton[];
+    navigator?: boolean;
 }
 
 export interface IBrowserConfigOptional {

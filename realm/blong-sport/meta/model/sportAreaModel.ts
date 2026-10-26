@@ -39,6 +39,7 @@ export default model(
                 },
                 layouts: {edit: [['identity']]},
                 browser: {
+                    navigator: false,
                     title: 'Expert Areas',
                     icon: 'pi pi-heart',
                     toolbar: [

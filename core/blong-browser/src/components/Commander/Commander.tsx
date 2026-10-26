@@ -27,6 +27,7 @@ import {Navigator, type INavigatorHandle, type INavigatorPathItem} from '../Navi
 import {PathBar} from './PathBar.js';
 import {registerBuiltinViewers} from '../../viewers/index.js';
 import {resolveViewer, type ICommanderModelRef} from '../../viewers/resolveViewer.js';
+import {useTranslate} from '../../hooks/useText.js';
 
 // Ensure the generic viewers (json/keyValue/file/image/podLog) are registered.
 registerBuiltinViewers();
@@ -194,6 +195,9 @@ export function Commander({
     showParentRow = true,
     className,
 }: ICommanderProps) {
+    // Toolbar and key-hint strings are read aloud or shown as tooltips, so they
+    // are translated here rather than left as English constants (`D-625`).
+    const t = useTranslate();
     const {handler} = useBlong();
     // The drill path (source root → selected node). `selected` = last entry.
     const [path, setPath] = useState<IPathEntry[]>([]);
@@ -800,30 +804,30 @@ export function Commander({
                             className="p-button-text p-button-sm"
                             disabled={!canGoBack}
                             onClick={goBack}
-                            aria-label="Back"
-                            title="Back"
+                            aria-label={t('Back')}
+                            title={t('Back')}
                         />
                         <Button
                             icon="pi pi-arrow-right"
                             className="p-button-text p-button-sm"
                             disabled={!canGoForward}
                             onClick={goForward}
-                            aria-label="Forward"
-                            title="Forward"
+                            aria-label={t('Forward')}
+                            title={t('Forward')}
                         />
                         <Button
                             icon="pi pi-arrow-up"
                             className="p-button-text p-button-sm"
                             onClick={handleUp}
-                            aria-label="Up"
-                            title="Up to parent (Backspace)"
+                            aria-label={t('Up')}
+                            title={t('Up to parent (Backspace)')}
                         />
                         <Button
                             icon="pi pi-refresh"
                             className="p-button-text p-button-sm"
                             onClick={refresh}
-                            aria-label="Refresh"
-                            title="Refresh (F5)"
+                            aria-label={t('Refresh')}
+                            title={t('Refresh (F5)')}
                         />
                     </>
                 }
@@ -833,7 +837,7 @@ export function Commander({
                         <InputText
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="Filter…"
+                            placeholder={t('Filter…')}
                             style={{fontSize: '0.8rem', padding: '0.2rem 0.5rem', width: '11rem'}}
                         />
                     </div>
@@ -854,7 +858,7 @@ export function Commander({
                     value={sortField ?? undefined}
                     options={columnOptions}
                     onChange={e => changeSortField((e.value as string | null) ?? null)}
-                    placeholder="Sort…"
+                    placeholder={t('Sort…')}
                     style={{fontSize: '0.8rem'}}
                 />
                 <Button
@@ -862,8 +866,8 @@ export function Commander({
                     className="p-button-text p-button-sm"
                     disabled={!sortField}
                     onClick={() => setSortOrder(o => (o === 1 ? -1 : 1))}
-                    aria-label="Sort direction"
-                    title="Sort direction"
+                    aria-label={t('Sort direction')}
+                    title={t('Sort direction')}
                 />
                 <SelectButton
                     value={view}
@@ -880,15 +884,15 @@ export function Commander({
                     className="p-button-text p-button-sm"
                     disabled={!currentRow}
                     onClick={handleOpen}
-                    aria-label="Open (F2)"
-                    title="Open highlighted row (F2)"
+                    aria-label={t('Open (F2)')}
+                    title={t('Open highlighted row (F2)')}
                 />
                 <Button
                     icon="pi pi-question-circle"
                     className="p-button-text p-button-sm"
                     onClick={() => setHelpOpen(open => !open)}
-                    aria-label="Help (?)"
-                    title="Commander keys (?)"
+                    aria-label={t('Help (?)')}
+                    title={t('Commander keys (?)')}
                 />
             </div>
             <Splitter
@@ -1133,7 +1137,7 @@ export function Commander({
                         fontSize: '0.8rem',
                     }}
                 >
-                    <strong>Commander keys</strong>
+                    <strong>{t('Commander keys')}</strong>
                     <ul style={{margin: '0.25rem 0 0', paddingLeft: '1.1rem'}}>
                         <li>↑ ↓ — navigate tree / table</li>
                         <li>Enter / double-click — open node (drill or viewer)</li>

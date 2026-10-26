@@ -30,9 +30,9 @@ import {DropZone} from '../../design/DropZone.js';
 import {SelectionIndicator} from '../../design/SelectionIndicator.js';
 import {useDesignable} from '../../design/useDesignable.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
+import {useText} from '../../hooks/useText.js';
 import {useBlong} from '../../index.js';
 import {buildValidationRules} from '../../schema/validate.js';
-import {useAppStore} from '../../state/appStore.js';
 import {widgetRegistry} from '../../widgets/index.js';
 import {useBlongForm, useBlongFormState, type ITableSelection} from '../Form/FormContext.js';
 import {Text} from '../Text/Text.js';
@@ -269,8 +269,6 @@ function FieldRow({
     // ── Context subscriptions (all unconditional) ──────────────────────────────
     const stableCtx = useBlongForm();
     const stateCtx = useBlongFormState();
-    const translations = useAppStore(s => s.translations);
-
     // Safe-extract with defaults so hook deps below never see undefined
     const schema = stableCtx?.schema;
     const control = stableCtx?.control;
@@ -321,6 +319,10 @@ function FieldRow({
                 : fieldSchema,
         [fieldSchema, columnOverride],
     );
+
+    // Through `useText`, not the raw store: the collector then sees the title
+    // exactly as it is rendered (`D-625`).
+    const cardTitle = useText(effectiveSchema?.title ?? baseName);
 
     const WidgetComponent = effectiveSchema
         ? widgetRegistry.get(resolveWidgetType(effectiveSchema, fieldName))
@@ -376,7 +378,7 @@ function FieldRow({
     //  - getValues is intentionally excluded — it is a stable function ref from
     //    react-hook-form (same identity for the lifetime of the form) so including
     //    it would only add noise without value.
-    //  - translations changes identity only on language switch (very rare) and is
+    //  - cardTitle changes identity only on language switch (very rare) and is
     //    included so the error message params reflect the current language.
     //  - All other deps are derived from the stable context or slow state and
     //    therefore change rarely.
@@ -472,10 +474,7 @@ function FieldRow({
                             <small className="p-error blong-field-error col-12 md:col-8">
                                 <Text
                                     params={{
-                                        field:
-                                            translations[effectiveSchema?.title ?? baseName] ??
-                                            effectiveSchema?.title ??
-                                            baseName,
+                                        field: cardTitle,
                                         minLength: effectiveSchema?.minLength ?? 0,
                                         maxLength: effectiveSchema?.maxLength ?? 0,
                                         minimum: effectiveSchema?.minimum ?? 0,
@@ -505,7 +504,7 @@ function FieldRow({
             dropdowns,
             needsOnSelect,
             handleTableSelect,
-            translations,
+            cardTitle,
             log,
             getValues,
             setValue,
@@ -918,7 +917,9 @@ export function Card({
                         />
                     ))
                 ) : (
-                    <span className="p-text-secondary text-sm">Select a row to see details</span>
+                    <span className="p-text-secondary text-sm">
+                        <Text>Select a row to see details</Text>
+                    </span>
                 );
             } else if (isDesignMode) {
                 content = resolved.fields.map((fieldName, idx) => (

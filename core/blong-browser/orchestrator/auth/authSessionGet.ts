@@ -47,7 +47,9 @@ export default handler(
                 // Apply the user's preferred language (returned during restore)
                 // so the UI locale matches their profile.
                 const language = (result.profile as {language?: string}).language;
-                if (language) store.setLanguage(language);
+                // A restored session loads its dictionary the same way a fresh
+                // login does; the loader is no-op without a portal that names one.
+                if (language) await store.languageActivate(language);
                 return {
                     authenticated: true,
                     token: result.access_token,

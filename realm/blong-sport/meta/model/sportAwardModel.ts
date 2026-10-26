@@ -86,6 +86,7 @@ export default model(
                 },
                 layouts: {edit: [['award']]},
                 browser: {
+                    navigator: false,
                     title: 'Awards',
                     icon: 'pi pi-star',
                     toolbar: [

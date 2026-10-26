@@ -118,6 +118,7 @@ export default model(
                     },
                 },
                 browser: {
+                    navigator: false,
                     title: 'Participations',
                     icon: 'pi pi-users',
                     toolbar: [

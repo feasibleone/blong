@@ -11,6 +11,7 @@ import {ProgressSpinner} from '../../primereact/index.js';
 
 import React, {useEffect, useState} from 'react';
 import {Button} from '../Button/Button.js';
+import {useTranslate} from '../../hooks/useText.js';
 
 export interface IOAuthCallbackProps {
     /** Swaps the authorization code for a session token (auth orchestrator). */
@@ -22,6 +23,7 @@ export interface IOAuthCallbackProps {
 }
 
 export function OAuthCallback({onExchange, onSuccess, title, logoIcon = 'pi pi-google'}: IOAuthCallbackProps) {
+    const t = useTranslate();
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
 
@@ -88,7 +90,7 @@ export function OAuthCallback({onExchange, onSuccess, title, logoIcon = 'pi pi-g
                     </>
                 ) : (
                     <>
-                        <p className="blong-oauth-callback__heading">Sign in failed</p>
+                        <p className="blong-oauth-callback__heading">{t('Sign in failed')}</p>
                         <p className="blong-oauth-callback__error">{error}</p>
                         <Button
                             label="Back to Login"

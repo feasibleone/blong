@@ -9,6 +9,7 @@
  */
 import {ActionButton} from '../../components/ActionButton/ActionButton.js';
 import {Text} from '../../components/Text/Text.js';
+import {translatedLabel} from '../../hooks/useText.js';
 import type {FormatFn, FormatType} from '../../lib/format.js';
 import {
     Calendar,
@@ -38,7 +39,6 @@ import {
     resolveCycleStates,
 } from './model.js';
 
-
 /**
  * The picks a row has made while it is being edited, by row key.
  *
@@ -48,7 +48,6 @@ import {
  * See `rowDrafts` for why the table has to remember the picks at all. `@@D-617`
  */
 export const RowDraftContext = createContext<Record<string, Row>>({});
-
 
 export function renderBody(
     widgetType: string,
@@ -180,13 +179,11 @@ export function renderBody(
             // whose data has no label column. @@D-614
             const bodyField = fieldSchema.widget?.body;
             const label = bodyField ? rowData[bodyField] : undefined;
-            if (label != null) return <span data-testid={cellId}>{String(label)}</span>;
             const item = options.find(o => o.value === value);
-            return (
-                <span data-testid={cellId}>
-                    {item?.label ?? (value != null ? String(value) : '')}
-                </span>
-            );
+            // A joined label is data — the read translated it in the active
+            // language. Only a static option label is a dictionary key (`D-635`).
+            const text = label != null ? String(label) : translatedLabel(item?.label ?? '');
+            return <span data-testid={cellId}>{text || (value != null ? String(value) : '')}</span>;
         }
         case 'dropdownTree': {
             function findLabel(nodes: DropdownOption[], v: unknown): string | undefined {
@@ -216,19 +213,17 @@ export function renderBody(
                 );
             }
             const arr = Array.isArray(value) ? (value as unknown[]) : [];
-            const labels = arr.map(v => options.find(o => o.value === v)?.label ?? String(v));
+            const labels = arr.map(v =>
+                translatedLabel(options.find(o => o.value === v)?.label ?? String(v)),
+            );
             return <span data-testid={cellId}>{labels.join(', ')}</span>;
         }
         case 'select': {
             const bodyField = fieldSchema.widget?.body;
             const label = bodyField ? rowData[bodyField] : undefined;
-            if (label != null) return <span data-testid={cellId}>{String(label)}</span>;
             const item = options.find(o => o.value === value);
-            return (
-                <span data-testid={cellId}>
-                    {item?.label ?? (value != null ? String(value) : '')}
-                </span>
-            );
+            const text = label != null ? String(label) : translatedLabel(item?.label ?? '');
+            return <span data-testid={cellId}>{text || (value != null ? String(value) : '')}</span>;
         }
         case 'date':
         case 'time':

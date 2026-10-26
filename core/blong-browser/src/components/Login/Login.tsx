@@ -34,6 +34,7 @@ import React, {useState} from 'react';
 import {useBlong} from '../../context/BlongContext.js';
 import {Button} from '../Button/Button.js';
 import {SocialLoginButton} from '../SocialLoginButton/SocialLoginButton.js';
+import {useTranslate} from '../../hooks/useText.js';
 
 type LoginStep = 'credentials' | 'otp' | 'newPassword';
 
@@ -120,6 +121,9 @@ export function Login({
     defaultUsername,
     passwordHint,
 }: ILoginProps) {
+    // The login screen renders before a session exists, so its text is the bundled
+    // dictionary's reason for existing (`D-627`).
+    const t = useTranslate();
     const {handler} = useBlong();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [step, setStep] = useState<LoginStep>(initialStep);
@@ -270,7 +274,7 @@ export function Login({
 
             {/* Login card — auto-height middle row */}
             <div className="blong-login__card">
-                <p className="blong-login__card-heading">Login with password</p>
+                <p className="blong-login__card-heading">{t('Login with password')}</p>
 
                 {displayError && (
                     <Message
@@ -315,7 +319,7 @@ export function Login({
                                         text
                                         rounded
                                         size="small"
-                                        aria-label="What belongs in this field"
+                                        aria-label={t('What belongs in this field')}
                                         aria-expanded={hintOpen}
                                         onClick={() => setHintOpen(open => !open)}
                                     />

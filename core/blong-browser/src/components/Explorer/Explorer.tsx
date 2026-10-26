@@ -26,6 +26,7 @@ import type {IToolbarButton} from '../../index.js';
 import {ActionButton} from '../ActionButton/ActionButton.js';
 import {Button} from '../Button/Button.js';
 import {Navigator} from '../Navigator/Navigator.js';
+import {useTranslate} from '../../hooks/useText.js';
 
 export interface IExplorerColumn {
     field: string;
@@ -229,6 +230,8 @@ export function Explorer({
     name,
     className = '',
 }: IExplorerProps) {
+    // Placeholders and empty messages are read aloud; they are keys too (`D-625`).
+    const t = useTranslate();
     const [selection, setSelection] = useState<RowData | RowData[] | null>(null);
     /** The last row the user explicitly clicked — survives multi-select changes. */
     const [currentRow, setCurrentRow] = useState<RowData | null>(null);
@@ -474,7 +477,7 @@ export function Explorer({
                     layout="grid"
                     style={{flex: 1, overflow: 'auto'}}
                     className="blong-explorer-dv"
-                    emptyMessage="No records found."
+                    emptyMessage={t('No records found.')}
                 />
             ) : (
                 <DataTable
@@ -502,7 +505,7 @@ export function Explorer({
                     rowClassName={rowClassName}
                     className="blong-explorer-dt"
                     style={{flex: 1, minHeight: 0}}
-                    emptyMessage="No records found."
+                    emptyMessage={t('No records found.')}
                 >
                     {selectionMode !== 'none' && (
                         <Column
@@ -785,7 +788,7 @@ export function Explorer({
                             <InputText
                                 value={searchInput}
                                 onChange={e => handleSearchChange(e.target.value)}
-                                placeholder="Search…"
+                                placeholder={t('Search…')}
                                 className="blong-explorer-search"
                                 style={{
                                     width: '10rem',

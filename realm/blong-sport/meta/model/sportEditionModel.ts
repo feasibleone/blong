@@ -114,6 +114,7 @@ export default model(
                     },
                 },
                 browser: {
+                    navigator: false,
                     title: 'Competition Editions',
                     icon: 'pi pi-calendar-clock',
                     toolbar: [

@@ -37,6 +37,8 @@ ValidationBG.args = {
 ValidationBG.play = async ({canvas, userEvent}) => {
     await userEvent.clear(await canvas.findByRole('textbox', {name: 'Име'}));
     await userEvent.type(canvas.getByRole('textbox', {name: 'Описание'}), 'тест');
-    await userEvent.click(canvas.getByRole('button', {name: 'Save'}));
+    // The toolbar buttons are translated now, so the accessible name is Bulgarian
+    // too — that is what the collector and a Bulgarian reader both see.
+    await userEvent.click(canvas.getByRole('button', {name: 'Запази'}));
     await new Promise(resolve => setTimeout(resolve, 200));
 };

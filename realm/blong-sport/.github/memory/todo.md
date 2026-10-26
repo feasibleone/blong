@@ -23,7 +23,7 @@ open (14)
 - `T-399` · realm/blong-sport — Cascade sport, discipline and category from the BOC nomenclature
 - `T-400` · realm/blong-sport — Assert one resource row and a person with two roles
 
-done (14)
+done (18)
 
 - `T-374` · realm/blong-sport — sport P1 scaffold and boot
 - `T-376` · realm/blong-sport — sport P3 schema and seeds
@@ -39,6 +39,10 @@ done (14)
 - `T-398` · realm/blong-sport — Capture the athlete Results tab from a record with a participation
 - `T-384` · realm/blong-sport — sport P11 verification and close-out
 - `T-412` · realm/blong-sport — Three sport browse shots are still unfiltered and empty
+- `T-427` · realm/blong-sport — Wire sport to core translations and the collector
+- `T-429` · realm/blong-sport — Capture the Bulgarian model screenshots
+- `T-428` · realm/blong-sport — Translate sport labels to Bulgarian
+- `T-434` · realm/blong-sport — One pinned row per Bulgarian browse capture
 
 <!-- /memory:index -->
 
@@ -309,3 +313,48 @@ which is what a browse baseline is for.
 
 Federation, coaching and support browse shots now create first and filter to their own row; all
 three baselines re-captured and verified byte-identical across runs. D-623 extended.
+
+### T-427 — Wire sport to core translations and the collector
+
+> _2026-10-25 · realm/blong-sport · done_
+
+Add core as a browser child of realm/blong-sport, point playwright.config.ts at the two Bulgarian
+seed files with blongLanguage bg, and grant the core translation permissions in the dev and test
+seed. Verify one label edit round trip through the core page before the Bulgarian pass starts.
+
+core is a browser child of blong-sport, portal.translation.load names core.label.list and
+core.translation.list, and the test seed grants the translation methods. Evidence: the Bulgarian run
+loads both dictionaries (403 then 200 after the grant) and renders translated resource names.
+
+### T-429 — Capture the Bulgarian model screenshots
+
+> _2026-10-25 · realm/blong-sport · done_
+
+Add test/bgModels.play.ts covering Browse and empty New for every sport model with bg-prefixed
+snapshots, asserting one translated landmark per page so a fallback to English fails instead of
+writing an English baseline. Capture only after the seeds are in the database and review the
+baselines before committing them.
+
+test/bgModels.play.ts covers Browse and empty New for all 23 sport models. Evidence: npx playwright
+test test/bgModels.play.ts --update-snapshots --workers=3 reported 46 passed and wrote 46 bg-
+baselines; the athlete browse baseline shows Bulgarian headers, toolbar and a translated sport cell.
+
+### T-428 — Translate sport labels to Bulgarian
+
+> _2026-10-25 · realm/blong-sport · done_
+
+bg-coreLabelSeed.yaml now holds 312 keys, 221 translated and 91 TODOs, generated from the model
+vocabulary, and bg-coreTranslationSeed.yaml covers the seeded classifiers. Evidence: the Bulgarian
+Playwright run renders the sport menu, full name and status labels and the translated sport name in
+a table cell.
+
+### T-434 — One pinned row per Bulgarian browse capture
+
+> _2026-10-26 · realm/blong-sport · done_
+
+Pin a stable seeded row where translated data should show (area, award, cycle, sport) and an
+impossible term elsewhere, then recapture. Evidence: the 46 bg tests pass twice in a row on a
+database carrying earlier runs' rows.
+
+pinnedRow + NO_MATCH in bgModels.play.ts; 46 tests pass twice on a database with earlier runs'
+leftovers.

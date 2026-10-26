@@ -18,6 +18,7 @@
         "build": "true",
         "ci-lint": "blong-dev lint",
         "dev": "vite",
+        "test": "blong-dev test",
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
@@ -29,6 +30,8 @@
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
         "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-server": "workspace:^1.0.0",
+        "@feasibleone/blong-test": "workspace:^1.0.0",
+        "tap": "^21.6.3",
         "typescript": "^6.0.3",
         "vite": "^8.2.1"
     }

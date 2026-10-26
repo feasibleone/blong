@@ -74,6 +74,7 @@ export default model(
                 },
                 layouts: {edit: [['identity']]},
                 browser: {
+                    navigator: false,
                     title: 'Categories',
                     icon: 'pi pi-tags',
                     toolbar: [

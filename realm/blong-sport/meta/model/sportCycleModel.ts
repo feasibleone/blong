@@ -65,6 +65,7 @@ export default model(
                 },
                 layouts: {edit: [['identity']]},
                 browser: {
+                    navigator: false,
                     title: 'Olympic Cycles',
                     icon: 'pi pi-calendar',
                     toolbar: [

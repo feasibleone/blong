@@ -1,6 +1,7 @@
 import {SelectButton} from '../primereact/index.js';
 
 import type {IWidgetProps} from '@feasibleone/blong';
+import {useOptionLabel} from '../hooks/useText.js';
 
 export function SelectWidget({
     id,
@@ -14,6 +15,9 @@ export function SelectWidget({
     disabled,
 }: IWidgetProps) {
     const {options = []} = schema.widget ?? {};
+    // A static option label is a dictionary key like any other (`D-635`).
+    const optionLabel = useOptionLabel();
+    const translated = options.map(o => ({...o, label: optionLabel(o)}));
     return (
         <div
             id={id ?? name}
@@ -22,7 +26,7 @@ export function SelectWidget({
         >
             <SelectButton
                 value={value}
-                options={options}
+                options={translated}
                 onChange={e => {
                     onChange(e.value);
                     onBlur();

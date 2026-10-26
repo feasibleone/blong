@@ -1,6 +1,12 @@
 ---
 name: blong-i18n
-description: Implement multi-language support (i18n) in blong-browser; translate UI labels, validation messages, and PrimeReact widget strings. Use this skill whenever working on translations, localization, language switching, the Text component, Button label translation, appStore setTranslations/setLanguage, PrimeReact locale registration, or adding a lang story arg — even if the user just says "add Bulgarian support", "translate this label", or "make this work in another language".
+description:
+    Implement multi-language support (i18n) in blong-browser; translate UI labels, validation
+    messages, and PrimeReact widget strings. Use this skill whenever working on translations,
+    localization, language switching, the Text component, Button label translation, appStore
+    setTranslations/setLanguage, PrimeReact locale registration, or adding a lang story arg — even
+    if the user just says "add Bulgarian support", "translate this label", or "make this work in
+    another language".
 ---
 
 # blong-i18n Skill
@@ -44,14 +50,18 @@ The blong `Button` component auto-translates string `label` values via `Text`. A
 import {Button} from '@feasibleone/blong-browser'; // ✅ label is translated
 // import {Button} from 'primereact/button';        // ✗ no translation
 
-<Button label="Save" icon="pi pi-save" />
+<Button
+    label="Save"
+    icon="pi pi-save"
+/>;
 // → aria-label set to translations['Save'] ?? 'Save', so getByRole('button', {name: '...'})
 //   finds the translated label in tests
 ```
 
-Note: the Editor toolbar's built-in Save/Reset/Edit/Next buttons are **raw `<button>` elements**
-with a hardcoded `aria-label` — they are **not** translated. Only buttons that go through the blong
-`Button` component or `<Text>` wrapper participate in translation.
+The Editor toolbar's built-in Save/Reset/Edit/Next buttons are raw `<button>` elements, but their
+`aria-label` and `title` go through `useTranslate()` — so they translate and are collected like
+every other string. The same holds for the commander and explorer toolbars, placeholders and empty
+messages: a string that is only read aloud is still a key.
 
 ---
 
@@ -63,6 +73,7 @@ Call these two methods on `appStore` to switch locale:
 import {useAppStore} from '@feasibleone/blong-browser';
 
 // 1. Load the translation dictionary (English key → translated string)
+// spell-checker: disable
 useAppStore.getState().setTranslations({
     Save: 'Запази',
     Edit: 'Редактирай',
@@ -73,6 +84,7 @@ useAppStore.getState().setTranslations({
     '{field} must be at least {minLength} characters':
         '{field} трябва да бъде поне {minLength} символа',
 });
+// spell-checker: enable
 
 // 2. Activate the language (also triggers PrimeReact locale)
 useAppStore.getState().setLanguage('bg');
@@ -94,6 +106,7 @@ token is resolved to the field's **translated** label at render time:
 
 ```ts
 // English template as key → translated template as value
+// spell-checker: disable
 const translations = {
     '{field} is required': '{field} е задължително',
     '{field} must be at least {minLength} characters':
@@ -104,6 +117,7 @@ const translations = {
     '{field} must be at most {maximum}': '{field} трябва да бъде най-много {maximum}',
     '{field} has invalid format': '{field} има невалиден формат',
 };
+// spell-checker: enable
 ```
 
 ---
@@ -153,6 +167,7 @@ ToolbarBG.args = {
 ```
 
 `withDispatch` will:
+
 1. Look up `primeLocales['bg']` and pass it as `theme.languages` to `<App>`
 2. Apply `bgTranslations` (or a `translations` override) via `appStore.setTranslations`
 3. Call `appStore.setLanguage('bg')` to activate the PrimeReact locale
@@ -162,11 +177,13 @@ ToolbarBG.args = {
 1. Fetch PrimeReact locale JSON from `https://github.com/primefaces/primelocale/<lang>.json`
 2. Add `const <lang>PrimeLocale = { ... }` in `.storybook/dispatch.tsx`
 3. Register it: `primeLocales['<lang>'] = <lang>PrimeLocale`
-4. Add a translations constant: `export const <lang>Translations = parseTranslations('Key=Value\n...')`
+4. Add a translations constant:
+   `export const <lang>Translations = parseTranslations('Key=Value\n...')`
 5. Wire it up in the `withDispatch` switch (or the existing `effectiveLang === 'bg'` pattern)
 
 The `parseTranslations` helper in `dispatch.tsx` converts a `'Key=Value\n...'` string to a
-`Record<string, string>` dict — convenient for maintaining large translation tables as readable text.
+`Record<string, string>` dict — convenient for maintaining large translation tables as readable
+text.
 
 ---
 
@@ -197,27 +214,77 @@ translations.
 
 ### Writing play functions for translated stories
 
-When a story relies on `lang: 'bg'`, the play function queries must use translated accessible names
-for `Text`-wrapped content, but **English** for raw toolbar buttons (which are not translated):
+When a story relies on `lang: 'bg'`, every accessible name is the translated one — field labels,
+toolbar buttons and placeholders alike:
 
 ```ts
-// Field labels are translated (via Text component in the form)
-await userEvent.clear(canvas.getByRole('textbox', {name: 'Иmе'}));
+await userEvent.clear(canvas.getByRole('textbox', {name: 'Име'}));
 
-// Toolbar Save button is a raw <button aria-label="Save"> — NOT translated
-await userEvent.click(canvas.getByRole('button', {name: 'Save'}));
+// The toolbar aria-label is translated too, so the name is Bulgarian
+await userEvent.click(canvas.getByRole('button', {name: 'Запази'}));
 ```
 
 ---
 
 ## appStore translation slice
 
-| Field          | Type                    | Purpose                              |
-| -------------- | ----------------------- | ------------------------------------ |
-| `translations` | `Record<string, string>`| Active key→value translation dict   |
-| `language`     | `string`                | Active locale code (`'en'`, `'bg'`) |
+| Field          | Type                     | Purpose                             |
+| -------------- | ------------------------ | ----------------------------------- |
+| `translations` | `Record<string, string>` | Active key→value translation dict   |
+| `language`     | `string`                 | Active locale code (`'en'`, `'bg'`) |
 
-| Method             | Signature                             | Effect                          |
-| ------------------ | ------------------------------------- | ------------------------------- |
-| `setTranslations`  | `(dict: TranslationDict) => void`     | Replace the entire dictionary   |
-| `setLanguage`      | `(language: string) => void`          | Set locale; triggers PrimeReact |
+| Method            | Signature                         | Effect                          |
+| ----------------- | --------------------------------- | ------------------------------- |
+| `setTranslations` | `(dict: TranslationDict) => void` | Replace the entire dictionary   |
+| `setLanguage`     | `(language: string) => void`      | Set locale; triggers PrimeReact |
+
+---
+
+## Database-backed translations (blong-core + blong-browser)
+
+The dictionary is layered: **bundled** (the pre-session strings, compiled into blong-browser), then
+the suite's `portal.translations`, then the database. Later layers win, so a correction ships
+without a release and the login screen still translates.
+
+- **Tables** (`realm/blong-core`): `core.label` (the English string as the key) and
+  `core.translation` (a resource display name per language). Both carry `editorId`, which is the
+  caller's `$meta.auth.actorId`.
+- **Seeds**: `meta/db/bg-coreLabelSeed.yaml` (`Key=Value` lines in a YAML block scalar) and
+  `bg-coreTranslationSeed.yaml` (`typeAlias|resourceName=Text`). The method comes from the filename:
+  `bg-coreLabelSeed` → `core.label.seed`.
+- **Ownership**: a seed replaces only rows it still owns — `editorId` null or the `core.seed` actor.
+  A row somebody edited through the pages is kept and counted as skipped (`T-291`).
+- **Loading**: `portal.translation.load.label` names the reader; `App` registers it and
+  `languageActivate(language)` reads it after login, after a session restore and on a switch.
+- **Labels vs data**: the client translates **labels** only — a string the model declares, looked up
+  in the dictionary. A record's name is data and is translated by the query that reads it (`D-635`):
+  `x-blong-language` travels with every call, `Gateway._meta` puts it in `$meta.language`, and the
+  db adapter left joins `core_translation` with `COALESCE(translatedName, name)`.
+  `attachResourceName` covers a row's own name (including a table with its own
+  `resource.nameColumn`), `attachLabelJoins` a referenced one, `_dropdownList` the option list.
+  English needs no join — the stored value is the English one.
+- **Dropdowns**: the widget renders the options it was given. `useOptionLabel` is for a **static**
+  `widget.options` label only; a fetched option is already translated, and a language switch clears
+  `dropdownRegistry` and invalidates the queries (`LanguageDataRefresh`) so it is read again rather
+  than rewritten in the browser.
+- **Collecting**: `useText` records every key it renders while collection is on. Playwright turns it
+  on with an init script; the seed writer adds each missing key as `Key=` under a lock, one pending
+  file per test and one merge at the end of the run.
+- **Who may read it**: the gateway grants live in
+  `realm/blong-access/meta/db/accessAuthorizationMerge.yaml`, not in the realm whose pages show them
+  (`blong-core` cannot process its own seed asset). `loginCapability` carries `core.label.list` and
+  `core.translation.list` — every caller who can log in sees a translated UI — and
+  `translationManage` carries the edits, granted to `Admin` alone. A suite's seed therefore names no
+  `core.*` method (`D-636`).
+- **The harvest is opt-in and runner-side**: `defineBlongConfig` installs two hook **files**
+  (`playwright/globalSetup.ts`, `globalTeardown.ts`) when the suite declares a seed in `use`. A
+  `test.use()` option never reaches the runner, so the seed is declared in the suite's
+  `playwright.config.ts` — and a spec that also wants it imports the same constant module. Nothing
+  is written unless `BLONG_TRANSLATION_HARVEST=1` is set, so an ordinary or CI run never touches the
+  tree (`F-607`).
+- **The loop**: `BLONG_TRANSLATION_HARVEST=1 npx playwright test <spec>` → review what it added →
+  fill the genuine `Key=` lines → restart the server (the seed is applied at boot) → re-run → commit
+  the baselines. The first run has no translations, so **never commit baselines from it**. Review
+  the added keys before committing: a string that carries a record name is data, not a label.
+- **In-app**: `portal.translation.collect: true` adds an _Untranslated strings_ page that lists what
+  this session rendered without a translation and copies the lines. It writes nothing.

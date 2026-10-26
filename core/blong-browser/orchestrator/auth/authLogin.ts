@@ -58,7 +58,10 @@ export default handler(
                     // Apply the user's preferred language (returned during
                     // login) so the UI locale matches their profile.
                     const language = (result.profile as {language?: string}).language;
-                    if (language) store.setLanguage(language);
+                    // `languageActivate` switches the locale AND reads that
+                    // language's database dictionary, which is only allowed once
+                    // a session exists (D-627).
+                    if (language) await store.languageActivate(language);
                 }
 
                 return {step: 'success', token: result.access_token};

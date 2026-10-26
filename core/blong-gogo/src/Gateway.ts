@@ -374,7 +374,17 @@ export default class Gateway extends Internal implements IGateway {
             typeof gps === 'string'
                 ? gps.split(' ', 1)[0].split(';')
                 : [req.headers.latitude, req.headers.longitude];
-        const {language, ...auth} = req.auth?.credentials || {};
+        // The token's language is where the session was opened; the browser's
+        // active language is what the caller wants *now*, and it changes without a
+        // new token. A read answers in the requested language, falling back to the
+        // one the token carries — the header wins because it is the more recent
+        // statement of intent. `@@D-635`
+        const {language: tokenLanguage, ...auth} = req.auth?.credentials || {};
+        const requestedLanguage = req.headers['x-blong-language'];
+        const language =
+            typeof requestedLanguage === 'string' && requestedLanguage
+                ? requestedLanguage
+                : tokenLanguage;
         return {
             forward: this._forward(req.headers),
             frontEnd,
@@ -383,7 +393,8 @@ export default class Gateway extends Internal implements IGateway {
             deviceId,
             localAddress,
             localPort,
-            ...(req.auth?.credentials && {auth, language}),
+            ...(req.auth?.credentials && {auth}),
+            ...(language !== undefined && {language}),
             hostName: (forwardedHost || req.hostname) as string,
             ipAddress: (
                 ([] as string[]).concat(forwardedIp as string | string[])[0] ||

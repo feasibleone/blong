@@ -16,7 +16,7 @@ interface ITextProps {
     id?: string;
     /** Raw text used as both the translation key and the English fallback. */
     children?: React.ReactNode;
-    params?: Record<string, string | number>;
+    params?: Record<string, string | number | undefined>;
     prefix?: string;
     as?: keyof React.JSX.IntrinsicElements;
     className?: string;

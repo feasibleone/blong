@@ -64,15 +64,55 @@ export default schema(async ({lib: {type}}) => ({
     ),
     translation: type.Object(
         {
+            /** Surrogate key — the model system addresses a row by one column. */
+            translationId: type.increment(),
             resourceId: type.uidNotNull(),
             languageCode: type.stringNotNull({maxLength: 10}),
             translatedName: type.stringNotNull(),
+            /** Who last wrote the row; the seed may replace only its own rows. */
+            editorId: type.uidNull(),
+            editedAt: type.dateTimeNull(),
         },
         {
             constraints: {
-                primaryKey: {columns: ['resourceId', 'languageCode']},
+                unique: {
+                    resourceLanguage: {columns: ['resourceId', 'languageCode']},
+                },
                 foreign: {
                     resourceId: 'core.resource.resourceId',
+                    editorId: 'core.resource.resourceId',
+                },
+            },
+        },
+    ),
+    /**
+     * UI label translations, keyed by the English string a component renders.
+     *
+     * Deliberately not resource-backed: a label is text, not an entity, and the
+     * key must stay the English sentence so a missing translation degrades to
+     * readable English (`D-624`, `D-625`). Empty `labelText` means "not
+     * translated yet"; the seed merge never writes those (`D-631`).
+     */
+    label: type.Object(
+        {
+            labelId: type.increment(),
+            labelKey: type.stringNotNull({maxLength: 255}),
+            languageCode: type.stringNotNull({maxLength: 10}),
+            labelText: type.stringNotNull(),
+            editorId: type.uidNull(),
+            editedAt: type.dateTimeNull(),
+        },
+        {
+            constraints: {
+                unique: {
+                    keyLanguage: {columns: ['labelKey', 'languageCode']},
+                },
+                index: {
+                    labelKey: {},
+                    languageCode: {},
+                },
+                foreign: {
+                    editorId: 'core.resource.resourceId',
                 },
             },
         },

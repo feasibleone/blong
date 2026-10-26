@@ -28,13 +28,15 @@ open (19)
 - `T-350` · core/blong-gogo — Stop keying a realm child by its function name
 - `T-366` · core/blong-gogo — Decide whether an inactive layer is skipped before it is imported
 
-done (5)
+done (7)
 
 - `T-341` · core/blong-gogo — Validate a config reload and reject an invalid snapshot
 - `T-217` · core/blong-gogo — Warn when a CLI config key matches no realm, port or framework key
 - `T-345` · core/blong-gogo — The graceful-shutdown spawn test failed once in CI and passes locally
 - `T-195` · core/blong-gogo — Five helper modules still log a load error in their group folders
 - `T-408` · core/blong-gogo — Join the row's own resource name instead of a second query
+- `T-430` · core/blong-gogo — Language in the gateway meta, taken from the header
+- `T-431` · core/blong-gogo — Send the active language from the browser on every call
 
 <!-- /memory:index -->
 
@@ -391,5 +393,23 @@ select a generated key back.
 attachResourceName folds the core_resource left join into the find and get statements, keyed by the
 declared primary key; the create and the edge rows keep the batched lookup for the reasons recorded
 in D-619. Verified by the sport and access suites (116 + 32) and the rest of the realm suites.
+
+### T-430 — Language in the gateway meta, taken from the header
+
+> _2026-10-26 · core/blong-gogo · done_
+
+Read x-blong-language in Gateway.\_meta, falling back to the token's language claim, and put it in
+$meta.language for every handler. Evidence: the Bulgarian browse pages answer translated rows while
+English ones do not.
+
+Gateway.\_meta reads x-blong-language first, then the token claim; requestLanguage() in knex gates
+the joins.
+
+### T-431 — Send the active language from the browser on every call
+
+> _2026-10-26 · core/blong-gogo · done_
+
+Add x-blong-language in codec.mle's send hook, from `html[data-language]`. Evidence: the Bulgarian
+run's grid shows the translated record name, which only reaches it through the header.
 
 ## Retired

@@ -1,6 +1,6 @@
 import './ThemeSwitcher.css';
 
-import {useText} from '../../hooks/useText.js';
+import {useText, useTranslate} from '../../hooks/useText.js';
 import {Button, Dropdown} from '../../primereact/index.js';
 import {useTheme, type PaletteType} from '../Theme/Theme.js';
 import {THEME_GROUPS} from '../Theme/themeRegistry.js';
@@ -29,6 +29,7 @@ export interface IThemeSwitcherProps {
  */
 export function ThemeSwitcher({className = ''}: IThemeSwitcherProps) {
     const {optionId, palette, paletteToggle, switcher, selectTheme, selectPalette} = useTheme();
+    const t = useTranslate();
     const toLightLabel = useText('Switch to light mode');
     const toDarkLabel = useText('Switch to dark mode');
 
@@ -51,7 +52,7 @@ export function ThemeSwitcher({className = ''}: IThemeSwitcherProps) {
                 onChange={e => selectTheme(e.value as string)}
                 className="blong-theme-switcher__select"
                 panelClassName="blong-theme-switcher__panel"
-                aria-label="Theme"
+                aria-label={t('Theme')}
             />
             {paletteToggle ? (
                 <Button

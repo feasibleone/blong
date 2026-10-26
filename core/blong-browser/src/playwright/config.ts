@@ -43,6 +43,7 @@ import {existsSync, readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import * as os from 'node:os';
 import {dirname, join, resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import type {IBlongTestOptions} from '../playwright.js';
 
 type BlongConfig = PlaywrightTestConfig<IBlongTestOptions> & {
@@ -67,6 +68,23 @@ type BlongConfig = PlaywrightTestConfig<IBlongTestOptions> & {
      */
     frontendPort?: number;
 };
+
+/**
+ * The absolute path of one of the runner-side hooks.
+ *
+ * Playwright resolves a `globalSetup`/`globalTeardown` entry against the config's
+ * root directory, and a suite's root is not this package, so the path has to be
+ * absolute. `F-607`
+ */
+function hookPath(name: 'globalSetup' | 'globalTeardown'): string {
+    return fileURLToPath(new URL(`./${name}.ts`, import.meta.url));
+}
+
+/** A caller's own hook, as the list Playwright accepts. */
+function hookList(hook: PlaywrightTestConfig['globalSetup']): string[] {
+    if (!hook) return [];
+    return Array.isArray(hook) ? hook : [hook];
+}
 
 /**
  * Resolve a realm package's test directory, from the suite's own package.
@@ -200,8 +218,43 @@ export function defineBlongConfig(
         projects: projectsOverride,
         backendPort: explicitBackendPort,
         frontendPort: explicitFrontendPort,
+        globalSetup: userSetup,
+        globalTeardown: userTeardown,
         ...rest
     } = overrides;
+    // Translation harvesting is installed only when a suite declared a seed. The
+    // teardown is the run's single writer, and a sharded run is refused because a
+    // shard sees a fraction of the keys (`D-632`).
+    //
+    // Both hooks are **files**: Playwright resolves `globalSetup`/`globalTeardown`
+    // against the config's root directory and treats anything else as a path, so a
+    // function assigned here is never called — which is how the harvest looked like
+    // it worked while writing nothing (`F-607`). The seed reaches the runner as an
+    // environment variable, because a spec's `test.use()` runs in a worker and
+    // cannot be read from here.
+    const seed =
+        (use as IBlongTestOptions | undefined)?.blongTranslationSeed ??
+        (process.env['BLONG_TRANSLATION_SEED']
+            ? (JSON.parse(
+                  process.env['BLONG_TRANSLATION_SEED'],
+              ) as IBlongTestOptions['blongTranslationSeed'])
+            : undefined);
+    let translationHooks: Pick<PlaywrightTestConfig, 'globalSetup' | 'globalTeardown'> = {};
+    if (seed) {
+        if (overrides.shard) {
+            console.warn(
+                '[blong-browser/playwright] translation harvesting is skipped for a sharded run',
+            );
+        } else {
+            process.env['BLONG_TRANSLATION_SEED'] = JSON.stringify(seed);
+            // Playwright accepts a list, so a suite's own hook runs too and the
+            // harvest does not take it away.
+            translationHooks = {
+                globalSetup: [...hookList(userSetup), hookPath('globalSetup')],
+                globalTeardown: [...hookList(userTeardown), hookPath('globalTeardown')],
+            };
+        }
+    }
     // Port selection: explicit option → PLAYWRIGHT_* env → (CI) a unique pair
     // derived from the package's rush.json index → (local) default 8080/5173 so
     // a single local run reuses your running dev server.
@@ -233,7 +286,7 @@ export function defineBlongConfig(
         projectsOverride ??
         (realmProjects.length > 0 ? [defaultProject!, ...realmProjects] : undefined);
 
-    return defineConfig<IBlongTestOptions>({
+    const config = defineConfig<IBlongTestOptions>({
         testDir: './test',
         testMatch: '**/*.play.ts',
         // Test-level timeout stays generous (network + dev-server compile can be
@@ -309,6 +362,9 @@ export function defineBlongConfig(
             },
         ],
         ...(projects ? {projects} : {}),
+        ...translationHooks,
         ...rest,
     });
+
+    return config;
 }

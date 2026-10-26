@@ -108,6 +108,7 @@ export default model(
                     },
                 },
                 browser: {
+                    navigator: false,
                     title: 'Olympic Campaigns',
                     icon: 'pi pi-trophy',
                     toolbar: [

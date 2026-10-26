@@ -19,6 +19,8 @@ import './App.css';
 import type {IHandlerProxy, ILogger} from '@feasibleone/blong';
 import React from 'react';
 import {BlongProvider, useBlong, type IBlongPortalConfig} from '../../context/BlongContext.js';
+import {collectStart} from '../../i18n/collect.js';
+import {withTranslationReport} from '../../i18n/menu.js';
 import {bgLocale} from '../../primereact/locales.js';
 import {useAppStore} from '../../state/appStore.js';
 import {type IPortalConfig} from '../../storybook.js';
@@ -32,6 +34,7 @@ import {OAuthCallback} from '../OAuthCallback/OAuthCallback.js';
 import {Portal, type IPortalProps} from '../Portal/Portal.js';
 import {Theme, type IThemeConfig} from '../Theme/Theme.js';
 import {ThemeSwitcher} from '../ThemeSwitcher/ThemeSwitcher.js';
+import {LanguageDataRefresh} from './LanguageDataRefresh.js';
 
 const DEFAULT_THEME: IThemeConfig = {
     type: 'compact',
@@ -109,7 +112,10 @@ function AppShell({
             const merged = handler.portalConfigMerge({}, {}) as Promise<IPortalConfig> | undefined;
             Promise.resolve(merged)
                 .then(config => {
-                    if (config) useAppStore.getState().setPortalConfig(config);
+                    // The untranslated-strings page is only reachable from a portal
+                    // that collects, so a normal menu never grows it (`D-634`).
+                    if (config)
+                        useAppStore.getState().setPortalConfig(withTranslationReport(config));
                 })
                 // The composed answer arrives after the suite's own config has
                 // already painted, so the menu (and a realm's brand) changes under
@@ -124,6 +130,33 @@ function AppShell({
                 });
         }
     }, [handler, isAuthenticated]);
+    // The database half of the dictionary. The method names come from the merged
+    // portal configuration, so blong-browser needs no dependency on blong-core and
+    // a suite can point them elsewhere (D-630). Registering the loader does not
+    // call it: login and the language switcher do. Only the label dictionary is
+    // read — a record's own name is translated by the query that reads it, in the
+    // active language, and never in the browser (`D-635`).
+    const mergedPortalConfig = useAppStore(s => s.portal.portalConfig);
+    React.useEffect(() => {
+        const load = mergedPortalConfig?.translation?.load;
+        const store = useAppStore.getState();
+        if (!load?.label) {
+            store.setTranslationLoader(undefined);
+            return;
+        }
+        const methods = handler as unknown as Record<
+            string,
+            ((params: object, $meta: object) => Promise<unknown>) | undefined
+        >;
+        store.setTranslationLoader(async language => {
+            const label = await methods[load.label!]?.({languageCode: language}, {});
+            return {label: label as Record<string, string> | undefined};
+        });
+        // A session that is already up (a restore, or a config that changed under
+        // the reader) gets the newly available dictionary without a reload.
+        if (store.auth.isAuthenticated) void store.languageActivate(store.language);
+    }, [mergedPortalConfig?.translation?.load, handler]);
+
     const loginHandler = React.useCallback(
         async ({username, password}: {username: string; password: string}) => {
             await handler.authLogin({username, password}, {});
@@ -142,12 +175,25 @@ function AppShell({
     };
     // Register the app's per-language translation dictionaries so the UI can
     // apply the user's preferred language (returned at login) to the locale.
+    // An empty map is registered too: composition then answers with the bundled
+    // dictionary, which is all the login screen has before a session exists.
     React.useEffect(() => {
-        const dicts = appConfig.portal?.translations;
-        if (dicts && Object.keys(dicts).length > 0) {
-            useAppStore.getState().setTranslationsByLanguage(dicts);
+        useAppStore.getState().setTranslationsByLanguage(appConfig.portal?.translations ?? {});
+        // Collection is a dev/test facility: the report page and the Playwright
+        // seed writer both read it, and a normal portal never turns it on.
+        if (appConfig.portal?.translation?.collect) collectStart();
+    }, [appConfig.portal?.translations, appConfig.portal?.translation?.collect]);
+
+    // The collector global doubles as the test hook for a language switch: a
+    // Playwright fixture cannot reach the store (it is exposed only behind
+    // `testHook`), and activating a language has to await the database
+    // dictionary rather than only set the locale.
+    React.useEffect(() => {
+        const api = (globalThis as unknown as {__blongI18n?: Record<string, unknown>}).__blongI18n;
+        if (api) {
+            api.activate = (language: string) => useAppStore.getState().languageActivate(language);
         }
-    }, [appConfig.portal?.translations]);
+    }, []);
     const registerPage = appConfig.login?.registerPage;
     const googleEnabled = Boolean(appConfig.google?.baseUrl && appConfig.google?.clientId);
     const onGoogle = React.useCallback(() => {
@@ -235,6 +281,7 @@ export function App({
         >
             <PrimeReactProvider>
                 <Theme theme={theme}>
+                    <LanguageDataRefresh />
                     <AppShell
                         loginComponent={loginComponent}
                         portalProps={portalProps}

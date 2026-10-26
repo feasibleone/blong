@@ -94,6 +94,8 @@ export function mergePortalConfigs(
     if (languages !== undefined) config.languages = languages;
     const translations = firstSet(providers, 'translations');
     if (translations !== undefined) config.translations = translations;
+    const translation = firstSet(providers, 'translation');
+    if (translation !== undefined) config.translation = translation;
 
     const menu: MenuEntry[] = [];
     const rightMenu: MenuEntry[] = [];

@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-import {library} from '@feasibleone/blong';
+import {type IMeta, library} from '@feasibleone/blong';
 
 type KnexQb = any;
 
@@ -107,6 +107,89 @@ async function writeCounter(qb: KnexQb, counterName: string, counterValue: numbe
         .merge({counterValue: qb.raw('GREATEST(counterValue, ?)', [counterValue])});
 }
 
+/** The type alias and name of the resource that owns seeded translation rows. */
+const SEED_TYPE_ALIAS = 'core.seed';
+const SEED_NAME = 'core.seed';
+
+/**
+ * The seed actor — a `core.resource` row that owns everything a seed wrote.
+ *
+ * It has no `access.user` row and no credential, so it cannot log in; it exists
+ * only so a production seed can tell its own rows from a user's edit, which is
+ * what makes "the seed wins, but not over an edit" possible without a global
+ * rule change (`D-626`, T-291). Minted lazily, so a database that never seeds
+ * translations never grows it.
+ */
+async function seedActor(qb: KnexQb): Promise<string> {
+    const find = async (): Promise<string | undefined> => {
+        const row = await qb
+            .select('core_resource.resourceId')
+            .from('core_resource')
+            .join('core_type', 'core_resource.typeId', 'core_type.typeId')
+            .where('core_type.typeAlias', SEED_TYPE_ALIAS)
+            .where('core_resource.resourceName', SEED_NAME)
+            .first();
+        return row ? bufToUuid(row.resourceId) : undefined;
+    };
+    const found = await find();
+    if (found) return found;
+
+    const typeId = await ensureType(qb, SEED_TYPE_ALIAS);
+    const candidate = '478db89f-21da-45c8-8ef5-ada5402579bf';
+    await qb('core_resource')
+        .insert({resourceId: uuidBuf(candidate), resourceName: SEED_NAME, typeId})
+        .onConflict()
+        .ignore();
+    // A concurrent start may have won the insert; the stored id is the actor.
+    return (await find()) ?? candidate;
+}
+
+/**
+ * Parse a translation seed block into pairs.
+ *
+ * The format is the one a person edits by hand: one pair per line, split on the
+ * FIRST separator so a value may contain it, blank lines ignored, and an empty
+ * value skipped — that is the collector's TODO marker, never a translation
+ * (`D-631`). `keyParser` lets the resource seed split `typeAlias|name` without
+ * taking the `|` out of the general rule.
+ */
+function parseSeedLines(
+    content: string | undefined,
+    keyParser?: (key: string) => {key: string; qualifier?: string} | undefined,
+): Array<{key: string; value: string; qualifier?: string}> {
+    const pairs: Array<{key: string; value: string; qualifier?: string}> = [];
+    for (const raw of (content ?? '').split(/\r?\n/)) {
+        const line = raw.trim();
+        if (!line) continue;
+        const at = line.indexOf('=');
+        if (at < 0) continue;
+        const rawKey = line.slice(0, at).trim();
+        const value = line.slice(at + 1).trim();
+        if (!rawKey || !value) continue;
+        const parsed = keyParser ? keyParser(rawKey) : {key: rawKey};
+        if (!parsed) continue;
+        pairs.push({...parsed, value});
+    }
+    return pairs;
+}
+
+/**
+ * Stamp a translation row with the authenticated editor.
+ *
+ * The id is the caller's `$meta.auth.actorId` — the access user's resource id —
+ * so a hand correction stops being the seed's row to replace (`D-626`). A call
+ * without an actor (a seed, a script) leaves `editorId` null, which the merge
+ * reads as "nobody owns it yet". The hex string is converted by the generic
+ * write path, so this returns the value the column expects on the wire.
+ */
+function editorStamp($meta: IMeta | undefined): {editorId?: string; editedAt: Date} {
+    const actorId = $meta?.auth?.actorId;
+    return {
+        ...(typeof actorId === 'string' && actorId ? {editorId: actorId} : {}),
+        editedAt: new Date(),
+    };
+}
+
 /** The core.db helpers, as a handler sees them: `lib as unknown as CoreLib`. */
 export type CoreLib = {
     uuidBuf: typeof uuidBuf;
@@ -114,6 +197,20 @@ export type CoreLib = {
     newUuid: typeof newUuid;
     ensureType: typeof ensureType;
     nextCounter: typeof nextCounter;
+    seedActor: typeof seedActor;
+    parseSeedLines: typeof parseSeedLines;
+    editorStamp: typeof editorStamp;
 };
 
-export default library((): CoreLib => ({uuidBuf, bufToUuid, newUuid, ensureType, nextCounter}));
+export default library(
+    (): CoreLib => ({
+        uuidBuf,
+        bufToUuid,
+        newUuid,
+        ensureType,
+        nextCounter,
+        seedActor,
+        parseSeedLines,
+        editorStamp,
+    }),
+);

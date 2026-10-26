@@ -531,6 +531,10 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
         ) {
             const {method} = $meta;
             const [subject, object, operation] = method!.split('.');
+            // The language this read answers in: a translated column is joined and
+            // coalesced with the stored name, so no data is translated in the client.
+            // `@@D-635`
+            const language = requestLanguage($meta);
             // `{subject}.dropdown.list` — auto-bound dropdown lists for every
             // resource-backed table of the subject (see `_dropdownList`).
             if (object === 'dropdown' && operation === 'list') {
@@ -762,21 +766,25 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         )?.constraints?.primaryKey ?? `${object}Id`;
                     const {query: joined, selections: labelSelections} = attachLabelJoins(
                         qb(table),
+                        qb.raw,
                         objectSchema,
                         this.config,
                         subject,
                         object,
                         table,
                         labels,
+                        language,
                     );
                     // The row's own display name arrives with it, not from a second
                     // statement. @@D-619
                     const {query: named, selection: nameSelection} = attachResourceName(
                         joined,
+                        qb.raw,
                         opts,
                         table,
                         keyName,
                         object,
+                        language,
                     );
                     let query = named;
                     const joinSelections = nameSelection
@@ -860,12 +868,14 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     const opts = tableOptions(objectSchema, this.config, subject, object);
                     const {query: joined, selections: labelSelections} = attachLabelJoins(
                         qb(table),
+                        qb.raw,
                         objectSchema,
                         this.config,
                         subject,
                         object,
                         table,
                         labels,
+                        language,
                     );
                     // The row's own display name arrives with it, not from a second
                     // statement. The key is the table's declared one, so a table whose
@@ -873,6 +883,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     // @@D-619
                     const {query: named, selection: nameSelection} = attachResourceName(
                         joined,
+                        qb.raw,
                         opts,
                         table,
                         (
@@ -881,6 +892,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                                 | undefined
                         )?.constraints?.primaryKey ?? `${object}Id`,
                         object,
+                        language,
                     );
                     const joinSelections = nameSelection
                         ? [...labelSelections, nameSelection]
@@ -1621,10 +1633,26 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 if (!isResourceBacked) continue;
                 const typeAlias = dropdown?.typeAlias ?? `${s}.${object}`;
                 const labelColumn = dropdown?.labelColumn ?? 'resourceName';
+                // A dropdown is data, so it is translated by the query that produces
+                // it, in the caller's language, with the stored name as fallback —
+                // the widget never rewrites an option label. `@@D-635`
+                const language = requestLanguage($meta);
+                const translate = !!language && labelColumn === 'resourceName';
                 let query = qb('core_resource as r')
                     .join('core_type as t', 't.typeId', 'r.typeId')
-                    .where('t.typeAlias', typeAlias)
-                    .select('r.resourceId', `r.${labelColumn} as label`);
+                    .where('t.typeAlias', typeAlias);
+                if (translate) {
+                    query = query.leftJoin({r_t: 'core_translation'}, builder => {
+                        builder.on('r_t.resourceId', '=', 'r.resourceId');
+                        builder.onVal('r_t.languageCode', '=', language!);
+                    });
+                }
+                query = translate
+                    ? query.select(
+                          'r.resourceId',
+                          qb.raw('COALESCE(r_t.translatedName, r.resourceName) as label'),
+                      )
+                    : query.select('r.resourceId', `r.${labelColumn} as label`);
                 if (dropdown?.joinTable) {
                     const joinColumn = dropdown.joinColumn ?? `${object}Id`;
                     query = query.join(
@@ -1954,24 +1982,115 @@ async function joinResourceNames(
 }
 
 /**
+ * The language a read should answer in, taken from `$meta.language`.
+ *
+ * A gateway sets it from the token's `language` claim, or from the
+ * `x-blong-language` header the browser sends with its active language. English
+ * needs no join at all: the stored name *is* the English name and every translated
+ * column falls back to it, so `undefined` means "read the base table". `@@D-635`
+ */
+function requestLanguage($meta?: Partial<IMeta>): string | undefined {
+    const declared = ($meta as {language?: unknown} | undefined)?.language;
+    const languageId =
+        typeof declared === 'string'
+            ? declared
+            : (declared as {languageId?: unknown} | undefined)?.languageId;
+    if (typeof languageId !== 'string' || !languageId) return undefined;
+    return /^en(-|_|$)/i.test(languageId) ? undefined : languageId;
+}
+
+/**
+ * Left join `core_translation` for one resource alias and project the name in the
+ * requested language, falling back to the stored one.
+ *
+ * `resourceAlias` is a `core_resource` alias already joined into the statement; the
+ * translation alias is derived from it, so two keys to one table (an athlete and a
+ * coach, both people) never share a join. `raw` is the knex instance's own builder,
+ * because a `COALESCE` cannot be expressed as a column name. `@@D-635`
+ */
+function attachTranslationJoin(
+    query: Knex.QueryBuilder,
+    raw: Knex['raw'],
+    resourceAlias: string,
+    nameColumn: string,
+    language: string,
+    field: string,
+): {query: Knex.QueryBuilder; selection: Knex.Raw} {
+    const alias = `${resourceAlias}_t`;
+    const joined = query.leftJoin({[alias]: 'core_translation'}, builder => {
+        builder.on(`${alias}.resourceId`, '=', `${resourceAlias}.resourceId`);
+        builder.onVal(`${alias}.languageCode`, '=', language);
+    });
+    return {
+        query: joined,
+        selection: raw('COALESCE(??.translatedName, ??.??) as ??', [
+            alias,
+            resourceAlias,
+            nameColumn,
+            field,
+        ]),
+    };
+}
+
+/**
  * Project the row's own display name in the same statement as the row.
  *
  * A resource-backed table keeps its display name in `core_resource.resourceName`,
  * keyed by the row's own key — the same shape as a label join, so a read can name it
- * with one left join and one selection instead of a second query per result. A table
- * declaring `resource: {nameColumn}` has a real display column and needs neither.
- * `@@D-619`
+ * with one left join and one selection instead of a second query per result.
+ *
+ * A table declaring `resource: {nameColumn}` keeps the name in a column of its own
+ * instead, and the row is what a caller reads, so the translation replaces that
+ * column **in place**: the selection is appended after `<table>.*` and MySQL
+ * resolves a repeated column name to the last one, which leaves an English row
+ * untouched and a translated row translated. `@@D-619` `@@D-635`
  */
 function attachResourceName(
     query: Knex.QueryBuilder,
+    raw: Knex['raw'],
     opts: IResolvedTableOptions,
     table: string,
     keyName: string,
     object: string,
-): {query: Knex.QueryBuilder; selection?: string} {
-    if (!opts.resource || opts.nameColumn) return {query};
+    language?: string,
+): {query: Knex.QueryBuilder; selection?: string | Knex.Raw} {
+    if (!opts.resource) return {query};
+    if (opts.nameColumn) {
+        // Nothing to join for English: the column already holds the stored name.
+        if (!language) return {query};
+        const alias = 'name_translation';
+        const joined = query.leftJoin({[alias]: 'core_translation'}, builder => {
+            builder.on(`${alias}.resourceId`, '=', `${table}.${keyName}`);
+            builder.onVal(`${alias}.languageCode`, '=', language);
+        });
+        return {
+            query: joined,
+            selection: raw('COALESCE(??.translatedName, ??.??) as ??', [
+                alias,
+                table,
+                opts.nameColumn,
+                opts.nameColumn,
+            ]),
+        };
+    }
+    const joined = query.leftJoin(
+        'core_resource',
+        'core_resource.resourceId',
+        `${table}.${keyName}`,
+    );
+    if (language) {
+        const translated = attachTranslationJoin(
+            joined,
+            raw,
+            'core_resource',
+            'resourceName',
+            language,
+            `${object}Name`,
+        );
+        return {query: translated.query, selection: translated.selection};
+    }
     return {
-        query: query.leftJoin('core_resource', 'core_resource.resourceId', `${table}.${keyName}`),
+        query: joined,
         selection: `core_resource.resourceName as ${object}Name`,
     };
 }
@@ -1996,13 +2115,15 @@ function attachResourceName(
  */
 function attachLabelJoins(
     query: Knex.QueryBuilder,
+    raw: Knex['raw'],
     objectSchema: IObjectSchema,
     config: {schema?: {tables?: Record<string, number | ISchemaTable | TObject>}} | undefined,
     subject: string,
     object: string,
     table: string,
     labels: unknown,
-): {query: Knex.QueryBuilder; selections: string[]} {
+    language?: string,
+): {query: Knex.QueryBuilder; selections: Array<string | Knex.Raw>} {
     if (!Array.isArray(labels)) return {query, selections: []};
     const definition = resolveTableSpec(
         objectSchema,
@@ -2024,7 +2145,7 @@ function attachLabelJoins(
     if (!wanted.length) return {query, selections: []};
 
     let joined = query;
-    const selections: string[] = [];
+    const selections: Array<string | Knex.Raw> = [];
     for (const labelField of wanted) {
         const fkColumn = `${labelField.slice(0, -'Name'.length)}Id`;
         const declaration = foreign[fkColumn];
@@ -2058,7 +2179,20 @@ function attachLabelJoins(
                 `${alias}.resourceId`,
                 `${table}.${fkColumn}`,
             );
-            selections.push(`${alias}.resourceName as ${labelField}`);
+            if (language) {
+                const translated = attachTranslationJoin(
+                    joined,
+                    raw,
+                    alias,
+                    'resourceName',
+                    language,
+                    labelField,
+                );
+                joined = translated.query;
+                selections.push(translated.selection);
+            } else {
+                selections.push(`${alias}.resourceName as ${labelField}`);
+            }
         }
     }
     return {query: joined, selections};

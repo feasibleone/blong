@@ -11,6 +11,7 @@ import {useState} from 'react';
 import {useAction} from '../../hooks/useAction.js';
 import {Button} from '../Button/Button.js';
 import {Form} from '../Form/Form.js';
+import {useTranslate} from '../../hooks/useText.js';
 
 export interface IReportColumn {
     field: string;
@@ -66,6 +67,9 @@ export function Report({
     exportable = true,
     className = '',
 }: IReportProps) {
+    // The title arrives as a computed string from the model page, so it is a key
+    // the dictionary can answer (`D-625`).
+    const t = useTranslate();
     const [filter, setFilter] = useState<Record<string, unknown>>(defaultFilter ?? {});
 
     const {data, loading, refetch} = useAction<{
@@ -96,7 +100,7 @@ export function Report({
             {/* Filter form */}
             {filterSchema && (
                 <Panel
-                    header="Filters"
+                    header={t('Filters')}
                     toggleable
                     collapsed={!defaultFilter}
                     className="blong-report-filters"
@@ -109,7 +113,7 @@ export function Report({
                         loading={loading}
                     />
                     <Button
-                        label="Run Report"
+                        label={t('Run Report')}
                         icon="pi pi-play"
                         onClick={() => refetch?.()}
                         loading={loading}
@@ -154,7 +158,7 @@ export function Report({
             {/* Data table */}
             <div className="blong-report-table">
                 <Toolbar
-                    left={title ? <h3 className="blong-report-title">{title}</h3> : undefined}
+                    left={title ? <h3 className="blong-report-title">{t(title)}</h3> : undefined}
                     right={
                         <div>
                             <Button

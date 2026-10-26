@@ -76,6 +76,11 @@ export interface IBlongPortalConfig {
      * keys of `translations` (and hides when fewer than two are available).
      */
     languages?: Array<{value: string; label: string}>;
+    /** Database-backed dictionary readers and the collector switch; see `IPortalConfig`. */
+    translation?: {
+        load?: {label?: string; resource?: string};
+        collect?: boolean;
+    };
 }
 
 type AnyHandlerProxy = IHandlerProxy<Record<string, unknown>>;

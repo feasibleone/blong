@@ -242,7 +242,7 @@ export default handler<{
                 $http?: {
                     url?: string;
                     method?: string;
-                    headers?: {authorization?: string};
+                    headers?: Record<string, string>;
                     path?: unknown;
                 };
             },
@@ -255,6 +255,18 @@ export default handler<{
                 $http = $http || {};
                 if (!$http.headers) $http.headers = {};
                 $http.headers.authorization = 'Bearer ' + token;
+            }
+            // The UI's active language rides with every call, so a read answers with
+            // its labels and its record names in the language the reader is looking at.
+            // It is read from the document — where `setLanguage` publishes it — rather
+            // than from the token, because a switch must reach the server without a new
+            // session (`D-635`).
+            const language = isBrowser
+                ? globalThis.document?.documentElement?.dataset['language']
+                : undefined;
+            if (language) {
+                $http = $http || {};
+                $http.headers = {...$http.headers, 'x-blong-language': language};
             }
             if ($http && params) params.$http = $http;
             // An unexpected 401 is surfaced as-is: the automatic pre-send

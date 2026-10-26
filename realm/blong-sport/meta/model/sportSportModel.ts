@@ -63,6 +63,7 @@ export default model(
                 },
                 layouts: {edit: [['identity']]},
                 browser: {
+                    navigator: false,
                     title: 'Sports',
                     icon: 'pi pi-flag',
                     toolbar: [

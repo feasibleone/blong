@@ -35,6 +35,7 @@ import {Controller} from 'react-hook-form';
 import {DropZone} from '../../design/DropZone.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
 import type {FlatLayoutConfig, IResolvedCard, IResolvedTab} from '../../hooks/useLayout.js';
+import {useTranslate} from '../../hooks/useText.js';
 import {PanelMenu, Splitter, SplitterPanel, Steps, TabMenu} from '../../primereact/index.js';
 import {Card} from '../Card/Card.js';
 import {useBlongForm, useBlongFormState, type IFormContext} from '../Form/FormContext.js';
@@ -104,7 +105,10 @@ const noCards: IFormContext['cards'] = {};
  * to the stable FormContext will still trigger a rerender when schema or layout
  * actually changes.
  */
+// The step navigation is icon-only, so its accessible name is the only text the
+// reader (and the collector) sees (`D-625`).
 const RootDeck = memo(function RootDeck() {
+    const translate = useTranslate();
     const formCtx = useBlongForm();
 
     const designCtx = useDesignMode();
@@ -186,9 +190,9 @@ const RootDeck = memo(function RootDeck() {
         ) : null;
 
         if (layoutType === 'steps') {
-            const stepItems = resolvedTabs.map((t: IResolvedTab) => ({
-                label: t.label,
-                icon: t.icon,
+            const stepItems = resolvedTabs.map((tab: IResolvedTab) => ({
+                label: translate(tab.label),
+                icon: tab.icon,
             }));
             const isFirst = activeTabIndex === 0;
             const isLast = activeTabIndex === resolvedTabs.length - 1;
@@ -198,7 +202,7 @@ const RootDeck = memo(function RootDeck() {
                         <button
                             type="button"
                             className={`p-button p-component p-button-text p-button-icon-only m-1${isFirst ? ' p-disabled' : ''}`}
-                            aria-label="Back"
+                            aria-label={translate('Back')}
                             disabled={isFirst}
                             onClick={() => setActiveTabIndex(i => i - 1)}
                         >
@@ -230,10 +234,10 @@ const RootDeck = memo(function RootDeck() {
         // Tabs layout
         const orient = orientation ?? 'top';
         if (orient === 'left' || orient === 'right') {
-            const panelItems = resolvedTabs.map((t: IResolvedTab, i: number) => ({
-                id: t.id,
-                label: t.label,
-                icon: t.icon,
+            const panelItems = resolvedTabs.map((tab: IResolvedTab, i: number) => ({
+                id: tab.id,
+                label: translate(tab.label),
+                icon: tab.icon,
                 className: i === activeTabIndex ? 'p-highlight' : '',
                 command: () => setActiveTabIndex(i),
             }));
@@ -254,9 +258,9 @@ const RootDeck = memo(function RootDeck() {
             );
         }
 
-        const tabItems = resolvedTabs.map((t: IResolvedTab) => ({
-            label: t.label,
-            icon: t.icon,
+        const tabItems = resolvedTabs.map((tab: IResolvedTab) => ({
+            label: translate(tab.label),
+            icon: tab.icon,
         }));
         return (
             <div className="blong-form-tabs">

@@ -40,9 +40,9 @@ export type {InputMaskProps} from 'primereact/inputmask';
 export type {InputNumberProps} from 'primereact/inputnumber';
 export type {InputTextProps} from 'primereact/inputtext';
 export type {InputTextareaProps} from 'primereact/inputtextarea';
+export type {MenuProps} from 'primereact/menu';
 export type {MenubarProps} from 'primereact/menubar';
 export type {MenuItem} from 'primereact/menuitem';
-export type {MenuProps} from 'primereact/menu';
 export type {MessageProps} from 'primereact/message';
 export type {MultiSelectProps} from 'primereact/multiselect';
 export type {OverlayPanelProps} from 'primereact/overlaypanel';
@@ -98,10 +98,10 @@ import {FileUpload as PrimeFileUpload} from 'primereact/fileupload';
 import {Image as PrimeImage} from 'primereact/image';
 import {InputMask as PrimeInputMask} from 'primereact/inputmask';
 import {InputNumber as PrimeInputNumber} from 'primereact/inputnumber';
-import {InputText as PrimeInputText} from 'primereact/inputtext';
+import {InputText as PrimeInputText, type InputTextProps} from 'primereact/inputtext';
 import {InputTextarea as PrimeInputTextarea} from 'primereact/inputtextarea';
-import {Menubar as PrimeMenubar} from 'primereact/menubar';
 import {Menu as PrimeMenu} from 'primereact/menu';
+import {Menubar as PrimeMenubar} from 'primereact/menubar';
 import {Message as PrimeMessage} from 'primereact/message';
 import {MultiSelect as PrimeMultiSelect} from 'primereact/multiselect';
 import {OverlayPanel as PrimeOverlayPanel} from 'primereact/overlaypanel';
@@ -125,6 +125,7 @@ import {TreeSelect as PrimeTreeSelect} from 'primereact/treeselect';
 import {TreeTable as PrimeTreeTable} from 'primereact/treetable';
 import React from 'react';
 import {Text} from '../components/Text/Text.js';
+import {usePlaceholder} from '../hooks/useText.js';
 import {useAppStore} from '../state/appStore.js';
 
 import type {AutoCompleteProps} from 'primereact/autocomplete';
@@ -144,10 +145,9 @@ import type {FileUploadProps} from 'primereact/fileupload';
 import type {ImageProps} from 'primereact/image';
 import type {InputMaskProps} from 'primereact/inputmask';
 import type {InputNumberProps} from 'primereact/inputnumber';
-import type {InputTextProps} from 'primereact/inputtext';
 import type {InputTextareaProps} from 'primereact/inputtextarea';
-import type {MenubarProps} from 'primereact/menubar';
 import type {MenuProps} from 'primereact/menu';
+import type {MenubarProps} from 'primereact/menubar';
 import type {MessageProps} from 'primereact/message';
 import type {MultiSelectProps} from 'primereact/multiselect';
 import type {OverlayPanelProps} from 'primereact/overlaypanel';
@@ -170,7 +170,12 @@ import type {TreeSelectProps} from 'primereact/treeselect';
 import type {TreeTableProps} from 'primereact/treetable';
 
 // Avatar — shape:'square', size:'normal', imageAlt:'avatar'
-export function Avatar({shape = 'square', size = 'normal', imageAlt = 'avatar', ...props}: AvatarProps) {
+export function Avatar({
+    shape = 'square',
+    size = 'normal',
+    imageAlt = 'avatar',
+    ...props
+}: AvatarProps) {
     return (
         <PrimeAvatar
             shape={shape}
@@ -510,6 +515,7 @@ export function Dropdown({
     dropdownIcon = 'pi pi-chevron-down',
     scrollHeight = '200px',
     filterMatchMode = 'contains',
+    placeholder,
     ...props
 }: DropdownProps) {
     return (
@@ -517,6 +523,7 @@ export function Dropdown({
             dropdownIcon={dropdownIcon}
             scrollHeight={scrollHeight}
             filterMatchMode={filterMatchMode}
+            {...usePlaceholder(placeholder)}
             {...props}
         />
     );
@@ -589,8 +596,13 @@ export function InputNumber({
 }
 
 // InputText — no meaningful non-null/non-false defaults (validateOnly:false is the default)
-export function InputText(props: InputTextProps) {
-    return <PrimeInputText {...props} />;
+export function InputText({placeholder, ...props}: InputTextProps) {
+    return (
+        <PrimeInputText
+            {...usePlaceholder(placeholder)}
+            {...props}
+        />
+    );
 }
 
 // InputTextarea — no meaningful non-null defaults (autoResize:false is default)
@@ -648,6 +660,7 @@ export function MultiSelect({
     removeIcon = 'pi pi-times-circle',
     selectedItemsLabel = '{0} items selected',
     tabIndex = 0,
+    placeholder,
     ...props
 }: MultiSelectProps) {
     return (
@@ -659,6 +672,7 @@ export function MultiSelect({
             removeIcon={removeIcon}
             selectedItemsLabel={selectedItemsLabel}
             tabIndex={tabIndex}
+            {...usePlaceholder(placeholder)}
             {...props}
         />
     );
@@ -910,6 +924,7 @@ export function TreeSelect({
     filterBy = 'label',
     filterMode = 'lenient',
     selectionMode = 'single',
+    placeholder,
     ...props
 }: TreeSelectProps) {
     return (
@@ -920,6 +935,7 @@ export function TreeSelect({
             filterBy={filterBy}
             filterMode={filterMode}
             selectionMode={selectionMode}
+            {...usePlaceholder(placeholder)}
             {...props}
         />
     );

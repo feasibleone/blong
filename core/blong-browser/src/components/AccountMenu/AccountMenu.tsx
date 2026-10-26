@@ -1,11 +1,11 @@
 import './AccountMenu.css';
 
 import React, {useEffect, useMemo, useRef} from 'react';
-import {Avatar, Menu} from '../../primereact/index.js';
-import type {MenuItem} from '../../primereact/index.js';
 import {useBlong} from '../../context/BlongContext.js';
-import {useAppStore} from '../../state/appStore.js';
 import {useText} from '../../hooks/useText.js';
+import type {MenuItem} from '../../primereact/index.js';
+import {Avatar, Menu} from '../../primereact/index.js';
+import {useAppStore} from '../../state/appStore.js';
 
 /**
  * AccountMenu — the top-right account element in the portal menubar.
@@ -115,9 +115,10 @@ export function AccountMenu({profilePage, profileGet}: IAccountMenuProps) {
     const openProfile = React.useCallback(async () => {
         if (!page) return;
         try {
-            const resolved = (await (handler as Record<string, HandlerCall>)[
-                `component/${page}`
-            ]({}, {})) as {
+            const resolved = (await (handler as Record<string, HandlerCall>)[`component/${page}`](
+                {},
+                {},
+            )) as {
                 title?: string;
                 component: () => Promise<React.ComponentType>;
             };
@@ -125,7 +126,7 @@ export function AccountMenu({profilePage, profileGet}: IAccountMenuProps) {
             openTab({
                 id: `page-${page}`,
                 actionName: page,
-                title: resolved.title ?? profileLabel,
+                title: resolved.title ?? profileLabel ?? '',
                 component,
             });
         } catch {
@@ -136,7 +137,11 @@ export function AccountMenu({profilePage, profileGet}: IAccountMenuProps) {
     const model = useMemo<MenuItem[]>(() => {
         const items: MenuItem[] = [];
         if (page) {
-            items.push({label: profileLabel, icon: 'pi pi-user', command: () => void openProfile()});
+            items.push({
+                label: profileLabel,
+                icon: 'pi pi-user',
+                command: () => void openProfile(),
+            });
             items.push({separator: true});
         }
         items.push({label: signOutLabel, icon: 'pi pi-sign-out', command: () => void onLogout()});
@@ -153,7 +158,12 @@ export function AccountMenu({profilePage, profileGet}: IAccountMenuProps) {
                 onClick={e => menuRef.current?.toggle(e)}
                 title={profile?.name}
             />
-            <Menu model={model} popup ref={menuRef} className="blong-account-menu__menu" />
+            <Menu
+                model={model}
+                popup
+                ref={menuRef}
+                className="blong-account-menu__menu"
+            />
         </div>
     );
 }

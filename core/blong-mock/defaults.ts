@@ -22,6 +22,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
     const keyField = spec.keyField ?? `${object}Id`;
     const nameField = spec.nameField ?? `${object}.${object}Name`;
     const openLayout = spec.openLayout ?? 'edit';
+    const browserNavigator = spec.browser?.navigator ?? true;
 
     // ── Master-detail (IModelSpec.details) ─────────────────────────────────
     // Each detail entity becomes an array property at the SAME level as the
@@ -151,6 +152,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                     delete: `${subject}.${object}.remove`,
                 },
                 resultSet: object,
+                navigator: browserNavigator,
                 toolbar: [
                     {
                         label: 'Create',
@@ -188,11 +190,16 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                 edit: editLayout,
                 browse: {
                     type: 'split',
-                    panels: [
-                        {size: 20, minSize: 10, cards: ['navigator']},
-                        {size: 50, minSize: 30, cards: ['browse']},
-                        {size: 30, minSize: 15, cards: ['detail']},
-                    ],
+                    panels: browserNavigator
+                        ? [
+                              {size: 20, minSize: 10, cards: ['navigator']},
+                              {size: 50, minSize: 30, cards: ['browse']},
+                              {size: 30, minSize: 15, cards: ['detail']},
+                          ]
+                        : [
+                              {size: 70, minSize: 30, cards: ['browse']},
+                              {size: 30, minSize: 15, cards: ['detail']},
+                          ],
                 },
             },
             reports: {},

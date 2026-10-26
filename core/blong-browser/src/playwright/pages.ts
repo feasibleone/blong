@@ -125,12 +125,31 @@ export function openPages(
         test(`${docsOnly ? 'document' : 'open'} ${page.method}`, async ({portal}) => {
             await portal.menuClick(page.method);
             const searchText = page.searchText ?? defaultSearchText;
+            const wantsData = page.waitForTableData ?? waitForTableData;
             if (searchText !== undefined) {
+                // The first read has to settle **before** the box is filled: its rows are
+                // already in flight, and a search committed underneath them is answered
+                // after the capture without ever reaching it. Then the box is debounced
+                // (350 ms) and the search runs on the server, so typing is not filtering
+                // either — the answer to the filtered read is what is waited for.
+                // `@@F-603`
+                if (wantsData) await portal.waitForTableData();
+                const [subject, object] = page.method.split('.');
+                const filtered = portal.page
+                    .waitForResponse(
+                        response =>
+                            response.request().method() === 'POST' &&
+                            response.url().includes(`/rpc/${subject}/${object}/find`),
+                        {timeout: 15_000},
+                    )
+                    .then(() => true)
+                    .catch(() => false);
                 await portal.page.getByTestId('browse-search').fill(searchText);
-                // Filtering is client-side and re-renders after a keystroke batch.
-                await portal.page.waitForTimeout(300);
+                // A page whose data method is not `<subject>.<object>.find` (a report)
+                // answers nothing this can match, so the debounce is waited out instead.
+                if (!(await filtered)) await portal.page.waitForTimeout(600);
             }
-            if (page.waitForTableData ?? waitForTableData) await portal.waitForTableData();
+            if (wantsData) await portal.waitForTableData();
             const target =
                 page.region === undefined ? portal.page : portal.page.locator(page.region).first();
             if (!docsOnly) {

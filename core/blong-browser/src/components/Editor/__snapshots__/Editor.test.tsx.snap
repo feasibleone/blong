@@ -25103,7 +25103,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
         class="blong-toolbar-left"
       >
         <button
-          aria-label="Save"
+          aria-label="Запази"
           class="p-button p-component p-button-icon-only mr-2"
           data-testid="editor-save"
           form="_r_16_"
@@ -25119,7 +25119,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
           </span>
         </button>
         <button
-          aria-label="Reset"
+          aria-label="Отмени"
           class="p-button p-component p-button-icon-only mr-2"
           data-testid="editor-cancel"
           type="button"

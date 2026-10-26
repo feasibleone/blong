@@ -4,7 +4,8 @@ role:
   # `accessLogin`).  Because this is the SHARED production seed, any realm that
   # grants a user the `Admin` role gets login eligibility for free — realm
   # seeds only MERGE their own capabilities into this role, never repeat it.
-  Admin: loginCapability
+  # It also carries `translationManage`, the right to edit the dictionary itself.
+  Admin: loginCapability,translationManage
 capability:
   guestBasic: accessTestGuest,access.profile.get
   # The framework realm's reads, contributed by `core/blong-realm` — the seed lives
@@ -24,7 +25,24 @@ capability:
   # The well-known `accessLogin` action — grants the right to establish/renew a
   # session (the login-eligibility gate is always on).  Grant it to any other
   # role that may log in.
-  loginCapability: accessLogin
+  #
+  # The dictionary reads ride along, because a translation is not a privilege: every
+  # screen a caller with a session reaches is rendered through the same labels, and a
+  # caller refused `core.label.list` sees the whole UI in English. `blong-core` cannot
+  # ship this list itself — it is a library realm with no `adapter/db`, so a seed asset
+  # of its own would be dispatched to the generic knex merge and fail at boot (the same
+  # reason `blongRealmRead` lives here). `@@D-635`
+  loginCapability: >-
+    accessLogin,
+    core.label.list,core.translation.list
+  # Editing the dictionary is a privilege and stays with the administrator: the two
+  # pages that write it are `core.label` and `core.translation` model pages, and they
+  # need the reads their browse and open views make as well.
+  translationManage: >-
+    core.label.list,core.label.find,core.label.get,
+    core.label.add,core.label.edit,core.label.remove,
+    core.translation.list,core.translation.find,core.translation.get,
+    core.translation.add,core.translation.edit,core.translation.remove
 policy:
   password:
     credentialType: password

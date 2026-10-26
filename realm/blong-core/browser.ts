@@ -2,7 +2,12 @@
 /**
  * blong-core/browser.ts — Core utility realm entry point.
  *
- * Auto-discovers schema definitions and DB config from the `meta/` folder.
+ * Discovers the schema's browser half: the translation editor pages
+ * (`meta/model`) and the subject namespace (`browser/orchestrator/subject`) that
+ * lets the portal dispatch `core.*` to the gateway.
+ *
+ * `meta/db` and `meta/type` are NOT globbed — they are server-side table
+ * definitions and would not bundle.
  *
  * Consumed by suites that need the reusable resource/type/property/triple
  * /translation/path schema objects:
@@ -16,10 +21,14 @@ import {realm} from '@feasibleone/blong';
 
 export default realm(() => ({
     url: import.meta.url,
-    children: globalThis.window ? import.meta.glob(['./meta/**/*.ts']) : ['./meta'],
+    children: globalThis.window
+        ? import.meta.glob(['./meta/model/**/*.ts', './browser/**/*.ts'])
+        : ['./meta/model', './browser'],
     config: {
         default: {
             meta: true,
+            orchestrator: true,
+            component: true,
         },
     },
 }));

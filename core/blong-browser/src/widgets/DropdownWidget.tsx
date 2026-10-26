@@ -5,6 +5,7 @@ import {useEffect, useRef, useState} from 'react';
 import {useWatch, type Control} from 'react-hook-form';
 import {useBlongForm} from '../components/Form/FormContext.js';
 import {useBlong} from '../context/BlongContext.js';
+import {useOptionLabel} from '../hooks/useText.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
 
 type SelectOption = IDropdownOption;
@@ -43,6 +44,11 @@ function DropdownCore({
         parent,
     } = schema.widget ?? {};
     const {handler} = useBlong();
+    // A static option label is one the model declares, so it is a dictionary key.
+    // An option the server produced is data — translated by the query that read
+    // it, in the language the read asked for — and is rendered exactly as it
+    // arrived (`D-635`).
+    const optionLabel = useOptionLabel();
 
     const [options, setOptions] = useState<SelectOption[]>(() =>
         staticOptions ? toOptions(staticOptions) : [],
@@ -110,8 +116,12 @@ function DropdownCore({
     // field. An empty field leaves the list whole, so the first pick is never blocked.
     // @@D-615
     const optionsFilter = schema.widget?.optionsFilter;
+    // Only the model's own option list is translated here; a fetched list is data.
+    const translatedOptions = staticOptions
+        ? options.map(o => ({...o, label: optionLabel(o)}))
+        : options;
     const visibleOptions = optionsFilter
-        ? options.filter(o => {
+        ? translatedOptions.filter(o => {
               const candidate = o as unknown as Record<string, unknown>;
               return Object.entries(optionsFilter).every(([optionProperty, formField]) => {
                   const want = filterValues?.[formField];
@@ -120,11 +130,11 @@ function DropdownCore({
               });
           })
         : parent && parentValue !== undefined
-          ? options.filter(o => {
+          ? translatedOptions.filter(o => {
                 const opt = o as unknown as Record<string, unknown>;
                 return opt[parent] === parentValue || opt['parent'] === parentValue;
             })
-          : options;
+          : translatedOptions;
 
     if (readOnly) {
         const found = visibleOptions.find(o => o.value === value);

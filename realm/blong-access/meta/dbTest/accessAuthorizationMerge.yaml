@@ -33,7 +33,7 @@ user:
     emailAddress: testNoLogin@example.com
     roles: NoLogin
 role:
-  Admin: testManagement,accessModelAdmin,loginCapability,blongRealmRead
+  Admin: testManagement,accessModelAdmin,loginCapability,blongRealmRead,translationManage
   Manager: loginCapability
   Customer: loginCapability
   Guest: guestBasic,loginCapability
@@ -61,6 +61,7 @@ capability:
     blong.flow.find,blong.flow.get,blong.template.find,
     blong.search.find,blong.digest.get,blong.incident.find
 
-  # The well-known `accessLogin` action — grants the right to establish/renew
-  # a session. Every role that may log in must grant it (the gate is always on).
-  loginCapability: accessLogin
+  # `loginCapability` is **not** declared here on purpose: this file replaces the
+  # action list of every capability it names, so repeating the production definition
+  # would drop the dictionary reads that come with it (`meta/db`). Referencing it in
+  # `role` is enough — the roles above only need the edges to point at it.

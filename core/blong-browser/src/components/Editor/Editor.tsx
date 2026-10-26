@@ -23,6 +23,7 @@ import type {IBlongError} from '../../types/action.js';
 import {ActionButton} from '../ActionButton/ActionButton.js';
 import {Form} from '../Form/Form.js';
 import type {ITableSelection} from '../Form/FormContext.js';
+import {useTranslate} from '../../hooks/useText.js';
 
 export interface IEditorProps {
     /** Schema for the entity being edited */
@@ -287,6 +288,9 @@ export function Editor({
     refreshNamespace,
     queryAction,
 }: IEditorProps) {
+    // The toolbar is icon-only, so its labels and titles are the text that has to
+    // be translated and collected (`D-625`).
+    const t = useTranslate();
     const formId = useId();
     const [currentMode, setCurrentMode] = useState<EditorMode>(() =>
         deriveInitialMode(initialModeProp, initialEditMode),
@@ -623,8 +627,8 @@ export function Editor({
                             key={i}
                             type="button"
                             className={`p-button p-component p-button-icon-only mr-2${isDisabled ? ' p-disabled' : ''}`}
-                            aria-label={btn.label || btn.title}
-                            title={btn.title}
+                            aria-label={t(btn.label || btn.title)}
+                            title={btn.title ? t(btn.title) : undefined}
                             disabled={isDisabled}
                             data-testid={`editor-${testIdSuffix}`}
                             onClick={() => handleToolbarAction(actionName)}
@@ -643,7 +647,7 @@ export function Editor({
                             type="submit"
                             form={formId}
                             className={`p-button p-component p-button-icon-only mr-2${isDisabled ? ' p-disabled' : ''}`}
-                            aria-label={btn.label}
+                            aria-label={t(btn.label)}
                             disabled={isDisabled}
                             data-testid="editor-save"
                         >
@@ -677,7 +681,7 @@ export function Editor({
                                 <button
                                     type="button"
                                     className={`p-button p-component p-button-icon-only${designMode ? ' p-button-success' : ''}`}
-                                    aria-label={btn.label}
+                                    aria-label={t(btn.label)}
                                     aria-pressed={designMode}
                                     onClick={() => handleToolbarAction(actionName)}
                                 >

@@ -17,8 +17,10 @@ import {useState} from 'react';
 import {useBlong} from '../../context/BlongContext.js';
 import {useAppStore} from '../../state/appStore.js';
 import {Button} from '../Button/Button.js';
+import {useTranslate} from '../../hooks/useText.js';
 
 export function LoginPopup() {
+    const t = useTranslate();
     const prompt = useAppStore(s => s.loginPrompt);
     const setLoginPrompt = useAppStore(s => s.setLoginPrompt);
     const {handler} = useBlong();
@@ -74,7 +76,7 @@ export function LoginPopup() {
                     />
                 )}
                 <div className="blong-login-popup__field">
-                    <label htmlFor="blong-login-popup-username">Username</label>
+                    <label htmlFor="blong-login-popup-username">{t('Username')}</label>
                     <InputText
                         id="blong-login-popup-username"
                         name="username"
@@ -85,7 +87,7 @@ export function LoginPopup() {
                     />
                 </div>
                 <div className="blong-login-popup__field">
-                    <label htmlFor="blong-login-popup-password">Password</label>
+                    <label htmlFor="blong-login-popup-password">{t('Password')}</label>
                     <Password
                         id="blong-login-popup-password"
                         name="password"

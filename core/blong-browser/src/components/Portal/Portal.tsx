@@ -16,6 +16,7 @@ import './Portal.css';
 import React, {Suspense, useCallback} from 'react';
 import {useBlong} from '../../context/BlongContext.js';
 import {usePortal} from '../../hooks/usePortal.js';
+import {useTranslate} from '../../hooks/useText.js';
 import testid from '../../lib/testid.js';
 import {useAppStore} from '../../state/appStore.js';
 import type {IMenuItem} from '../../types/portal.js';
@@ -60,6 +61,7 @@ async function buildMenuModel(
     items: IMenuItem[] | undefined,
     command: MenuItem['command'],
     handler: ReturnType<typeof useBlong>['handler'],
+    t: (text: string | undefined) => string | undefined,
 ): Promise<MenuItem[] | undefined> {
     if (!items) return undefined;
     return Promise.all(
@@ -77,9 +79,9 @@ async function buildMenuModel(
                     typeof firstChild === 'string' ? firstChild : (firstChild?.method ?? '');
                 const groupId = action.id ?? firstMethod.split('.')[0] ?? '';
                 return {
-                    label: action.title,
+                    label: t(action.title),
                     icon: action.icon,
-                    items: await buildMenuModel(action.items, command, handler),
+                    items: await buildMenuModel(action.items, command, handler, t),
                     ...(groupId && {
                         template: (
                             item: MenuItem,
@@ -117,7 +119,7 @@ async function buildMenuModel(
                 };
                 const menuId = (action.method ?? '').replace(/\./g, '-');
                 return {
-                    label: title,
+                    label: t(title),
                     icon,
                     data: {
                         action: action.method,
@@ -162,6 +164,9 @@ export interface IPortalProps {
 export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
     const {tabs, activeTabId, setActiveTab, closeTab, portalConfig} = usePortal();
     const {handler} = useBlong();
+    // Group and leaf titles are PrimeReact labels, not JSX children, so they are
+    // translated when the menu model is built (`D-625`).
+    const t = useTranslate();
     const openTab = useAppStore(s => s.openTab);
 
     const command = useCallback(
@@ -192,8 +197,8 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
     const activeIndex = tabs.findIndex(t => t.id === activeTabId);
     const [menu, setMenu] = React.useState<MenuItem[] | undefined>(undefined);
     React.useEffect(() => {
-        buildMenuModel(portalConfig?.menu, command, handler).then(setMenu);
-    }, [portalConfig?.menu, command, handler]);
+        buildMenuModel(portalConfig?.menu, command, handler, t).then(setMenu);
+    }, [portalConfig?.menu, command, handler, t]);
 
     const start =
         logo ??

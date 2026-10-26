@@ -125,6 +125,7 @@ export default model(
                     },
                 },
                 browser: {
+                    navigator: false,
                     title: 'Coaching Periods',
                     icon: 'pi pi-user-plus',
                     toolbar: [

@@ -75,6 +75,7 @@ export default model(
                 },
                 layouts: {edit: [['identity']]},
                 browser: {
+                    navigator: false,
                     title: 'Disciplines',
                     icon: 'pi pi-sitemap',
                     toolbar: [

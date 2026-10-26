@@ -317,6 +317,7 @@ words:
   - redeliveries
   - Redis
   - Redux
+  - refetched
   - refetches
   - reflow
   - regen
@@ -504,6 +505,8 @@ ignorePaths:
   - "**/.playwright/**"
   - "**/allure-results/**"
   - "**/dist/**"
+  - "**/build/**"
+  - "**/static/**"
   - "**/storybook-static/**"
   - "**/~.schema.ts"
   - .git

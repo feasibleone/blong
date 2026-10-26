@@ -21,6 +21,7 @@
  */
 import {test as base, expect, type Page} from '@playwright/test';
 import {coverageFixture} from './playwright/coverage.js';
+import {writePendingReport} from './playwright/translate.js';
 
 export {expect, Page};
 
@@ -87,6 +88,28 @@ export interface IBlongTestOptions {
      * would hide the same line in the spec that does *not* expect it.
      */
     blongExpectedBrowserErrors?: readonly string[];
+    /**
+     * UI language the run activates after login.
+     *
+     * The switch goes through `languageActivate`, so the database dictionary for
+     * that language is read before the first assertion — a spec then sees a
+     * translated page, not one that was still English when it captured.
+     */
+    blongLanguage?: string;
+    /**
+     * Opt in to translation harvesting: the seed files a run may add its missing
+     * keys to. Unset means collection is off and nothing is written.
+     *
+     * A test never writes a seed; it writes one pending report, and the run's
+     * `globalTeardown` merges them under a lock (`D-632`).
+     */
+    blongTranslationSeed?: {
+        language?: string;
+        /** Label seed, e.g. `meta/db/bg-coreLabelSeed.yaml`. */
+        label?: string;
+        /** Resource seed, e.g. `meta/db/bg-coreTranslationSeed.yaml`. */
+        translation?: string;
+    };
 }
 
 /** How a spec declares the browser messages it provokes on purpose. */
@@ -405,9 +428,22 @@ export const test = coverageFixture(
         blongPassword: ['admin', {option: true}],
         blongPermissions: [false, {option: true}],
         blongExpectedBrowserErrors: [[], {option: true}],
+        blongLanguage: [undefined as string | undefined, {option: true}],
+        blongTranslationSeed: [
+            undefined as IBlongTestOptions['blongTranslationSeed'],
+            {option: true},
+        ],
 
         portal: async (
-            {page, blongUsername, blongPassword, blongPermissions, blongExpectedBrowserErrors},
+            {
+                page,
+                blongUsername,
+                blongPassword,
+                blongPermissions,
+                blongExpectedBrowserErrors,
+                blongLanguage,
+                blongTranslationSeed,
+            },
             use,
         ) => {
             // Constructed before navigating so the boot itself is watched: a page that
@@ -416,6 +452,14 @@ export const test = coverageFixture(
             // (prefixed `[browser]`) and gives up a wait the moment the page throws,
             // instead of letting every later element wait out its full timeout.
             const portal = new Portal(page, {expected: blongExpectedBrowserErrors});
+
+            // Collection starts before the app boots, so the first authenticated
+            // render is recorded rather than only the screens a spec reopens.
+            if (blongTranslationSeed) {
+                await page.addInitScript(() => {
+                    (window as unknown as {__blongI18nCollect?: boolean}).__blongI18nCollect = true;
+                });
+            }
 
             // Navigate to the app root. Relative (`./`), not `/`: the dev server serves
             // the app under the framework base path (`/s/`, see `defineBlongViteConfig`),
@@ -434,8 +478,47 @@ export const test = coverageFixture(
                 });
             }
 
+            if (blongLanguage) {
+                // The same store the permission escape uses, and only exposed by a
+                // test intent. Activation awaits the database dictionary, so a spec
+                // asserts on a page that is already translated.
+                await page.evaluate(async language => {
+                    const win = window as unknown as {
+                        __blongI18n?: {activate?: (value: string) => Promise<void>};
+                        __blongStore?: {
+                            getState: () => {
+                                languageActivate?: (value: string) => Promise<void>;
+                            };
+                        };
+                    };
+                    // `activate` is the app's own hook (it awaits the database
+                    // dictionary); the store form is the fallback for a portal
+                    // that exposes `testHook`.
+                    if (win.__blongI18n?.activate) await win.__blongI18n.activate(language);
+                    else await win.__blongStore?.getState().languageActivate?.(language);
+                }, blongLanguage);
+                await page.waitForSelector(`html[data-language="${blongLanguage}"]`, {
+                    state: 'attached',
+                    timeout: BLONG_ELEMENT_TIMEOUT,
+                });
+            }
+
             // eslint-disable-next-line @eslint-react/rules-of-hooks -- Playwright fixture `use()`, not a React Hook
             await use(portal);
+
+            if (blongTranslationSeed) {
+                const report = await page.evaluate(() => {
+                    const api = (
+                        window as unknown as {
+                            __blongI18n?: {report?: () => unknown};
+                        }
+                    ).__blongI18n;
+                    return api?.report?.() as
+                        | {language?: string; missing?: string[]; missingResources?: string[]}
+                        | undefined;
+                });
+                if (report) writePendingReport(blongTranslationSeed, report);
+            }
 
             // An uncaught exception is a broken application, whether or not the
             // assertion that followed happened to pass. Reporting it here means the

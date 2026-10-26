@@ -2,8 +2,9 @@
  * ThumbIndex — multi-panel indexer.
  * Supports horizontal tabs, vertical side tabs, and wizard-style steps.
  */
-import './ThumbIndex.css';
 import {TabPanel, TabView} from '../../primereact/index.js';
+import {Text} from '../Text/Text.js';
+import './ThumbIndex.css';
 
 import {useState, type ReactNode} from 'react';
 
@@ -64,12 +65,12 @@ export function ThumbIndex({
             >
                 {flatItems.map(item => (
                     <TabPanel
-                        __TYPE='TabPanel'
+                        __TYPE="TabPanel"
                         key={item.id}
                         header={
                             <span className="blong-thumb-index__tab-header">
                                 {item.icon && <i className={`pi ${item.icon}`} />}
-                                {item.label && <span>{item.label}</span>}
+                                {item.label && <Text>{item.label}</Text>}
                             </span>
                         }
                     >

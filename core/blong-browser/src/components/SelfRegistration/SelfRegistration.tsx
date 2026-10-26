@@ -13,6 +13,7 @@ import {InputText, Message, Password} from '../../primereact/index.js';
 import React, {useState} from 'react';
 import {Button} from '../Button/Button.js';
 import {SocialLoginButton} from '../SocialLoginButton/SocialLoginButton.js';
+import {useTranslate} from '../../hooks/useText.js';
 
 export interface ISelfRegistrationCredentials {
     emailAddress: string;
@@ -59,6 +60,7 @@ export function SelfRegistration({
     loading: externalLoading,
     submitLabel = 'Create account',
 }: ISelfRegistrationProps) {
+    const t = useTranslate();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [emailAddress, setEmailAddress] = useState('');
@@ -141,7 +143,7 @@ export function SelfRegistration({
 
             {/* Registration card — auto-height middle row */}
             <div className="blong-self-registration__card">
-                <p className="blong-self-registration__card-heading">Create your account</p>
+                <p className="blong-self-registration__card-heading">{t('Create your account')}</p>
 
                 {displayError && (
                     <Message

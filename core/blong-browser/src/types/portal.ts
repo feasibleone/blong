@@ -68,6 +68,20 @@ export interface IPortalConfig {
      * keys of `translations` (and hides when fewer than two are available).
      */
     languages?: Array<{value: string; label: string}>;
+    /**
+     * The database half of the dictionary, and the collector switch.
+     *
+     * `load.label` and `load.resource` name the handlers that answer
+     * `{languageCode}` with a dictionary (`core.label.list` and
+     * `core.translation.list` in a suite that attaches blong-core). Naming them
+     * in configuration keeps blong-browser free of a dependency on core, and a
+     * suite may point them elsewhere (`D-630`). `collect` turns the
+     * rendered-string collector on for a dev or test portal.
+     */
+    translation?: {
+        load?: {label?: string; resource?: string};
+        collect?: boolean;
+    };
 }
 
 /** Portal tab state managed by Zustand */
