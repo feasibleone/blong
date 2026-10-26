@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.43.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.42.0...blong-gogo-v1.43.0) (2026-10-26)
+
+
+### Features
+
+* improve the translation handling ([4f3fe4d](https://github.com/feasibleone/blong/commit/4f3fe4d05a4cbed50ab4b58d2ee35efc897101ee))
+
 ## [1.42.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.41.0...blong-gogo-v1.42.0) (2026-10-25)
 
 
