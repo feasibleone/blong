@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.37.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.36.0...blong-docs-v1.37.0) (2026-10-27)
+
+
+### Features
+
+* continuous deployment ([bdcbe34](https://github.com/feasibleone/blong/commit/bdcbe341d0aa57653edde43c9c4fb5fbe8ab6f87))
+
 ## [1.36.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.35.0...blong-docs-v1.36.0) (2026-10-26)
 
 
