@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/feasibleone/blong/compare/blong-party-v1.9.1...blong-party-v1.10.0) (2026-10-27)
+
+
+### Features
+
+* continuous deployment ([bdcbe34](https://github.com/feasibleone/blong/commit/bdcbe341d0aa57653edde43c9c4fb5fbe8ab6f87))
+
 ## [1.9.1](https://github.com/feasibleone/blong/compare/blong-party-v1.9.0...blong-party-v1.9.1) (2026-10-26)
 
 

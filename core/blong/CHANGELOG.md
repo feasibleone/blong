@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.35.1](https://github.com/feasibleone/blong/compare/blong-v1.35.0...blong-v1.35.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* suite version handling ([ce57fee](https://github.com/feasibleone/blong/commit/ce57fee3fc5600018f00e27ee3e9d886c28dab78))
+
 ## [1.35.0](https://github.com/feasibleone/blong/compare/blong-v1.34.0...blong-v1.35.0) (2026-10-26)
 
 

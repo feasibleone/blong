@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.21.0...blong-kopi-v1.22.0) (2026-10-27)
+
+
+### Features
+
+* continuous deployment ([bdcbe34](https://github.com/feasibleone/blong/commit/bdcbe341d0aa57653edde43c9c4fb5fbe8ab6f87))
+
 ## [1.21.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.20.0...blong-kopi-v1.21.0) (2026-10-25)
 
 

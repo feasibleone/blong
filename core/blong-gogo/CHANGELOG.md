@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.43.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.43.0...blong-gogo-v1.43.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* suite version handling ([ce57fee](https://github.com/feasibleone/blong/commit/ce57fee3fc5600018f00e27ee3e9d886c28dab78))
+
 ## [1.43.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.42.0...blong-gogo-v1.43.0) (2026-10-26)
 
 
