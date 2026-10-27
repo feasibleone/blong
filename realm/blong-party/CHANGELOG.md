@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/feasibleone/blong/compare/blong-party-v1.9.0...blong-party-v1.9.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* CI failures ([b88f5d7](https://github.com/feasibleone/blong/commit/b88f5d72114c73bc45fb96fe543c0c81fc09fcbf))
+
 ## [1.9.0](https://github.com/feasibleone/blong/compare/blong-party-v1.8.0...blong-party-v1.9.0) (2026-10-25)
 
 

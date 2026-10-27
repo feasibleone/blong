@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.0](https://github.com/feasibleone/blong/compare/blong-access-v1.12.0...blong-access-v1.13.0) (2026-10-26)
+
+
+### Features
+
+* improve the translation handling ([4f3fe4d](https://github.com/feasibleone/blong/commit/4f3fe4d05a4cbed50ab4b58d2ee35efc897101ee))
+
 ## [1.12.0](https://github.com/feasibleone/blong/compare/blong-access-v1.11.0...blong-access-v1.12.0) (2026-10-25)
 
 

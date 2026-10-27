@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/feasibleone/blong/compare/blong-core-v1.4.1...blong-core-v1.5.0) (2026-10-26)
+
+
+### Features
+
+* improve the translation handling ([4f3fe4d](https://github.com/feasibleone/blong/commit/4f3fe4d05a4cbed50ab4b58d2ee35efc897101ee))
+
 ## [1.4.1](https://github.com/feasibleone/blong/compare/blong-core-v1.4.0...blong-core-v1.4.1) (2026-10-17)
 
 
