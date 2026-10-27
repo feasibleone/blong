@@ -305,6 +305,38 @@ kubectl apply -k system/operator/local
 The tree carries the namespace, the CRD, the operator Deployment, its ServiceAccount and the
 cluster-scoped rights, and the Service its API is reached through.
 
+### Updating it
+
+From this folder, one command:
+
+```bash
+npm run deploy                  # publish this working copy's artifact, apply, wait for the rollout
+BUILD_IMAGE=1 npm run deploy    # also rebuild and import the framework image
+RELEASE=1 FRAMEWORK_VERSION=v1.43.1 npm run deploy
+```
+
+Two things the operator runs, and they change for different reasons. Its **image** is the framework
+(`core/blong-gogo`), so a framework change needs `BUILD_IMAGE=1`; the operator's **artifact** is this
+realm, which it fetches and runs the way every process runs a suite — so a change to `generator.ts`,
+`materialize.ts` or the reconcile path reaches a cluster only when that artifact is republished _and_
+the pod is restarted. `npm run deploy` does both, and only for the operator: no suite tree, no tenant
+declaration, no pods that did not change.
+
+The release form names a published version and builds nothing, which is what a pipeline would run.
+The realm is a release of its own (`blong-kustomize-v<version>`), and that release carries three
+assets: `blong-kustomize-<version>.zip`, its `.sha256`, and `blong-kustomize.zip` as a stable alias
+for `releases/latest/download/`, which is the name `operator-entry.ts` already falls back to. The
+script reads the release prefix and the artifact name from `.github/deployments.json`, so a released
+install names only the version — and the digest travels as an asset rather than as a sentence in the
+release notes, because it is a script that reads it and what it names is the directory the artifact
+lands in.
+
+The steps themselves live in the end-to-end runbook (`test/blong-int-kustomize`, the same code CI
+runs): `deploy.sh` only chooses between them. `machine prepare` with `OPERATOR_ONLY=1` publishes
+`kustomize.zip` to the in-cluster file server, and `operator deploy` regenerates the tree with the
+image and artifact of this run and applies its overlay. Both are there to be called directly when a
+step needs watching — `npm run deploy` is the loop, not a closed door.
+
 Before the first apply:
 
 - **The address, in `.blong_k8src`.** No host is in the source: `operator-entry.ts` declares no

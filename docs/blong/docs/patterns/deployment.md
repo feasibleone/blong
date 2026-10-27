@@ -44,6 +44,25 @@ its fields are what the workflow reads:
 `artifact` is the name the zip is published under; `suite` and `namespace` are the CR's name and
 tenant. A second suite is a second key plus its scenario file — the workflow does not change.
 
+One entry is not a tenant's suite at all: the deployment realm's own install, marked
+`"installer": true`, which `resolve` skips when it looks for the alias a tag names. It is there for
+the other readers of the map — the workflow job that publishes the operator's artifact, and
+`realm/blong-kustomize/deploy.sh`, which resolves a released artifact's URL from the same record
+rather than hardcoding a prefix in a shell script:
+
+```json
+{
+    "operator": {
+        "installer": true,
+        "release": "blong-kustomize",
+        "package": "@feasibleone/blong-kustomize",
+        "packagePath": "realm/blong-kustomize",
+        "scenario": "operator",
+        "artifact": "blong-kustomize.zip"
+    }
+}
+```
+
 No address is in the map: a host belongs to the machine that deploys, so the operator's comes from
 `.blong_k8src` and the suite's portal host from the same file — see
 [where an address comes from](#where-an-address-comes-from).
@@ -71,6 +90,13 @@ its image is pullable yet.
 <scenario>`, zips the target folder, hashes it and attaches it to the release with `gh release
 upload`. The URL the operator receives is the public release asset URL; the digest is the sha256 of
 the bytes that were uploaded.
+
+`operator-artifact` is the same work for the installer rather than for a tenant: it answers a
+`blong-kustomize-v<version>` release and attaches three assets — `blong-kustomize-<version>.zip`, its
+`.sha256`, and `blong-kustomize.zip` as a stable alias for `releases/latest/download/`, which is the
+name the install tree falls back to. The versioned name is what a version installs and the next
+release cannot overwrite; the digest is an asset rather than a sentence in the release notes because
+it is a script that reads it, and what it names is the directory the artifact lands in.
 
 `deploy` builds the JSON-RPC body with `jq -n --arg` — never shell interpolation, because the token
 and the URL are data — and posts it to `secrets.DEPLOY_ENDPOINT` with

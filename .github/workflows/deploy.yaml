@@ -76,6 +76,7 @@ jobs:
                   if [ -z "$alias" ]; then
                       alias=$(jq -r --arg tag "$tag" \
                           'to_entries[]
+                           | select(.value.installer != true)
                            | select(.value.release as $release | $tag | startswith($release + "-v"))
                            | .key' .github/deployments.json | head -n1)
                   fi
@@ -194,6 +195,94 @@ jobs:
               run: |
                   gh release upload "${{ needs.resolve.outputs.tag }}" \
                       "$RUNNER_TEMP/${{ needs.resolve.outputs.artifact }}" \
+                      --clobber
+
+    operator-artifact:
+        name: Build and attach the operator artifact
+        # The deployment realm is not a tenant's suite: its own release publishes the artifact the
+        # operator runs *itself* from, so the job answers the realm's tag and nothing else — a
+        # `blong-kustomize-v<version>` release is what an installer points `OPERATOR_ARTIFACT_URL`
+        # at, and what `realm/blong-kustomize/deploy.sh` resolves in its release form (@@D-654).
+        if: startsWith(github.event.release.tag_name, 'blong-kustomize-v')
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event.release.tag_name }}
+                  fetch-depth: 0
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+
+            - name: Install
+              run: node common/scripts/install-run-rush.js install
+
+            # The coordinates live in `.github/deployments.json`, beside the deployments, because that
+            # is the one place a release reads them from — and `deploy.sh` reads the same record, so
+            # the two cannot disagree about the release prefix or the artifact's name.
+            - name: Read the installer record
+              id: record
+              run: |
+                  set -euo pipefail
+                  tag="${{ github.event.release.tag_name }}"
+                  entry=$(jq -c '.operator' .github/deployments.json)
+                  release=$(jq -r '.release' <<<"$entry")
+                  version="${tag#"${release}-v"}"
+                  if [ "$version" = "$tag" ]; then
+                      echo "::error::$tag is not a $release-v<version> release"
+                      exit 1
+                  fi
+                  echo "package=$(jq -r '.package' <<<"$entry")" >> "$GITHUB_OUTPUT"
+                  echo "scenario=$(jq -r '.scenario' <<<"$entry")" >> "$GITHUB_OUTPUT"
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
+                  # Two names for one file, because they answer two questions: the versioned one is
+                  # what a version installs and cannot be overwritten by the next release, and the
+                  # stable one is what `operator-entry.ts` already names as its default
+                  # (`releases/latest/download/blong-kustomize.zip`).
+                  echo "versioned=$(jq -r '.artifact' <<<"$entry" | sed "s/\.zip$/-$version.zip/")" >> "$GITHUB_OUTPUT"
+                  echo "alias=$(jq -r '.artifact' <<<"$entry")" >> "$GITHUB_OUTPUT"
+
+            - name: Build the realm
+              run: node common/scripts/install-run-rush.js build --to ${{ steps.record.outputs.package }}
+
+            - name: Deploy the operator scenario
+              run: |
+                  node common/scripts/install-run-rush.js deploy \
+                      --scenario ${{ steps.record.outputs.scenario }} \
+                      --target-folder "$RUNNER_TEMP/deploy-operator" \
+                      --overwrite
+
+            - name: Zip it and hash it
+              id: zip
+              run: |
+                  set -euo pipefail
+                  cd "$RUNNER_TEMP/deploy-operator"
+                  # The operator runs this directory: the realm's entry (`operator-entry.ts`), the
+                  # framework it carries and the link script's relative links — which is what makes
+                  # the cache it is unpacked into readable from wherever it is mounted (D-476).
+                  zip -qr "$RUNNER_TEMP/${{ steps.record.outputs.versioned }}" .
+                  cp "$RUNNER_TEMP/${{ steps.record.outputs.versioned }}" \
+                     "$RUNNER_TEMP/${{ steps.record.outputs.alias }}"
+                  digest=$(sha256sum "$RUNNER_TEMP/${{ steps.record.outputs.versioned }}" | awk '{print $1}')
+                  # The digest travels as an asset rather than as a sentence in the release body,
+                  # because it is read by a script: `deploy.sh` fetches it so the operator's cache and
+                  # volume identity follow the artifact rather than its version (D-469), and nothing
+                  # has to download and hash the zip to find out what it is.
+                  echo "$digest  ${{ steps.record.outputs.versioned }}" \
+                      > "$RUNNER_TEMP/${{ steps.record.outputs.versioned }}.sha256"
+                  echo "sha256=$digest"
+
+            - name: Attach them to the release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  gh release upload "${{ github.event.release.tag_name }}" \
+                      "$RUNNER_TEMP/${{ steps.record.outputs.versioned }}" \
+                      "$RUNNER_TEMP/${{ steps.record.outputs.versioned }}.sha256" \
+                      "$RUNNER_TEMP/${{ steps.record.outputs.alias }}" \
                       --clobber
 
     deploy:

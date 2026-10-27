@@ -25,9 +25,17 @@ Commands
       image and the artifacts come from the environment (ARTIFACT_URL,
       OPERATOR_ARTIFACT_URL, FRAMEWORK_IMAGE, FRAMEWORK_VERSION) or a flag.
 
+  blong-int-kustomize operator deploy [--cluster=NAME]
+      The operator's half on its own: regenerate its install tree from this revision and make the
+      cluster run it. Nothing is built or published — the image and the artifact come from
+      OPERATOR_ARTIFACT_URL, FRAMEWORK_IMAGE and FRAMEWORK_VERSION, or a flag. Run "machine prepare"
+      with OPERATOR_ONLY=1 first when the realm code is what changed.
+
   blong-int-kustomize cycle run [options of both]
       The developer's cycle: prepare the machine, then deploy through it. The
       artifact URLs it published are left in the environment for the deploy.
+      OPERATOR_ONLY=1 prepares and deploys the operator alone, which is the loop
+      a change to this realm needs.
 
 Options
   --cluster=NAME          the k3d cluster (default dev-cluster is not assumed: the
@@ -94,6 +102,9 @@ const shared = (argv: Record<string, unknown>): object => ({
     ...(flag(argv['publish-artifacts']) !== undefined
         ? {publishArtifacts: flag(argv['publish-artifacts'])}
         : {}),
+    ...(flag(argv['operator-only']) !== undefined
+        ? {operatorOnly: flag(argv['operator-only'])}
+        : {}),
     ...(flag(argv.refresh) !== undefined ? {refresh: flag(argv.refresh)} : {}),
 });
 
@@ -109,6 +120,9 @@ export const realmCommand = ({positionals, argv}: ParsedArgs): IRealmCommand | u
     }
     if (object === 'suite' && predicate === 'deploy') {
         return {method: 'runbookSuiteDeploy', params};
+    }
+    if (object === 'operator' && predicate === 'deploy') {
+        return {method: 'runbookOperatorDeploy', params};
     }
     if (object === 'cycle' && predicate === 'run') {
         return {method: 'runbookCycleRun', params};

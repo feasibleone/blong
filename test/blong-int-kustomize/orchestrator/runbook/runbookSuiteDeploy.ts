@@ -127,30 +127,20 @@ export const runK3dE2e = async (options: IRunbookOptions, io: IStepIo): Promise<
 };
 
 /**
- * The part a caller that already published its artifacts runs.
+ * The operator's half: regenerate its install tree and make the cluster run it.
  *
- * Split out because that is exactly the split the two halves have: a developer's cycle brings its own
- * image and artifacts and then runs this, and a CI job that installed this revision a moment ago runs
- * this alone. Nothing here talks to `podman`, `rush` or the host.
+ * One operator per cluster (Phase 15 A): its tree carries the Deployment, the cluster-scoped rights and
+ * the CRD, which a suite tree deliberately does not. Regenerated here rather than applied from the
+ * repository, because the committed tree names the published framework image while a run is given its
+ * own — and the operator runs *this realm* from an artifact rather than from the image, so a change to
+ * the realm reaches a cluster only when that artifact is republished and this runs (@@D-653).
+ *
+ * Exported because two callers need exactly this and nothing else: a suite deploy, which installs the
+ * operator before it applies a tenant's objects, and `operator deploy`, which updates one without
+ * touching a suite.
  */
-export const runK3dE2eGenerated = async (options: IRunbookOptions, io: IStepIo): Promise<void> => {
-    io.say(`generate ${options.tree}`);
-    await suiteTreeGenerate(
-        {
-            root,
-            entry: options.suiteEntry,
-            tree: options.tree,
-            serviceOff: options.serviceOff,
-            digest: options.suiteDigest,
-        },
-        io,
-    );
-
-    io.say('install the operator');
-    // One operator per cluster (Phase 15 A): its tree carries the Deployment, the cluster-scoped rights
-    // and the CRD, which a suite tree deliberately does not. Regenerated here rather than applied from
-    // the repository, because the committed tree names the published framework image while a CI cluster
-    // is given its own.
+export const operatorInstall = async (options: IRunbookOptions, io: IStepIo): Promise<void> => {
+    io.say(`generate ${options.operatorTree}`);
     await operatorTreeGenerate(
         {
             root,
@@ -183,6 +173,30 @@ export const runK3dE2eGenerated = async (options: IRunbookOptions, io: IStepIo):
         },
         io,
     );
+};
+
+/**
+ * The part a caller that already published its artifacts runs.
+ *
+ * Split out because that is exactly the split the two halves have: a developer's cycle brings its own
+ * image and artifacts and then runs this, and a CI job that installed this revision a moment ago runs
+ * this alone. Nothing here talks to `podman`, `rush` or the host.
+ */
+export const runK3dE2eGenerated = async (options: IRunbookOptions, io: IStepIo): Promise<void> => {
+    io.say(`generate ${options.tree}`);
+    await suiteTreeGenerate(
+        {
+            root,
+            entry: options.suiteEntry,
+            tree: options.tree,
+            serviceOff: options.serviceOff,
+            digest: options.suiteDigest,
+        },
+        io,
+    );
+
+    io.say('install the operator');
+    await operatorInstall(options, io);
 
     io.say('apply');
     // The Secret goes in before the pods that read it, and the write makes its own namespace first: a

@@ -47,6 +47,15 @@ export interface ICycleOptions extends IRunbookOptions {
     buildSuite: boolean;
     buildImage: boolean;
     publishArtifacts: boolean;
+    /**
+     * Prepare only what the *operator* runs: its artifact, and the image it starts from.
+     *
+     * A change to the deployment realm itself needs neither the suite's browser bundle nor its artifact,
+     * and building both to update one Deployment is the reason updating the operator by hand was a
+     * multi-step ritual (@@D-653). Set by `OPERATOR_ONLY=1`, which `realm/blong-kustomize/deploy.sh`
+     * does for you.
+     */
+    operatorOnly: boolean;
 }
 
 export const cycleOptions = (env = process.env): ICycleOptions => ({
@@ -60,11 +69,12 @@ export const cycleOptions = (env = process.env): ICycleOptions => ({
     buildSuite: env['BUILD_SUITE'] !== '0',
     buildImage: env['BUILD_IMAGE'] !== '0',
     publishArtifacts: env['PUBLISH_ARTIFACTS'] !== '0',
+    operatorOnly: env['OPERATOR_ONLY'] === '1',
 });
 
 /** The browser bundle the deploy is supposed to carry, built before it is deployed. */
 const suiteBundle = async (options: ICycleOptions, io: IStepIo): Promise<void> => {
-    if (!options.buildSuite) return;
+    if (!options.buildSuite || options.operatorOnly) return;
     io.say('suite bundle');
     await io.run('npm', ['run', 'build'], {cwd: `${root}/${options.suitePackage}`});
 };
@@ -107,7 +117,9 @@ const artifacts = async (options: ICycleOptions, io: IStepIo): Promise<void> => 
     );
     for (const [scenario, remoteName, digestEnv] of [
         ['operator', 'kustomize.zip', 'OPERATOR_ARTIFACT_DIGEST'],
-        [options.suiteScenario, options.artifactName, 'ARTIFACT_DIGEST'],
+        ...(options.operatorOnly
+            ? []
+            : [[options.suiteScenario, options.artifactName, 'ARTIFACT_DIGEST']]),
     ] as Array<[string, string, string]>) {
         await rushDeploy({root, scenario, targetFolder: SCENARIO_FOLDER(scenario)}, io);
         const digest = await zipFolder(
@@ -183,15 +195,27 @@ export default handler(() => ({
         await fileServer(params, nodes, io);
         await artifacts(params, io);
 
+        const host = `http://${params.artifactService}.${params.artifactNamespace}.svc.cluster.local`;
+        // The operator's own artifact always, because that is what this half published for it; the
+        // suite's only when the suite's half of the cycle is part of the run.
+        process.env['OPERATOR_ARTIFACT_URL'] =
+            process.env['OPERATOR_ARTIFACT_URL'] ?? `${host}/kustomize.zip`;
+        if (params.operatorOnly) {
+            // No chdir: the operator's tree is generated from the realm's own folder, and a run that
+            // left the process in the suite's would generate a tree for the wrong package.
+            return {
+                cluster: params.cluster,
+                namespace: 'blong-system',
+                tree: params.operatorTree,
+                prepared: true,
+            };
+        }
         io.say('the cycle');
         // From the suite's own folder, which is where a tree is generated: the framework reads its
         // configuration relative to the working directory it was started in. The file server's Service
         // name is the artifact URL, because the prefetch that fetches it runs inside a pod.
         process.chdir(`${root}/${params.suitePackage}`);
-        const host = `http://${params.artifactService}.${params.artifactNamespace}.svc.cluster.local`;
         process.env['ARTIFACT_URL'] = process.env['ARTIFACT_URL'] ?? `${host}/${params.artifactName}`;
-        process.env['OPERATOR_ARTIFACT_URL'] =
-            process.env['OPERATOR_ARTIFACT_URL'] ?? `${host}/kustomize.zip`;
         return {
             cluster: params.cluster,
             namespace: params.namespace,

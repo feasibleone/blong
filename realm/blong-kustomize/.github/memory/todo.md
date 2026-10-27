@@ -36,7 +36,7 @@ open (20)
 - `T-331` · realm/blong-kustomize — Rebuild the realm browser bundle as part of a delivery
 - `T-452` · realm/blong-kustomize — Gate the committed kustomize trees against the generator
 
-done (8)
+done (9)
 
 - `T-279` · realm/blong-kustomize — The operator reports obsolete objects and never deletes them
 - `T-277` · realm/blong-kustomize — The plan resolves no databases, so the init script creates none
@@ -48,6 +48,7 @@ done (8)
 - `T-444` · realm/blong-kustomize — Sport CD Group 3 release notify fields
 - `T-445` · realm/blong-kustomize — Sport CD Group 4 operator release trigger
 - `T-449` · realm/blong-kustomize — The committed base pins the image the CR is supposed to choose
+- `T-453` · realm/blong-kustomize — A release publishes no operator artifact to deploy from
 
 <!-- /memory:index -->
 
@@ -445,7 +446,7 @@ rule. Update `aSplitTreeKeepsTheArtifactOutOfTheBase` and the snapshots, regener
 image the CR names.
 
 splitWorkload now writes image: PLACEHOLDER into the base and carries the plan's images in the
-overlay patch as containers [{name, image}], which strategic-merge keys by name; instantiate does
+overlay patch as containers `[{name, image}]`, which strategic-merge keys by name; instantiate does
 the same for the fill and migrate templates. Trees regenerated (sport with the v0.2.0 digest so the
 version labels stay real: blong ./index.ts k8s
 --kustomize.deploy.layout=split --kustomize.deploy.suiteVolume.artifact.digest=c698f9b1..., operator
@@ -454,6 +455,32 @@ imagesInBase/frameworkImageInBase/frameworkImageInOverlay/deploymentPatch, and k
 a tree generated with the CR's image renders ghcr.io/feasibleone/blong-gogo:v1.43.1 for every
 workload. The live cycle needs a release that carries this generator, because the artifact ships the
 code the operator's child runs.
+
+### T-453 — A release publishes no operator artifact to deploy from
+
+> _2026-10-27 · realm/blong-kustomize · done_
+
+A release publishes the framework image and the suite's artifact, but not the deployment realm's own
+kustomize.zip, so the release form of realm/blong-kustomize/deploy.sh has to be handed an artifact
+URL that nothing produced — the operator's artifact is only ever built by the CI e2e job into the
+in-cluster file server. The work is to add it to the release pipeline the way the suite's zip is
+added: build the operator scenario (rush deploy --scenario operator, the same command the runbook
+runs), zip it, upload it as a release asset beside the suite's, and let the deployment record carry
+its URL so the release form of deploy.sh reads it instead of asking. While there, name the artifact
+after the package and its version so two releases cannot collide, and set OPERATOR_ARTIFACT_DIGEST
+from the zip so the operator's cache and volume identity follow the artifact rather than the
+version.
+
+The realm is a release-please component now (realm/blong-kustomize in release-please-config.json),
+so it gets `blong-kustomize-v<version>` tags; a new operator-artifact job in deploy.yaml answers
+that tag, builds rush deploy --scenario operator, and attaches `blong-kustomize-<version>.zip`, its
+.sha256 and the blong-kustomize.zip alias; .github/deployments.json carries an installer entry
+(release prefix, package, scenario, artifact) that resolve skips and both the job and deploy.sh
+read; deploy.sh's release form resolves the URL and fetches the digest, so OPERATOR_ARTIFACT_URL is
+only needed for a release with no digest asset. Verified: the jq resolver still maps
+blong-sport-v0.2.0 to sport and yields nothing for a kustomize or docs tag, the asset names derive
+correctly from the record, bash -n is clean, and the workflow parses with four jobs. What only a
+real release can prove: the job running, and an install from the published assets.
 
 ## Retired
 

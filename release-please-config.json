@@ -17,6 +17,7 @@
         "core/blong-kopi": {},
         "core/blong-lib": {},
         "tools/blong-log": {},
+        "realm/blong-kustomize": {},
         "realm/blong-login": {},
         "realm/blong-sport": {},
         "core/blong-mock": {},

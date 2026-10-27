@@ -9,5 +9,13 @@
         "suite": "blong-sport",
         "entry": "./index.ts",
         "profile": "monolith"
+    },
+    "operator": {
+        "installer": true,
+        "release": "blong-kustomize",
+        "package": "@feasibleone/blong-kustomize",
+        "packagePath": "realm/blong-kustomize",
+        "scenario": "operator",
+        "artifact": "blong-kustomize.zip"
     }
 }

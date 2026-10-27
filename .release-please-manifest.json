@@ -31,5 +31,6 @@
     "core/blong-mle": "1.2.0",
     "realm/blong-access-mock": "1.1.0",
     "realm/blong-commander": "1.3.0",
-    "core/semantic-log": "1.6.1"
+    "core/semantic-log": "1.6.1",
+    "realm/blong-kustomize": "0.1.0"
 }
