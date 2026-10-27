@@ -20,6 +20,7 @@ export const USAGE_LINES: readonly string[] = [
     '  blong-dev trace <trace.zip>  Print a human-readable Playwright trace timeline',
     '  blong-dev log [ulid] [opts]  Fetch log entries from cacache (--output/--level/--search/...)',
     '  blong-dev sql [opts]         Run a SQL query via .blong_devrc (--output json|pretty)',
+    '  blong-dev user <verb>        Add, list or re-password access users in a database (add/list/passwd)',
     '  blong-dev cspell <verb>      Add, remove, sort, check or list cspell.config.yaml entries',
     '  blong-dev publish check      Fail when a published package would omit an entry point it declares',
     '  blong-dev glossary <verb>    Add, remove, list, show, sort or check the documentation glossary',

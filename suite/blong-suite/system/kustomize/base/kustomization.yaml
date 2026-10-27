@@ -6,14 +6,12 @@ labels:
       app.kubernetes.io/managed-by: blong-kustomize
       app.kubernetes.io/name: blong-suite
       app.kubernetes.io/part-of: blong-suite
-      app.kubernetes.io/version: 1.14.0
 resources:
   - configmaps/fill-script.yaml
   - deployments/access.yaml
   - deployments/core.yaml
   - deployments/login.yaml
   - deployments/marine.yaml
-  - ingresses/blong-suite-test.yaml
   - rbac/auth-review-binding.yaml
   - rbac/auth-review.yaml
   - rbac/blong-operator-role.yaml

@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
-    app.kubernetes.io/version: 1.14.0
-    blong.feasible.one/spec-hash: 94a3e9833820501b
+    app.kubernetes.io/version: 1.15.0
+    blong.feasible.one/spec-hash: c4747a0b10c4d9a7
   name: mysql
 spec:
   replicas: 1

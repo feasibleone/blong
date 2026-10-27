@@ -23,6 +23,7 @@ export default handler(
             credentialPolicyParams,
             crockfordDecode,
             hashPassword,
+            resolveRoleIds,
             syncAclMatrix,
             syncCredentials,
             syncEdges,
@@ -43,10 +44,10 @@ export default handler(
             if (!qb) throw new Error('Database not available');
             const user = params.user ?? {};
             const name = user.emailAddress || user.userName || `user-${Date.now()}`;
-            const roleIds = (params.role ?? [])
-                .filter(r => r.granted !== false)
-                .map(r => binHex(r.roleId))
-                .filter((x): x is string => !!x);
+            // A role may be named rather than identified (`roleName` was accepted
+            // by the schema and then dropped), so the resolution is shared with
+            // `access.user.edit`. @@D-648
+            const roleIds = await resolveRoleIds(qb, params.role ?? []);
             // Everything this handler writes is ONE transaction: the resource row and
             // its `access_user` entity row, the credentials (several rows), the granted
             // roles (with the rebuild inside `syncEdges`) and the scope ACL matrix.

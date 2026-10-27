@@ -9,6 +9,6 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
-    app.kubernetes.io/version: 1.14.0
-    blong.feasible.one/spec-hash: 43614a6383330ab1
+    app.kubernetes.io/version: 1.15.0
+    blong.feasible.one/spec-hash: cf567d45bfe8ed0a
   name: mysql-init-config

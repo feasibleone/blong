@@ -6,10 +6,10 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
-    app.kubernetes.io/version: 0.1.0
+    app.kubernetes.io/version: PLACEHOLDER
     blong.feasible.one/attempt-retention: "5"
-    blong.feasible.one/spec-hash: dd7544029b9aab0e
-    blong.feasible.one/suite-version: 0.1.0
+    blong.feasible.one/spec-hash: 0031fc73bf7e9a94
+    blong.feasible.one/suite-version: PLACEHOLDER
     blong.feasible.one/volume-identity: PLACEHOLDER
   name: blong-sport-migrate
 spec:
@@ -17,11 +17,11 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/instance: blong-sport-migrate-PLACEHOLDER-661c69d1
+        app.kubernetes.io/instance: blong-sport-migrate-PLACEHOLDER-0f5670ab
         app.kubernetes.io/managed-by: blong-kustomize
         app.kubernetes.io/name: blong-sport
         app.kubernetes.io/part-of: blong-sport
-        app.kubernetes.io/version: 0.1.0
+        app.kubernetes.io/version: PLACEHOLDER
     spec:
       containers:
         - args:
@@ -29,7 +29,7 @@ spec:
             - upgrade
             - release
             - --remote.canSkipSocket=true
-          image: docker.io/library/blong-gogo:1
+          image: PLACEHOLDER
           name: migrate
           resources:
             limits:

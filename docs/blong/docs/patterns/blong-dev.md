@@ -31,6 +31,7 @@ own configuration (`.blong_devrc`, `rush.json`, `cspell.config.yaml`, the memory
 | `trace <trace.zip>` | Unzipping a Playwright trace and reading JSON lines to find out which step failed.            |
 | `log [ulid]`        | Log lines that only existed live, in a terminal that has been closed.                         |
 | `sql [query]`       | Reaching into a pod with a MySQL client to look at development data.                          |
+| `user <verb>`       | Bootstrapping a login with no gateway to call, and the three tables a login spans.            |
 | `cspell <verb>`     | A word list that has to be sorted by hand, and the insertion point that goes with it.         |
 | `glossary <verb>`   | A vocabulary that drifts out of order, or a link that points at a page that moved.            |
 | `memory <verb>`     | Agents hand-editing the memory format, and forgetting its index and wrapping.                 |
@@ -179,6 +180,37 @@ or in the home directory; the key defaults to `srv.db.knex.connection`) and fall
 development defaults, deriving the database name as `<suite>-<user>` when none is configured.
 Multiple statements separated by `;` run in one round trip. `--output json` exists for the non-TTY
 case, which is what makes the command usable from an agent as well as from a terminal.
+
+## A login without a gateway
+
+```bash
+blong-dev user add admin --password change-me --role Admin
+blong-dev user passwd admin --password another-one
+blong-dev user add admin --password change-me --role Admin,Manager --update --database blong-sport
+blong-dev user list --database blong-sport
+```
+
+A deployment has no session to call `access.user.add` with, and often no reachable gateway at all,
+so `user add` writes the rows itself in one transaction: the `core_resource` that carries the login
+name, the `access_user` row, the password credential, the `hasRole` edges and the
+`access_pathRefresh()` call that materializes the permission paths. It then reads back whether the
+granted roles reach the `accessLogin` action and prints the verdict, because a login can fail on any
+one of those away from the record that is missing it: a wrong name answers "User not found", a
+missing role answers "User is not allowed to log in".
+
+The login name is the resource name — `access_user` holds no user name at all — so `add admin`
+creates a login called `admin`, while the New user screen names the resource after the email address
+it submits. `--password` is the new user's secret and `--db-password` the database's; everything else
+resolves as `blong-dev sql` does, so pointing the command at a deployed database is a matter of
+`--database`.
+
+`passwd` rotates a password the way the realm's own `access.profile.password.change` does — the
+stored rows are deactivated and a new active one is inserted, so the previous secret stops working
+the moment it commits. It exists because a deployment may reach no page that changes a password, and
+a forgotten one would otherwise have no route back in. The active `access.policy` decides the digest
+parameters and the minimum length: a shorter secret only warns, `--strict` refuses it and `--force`
+silences the warning, because a throwaway bootstrap password is a deliberate act and the policy
+governs the page rather than the row.
 
 ## Docs and memory
 

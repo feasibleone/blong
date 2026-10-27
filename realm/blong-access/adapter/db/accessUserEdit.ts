@@ -22,6 +22,7 @@ export default handler(
             credentialPolicyParams,
             crockfordDecode,
             hashPassword,
+            resolveRoleIds,
             syncAclMatrix,
             syncCredentials,
             syncEdges,
@@ -58,10 +59,7 @@ export default handler(
                     );
                 }
                 if (Array.isArray(params.role)) {
-                    const roleIds = (params.role ?? [])
-                        .filter(r => r.granted !== false)
-                        .map(r => binHex(r.roleId))
-                        .filter((x): x is string => !!x);
+                    const roleIds = await resolveRoleIds(trx, params.role ?? []);
                     await syncEdges(trx, hex, 'hasRole', roleIds);
                 }
                 if (Array.isArray(params.matrix)) {

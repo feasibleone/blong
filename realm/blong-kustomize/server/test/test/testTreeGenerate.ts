@@ -398,6 +398,37 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         placeholderInBase: read(`base/deployments/${first}.yaml`).includes(
                             SUITE_MOUNT,
                         ),
+                        // The image is the deploy's as much as the volume source is (@@T-449): every
+                        // container the base holds carries the token, the image the plan names appears
+                        // in no base file at all, and the patch puts it back under its strategic-merge
+                        // key so it replaces the token instead of the whole container.
+                        imagesInBase: (baseText.match(/image: PLACEHOLDER/g) ?? []).length,
+                        frameworkImageInBase: baseText.includes(plan.suite.frameworkImage),
+                        frameworkImageInOverlay: localText.includes(plan.suite.frameworkImage),
+                        deploymentPatch: readFileSync(
+                            join(dir, `local/suite/patches/${first}.yaml`),
+                            'utf8',
+                        )
+                            .split('\n')
+                            .filter(line => /image:|name: blong/.test(line))
+                            .map(line => line.trim())
+                            .sort(),
+                        fillImageInTemplate: read(`base/templates/fill/${TEMPLATE_FILE}`).includes(
+                            'PLACEHOLDER',
+                        ),
+                        // The version is the declaration's too (@@D-652): `spec.version` is what answers
+                        // "which build is deployed", so no base object names it — every one carries the
+                        // token in its own labels and in its pod's — while the overlay puts it back. The
+                        // transformer is the half that is easy to miss: a version there runs after the
+                        // patches and would overwrite every one of them.
+                        versionInBase: baseText.includes(String(plan.suite.version)),
+                        versionInOverlay: localText.includes(String(plan.suite.version)),
+                        versionsInBase: (
+                            baseText.match(/app\.kubernetes\.io\/version: PLACEHOLDER/g) ?? []
+                        ).length,
+                        versionInTransformer: read('base/kustomization.yaml').includes(
+                            'app.kubernetes.io/version',
+                        ),
                         realVolumeInPatch: read(`local/suite/patches/${first}.yaml`).includes(
                             identity,
                         ),

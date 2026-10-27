@@ -6,10 +6,10 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
-    app.kubernetes.io/version: 0.1.0
+    app.kubernetes.io/version: PLACEHOLDER
     blong.feasible.one/retention: "3"
-    blong.feasible.one/spec-hash: 897ed2dded5d1b8d
-    blong.feasible.one/suite-version: 0.1.0
+    blong.feasible.one/spec-hash: 9b085eac56f330a4
+    blong.feasible.one/suite-version: PLACEHOLDER
     blong.feasible.one/volume-identity: PLACEHOLDER
   name: blong-sport-fill
 spec:
@@ -21,7 +21,7 @@ spec:
         app.kubernetes.io/managed-by: blong-kustomize
         app.kubernetes.io/name: blong-sport
         app.kubernetes.io/part-of: blong-sport
-        app.kubernetes.io/version: 0.1.0
+        app.kubernetes.io/version: PLACEHOLDER
     spec:
       containers:
         - command:
@@ -36,7 +36,7 @@ spec:
               value: "3"
             - name: BLONG_ARTIFACT_URL
               value: http://blong-artifact.default.svc.cluster.local/sport.zip
-          image: docker.io/library/blong-gogo:1
+          image: PLACEHOLDER
           name: fill
           resources:
             limits:

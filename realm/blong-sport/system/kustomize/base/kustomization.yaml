@@ -6,7 +6,6 @@ labels:
       app.kubernetes.io/managed-by: blong-kustomize
       app.kubernetes.io/name: blong-sport
       app.kubernetes.io/part-of: blong-sport
-      app.kubernetes.io/version: 0.1.0
 resources:
   - configmaps/fill-script.yaml
   - deployments/blong-sport.yaml

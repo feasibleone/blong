@@ -24,12 +24,7 @@ import {
 import {basename, dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parse, stringify} from 'yaml';
-import {
-    GENERATED_CREDENTIALS_LABEL,
-    SPEC_HASH_LABEL,
-    isClusterResource,
-    stampSpecHash,
-} from './apply.ts';
+import {GENERATED_CREDENTIALS_LABEL, isClusterResource, stampSpecHash} from './apply.ts';
 import {
     FILL_ENV,
     FILL_MODULE,
@@ -102,6 +97,19 @@ const suiteLabels = (plan: IDeploymentPlan): Record<string, string> => ({
     'app.kubernetes.io/part-of': plan.suite.name,
     'app.kubernetes.io/managed-by': 'blong-kustomize',
 });
+
+/**
+ * The labels a base may stamp on every object: the suite's identity, without the version.
+ *
+ * `app.kubernetes.io/version` answers "which build is deployed", and the declaration answers it rather
+ * than the tree that happens to have been generated (@@D-652). It has to leave the transformer and
+ * not only the objects: a label transformer runs after the patches, so a version here would overwrite
+ * the one every patch puts back.
+ */
+const baseLabels = (plan: IDeploymentPlan): Record<string, string> => {
+    const {['app.kubernetes.io/version']: _version, ...rest} = suiteLabels(plan);
+    return rest;
+};
 
 /** The `version` of the manifest beside an entry, when there is one to read. */
 const manifestVersion = (entry?: string): string | undefined => {
@@ -2059,6 +2067,14 @@ const rootKustomization = (
     plan: IDeploymentPlan,
     folders: string[],
     documents: string[] = [],
+    /**
+     * What the label transformer below stamps on every object.
+     *
+     * The suite's labels by default. A *split* base passes `baseLabels` instead, because the version is
+     * the declaration's and a transformer runs after the patches — a version here would overwrite the
+     * one every patch puts back (@@D-652). A flat tree has no patches, and keeps it.
+     */
+    labels: Record<string, string> = suiteLabels(plan),
 ): Record<string, unknown> => ({
     apiVersion: KUSTOMIZE_API,
     kind: 'Kustomization',
@@ -2073,7 +2089,7 @@ const rootKustomization = (
     // Folders and root documents in one list, which is what kustomize takes: a folder is a path it
     // resolves itself, and (in the flat layout) a suite's declaration is a resource like any other.
     resources: [...folders, ...documents],
-    labels: [{pairs: suiteLabels(plan), includeSelectors: false}],
+    labels: [{pairs: labels, includeSelectors: false}],
 });
 
 /** Build the tree. Keys are tree-relative paths; folders are added last. */
@@ -2850,6 +2866,152 @@ const placeholderVolume = (plan: IDeploymentPlan): Record<string, unknown> =>
         ? {name: 'suite', persistentVolumeClaim: {claimName: plan.suite.name, readOnly: true}}
         : {name: 'suite', hostPath: {path: SUITE_MOUNT, type: 'Directory'}};
 
+/**
+ * The values a base may not name, and what stands in for them: the artifact's identity — the version and
+ * the token taken from the artifact — and the suite's version.
+ *
+ * Both are the declaration's. `spec.version` decides the version, and the identity is derived from it and
+ * from the artifact that same declaration names, so a base that carried either would label a deployment
+ * with the values of whichever release happened to generate it — the version that names the volume, the
+ * Jobs and every object's `app.kubernetes.io/version` in one place, and the artifact in another.
+ *
+ * The identity comes first because it *contains* the version: replaced the other way round, a token would
+ * survive as `PLACEHOLDER-c698f9b1`.
+ */
+const ownedByDeploy = (plan: IDeploymentPlan): Map<string, string> => {
+    const owned = new Map<string, string>();
+    owned.set(volumeIdentity(plan), PLACEHOLDER);
+    owned.set(suiteVersion(plan), PLACEHOLDER);
+    return owned;
+};
+
+/** One label map with the values the deploy owns replaced. */
+const placeholderLabels = (
+    labels: Record<string, string> | undefined,
+    owned: Map<string, string>,
+): Record<string, string> | undefined =>
+    labels ? (placeholderize(labels, owned) as Record<string, string>) : undefined;
+
+/** The pod's labels, as an object carries them. */
+const podLabelsOf = (object: Record<string, unknown>): Record<string, string> | undefined =>
+    (object.spec as {template?: {metadata?: {labels?: Record<string, string>}}} | undefined)
+        ?.template?.metadata?.labels;
+
+/**
+ * The same object with the deploy's values replaced in its labels — its own and its pod's.
+ *
+ * Labels rather than the whole object, because that is the only place a version appears in a workload: a
+ * substitution over the object's data as well would rewrite a ConfigMap's own text or an environment
+ * value that happened to carry the version, which is a change nobody asked for and nothing would put
+ * back. The identity is separate — it is what the templates are named after — and is replaced by the
+ * caller that derives the name.
+ */
+const withPlaceholderVersionLabels = (
+    object: Record<string, unknown>,
+    owned: Map<string, string>,
+): Record<string, unknown> => {
+    const metadata = object.metadata as {labels?: Record<string, string>} | undefined;
+    const labels = placeholderLabels(metadata?.labels, owned);
+    const podLabels = placeholderLabels(podLabelsOf(object), owned);
+    if (!labels && !podLabels) return object;
+    const template = (object.spec as {template?: Record<string, unknown>} | undefined)?.template;
+    return {
+        ...object,
+        metadata: {...(object.metadata as Record<string, unknown>), ...(labels ? {labels} : {})},
+        ...(podLabels && template
+            ? {
+                  spec: {
+                      ...(object.spec as Record<string, unknown>),
+                      template: {
+                          ...template,
+                          metadata: {
+                              ...((template as {metadata?: Record<string, unknown>}).metadata ??
+                                  {}),
+                              labels: podLabels,
+                          },
+                      },
+                  },
+              }
+            : {}),
+    };
+};
+
+/**
+ * The patch that puts an object's own labels back where the base carries a placeholder.
+ *
+ * All of them rather than the ones that changed: the object itself is the only thing that says what they
+ * should read, and a label map is merged by key, so the ones the base kept are kept. A patch with nothing
+ * but a name would be dropped by the caller, which writes one only where a placeholder is left behind.
+ */
+const labelPatch = (object: Record<string, unknown>): Record<string, unknown> => {
+    const metadata = object.metadata as {name?: string; labels?: Record<string, string>};
+    const podLabels = podLabelsOf(object);
+    return {
+        apiVersion: object.apiVersion,
+        kind: object.kind,
+        metadata: {
+            name: metadata.name,
+            ...(metadata.labels ? {labels: {...metadata.labels}} : {}),
+        },
+        ...(podLabels ? {spec: {template: {metadata: {labels: {...podLabels}}}}} : {}),
+    };
+};
+
+/** The containers of a workload's pod template, as the object carries them. */
+const containersOf = (object: Record<string, unknown>): Record<string, unknown>[] => {
+    const spec = object.spec as
+        | {template?: {spec?: {containers?: Record<string, unknown>[]}}}
+        | undefined;
+    return spec?.template?.spec?.containers ?? [];
+};
+
+/**
+ * The images a workload's containers name, as `[{name, image}]`.
+ *
+ * `name` is the strategic-merge key, so a patch carrying only these two fields adds or replaces the
+ * image and leaves every other field of the container — its args, its environment, its mounts —
+ * exactly as the base wrote them.
+ */
+const imagesOf = (object: Record<string, unknown>): Array<{name: string; image: string}> =>
+    containersOf(object)
+        .filter(
+            container => typeof container.name === 'string' && typeof container.image === 'string',
+        )
+        .map(container => ({name: container.name as string, image: container.image as string}));
+
+/**
+ * The same object with every container image replaced by the placeholder.
+ *
+ * The image is a value the *deployment* owns — a release names a tag or a digest, a local run names
+ * whatever was imported into the local cluster — so a committed base may not carry it (`@@T-449`).
+ * It is replaced rather than dropped: a container without an image is not a workload, and a reader of
+ * the base has to see that this is one of the fields the overlay puts back.
+ */
+const withPlaceholderImages = (object: Record<string, unknown>): Record<string, unknown> => {
+    const spec = object.spec as
+        | {template?: {spec?: {containers?: Record<string, unknown>[]}}}
+        | undefined;
+    const containers = spec?.template?.spec?.containers;
+    if (!containers?.length) return object;
+    return {
+        ...object,
+        spec: {
+            ...(object.spec as Record<string, unknown>),
+            template: {
+                ...spec?.template,
+                spec: {
+                    ...spec?.template?.spec,
+                    containers: containers.map(container =>
+                        typeof container.image === 'string'
+                            ? {...container, image: PLACEHOLDER}
+                            : container,
+                    ),
+                },
+            },
+        },
+    };
+};
+
 /** The same object with one volume entry replaced. */
 const withSuiteVolume = (
     object: Record<string, unknown>,
@@ -2876,11 +3038,19 @@ const withSuiteVolume = (
 /**
  * Take the artifact out of a workload, and hand it back as the overlay's patch.
  *
- * A workload names the artifact exactly once — the suite volume's source, a `hostPath` on a node's
- * directory or a claim — so the base carries a source that names nothing and the overlay replaces it, and
- * the two together are the object the tree would have written flat. The fingerprint travels in the patch
- * rather than staying in the base: it hashes the object, and a base fingerprint is the hash of a
- * placeholder, which would read as "changed" to whoever compares it next.
+ * A workload names what the deploy owns in three places: the suite volume's source — a `hostPath` on a
+ * node's directory or a claim — the image its container runs, and its labels, which carry the suite's
+ * version. The base carries none of the three and the overlay replaces all of them, and the two together
+ * are the object the tree would have written flat. The image belongs here for the same reason the volume
+ * does (`@@T-449`): a release names a tag or a digest, a local run names whatever was imported into the
+ * cluster, and a committed base that carried either would overrule the CR the operator composes it with —
+ * the first real release fetched its artifact, ran its migration and reported the new version while its
+ * pod kept running the image the base had been generated with. The version is the same argument one level
+ * down (@@D-652): `spec.version` is what the declaration says, and every object that answers "which
+ * build is deployed" has to read it from the patch rather than from the release that generated the base.
+ *
+ * The fingerprint travels in the patch rather than staying in the base: it hashes the object, and a base
+ * fingerprint is the hash of a placeholder, which would read as "changed" to whoever compares it next.
  */
 const splitWorkload = (
     plan: IDeploymentPlan,
@@ -2893,9 +3063,16 @@ const splitWorkload = (
         labels?: Record<string, string>;
     };
     const real = suiteVolumeOf(object);
+    const images = imagesOf(object);
+    const realPodLabels = podLabelsOf(object);
     return {
         // Re-stamped: the placeholder is what this file holds, and its fingerprint should say so.
-        base: stampSpecHash(withSuiteVolume(object, placeholderVolume(plan))),
+        base: stampSpecHash(
+            withPlaceholderVersionLabels(
+                withPlaceholderImages(withSuiteVolume(object, placeholderVolume(plan))),
+                ownedByDeploy(plan),
+            ),
+        ),
         patch: {
             apiVersion: object.apiVersion,
             kind: object.kind,
@@ -2905,11 +3082,21 @@ const splitWorkload = (
                 // object it moves into the base, and the overlay's `local/suite/` declares the one the
                 // deployment has (@@D-506). A patch that named one would target an id the object does not
                 // hold — kustomize matches a qualified patch against a qualified object only (verified).
-                ...(metadata.labels?.[SPEC_HASH_LABEL]
-                    ? {labels: {[SPEC_HASH_LABEL]: metadata.labels[SPEC_HASH_LABEL]}}
-                    : {}),
+                //
+                // All of the object's labels rather than the fingerprint alone, because the version is one
+                // of them and the base carries the placeholder (@@D-652). A label map is merged by key,
+                // so the labels the base kept are kept.
+                ...(metadata.labels ? {labels: {...metadata.labels}} : {}),
             },
-            spec: {template: {spec: {volumes: [real]}}},
+            spec: {
+                template: {
+                    ...(realPodLabels ? {metadata: {labels: {...realPodLabels}}} : {}),
+                    spec: {
+                        ...(images.length ? {containers: images} : {}),
+                        ...(real ? {volumes: [real]} : {}),
+                    },
+                },
+            },
         },
     };
 };
@@ -2999,7 +3186,14 @@ const instantiate = (
             ? {...labels, 'app.kubernetes.io/instance': template}
             : labels;
     const volume = suiteVolumeOf(object);
-    const blank = placeholderize(object, owned) as Record<string, unknown>;
+    // The image leaves the template for the same reason the identity does: the deploy owns it, and a
+    // template that kept it would overrule the CR (`@@T-449`). The version leaves the labels for the
+    // same reason (@@D-652), and the patch below puts both back.
+    const images = imagesOf(object);
+    const blank = withPlaceholderVersionLabels(
+        withPlaceholderImages(placeholderize(object, owned) as Record<string, unknown>),
+        ownedByDeploy(plan),
+    );
     const blankMetadata = blank.metadata as {labels?: Record<string, string>} | undefined;
     const patch: Record<string, unknown> = {
         apiVersion: object.apiVersion,
@@ -3030,11 +3224,17 @@ const instantiate = (
                     // the front of its list — so patching the first entry keeps the order it had.
                     ...(volume ? {volumes: [volume]} : {}),
                     ...(node ? {nodeSelector: {'kubernetes.io/hostname': node}} : {}),
-                    // The environment, *all* of it, and for the reason above: a patch naming one entry
-                    // would move that entry to the front and reorder the container. The values are the
-                    // object's own, so the base can go on showing the names it reads.
-                    ...(kind === 'fill'
-                        ? {containers: [{name: 'fill', env: containerEnvOf(object, 'fill')}]}
+                    // The image, in the entry the strategic-merge key matches by name: one entry per
+                    // container, carrying the image and — for the fill — the environment a patch that
+                    // named one entry alone would move to the front of the list (`@@T-449`).
+                    ...(images.length
+                        ? {
+                              containers: images.map(entry =>
+                                  kind === 'fill' && entry.name === 'fill'
+                                      ? {...entry, env: containerEnvOf(object, 'fill')}
+                                      : entry,
+                              ),
+                          }
                         : {}),
                 },
             },
@@ -3161,6 +3361,8 @@ const writeSplitTree = (
     const patches = new Map<string, KustomizeResource>();
     /** The base objects the overlay patches, by their path in the base — what a local run checks against. */
     const patchedPaths = new Set<string>();
+    /** The values no object of the base may name, and what stands in for each. */
+    const owned = ownedByDeploy(plan);
     // Folder kustomizations to keep verbatim, and the folders whose files they already list: a folder that
     // brought one is not taken apart, so its files must not also be listed by the root.
     const brought: string[] = [];
@@ -3312,6 +3514,21 @@ const writeSplitTree = (
             patchedPaths.add(path);
             continue;
         }
+        // Everything else in the base is applied as it stands, so the one value it may not carry is one a
+        // patch can put back: the suite's version, in its labels (@@D-652). A base that named it would
+        // label a Service, a Role or the fill module's ConfigMap with whichever release generated the tree,
+        // and no overlay would ever correct it — which is why the label leaves the object *and* the label
+        // transformer (`baseLabels`), and the patch below is named after the path rather than the basename:
+        // a realm's `deployments/access.yaml` and its `services/access.yaml` share one.
+        if (typeof resource !== 'string') {
+            const blank = withPlaceholderVersionLabels(resource, owned);
+            if (JSON.stringify(blank) !== JSON.stringify(resource)) {
+                base.set(path, namespaceFree(blank));
+                patches.set(`patches/${path.replaceAll('/', '-')}`, labelPatch(resource));
+                patchedPaths.add(path);
+                continue;
+            }
+        }
         base.set(path, namespaceFree(resource));
     }
     const filesOf = (entries: Map<string, KustomizeResource>): string[] =>
@@ -3323,7 +3540,7 @@ const writeSplitTree = (
         roots.push([
             'base/kustomization.yaml',
             {
-                ...rootKustomization(plan, [], []),
+                ...rootKustomization(plan, [], [], baseLabels(plan)),
                 // The templates are deliberately absent: they are the shape an instance is built from, and
                 // instantiating one is the overlay's business. A reader looking for what a fill Job *is*
                 // finds it in `templates/`, and what *this* deploy's fill Jobs are in `local/`.

@@ -83,6 +83,31 @@ export default handler(({lib: {group}}) => ({
                 );
             },
 
+            async function aNamespaceTheDeploymentNeverUsedIsNotSwept(assert: IAssert) {
+                // A suite that brings no backing service is granted nothing in the services namespace,
+                // so a sweep there is a listing the API server refuses — with a stack, at error level,
+                // on every reconcile — for a namespace that may not even exist for this deployment
+                // (@@F-619). The declaration still decides the other way round: a service switched
+                // off names nothing in the tree either, and the credentials it generated there are
+                // what the sweep is for (@@D-509).
+                const unused = listingScopes([], ['secret'], 'shop', 'shop-services', false);
+                assert.deepEqual(
+                    unused.map(scope => `${scope.resourceType}@${scope.namespace}`),
+                    ['secret@shop'],
+                    'a namespace no object of the tree names is not swept',
+                );
+                assert.ok(
+                    unused.every(scope => scope.cleanupOnly !== true),
+                    'and nothing is added that could only answer forbidden',
+                );
+                const declaredService = listingScopes([], ['secret'], 'shop', 'shop-services', true);
+                assert.deepEqual(
+                    declaredService.map(scope => `${scope.resourceType}@${scope.namespace}`).sort(),
+                    ['secret@shop', 'secret@shop-services'],
+                    'while a declaration that mentions a service still sweeps it',
+                );
+            },
+
             async function anUnreadableCleanupScopeDoesNotFailThePass(assert: IAssert) {
                 const failures = unreadableFailures([
                     {key: 'shop/deployment', message: 'forbidden', cleanupOnly: false},

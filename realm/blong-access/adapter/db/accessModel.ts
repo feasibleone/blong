@@ -381,6 +381,43 @@ async function crudPivotActionIds(
 }
 
 /**
+ * The role ids a `role` array of an add/edit form asks for, in hex, in order.
+ *
+ * A row may name its role by id (what the screens submit — the role picker knows
+ * the ids) or by name. The name was accepted by the gateway schema and then
+ * silently DROPPED: `role: [{roleName: 'Admin'}]` stored no edge at all, so the
+ * caller saw a success and a user that could not log in. Resolving it here keeps
+ * the two forms equivalent, and an unknown name is an error rather than a grant
+ * that quietly did not happen.
+ */
+async function resolveRoleIds(
+    qb: KnexQb,
+    rows: Array<{roleId?: string; roleName?: string; granted?: boolean}>,
+): Promise<string[]> {
+    const ids: string[] = [];
+    for (const row of rows) {
+        if (row.granted === false) continue;
+        const byId = binHex(row.roleId);
+        if (byId) {
+            ids.push(byId);
+            continue;
+        }
+        const roleName = typeof row.roleName === 'string' ? row.roleName.trim() : '';
+        if (!roleName) continue;
+        const found = await qb
+            .select('role.roleId as roleId')
+            .from('access_role as role')
+            .join('core_resource as res', 'res.resourceId', 'role.roleId')
+            .where('res.resourceName', roleName)
+            .first();
+        const hex = binHex(found?.roleId);
+        if (!hex) throw new Error(`Unknown role: ${roleName}`);
+        ids.push(hex);
+    }
+    return ids;
+}
+
+/**
  * Bring `subjectId -predicate-> objectId` edges in line with `objectHexIds`.
  *
  * One transaction: the missing edges, the stale ones, and the single
@@ -817,6 +854,7 @@ export type AccessModelLib = {
     capabilityActionRows: typeof capabilityActionRows;
     crudPivotActionIds: typeof crudPivotActionIds;
     syncEdges: typeof syncEdges;
+    resolveRoleIds: typeof resolveRoleIds;
     listCredentials: typeof listCredentials;
     syncCredentials: typeof syncCredentials;
     ACL_MATRIX_PREDICATES: typeof ACL_MATRIX_PREDICATES;
@@ -845,6 +883,7 @@ export default library(
         capabilityActionRows,
         crudPivotActionIds,
         syncEdges,
+        resolveRoleIds,
         listCredentials,
         syncCredentials,
         ACL_MATRIX_PREDICATES,

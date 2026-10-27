@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
-    app.kubernetes.io/version: 0.1.0
-    blong.feasible.one/spec-hash: fa64951307cf9f1a
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: 12714d861b855010
   name: access
 spec:
   ports:

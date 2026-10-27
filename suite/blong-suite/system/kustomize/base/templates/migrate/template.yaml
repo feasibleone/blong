@@ -6,10 +6,10 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
-    app.kubernetes.io/version: 1.14.0
+    app.kubernetes.io/version: PLACEHOLDER
     blong.feasible.one/attempt-retention: "5"
-    blong.feasible.one/spec-hash: 945402f690392dc5
-    blong.feasible.one/suite-version: 1.14.0
+    blong.feasible.one/spec-hash: 126176d1ce9a2d53
+    blong.feasible.one/suite-version: PLACEHOLDER
     blong.feasible.one/volume-identity: PLACEHOLDER
   name: blong-suite-migrate
 spec:
@@ -17,18 +17,18 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/instance: blong-suite-migrate-PLACEHOLDER-9643e048
+        app.kubernetes.io/instance: blong-suite-migrate-PLACEHOLDER-1f7bc11e
         app.kubernetes.io/managed-by: blong-kustomize
         app.kubernetes.io/name: blong-suite
         app.kubernetes.io/part-of: blong-suite
-        app.kubernetes.io/version: 1.14.0
+        app.kubernetes.io/version: PLACEHOLDER
     spec:
       containers:
         - args:
             - /opt/deploy/suite/suite/blong-suite/index.ts
             - upgrade
             - release
-          image: docker.io/library/blong-gogo:1
+          image: PLACEHOLDER
           name: migrate
           resources:
             limits:

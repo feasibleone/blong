@@ -28,6 +28,17 @@ because it reads a tree back and compares it with the cluster — and it names i
 default, since a pass applies what a child wrote while the default a repository wants is the half it
 cannot apply (D-490). Commit the base: the diff is the review.
 
+What the base may not name is any value the declaration decides, and that is a longer list than the
+volume: the image each container runs, the suite's version in `app.kubernetes.io/version` and
+`blong.feasible.one/suite-version`, and the artifact's identity. Each is a token in the base and a
+field in a patch beside it — for a workload, for the job templates, and for the objects the overlay
+otherwise applies as they stand (a Service, a Role, the fill module's ConfigMap), which get a small
+patch of their own that restores nothing but their labels. The base's label transformer drops the
+version for the same reason: a transformer runs after the patches, so a version there would
+overwrite every one of them. A base that kept these would deploy the release that generated it
+rather than the one the declaration names, and the symptom is quiet — the artifact, the migration
+and the reported version all move while the pod keeps the image the tree was generated with.
+
 ## Configure the suite
 
 ```typescript
@@ -339,6 +350,15 @@ same runbook with that service switched off, which is the variant the CI job run
 one: the runbook applies the declaration it generated, so the operator reads the switch, and then
 the alias and the credentials it generated go while the workload stays — the boundary is the
 tenant's namespace and the one exception is the label credentials carry (D-512).
+
+That cleanup is also why the pass lists the services namespace at all, and it is the only reason: a
+deployment that brings no service names nothing there and is granted nothing there, so it does not
+list either. The API server answers `forbidden` rather than `not found` for a namespace the caller
+may not read, so a suite that never used one would log an error with a stack on every reconcile for
+a listing that could only ever come back empty. The sweep is added from what the deployment says —
+an object the tree places in that namespace, or any service named in `spec.services`, switched on or
+off — so a switched-off service keeps its credentials retired while a suite with no services never
+asks.
 
 ## Serve another tenant
 

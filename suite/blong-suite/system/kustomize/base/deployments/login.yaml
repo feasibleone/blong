@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
-    app.kubernetes.io/version: 1.14.0
-    blong.feasible.one/spec-hash: 8f1d1bcc5a50bdba
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: cec2b515a5dabc9f
   name: login
 spec:
   replicas: 1
@@ -22,7 +22,7 @@ spec:
         app.kubernetes.io/managed-by: blong-kustomize
         app.kubernetes.io/name: blong-suite
         app.kubernetes.io/part-of: blong-suite
-        app.kubernetes.io/version: 1.14.0
+        app.kubernetes.io/version: PLACEHOLDER
         blong.feasible.one/namespace-access: "true"
         blong.feasible.one/namespace-core: "true"
         blong.feasible.one/namespace-login: "true"
@@ -37,6 +37,7 @@ spec:
             - --srv.orchestrator
             - --core.adapter
             - --core.orchestrator
+            - --core.gateway
             - --access.adapter
             - --access.orchestrator
             - --access.gateway
@@ -51,7 +52,7 @@ spec:
             - secretRef:
                 name: mysql-credentials
                 optional: true
-          image: docker.io/library/blong-gogo:1
+          image: PLACEHOLDER
           livenessProbe:
             tcpSocket:
               port: rpc

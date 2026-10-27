@@ -38,7 +38,7 @@ export {getPath, parseDevRc};
 
 const ANSI = {cyan: '\x1b[36m', dim: '\x1b[2m', reset: '\x1b[0m'} as const;
 
-interface IConnectionInfo {
+export interface IConnectionInfo {
     host?: string;
     port?: number;
     user?: string;

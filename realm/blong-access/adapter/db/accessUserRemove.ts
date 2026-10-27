@@ -16,7 +16,11 @@ export default handler(({lib: {binHex, listEdgeObjectIds}}) => ({
         const qb: KnexQb = this.config?.context?.queryBuilder;
         if (!qb) throw new Error('Database not available');
         const hex = binHex(params.userId);
-        if (!hex) return {success: true};
+        // A missing id used to answer `success` while removing nothing — a caller
+        // that passed the id under another key (this handler takes a flat
+        // `{userId}`, not the `{user: {userId}}` of add/edit) saw a clean result
+        // and the user stayed. @@D-649
+        if (!hex) throw new Error('access.user.remove requires a userId');
         const buf = Buffer.from(hex, 'hex');
         const roleIds = await listEdgeObjectIds(qb, hex, 'hasRole');
         // One transaction, and one rebuild at the end of it: the paths lose the

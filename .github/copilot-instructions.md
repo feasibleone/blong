@@ -724,6 +724,17 @@ repository's own configuration files:
   `--output json` is the agent-friendly default for non-TTY. Implemented in
   `tools/blong-dev/src/commands/sql.ts`. Example: `blong-dev sql "SELECT * FROM access_role"`.
 
+- **`blong-dev user`** — create an access user straight in a database, which is how a first login
+  is bootstrapped when no gateway is reachable: `blong-dev user add admin --password change-me
+  --role Admin` writes the `core_resource` (the login name), `access_user`, the password
+  credential, the `hasRole` edges and the `access_pathRefresh` call in one transaction, then prints
+  whether the granted roles reach the `accessLogin` action. `list` shows users with their roles and
+  that verdict, and `passwd <user> --password <new>` rotates a password — the route back in when the
+  deployment ships no page that changes one (`--strict` refuses a secret below the database's
+  `minLength`, which otherwise only warns). `--password` is the new user's secret, `--db-password`
+  the database's; the connection otherwise resolves like `blong-dev sql`. Implemented in
+  `tools/blong-dev/src/commands/user.ts` (@@D-647).
+
 - **`blong-dev cspell`** — the writer and the gate for `cspell.config.yaml`. `add <word>` and
   `remove <word>` edit `words` (or `ignorePaths` with `--section ignorePaths`), `sort` orders an
   already-drifted list, `check` reports a list that is not sorted, `list` prints one. Nothing else

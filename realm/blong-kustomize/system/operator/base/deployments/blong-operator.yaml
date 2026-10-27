@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
-    app.kubernetes.io/version: 0.1.0
-    blong.feasible.one/spec-hash: 81d1b0db63d78cb9
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: a0524b711a7a25e8
   name: blong-operator
 spec:
   replicas: 1
@@ -22,7 +22,7 @@ spec:
         app.kubernetes.io/managed-by: blong-kustomize
         app.kubernetes.io/name: blong-operator
         app.kubernetes.io/part-of: blong-operator
-        app.kubernetes.io/version: 0.1.0
+        app.kubernetes.io/version: PLACEHOLDER
     spec:
       containers:
         - args:
@@ -51,7 +51,7 @@ spec:
                   key: token
                   name: blong-operator-release
                   optional: true
-          image: docker.io/library/blong-gogo:1
+          image: PLACEHOLDER
           name: operator
           ports:
             - containerPort: 8091

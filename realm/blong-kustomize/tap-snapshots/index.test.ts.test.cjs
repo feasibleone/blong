@@ -427,9 +427,19 @@ Object {
 
 exports[`index.test.ts > TAP > kustomize flow (server) > tree generate > aSplitTreeKeepsTheArtifactOutOfTheBase > splitTree 1`] = `
 Object {
+  "deploymentPatch": Array [
+    "- image: ghcr.io/feasibleone/blong-gogo:latest",
+    "app.kubernetes.io/name: blong-suite",
+    "app.kubernetes.io/name: blong-suite",
+    "name: blong",
+  ],
+  "fillImageInTemplate": true,
+  "frameworkImageInBase": false,
+  "frameworkImageInOverlay": true,
   "identityInBase": false,
   "identityInBaseFiles": Array [],
   "identityInLocal": true,
+  "imagesInBase": 2,
   "instanceDirs": Array [
     "local/suite/cache/blong-suite-fill-0.1.0-a1b2c3d4-node-a",
     "local/suite/cache/blong-suite-fill-0.1.0-a1b2c3d4-node-b",
@@ -438,7 +448,7 @@ Object {
   "namespacesInBase": 0,
   "nodesInBase": 0,
   "nodesInLocal": 2,
-  "patches": 1,
+  "patches": 13,
   "placeholderInBase": true,
   "placeholdersInTemplate": true,
   "realVolumeInPatch": true,
@@ -447,6 +457,10 @@ Object {
   "scriptMounted": true,
   "suiteChildNamespace": true,
   "templatesInBase": 2,
+  "versionInBase": false,
+  "versionInOverlay": true,
+  "versionInTransformer": false,
+  "versionsInBase": 16,
 }
 `
 

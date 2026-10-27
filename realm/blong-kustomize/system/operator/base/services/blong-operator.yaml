@@ -5,7 +5,7 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
-    app.kubernetes.io/version: 0.1.0
+    app.kubernetes.io/version: PLACEHOLDER
     blong.feasible.one/spec-hash: 7c25af52c2f34064
   name: blong-operator
 spec:

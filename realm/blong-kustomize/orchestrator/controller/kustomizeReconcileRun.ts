@@ -84,6 +84,18 @@ export const listingScopes = (
     swept: readonly string[],
     tenantNamespace: string,
     servicesNamespace?: string,
+    /**
+     * Whether this deployment brings services at all.
+     *
+     * A suite that brings none names nothing in the services namespace and is granted no rights there,
+     * so the sweep below is a question it has no business asking: the API server answers `forbidden`
+     * rather than `not found` for a namespace the caller may not read, and every pass logged one —
+     * twice a reconcile, for a namespace that was not even this deployment's (@@F-619). The
+     * declaration answers the other way round: a service switched *off* names nothing in the tree
+     * either, and the credentials it generated there are exactly what the sweep exists for
+     * (@@D-509).
+     */
+    servicesInUse = true,
 ): IListingScope[] => {
     const scopes = new Map<string, IListingScope>();
     const scopeOf = (
@@ -113,7 +125,7 @@ export const listingScopes = (
     // cannot see what it wrote — which is how a generated Secret outlived the definition it was
     // derived from. Only the credential kind is listed there, and only a labelled object is removable
     // once it is seen, so the shared namespace stays its owner's to edit (`prunable`, @@D-461 @@D-509).
-    if (servicesNamespace && servicesNamespace !== tenantNamespace) {
+    if (servicesInUse && servicesNamespace && servicesNamespace !== tenantNamespace) {
         scopeOf(RESOURCE_TYPE_BY_KIND['Secret'] ?? 'secret', servicesNamespace, true);
     }
     return [...scopes.values()];
@@ -132,6 +144,20 @@ export const unreadableFailures = (
     unreadable: ReadonlyArray<{key: string; message: string; cleanupOnly: boolean}>,
 ): Array<{key: string; message: string}> =>
     unreadable.filter(entry => !entry.cleanupOnly).map(({key, message}) => ({key, message}));
+
+/**
+ * Whether anything the tree names lives in a namespace.
+ *
+ * Which is what tells a namespace this deployment *uses* from one it merely knows the name of: the
+ * tree is what the pass applies, so an object placed in the services namespace is a deployment that
+ * brings a service, while a deployment that brings none names the namespace nowhere and is granted
+ * nothing there.
+ */
+const treeNamesNamespace = (tree: KustomizeTree, namespace: string): boolean =>
+    [...tree.values()].some(
+        resource =>
+            (resource as {metadata?: {namespace?: string}}).metadata?.namespace === namespace,
+    );
 
 /**
  * Which listing a CR pass reads: the namespace it knows, or every CR the operator can see.
@@ -683,11 +709,19 @@ export default handler(({handler}) => {
             // alternative is a pass that dies before it writes a status, leaving a CR that describes
             // a cluster nobody has since.
             const unreadable: Array<{key: string; message: string; cleanupOnly: boolean}> = [];
+            const servicesNamespace = options.servicesNamespace ?? DEFAULT_SERVICES_NAMESPACE;
             for (const scope of listingScopes(
                 managed,
                 sweptResourceTypes(),
                 suiteNamespace,
-                options.servicesNamespace ?? DEFAULT_SERVICES_NAMESPACE,
+                servicesNamespace,
+                // What the tree and the declaration together say about services: a brought service
+                // names objects in that namespace, and a switched-off one is still declared. A
+                // deployment that mentions neither has nothing there and no rights there, so it does
+                // not ask — see `listingScopes` and @@D-651.
+                treeNamesNamespace(tree, servicesNamespace) ||
+                    Object.keys({...(options.services ?? {}), ...(declared?.services ?? {})}).length >
+                        0,
             )) {
                 const find = call(wireName(scope.resourceType, 'Find'));
                 if (!find) {

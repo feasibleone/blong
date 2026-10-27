@@ -6,7 +6,6 @@ labels:
       app.kubernetes.io/managed-by: blong-kustomize
       app.kubernetes.io/name: blong-operator
       app.kubernetes.io/part-of: blong-operator
-      app.kubernetes.io/version: 0.1.0
 resources:
   - configmaps/fill-script.yaml
   - crd/blongdeployment-crd.yaml

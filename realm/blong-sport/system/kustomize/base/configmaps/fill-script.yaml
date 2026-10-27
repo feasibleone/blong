@@ -7,6 +7,6 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
-    app.kubernetes.io/version: 0.1.0
-    blong.feasible.one/spec-hash: 383997511fcfc88b
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: 49403c14821f41ff
   name: fill-script
