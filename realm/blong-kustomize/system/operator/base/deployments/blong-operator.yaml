@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: 0.1.0
-    blong.feasible.one/spec-hash: 46728481d6e17b4e
+    blong.feasible.one/spec-hash: 81d1b0db63d78cb9
   name: blong-operator
 spec:
   replicas: 1
@@ -45,6 +45,12 @@ spec:
               value: "true"
             - name: NODE_EXTRA_CA_CERTS
               value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            - name: BLONG_RELEASE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: token
+                  name: blong-operator-release
+                  optional: true
           image: docker.io/library/blong-gogo:1
           name: operator
           ports:

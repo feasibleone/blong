@@ -40,6 +40,10 @@ export interface ICycleOptions extends IRunbookOptions {
     localImage: string;
     artifactService: string;
     artifactNamespace: string;
+    /** The Rush deploy scenario and the tree the suite is generated from (D-641). */
+    suiteScenario: string;
+    /** The name the suite's artifact is published under, and the URL the tree prefetches. */
+    artifactName: string;
     buildSuite: boolean;
     buildImage: boolean;
     publishArtifacts: boolean;
@@ -51,6 +55,8 @@ export const cycleOptions = (env = process.env): ICycleOptions => ({
     localImage: env['LOCAL_IMAGE'] ?? `localhost/blong-gogo:${env['FRAMEWORK_VERSION'] ?? '1'}`,
     artifactService: env['ARTIFACT_SERVICE'] ?? 'blong-artifact',
     artifactNamespace: env['ARTIFACT_NAMESPACE'] ?? 'default',
+    suiteScenario: env['SUITE_SCENARIO'] ?? 'suite',
+    artifactName: env['ARTIFACT_NAME'] ?? 'suite.zip',
     buildSuite: env['BUILD_SUITE'] !== '0',
     buildImage: env['BUILD_IMAGE'] !== '0',
     publishArtifacts: env['PUBLISH_ARTIFACTS'] !== '0',
@@ -87,7 +93,11 @@ const fileServer = async (options: ICycleOptions, nodes: string[], io: IStepIo):
     await artifactServerCreate(where, io);
 };
 
-/** Both scenarios, because the operator and the tenant run from different artifacts (D-438's neighbourhood). */
+/**
+ * Both scenarios, because the operator and the tenant run from different artifacts (D-438's
+ * neighbourhood). The operator's scenario is fixed; the suite's is `SUITE_SCENARIO`, so a realm
+ * deploys its own scenario and artifact name without touching this step (D-641).
+ */
 const artifacts = async (options: ICycleOptions, io: IStepIo): Promise<void> => {
     if (!options.publishArtifacts) return;
     io.say('artifacts');
@@ -97,7 +107,7 @@ const artifacts = async (options: ICycleOptions, io: IStepIo): Promise<void> => 
     );
     for (const [scenario, remoteName, digestEnv] of [
         ['operator', 'kustomize.zip', 'OPERATOR_ARTIFACT_DIGEST'],
-        ['suite', 'suite.zip', 'ARTIFACT_DIGEST'],
+        [options.suiteScenario, options.artifactName, 'ARTIFACT_DIGEST'],
     ] as Array<[string, string, string]>) {
         await rushDeploy({root, scenario, targetFolder: SCENARIO_FOLDER(scenario)}, io);
         const digest = await zipFolder(
@@ -121,7 +131,7 @@ const artifacts = async (options: ICycleOptions, io: IStepIo): Promise<void> => 
             io,
         );
     }
-    io.log(`published kustomize.zip and suite.zip to ${pod}`);
+    io.log(`published kustomize.zip and ${options.artifactName} to ${pod}`);
 };
 
 /**
@@ -179,7 +189,7 @@ export default handler(() => ({
         // name is the artifact URL, because the prefetch that fetches it runs inside a pod.
         process.chdir(`${root}/${params.suitePackage}`);
         const host = `http://${params.artifactService}.${params.artifactNamespace}.svc.cluster.local`;
-        process.env['ARTIFACT_URL'] = process.env['ARTIFACT_URL'] ?? `${host}/suite.zip`;
+        process.env['ARTIFACT_URL'] = process.env['ARTIFACT_URL'] ?? `${host}/${params.artifactName}`;
         process.env['OPERATOR_ARTIFACT_URL'] =
             process.env['OPERATOR_ARTIFACT_URL'] ?? `${host}/kustomize.zip`;
         return {

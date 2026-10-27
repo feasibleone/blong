@@ -3,7 +3,8 @@
  * blong-kustomize — CLI for the deployment realm; the plumbing is `@feasibleone/blong-gogo/cli.ts`.
  *
  * Usage:
- *   blong-kustomize release-notify --suite=shop --version=1.13.0 --artifact-url=https://…/suite.zip
+ *   blong-kustomize release-notify --suite=shop --version=1.13.0 --artifact-url=https://…/suite.zip \
+ *       --artifact-digest=<sha256> --framework-version=1.42.0
  *   blong-kustomize release-notify --suite=shop --version=1.13.0 --framework-image=ghcr.io/…/blong-gogo
  *   blong-kustomize volume-prune [--retention=3]
  */

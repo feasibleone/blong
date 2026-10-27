@@ -13,4 +13,19 @@ export default {
         'No MLE handshake is recorded for {actorId}, so a call it signed cannot be verified — ' +
         'the caller has to log in again',
     'kustomize.sessionUnconfigured': 'This process cannot mint a session: {reason}',
+    // The release trigger's two refusals. The token is the only credential a caller outside the
+    // cluster can present, so a missing or wrong one is an authentication failure, and the status is
+    // what the workflow reads rather than a 500.
+    'kustomize.release.tokenMissing': {
+        message: 'No release token is configured for this operator',
+        statusCode: 401,
+    },
+    'kustomize.release.tokenMismatch': {
+        message: 'The release token is not valid',
+        statusCode: 401,
+    },
+    'kustomize.release.malformed': {
+        message: 'The release announcement is incomplete: {reason}',
+        statusCode: 422,
+    },
 };

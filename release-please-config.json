@@ -18,6 +18,7 @@
         "core/blong-lib": {},
         "tools/blong-log": {},
         "realm/blong-login": {},
+        "realm/blong-sport": {},
         "core/blong-mock": {},
         "core/blong-mle": {},
         "core/blong-openapi": {},

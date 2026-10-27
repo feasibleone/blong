@@ -1,0 +1,259 @@
+name: Deploy
+
+# A release is the deployment decision: release-please publishes a
+# `<component>-v<version>` release, and this workflow builds that component's
+# artifact, attaches it to the release and asks the operator to converge.
+# `workflow_dispatch` is the same path for a re-deploy or a deployment whose
+# release was published by an earlier runner.
+on:
+    release:
+        types: [published]
+    workflow_dispatch:
+        inputs:
+            deployment:
+                description: Deployment alias from .github/deployments.json
+                required: true
+                type: string
+            tag:
+                description: Release tag to deploy (defaults to the latest release)
+                required: false
+                type: string
+
+# One deployment at a time per alias. The alias is not known until `resolve`
+# runs, so the release tag (or the dispatch's alias) is the key; a second run
+# waits rather than replacing the first mid-apply.
+concurrency:
+    group: deploy-${{ github.event.release.tag_name || inputs.deployment || github.run_id }}
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    resolve:
+        name: Resolve the deployment
+        runs-on: ubuntu-latest
+        outputs:
+            alias: ${{ steps.resolve.outputs.alias }}
+            tag: ${{ steps.resolve.outputs.tag }}
+            version: ${{ steps.resolve.outputs.version }}
+            package: ${{ steps.resolve.outputs.package }}
+            scenario: ${{ steps.resolve.outputs.scenario }}
+            artifact: ${{ steps.resolve.outputs.artifact }}
+            namespace: ${{ steps.resolve.outputs.namespace }}
+            suite: ${{ steps.resolve.outputs.suite }}
+            framework_version: ${{ steps.resolve.outputs.framework_version }}
+            framework_image: ${{ steps.resolve.outputs.framework_image }}
+            artifact_url: ${{ steps.resolve.outputs.artifact_url }}
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  # The release's own tree for a release run, the dispatch tag when one
+                  # is named, and the default branch otherwise — the deployment map is
+                  # read from whichever tree the caller asked about.
+                  ref: ${{ inputs.tag || github.event.release.tag_name || github.ref }}
+                  fetch-depth: 0
+
+            - name: Read the tag, alias and framework version
+              id: resolve
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  EVENT_TAG: ${{ github.event.release.tag_name }}
+                  INPUT_DEPLOYMENT: ${{ inputs.deployment }}
+                  INPUT_TAG: ${{ inputs.tag }}
+              run: |
+                  set -euo pipefail
+                  tag="${INPUT_TAG:-${EVENT_TAG}}"
+                  if [ -z "$tag" ]; then
+                      tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+                  fi
+                  if [ -z "$tag" ]; then
+                      echo "::error::no release tag to deploy"
+                      exit 1
+                  fi
+
+                  alias="${INPUT_DEPLOYMENT}"
+                  if [ -z "$alias" ]; then
+                      alias=$(jq -r --arg tag "$tag" \
+                          'to_entries[]
+                           | select(.value.release as $release | $tag | startswith($release + "-v"))
+                           | .key' .github/deployments.json | head -n1)
+                  fi
+                  if [ -z "$alias" ]; then
+                      # One release fires this workflow for every component release-please publishes,
+                      # and it publishes the batch at once: most of those tags name no deployment, and
+                      # their own pipelines are the ones that run. Saying so and stopping is the
+                      # difference between a green release and a red one per component nobody deploys.
+                      if [ -n "${EVENT_TAG:-}" ]; then
+                          echo "::notice::$tag names no deployment in .github/deployments.json; nothing to deploy"
+                          echo "alias=" >> "$GITHUB_OUTPUT"
+                          exit 0
+                      fi
+                      echo "::error::no deployment named and none could be resolved"
+                      exit 1
+                  fi
+
+                  release=$(jq -r --arg alias "$alias" '.[$alias].release' .github/deployments.json)
+                  version="${tag#"${release}-v"}"
+                  if [ "$version" = "$tag" ]; then
+                      echo "::error::$tag is not a $release-v<version> release"
+                      exit 1
+                  fi
+
+                  gogo=$(git show "$tag:.release-please-manifest.json" \
+                      | jq -r '."core/blong-gogo"')
+                  if [ -z "$gogo" ] || [ "$gogo" = "null" ]; then
+                      echo "::error::$tag does not carry a core/blong-gogo version"
+                      exit 1
+                  fi
+
+                  artifact=$(jq -r --arg alias "$alias" '.[$alias].artifact' .github/deployments.json)
+                  {
+                      echo "alias=$alias"
+                      echo "tag=$tag"
+                      echo "version=$version"
+                      echo "package=$(jq -r --arg alias "$alias" '.[$alias].package' .github/deployments.json)"
+                      echo "scenario=$(jq -r --arg alias "$alias" '.[$alias].scenario' .github/deployments.json)"
+                      echo "artifact=$artifact"
+                      echo "namespace=$(jq -r --arg alias "$alias" '.[$alias].namespace' .github/deployments.json)"
+                      echo "suite=$(jq -r --arg alias "$alias" '.[$alias].suite' .github/deployments.json)"
+                      echo "framework_version=v$gogo"
+                      echo "framework_image=ghcr.io/feasibleone/blong-gogo"
+                      echo "artifact_url=https://github.com/${GITHUB_REPOSITORY}/releases/download/$tag/$artifact"
+                  } >> "$GITHUB_OUTPUT"
+
+            - name: Wait for the framework image
+              if: steps.resolve.outputs.alias != ''
+              env:
+                  FRAMEWORK_IMAGE: ${{ steps.resolve.outputs.framework_image }}
+                  FRAMEWORK_VERSION: ${{ steps.resolve.outputs.framework_version }}
+              run: |
+                  set -euo pipefail
+                  image="${FRAMEWORK_IMAGE}:${FRAMEWORK_VERSION}"
+                  echo "waiting for $image"
+                  for _ in $(seq 1 60); do
+                      if docker manifest inspect "$image" >/dev/null 2>&1; then
+                          echo "$image is published"
+                          exit 0
+                      fi
+                      sleep 10
+                  done
+                  echo "::error::$image was not published within ten minutes"
+                  exit 1
+
+    artifact:
+        name: Build and attach the artifact
+        needs: resolve
+        # A release that names no deployment resolved an empty alias and stopped; its jobs are skipped
+        # rather than failed, which is what keeps the workflow green on every component release.
+        if: needs.resolve.outputs.alias != ''
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        outputs:
+            digest: ${{ steps.zip.outputs.digest }}
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ needs.resolve.outputs.tag }}
+                  fetch-depth: 0
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+
+            - name: Install
+              run: node common/scripts/install-run-rush.js install
+
+            - name: Build the package
+              run: node common/scripts/install-run-rush.js build --to ${{ needs.resolve.outputs.package }}
+
+            - name: Deploy the scenario
+              run: |
+                  node common/scripts/install-run-rush.js deploy \
+                      --scenario ${{ needs.resolve.outputs.scenario }} \
+                      --target-folder "$RUNNER_TEMP/deploy" \
+                      --overwrite
+
+            - name: Zip it and hash it
+              id: zip
+              run: |
+                  set -euo pipefail
+                  cd "$RUNNER_TEMP/deploy"
+                  # The artifact is the whole deployment scenario: the entry, the realms
+                  # it carries and the browser bundle, because the operator mounts this
+                  # directory and runs the entry inside it.
+                  zip -qr "$RUNNER_TEMP/${{ needs.resolve.outputs.artifact }}" .
+                  digest=$(sha256sum "$RUNNER_TEMP/${{ needs.resolve.outputs.artifact }}" | awk '{print $1}')
+                  echo "digest=$digest" >> "$GITHUB_OUTPUT"
+                  echo "sha256=$digest"
+
+            - name: Attach it to the release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  gh release upload "${{ needs.resolve.outputs.tag }}" \
+                      "$RUNNER_TEMP/${{ needs.resolve.outputs.artifact }}" \
+                      --clobber
+
+    deploy:
+        name: Ask the operator
+        needs: [resolve, artifact]
+        if: needs.resolve.outputs.alias != ''
+        runs-on: ubuntu-latest
+        steps:
+            - name: Call the token-gated release route
+              env:
+                  DEPLOY_ENDPOINT: ${{ secrets.DEPLOY_ENDPOINT }}
+                  DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+                  SUITE: ${{ needs.resolve.outputs.suite }}
+                  NAMESPACE: ${{ needs.resolve.outputs.namespace }}
+                  VERSION: ${{ needs.resolve.outputs.version }}
+                  ARTIFACT_URL: ${{ needs.resolve.outputs.artifact_url }}
+                  ARTIFACT_DIGEST: ${{ needs.artifact.outputs.digest }}
+                  FRAMEWORK_IMAGE: ${{ needs.resolve.outputs.framework_image }}
+                  FRAMEWORK_VERSION: ${{ needs.resolve.outputs.framework_version }}
+              run: |
+                  set -euo pipefail
+                  if [ -z "$DEPLOY_ENDPOINT" ] || [ -z "$DEPLOY_TOKEN" ]; then
+                      echo "::error::DEPLOY_ENDPOINT and DEPLOY_TOKEN are required repository secrets"
+                      exit 1
+                  fi
+                  # `jq -n --arg`, never a shell-interpolated body: a token or an URL
+                  # with a quote in it must not be able to change the JSON.
+                  body=$(jq -n \
+                      --arg id "deploy-${GITHUB_RUN_ID}" \
+                      --arg token "$DEPLOY_TOKEN" \
+                      --arg suite "$SUITE" \
+                      --arg namespace "$NAMESPACE" \
+                      --arg version "$VERSION" \
+                      --arg artifactUrl "$ARTIFACT_URL" \
+                      --arg artifactDigest "$ARTIFACT_DIGEST" \
+                      --arg frameworkImage "$FRAMEWORK_IMAGE" \
+                      --arg frameworkVersion "$FRAMEWORK_VERSION" \
+                      '{jsonrpc: "2.0",
+                        id: $id,
+                        method: "kustomize.release.approve",
+                        params: {
+                          token: $token,
+                          suite: $suite,
+                          namespace: $namespace,
+                          version: $version,
+                          artifactUrl: $artifactUrl,
+                          artifactDigest: $artifactDigest,
+                          frameworkImage: $frameworkImage,
+                          frameworkVersion: $frameworkVersion
+                      }}')
+                  set +e
+                  http=$(curl -sS --fail-with-body \
+                      -o "$RUNNER_TEMP/answer.json" \
+                      -w '%{http_code}' \
+                      -X POST "$DEPLOY_ENDPOINT" \
+                      -H 'content-type: application/json' \
+                      -d "$body")
+                  status=$?
+                  set -e
+                  cat "$RUNNER_TEMP/answer.json" 2>/dev/null || true
+                  echo
+                  echo "HTTP $http"
+                  exit "$status"

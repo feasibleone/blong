@@ -104,11 +104,12 @@ export default server(() => ({
                     // spells the same thing `nodeSource` — the config holds the source, the spec file
                     // the tree writer reads holds the resolved names, and one field cannot be both.
                     nodes: {selector: 'kubernetes.io/hostname'},
-                    // The deployment page's address (@@D-523). The operator is the only thing that ever
-                    // serves it — a suite's portal cannot front the operator's Service, because an
-                    // Ingress backend has to live in the Ingress's own namespace — so the host is the
-                    // installer's to name, beside `install` itself and never in a tenant's CR.
-                    operator: {ingress: {host: 'blong-operator.test'}},
+                    // The deployment page's address (@@D-523) is not here: a host is a DNS record and a
+                    // certificate somebody owns, so the installer names it in its own configuration —
+                    // `kustomize.deploy.operator.ingress` in the rc file of the `k8s` intent, host, TLS
+                    // secret and the `cert-manager.io/cluster-issuer` annotation — and an install that
+                    // names none publishes the Service and no address at all. A host written here would
+                    // be a domain baked into the framework's source @@D-645.
                     suite: {
                         name: OPERATOR_NAME,
                         namespace: OPERATOR_NAMESPACE,

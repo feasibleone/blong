@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# cert-manager is installed from its own chart rather than from a vendored manifest: the chart is
+# what the project releases, so the version is one line here and there is no fourteen-thousand-line
+# file to keep in step with it.
+#
+# `helmCharts` is the one kustomize feature `kubectl apply -k` cannot use. It needs a `helm` binary
+# on PATH and the flag that turns the inflator on, so the tree is applied as
+#
+#     kubectl kustomize --enable-helm test/integration/cert-manager | kubectl apply -f -
+#
+# The chart is pulled at build time from `repo`, so that machine needs network access to
+# charts.jetstack.io. Nothing is vendored, and the render is deterministic for a pinned `version`.
+#
+# Its own kustomization rather than a folder of `test/integration/`: that tree declares
+# `namespace: blong-integration`, a rewrite that would move cert-manager's own namespace and every
+# namespaced object in the chart. The issuers are applied separately, after the webhook answers.
+namespace: cert-manager
+resources:
+    # The chart templates into the release namespace but does not create it.
+    - namespace.yaml
+helmCharts:
+    - name: cert-manager
+      repo: https://charts.jetstack.io
+      version: v1.21.3
+      releaseName: cert-manager
+      namespace: cert-manager
+      valuesInline:
+          # This chart installs the CRDs as templates rather than through `crds/`, which is what makes
+          # them upgradeable — and what makes them absent unless asked for.
+          crds:
+              enabled: true

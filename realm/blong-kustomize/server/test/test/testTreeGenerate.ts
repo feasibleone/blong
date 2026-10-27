@@ -419,6 +419,48 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 }
             },
 
+            async function anAddressTravelsInTheOverlay(assert: IAssert) {
+                // A host is a DNS record and a certificate somebody owns, named by whoever installs
+                // the deployment — so it cannot be part of the base every deployment of the suite
+                // shares @@D-645. The Ingresses live in the overlay's suite child, and the declaration
+                // beside the base shows the field with the placeholder token, because the example is
+                // committed as well.
+                const dir = mkdtempSync(join(tmpdir(), 'kustomize-address-'));
+                try {
+                    const plan = lib.suitePlan({
+                        portal: {web: {host: 'page.example.test', deployment: 'shop'}},
+                        // The declaration is what the example beside the base carries.
+                        crd: true,
+                    }) as IDeploymentPlan;
+                    const written = writeKustomizeTree(buildKustomizeTree(plan), dir, {
+                        layout: 'split',
+                        plan,
+                    });
+                    const read = (file: string): string => readFileSync(join(dir, file), 'utf8');
+                    const base = written.filter(file => file.startsWith('base/'));
+                    const local = written.filter(file => file.startsWith('local/'));
+                    const example = parse(read('example/blongdeployment.yaml')) as {
+                        spec?: {portal?: Record<string, {host?: string}>};
+                    };
+                    const declared = parse(read('local/declaration/blongdeployment.yaml')) as {
+                        spec?: {portal?: Record<string, {host?: string}>};
+                    };
+                    pin(assert, 'addressPlacement', {
+                        ingressInBase: base.filter(file => file.startsWith('base/ingresses/')),
+                        ingressInLocal: local.filter(file =>
+                            file.startsWith('local/suite/ingresses/'),
+                        ),
+                        hostInBase: base.map(read).join('\n').includes('page.example.test'),
+                        // The sample is committed, so it says which value is the tenant's to fill in;
+                        // the declaration a run applies is the overlay's and names the real address.
+                        exampleHost: example.spec?.portal?.web?.host,
+                        declaredHost: declared.spec?.portal?.web?.host,
+                    });
+                } finally {
+                    rmSync(dir, {recursive: true, force: true});
+                }
+            },
+
             async function aServiceIsBesideTheBaseRatherThanInIt(assert: IAssert) {
                 // A backing service is a *deployment's* choice, not the suite's: one deployment brings
                 // mysql itself and the next points at a database somebody else runs. So the service is a
@@ -2644,6 +2686,8 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                             host: 'shop.example',
                             path: '/shop',
                             auth: {type: 'oauth2', authUrl: 'https://id.example'},
+                            tls: {secretName: 'shop-tls'},
+                            annotations: {'cert-manager.io/cluster-issuer': 'letsencrypt-staging'},
                             deployment: 'shop',
                         },
                     },

@@ -34,6 +34,8 @@ Options
                           runbook never creates one it did not find, F-446)
   --namespace=NS          the suite's namespace (default blong-suite)
   --service-off=NAME      a service the deployment runs itself (default: none)
+  --suite-scenario=NAME   the Rush deploy scenario and tree of the suite (default suite)
+  --artifact-name=NAME    the name the suite artifact is published under (default suite.zip)
   --agents=N              agent nodes, when the machine half creates the cluster
   --build-image=BOOL      build and import the framework image (default true)
   --build-suite=BOOL      build the suite's browser bundle (default true)
@@ -80,6 +82,8 @@ const shared = (argv: Record<string, unknown>): object => ({
         : {}),
     ...(number(argv.agents) !== undefined ? {agents: number(argv.agents)} : {}),
     ...(text(argv['suite-package']) ? {suitePackage: text(argv['suite-package'])} : {}),
+    ...(text(argv['suite-scenario']) ? {suiteScenario: text(argv['suite-scenario'])} : {}),
+    ...(text(argv['artifact-name']) ? {artifactName: text(argv['artifact-name'])} : {}),
     ...(text(argv['local-image']) ? {localImage: text(argv['local-image'])} : {}),
     ...(text(argv['artifact-service']) ? {artifactService: text(argv['artifact-service'])} : {}),
     ...(text(argv['artifact-namespace'])

@@ -33,9 +33,10 @@ export default server(() => ({
         integration: {
             runbook: {e2e: {}},
             // Every group the package runs has to be listed here, or the watch runner never executes
-            // it and the coverage report says "incomplete" for no visible reason.
+            // it and the coverage report says "incomplete" for no visible reason. The rules group is
+            // the half that needs no cluster, so it is what a plain `npm test` proves.
             watch: {
-                test: ['test.cluster.suite'],
+                test: ['test.cluster.suite', 'test.script.rules'],
             },
         },
     },

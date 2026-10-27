@@ -405,6 +405,18 @@ Object {
 }
 `
 
+exports[`index.test.ts > TAP > kustomize flow (server) > tree generate > anAddressTravelsInTheOverlay > addressPlacement 1`] = `
+Object {
+  "declaredHost": "page.example.test",
+  "exampleHost": "PLACEHOLDER",
+  "hostInBase": false,
+  "ingressInBase": Array [],
+  "ingressInLocal": Array [
+    "local/suite/ingresses/page-example-test.yaml",
+  ],
+}
+`
+
 exports[`index.test.ts > TAP > kustomize flow (server) > tree generate > anArtifactEntryIsFoundInAnyDirectory > artifactEntry 1`] = `
 Object {
   "mounted": "/cache/demo/9/suite/blong-suite/index.ts",

@@ -11,7 +11,6 @@ resources:
   - configmaps/fill-script.yaml
   - crd/blongdeployment-crd.yaml
   - deployments/blong-operator.yaml
-  - ingresses/blong-operator-test.yaml
   - rbac/blong-operator-clusterrole.yaml
   - rbac/blong-operator-clusterrolebinding.yaml
   - rbac/blong-operator-role.yaml

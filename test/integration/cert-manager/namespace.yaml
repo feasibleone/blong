@@ -1,0 +1,7 @@
+# The chart templates into its release namespace but does not create it, and `helm install
+# --create-namespace` has no equivalent inside a kustomization — so the Namespace is the tree's own
+# one object. The kustomization's `namespace:` transformer renames it to the same value it declares.
+apiVersion: v1
+kind: Namespace
+metadata:
+    name: cert-manager

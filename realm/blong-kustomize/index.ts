@@ -48,6 +48,7 @@ export default server(() => ({
                     'test.fill',
                     'test.artifact.fetch',
                     'test.release.notify',
+                    'test.release.approve',
                     'test.cluster.auth',
                     'test.login',
                     'test.session',

@@ -49,6 +49,9 @@
 !index.browser.ts
 !index.html.ts
 !index.test.ts
+!index.html
+!system/kustomize/base/**
+!system/kustomize/example/**
 !vite.config.ts
 !playwright.config.ts
 !tsconfig.json

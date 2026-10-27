@@ -78,6 +78,28 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                     ['/spec/version', '/spec/frameworkImage'],
                     'the image only when the release moved it',
                 );
+                assert.deepEqual(
+                    releasePatch({
+                        version: '1.13.0',
+                        artifactUrl: 'https://example.test/sport.zip',
+                        artifactDigest: 'a'.repeat(64),
+                        frameworkVersion: '1.42.0',
+                    }),
+                    [
+                        {op: 'add', path: '/spec/version', value: '1.13.0'},
+                        {op: 'add', path: '/spec/minFrameworkVersion', value: '1.42.0'},
+                        {
+                            op: 'add',
+                            path: '/spec/suiteVolume/artifact',
+                            value: {
+                                source: 'url',
+                                url: 'https://example.test/sport.zip',
+                                digest: 'a'.repeat(64),
+                            },
+                        },
+                    ],
+                    'the digest travels inside the artifact and the framework version is its own member',
+                );
             },
 
             async function theRealmCliNamesTheTwoDecisions(assert: IAssert) {
@@ -93,6 +115,8 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                     suite: 'shop',
                     version: '1.13.0',
                     'artifact-url': 'https://example.test/suite.zip',
+                    'artifact-digest': 'a'.repeat(64),
+                    'framework-version': '1.42.0',
                 });
                 assert.equal(
                     notify?.method,
@@ -105,6 +129,8 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                         suite: 'shop',
                         version: '1.13.0',
                         artifactUrl: 'https://example.test/suite.zip',
+                        artifactDigest: 'a'.repeat(64),
+                        frameworkVersion: '1.42.0',
                     },
                     'and passes only what was given, camel-cased',
                 );

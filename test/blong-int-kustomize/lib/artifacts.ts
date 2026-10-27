@@ -31,7 +31,9 @@ export const rushDeploy = async (
             targetFolder,
             '--overwrite',
         ],
-        {allowFailure: false},
+        // From the repository root: `rush deploy` reads `rush.json` beside the command it is given,
+        // so a run started in a package folder has to say where the repository is.
+        {cwd: root, allowFailure: false},
     );
 };
 

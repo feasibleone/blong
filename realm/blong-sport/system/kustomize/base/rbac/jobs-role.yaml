@@ -1,0 +1,36 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-sport
+    app.kubernetes.io/part-of: blong-sport
+    app.kubernetes.io/version: 0.1.0
+    blong.feasible.one/spec-hash: 2105956196a26064
+  name: jobs
+rules:
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+      - apps
+      - networking.k8s.io
+    resources:
+      - pods
+      - services
+      - endpoints
+      - deployments
+      - daemonsets
+      - replicasets
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch

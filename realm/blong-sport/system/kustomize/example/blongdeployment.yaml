@@ -1,0 +1,39 @@
+apiVersion: blong.feasible.one/v1alpha1
+kind: BlongDeployment
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-sport
+    app.kubernetes.io/part-of: blong-sport
+    app.kubernetes.io/version: 0.1.0
+    blong.feasible.one/spec-hash: 953d7d2029afb370
+  name: blong-sport
+  namespace: blong-sport
+spec:
+  entry: /opt/deploy/suite/realm/blong-sport/index.ts
+  externalServices:
+    db:
+      externalName: mysql.blong-integration.svc.cluster.local
+      ports:
+        - name: mysql
+          port: 3306
+  frameworkImage: docker.io/library/blong-gogo
+  minFrameworkVersion: "1"
+  portal:
+    web:
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      host: PLACEHOLDER
+      tls:
+        secretName: sport-tls
+  profile: monolith
+  servicesNamespace: blong-services
+  suiteVolume:
+    artifact:
+      digest: f9d2627b7102b538c2bbf38900999b7658786dea2ecd545530f2d98b238d38c6
+      source: url
+      url: http://blong-artifact.default.svc.cluster.local/sport.zip
+    attemptRetention: 5
+    backend: nodeLocal
+    retention: 3
+  version: 0.1.0

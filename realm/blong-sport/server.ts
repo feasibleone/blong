@@ -11,4 +11,9 @@ import {realm} from '@feasibleone/blong';
  * `index.ts` names only this realm. Do NOT create a realm-local `adapter/db.ts`
  * or a dispatch orchestrator — reuse blong-server's.
  */
-export default realm(() => ({url: import.meta.url}));
+export default realm(() => ({
+    url: import.meta.url,
+    // What this realm is in every deployment: a process of its own. A suite that deploys it as a
+    // monolith still names it in its `k8s` block, but the answer belongs to the realm (@@D-437).
+    config: {default: {k8s: {k8sRealmRole: 'service'}}},
+}));

@@ -24,6 +24,7 @@
     "core/blong-lib": "1.9.0",
     "core/blong-mock": "1.5.0",
     "realm/blong-party": "1.9.1",
+    "realm/blong-sport": "0.1.0",
     "core/blong-server": "1.6.0",
     "demo/marine-data": "1.0.1",
     "realm/blong-gateway": "1.6.0",

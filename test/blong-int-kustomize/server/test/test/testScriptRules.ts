@@ -1,4 +1,7 @@
 import {handler, type IAssert} from '@feasibleone/blong';
+import {USAGE, realmCommand} from '../../../bin/blongIntKustomizeCommand.ts';
+import {latestMigrationJob} from '../../../lib/checks.ts';
+import {cycleOptions} from '../../../orchestrator/runbook/runbookMachinePrepare.ts';
 import {
     artifactSourceError,
     pageAnswer,
@@ -116,6 +119,53 @@ export default handler(({lib: {group}}) => ({
                     'the switch a deployment runs its own database with is one spelling',
                 );
                 assert.deepEqual(serviceOffArguments(undefined), [], 'and none when nothing is switched');
+            },
+
+            async function theLatestMigrationJobIsTheOneWaitedFor(assert: IAssert) {
+                // A namespace keeps the failed attempts beside the one that worked, and the first
+                // `migrate` match is the oldest: a run waited ten minutes on a Job that had already
+                // failed while its own attempt was Complete.
+                assert.equal(
+                    latestMigrationJob([
+                        {
+                            metadata: {
+                                name: 'sport-migrate-0.1.0-old',
+                                creationTimestamp: '2026-01-01T00:00:00Z',
+                            },
+                        },
+                        {
+                            metadata: {
+                                name: 'sport-migrate-0.1.0-new',
+                                creationTimestamp: '2026-01-02T00:00:00Z',
+                            },
+                        },
+                    ]),
+                    'job.batch/sport-migrate-0.1.0-new',
+                    'the newest attempt is the one a run waits on',
+                );
+                assert.equal(latestMigrationJob([]), undefined, 'and no Job is no Job');
+            },
+
+            async function theSuiteScenarioAndArtifactNameAreParameters(assert: IAssert) {
+                // A realm other than blong-suite deploys its own scenario and names its own artifact;
+                // the defaults keep the suite's path unchanged (D-641).
+                const defaults = cycleOptions({});
+                assert.equal(defaults.suiteScenario, 'suite', 'the suite scenario keeps its name');
+                assert.equal(defaults.artifactName, 'suite.zip', 'and so does its artifact');
+                const sport = cycleOptions({SUITE_SCENARIO: 'sport', ARTIFACT_NAME: 'sport.zip'});
+                assert.equal(sport.suiteScenario, 'sport', 'a realm names its own scenario');
+                assert.equal(sport.artifactName, 'sport.zip', 'and its own artifact');
+                assert.match(USAGE, /--suite-scenario=NAME/, 'the scenario flag is documented');
+                assert.match(USAGE, /--artifact-name=NAME/, 'and so is the artifact flag');
+                const command = realmCommand({
+                    positionals: ['machine', 'prepare'],
+                    argv: {'suite-scenario': 'sport', 'artifact-name': 'sport.zip'},
+                } as never);
+                assert.deepEqual(
+                    command?.params,
+                    {suiteScenario: 'sport', artifactName: 'sport.zip'},
+                    'and both reach the handler as params',
+                );
             },
 
             async function theServicesNamespaceIsReadOffTheTree(assert: IAssert) {

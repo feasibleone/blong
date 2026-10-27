@@ -139,4 +139,10 @@ ci-failures
 # deploy shares, and the overlay carries the artifact's identity and the node names — the two values
 # that differ per cluster and per deploy, and the reason the layout is split at all (D-475).
 /suite/*/system/kustomize/local/
+/realm/*/system/kustomize/local/
 /realm/*/system/operator/local/
+
+# The chart a kustomization's `helmCharts` inflator pulls (its default chart home is `charts/` beside
+# the kustomization). A fetched artifact rather than a vendored copy: `kubectl kustomize --enable-helm`
+# downloads it again when it is missing, and a pinned `version:` is what makes that render identical.
+/test/integration/cert-manager/charts/

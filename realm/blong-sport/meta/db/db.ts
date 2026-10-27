@@ -13,13 +13,14 @@ import {handler} from '@feasibleone/blong';
  * their resource is the person or organisation, created by the party realm.
  * @@D-595
  *
- * `dbTest: true` loads `meta/dbTest/*.yaml` in the dev and integration intents.
+ * `meta/dbTest/*.yaml` loads in the dev and integration intents, where the adapter's
+ * own `schema.dbTest` is on; an `upgrade` or `release` process must not dispatch those
+ * seeds, because their handler groups are not loaded there.
  * No `mock` entries — every model is served by its real table.
  */
 export default handler(() => ({
     config: {
         schema: {
-            dbTest: true,
             tables: {
                 // Order is dependency order: a referenced table is created (and
                 // its primary key applied) before the tables that point at it,

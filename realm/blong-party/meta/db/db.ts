@@ -3,7 +3,9 @@ import {handler} from '@feasibleone/blong';
 export default handler(() => ({
     config: {
         schema: {
-            dbTest: true,
+            // No `dbTest` here: the adapter's `dev` and `ci` activations turn it on, and an
+            // `upgrade` or `release` process must not dispatch the test seeds — their handler
+            // groups are not loaded there, and the generic merge read an undefined object.
             tables: {
                 // Party tables are resource-backed with a REAL display-name column
                 // (`resource: {nameColumn}`), not the virtual `${object}Name`:

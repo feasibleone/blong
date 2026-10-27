@@ -11,6 +11,10 @@ open (1)
 - `T-319` · test/blong-int-kustomize — The runbook should not wait for an answer when it has no
   terminal
 
+done (1)
+
+- `T-443` · test/blong-int-kustomize — Sport CD Group 2 local deploy
+
 <!-- /memory:index -->
 
 ## Open
@@ -24,3 +28,20 @@ under CI with no TTY that looks like a hang: no output, no children, an idle eve
 says a question was asked. The machine half should either refuse with a sentence naming --cluster,
 or read the default from the environment the way it reads other settings, so a headless run either
 works or fails visibly.
+
+## Done
+
+### T-443 — Sport CD Group 2 local deploy
+
+> _2026-10-27 · test/blong-int-kustomize · done_
+
+Make the k3d runbook accept a suite scenario and artifact name, then run the local cycle from
+realm/blong-sport with SUITE_ENTRY=./index.ts. Fix what the run finds, commit the generated
+system/kustomize/base, and verify the CR is Ready, the migration Job is Complete, the portal answers
+and the login round trip works.
+
+Done: the runbook takes SUITE_SCENARIO and ARTIFACT_NAME, the option test runs, and the local sport
+deployment is Ready from the published artifacts. The runs found and fixed the CRD's undeclared
+portal TLS/annotations, the missing database, party/sport test seeds forced into upgrade, and the
+runbook waiting on the oldest failed migration Job. The suite deploy returns done:true;
+system/kustomize/base is generated and local/ is ignored.

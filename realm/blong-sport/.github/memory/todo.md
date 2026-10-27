@@ -23,7 +23,7 @@ open (14)
 - `T-399` · realm/blong-sport — Cascade sport, discipline and category from the BOC nomenclature
 - `T-400` · realm/blong-sport — Assert one resource row and a person with two roles
 
-done (18)
+done (19)
 
 - `T-374` · realm/blong-sport — sport P1 scaffold and boot
 - `T-376` · realm/blong-sport — sport P3 schema and seeds
@@ -43,6 +43,7 @@ done (18)
 - `T-429` · realm/blong-sport — Capture the Bulgarian model screenshots
 - `T-428` · realm/blong-sport — Translate sport labels to Bulgarian
 - `T-434` · realm/blong-sport — One pinned row per Bulgarian browse capture
+- `T-442` · realm/blong-sport — Sport CD Group 1 deployable realm
 
 <!-- /memory:index -->
 
@@ -358,3 +359,20 @@ database carrying earlier runs' rows.
 
 pinnedRow + NO_MATCH in bgModels.play.ts; 46 tests pass twice on a database with earlier runs'
 leftovers.
+
+### T-442 — Sport CD Group 1 deployable realm
+
+> _2026-10-27 · realm/blong-sport · done_
+
+Make realm/blong-sport deployable through the existing index.ts: add pkg and the kustomize.deploy
+suite definition, the release block with the blong-sport database connection, party and sport config
+blocks, k8s and upgrade blocks, k8sRealmRole service, the runtime dependencies and vite build, the
+deploy-sport scenario, release-please registration, the gitignore and npmignore entries, the
+blong-sport MySQL user and grant, and the operator and portal TLS and issuer annotations. Verify the
+flat tree, the artifact and dist.
+
+Done: index.ts carries pkg, the kustomize.deploy suite (version from package.json), release db
+config, k8s/upgrade blocks, role service, vite build, deploy-sport scenario, release-please entry,
+ignores, MySQL user and operator/portal TLS. Verified the flat tree (one Deployment), the sport.zip
+artifact (entry, dist, core) and 117 passing kustomize tests; lint added letsencrypt to the
+dictionary.

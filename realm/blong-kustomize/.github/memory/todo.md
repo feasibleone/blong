@@ -35,7 +35,7 @@ open (19)
 - `T-330` · realm/blong-kustomize — An existing key Secret never gains the realm session key
 - `T-331` · realm/blong-kustomize — Rebuild the realm browser bundle as part of a delivery
 
-done (5)
+done (7)
 
 - `T-279` · realm/blong-kustomize — The operator reports obsolete objects and never deletes them
 - `T-277` · realm/blong-kustomize — The plan resolves no databases, so the init script creates none
@@ -44,6 +44,8 @@ done (5)
 - `T-281` · realm/blong-kustomize — Decide how a deployment obtains a generated service's
   credentials
 - `T-282` · realm/blong-kustomize — A pass never sweeps the kinds its tree stopped naming
+- `T-444` · realm/blong-kustomize — Sport CD Group 3 release notify fields
+- `T-445` · realm/blong-kustomize — Sport CD Group 4 operator release trigger
 
 <!-- /memory:index -->
 
@@ -375,6 +377,34 @@ objects out of obsolescence pruning so the volume-retirement step stays the one 
 
 the sweep covers the kinds a suite can own and version-named objects are left to the retention step
 (D-464); verified on the dev cluster, where the credentials copy is now pruned with the switch
+
+### T-444 — Sport CD Group 3 release notify fields
+
+> _2026-10-27 · realm/blong-kustomize · done_
+
+Extend release-notify with artifactDigest and frameworkVersion, patch the artifact member with url
+and digest and patch minFrameworkVersion, and update the CLI usage and the testReleaseNotify shapes.
+
+Done: IReleaseNotify and the CLI carry artifactDigest and frameworkVersion; releasePatch writes them
+inside /spec/suiteVolume/artifact and as /spec/minFrameworkVersion, and testReleaseNotify covers the
+digest-bearing artifact. 117 kustomize tests pass. The live CLI check is deferred to the token route
+because the local CR names the locally imported framework image.
+
+### T-445 — Sport CD Group 4 operator release trigger
+
+> _2026-10-27 · realm/blong-kustomize · done_
+
+Add the token-gated kustomize.release.approve gateway route and the kustomizeReleaseApprove
+orchestrator handler, typed expected errors, the BLONG_RELEASE_TOKEN from a blong-operator-release
+Secret on the operator Deployment, and the operator ingress with TLS at the host the installer
+configures. Republish the operator artifact and install tree, and verify a wrong token is refused
+before any cluster call.
+
+Done: kustomize.release.approve is a plain JSON-RPC route (auth false; login would demand MLE),
+gated by a constant-time token from BLONG_RELEASE_TOKEN and delegating to kustomizeReleaseNotify.
+The three typed errors are declared; the operator Deployment gets an optional secretKeyRef to
+blong-operator-release; the install tree is regenerated. A correct token answered 200 updated:true
+and a wrong one 401 tokenMismatch with the CR version unchanged; 121 kustomize tests pass.
 
 ## Retired
 

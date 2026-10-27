@@ -290,6 +290,72 @@ object of its own. The rules are one decision with the kinds the realm applies
 (`OPERATOR_NAMESPACED_RULES` in `operator.ts`), and a kind added to one without the other fails at
 apply time with a 403 rather than at review.
 
+## Deploying the operator
+
+The operator is one process per cluster, installed once before any suite. Its install tree is
+generated from `operator-entry.ts` and lives in `system/operator/`:
+
+```bash
+cd realm/blong-kustomize
+npm run sync-install-tree
+kubectl apply -k system/operator/local
+```
+
+`system/operator/base/` is the committed design; `local/` is what this cluster and this install own.
+The tree carries the namespace, the CRD, the operator Deployment, its ServiceAccount and the
+cluster-scoped rights, and the Service its API is reached through.
+
+Before the first apply:
+
+- **The address, in `.blong_k8src`.** No host is in the source: `operator-entry.ts` declares no
+  Ingress, and the `k8s` run reads the address from the rc file of its intent — `.blong_k8src`,
+  which `rc` finds from the working directory upwards and `.gitignore` keeps out of the repository.
+  The operator's own block is `kustomize.deploy.operator.ingress`:
+
+    ```yaml
+    kustomize:
+        deploy:
+            operator:
+                ingress:
+                    host: <the operator's host>
+                    tls: {secretName: blong-operator-tls}
+                    annotations:
+                        cert-manager.io/cluster-issuer: letsencrypt-prod
+    ```
+
+  A realm that names no host installs the Service and no Ingress, which is the right tree for a
+  cluster that reaches the API in-cluster. Point the host's DNS at the ingress controller and let
+  cert-manager sign it — the `ClusterIssuer` annotation is the switch between `letsencrypt-staging`
+  (fast, untrusted, `curl -k`) and `letsencrypt-prod` (publicly trusted, rate-limited) — while the
+  controller itself is the cluster's.
+- **The release token.** A release call is authenticated by a shared token. Create the Secret the
+  operator Deployment reads, then restart it:
+
+    ```bash
+    kubectl -n blong-system create secret generic blong-operator-release \
+        --from-literal=token="$(openssl rand -hex 32)"
+    kubectl -n blong-system rollout restart deploy/blong-operator
+    ```
+
+  The same value is the `DEPLOY_TOKEN` a pipeline sends to
+  `POST /rpc/kustomize/release/approve`; the route is plain JSON-RPC and the token is in the body.
+  The operator refuses the call with 401 when the Secret is missing or the value does not match. The
+  Secret must exist before the patched install tree is applied, or the operator pod waits on it.
+- **The operator's own artifact.** The operator runs this realm from an artifact, not from the
+  working copy. `OPERATOR_ARTIFACT_URL` names the zip the fill Job fetches; the local runbook
+  publishes one, and a released install names the published `kustomize.zip`.
+
+Verify:
+
+```bash
+kubectl -n blong-system get deploy blong-operator
+kubectl get crd blongdeployments.blong.feasible.one
+kubectl -n blong-system get ingress,svc
+```
+
+A `BlongDeployment` applied in a tenant namespace is what the operator reconciles; the operator's
+own install is not a suite's tree.
+
 ## Try it: the end-to-end cycle
 
 `test/blong-int-kustomize` installs the operator, applies a suite into a tenant namespace and

@@ -1,0 +1,13 @@
+{
+    "sport": {
+        "release": "blong-sport",
+        "package": "@feasibleone/blong-sport",
+        "packagePath": "realm/blong-sport",
+        "scenario": "sport",
+        "artifact": "sport.zip",
+        "namespace": "blong-sport",
+        "suite": "blong-sport",
+        "entry": "./index.ts",
+        "profile": "monolith"
+    }
+}

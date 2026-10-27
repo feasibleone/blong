@@ -208,6 +208,7 @@ words:
   - kustomizations
   - labeled
   - Lanternfish
+  - letsencrypt
   - Levski
   - librdkafka
   - libstdc

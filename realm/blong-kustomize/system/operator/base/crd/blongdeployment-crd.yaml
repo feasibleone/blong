@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: 0.1.0
-    blong.feasible.one/spec-hash: 304a44ae75303140
+    blong.feasible.one/spec-hash: 53f64dbdd9f8892a
   name: blongdeployments.blong.feasible.one
 spec:
   group: blong.feasible.one
@@ -81,6 +81,10 @@ spec:
                 portal:
                   additionalProperties:
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        type: object
                       auth:
                         properties:
                           authUrl:
@@ -102,6 +106,11 @@ spec:
                         type: string
                       realm:
                         type: string
+                      tls:
+                        properties:
+                          secretName:
+                            type: string
+                        type: object
                     type: object
                   type: object
                 profile:

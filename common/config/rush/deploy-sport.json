@@ -1,0 +1,14 @@
+/**
+ * Deploy scenario for the sport suite: `rush deploy --scenario sport`.
+ *
+ * The artifact is the sport suite and the realms it loads, resolved so that no `node_modules`
+ * outside it is needed. The options mirror `deploy-suite.json` on purpose: `linkCreation: script`
+ * is the link step the fill Job runs, and `includeNpmIgnoreFiles: true` keeps the sources a
+ * deployment imports but a publish would drop.
+ */
+{
+    "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/deploy-scenario.schema.json",
+    "deploymentProjectNames": ["@feasibleone/blong-sport"],
+    "linkCreation": "script",
+    "includeNpmIgnoreFiles": true
+}

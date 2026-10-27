@@ -435,6 +435,10 @@ export interface ISuitePortalRequest {
     /** Path prefix the portal answers on (default `/`). */
     path?: string;
     auth?: IPortalAuth;
+    /** Certificate for the host; which issuer signs it is the cluster's decision. */
+    tls?: {secretName?: string};
+    /** Ingress-controller annotations for the host, merged with the auth ones. */
+    annotations?: Record<string, string>;
 }
 
 /** A portal with its process resolved, which is what the generator renders. */
@@ -501,6 +505,8 @@ export interface IOperatorIngress {
     path?: string;
     /** Certificate for the host; which issuer signs it is the cluster's decision. */
     tls?: {secretName?: string};
+    /** Ingress-controller annotations for the host, merged with the auth ones. */
+    annotations?: Record<string, string>;
     auth?: IPortalAuth;
 }
 
@@ -965,6 +971,11 @@ const deploymentNames = (
 export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): IDeploymentPlan => {
     const profile = options.profile ?? DEFAULT_PROFILE;
     const namespace = options.namespace ?? options.suiteName;
+    // An install tree is the operator's own: it publishes the deployment page and nothing a tenant
+    // declares. The configuration that names the operator's address is one file, and the same one names
+    // the suites' portals — so an install that honoured them would render a portal for the operator's own
+    // process, beside the address it was asked for @@D-645.
+    const portalEntries = options.install ? {} : (options.portal ?? {});
     // What the deployment brings with it, before anything renders it: the adapter kinds its ports carry
     // decide which services are available, the deployment opts in the ones it brings, and the databases
     // its connections name are the list a database service is asked to create (`services.ts`).
@@ -1072,7 +1083,7 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     // fixed out of  — and a companion has no process for a portal to land on, which is a
     // realm-role mistake worth hearing about at plan time rather than from a 503 at the Ingress.
     const portal: IResolvedPortalMap = {};
-    for (const [name, entry] of Object.entries(options.portal ?? {})) {
+    for (const [name, entry] of Object.entries(portalEntries)) {
         const where = `portal "${name}"`;
         if (entry.realm === undefined) {
             const [only] = deployments;

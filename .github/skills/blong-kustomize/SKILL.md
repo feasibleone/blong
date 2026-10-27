@@ -256,6 +256,24 @@ its backend Service owns endpoints, and `/s/` answers with a page through a port
 so rather than pretending to have tested the hostname, because serving a `Host` is the controller's
 job and a bare k3d cluster has none.
 
+### The `sport` scenario
+
+The runbook is not tied to `suite/blong-suite`: `SUITE_SCENARIO` selects the Rush deploy scenario and
+the tree, `ARTIFACT_NAME` the name the suite zip is published under, and `SUITE_ENTRY` the deployable
+entry inside the package. `realm/blong-sport` is the second worked example — `realm/blong-sport/index.ts`
+as the entry, `common/config/rush/deploy-sport.json` as the scenario, `sport.zip` as the artifact,
+namespace `blong-sport`, portal host from `kustomize.deploy.portal.web.host`, profile `monolith`.
+No host is in the source: `.blong_k8src` — the rc file of the `k8s` intent, ignored by git — carries
+`kustomize.deploy.operator.ingress` and `kustomize.deploy.portal.<alias>`, the
+`cert-manager.io/cluster-issuer` annotation included, so a split tree keeps every Ingress in the
+overlay and the committed example shows the host as `PLACEHOLDER` (`@@D-645`).
+The operator's release route (`kustomize.release.approve`, plain JSON-RPC over the ingress with
+`BLONG_RELEASE_TOKEN`) is
+what the generic `.github/workflows/deploy.yaml` calls; `realm/blong-sport/README.md` carries the
+local command and the deployment table. The test-seed rule is the same for every realm: `dbTest`
+belongs to the adapter's `dev`/`ci` activations, not to a realm's `meta/db/db.ts`, or an `upgrade`
+process dispatches handler-backed seeds whose groups are not loaded.
+
 ### Rights per tenant
 
 The operator's workload rights are namespaced — a `RoleBinding` can point at nothing else — while

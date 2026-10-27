@@ -11,8 +11,12 @@ export interface IReleaseNotify {
     version: string;
     /** Where the artifact came from, when the release published a new one. */
     artifactUrl?: string;
+    /** The artifact's sha256, when the release published one; it names the volume (@@D-469). */
+    artifactDigest?: string;
     /** The framework image tag, when the release moved it. */
     frameworkImage?: string;
+    /** The framework version the release was built against; becomes `minFrameworkVersion`. */
+    frameworkVersion?: string;
     /** The tenant namespace; the realm's own config answers when it is omitted. */
     namespace?: string;
 }
@@ -22,7 +26,10 @@ export interface IReleaseNotify {
  * for a GitOps seam (@@D-379).
  */
 export const releasePatch = (
-    params: Pick<IReleaseNotify, 'version' | 'frameworkImage' | 'artifactUrl'>,
+    params: Pick<
+        IReleaseNotify,
+        'version' | 'frameworkImage' | 'frameworkVersion' | 'artifactUrl' | 'artifactDigest'
+    >,
 ): Array<{op: string; path: string; value: unknown}> => {
     // A list of operations rather than an object, for the reason `kustomize.status.edit` documents at
     // length: the client sends `application/json-patch+json` for a custom resource, and `add` replaces
@@ -39,11 +46,24 @@ export const releasePatch = (
     if (params.frameworkImage !== undefined) {
         body.push({op: 'add', path: '/spec/frameworkImage', value: params.frameworkImage});
     }
+    if (params.frameworkVersion !== undefined) {
+        body.push({
+            op: 'add',
+            path: '/spec/minFrameworkVersion',
+            value: params.frameworkVersion,
+        });
+    }
     if (params.artifactUrl !== undefined) {
         body.push({
             op: 'add',
             path: '/spec/suiteVolume/artifact',
-            value: {source: 'url', url: params.artifactUrl},
+            // The digest is what names the volume and the attempt; a release that knows it hands it
+            // on rather than leaving the operator to fall back to the version (@@D-469).
+            value: {
+                source: 'url',
+                url: params.artifactUrl,
+                ...(params.artifactDigest !== undefined ? {digest: params.artifactDigest} : {}),
+            },
         });
     }
     return body;

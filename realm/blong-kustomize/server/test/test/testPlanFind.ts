@@ -203,6 +203,39 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 );
             },
 
+            async function anInstallIgnoresASuiteAddress(assert: IAssert) {
+                // The configuration that names the operator's address is one file, and the same file
+                // names the addresses of the suites it serves. The install tree is the operator's own,
+                // so a portal request beside its own address must not render a second one for the
+                // operator's process @@D-645.
+                const view = {
+                    realms: ['srv'],
+                    groups: [{name: 'srv.orchestrator', handlerCount: 1, layer: 'orchestrator'}],
+                    ports: [{id: 'srv.subject', type: 'dispatch', namespace: 'srv'}],
+                    roles: {},
+                } as IRegistryView;
+                const portal = {web: {host: 'page.example.test'}};
+                assert.deepEqual(
+                    planFromRegistry(view, {
+                        suiteName: 'demo',
+                        frameworkImage: 'image',
+                        install: true,
+                        portal,
+                    }).portal,
+                    {},
+                    'an install publishes no portal a shared configuration names',
+                );
+                assert.equal(
+                    planFromRegistry(view, {
+                        suiteName: 'demo',
+                        frameworkImage: 'image',
+                        portal,
+                    }).portal.web?.host,
+                    'page.example.test',
+                    'while a suite keeps the address its own plan was given',
+                );
+            },
+
             async function theProfileDecidesTheSplit(assert: IAssert) {
                 // The profile _is_ the split, and the names it produces are the contract a
                 // kustomize overlay targets (Phase 15 C), so each one is spelled out here rather

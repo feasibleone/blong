@@ -8,7 +8,8 @@ export const USAGE = `blong-kustomize — the deployment realm's own commands
 
 Usage
   blong-kustomize release-notify --suite=NAME --version=VERSION
-      [--artifact-url=URL] [--framework-image=IMAGE] [--namespace=NS]
+      [--artifact-url=URL] [--artifact-digest=SHA256] [--framework-image=IMAGE]
+      [--framework-version=VERSION] [--namespace=NS]
       Tell a cluster what a release published: patches the BlongDeployment named
       after the suite. The gitops seam is asked first and wins when a target is
       configured, so a cluster with one operator is never told twice.
@@ -62,8 +63,14 @@ export const realmCommand = ({positionals, argv}: ParsedArgs): IRealmCommand | u
                 ...(text(argv.suite) ? {suite: text(argv.suite)} : {}),
                 ...(text(argv.version) ? {version: text(argv.version)} : {}),
                 ...(text(argv['artifact-url']) ? {artifactUrl: text(argv['artifact-url'])} : {}),
+                ...(text(argv['artifact-digest'])
+                    ? {artifactDigest: text(argv['artifact-digest'])}
+                    : {}),
                 ...(text(argv['framework-image'])
                     ? {frameworkImage: text(argv['framework-image'])}
+                    : {}),
+                ...(text(argv['framework-version'])
+                    ? {frameworkVersion: text(argv['framework-version'])}
                     : {}),
                 ...(text(argv.namespace) ? {namespace: text(argv.namespace)} : {}),
             },

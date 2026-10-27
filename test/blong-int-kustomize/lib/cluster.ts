@@ -11,6 +11,7 @@
  * waits are on conditions rather than on a duration — a rollout that is slow is not a rollout that
  * failed, and a runbook that sleeps is one that is either too slow or too short on the day it matters.
  */
+import {existsSync} from 'node:fs';
 import {createConnection} from 'node:net';
 
 import {fail, waitFor, type IStepIo} from './exec.ts';
@@ -115,16 +116,24 @@ export const applyTree = async ({tree}: {tree: string}, io: IStepIo): Promise<vo
 };
 
 /**
- * Apply the declaration a split tree ships as an example beside its base.
+ * Apply the declaration the run generated: the tenant's own act, applied by the tenant.
  *
- * A suite's `BlongDeployment` is the *tenant's* act rather than the suite's, so the tree writes it to
- * `example/` and no kustomization applies it (D-507). Declaring the suite is therefore the caller's
- * step: a run that wants an operator to reconcile the revision it just generated is that tenant, and
- * this is the file it applies — carrying what the generation was given, the artifact's digest among
- * them, which is what makes a republished artifact a new one rather than a cache hit (F-452).
+ * A suite's `BlongDeployment` is the *tenant's* act rather than the suite's, so no kustomization
+ * applies it (D-507) and declaring the suite is the caller's step: a run that wants an operator to
+ * reconcile the revision it just generated is that tenant, and this is the file it applies —
+ * carrying what the generation was given, the artifact's digest among them, which is what makes a
+ * republished artifact a new one rather than a cache hit (F-452).
+ *
+ * A split writes two of them: the declaration as the deployment states it, under the overlay nobody
+ * commits, and a sample beside the base with the address a tenant fills in @@D-645. The real one is
+ * what this applies; the sample is the fallback for a tree written before the two were apart.
  */
 export const declarationApply = async ({tree}: {tree: string}, io: IStepIo): Promise<void> => {
-    await io.run('kubectl', ['apply', '-f', `${tree}/example/blongdeployment.yaml`]);
+    const stated = `${tree}/local/declaration/blongdeployment.yaml`;
+    const sample = `${tree}/example/blongdeployment.yaml`;
+    const declaration = existsSync(stated) ? stated : sample;
+    io.log(`applying ${declaration}`);
+    await io.run('kubectl', ['apply', '-f', declaration]);
 };
 
 export const rolloutRestart = async (

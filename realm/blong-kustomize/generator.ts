@@ -177,6 +177,16 @@ export const CR_PATH = 'blongdeployment.yaml';
 /** Where a split puts the declaration: an example beside the base rather than an object inside it. */
 export const CR_EXAMPLE = 'example/blongdeployment.yaml';
 
+/**
+ * The declaration as *this* deployment states it, in the overlay the deployment owns.
+ *
+ * The example beside the base is committed and read by a tenant, so it cannot name an address
+ * @@D-645. The declaration a run applies is the same object with the real values, and it lives in
+ * `local/` beside the rest of what one deployment says — applied with `kubectl apply -f` rather than
+ * by a kustomization, because it is the tenant's act and not an object the tenant's tree describes.
+ */
+export const CR_DECLARATION = 'local/declaration/blongdeployment.yaml';
+
 /** The file a template's folder carries: the object an instance's kustomization includes. */
 export const TEMPLATE_FILE = 'template.yaml';
 
@@ -1142,6 +1152,20 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
                                     name: 'NODE_EXTRA_CA_CERTS',
                                     value: '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt',
                                 },
+                                // The release trigger's shared secret. Optional, because the Secret
+                                // is the installer's to create and an operator that starts before
+                                // it must refuse a release (`tokenMissing`) rather than wait in
+                                // `CreateContainerConfigError`; the handler is what closes the gate.
+                                {
+                                    name: 'BLONG_RELEASE_TOKEN',
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: 'blong-operator-release',
+                                            key: 'token',
+                                            optional: true,
+                                        },
+                                    },
+                                },
                             ],
                             volumeMounts: [
                                 mount,
@@ -1238,7 +1262,7 @@ export const installKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
     // cannot front it — an Ingress backend has to be a Service in the Ingress's namespace, and a
     // selector is namespace-local — which is also why the deployment page exists only here.
     if (plan.operator.ingress) {
-        const {host, path, tls, auth} = plan.operator.ingress;
+        const {host, path, tls, auth, annotations} = plan.operator.ingress;
         tree.set(
             `ingresses/${ingressName(host)}.yaml`,
             hostIngressResource(
@@ -1252,7 +1276,7 @@ export const installKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
                         servicePort: 8080,
                     },
                 ],
-                authAnnotations(auth, 'blong operator UI'),
+                {...annotations, ...authAnnotations(auth, 'blong operator UI')},
                 tls,
             ),
         );
@@ -1868,6 +1892,19 @@ const crdResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
                                                         secretName: {type: 'string'},
                                                         authUrl: {type: 'string'},
                                                     },
+                                                },
+                                                // The certificate and the controller's own
+                                                // annotations travel with the portal because they
+                                                // are the host's: a wildcard certificate and an
+                                                // issuer are decisions the tenant names, not the
+                                                // operator.
+                                                tls: {
+                                                    type: 'object',
+                                                    properties: {secretName: {type: 'string'}},
+                                                },
+                                                annotations: {
+                                                    type: 'object',
+                                                    additionalProperties: {type: 'string'},
                                                 },
                                             },
                                         },
@@ -2540,11 +2577,13 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
             serviceName: gatewayServiceName(name),
             servicePort: 8080,
         });
+        if (entry.tls && !tlsByHost.has(entry.host)) tlsByHost.set(entry.host, entry.tls);
         // A host's annotations are the controller's, so two portals on one host share them: merging
         // per key is the honest rendering of that, and the doc on `portalAuthAnnotations` says why a
         // portal wanting its own auth wants its own host.
         annotationsByHost.set(entry.host, {
             ...annotationsByHost.get(entry.host),
+            ...entry.annotations,
             ...authAnnotations(entry.auth),
         });
     }
@@ -2721,6 +2760,27 @@ export const writeKustomizeTree = (
  * becomes a template the overlay instantiates (@@D-475).
  */
 type TreePlacement = 'base' | 'instantiated';
+
+/**
+ * The declaration as the example beside the base carries it: an address is the tenant's to name.
+ *
+ * The CR the overlay applies names the real host, and the example is a sample a tenant copies — so the
+ * host is the one field it cannot show, because the sample is committed and a domain in it would be a
+ * domain in the repository @@D-645. `PLACEHOLDER` is the same token the base uses for everything the
+ * deploy owns: a reader sees at a glance which values are theirs to fill in.
+ */
+const exampleDeclaration = (resource: KustomizeResource): KustomizeResource => {
+    if (typeof resource === 'string') return resource;
+    const spec = (resource as {spec?: {portal?: Record<string, {host?: string}>}}).spec;
+    if (!spec?.portal) return resource;
+    const portal = Object.fromEntries(
+        Object.entries(spec.portal).map(([alias, entry]) => [
+            alias,
+            entry.host === undefined ? entry : {...entry, host: PLACEHOLDER},
+        ]),
+    );
+    return {...resource, spec: {...spec, portal}} as KustomizeResource;
+};
 
 /**
  * What a split does with one object.
@@ -3114,6 +3174,8 @@ const writeSplitTree = (
     const serviceOwn = new Map<string, KustomizeResource>();
     /** The declaration, which no kustomization applies: a sample a tenant copies. */
     const examples = new Map<string, KustomizeResource>();
+    /** The same declaration as this deployment states it: the host, version and digest it applies. */
+    const declarations = new Map<string, KustomizeResource>();
     /** The namespace the workloads a deployment brings run in, when it brings one at all. */
     const workloadNamespace = plan.backingServices[0]?.namespace;
     for (const [path, resource] of tree) {
@@ -3121,7 +3183,8 @@ const writeSplitTree = (
         // fetched — and a base every deployment of the suite shares cannot carry any of it (@@D-506), so it
         // travels beside the base as an example to copy.
         if (path === CR_PATH) {
-            examples.set(CR_EXAMPLE, resource);
+            examples.set(CR_EXAMPLE, exampleDeclaration(resource));
+            declarations.set(CR_DECLARATION, resource);
             continue;
         }
         // A Namespace is cluster-scoped and *named* after what it holds, which is exactly what a patch
@@ -3154,6 +3217,14 @@ const writeSplitTree = (
         // services may share one namespace — so the overlay's services child writes them once.
         if (isServicePlumbing(path, plan)) {
             serviceOwn.set(path, namespaceFree(resource));
+            continue;
+        }
+        // An address is what *this* deployment publishes, not a shape the suite has: the host is a DNS
+        // record and a certificate somebody owns, named by whoever installs it, so a committed base
+        // cannot carry one @@D-645. The overlay's suite child holds the Ingresses, in the namespace
+        // they belong to, for the same reason it holds the aliases a CR may point elsewhere.
+        if ((resource as {kind?: string}).kind === 'Ingress') {
+            suiteOwn.set(path, namespaceFree(resource));
             continue;
         }
         if (path.endsWith('/kustomization.yaml') || path === 'kustomization.yaml') {
@@ -3370,6 +3441,11 @@ const writeSplitTree = (
     // The declaration beside the base rather than in it: a sample a tenant copies, and no kustomization
     // lists it (@@D-506).
     for (const [path, content] of withBase ? serializeKustomizeTree(examples) : []) {
+        write(path, content);
+    }
+    // And the one a run applies, with the address and the artifact this deployment was given: the overlay
+    // is the half that holds what one deploy says, and it is not committed @@D-645.
+    for (const [path, content] of withOverlay ? serializeKustomizeTree(declarations) : []) {
         write(path, content);
     }
     for (const [at, content] of withOverlay ? instances : []) {

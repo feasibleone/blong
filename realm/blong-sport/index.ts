@@ -1,4 +1,5 @@
 import {server} from '@feasibleone/blong';
+import pkg from './package.json' with {type: 'json'};
 
 /**
  * index.ts — standalone server bootstrap for `sport` integration tests.
@@ -15,6 +16,7 @@ import {server} from '@feasibleone/blong';
  */
 export default server(() => ({
     url: import.meta.url,
+    pkg: {name: pkg.name, version: pkg.version},
     children: [
         /**
          * Gateway realm — OAuth applications, bundles and subscriptions. Party's
@@ -43,6 +45,88 @@ export default server(() => ({
             // Enforce RBAC on the gateway — resolves allowed actions for the
             // authenticated user (access realm), 403 when not authorized.
             gateway: {authorize: 'access.authorization.list'},
+            // Explicit children need a config block to load. `testRealm` deliberately has none
+            // here: the loader skips a child whose block is absent, so the test runner does not
+            // load in a deployed process (@@D-637).
+            party: {},
+            sport: {},
+            resolution: {impl: 'kubernetes'},
+            // The suite definition read by the `k8s` generator and the operator. The framework
+            // image and version are overridden by the CR, which names the release image.
+            kustomize: {
+                deploy: {
+                    suite: {
+                        name: 'blong-sport',
+                        namespace: 'blong-sport',
+                        version: pkg.version,
+                        entry: '/opt/deploy/suite/realm/blong-sport/index.ts',
+                        frameworkImage: 'docker.io/library/blong-gogo',
+                        minFrameworkVersion: '1',
+                    },
+                    profile: 'monolith',
+                    externalServices: {
+                        db: {
+                            externalName: 'mysql.blong-integration.svc.cluster.local',
+                            ports: [{name: 'mysql', port: 3306}],
+                        },
+                    },
+                    portal: {
+                        web: {
+                            // The address is the deployment's, not the suite's: it comes from
+                            // `kustomize.deploy.portal.web` in the rc file of the `k8s` intent, host and
+                            // certificate issuer together, so no domain is baked into a source tree
+                            // @@D-645. What the suite does say is that it publishes a page and which
+                            // Secret its certificate lands in.
+                            tls: {secretName: 'sport-tls'},
+                        },
+                    },
+                    suiteVolume: {
+                        backend: 'nodeLocal',
+                        artifact: {
+                            source: 'url',
+                            url: 'http://blong-artifact.default.svc.cluster.local/sport.zip',
+                        },
+                    },
+                    crd: true,
+                },
+            },
+        },
+        release: {
+            // Party's dbTest seeds are handler-backed, and the handler group is not loaded in a
+            // release process: leaving the flag on made the migration job fall through to the
+            // generic `merge`, which read an undefined `party.hierarchy` and failed with
+            // `Cannot read properties of undefined (reading 'map')`. The test fixtures are for the
+            // dev and integration intents; a released process does not need them.
+            party: {schema: {dbTest: false}},
+            gateway: {
+                static: {root: '/opt/deploy/suite/realm/blong-sport/dist'},
+            },
+            srv: {
+                db: {
+                    knex: {
+                        connection: {
+                            host: 'db',
+                            port: 3306,
+                            user: 'blong-sport',
+                            password: 'password',
+                            database: 'blong-sport',
+                        },
+                    },
+                },
+            },
+        },
+        // A planning run and the migration Job each need every realm the suite can deploy.
+        k8s: {sport: {}, login: {}, core: {}, access: {}, gateway: {}, party: {}},
+        upgrade: {
+            sport: {},
+            login: {},
+            core: {},
+            // The local dev cluster's portal check logs in as `testAdmin`, which lives in access's
+            // dbTest seed. Seeded by the migration step only, so a running process never re-seeds it,
+            // and party's handler-backed test fixtures stay off for the reason the release block gives.
+            access: {schema: {dbTest: true}},
+            gateway: {},
+            party: {schema: {dbTest: false}},
         },
         dev: {
             srv: {},

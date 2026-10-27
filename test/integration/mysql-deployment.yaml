@@ -11,7 +11,10 @@ data:
     CREATE DATABASE IF NOT EXISTS `blong-access`;
     CREATE DATABASE IF NOT EXISTS `blong-party`;
     CREATE DATABASE IF NOT EXISTS `blong-gateway`;
+    CREATE DATABASE IF NOT EXISTS `blong-sport`;
     FLUSH PRIVILEGES;
+    CREATE USER IF NOT EXISTS 'blong-sport'@'%' IDENTIFIED BY 'password';
+    GRANT ALL ON `blong-sport`.* TO 'blong-sport'@'%';
     CREATE USER 'blong-admin'@'%' IDENTIFIED BY 'password';
     GRANT ALL ON *.* TO 'blong-admin'@'%';
     FLUSH PRIVILEGES;
