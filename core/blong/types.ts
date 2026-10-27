@@ -587,6 +587,14 @@ export interface IRegistry {
      * existing implementations stay valid; `load()` always calls it on the registry it built.
      */
     setRealmConfig?: (realmConfig: Record<string, unknown>) => void;
+    /**
+     * The package the loaded suite is, published the way `realmConfig` is.
+     *
+     * A suite's version is a fact about the package it lives in, so a planner reads it here rather
+     * than from a value every entry has to repeat in its own config. Optional so existing
+     * implementations stay valid; `load()` always calls it with the root module's `pkg`.
+     */
+    setPackage?: (pkg: {name?: string; version?: string}) => void;
 }
 
 /** A handler group (folder) discovered on disk. */
@@ -637,6 +645,15 @@ export interface IRegistryDescription {
      * `srv.db` adapter and own no port under their own name (D-433).
      */
     realmConfig?: Record<string, unknown>;
+    /**
+     * The package the loaded suite *is*, read from the manifest beside its entry.
+     *
+     * A suite's version is a fact about the package it lives in, not a value its entry has to repeat
+     * in `kustomize.deploy`: the loader fills `pkg` from the entry's `package.json` (when the entry
+     * declares none), and the planner takes the suite's version from here when the config names
+     * none — so a release bump changes one file, the manifest.
+     */
+    pkg?: {name?: string; version?: string};
 }
 
 type BlongType = typeof Type & {

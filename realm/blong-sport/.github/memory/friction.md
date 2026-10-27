@@ -19,9 +19,10 @@ open (9)
 - `F-587` · realm/blong-sport — A shared test marker and duplicate titles both stop the suite
 - `F-612` · realm/blong-sport — The migration job cannot create the database it must connect to
 
-resolved (1)
+resolved (2)
 
 - `F-585` · realm/blong-sport — An overridden CRUD handler cannot delegate to the generic one
+- `F-616` · realm/blong-sport — A JSON import attribute is lost by tap's TypeScript loader
 
 <!-- /memory:index -->
 
@@ -134,3 +135,24 @@ distinct method name for the generic path) would let the derivation live in code
 
 Resolved: an override reaches the generic CRUD through super.exec on the prototype chain, as
 blong-access does for its ACL handlers. The kind is derived in sportConferralAdd/Edit.
+
+### F-616 — A JSON import attribute is lost by tap's TypeScript loader
+
+> _2026-10-27 · realm/blong-sport · resolved_
+
+A JSON import attribute does not survive tap's TypeScript loader.
+`import pkg from './package.json' with {type: 'json'}` at the top of a suite entry is green under
+plain `node` (type stripping honours it) and kills the tap child with `ERR_IMPORT_ATTRIBUTE_MISSING`
+— the report says only `1..0 # no tests found`, `test process exited with code 1`, and the child's
+stderr is not in the artifact. `realm/blong-sport/index.ts` gained that import for
+`kustomize.deploy.suite.version`, and the package's tap leg went from 172 passing tests to none
+while every other package stayed green, because no other package's `index.test.ts` statically
+imports an entry that reads its package.json. Use
+`createRequire(import.meta.url)('./package.json')`, which is what the loader itself does for the
+same file; to see the real error, run
+`npx tap <file> --coverage-report=none --allow-incomplete-coverage` in the package, because the
+runner's record keeps the exit code and drops the reason.
+
+Resolved by removing the read: the sport entry no longer imports package.json at all, because the
+suite version now comes from the manifest through describe().pkg (D-646). The trap is still real for
+any entry that does import one under tap.

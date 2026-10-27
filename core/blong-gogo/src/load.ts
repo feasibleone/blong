@@ -1958,6 +1958,12 @@ export default async function loadRealm<T extends TSchema>(
     api.registry.setRealmConfig?.(
         (api as {realmConfig?: Record<string, unknown>}).realmConfig ?? {},
     );
+    // The package the suite *is*, for the same reason and by the same route: a planner that writes a
+    // deployment names its version, and that version is a fact about the manifest beside the entry
+    // rather than a value the entry repeats in its own `kustomize.deploy` config.
+    api.registry.setPackage?.(
+        (mod as {pkg?: {name?: string; version?: string}}).pkg ?? {},
+    );
     // Resolved from the active intents (see the `exit` keys in the synthetic
     // config above). The runner uses it to decide whether this process outlives
     // its work; absent means "keep running". Set here rather than in the

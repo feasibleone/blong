@@ -203,6 +203,36 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 );
             },
 
+            async function theSuiteVersionIsItsOwnManifest(assert: IAssert) {
+                // A suite's version is a fact about the package it lives in, so the loader reads it
+                // from the manifest beside the entry and the planner takes it from the registry: a
+                // release bumps `package.json`, and no deployment block repeats the number. The
+                // fallback the generator keeps is no substitute — it asks the *generator's* package,
+                // which belongs to the kustomize realm and answers for every tree it writes.
+                const view = {
+                    realms: ['srv'],
+                    groups: [{name: 'srv.orchestrator', handlerCount: 1, layer: 'orchestrator'}],
+                    ports: [{id: 'srv.subject', type: 'dispatch', namespace: 'srv'}],
+                    roles: {},
+                    pkg: {name: '@feasibleone/demo', version: '9.9.9'},
+                } as IRegistryView;
+                assert.equal(
+                    planFromRegistry(view, {suiteName: 'demo', frameworkImage: 'image'}).suite
+                        .version,
+                    '9.9.9',
+                    'the loaded package answers when the config names no version',
+                );
+                assert.equal(
+                    planFromRegistry(view, {
+                        suiteName: 'demo',
+                        frameworkImage: 'image',
+                        suiteVersion: '1.2.3',
+                    }).suite.version,
+                    '1.2.3',
+                    'while a version the config does name wins',
+                );
+            },
+
             async function anInstallIgnoresASuiteAddress(assert: IAssert) {
                 // The configuration that names the operator's address is one file, and the same file
                 // names the addresses of the suites it serves. The install tree is the operator's own,

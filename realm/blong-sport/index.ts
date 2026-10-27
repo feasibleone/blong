@@ -1,5 +1,4 @@
 import {server} from '@feasibleone/blong';
-import pkg from './package.json' with {type: 'json'};
 
 /**
  * index.ts — standalone server bootstrap for `sport` integration tests.
@@ -16,7 +15,6 @@ import pkg from './package.json' with {type: 'json'};
  */
 export default server(() => ({
     url: import.meta.url,
-    pkg: {name: pkg.name, version: pkg.version},
     children: [
         /**
          * Gateway realm — OAuth applications, bundles and subscriptions. Party's
@@ -50,7 +48,6 @@ export default server(() => ({
             // load in a deployed process (@@D-637).
             party: {},
             sport: {},
-            resolution: {impl: 'kubernetes'},
             // The suite definition read by the `k8s` generator and the operator. The framework
             // image and version are overridden by the CR, which names the release image.
             kustomize: {
@@ -58,7 +55,6 @@ export default server(() => ({
                     suite: {
                         name: 'blong-sport',
                         namespace: 'blong-sport',
-                        version: pkg.version,
                         entry: '/opt/deploy/suite/realm/blong-sport/index.ts',
                         frameworkImage: 'docker.io/library/blong-gogo',
                         minFrameworkVersion: '1',
@@ -92,6 +88,13 @@ export default server(() => ({
             },
         },
         release: {
+            // How a *deployed* process finds another namespace: the Service of that name. It belongs
+            // here and not in `default`, because the default applies to a test run too, and a tap or
+            // playwright run is not in a cluster: the login realm's token verification tried
+            // `login.default.svc.cluster.local` and the browser flow's three HTTP assertions answered
+            // 401 with `rpc.jwtInvalid` (@@F-616). `release` is the trailing intent every deployed
+            // process and the migration Job carry, so this is the block they read.
+            resolution: {impl: 'kubernetes'},
             // Party's dbTest seeds are handler-backed, and the handler group is not loaded in a
             // release process: leaving the flag on made the migration job fall through to the
             // generic `merge`, which read an undefined `party.hierarchy` and failed with

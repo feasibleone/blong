@@ -98,7 +98,7 @@ open (62)
   handler
 - `F-615` · realm/blong-kustomize — The CR example is the file the runbook applies
 
-resolved (32)
+resolved (33)
 
 - `F-371` · realm/blong-kustomize — The browser login fails while the same handler authenticates the
   token
@@ -142,6 +142,8 @@ resolved (32)
 - `F-500` · realm/blong-kustomize — One cluster token, many browsers, one recorded handshake
 - `F-501` · realm/blong-kustomize — One setting, two names: config nodes vs spec nodeSource
 - `F-507` · realm/blong-kustomize — A stale visual baseline neither fails nor gets rewritten
+- `F-617` · realm/blong-kustomize — The suite version fallback answers with the generator's own
+  package
 
 <!-- /memory:index -->
 
@@ -1614,6 +1616,26 @@ Resolved by asking for `maxDiffPixels: 50` in the cluster config and redacting t
 (the `Created` timestamp) through the helper own `redact` option, then regenerating the baseline
 from the running operator: with the old baseline the run now fails at the same 12316 pixels, with
 the new one it passes, and the whole cluster spec is 3 passed. See D-534.
+
+### F-617 — The suite version fallback answers with the generator's own package
+
+> _2026-10-27 · realm/blong-kustomize · resolved_
+
+`suiteVersion(plan)` asks the _generator's_ own manifest first — `import.meta.url` of `generator.ts`
+is the kustomize realm's file, which always exists — so the `plan.suite.entry` fallback after it
+never runs, and its comment ("never required, so no suite repeats a value its package holds") is
+wrong. With `kustomize.deploy.suite.version` removed from `realm/blong-sport/index.ts` and the
+kustomize package temporarily set to 9.9.9, the generated tree carried 9.9.9: the realm's version,
+not the suite's. A suite therefore keeps naming its version in its own config, and making that
+automatic needs the suite's manifest to reach the plan — the registry reporting its `pkg`, or the
+runbook passing `--kustomize.deploy.suite.version` from the package it was told to deploy — rather
+than another fallback. The `pkg` field in the definition is the opposite case: the loader fills
+`mod.pkg` from the manifest for a server suite, so declaring it repeats two values the package
+already holds.
+
+Resolved by D-646: the plan takes the suite version from the loaded package's manifest, so the
+generator's fallback — which asks the kustomize realm's own package — is no longer reached for a
+loaded suite.
 
 ## Retired
 

@@ -89,7 +89,7 @@ Object {
     "minFrameworkVersion": undefined,
     "name": "blong-suite",
     "namespace": "blong-suite",
-    "version": undefined,
+    "version": "0.1.0",
   },
   "suiteVolume": Object {
     "artifact": undefined,

@@ -182,6 +182,8 @@ export interface IDescribeCapable {
         layerFiles?: unknown[];
         /** What each realm declares about itself, keyed by realm name — where `k8sRealmRole` lives. */
         realmConfig?: Record<string, unknown>;
+        /** The package the loaded suite is, read by the loader from the entry's manifest. */
+        pkg?: {name?: string; version?: string};
     };
     getPort?: (id: string) =>
         | {
@@ -200,6 +202,8 @@ export interface IRegistryView {
     ports: IRegistryPort[];
     /** What each realm is in a deployment, when it declared a role. */
     roles: Record<string, RealmRole>;
+    /** The package the loaded suite is: the source of its version when the config names none. */
+    pkg?: {name?: string; version?: string};
 }
 
 /** One process in the plan (a Kubernetes Deployment). */
@@ -884,7 +888,7 @@ export const registryView = (registry?: IDescribeCapable): IRegistryView => {
             ?.k8sRealmRole;
         if (declared) roles[name] = declared;
     }
-    return {realms: described.realms ?? [], groups, ports, roles};
+    return {realms: described.realms ?? [], groups, ports, roles, pkg: described.pkg};
 };
 
 /** The runtime layer of a group, or `undefined` for layers that never run. */
@@ -1192,7 +1196,10 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     return {
         suite: {
             name: options.suiteName,
-            version: options.suiteVersion,
+            // The config's, else the suite's own manifest: a release bumps `package.json`, and no
+            // entry repeats the number in its deployment block. Read from the loaded suite rather
+            // than from the generator's package, which is the realm's and answers for every tree.
+            version: options.suiteVersion ?? view.pkg?.version,
             namespace,
             frameworkImage: options.frameworkImage,
             minFrameworkVersion: options.minFrameworkVersion,

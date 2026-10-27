@@ -95,6 +95,8 @@ export default class Registry extends Internal implements IRegistry {
      * any config is built holds the realms loaded up to that moment and nothing more (D-433).
      */
     #realmConfig: Record<string, unknown> = {};
+    /** The package the loaded suite is, read from the manifest beside its entry. */
+    #pkg: {name?: string; version?: string} | undefined;
     #attachCheckpoint?: (meta: IMeta) => void;
 
     #manifest: IManifest | undefined;
@@ -530,6 +532,9 @@ export default class Registry extends Internal implements IRegistry {
             // slice and hands the map here, so a planner reads a realm's own `k8sRealmRole` rather
             // than inferring it from the ports the realm happens to own (D-433).
             realmConfig: this.#realmConfig,
+            // The suite's own package, so a planner can take the version from the manifest rather
+            // than from a value every entry has to repeat.
+            ...(this.#pkg ? {pkg: this.#pkg} : {}),
         };
     }
 
@@ -541,6 +546,11 @@ export default class Registry extends Internal implements IRegistry {
      */
     public setRealmConfig(realmConfig: Record<string, unknown>): void {
         this.#realmConfig = realmConfig;
+    }
+
+    /** Publish the package the loaded suite is; the loader reads it from the entry's manifest. */
+    public setPackage(pkg: {name?: string; version?: string}): void {
+        this.#pkg = pkg;
     }
 
     public async stop(): Promise<IRegistry> {
