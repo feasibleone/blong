@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/feasibleone/blong/compare/blong-sport-v0.2.0...blong-sport-v0.2.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* improve the continuous deployment ([ad5784a](https://github.com/feasibleone/blong/commit/ad5784a136bd11fb31867db929d114d674907f1b))
+
 ## [0.2.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.1.0...blong-sport-v0.2.0) (2026-10-27)
 
 
