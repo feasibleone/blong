@@ -29,7 +29,8 @@ export default server(() => ({
             srv: {orchestrator: true, adapter: false},
         },
         integration: {
-            kustomize: {deploy: {}},
+            // pin the version so that snapshots match
+            kustomize: {deploy: {suite: {version: '0.1.0'}}},
             // The gateway port's own slice. This realm serves no browser build, so the root is a test
             // fixture rather than a bundle, and what is under test is the leg nothing could see:
             // a block a process names under its intent reaching the port that hands it to the
