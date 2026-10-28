@@ -46,6 +46,12 @@ const suitePlan = (overrides: object = {}): IDeploymentPlan => {
             name: 'shop',
             namespace: 'shop-suite',
             frameworkImage: 'blong',
+            // Pinned by default, for the reason every other pinned field is here: a plan that names
+            // no version is labelled with the package the generator runs from, so a realm release
+            // would move every tree these tests pin — `0.1.0` → `0.2.0` turned three steps red on the
+            // release pull request. A step that wants the fallback asks for it with `version:
+            // undefined`, and `theVersionLabelIsTheSuitesOwn` is the one that does.
+            version: pinnedSuite.version,
             ...(suite as object),
         },
         profile: 'realm',

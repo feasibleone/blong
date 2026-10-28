@@ -224,6 +224,8 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 // because a map happened to be built in another order. The serializer sorts, and
                 // this hands it the same object with every level reversed to prove it.
                 const plan = (await kustomizePlanFind({nodes: NODES}, $meta)) as IDeploymentPlan;
+                // The plan's suite version is pinned by the realm's `integration` config, so a release
+                // of this realm moves no snapshot here (see `index.ts`).
                 const tree = buildKustomizeTree(plan);
                 const key = [...tree.keys()].find(path => path.startsWith('deployments/'));
                 assert.ok(key, 'the tree has a deployment to compare');
@@ -324,6 +326,8 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         {nodes: NODES},
                         $meta,
                     )) as IDeploymentPlan;
+                    // The plan's suite version is pinned by the realm's `integration` config, so a release
+                    // of this realm moves no snapshot here (see `index.ts`).
                     // An artifact that names a digest, because that is what the identity is: without one
                     // the identity *is* the version, and a base holds the version for reasons of its own —
                     // which is how a check for "no identity in the base" comes back true for every file.
@@ -1201,6 +1205,8 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         {nodes: NODES},
                         $meta,
                     )) as IDeploymentPlan;
+                    // The plan's suite version is pinned by the realm's `integration` config, so a release
+                    // of this realm moves no snapshot here (see `index.ts`).
                     const built = buildKustomizeTree(plan);
                     writeKustomizeTree(built, dir);
                     const read = readKustomizeTree(dir);
@@ -1242,6 +1248,8 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         {nodes: NODES},
                         $meta,
                     )) as IDeploymentPlan;
+                    // The plan's suite version is pinned by the realm's `integration` config, so a release
+                    // of this realm moves no snapshot here (see `index.ts`).
                     const built = buildKustomizeTree(plan);
                     writeKustomizeTree(built, flatDir);
                     writeKustomizeTree(built, treeDir, {layout: 'base', plan});
@@ -1309,6 +1317,8 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         {nodes: NODES},
                         $meta,
                     )) as IDeploymentPlan;
+                    // The plan's suite version is pinned by the realm's `integration` config, so a release
+                    // of this realm moves no snapshot here (see `index.ts`).
                     const built = buildKustomizeTree(plan);
                     writeKustomizeTree(built, flatDir);
                     writeKustomizeTree(built, treeDir, {layout: 'base', plan});
@@ -2437,11 +2447,25 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     // suite names one and the package the generator runs from when it names none — and
                     // never the framework version it was built against, which one field used to answer
                     // for as well.
+                    //
+                    // The fallback is asserted as a *relation*, not pinned as a number: it is this
+                    // realm's own `package.json`, and the realm releases — `0.1.0` → `0.2.0` turned this
+                    // step and two others red on the release pull request, with nothing wrong but the
+                    // pin. What the step is about is that the fallback is the generator's package, and
+                    // that it is not the framework's version; both hold at any realm version.
                     pin(assert, 'versionLabels', {
-                        realm: realm.version,
-                        unversioned: versionOf(plan({})),
                         declared: versionOf(plan({version: '9.8.7'})),
                     });
+                    assert.equal(
+                        versionOf(plan({version: undefined})),
+                        realm.version,
+                        'a suite that names no version is labelled with the package the generator runs from',
+                    );
+                    assert.notEqual(
+                        versionOf(plan({version: undefined})),
+                        '1.2.3',
+                        'and never with the framework version it was built against',
+                    );
                 } finally {
                     rmSync(dir, {recursive: true, force: true});
                 }

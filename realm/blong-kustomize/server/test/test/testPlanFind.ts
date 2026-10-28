@@ -137,7 +137,22 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 // meaning should fail here rather than in a cluster. Guarded, because the dev
                 // server's watch runner executes these same groups without a snapshot context
                 // .
-                if (typeof assert.snapshot === 'function') assert.snapshot(first, 'plan');
+                //
+                // The suite's own version is the one field that is *not* pinned by value: it is the
+                // manifest of the suite the registry answers for, and that suite releases — a bump
+                // of `suite/blong-suite` would move this snapshot for a reason that has nothing to
+                // do with the plan's shape. The shape is pinned with the field held to a token, and
+                // the version is asserted as the fact it is, below.
+                assert.equal(
+                    typeof first.suite.version,
+                    'string',
+                    "the plan carries the suite's own version",
+                );
+                if (typeof assert.snapshot === 'function')
+                    assert.snapshot(
+                        {...first, suite: {...first.suite, version: '<suite version>'}},
+                        'plan',
+                    );
             },
 
             async function aCrOverridesOnlyWhatItNames(assert: IAssert) {

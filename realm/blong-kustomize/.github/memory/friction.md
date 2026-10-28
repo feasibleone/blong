@@ -99,7 +99,7 @@ open (63)
 - `F-615` · realm/blong-kustomize — The CR example is the file the runbook applies
 - `F-620` · realm/blong-kustomize — A committed kustomize tree rots because nothing regenerates it
 
-resolved (34)
+resolved (35)
 
 - `F-371` · realm/blong-kustomize — The browser login fails while the same handler authenticates the
   token
@@ -146,6 +146,7 @@ resolved (34)
 - `F-617` · realm/blong-kustomize — The suite version fallback answers with the generator's own
   package
 - `F-619` · realm/blong-kustomize — A cleanup-only sweep asked a namespace the deployment never used
+- `F-621` · realm/blong-kustomize — The realm's own release moved every tree its tests pin
 
 <!-- /memory:index -->
 
@@ -1677,6 +1678,32 @@ a deployment that mentions neither no longer lists there. Verified with kubectl 
 rights in blong-services, yes in blong-sport. Test added
 (aNamespaceTheDeploymentNeverUsedIsNotSwept); the fix reaches the cluster with the next operator
 image.
+
+### F-621 — The realm's own release moved every tree its tests pin
+
+> _2026-10-28 · realm/blong-kustomize · resolved_
+
+A release-please bump of `realm/blong-kustomize` from 0.1.0 to 0.2.0 turned its own test group red —
+`versionLabels`, `realmDeclarations` and `operatorInstall`, 122 passing and 3 failing out of 125,
+the same set CI run 644 failed on, reproduced locally by setting the package to 0.2.0. The cause was
+not the release but what the tests pinned: a plan built by `lib.suitePlan` that named no suite
+version fell through to the generator's own manifest, which is the kustomize realm's `package.json`
+— so the version label, the cache directory names, the mount paths and the spec hash derived from
+them were all a function of the version release-please owns. Two mechanisms were already in place
+and neither covered it: the realm's `integration` config pins `kustomize.deploy.suite.version`,
+which is why plans the _registry_ answers stayed at 0.1.0, and the fixtures pin everything else they
+care about, so the missing default was the single gap. The fix is the fixture default (`suitePlan`
+now names `pinnedSuite.version`) plus `theVersionLabelIsTheSuitesOwn` asserting the fallback as a
+relation instead of pinning the number. The same fault was found one package away in
+`planIsDeterministic`, whose plan snapshot carried `suite/blong-suite`'s own 0.1.0 and would have
+moved on that package's next release. The lesson is that any version the release pipeline can change
+must not be a literal in a pin — assert the relation, or take it from the fixture — and that a
+package's own release pull request is a CI input like any other change, so a group that pins its
+package's version fails on the one pull request nobody edited by hand.
+
+Fixed at the source: the fixtures pin the suite version and the version-label step asserts the
+fallback as a relation; blong-kustomize now passes at 0.1.0, 0.2.0 and 0.3.7 with one set of
+snapshots.
 
 ## Retired
 

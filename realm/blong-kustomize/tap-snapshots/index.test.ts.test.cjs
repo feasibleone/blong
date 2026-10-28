@@ -89,7 +89,7 @@ Object {
     "minFrameworkVersion": undefined,
     "name": "blong-suite",
     "namespace": "blong-suite",
-    "version": "0.1.0",
+    "version": "<suite version>",
   },
   "suiteVolume": Object {
     "artifact": undefined,
@@ -1432,8 +1432,8 @@ Object {
         "app.kubernetes.io/managed-by": "blong-kustomize",
         "app.kubernetes.io/name": "blong-operator",
         "app.kubernetes.io/part-of": "blong-operator",
-        "app.kubernetes.io/version": "0.1.0",
-        "blong.feasible.one/spec-hash": "acdfe2e9caec044f",
+        "app.kubernetes.io/version": "9.9.9",
+        "blong.feasible.one/spec-hash": "c175656b8713499c",
       },
       "name": "blong-operator-test",
       "namespace": "blong-system",
@@ -1478,8 +1478,8 @@ Object {
   ],
   "installFiles": Array [
     "cache/kustomization.yaml",
-    "cache/shop-fill-0.1.0-node-a.yaml",
-    "cache/shop-fill-0.1.0-node-b.yaml",
+    "cache/shop-fill-9.9.9-node-a.yaml",
+    "cache/shop-fill-9.9.9-node-b.yaml",
     "configmaps/fill-script.yaml",
     "configmaps/kustomization.yaml",
     "crd/blongdeployment-crd.yaml",
@@ -1521,8 +1521,8 @@ Object {
   "suiteFiles": Array [
     "blongdeployment.yaml",
     "cache/kustomization.yaml",
-    "cache/shop-fill-0.1.0-node-a.yaml",
-    "cache/shop-fill-0.1.0-node-b.yaml",
+    "cache/shop-fill-9.9.9-node-a.yaml",
+    "cache/shop-fill-9.9.9-node-b.yaml",
     "configmaps/fill-script.yaml",
     "configmaps/kustomization.yaml",
     "kustomization.yaml",
@@ -1550,7 +1550,7 @@ Object {
   "mounted": Array [
     Object {
       "hostPath": Object {
-        "path": "/var/lib/blong/suites/shop/0.1.0",
+        "path": "/var/lib/blong/suites/shop/9.9.9",
         "type": "Directory",
       },
       "name": "suite",
@@ -1654,7 +1654,5 @@ Object {
 exports[`index.test.ts > TAP > kustomize flow (server) > tree generate > theVersionLabelIsTheSuitesOwn > versionLabels 1`] = `
 Object {
   "declared": "9.8.7",
-  "realm": "0.1.0",
-  "unversioned": "0.1.0",
 }
 `
