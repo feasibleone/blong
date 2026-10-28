@@ -783,6 +783,89 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 }
             },
 
+            async function aSwitchedOffDeclarationComposesWithTheBaseAnArtifactShips(
+                assert: IAssert,
+            ) {
+                // The operator composes beside the base its artifact ships: that half is written once,
+                // with the service brought, and only the overlay is generated from the CR. A declaration
+                // that switches the service off used to move the operator's rights in that namespace
+                // into the base half — the base carries no such file, so `layout: 'local'` refused the
+                // tree, every pass died before it wrote a status, and the runbook read a switch nothing
+                // had heard (@@D-664).
+                const dir = mkdtempSync(join(tmpdir(), 'kustomize-switched-off-'));
+                try {
+                    const mysql = resolveBackingServices(loadServiceCatalog(), {
+                        kinds: ['knex'],
+                        databases: ['blong-suite'],
+                        namespace: 'shop-services',
+                        config: {mysql: true},
+                    }).services[0];
+                    assert.ok(mysql, 'the catalogue answers for a database adapter');
+                    // The base, generated the way a release generates it: the service brought.
+                    const brought = lib.suitePlan({
+                        suite: lib.pinnedSuite,
+                        backingServices: [mysql],
+                    }) as IDeploymentPlan;
+                    writeKustomizeTree(buildKustomizeTree(brought), dir, {
+                        layout: 'base',
+                        plan: brought,
+                    });
+                    assert.ok(
+                        !existsSync(
+                            join(dir, 'base', 'rbac', 'blong-operator-role-shop-services.yaml'),
+                        ),
+                        'the base holds no right in the services namespace: that is the overlay’s half',
+                    );
+                    // And the overlay from the declaration that switched it off — the run that failed.
+                    const off = lib.suitePlan({
+                        suite: lib.pinnedSuite,
+                        backingServiceRequest: {
+                            services: {mysql: false},
+                            servicesNamespace: 'shop-services',
+                        },
+                    }) as IDeploymentPlan;
+                    const written = writeKustomizeTree(buildKustomizeTree(off), dir, {
+                        layout: 'local',
+                        plan: off,
+                    });
+                    assert.ok(
+                        written.includes(
+                            'local/backing/rbac/blong-operator-role-shop-services.yaml',
+                        ),
+                        'the rights in the services namespace are the overlay’s, switch or no switch',
+                    );
+                    assert.match(
+                        readFileSync(join(dir, 'local', 'backing', 'kustomization.yaml'), 'utf8'),
+                        /^namespace: shop-services$/m,
+                        'and the child names that namespace, because no workload is left to name it',
+                    );
+                    // What a pass applies: the pair, in the namespace whose credentials the switch
+                    // leaves for the operator to take back (@@D-509).
+                    const applied = [...materializeGeneratedTree(dir).values()]
+                        .filter(isClusterResource)
+                        .map(resource => {
+                            const object = resource as {
+                                kind?: string;
+                                metadata?: {name?: string; namespace?: string};
+                            };
+                            return `${String(object.kind)}/${String(
+                                object.metadata?.namespace ?? '',
+                            )}/${String(object.metadata?.name ?? '')}`;
+                        });
+                    for (const wanted of [
+                        'Role/shop-services/blong-operator',
+                        'RoleBinding/shop-services/blong-operator',
+                    ]) {
+                        assert.ok(
+                            applied.includes(wanted),
+                            `a pass applies ${wanted}, rather than leaving it in the base alone`,
+                        );
+                    }
+                } finally {
+                    rmSync(dir, {recursive: true, force: true});
+                }
+            },
+
             async function aListMergesByTheKeyKustomizeGivesIt(assert: IAssert) {
                 // The operator composes the split in JS because it ships no kustomize binary (@@D-488), and a
                 // strategic merge is a schema decision rather than a convention: kustomize merges a list of

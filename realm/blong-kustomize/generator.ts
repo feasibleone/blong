@@ -3315,10 +3315,18 @@ const serviceScopeOf = (
  * file: two services may share one namespace, so the overlay writes the pair once (@@D-504). The namespace
  * *itself* is not among them — it is cluster-scoped and named after the deployment, so the tree writes it
  * at the overlay's root (@@D-506).
+ *
+ * The namespaces are the ones the *declaration* names rather than the ones the services it brings
+ * resolved: a service switched off leaves `backingServices` empty while its rights still have to be
+ * granted, and a predicate that read only the brought ones put the pair in the base half of a tree
+ * generated beside a shipped base, where the file cannot be — the composition then refused the tree
+ * and no pass reported (@@D-664).
  */
 const isServicePlumbing = (path: string, plan: IDeploymentPlan): boolean =>
-    plan.backingServices.some(
-        service => path.startsWith('rbac/') && path.endsWith(`-${service.namespace}.yaml`),
+    path.startsWith('rbac/') &&
+    tenantNamespaces(plan).some(
+        namespace =>
+            namespace !== plan.suite.namespace && path.endsWith(`-${namespace}.yaml`),
     );
 
 /**
@@ -3378,8 +3386,15 @@ const writeSplitTree = (
     const examples = new Map<string, KustomizeResource>();
     /** The same declaration as this deployment states it: the host, version and digest it applies. */
     const declarations = new Map<string, KustomizeResource>();
-    /** The namespace the workloads a deployment brings run in, when it brings one at all. */
-    const workloadNamespace = plan.backingServices[0]?.namespace;
+    /**
+     * The namespace a service's objects run in, whether or not this deployment brings one.
+     *
+     * The declaration answers it, because the rights that namespace holds outlive the switch that
+     * emptied `backingServices`: a switched-off service's credentials are still the operator's to take
+     * back, and an object with no namespace anywhere is applied into the client's own (@@D-664).
+     */
+    const workloadNamespace =
+        plan.backingServices[0]?.namespace ?? plan.backingServiceRequest.servicesNamespace;
     for (const [path, resource] of tree) {
         // The declaration is the tenant's own act — its namespace, the services it brings, the artifact it
         // fetched — and a base every deployment of the suite shares cannot carry any of it (@@D-506), so it
