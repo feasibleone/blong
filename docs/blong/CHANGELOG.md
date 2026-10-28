@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.37.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.37.0...blong-docs-v1.37.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* improve the continuous deployment ([ad5784a](https://github.com/feasibleone/blong/commit/ad5784a136bd11fb31867db929d114d674907f1b))
+* improve the operator deployment ([8bd8c3e](https://github.com/feasibleone/blong/commit/8bd8c3ef8b16711b7e75e946d6bde829f8d020ff))
+
 ## [1.37.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.36.0...blong-docs-v1.37.0) (2026-10-27)
 
 
