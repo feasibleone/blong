@@ -1,16 +1,3 @@
-role:
-  Admin: organizationView,organizationEdit,organizationDelete,personView,personEdit,personDelete,unitView,unitEdit,unitDelete
-capability:
-  organizationView: party.organization.find,party.organization.get
-  organizationEdit: party.organization.edit,party.organization.add
-  organizationDelete: party.organization.remove
-  personView: party.person.find,party.person.get
-  personEdit: party.person.edit,party.person.add
-  personDelete: party.person.remove
-  unitView: party.unit.find,party.unit.get
-  unitEdit: party.unit.edit,party.unit.add
-  unitDelete: party.unit.remove
-
 # Implicit ACL grants — `<role> --hasScope--> <scope>` — for the record-level
 # ACL tests (`test.acl.flow`).  The `Admin` role is created above in this same
 # file, so it may be referenced here; the units/persons are seeded by

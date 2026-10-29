@@ -72,6 +72,17 @@ describe('mergePortalConfigs', () => {
         expect(config.languages).toEqual([{value: 'bg', label: 'Bulgarian'}]);
     });
 
+    it('keeps the feedback wiring of the provider that declares it', () => {
+        // The block names methods rather than importing them, so it has to survive
+        // composition like the dictionary's loader does — a composed answer that
+        // dropped it would leave a suite with no toggle (`@@D-662`).
+        const config = mergePortalConfigs([
+            {},
+            {...handWrittenAnswer, feedback: {enabled: true, submit: 'feedback.session.add'}},
+        ]);
+        expect(config.feedback).toEqual({enabled: true, submit: 'feedback.session.add'});
+    });
+
     it('ignores empty answers and empty values', () => {
         const config = mergePortalConfigs([
             undefined,

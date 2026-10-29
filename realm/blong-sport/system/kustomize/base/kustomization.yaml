@@ -18,6 +18,7 @@ resources:
   - rbac/service-account.yaml
   - services/access.yaml
   - services/core.yaml
+  - services/feedback.yaml
   - services/login.yaml
   - services/party.yaml
   - services/sport.yaml

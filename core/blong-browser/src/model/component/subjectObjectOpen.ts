@@ -33,6 +33,7 @@ export async function subjectObjectOpen(model: IResolvedModelSpec, blong: IHandl
                     mode: 'edit',
                     editable: true,
                     title: `Edit ${objectTitle}`,
+                    feedbackContext: {subject, object, page: 'open'},
                     ...props,
                 });
             }

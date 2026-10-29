@@ -21,6 +21,13 @@ import './Explorer.css';
 import type {IEnrichedSchema} from '@feasibleone/blong';
 import {useCallback, useMemo, useRef, useState, type ReactNode} from 'react';
 import {useBlong} from '../../context/BlongContext.js';
+import {appendSegment} from '../../feedback/ids.js';
+import {
+    FeedbackPath,
+    FeedbackRegion,
+    useFeedbackPath,
+    useFeedbackTargetFactory,
+} from '../../feedback/useFeedbackTarget.js';
 import {useAction} from '../../hooks/useAction.js';
 import type {IToolbarButton} from '../../index.js';
 import {ActionButton} from '../ActionButton/ActionButton.js';
@@ -262,6 +269,12 @@ export function Explorer({
     const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const {handler} = useBlong();
+    // Columns are addressable by field, the same way a table's are (`@@T-464`).
+    const path = useFeedbackPath();
+    // The table is a step and its columns are steps below it (`@@T-487`); both are
+    // composed only while the mode is on (`@@D-667`).
+    const tablePath = path ? appendSegment(path, 'table', name) : undefined;
+    const columnTarget = useFeedbackTargetFactory(tablePath);
 
     // Build query params: filter, sort, paging — React Query auto-refetches on change
     const mergedParams = useMemo(() => {
@@ -480,9 +493,10 @@ export function Explorer({
                     emptyMessage={t('No records found.')}
                 />
             ) : (
-                <DataTable
-                    ref={dataTableRef}
-                    value={pagedRows}
+                <FeedbackRegion kind="table" name={name}>
+                    <DataTable
+                        ref={dataTableRef}
+                        value={pagedRows}
                     dataKey={keyField}
                     size={size}
                     loading={loading || isBusy}
@@ -513,11 +527,30 @@ export function Explorer({
                             style={{width: 40}}
                         />
                     )}
-                    {derivedColumns.map(col => (
+                    {derivedColumns.map(col => {
+                        // One call and one answer per column, used for both the
+                        // attributes and the decision to wrap the label.
+                        const columnAttributes = columnTarget?.('column', col.field, col.header);
+                        const columnPath =
+                            columnAttributes && tablePath
+                                ? appendSegment(tablePath, 'column', col.field)
+                                : undefined;
+                        const headerText = col.header ?? col.field;
+                        return (
                         <Column
                             key={col.field}
                             field={col.field}
-                            header={col.header ?? col.field}
+                            header={
+                                // Wrapped only while the mode is on, so the DOM —
+                                // and every visual baseline — is unchanged otherwise.
+                                columnAttributes && columnPath ? (
+                                    <span {...columnAttributes}>
+                                        <FeedbackPath path={columnPath}>{headerText}</FeedbackPath>
+                                    </span>
+                                ) : (
+                                    headerText
+                                )
+                            }
                             sortable={col.sortable !== false}
                             filter={col.filterable}
                             showFilterMenu={false}
@@ -582,8 +615,10 @@ export function Explorer({
                                     ) : null,
                             })}
                         />
-                    ))}
-                </DataTable>
+                        );
+                    })}
+                    </DataTable>
+                </FeedbackRegion>
             )}
             {total > 0 && (
                 <div

@@ -81,6 +81,7 @@ COPY core/blong-realm/package.json ./core/blong-realm/
 COPY realm/blong-kustomize/package.json ./realm/blong-kustomize/
 COPY test/blong-int-kustomize/package.json ./test/blong-int-kustomize/
 COPY realm/blong-sport/package.json ./realm/blong-sport/
+COPY realm/blong-feedback/package.json ./realm/blong-feedback/
 # END GENERATED package manifests
 # The Node headers this image was built from, for `node-gyp`: `node-rdkafka` (a dependency of
 # `blong-gogo`, and the only native build here) is compiled against them, and without this node-gyp

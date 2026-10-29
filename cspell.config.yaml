@@ -60,6 +60,7 @@ words:
   - bullnose
   - Béziers
   - cacache
+  - cainjector
   - capath
   - centered
   - cervicornis
@@ -92,6 +93,7 @@ words:
   - darkorange
   - datatable
   - datetime
+  - datetimes
   - dbaeumer
   - dedup
   - deepwater
@@ -293,6 +295,7 @@ words:
   - pkill
   - placeholderize
   - pnpmfile
+  - pointerdown
   - Poppins
   - Porpoise
   - Pred
@@ -402,6 +405,7 @@ words:
   - tokenreviews
   - topo
   - totp
+  - touchstart
   - traceid
   - treenode
   - treeselect

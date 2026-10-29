@@ -77,8 +77,8 @@ t.test('the register in the repository matches what the command reads', t => {
     const sites = loadStorybookSites(repoRoot(import.meta.dirname));
     t.same(
         sites.map(site => site.name),
-        ['browser', 'suite', 'sport', 'log'],
-        'the checkout publishes four Storybooks',
+        ['browser', 'suite', 'sport', 'feedback', 'log'],
+        'the checkout publishes five Storybooks',
     );
     for (const site of sites) {
         t.ok(existsSync(join(repoRoot(import.meta.dirname), site.package)), `${site.name} exists`);
@@ -126,6 +126,26 @@ t.test('stageStorybooks stages a site and resolves its embeds', t => {
         [...(stagedStoryIds(root, sites[0]!) ?? [])],
         ['demo--one'],
         'the staged index is what the embed was resolved against',
+    );
+    t.end();
+});
+
+t.test('a subset stage judges every embed against the whole register', t => {
+    const {root, sites} = fixture();
+    t.teardown(() => rmSync(root, {recursive: true, force: true}));
+
+    // A second site the register names, with a page that embeds it. It is staged by
+    // nobody in this run, so its embed is unjudged rather than reported as an
+    // unknown site — which is what a subset run used to do, making `--only` fail on
+    // every page that names another site.
+    const other: IStorybookSite = {...sites[0]!, name: 'other', package: 'other/pkg'};
+    t.ok(
+        stageStorybooks(root, sites, {
+            build: true,
+            dryRun: false,
+            register: [...sites, other],
+        }),
+        'the selected site is staged and the embed it serves still resolves',
     );
     t.end();
 });

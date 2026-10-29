@@ -55,6 +55,7 @@ export type {IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1} from 'open
 export type {Knex} from './knex.js';
 export type * from './model.ts';
 export type * from './widget.ts';
+export type * from './feedback.ts';
 
 export type ServerContext = {
     queryBuilder?: Knex;

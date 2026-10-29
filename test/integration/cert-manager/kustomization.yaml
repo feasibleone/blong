@@ -30,3 +30,13 @@ helmCharts:
           # them upgradeable — and what makes them absent unless asked for.
           crds:
               enabled: true
+          global:
+              # The chart's default is `kube-system`, which does not survive this kustomization: the
+              # `namespace: cert-manager` transformer above rewrites the leader-election Role and
+              # RoleBinding into `cert-manager`, while `--leader-election-namespace` keeps saying
+              # `kube-system`. Both the controller and cainjector then fail to acquire their lease,
+              # nothing reconciles, and cainjector never injects the webhook CA bundle — so every
+              # Issuer is rejected with `x509: certificate signed by unknown authority`. Naming the
+              # release namespace keeps the flag and the RBAC in the same place.
+              leaderElection:
+                  namespace: cert-manager

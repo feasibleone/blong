@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: 0.2.0
-    blong.feasible.one/spec-hash: 556da0a749176b27
+    blong.feasible.one/spec-hash: 501de1522b5b4f6b
   name: blong-sport
   namespace: blong-sport
 spec:
@@ -30,7 +30,7 @@ spec:
   servicesNamespace: blong-services
   suiteVolume:
     artifact:
-      digest: c698f9b15108a89fcd7a9d3af642aaf220ec3696394d8df4b6e06126f2c6dc7e
+      digest: 04d29a2bd5d1d9d37e3f988ec86a9f5769558eab481402f06cd5ed8623026fe0
       source: url
       url: http://blong-artifact.default.svc.cluster.local/sport.zip
     attemptRetention: 5

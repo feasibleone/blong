@@ -83,10 +83,10 @@ FK to `core.resource.resourceId` and its readable name is `resourceName`; relati
 `core.triple` edges, not join tables. One uniform query surface for RBAC, hierarchies, and
 relations.
 
-`blong-core` and `blong-access` are **library realms**: every process that calls them carries its own
-copy of the realm, and their tables are created in each database that process writes to — a solution
-spanning several databases has several resource graphs, and an id from one is meaningless in
-another. `blong-party` is not a library realm: it holds business data that must not be copied per
+`blong-core` and `blong-access` are **library realms**: every process that calls them carries its
+own copy of the realm, and their tables are created in each database that process writes to — a
+solution spanning several databases has several resource graphs, and an id from one is meaningless
+in another. `blong-party` is not a library realm: it holds business data that must not be copied per
 database. See the library-realms rationale in the docs site.
 
 ---
@@ -209,7 +209,6 @@ import {handler} from '@feasibleone/blong';
 export default handler(() => ({
     config: {
         schema: {
-            dbTest: true,
             tables: {
                 // Order > core's tables (core.* uses order 1) so core exists first.
                 'myrealm.item': 400,

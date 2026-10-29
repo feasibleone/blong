@@ -105,3 +105,12 @@
 .p-menubar {
     flex-shrink: 0;
 }
+
+.p-overlaypanel::before {
+    border-width: 10px;
+    margin-left: -9px;
+}
+
+.p-overlaypanel::after {
+    border-width: 8px;
+}

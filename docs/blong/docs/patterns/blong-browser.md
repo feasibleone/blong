@@ -284,7 +284,7 @@ registers it for every page, docs and blog alike. `site` is one of the sites in
 | `site`    | Which published Storybook to read the story from. Required.                              |
 | `id`      | The story id, as in `?path=/story/<id>`. Required.                                       |
 | `title`   | Caption under the frame, and the frame's accessible name.                                |
-| `height`  | Frame height, a CSS length. Defaults to 480px, or 640px with `chrome`.                   |
+| `height`  | Live frame height, a CSS length. Defaults to 480px, or 640px with `chrome`.              |
 | `globals` | Storybook globals to open the story from, e.g. `theme:wood,language:bg`.                 |
 | `chrome`  | Show Storybook's own UI — sidebar and story toolbar — instead of the bare story canvas.  |
 | `poster`  | A picture to show until the reader asks for the live story, which then opens on a click. |
@@ -303,6 +303,12 @@ Storybook frame to decide whether they want it, and a build with no Storybook st
 picture. The published trees are not committed — `npm run deploy` stages them, a plain
 `npm run build` does not — so a page that shows nothing but a live frame is a page that renders an
 empty box in a docs-only build.
+
+The poster is drawn at the **picture's own shape**, not at `height`: `height` is the live frame's,
+and a poster squeezed into it was cropped left and right on every wide screenshot, which is how a
+poster stopped being the page it claimed to show. So a picture is committed at the shape it will be
+read at, and `height` is chosen for the story that replaces it — a frame shorter than the poster is
+how a section jumps when the reader clicks.
 
 The poster is written as an import rather than a path, because Docusaurus copies an image into the
 build only when something imports it:

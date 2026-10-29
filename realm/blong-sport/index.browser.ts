@@ -10,8 +10,17 @@ export default browser(blong => ({
         name: pkg.name,
         version: pkg.version,
     },
+    /**
+     * The namespaces this entry configures.
+     *
+     * `ui` is here because the `integration` block below reaches into it: a
+     * config block's keys are checked against this schema, and a namespace that is
+     * only ever named as a child was typed as an unknown property (`@@F-634`).
+     */
     validation: blong.type.Object({
         sport: blong.type.Object({}),
+        ui: blong.type.Object({}),
+        feedback: blong.type.Object({}),
     }),
     children: [
         async function blong() {
@@ -36,6 +45,16 @@ export default browser(blong => ({
         async function sport() {
             return import('./browser.ts');
         },
+        /**
+         * Feedback capture and its review page.
+         *
+         * The browser half is generic — the toggle, the callouts and the document
+         * live in `blong-browser` — and the method names below are what point it at
+         * this realm (`@@D-662`).
+         */
+        async function feedback() {
+            return import('@feasibleone/blong-feedback/browser.ts');
+        },
     ],
     config: {
         default: {
@@ -51,6 +70,20 @@ export default browser(blong => ({
                                 label: 'core.label.list',
                             },
                         },
+                        // Feedback mode: the toggle appears in the menubar, and the
+                        // methods it and the review page call are named here so
+                        // `blong-browser` stays free of the feedback package
+                        // (`@@D-662`).
+                        feedback: {
+                            enabled: true,
+                            submit: 'feedback.session.add',
+                            permission: 'feedback.session.add',
+                            find: 'feedback.session.find',
+                            get: 'feedback.session.get',
+                            shot: 'feedback.shot.get',
+                            prose: 'feedback.prose.render',
+                            update: 'feedback.session.update',
+                        },
                     },
                 },
             },
@@ -60,6 +93,20 @@ export default browser(blong => ({
             core: {},
             gateway: {},
             sport: {},
+            feedback: {},
+        },
+        // TEST-ONLY: the `integration` intent (active in a browser run) exposes the
+        // wrapped handler as `window.__blongHandler` and the store as
+        // `window.__blongStore`, which a Playwright spec reads to see the state the
+        // pages do not print. A deployment runs `release`, never `integration`.
+        integration: {
+            ui: {
+                portal: {
+                    portal: {
+                        testHook: true,
+                    },
+                },
+            },
         },
         // The Test runs console ships only with the `test-ui` intent: the page
         // handler is always discovered, but a normal portal does not link it.

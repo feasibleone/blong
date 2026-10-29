@@ -253,15 +253,21 @@ function stageSite(root: string, site: IStorybookSite, options: IStageOptions): 
 }
 
 /**
- * Stage every site, then check every embed against what was staged.
+ * Stage the given sites, then check every embed against what was staged.
  *
  * Returns false when a build failed or an embed names a story no staged site serves; the caller
  * decides what a partial stage means (this one exits).
+ *
+ * The check always reads the whole register rather than `sites`: a run of `--only feedback`
+ * cannot make an embed that names `site="sport"` wrong, and judging it against the subset made
+ * every such page report an unknown site (a subset run could never pass). A site the register
+ * names but nobody staged is reported as unstaged rather than as a bad id, which is what
+ * `requireStaged: false` says.
  */
 export function stageStorybooks(
     root: string,
     sites: IStorybookSite[],
-    options: IStageOptions,
+    options: IStageOptions & {register?: IStorybookSite[]},
 ): boolean {
     let sound = true;
     for (const site of sites) {
@@ -269,7 +275,8 @@ export function stageStorybooks(
     }
     if (options.dryRun) return sound;
 
-    const problems = checkEmbeds(root, sites, {requireStaged: true});
+    const register = options.register ?? sites;
+    const problems = checkEmbeds(root, register, {requireStaged: register === sites});
     for (const problem of problems) process.stderr.write(`blong-dev docs: ${problem}\n`);
     return sound && problems.length === 0;
 }

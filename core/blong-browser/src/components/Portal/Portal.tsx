@@ -15,6 +15,8 @@ import './Portal.css';
 
 import React, {Suspense, useCallback} from 'react';
 import {useBlong} from '../../context/BlongContext.js';
+import {feedbackAttributes, portalFeedbackId} from '../../feedback/ids.js';
+import {useFeedbackActive} from '../../feedback/useFeedbackTarget.js';
 import {usePortal} from '../../hooks/usePortal.js';
 import {useTranslate} from '../../hooks/useText.js';
 import testid from '../../lib/testid.js';
@@ -62,6 +64,13 @@ async function buildMenuModel(
     command: MenuItem['command'],
     handler: ReturnType<typeof useBlong>['handler'],
     t: (text: string | undefined) => string | undefined,
+    feedback:
+        | ((
+              part: 'menu' | 'menuItem',
+              id: string,
+              label?: string,
+          ) => Record<string, string> | undefined)
+        | undefined,
 ): Promise<MenuItem[] | undefined> {
     if (!items) return undefined;
     return Promise.all(
@@ -81,7 +90,7 @@ async function buildMenuModel(
                 return {
                     label: t(action.title),
                     icon: action.icon,
-                    items: await buildMenuModel(action.items, command, handler, t),
+                    items: await buildMenuModel(action.items, command, handler, t, feedback),
                     ...(groupId && {
                         template: (
                             item: MenuItem,
@@ -96,6 +105,7 @@ async function buildMenuModel(
                                 className={options.className}
                                 data-testid={`portal-menu-${groupId}`}
                                 onClick={options.onClick}
+                                {...feedback?.('menu', groupId, action.title)}
                             >
                                 {item.icon && <span className={options.iconClassName} />}
                                 <span className={options.labelClassName}>{item.label}</span>
@@ -142,6 +152,7 @@ async function buildMenuModel(
                             className={options.className}
                             data-testid={`portal-menu-${menuId}`}
                             onClick={options.onClick}
+                            {...feedback?.('menuItem', action.method ?? menuId, title)}
                         >
                             {item.icon && <span className={options.iconClassName} />}
                             <span className={options.labelClassName}>{item.label}</span>
@@ -196,9 +207,19 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
 
     const activeIndex = tabs.findIndex(t => t.id === activeTabId);
     const [menu, setMenu] = React.useState<MenuItem[] | undefined>(undefined);
+    // The menubar belongs to no realm, so its identifiers are `blong.portal.menu.*`
+    // (`@@T-464`). Inert when the mode is off — the attributes are absent, not empty.
+    const feedbackActive = useFeedbackActive();
+    const feedbackTarget = useCallback(
+        (part: 'menu' | 'menuItem', id: string, label?: string) =>
+            feedbackActive
+                ? feedbackAttributes(portalFeedbackId(part, id), part, label)
+                : undefined,
+        [feedbackActive],
+    );
     React.useEffect(() => {
-        buildMenuModel(portalConfig?.menu, command, handler, t).then(setMenu);
-    }, [portalConfig?.menu, command, handler, t]);
+        buildMenuModel(portalConfig?.menu, command, handler, t, feedbackTarget).then(setMenu);
+    }, [portalConfig?.menu, command, handler, t, feedbackTarget]);
 
     const start =
         logo ??
@@ -235,6 +256,13 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
                                 <span
                                     className="blong-tab-header"
                                     {...testid(`portal.tab${tab.id}`)}
+                                    {...(feedbackActive
+                                        ? feedbackAttributes(
+                                              portalFeedbackId('tab', tab.id),
+                                              'tab',
+                                              tab.title,
+                                          )
+                                        : {})}
                                 >
                                     {tab.dirty && <span className="blong-tab-dirty">● </span>}
                                     <Text>{tab.title}</Text>

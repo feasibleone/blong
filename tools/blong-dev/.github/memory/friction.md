@@ -46,7 +46,7 @@ open (33)
 - `F-548` · tools/blong-dev — A published summary written before the last leg lags one leg
 - `F-551` · tools/blong-dev — A test inherited the shared-bundle variables the workflow sets
 
-resolved (8)
+resolved (9)
 
 - `F-080` · tools/blong-dev — `blong-dev` CLI not built
 - `F-090` · tools/blong-dev — `blong-dev` was not built, so `npm run ci-lint` could not find it
@@ -56,6 +56,7 @@ resolved (8)
 - `F-385` · tools/blong-dev — A targeted lint of a skill file reports three words that predate it
 - `F-442` · tools/blong-dev — A closed todo's id is handed to the next entry
 - `F-549` · tools/blong-dev — The failure message hides the signal that killed the child
+- `F-629` · tools/blong-dev — A subset storybook stage called every other site unknown
 
 <!-- /memory:index -->
 
@@ -598,3 +599,21 @@ exited-with stem is kept so ci/diagnose.ts still prefers the runner stderr over 
 625 shape is covered by a new case in tapReport.test.ts and a signal precedent in
 ci/diagnose.test.ts. Rebuilding run 625 from its artifact now prints test process exited with signal
 SIGILL instead of code unknown.
+
+### F-629 — A subset storybook stage called every other site unknown
+
+> _2026-10-29 · tools/blong-dev · resolved_
+
+blong-dev docs storybook --only feedback aborted with 'unknown site; the register holds feedback'
+for every page embedding another Storybook — the register printed in the message was the selection,
+not the register. The embed check was handed the sites this run had built, so a subset stage could
+never pass and the only way to stage one site was to rebuild all five (ten minutes). The check now
+always reads the whole register and a site nobody staged is reported as unstaged rather than as an
+unknown name; the register passed to the check is the one from the file, and stageStorybooks takes
+it as an option. Cost: one failed run and reading the caller to see where the subset was threaded
+in.
+
+Fixed: stageStorybooks takes the register as an option and the docs command passes the whole file,
+so a subset stage judges every embed against the register and reports an unstaged site as unstaged.
+A test now pins it ('a subset stage judges every embed against the whole register'), and blong-dev
+docs storybook --only feedback/sport works.

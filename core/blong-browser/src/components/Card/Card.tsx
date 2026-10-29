@@ -30,6 +30,7 @@ import {DropZone} from '../../design/DropZone.js';
 import {SelectionIndicator} from '../../design/SelectionIndicator.js';
 import {useDesignable} from '../../design/useDesignable.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
+import {FeedbackPath, useFeedbackNode} from '../../feedback/useFeedbackTarget.js';
 import {useText} from '../../hooks/useText.js';
 import {useBlong} from '../../index.js';
 import {buildValidationRules} from '../../schema/validate.js';
@@ -324,6 +325,12 @@ function FieldRow({
     // exactly as it is rendered (`D-625`).
     const cardTitle = useText(effectiveSchema?.title ?? baseName);
 
+    // A field is addressable by the path its schema uses, not by the row's DOM
+    // position: `coral.coralName` survives a layout change (`@@T-487`). It is
+    // also a step, so its label reads as `clubShortName.label` rather than as a
+    // sibling of the field.
+    const field = useFeedbackNode('field', baseName);
+
     const WidgetComponent = effectiveSchema
         ? widgetRegistry.get(resolveWidgetType(effectiveSchema, fieldName))
         : undefined;
@@ -530,8 +537,8 @@ function FieldRow({
     const hasLabel = !hideLabel && effectiveSchema.title !== '';
 
     if (loading) {
-        return (
-            <div className={`field grid${isLast ? ' mb-0' : ''}`}>
+        const skeleton = (
+            <>
                 {hasLabel && (
                     <label className="col-12 md:col-4">
                         <Text>{label(effectiveSchema.title, baseName)}</Text>
@@ -540,12 +547,20 @@ function FieldRow({
                 <div className={`flex align-items-center col-12${hasLabel ? ' md:col-8' : ''}`}>
                     <Skeleton className="p-inputtext w-full" />
                 </div>
+            </>
+        );
+        return (
+            <div
+                className={`field grid${isLast ? ' mb-0' : ''}`}
+                {...field?.attributes}
+            >
+                {field ? <FeedbackPath path={field.path}>{skeleton}</FeedbackPath> : skeleton}
             </div>
         );
     }
 
-    return (
-        <div className={`field grid${isLast ? ' mb-0' : ''}${fieldClass ? ' ' + fieldClass : ''}`}>
+    const row = (
+        <>
             {hasLabel && (
                 <label
                     htmlFor={instanceId}
@@ -562,6 +577,15 @@ function FieldRow({
                 rules={validationRules}
                 render={renderController}
             />
+        </>
+    );
+
+    return (
+        <div
+            className={`field grid${isLast ? ' mb-0' : ''}${fieldClass ? ' ' + fieldClass : ''}`}
+            {...field?.attributes}
+        >
+            {field ? <FeedbackPath path={field.path}>{row}</FeedbackPath> : row}
         </div>
     );
 }
@@ -871,6 +895,9 @@ export function Card({
     const hasCardTitle = resolvedTitle != null && resolvedTitle !== '';
 
     const {log} = useBlong();
+    // The card is addressable by its `cardName`, the model's own name for it, and
+    // it is a step in the path its fields extend (`@@T-487`).
+    const card = useFeedbackNode('card', cardName ?? elementId, titleLabel);
     const {isSelected, select, dragProps, setRef, designClass, style} = useDesignable(
         elementId,
         'card',
@@ -1009,28 +1036,43 @@ export function Card({
             .filter(Boolean)
             .join(' ') || undefined;
 
+    // The body's children are built once and wrapped only while the mode is on, so
+    // an inactive card adds neither a provider nor an attribute (`@@D-667`).
+    const cardContent = (
+        <>
+            {resolvedLoading && !(cardName && formCtx) ? (
+                <div className="blong-card__skeleton">
+                    {[1, 2, 3].map(i => (
+                        <div
+                            key={i}
+                            className="blong-skeleton-row"
+                        />
+                    ))}
+                </div>
+            ) : (
+                content
+            )}
+            {isDesignMode && cardName && (
+                <DropZone
+                    id={`card-end:${cardName}`}
+                    accept="field"
+                    sourceId={cardName}
+                />
+            )}
+        </>
+    );
+
     const cardBody = (
         <>
             {!collapsed && (
-                <div className="blong-card__body">
-                    {resolvedLoading && !(cardName && formCtx) ? (
-                        <div className="blong-card__skeleton">
-                            {[1, 2, 3].map(i => (
-                                <div
-                                    key={i}
-                                    className="blong-skeleton-row"
-                                />
-                            ))}
-                        </div>
+                <div
+                    className="blong-card__body"
+                    {...card?.attributes}
+                >
+                    {card ? (
+                        <FeedbackPath path={card.path}>{cardContent}</FeedbackPath>
                     ) : (
-                        content
-                    )}
-                    {isDesignMode && cardName && (
-                        <DropZone
-                            id={`card-end:${cardName}`}
-                            accept="field"
-                            sourceId={cardName}
-                        />
+                        cardContent
                     )}
                 </div>
             )}
@@ -1080,18 +1122,14 @@ export function Card({
             }
         >
             {!collapsed && (
-                <div className="blong-card__body">
-                    {resolvedLoading && !(cardName && formCtx) ? (
-                        <div className="blong-card__skeleton">
-                            {[1, 2, 3].map(i => (
-                                <div
-                                    key={i}
-                                    className="blong-skeleton-row"
-                                />
-                            ))}
-                        </div>
+                <div
+                    className="blong-card__body"
+                    {...card?.attributes}
+                >
+                    {card ? (
+                        <FeedbackPath path={card.path}>{cardContent}</FeedbackPath>
                     ) : (
-                        content
+                        cardContent
                     )}
                 </div>
             )}

@@ -4,6 +4,7 @@
  */
 import type {ReactNode} from 'react';
 import {create} from 'zustand';
+import type {IFeedbackItem} from '@feasibleone/blong';
 import {composeTranslations} from '../i18n/bundled.js';
 import {setTranslationProvider} from '../i18n/collect.js';
 import type {IFormatConfig} from '../lib/format.js';
@@ -93,11 +94,26 @@ export interface ITranslationBundle {
     label?: TranslationDict;
 }
 
+/**
+ * Feedback mode's draft (`@@T-461`).
+ *
+ * `active` is the only member the deep components subscribe to — a card, a field
+ * row or a `Text` asks "am I addressable?" and nothing else. Hover geometry and
+ * callout placement live in the overlay's own state, so moving the pointer over a
+ * page does not re-render the page.
+ */
+export interface IFeedbackDraft {
+    active: boolean;
+    /** Draft comments by target id; one box per target, so a second click edits the first. */
+    items: Record<string, IFeedbackItem>;
+}
+
 /** Complete app state */
 export interface IAppState {
     auth: IAuthState;
     portal: IPortalState;
     toasts: IToast[];
+    feedback: IFeedbackDraft;
     loader: {active: boolean; message?: string; count: number};
     translations: TranslationDict;
     /**
@@ -217,6 +233,17 @@ export interface IAppActions {
     // Hint
     showHint: (target: HTMLElement | null, message: string, error: boolean) => void;
     clearHint: () => void;
+
+    // Feedback mode
+    /** Enter or leave the mode. Leaving keeps the draft until `feedbackReset`. */
+    feedbackActivate: (active: boolean) => void;
+    /** Add or replace one draft item, keyed by its logical target id. */
+    feedbackAdd: (item: IFeedbackItem) => void;
+    /** Patch one draft item (its comment as the person types). */
+    feedbackUpdate: (targetId: string, patch: Partial<IFeedbackItem>) => void;
+    feedbackRemove: (targetId: string) => void;
+    /** Drop the whole draft and clear the target rings. */
+    feedbackReset: () => void;
 }
 
 const initialAuth: IAuthState = {
@@ -275,6 +302,7 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     auth: initialAuth,
     portal: initialPortal,
     toasts: [],
+    feedback: {active: false, items: {}},
     loader: {active: false, count: 0},
     translations: {},
     translationsByLanguage: {},
@@ -483,6 +511,36 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     // Hint
     showHint: (target, message, error) => set({hint: {target, message, error}}),
     clearHint: () => set({hint: null}),
+
+    // Feedback mode
+    feedbackActivate: active =>
+        set(state => ({feedback: {...state.feedback, active}})),
+    feedbackAdd: item =>
+        set(state => ({
+            feedback: {
+                ...state.feedback,
+                items: {...state.feedback.items, [item.targetId]: item},
+            },
+        })),
+    feedbackUpdate: (targetId, patch) =>
+        set(state => {
+            const existing = state.feedback.items[targetId];
+            if (!existing) return {};
+            return {
+                feedback: {
+                    ...state.feedback,
+                    items: {...state.feedback.items, [targetId]: {...existing, ...patch}},
+                },
+            };
+        }),
+    feedbackRemove: targetId =>
+        set(state => {
+            if (!(targetId in state.feedback.items)) return {};
+            const items = {...state.feedback.items};
+            delete items[targetId];
+            return {feedback: {...state.feedback, items}};
+        }),
+    feedbackReset: () => set(state => ({feedback: {...state.feedback, items: {}}})),
 }));
 
 // The collector's report reads the live store, so it answers with the language and

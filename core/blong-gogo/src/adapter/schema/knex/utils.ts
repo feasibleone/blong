@@ -72,7 +72,11 @@ export function addColumn(
             column = table.binary(columnName, 16);
             break;
         case 'string':
-            if (prop.maxLength != null && prop.maxLength > 255) column = table.text(columnName);
+            // A MySQL TEXT holds 65 535 bytes, so a declared length above that is
+            // a request for LONGTEXT — what a data-URL screenshot needs (`@@D-661`).
+            if (prop.maxLength != null && prop.maxLength > 65535)
+                column = table.text(columnName, 'longtext');
+            else if (prop.maxLength != null && prop.maxLength > 255) column = table.text(columnName);
             else column = table.string(columnName, prop.maxLength ?? 255);
             break;
         case 'bigint':

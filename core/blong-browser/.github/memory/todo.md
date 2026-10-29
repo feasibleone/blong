@@ -36,7 +36,7 @@ open (23)
 - `T-437` · core/blong-browser — A five second table wait flakes under parallel load
 - `T-438` · core/blong-browser — The harvest records record names as label keys
 
-done (17)
+done (31)
 
 - `T-369` · core/blong-browser — Resolve TestRun source pointers from a real run
 - `T-367` · core/blong-browser — Test UI phases 2-4: runner, host, Playwright
@@ -55,6 +55,20 @@ done (17)
 - `T-425` · core/blong-browser — Add the untranslated-strings page
 - `T-432` · core/blong-browser — Translate record names in the read, not in the widgets
 - `T-433` · core/blong-browser — Type the Playwright config's global hooks
+- `T-461` · core/blong-browser — Add the feedback slice to appStore
+- `T-462` · core/blong-browser — Build the feedback layer, outlines, callouts and submit bar
+- `T-465` · core/blong-browser — Freeze the UI with a capture-phase guard and pausable timers
+- `T-466` · core/blong-browser — Capture the screen at submit
+- `T-467` · core/blong-browser — Add the menubar switch, the shortcut and the config type
+- `T-468` · core/blong-browser — Translate every new feedback string
+- `T-475` · core/blong-browser — Cover the feedback primitives with vitest and stories
+- `T-464` · core/blong-browser — Annotate every supported target
+- `T-463` · core/blong-browser — Publish the model context and add the target hook
+- `T-487` · core/blong-browser — Path identifiers name the nesting, not a flat suffix
+- `T-488` · core/blong-browser — Buttons and toolbar controls are addressable
+- `T-489` · core/blong-browser — A callout is moved, resized, and points at its element
+- `T-490` · core/blong-browser — The submission picture is cropped to what matters
+- `T-491` · core/blong-browser — The mode's chrome gets out of the way
 
 <!-- /memory:index -->
 
@@ -566,3 +580,195 @@ Build globalSetup/globalTeardown before defineConfig and spread them in, destruc
 own out of the rest. Evidence: get_errors clean on playwright/config.ts.
 
 Hooks are built before defineConfig and spread in; get_errors reports nothing.
+
+### T-461 — Add the feedback slice to appStore
+
+> _2026-10-28 · core/blong-browser · done_
+
+active, items and hoveredId plus feedbackActivate, feedbackAdd, feedbackUpdate, feedbackRemove and
+feedbackReset, with the draft guard on exit. Unit-test the reducers. Plan section 4.1.
+
+appStore gains IFeedbackDraft {active, items} and
+feedbackActivate/feedbackAdd/feedbackUpdate/feedbackRemove/feedbackReset. Covered by
+src/feedback/feedback.test.tsx: add is idempotent per target, update patches one item, remove drops
+it, activate keeps the draft and reset clears it.
+
+### T-462 — Build the feedback layer, outlines, callouts and submit bar
+
+> _2026-10-28 · core/blong-browser · done_
+
+src/feedback with FeedbackLayer, FeedbackOutline, FeedbackCallout, FeedbackToggle, FeedbackSubmitBar
+and feedback.css, and the placement solver as a pure function. Unit-test the solver on the four
+placements, collision preference and viewport clamping. Plan sections 4.3 and 4.4.
+
+src/feedback holds FeedbackLayer, FeedbackOutline, FeedbackCallout, FeedbackSubmitBar,
+FeedbackToggle, feedback.css, the pure placement solver and ids.ts. Vitest covers the solver
+(right/left fallbacks, viewport clamping, avoiding a placed box, batch solving), the callout render
+and the identifier grammar. 19 new tests, whole suite 721 green.
+
+### T-465 — Freeze the UI with a capture-phase guard and pausable timers
+
+> _2026-10-28 · core/blong-browser · done_
+
+Install the document listeners only while the mode is active, exclude the callout layer, swallow
+Escape outside it and pause the ActionHint and Hint timers. Unit-test that an open panel survives
+the activation and a click. Plan section 4.2 and D-659.
+
+guard.ts installs one capture-phase listener set (pointerdown, mousedown, touchstart, click,
+keydown) while the mode is active: it stops events on an addressable element and calls
+preventDefault, passes [data-feedback-ui] through, swallows Escape everywhere else and reports the
+clicked element to the layer. Timers: useFeedbackFreeze pauses ActionHint's two seconds with its
+remainder, and Hint re-shows a toast with a long fixed life while the mode is on. Tests assert a
+click on a target reaches nobody and still reports the element, and that callout events pass.
+
+### T-466 — Capture the screen at submit
+
+> _2026-10-28 · core/blong-browser · done_
+
+getDisplayMedia with preferCurrentTab, a canvas downscale, a JPEG quality ladder and a byte cap, the
+overlay hidden through data-feedback-capture, tracks stopped in a finally, and the denied and
+unavailable outcomes recorded rather than thrown. Unit-test with a stubbed stream. Plan section 4.5
+and D-658.
+
+capture.ts uses getDisplayMedia with preferCurrentTab and selfBrowserSurface, hides the overlay
+through data-feedback-capture for the whole capture including the picker, draws the frame to a
+canvas downscaled to 1600px, exports JPEG down a quality ladder under the byte cap, and stops the
+tracks in a finally. Tests: missing API -> unavailable, NotAllowedError -> denied, and the attribute
+is set during the capture and removed afterwards.
+
+### T-467 — Add the menubar switch, the shortcut and the config type
+
+> _2026-10-28 · core/blong-browser · done_
+
+Mount the toggle in the App menubarEnd, add the shortcut listener and extend IPortalConfig and
+IBlongPortalConfig with portal.feedback. Prove a suite without the block renders the old menubar.
+Plan section 7 and D-662.
+
+IPortalFeedbackConfig added to types/portal.ts and to IBlongPortalConfig; App mounts FeedbackToggle
+in menubarEnd and FeedbackLayer beside ActionHint; the toggle renders only when enabled and the
+permission allows, stops pointerdown so activation cannot close an open overlay, and parses Alt+f
+(parseShortcut/matchesShortcut are unit-tested). sport sets the block in index.browser.ts.
+
+### T-468 — Translate every new feedback string
+
+> _2026-10-28 · core/blong-browser · done_
+
+Wrap the new labels in Text and add the Bulgarian keys to the sport label seed. Verify the label
+collector reports no missing key on the feedback surfaces. Plan section 8.
+
+Every new user-visible string goes through Text or useTranslate: the submit bar count uses
+params={{count}}, the callout's placeholder and remove title are translated, and the toggle and
+discard-confirmation use t(). The Bulgarian keys were added in sorted position to
+realm/blong-sport/meta/db/bg-coreLabelSeed.yaml: 1 comment, {count} comments, Discard, Discard the
+comments and leave feedback mode?, Feedback mode, Feedback submitted, Remove this comment, Submit,
+What is wrong here?.
+
+### T-475 — Cover the feedback primitives with vitest and stories
+
+> _2026-10-28 · core/blong-browser · done_
+
+Store, solver, guard, capture and identifier units, plus a Components/Feedback story set for
+inactive, active, three callouts and submitted. Verify npm test and blong-dev lint. Plan section 8.
+
+src/feedback/feedback.test.tsx adds 19 vitest cases across the draft, the identifier grammar,
+placement, the guard, the capture, the shortcut, the target hook and the callout;
+src/feedback/Feedback.stories.tsx adds a Components/Feedback set (Inactive, Active, Callouts,
+SubmitBar, Callout, Outlines). Full package run: 74 files, 721 tests green; tsc --noEmit and
+blong-dev lint clean for every changed file.
+
+### T-464 — Annotate every supported target
+
+> _2026-10-28 · core/blong-browser · done_
+
+Annotated: Portal menu items (blong.portal.menu with the method as the last segment) and tab headers
+(blong.portal.tab plus the tab id), Card body (card plus cardName), FieldRow (field plus baseName)
+in both the loading and the normal branch, TableWidget and Explorer column headers (column plus the
+field), Text (label plus the English key), and the Editor page root. Every annotation is inert when
+the mode is off, and the two header wrappers exist only while it is on, which is why the whole
+existing suite of 702 tests still passes untouched.
+
+### T-463 — Publish the model context and add the target hook
+
+> _2026-10-28 · core/blong-browser · done_
+
+Editor takes feedbackContext with subject, object and page, publishes it through
+FeedbackModelContext and labels its root; the four generated entry files (browse, new, open and
+report) pass it, with the report page using the report prefix plus the resolved report id.
+useFeedbackTarget, useFeedbackPageTarget and useFeedbackTargetFactory return inert values when the
+mode is off. Covered by the target-hook tests in feedback.test.tsx.
+
+### T-487 — Path identifiers name the nesting, not a flat suffix
+
+> _2026-10-29 · core/blong-browser · done_
+
+Replace the dotted suffix grammar with a page id plus slash-separated kind:name segments, so an
+identifier reads as the path a person walked:
+sport.club.open/editor/card:clubDetails/field:clubShortName/label:clubs. A path context carries the
+parent, each addressable component appends its own segment, and nothing may use an array index as a
+name. Update the review page, the prose sentence about finding a segment, the stories and the
+Playwright spec, and keep targetId inside the 255-character column.
+
+Built: ids.ts carries pageIdOf, segmentOf, appendSegment and shortTargetId; FeedbackPageContext
+carries the page, FeedbackPathContext the nesting, useFeedbackNode/FeedbackTarget/Factory compose
+from them. Editor, Card, Text, Button, ActionButton, TableWidget, Explorer and Portal now nest, and
+the tests in feedback.test.tsx pin the grammar, the badge tail and the nesting.
+
+### T-488 — Buttons and toolbar controls are addressable
+
+> _2026-10-29 · core/blong-browser · done_
+
+The mode skips buttons, so the most-commented control of all cannot be pointed at. Annotate the
+PrimeReact Button wrapper, ActionButton and the Editor's raw toolbar buttons with kind button and a
+stable name taken from the action (save, cancel, edit, refresh, design) or the slug of the English
+label, never from the visible translated text and never from the array index. The toolbar itself
+becomes a named segment so a button reads as editor/toolbar/button:save.
+
+The Button wrapper names a button by its action when the caller has one and by the slug of its
+English label otherwise, and publishes its own path so its label reads as button:save/label. The
+editor's raw toolbar buttons and ActionButton carry names too, and the toolbar is a step of its own.
+
+### T-489 — A callout is moved, resized, and points at its element
+
+> _2026-10-29 · core/blong-browser · done_
+
+The solver places each callout once and the person cannot argue with it. Let a drag on the callout's
+top bevel move it, a corner handle resize it, and record the box it ends up in; draw a
+border-to-border connector with an arrowhead from the callout to the element it is about. Persist
+the box as fractions of the capture region so the review page draws it on the picture at any scale,
+and show the same connector there. geometry stays in placement.ts as pure functions with unit tests.
+
+placeCallout now leaves a 22px gap so the arrow has length; connectorOf, arrowHeadPoints, moveBox
+and resizeBox are pure and unit-tested; the layer keeps boxes in local state, drags the bevel,
+resizes the corner and draws one SVG line with an arrowhead per callout. Both boxes are stored as
+fractions and the review page draws them with the same border-to-border rule.
+
+### T-490 — The submission picture is cropped to what matters
+
+> _2026-10-29 · core/blong-browser · done_
+
+A full-viewport capture carries whitespace that tells a reviewer nothing. Let the person drag a
+rectangle over the frozen page before submitting and crop the captured frame to it; anchors and
+callout boxes become fractions of that region so the review page overlays them on the cropped
+picture without a scale factor. The control lives in the submit bar, the default is the whole
+viewport, and a refused or unavailable capture leaves the fractions as the whole viewport.
+
+The submit bar gains Crop/Done/Edit picture; FeedbackCrop is a dashed rectangle that dims everything
+outside it and moves or resizes with the same drag helper. captureScreen takes the region, crops the
+frame by the surface ratio and stores anchor and callout as fractions of it, which also removed the
+review page's shotWidth/1000 guess.
+
+### T-491 — The mode's chrome gets out of the way
+
+> _2026-10-29 · core/blong-browser · done_
+
+Three small corrections to the overlay. The keyboard shortcut is F2 rather than Alt+f, because Alt
+combinations are claimed by the browser and the desktop. An outline badge shows the short tail of
+the identifier — the last named segment plus whatever unnamed parts follow it, as
+clubShortName.label — with the full path in its title attribute, so a badge is readable without
+being useless. A callout loses its separate borders: one solid bevel around the text area, thicker
+at the top so it reads as the handle it is, with the remove button and the resizer on it and no
+identifier line inside.
+
+Default shortcut is F2; the outline badge is shortTargetId with the full path in its title; the
+callout is one bevelled box — a thick top bevel as the drag handle, a borderless text area, the
+remove button and a corner resizer — with no identifier line inside.

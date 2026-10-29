@@ -1,0 +1,31 @@
+# RBAC production seed — the reviewer's capability (`@@T-458`).
+#
+# Submitting is every signed-in person's right, so `feedback.session.add` rides on
+# `loginCapability` in `blong-access` (the same place the dictionary reads sit).
+# What is left here is review: reading a submission, its picture, its prose, and
+# changing what it says.
+#
+# The file name is `accessAuthorizationMerge.yaml` because the seed method is
+# derived from it — it dispatches `access.authorization.merge` to blong-access's
+# shared handler, and only the content carries the feedback names.
+#
+# `replace: true` so a list shortened in a later release takes effect on a
+# database that was seeded once (F-357) instead of leaving the dropped methods
+# granted.
+replace: true
+role:
+  Admin: feedbackManage
+  Manager: feedbackMaintain
+  Customer: feedbackView
+  Guest: feedbackView
+capability:
+  feedbackManage: >-
+    feedback.session.find,feedback.session.list,feedback.session.get,
+    feedback.session.items,feedback.session.update,feedback.item.edit,
+    feedback.shot.get,feedback.prose.render
+  feedbackMaintain: >-
+    feedback.session.find,feedback.session.list,feedback.session.get,
+    feedback.session.items,feedback.item.edit,feedback.prose.render
+  feedbackView: >-
+    feedback.session.find,feedback.session.list,feedback.session.get,
+    feedback.session.items

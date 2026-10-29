@@ -86,6 +86,10 @@ export default function StorybookStory({
     const query = overrides === '' ? '' : `&globals=${encodeURIComponent(overrides)}`;
     const frameHeight = height ?? (chrome ? '640px' : '480px');
 
+    // The poster is the picture, at the picture's own shape: a fixed height with `object-fit: cover`
+    // cut the left and right off every wide screenshot on the site, which is how a poster stopped
+    // being the page it claimed to show. The frame's height applies to the live story, which has to
+    // be given one.
     // The bare story: `iframe.html` renders the canvas alone, without the sidebar, the toolbar or
     // the docs addon's panels. A page that wants the toolbar asks for `chrome`.
     const storyUrl = useBaseUrl(
@@ -116,11 +120,13 @@ export default function StorybookStory({
                 <button
                     type="button"
                     className={styles.poster}
-                    style={{height: frameHeight}}
                     onClick={() => setLive(true)}
                     aria-label={`Load the live story: ${caption}`}
                 >
-                    <img className={styles.image} src={poster} alt={caption} loading="lazy" />
+                    {/* Not lazy: the poster's box is the picture's own height, and an image
+                        that is not fetched has no height, so a lazy one is never in view and is
+                        never fetched — the whole poster collapsed to zero. */}
+                    <img className={styles.image} src={poster} alt={caption} decoding="async" />
                     <span className={styles.load}>Load the live story</span>
                 </button>
             )}

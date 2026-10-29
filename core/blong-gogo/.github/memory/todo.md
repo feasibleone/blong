@@ -28,7 +28,7 @@ open (19)
 - `T-350` · core/blong-gogo — Stop keying a realm child by its function name
 - `T-366` · core/blong-gogo — Decide whether an inactive layer is skipped before it is imported
 
-done (7)
+done (8)
 
 - `T-341` · core/blong-gogo — Validate a config reload and reject an invalid snapshot
 - `T-217` · core/blong-gogo — Warn when a CLI config key matches no realm, port or framework key
@@ -37,6 +37,7 @@ done (7)
 - `T-408` · core/blong-gogo — Join the row's own resource name instead of a second query
 - `T-430` · core/blong-gogo — Language in the gateway meta, taken from the header
 - `T-431` · core/blong-gogo — Send the active language from the browser on every call
+- `T-456` · core/blong-gogo — Map a large maxLength to a longtext column
 
 <!-- /memory:index -->
 
@@ -411,5 +412,17 @@ the joins.
 
 Add x-blong-language in codec.mle's send hook, from `html[data-language]`. Evidence: the Bulgarian
 run's grid shows the translated record name, which only reaches it through the header.
+
+### T-456 — Map a large maxLength to a longtext column
+
+> _2026-10-28 · core/blong-gogo · done_
+
+Add one branch to the knex schema adapter so a string with maxLength above 65535 becomes text with
+the longtext type, per D-661, and add the focused test beside the adapter. Prove the test fails
+before the branch. Plan section 5.3.
+
+utils.ts maps maxLength above 65535 to text(name,'longtext'); utils.test.ts covers 255 -> varchar,
+1000 -> text, 65535 -> text, 8000000 -> longtext with 4 tap cases; ran green with npx tap
+src/adapter/schema/knex/utils.test.ts.
 
 ## Retired

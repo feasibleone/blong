@@ -1,5 +1,6 @@
 languageCode: bg
 label: |
+    1 comment=1 коментар
     Achieved=Постигнат
     Achieved On=Постигнат на
     Achievement=Постижение
@@ -107,16 +108,21 @@ label: |
     Create Sports Specialist=Създаване на спортен специалист
     Create Support Period=Създаване на период на подкрепа
     Create your account=Създайте своя профил
+    Crop=Изрязване
     Cycle=Цикъл
     Date of Birth=Дата на раждане
     Decision=Решение
     Decision Document=Решение (документ)
     Delete=Изтрий
+    Discard=Отхвърли
+    Discard the comments and leave feedback mode?=Да се отхвърлят ли коментарите и да се излезе от режима?
     Discipline=Дисциплина
     Disciplines=Дисциплини
     Document=Документ
     Document Attachment=Прикачен документ
     Documents=Документи
+    Done=Готово
+    Drag to choose the part the reviewer needs=Плъзни, за да избереш частта, която рецензентът вижда
     Edit=Редактирай
     Edit Affiliation Period=Редактирай Период на принадлежност
     Edit Athlete=Редактирай Спортист
@@ -141,6 +147,7 @@ label: |
     Edit Sports Result=Редактиране на спортен резултат
     Edit Sports Specialist=Редактиране на спортен специалист
     Edit Support Period=Редактиране на период на подкрепа
+    Edit picture=Редактирай снимката
     Edited=Редактирано
     Edition=Издание
     Editions=Издания
@@ -150,6 +157,8 @@ label: |
     Expert Area=Експертна област
     Expert Areas=Експертни области
     Expired=Изтекъл
+    Feedback mode=Режим за обратна връзка
+    Feedback submitted=Обратната връзка е изпратена
     Federation=Федерация
     Federations=Федерации
     Female=Жена
@@ -272,6 +281,7 @@ label: |
     Registration No=Регистрационен номер
     Relationship=Връзка
     Remove=Премахни
+    Remove this comment=Премахни този коментар
     Renders=Извеждания
     Replaced=Заменен
     Replaces=Заменя
@@ -314,6 +324,7 @@ label: |
     Starts=започва
     State=Състояние
     Status=Статус
+    Submit=Изпрати
     Support Period=Период на подкрепа
     Support Periods=Периоди на подкрепа
     Suspended=Спрян
@@ -337,9 +348,11 @@ label: |
     Value=Стойност
     Venue=Място
     Weight=Тегло
+    What is wrong here?=Какво не е наред тук?
     What belongs in this field=Какво се въвежда в това поле
     With Partners=С партньори
     Withdrawn=Оттеглено
     World Championship=Световно първенство
     World Cup=Световна купа
     Year=Година
+    {count} comments={count} коментара

@@ -187,6 +187,10 @@ export {buildValidationRules} from './schema/validate.js';
 export {blongEvents} from './lib/eventBus.js';
 export type {BlongEventMap} from './lib/eventBus.js';
 
+// Feedback mode (`@@T-462`): the toggle, the overlay, the target hook and the
+// pure helpers its tests reach.
+export * from './feedback/index.js';
+
 // ── Types ────────────────────────────────────────────────────────────────────
 export type {
     ActionRegistry,

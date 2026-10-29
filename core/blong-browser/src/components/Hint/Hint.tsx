@@ -6,25 +6,35 @@
  */
 import {OverlayPanel, Toast} from '../../primereact/index.js';
 
-
 import {useEffect, useRef} from 'react';
+import {useFeedbackFreeze} from '../../feedback/useFeedbackFreeze.js';
+import {useFeedbackActive} from '../../feedback/useFeedbackTarget.js';
 import {useAppStore} from '../../state/appStore.js';
 
 export function Hint() {
     const toastRef = useRef<Toast>(null);
     const toasts = useAppStore(s => s.toasts);
+    const feedbackActive = useFeedbackActive();
+    const lastToastRef = useRef<{summary?: string; detail?: unknown; severity: string} | null>(
+        null,
+    );
 
     useEffect(() => {
         if (toastRef.current && toasts.length > 0) {
             const latest = toasts[toasts.length - 1];
+            lastToastRef.current = latest;
             toastRef.current.show({
                 severity: latest.severity,
                 summary: latest.summary,
                 detail: latest.detail,
-                life: latest.life,
+                // A PrimeReact toast's life cannot be paused, so a toast raised
+                // while feedback mode is on is shown with a long fixed lifetime
+                // instead — the closest thing to a freeze the component offers
+                // (`@@T-465`).
+                life: feedbackActive ? 24 * 60 * 60 * 1000 : latest.life,
             });
         }
-    }, [toasts]);
+    }, [toasts, feedbackActive]);
 
     return (
         <Toast
@@ -45,17 +55,21 @@ export function ActionHint() {
     const overlayRef = useRef<OverlayPanel>(null);
 
     useEffect(() => {
-        if (hint?.target) {
-            overlayRef.current?.show(null, hint.target);
-            const t = setTimeout(() => {
-                overlayRef.current?.hide();
-                clearHint();
-            }, 2000);
-            return () => clearTimeout(t);
-        } else {
+        if (hint?.target) overlayRef.current?.show(null, hint.target);
+        else overlayRef.current?.hide();
+    }, [hint]);
+
+    // Two seconds, held while feedback mode is on (`@@T-465`). A new hint restarts
+    // the lifetime; the mode only pauses it.
+    useFeedbackFreeze(
+        2000,
+        () => {
             overlayRef.current?.hide();
-        }
-    }, [hint, clearHint]);
+            clearHint();
+        },
+        Boolean(hint?.target),
+        hint,
+    );
 
     return (
         <OverlayPanel

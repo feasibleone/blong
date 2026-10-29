@@ -42,6 +42,7 @@ export async function subjectObjectNew(model: IResolvedModelSpec, blong: IHandle
                     mode: 'new',
                     editable: false,
                     title,
+                    feedbackContext: {subject, object, page: 'new'},
                     ...props,
                 });
             }

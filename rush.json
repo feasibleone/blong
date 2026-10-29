@@ -733,6 +733,12 @@
             "projectFolder": "realm/blong-sport",
             "reviewCategory": "realm",
             "tags": ["realm"]
+        },
+        {
+            "packageName": "@feasibleone/blong-feedback",
+            "projectFolder": "realm/blong-feedback",
+            "reviewCategory": "realm",
+            "tags": ["realm"]
         }
     ]
 }

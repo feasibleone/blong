@@ -20,7 +20,6 @@ import {handler} from '@feasibleone/blong';
 export default handler(() => ({
     config: {
         schema: {
-            dbTest: true,
             tables: {
                 '$subject.$object': 1,
                 '$subject.line': 2,

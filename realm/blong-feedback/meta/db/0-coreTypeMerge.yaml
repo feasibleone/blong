@@ -1,0 +1,12 @@
+# The `feedback.session` type alias (`@@T-455`).
+#
+# The file is named `coreTypeMerge` — not `feedbackTypeMerge` — because the seed
+# method is derived from it and must dispatch to `core.type.merge`: the alias
+# lives in the framework's `core_type` table, which is what makes
+# `core.resource.ensure` able to mint a resource for a new submission.
+#
+# The `0-` prefix sorts it before every instance seed, so the alias exists before
+# a row references it.
+key: typeAlias
+type:
+  - typeAlias: feedback.session

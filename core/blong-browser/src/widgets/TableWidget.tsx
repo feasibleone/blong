@@ -24,6 +24,13 @@ import {Button} from '../components/Button/Button.js';
 import {useBlongFormState} from '../components/Form/FormContext.js';
 import {Text} from '../components/Text/Text.js';
 import {useBlong} from '../context/BlongContext.js';
+import {appendSegment} from '../feedback/ids.js';
+import {
+    FeedbackPath,
+    FeedbackRegion,
+    useFeedbackPath,
+    useFeedbackTargetFactory,
+} from '../feedback/useFeedbackTarget.js';
 import {
     InlineCellEditor,
     RowCellEditor,
@@ -80,6 +87,14 @@ export function TableWidget({
 
     const {handler} = useBlong();
     const format = useFormatValue();
+    // A column is addressable by its field, so a comment about "the name column"
+    // names the schema property rather than a position (`@@T-464`).
+    const path = useFeedbackPath();
+    // The table is a step and its columns are steps below it, so a header's label
+    // reads as `column:legalName/label` and not as a sibling of the table
+    // (`@@T-487`). All of it is composed only while the mode is on (`@@D-667`).
+    const tablePath = path ? appendSegment(path, 'table', name) : undefined;
+    const columnTarget = useFeedbackTargetFactory(tablePath);
 
     // The option lists a cell needs to show a label, and a pivot's slot rows: the
     // caller may pass them, otherwise they are loaded once through the portal.
@@ -538,9 +553,13 @@ export function TableWidget({
                 />
             )}
             <RowDraftContext value={rowDrafts}>
-                <DataTable
-                    key={dropdownSignature}
-                    value={sortedRows}
+                {/* The table is a step in the path its column headers extend, and it
+                    is cloned with its own attributes because PrimeReact renders the
+                    columns (`@@T-487`). */}
+                <FeedbackRegion kind="table" name={name}>
+                    <DataTable
+                        key={dropdownSignature}
+                        value={sortedRows}
                     // An in-place table never enters row editing: the cells are the
                     // editors, so there is no draft to save or cancel. @@D-618
                     editMode={!isListMode && editable && !inlineEdit ? 'row' : undefined}
@@ -608,6 +627,20 @@ export function TableWidget({
                             widgetType,
                         );
                         const isBoolType = ['boolean', 'checkbox'].includes(widgetType);
+                        // One call and one answer, used for both the header's attributes
+                        // and the decision whether to wrap the label at all.
+                        const columnAttributes = columnTarget?.('column', field, header);
+                        const columnPath =
+                            columnAttributes && tablePath
+                                ? appendSegment(tablePath, 'column', field)
+                                : undefined;
+                        const headerText = columnPath ? (
+                            <FeedbackPath path={columnPath}>
+                                <Text>{header}</Text>
+                            </FeedbackPath>
+                        ) : (
+                            <Text>{header}</Text>
+                        );
 
                         return (
                             <Column
@@ -621,8 +654,9 @@ export function TableWidget({
                                                 flexDirection: 'column',
                                                 gap: '0.25rem',
                                             }}
+                                            {...columnAttributes}
                                         >
-                                            <Text>{header}</Text>
+                                            {headerText}
                                             {isPickList ? (
                                                 // A key column filters by picking the key,
                                                 // the same way the cell is edited — typing a
@@ -661,7 +695,15 @@ export function TableWidget({
                                             )}
                                         </div>
                                     ) : (
-                                        <Text>{header}</Text>
+                                        // The wrapper exists only while the mode is on:
+                                        // an always-present span would change every
+                                        // table's DOM (and every baseline) for a
+                                        // feature the suite may never enable.
+                                        columnAttributes ? (
+                                            <span {...columnAttributes}>{headerText}</span>
+                                        ) : (
+                                            headerText
+                                        )
                                     )
                                 }
                                 sortable={sortable || isListMode}
@@ -843,7 +885,8 @@ export function TableWidget({
                             style={{width: '7rem', textAlign: 'center'}}
                         />
                     )}
-                </DataTable>
+                    </DataTable>
+                </FeedbackRegion>
             </RowDraftContext>
             {isListMode && list.total > 0 && (
                 <TablePaginator

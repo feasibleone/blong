@@ -59,6 +59,13 @@
             "output": "storybook-static"
         },
         {
+            "name": "feedback",
+            "title": "blong-feedback: the reviewer's queue, its picture and its document",
+            "package": "realm/blong-feedback",
+            "command": "node --run build-storybook",
+            "output": "storybook-static"
+        },
+        {
             "name": "log",
             "title": "blong-log: the log viewer",
             "package": "tools/blong-log",

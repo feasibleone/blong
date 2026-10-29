@@ -12,6 +12,10 @@ protocol it speaks. See [adapter](./adapter.md) and the [adapter pattern](../pat
 **API definition** — The TypeBox schema or OpenAPI spec a handler derives its contract from, and the
 source of truth for validation and docs. See [API](./api.md) and [OpenAPI](./openapi.md).
 
+**callout** — The box a feedback comment is typed in, drawn beside its element and joined to it by
+an arrow, and stored as a fraction of the picture rather than in pixels. See the
+[feedback pattern](../patterns/feedback.md).
+
 **chain** — The ordered list of steps a test handler returns, executed in whatever order their data
 allows. See [chain](./chain.md).
 
@@ -27,6 +31,10 @@ kustomize profile rather than by the code. See [kustomize](./kustomize.md), the
 
 **expected errors** — Errors a test declares up front, matched by `$meta.expect` instead of failing
 the run. See [expected errors](./expected-errors.md).
+
+**feedback** — A person's annotation of the running UI — the element they pointed at, what they said
+about it, and the picture of the region they kept. See [feedback](./feedback.md) and the
+[pattern](../patterns/feedback.md).
 
 **gateway** — The public JSON-RPC and REST surface of a suite, which validates and documents the API
 and carries little business logic. See [gateway](./gateway.md).
@@ -95,6 +103,10 @@ instead of grepped. See [semantic log](./semantic-log.md).
 
 **session** — A long-lived authenticated connection, with refresh tokens and audit. See
 [sessions](./sessions.md).
+
+**shot** — The picture a feedback submission carries — the screen region the person cropped, encoded
+by the browser's capture API — and not a replacement for the element path it is submitted with. See
+the [feedback pattern](../patterns/feedback.md).
 
 **suite** — The top-level unit that groups realms and defines the deployment. See
 [suite](./suite.md) and the [suite pattern](../patterns/suite.md).

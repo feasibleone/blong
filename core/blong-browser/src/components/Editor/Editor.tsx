@@ -15,15 +15,22 @@ import {
     DesignAddFieldButton,
     PropertyEditor,
 } from '../../design/PropertyEditor.js';
+import {appendSegment, feedbackAttributes, type IFeedbackModelContext} from '../../feedback/ids.js';
+import {
+    FeedbackPageContext,
+    FeedbackPath,
+    useFeedbackPage,
+    useFeedbackTargetFactory,
+} from '../../feedback/useFeedbackTarget.js';
 import {useAction} from '../../hooks/useAction.js';
 import {type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
+import {useTranslate} from '../../hooks/useText.js';
 import type {IToolbarButton} from '../../index.js';
 import {useAppStore} from '../../state/appStore.js';
 import type {IBlongError} from '../../types/action.js';
 import {ActionButton} from '../ActionButton/ActionButton.js';
 import {Form} from '../Form/Form.js';
 import type {ITableSelection} from '../Form/FormContext.js';
-import {useTranslate} from '../../hooks/useText.js';
 
 export interface IEditorProps {
     /** Schema for the entity being edited */
@@ -135,6 +142,15 @@ export interface IEditorProps {
      * - The form is always editable (params input).
      */
     queryAction?: string;
+
+    /**
+     * What this page is, for the feedback mode (`@@T-463`).
+     *
+     * The generated model pages pass `{subject, object, page}`; a hand-written
+     * page may pass the same, and a page that passes none still gets an identifier
+     * — `blong.<route>.page.page` — which is coarse but never absent.
+     */
+    feedbackContext?: IFeedbackModelContext;
 }
 
 /** Editor interaction mode. */
@@ -287,10 +303,19 @@ export function Editor({
     tabId,
     refreshNamespace,
     queryAction,
+    feedbackContext,
 }: IEditorProps) {
     // The toolbar is icon-only, so its labels and titles are the text that has to
     // be translated and collected (`D-625`).
     const t = useTranslate();
+    // The page is the root of every identifier inside this editor: its own, and the
+    // path each card, field and button below it extends (`@@T-487`).
+    const page = useFeedbackPage(feedbackContext);
+    // The toolbar is the next step down. It is composed here rather than by a render
+    // prop: the editor knows the path its content hangs from, and while the mode is
+    // off this is one comparison and no component in the tree (`@@D-667`).
+    const toolbarPath = page ? appendSegment(page.path, 'toolbar') : undefined;
+    const buttonTarget = useFeedbackTargetFactory();
     const formId = useId();
     const [currentMode, setCurrentMode] = useState<EditorMode>(() =>
         deriveInitialMode(initialModeProp, initialEditMode),
@@ -632,6 +657,7 @@ export function Editor({
                             disabled={isDisabled}
                             data-testid={`editor-${testIdSuffix}`}
                             onClick={() => handleToolbarAction(actionName)}
+                            {...buttonTarget?.('button', testIdSuffix, t(btn.label || btn.title))}
                         >
                             {btn.icon && <span className={`p-button-icon p-c pi ${btn.icon}`} />}
                             <span className="p-button-label p-c">&nbsp;</span>
@@ -650,6 +676,7 @@ export function Editor({
                             aria-label={t(btn.label)}
                             disabled={isDisabled}
                             data-testid="editor-save"
+                            {...buttonTarget?.('button', 'save', t(btn.label))}
                         >
                             {btn.icon && (
                                 <span
@@ -684,6 +711,7 @@ export function Editor({
                                     aria-label={t(btn.label)}
                                     aria-pressed={designMode}
                                     onClick={() => handleToolbarAction(actionName)}
+                                    {...buttonTarget?.('button', 'design', t(btn.label))}
                                 >
                                     <span
                                         className={`p-button-icon p-c pi ${designMode ? 'pi-check' : 'pi-cog'}`}
@@ -707,10 +735,23 @@ export function Editor({
             </div>
         ) : undefined;
 
+    // One element, wrapped only while the mode is on: a provider adds a component to
+    // the tree, and the buttons inside the toolbar must read as its children.
+    const toolbarElement = (leftButtons.length > 0 || rightButtons.length > 0) && (
+        <Toolbar
+            {...(toolbarPath && feedbackAttributes(toolbarPath, 'toolbar'))}
+            start={leftContent}
+            end={rightContent}
+            className="border-none border-bottom-1 border-50 p-2"
+            style={backgroundNone}
+        />
+    );
+
     const editorContent = (
         <div
             className={className}
             data-testid="blong-browser-test"
+            {...page?.attributes}
         >
             <OverlayPanel
                 ref={hintOverlayRef}
@@ -719,13 +760,10 @@ export function Editor({
             >
                 <span className="p-error">{validationHint}</span>
             </OverlayPanel>
-            {(leftButtons.length > 0 || rightButtons.length > 0) && (
-                <Toolbar
-                    left={leftContent}
-                    right={rightContent}
-                    className="border-none border-bottom-1 border-50 p-2"
-                    style={backgroundNone}
-                />
+            {toolbarPath ? (
+                <FeedbackPath path={toolbarPath}>{toolbarElement}</FeedbackPath>
+            ) : (
+                toolbarElement
             )}
             <Form
                 id={formId}
@@ -761,14 +799,30 @@ export function Editor({
         </div>
     );
 
-    if (!designable) return editorContent;
+    if (!designable) {
+        return (
+            <FeedbackPageContext value={feedbackContext ?? null}>
+                {page ? (
+                    <FeedbackPath path={page.path}>{editorContent}</FeedbackPath>
+                ) : (
+                    editorContent
+                )}
+            </FeedbackPageContext>
+        );
+    }
 
-    return (
+    const designed = (
         <DesignModeProvider
             active={designMode}
             initialConfig={{cards: cards ?? {}, layouts: localLayouts ?? {}}}
         >
             {editorContent}
         </DesignModeProvider>
+    );
+
+    return (
+        <FeedbackPageContext value={feedbackContext ?? null}>
+            {page ? <FeedbackPath path={page.path}>{designed}</FeedbackPath> : designed}
+        </FeedbackPageContext>
     );
 }

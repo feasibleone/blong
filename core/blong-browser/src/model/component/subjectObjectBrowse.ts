@@ -32,6 +32,7 @@ export async function subjectObjectBrowse(
                     refreshNamespace: `${subject}.${object}`,
                     title: browser.title,
                     className: 'blong-subject-object-browse',
+                    feedbackContext: {subject, object, page: 'browse'},
                     ...props,
                 });
             }

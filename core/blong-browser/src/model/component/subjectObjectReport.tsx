@@ -147,6 +147,11 @@ export async function subjectObjectReport(
                         layout="report"
                         queryAction={reportDef.action ?? model.methods.find}
                         editable={false}
+                        feedbackContext={{
+                            subject,
+                            object,
+                            page: `report.${reportId ?? id}`,
+                        }}
                         {...(props as React.ComponentProps<typeof Editor>)}
                     />
                 );

@@ -460,7 +460,15 @@ function storybook(root: string, args: string[]): void {
         sites = all.filter(site => wanted.has(site.name));
     }
 
-    if (!stageStorybooks(root, sites, {build: options.build, dryRun: options.dryRun})) {
+    if (
+        !stageStorybooks(root, sites, {
+            build: options.build,
+            dryRun: options.dryRun,
+            // The embeds are checked against every registered site, not just the ones this run
+            // built: a subset run stages one Storybook, it does not rename the others.
+            register: all,
+        })
+    ) {
         process.stderr.write(
             `blong-dev docs: the Storybooks were not staged — see ${STORYBOOK_MANIFEST} and the ` +
                 'embed reported above\n',

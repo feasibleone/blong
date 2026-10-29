@@ -33,6 +33,16 @@ export default server(() => ({
         async function sport() {
             return import('./server.ts');
         },
+        /**
+         * Feedback capture: submissions from the UI and the admin review API.
+         *
+         * A realm of its own rather than a table in `core` — feedback is business
+         * data written by many processes and read centrally, which a library realm
+         * would copy per database (`@@D-656`).
+         */
+        async function feedback() {
+            return import('@feasibleone/blong-feedback/server.ts');
+        },
         /** Server-hosted test runner (test intents only) */
         async function testRealm() {
             return import('@feasibleone/blong-test/server.ts');
@@ -48,6 +58,7 @@ export default server(() => ({
             // load in a deployed process (@@D-637).
             party: {},
             sport: {},
+            feedback: {},
             // The suite definition read by the `k8s` generator and the operator. The framework
             // image and version are overridden by the CR, which names the release image.
             kustomize: {
@@ -124,12 +135,10 @@ export default server(() => ({
             sport: {},
             login: {},
             core: {},
-            // The local dev cluster's portal check logs in as `testAdmin`, which lives in access's
-            // dbTest seed. Seeded by the migration step only, so a running process never re-seeds it,
-            // and party's handler-backed test fixtures stay off for the reason the release block gives.
-            access: {schema: {dbTest: true}},
+            access: {},
             gateway: {},
-            party: {schema: {dbTest: false}},
+            party: {},
+            feedback: {},
         },
         dev: {
             srv: {},
@@ -138,6 +147,7 @@ export default server(() => ({
             gateway: {},
             party: {},
             sport: {},
+            feedback: {},
             login: {},
             testRealm: {
                 // Only this realm's server group may be started from the Test
@@ -152,6 +162,7 @@ export default server(() => ({
             gateway: {},
             party: {},
             sport: {},
+            feedback: {},
             testRealm: {
                 testRun: {serverGroups: ['test.athlete']},
             },

@@ -125,6 +125,12 @@ import {TreeSelect as PrimeTreeSelect} from 'primereact/treeselect';
 import {TreeTable as PrimeTreeTable} from 'primereact/treetable';
 import React from 'react';
 import {Text} from '../components/Text/Text.js';
+import {nameOfLabel} from '../feedback/ids.js';
+import {
+    FeedbackPath,
+    useFeedbackActive,
+    useFeedbackNode,
+} from '../feedback/useFeedbackTarget.js';
 import {usePlaceholder} from '../hooks/useText.js';
 import {useAppStore} from '../state/appStore.js';
 
@@ -215,22 +221,49 @@ export function BreadCrumb(props: BreadCrumbProps) {
 /**
  * Button — wraps PrimeReact Button with automatic label translation via the
  * `Text` component and a default `iconPos='left'`.
+ *
+ * It is also the place buttons become feedback targets (`@@T-488`): the name is
+ * the action when the caller has one (stable across translations and rewording)
+ * and the slug of the English label otherwise.
  */
-export function Button({'aria-label': ariaLabel, label, iconPos = 'left', ...props}: ButtonProps) {
+export function Button({
+    'aria-label': ariaLabel,
+    label,
+    iconPos = 'left',
+    feedbackName,
+    ...props
+}: ButtonProps & {feedbackName?: string}) {
     const translations = useAppStore(s => s.translations);
+    // The slug is only derived while the mode is on: a button that is not being
+    // annotated costs one context read and nothing else (`@@D-667`).
+    const active = useFeedbackActive();
+    const name = active
+        ? (feedbackName ?? nameOfLabel(typeof label === 'string' ? label : ariaLabel))
+        : undefined;
+    const node = useFeedbackNode('button', name, typeof label === 'string' ? label : ariaLabel);
     if (typeof label === 'string') {
         const accessibleName = ariaLabel ?? translations[label] ?? label;
         return (
             <PrimeButton
+                {...node?.attributes}
                 {...props}
                 iconPos={iconPos}
-                label={(<Text>{label}</Text>) as unknown as string}
+                label={
+                    (node ? (
+                        <FeedbackPath path={node.path}>
+                            <Text>{label}</Text>
+                        </FeedbackPath>
+                    ) : (
+                        <Text>{label}</Text>
+                    )) as unknown as string
+                }
                 aria-label={accessibleName}
             />
         );
     }
     return (
         <PrimeButton
+            {...node?.attributes}
             {...props}
             iconPos={iconPos}
             label={label}

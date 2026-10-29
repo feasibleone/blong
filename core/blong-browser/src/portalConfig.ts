@@ -11,7 +11,8 @@
  * The rule is stated once, here, and is pure: menus concatenate in provider order
  * (provider order is the suite's `children` order), groups of equal title merge and
  * leaves dedupe by the method they open, and the first provider that sets a scalar
- * — name, title, theme, home, profile, languages, translations — wins. A suite's own
+ * — name, title, theme, home, profile, languages, translations, feedback — wins. A
+ * suite's own
  * `ui.portal.portal.title` therefore keeps the title it configured, while every
  * realm still contributes its pages.
  *
@@ -96,6 +97,10 @@ export function mergePortalConfigs(
     if (translations !== undefined) config.translations = translations;
     const translation = firstSet(providers, 'translation');
     if (translation !== undefined) config.translation = translation;
+    // The feedback mode's wiring is portal configuration like the dictionary's, so a
+    // realm that declares it keeps it once several answers are composed (`@@D-662`).
+    const feedback = firstSet(providers, 'feedback');
+    if (feedback !== undefined) config.feedback = feedback;
 
     const menu: MenuEntry[] = [];
     const rightMenu: MenuEntry[] = [];

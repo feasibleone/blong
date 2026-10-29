@@ -322,14 +322,16 @@ embed's `poster`, so the reader sees something before a Storybook has to boot:
 ```
 
 Note the `poster` shape: an image is in the build only when something imports it, so a poster is a
-`require`, not a path. Written as `poster="./img/editor-design.png"` it looks right and 404s, and
+`require`, not a path. The poster is drawn at the picture's own aspect — `height` is the live
+frame's — so commit a picture at the shape a reader will see it, cropped to the part that carries
+the claim. Written as `poster="./img/editor-design.png"` it looks right and 404s, and
 `docs verify` reports it as an image that did not load.
 
 The tag needs no import in a `.md` or `.mdx` page: `docs/blong/src/theme/MDXComponents.jsx`
 registers it for the docs and the blog alike. `site` names a site in
-`docs/blong/storybook-sites.json` (`browser`, `suite`, `log`) and `id` is the story id Storybook
-puts in its own URL. The full attribute table — `height`, `globals`, `chrome`, `poster`, and what
-each is for — is the
+`docs/blong/storybook-sites.json` (`browser`, `suite`, `sport`, `feedback`, `log`) and `id` is
+the story id Storybook puts in its own URL. The full attribute table — `height`, `globals`,
+`chrome`, `poster`, and what each is for — is the
 [Storybook pattern](../../../docs/blong/docs/patterns/blong-browser.md#embedding-a-story), which is
 where a reader looks too; keep the two in step rather than growing a second table here.
 

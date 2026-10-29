@@ -677,6 +677,47 @@ server group and its `testRealm` configuration.
 
 ---
 
+## Feedback mode
+
+`src/feedback/` turns the running portal into something a person can annotate, and hands a reviewer
+a batch of element-anchored comments to render as prose for a coding agent. The chrome is in
+`blong-browser`; the reports are stored by a realm (`realm/blong-feedback`), named through config so
+the browser package depends on neither.
+
+- **Configuration** — `ui.portal.portal.feedback` in the suite's `index.browser.ts`:
+  `enabled`, `shortcut` (`F2`), `submit`, `permission`, `find`, `get`, `shot`, `prose`, `update`,
+  `maxShotBytes`. `useFeedbackConfig` reads the **static** portal config first and the composed
+  document second (`@@D-666`).
+- **Addressing** — a component spreads `useFeedbackTarget(kind, name, label)` (a leaf) or
+  `useFeedbackNode(kind, name, label)` (a container, giving `{id, path, attributes}`) and wraps its
+  children in `<FeedbackPath path>`. A child library that renders the element itself (a PrimeReact
+  table) gets `<FeedbackRegion kind name>`. A loop takes `useFeedbackTargetFactory(parentPath)`,
+  because a hook cannot be called per item.
+- **The path grammar** (`ids.ts`) — `<subject>.<object>.<page>[/<kind>[:<name>]]…`, no array
+  indexes, labels unnamed (`…/field:clubShortName/label`), `nameOfLabel` for text-derived names so a
+  language switch does not move an identifier.
+- **The freeze** — `guard.ts` installs one capture-phase listener set while the mode is on, so a
+  click does not run a menu command, a table does not page and a hover tooltip does not vanish;
+  `useFeedbackFreeze` holds `ActionHint`'s lifetime. Events inside `[data-feedback-ui]` pass.
+- **Geometry** (`placement.ts`) — `placeCallout`, `borderPoint`, `connectorOf`, `moveBox`,
+  `resizeBox`, `MIN_CALLOUT`, `toFraction`, `arrowHeadPoints`. A box is stored as a **fraction of the
+  cropped region**, never in pixels. `moveBox`, `resizeBox`, `MIN_CALLOUT` and `arrowHeadPoints` are
+  exported, so a page that draws the same boxes again (the feedback realm's review page) clamps and
+  points them by the same rules instead of re-deriving them — draw the connectors in the picture's
+  own pixel `viewBox`, or the arrowhead is stretched into an ellipse.
+- **Capture** (`capture.ts`) — `getDisplayMedia` → canvas → data URL, cropped to the chosen region
+  and scaled to the 700 000-byte ceiling. Needs a secure context and a picker, so `denied` and
+  `unavailable` are normal outcomes.
+- **The off path is free** (`@@D-667`) — `App` publishes one activity boolean; every hook answers
+  `undefined` when it is off, and a call site writes `{...target}` or `target?.('button', …)`
+  rather than calling a factory and a translator up front. No provider, no attribute, no store
+  subscription. Keep it that way in new annotations.
+
+Concept: [feedback](../../../docs/blong/docs/concepts/feedback.md). Pattern — configuration, the
+realm, the RBAC grants, the review page, the tests: [feedback](../../../docs/blong/docs/patterns/feedback.md).
+
+---
+
 ## Storybook
 
 There are **two Storybook setups**:

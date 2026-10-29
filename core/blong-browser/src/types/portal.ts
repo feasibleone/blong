@@ -82,6 +82,41 @@ export interface IPortalConfig {
         load?: {label?: string; resource?: string};
         collect?: boolean;
     };
+    /**
+     * Feedback mode (`@@T-467`, `@@D-662`).
+     *
+     * Every method name is configuration rather than an import, exactly as
+     * `translation.load` names the dictionary readers: `blong-browser` ships the
+     * mode, the realm that stores the reports is named here. A suite that omits
+     * the block gets no toggle — deliberate, because the switch adds a node to the
+     * menubar and would otherwise invalidate every visual baseline of every suite
+     * that never turned the feature on.
+     */
+    feedback?: IPortalFeedbackConfig;
+}
+
+/** How the feedback mode is wired into a portal (`@@T-467`). */
+export interface IPortalFeedbackConfig {
+    /** The switch renders only when this is true. */
+    enabled?: boolean;
+    /** Keyboard shortcut that toggles the mode; default `F2` (`@@T-491`). */
+    shortcut?: string;
+    /** Method that stores one submission; default `feedback.session.add`. */
+    submit?: string;
+    /** Permission the switch and the submit bar check; default `feedback.session.add`. */
+    permission?: string;
+    /** Method that lists sessions for the review page. */
+    find?: string;
+    /** Method that reads one session with its items. */
+    get?: string;
+    /** Method that returns one session's screenshot. */
+    shot?: string;
+    /** Method that renders the Markdown for a batch. */
+    prose?: string;
+    /** Method that marks a batch processed. */
+    update?: string;
+    /** Byte ceiling for the captured data URL; default 700 000. */
+    maxShotBytes?: number;
 }
 
 /** Portal tab state managed by Zustand */

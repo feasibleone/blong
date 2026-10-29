@@ -23,7 +23,7 @@ open (14)
 - `T-399` · realm/blong-sport — Cascade sport, discipline and category from the BOC nomenclature
 - `T-400` · realm/blong-sport — Assert one resource row and a person with two roles
 
-done (19)
+done (22)
 
 - `T-374` · realm/blong-sport — sport P1 scaffold and boot
 - `T-376` · realm/blong-sport — sport P3 schema and seeds
@@ -44,6 +44,9 @@ done (19)
 - `T-428` · realm/blong-sport — Translate sport labels to Bulgarian
 - `T-434` · realm/blong-sport — One pinned row per Bulgarian browse capture
 - `T-442` · realm/blong-sport — Sport CD Group 1 deployable realm
+- `T-459` · realm/blong-sport — Add the feedback realm to the sport suite
+- `T-476` · realm/blong-sport — Show the mode against real model pages
+- `T-478` · realm/blong-sport — Prove the flow end to end with Playwright
 
 <!-- /memory:index -->
 
@@ -376,3 +379,52 @@ config, k8s/upgrade blocks, role service, vite build, deploy-sport scenario, rel
 ignores, MySQL user and operator/portal TLS. Verified the flat tree (one Deployment), the sport.zip
 artifact (entry, dist, core) and 117 passing kustomize tests; lint added letsencrypt to the
 dictionary.
+
+### T-459 — Add the feedback realm to the sport suite
+
+> _2026-10-28 · realm/blong-sport · done_
+
+Declare the realm as a child in index.ts and index.browser.ts with its config blocks, and set the
+portal.feedback block the toggle and the review page read. Verify index.test.ts boots, login still
+works and the gateway answers. Plan section 7.
+
+feedback added as a server child and a browser child of blong-sport, with config blocks in
+default/upgrade/dev/integration, and portal.feedback set in index.browser.ts (enabled, submit,
+permission, find, get, shot, prose, update). @feasibleone/blong-feedback declared in sport's
+package.json and linked by rush update. realm/blong-sport type-checks clean with tsc --noEmit.
+
+### T-476 — Show the mode against real model pages
+
+> _2026-10-28 · realm/blong-sport · done_
+
+src/stories/Feedback.stories.tsx adds AthleteBrowseFeedback and AthleteOpenFeedback: each opens a
+real model page, writes feedback.active into the store (the storybook decorator renders App with
+children, so the menubar switch is not in the picture while the overlay layer is), then clicks a
+card, a column header or a field through a real MouseEvent so the guard and the layer's click
+handling run, and fills the comment through the store. The store is cast because this realm sees
+blong-browser's built declarations (F-624). Type-check and lint clean. Remaining: not rendered here,
+since Storybook and the dev server cannot log in in this environment (F-623).
+
+Verified twice through the story runner after the grammar change: the two sport stories select
+targets by data-feedback-kind, comment through a real click, and render their callouts (2 callouts,
+2 rings, ids like sport.athlete.browse/card:browse/field:athlete/table:athlete/column:personName).
+70/70 sport stories pass.
+
+### T-478 — Prove the flow end to end with Playwright
+
+> _2026-10-28 · realm/blong-sport · done_
+
+test/feedback.play.ts walks the whole contract in one spec: stub getDisplayMedia with a painted
+canvas stream, switch the mode on from the menubar, hover a card for the ring capture, click a card
+and a column and fill both callouts, assert the two boxes do not overlap, submit, open the review
+page from its menu, generate the document and assert the format marker and a target id in it, then
+mark the session processed and assert it left the new queue. The dbTest seed was moved to the club
+page so it no longer collides with the page the spec submits on. Type-check and lint clean.
+Remaining: no baselines and no green run, because the dev server cannot log in in this environment —
+the reference spec portal.play.ts fails identically (F-623). Run blong-dev playwright
+test/feedback.play.ts --update-snapshots once the server serves.
+
+Verified: the spec passes repeatedly with four baselines (hover, crop, callouts, review). The review
+capture is taken of the detail pane after the queue is cleared by marking open sessions processed,
+and it waits out the confirmation toast, so no run-specific timestamp or session id reaches the
+picture. The document panel stays asserted by text rather than photographed.

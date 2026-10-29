@@ -26,6 +26,9 @@ import {useAppStore} from '../../state/appStore.js';
 import {type IPortalConfig} from '../../storybook.js';
 import {AccountMenu} from '../AccountMenu/AccountMenu.js';
 import {ErrorDialog} from '../Error/Error.js';
+import {FeedbackLayer} from '../../feedback/FeedbackLayer.js';
+import {FeedbackToggle} from '../../feedback/FeedbackToggle.js';
+import {FeedbackActiveContext} from '../../feedback/useFeedbackTarget.js';
 import {ActionHint} from '../Hint/Hint.js';
 import {LanguageSwitcher} from '../LanguageSwitcher/LanguageSwitcher.js';
 import {Login} from '../Login/Login.js';
@@ -256,6 +259,7 @@ function AppShell({
                 {...portalProps}
                 menubarEnd={
                     <>
+                        <FeedbackToggle />
                         <ThemeSwitcher />
                         <LanguageSwitcher />
                         <AccountMenu />
@@ -274,6 +278,9 @@ export function App({
     log,
     ...portalProps
 }: IAppProps) {
+    // One subscription for the whole tree: the annotated components read this
+    // through context instead of each subscribing to the store (`@@D-667`).
+    const feedbackActive = useAppStore(state => state.feedback.active);
     return (
         <BlongProvider
             handlerProxy={handlerProxy}
@@ -281,18 +288,21 @@ export function App({
         >
             <PrimeReactProvider>
                 <Theme theme={theme}>
-                    <LanguageDataRefresh />
-                    <AppShell
-                        loginComponent={loginComponent}
-                        portalProps={portalProps}
-                    >
-                        {children}
-                    </AppShell>
-                    <LoginPopup />
-                    <ErrorDialog />
-                    <ConfirmDialog />
-                    <ConfirmPopup />
-                    <ActionHint />
+                    <FeedbackActiveContext value={feedbackActive}>
+                        <LanguageDataRefresh />
+                        <AppShell
+                            loginComponent={loginComponent}
+                            portalProps={portalProps}
+                        >
+                            {children}
+                        </AppShell>
+                        <LoginPopup />
+                        <ErrorDialog />
+                        <ConfirmDialog />
+                        <ConfirmPopup />
+                        <ActionHint />
+                        <FeedbackLayer />
+                    </FeedbackActiveContext>
                 </Theme>
             </PrimeReactProvider>
         </BlongProvider>

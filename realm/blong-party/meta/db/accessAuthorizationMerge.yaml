@@ -1,0 +1,12 @@
+role:
+  Admin: organizationView,organizationEdit,organizationDelete,personView,personEdit,personDelete,unitView,unitEdit,unitDelete
+capability:
+  organizationView: party.organization.find,party.organization.get
+  organizationEdit: party.organization.edit,party.organization.add
+  organizationDelete: party.organization.remove
+  personView: party.person.find,party.person.get
+  personEdit: party.person.edit,party.person.add
+  personDelete: party.person.remove
+  unitView: party.unit.find,party.unit.get
+  unitEdit: party.unit.edit,party.unit.add
+  unitDelete: party.unit.remove

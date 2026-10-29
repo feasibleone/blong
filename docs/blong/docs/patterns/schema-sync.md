@@ -44,9 +44,6 @@ export default adapter(({schema}) => ({
                 // Seed data (production)
                 seed: true,
 
-                // Test seed data (dev/integration only)
-                dbTest: true,
-
                 // Preferred: scan a folder for *.sql files
                 procedurePaths: [join(__dirname, 'sql/schema')],
 
@@ -54,6 +51,12 @@ export default adapter(({schema}) => ({
                 // procedures: {
                 //     sql_schema_list_active: `CREATE PROCEDURE ...`,
                 // },
+            },
+        },
+        integration: {
+            schema: {
+                // Test seed data (integration intent only)
+                dbTest: true,
             },
         },
     },

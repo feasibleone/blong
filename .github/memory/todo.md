@@ -73,7 +73,7 @@ open (64)
 - `T-435` · cross-cutting — Prove a translated read with a database test
 - `T-440` · ci — Sport CD deferred scope
 
-done (12)
+done (17)
 
 - `T-342` · ci — Decide the cache payload shape before landing step 2
 - `T-188` · ci — The Storybook leg produces no .ci-report slice
@@ -87,6 +87,11 @@ done (12)
 - `T-448` · docs — Sport CD Group 7 documentation
 - `T-447` · ci — Sport CD Group 6 operator endpoint wiring
 - `T-441` · ci — Sport CD Group 0 cluster substrate
+- `T-480` · docs — Write the feedback concept page
+- `T-481` · docs — Write the feedback pattern page
+- `T-482` · docs — Describe the feature in the skills and the glossary
+- `T-483` · docs — Write the blog post for the feature
+- `T-484` · cross-cutting — Close the feedback plan tasks with their evidence
 
 <!-- /memory:index -->
 
@@ -100,6 +105,8 @@ done (12)
 - T-276
 - F-490
 - doc publishing
+- check the zip artifact - dependencies
+- check blong-sport vite build - dependencies
 - hindsight: store explore results
 - planning skill
 - meta/model meta/type should the validated
@@ -822,7 +829,7 @@ outside dev.
 
 Nothing automated covers a translated read. The four Bulgarian browse pictures are the evidence that
 a record's name comes back in the active language, and they exercise attachResourceName's two
-shapes, _dropdownList and (through a dependent table, not yet captured) attachLabelJoins. Add a
+shapes, \_dropdownList and (through a dependent table, not yet captured) attachLabelJoins. Add a
 database-backed test that calls sport.sport.find and sport.sport.dropdown.list with meta.language
 set to bg and asserts the translated value, and another that asserts the stored value with no
 language, so a regression fails in seconds instead of needing a browser. test/blong-int-sql or a tap
@@ -1042,7 +1049,7 @@ Done: .github/deployments.json maps aliases to release/package/scenario/artifact
 framework version from the manifest, waits for the GHCR image, builds and attaches the scenario zip
 with its sha256, and calls the token-gated route with jq-built JSON-RPC. The tag-to-alias jq binding
 was corrected and the arithmetic verified for blong-sport-v0.1.0; a real run waits for the first
-sport release and the DEPLOY_* secrets.
+sport release and the DEPLOY\_\* secrets.
 
 ### T-448 — Sport CD Group 7 documentation
 
@@ -1086,3 +1093,73 @@ production issuer if the challenge cannot reach the host.
 k3d-create now maps host 8080/8443 to Traefik 80/443 and keeps ServiceLB; cert-manager v1.21.3 comes
 from its chart and staging/production issuers are installed; a staging certificate for the probe
 host reached Ready with a valid ACME order, and the temporary test objects were removed.
+
+### T-480 — Write the feedback concept page
+
+> _2026-10-28 · docs · done_
+
+docs/blong/docs/concepts/feedback.md covering what the mode is, the identifier grammar, the freezes
+and what a screenshot can and cannot be. Plan section 8.
+
+docs/blong/docs/concepts/feedback.md — the mode in one paragraph, then three guarantees: the
+identifier is a path not a position, the guard stops the page answering back, and a callout is the
+person's (stored as fractions, with the picture cropped and the URL kept when a capture is refused).
+Closes on the off-path cost and the pattern link. 305 words, in the concepts tier; the site builds
+with it.
+
+### T-481 — Write the feedback pattern page
+
+> _2026-10-28 · docs · done_
+
+docs/blong/docs/patterns/feedback.md showing how a realm enables the mode, the grants it needs and
+the review page, with sport as the example. Plan section 8.
+
+docs/blong/docs/patterns/feedback.md — the portal.feedback config block as a snippet plus a table of
+every field and its default, the three data-feedback-id shapes with the off-path factory call, the
+kinds table, the four mechanisms the mode adds (guard, freeze, inert hooks, capture), the three
+tables, the handler list with the three-segment prose route, the RBAC seed with its roles and
+replace: true, the review page's folder rules (component/ vs portal/), and the four verification
+paths. Sport is the worked example throughout.
+
+### T-482 — Describe the feature in the skills and the glossary
+
+> _2026-10-28 · docs · done_
+
+Update the blong-browser skill with the mode, the target hook and the freezes, extend the
+blong-realm skill realm list, and add feedback, callout and shot through blong-dev glossary add.
+Plan section 8.
+
+The blong-browser skill gains a Feedback mode section (config block, the address helpers, the path
+grammar, the guard and the freeze, the geometry, the capture, and the off-path rule with D-667), and
+blong-realm's example list gains realm/blong-feedback as the smallest realm that serves a UI
+feature. Glossary: feedback, callout and shot added through blong-dev glossary add; check reports 37
+entries in order.
+
+### T-483 — Write the blog post for the feature
+
+> _2026-10-28 · docs · done_
+
+One submission and the document it produced, in the style of the existing posts. Plan section 8.
+
+docs/blong/blog/2026-10-29-point-at-what-is-wrong/index.md — the arc the other posts use: what a
+person does (F2, guard, callout, crop), what is stored (identifier, words, two boxes as fractions,
+URL), why the identifier is a path (with a mermaid flow from click to agent), what the reviewer
+does, and a quoted blong-feedback v1 document. Two pictures, copied from the spec's baselines by
+D-668. Also fixed the last stale editor segment the prose renderer still printed, in prose.ts, the
+tap flow's ids and the review fixture; the realm's tap suite is 7/7 and the docs site builds.
+
+### T-484 — Close the feedback plan tasks with their evidence
+
+> _2026-10-28 · cross-cutting · done_
+
+Close every todo of the feedback plan with a note, and finish on a clean memory check refs and
+memory comply. Plan section 9.
+
+Every box in plans/feedback/plan.md is ticked: the six implementation groups, the seven UI
+revisions, the off-path optimisation, the stories and the Playwright spec, and the four
+documentation tasks. Evidence: core/blong-browser 74 files / 733 tests, realm/blong-feedback tap
+7/7, sport stories 70/70, feedback.play.ts green three times with four fresh baselines,
+portal.play.ts and people.play.ts 9/9 on the off path, the docs site builds, blong-dev lint clean on
+every touched file, memory check --refs 0 errors, 714 references resolve, comply clean. The only
+entry left from the plan is T-486, the dev-only purge handler, which the spec's mark-processed queue
+emptying made unnecessary.

@@ -131,6 +131,9 @@ export function ActionButton({
         disabled: isDisabled,
         onClick: handleClick,
         className: `blong-action-btn ${className}${failed ? ' blong-action-error' : ''}`,
+        // The action is the stable name: a toolbar button keeps its identifier when
+        // the label is reworded or translated (`@@T-488`).
+        ...(actionMethod ? {feedbackName: actionMethod} : {}),
     };
 
     if (menu && menu.length > 0) {

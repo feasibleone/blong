@@ -9,6 +9,7 @@ import {blongEvents} from '../lib/eventBus.js';
 import {schemaRegistry as defaultSchemaRegistry} from '../schema/registry.js';
 import {useAppStore, type TranslationDict} from '../state/appStore.js';
 import type {IBlongError} from '../types/action.js';
+import type {IPortalFeedbackConfig} from '../types/portal.js';
 import type {ISchemaRegistry} from '../types/schema.js';
 
 /** Portal-specific UI configuration accessed from IHandlerProxy.config.portal */
@@ -34,6 +35,8 @@ export interface IBlongPortalConfig {
      * an expired session (401 / unauthenticated).
      */
     loginRoute?: string;
+    /** Feedback mode wiring — the same block the merged portal config carries (`@@D-662`). */
+    feedback?: IPortalFeedbackConfig;
     /** Login screen configuration (self-registration / social login). */
     login?: {
         /**

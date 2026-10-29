@@ -11,22 +11,12 @@ description:
 
 ## Start with blong-kopi (scaffold, then adjust)
 
-Create a realm by **scaffolding `@feasibleone/blong-kopi`** — do NOT hand-build the folder
-structure. The scaffolded realm is complete and runnable, and it **reuses the shared
-`@feasibleone/blong-server`** subject orchestrator + db adapter (the canonical pattern used by
-`blong-access`, `blong-party`, `blong-gateway`).
+Create a realm by **scaffolding** — do NOT hand-build the folder structure. The scaffolded realm is
+complete and runnable, and it **reuses the shared `@feasibleone/blong-server`** subject
+orchestrator + db adapter (the canonical pattern used by `blong-access`, `blong-party`,
+`blong-gateway`).
 
 ### Create it
-
-```bash
-blong realm <name>                     # create is implied
-blong create realm <name>              # explicit form
-blong realm <name> --object <entity>   # entity ("object" of the triple); default `entry`
-```
-
-The framework also auto-scaffolds when a suite declares a realm child whose folder is missing and
-`kopi.realm` is enabled in config — see `core/blong-kopi/README.md` for the exact trigger conditions
-and the rename steps.
 
 **From an agent or tool, prefer the API** ([KUKUM_API] in `_shared/conventions.md`) — it emits the
 same tree, embeds any instructions you pass, and reports diagnostics:
@@ -38,9 +28,7 @@ kukum realm get --subject=shop            # list the files it would produce
 
 The realm name must be a **single lowercase word** (`shop`): the template substitutes `$subject`
 into identifiers and derives seed method names from `<subject><Object>Merge`. `kukum realm add`
-validates the name it is given; `blong realm` takes a _folder_ name, drops a `blong-` prefix from it
-(`blong realm blong-shop` scaffolds the realm `shop`), and refuses a name it could not substitute,
-before writing anything.
+validates the name it is given.
 
 ### Then adjust (what to change per context)
 
@@ -97,9 +85,8 @@ Canonical framework rules + layer table: `.github/skills/_shared/conventions.md`
 ## File Structure (canonical — what blong-kopi scaffolds)
 
 Do not reproduce this tree by hand, and do not treat it as a checklist to type out: it is exactly
-what `blong realm <name>` / `kukum realm add` writes. Ask the API for the current truth instead —
-`kukum realm get` lists every file it would produce, and `kukum tree find --target=<realm>` lists
-what actually exists.
+what `kukum realm add` writes. Ask the API for the current truth instead — `kukum realm get` lists
+every file it would produce, and `kukum tree find --target=<realm>` lists what actually exists.
 
 The shape, for orientation only:
 
@@ -306,6 +293,11 @@ children: [
 - `realm/blong-access/` — canonical realm with custom `adapter/db/*` handlers (queryBuilder), RBAC
   merge seeds, server + browser tap tests.
 - `realm/blong-gateway/` — canonical realm plus a realm-local Redis adapter (`adapter/meter.ts`).
+- `realm/blong-feedback/` — the smallest realm that serves a UI feature: three tables, seven
+  `adapter/db/*` handlers, grants seeded from `meta/db/accessAuthorizationMerge.yaml`, and a browser
+  half that is one page handler plus one portal-config provider (`browser/orchestrator/component/`
+  and `browser/orchestrator/portal/`). The page chrome lives in `blong-browser` and names these
+  methods through config — see the [feedback pattern](../../../docs/blong/docs/patterns/feedback.md).
 
 ## Standalone Realm Entry Points
 

@@ -1,0 +1,309 @@
+/*
+ * Feedback mode's chrome (`@@T-462`).
+ *
+ * Everything here is positioned against the viewport and owns no layout, so
+ * entering and leaving the mode never moves the page. The `capture` rule is what
+ * keeps the mode's own boxes out of the screenshot: `capture.ts` sets the
+ * attribute on `<html>` before the frame is grabbed and removes it after.
+ */
+
+:root {
+    --callout-color: color-mix(in srgb, var(--primary-color, #6366f1) 30%, transparent);
+}
+
+.blong-feedback-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    pointer-events: none;
+}
+
+[data-feedback-capture='on'] .blong-feedback-layer {
+    display: none !important;
+}
+
+/* ── Rings ─────────────────────────────────────────────────────────────── */
+
+.blong-feedback-ring {
+    position: absolute;
+    border-radius: 4px;
+    pointer-events: none;
+    box-sizing: border-box;
+}
+
+.blong-feedback-ring--hover {
+    outline: 2px dashed var(--callout-color);
+    outline-offset: 1px;
+    background: color-mix(in srgb, var(--primary-color, #6366f1) 8%, transparent);
+}
+
+.blong-feedback-ring--item {
+    outline: 2px solid var(--callout-color);
+    outline-offset: 1px;
+}
+
+.blong-feedback-ring__badge {
+    position: absolute;
+    left: -1px;
+    top: -1.55em;
+    max-width: 32ch;
+    padding: 0 6px;
+    font-size: 0.7rem;
+    line-height: 1.5em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 3px;
+    color: #fff;
+    background: var(--primary-color, #6366f1);
+}
+
+/* ── Connectors ────────────────────────────────────────────────────────── */
+
+.blong-feedback-connectors {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.blong-feedback-connector {
+    stroke: var(--callout-color);
+    stroke-width: 1.5;
+    fill: none;
+}
+
+.blong-feedback-connector__head {
+    fill: var(--primary-color, #6366f1);
+}
+
+/* ── Callouts ──────────────────────────────────────────────────────────── */
+
+.blong-feedback-callout {
+    position: absolute;
+    pointer-events: auto;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    border-radius: 6px;
+    overflow: hidden;
+    font-size: 0.72rem;
+    /* The theme's own family: a callout is a note about the page, not a different
+       kind of page. The fallback is the theme's stack, because `inherit` would pass
+       on a serif a host never replaced. */
+    font-family: var(
+        --font-family,
+        system-ui,
+        -apple-system,
+        'Segoe UI',
+        Roboto,
+        sans-serif
+    );
+    color: var(--text-color, #111827);
+    background: color-mix(in srgb, var(--surface-card, #ffffff) 94%, transparent);
+    border: 1px solid var(--callout-color);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 25%);
+    backdrop-filter: blur(4px);
+}
+
+/*
+ * The bevel is the drag handle and the box's only decorated edge: thick enough
+ * to grab, and the reason the text area below needs no border of its own.
+ */
+.blong-feedback-callout__bevel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    height: 26px;
+    padding: 0 4px 0 8px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    background: color-mix(in srgb, var(--primary-color, #6366f1) 16%, transparent);
+}
+
+.blong-feedback-callout__bevel:active {
+    cursor: grabbing;
+}
+
+.blong-feedback-callout__handle {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-family: ui-monospace, monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.blong-feedback-callout__remove {
+    flex: none;
+    margin-left: auto;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+}
+
+.blong-feedback-callout__remove:hover {
+    opacity: 1;
+}
+
+.blong-feedback-callout__text {
+    flex: 1;
+    min-height: 0;
+    padding: 6px 8px;
+    font: inherit;
+    resize: none;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: inherit;
+}
+
+.blong-feedback-callout__resize {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 9px;
+    height: 9px;
+    cursor: nwse-resize;
+    touch-action: none;
+    opacity: 0.8;
+    background: linear-gradient(135deg, transparent 50%, var(--callout-color) 50%);
+}
+
+/* ── Crop overlay ──────────────────────────────────────────────────── */
+
+.blong-feedback-crop {
+    position: absolute;
+    inset: 0;
+    pointer-events: auto;
+    cursor: crosshair;
+}
+
+/* The box dims everything outside itself with one shadow, so the page still
+   shows through the part that will be kept. */
+.blong-feedback-crop__box {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px dashed #fff;
+    box-shadow: 0 0 0 9999px rgb(15 23 42 / 45%);
+    cursor: move;
+    touch-action: none;
+}
+
+.blong-feedback-crop__hint {
+    position: absolute;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #fff;
+    background: rgb(15 23 42 / 75%);
+    white-space: nowrap;
+}
+
+.blong-feedback-crop__handle {
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--callout-color);
+    border-radius: 3px;
+    background: #fff;
+    cursor: nwse-resize;
+}
+
+/* ── Submit bar ────────────────────────────────────────────────────────── */
+
+.blong-feedback-bar {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    pointer-events: auto;
+    color: var(--text-color, #111827);
+    background: color-mix(in srgb, var(--surface-card, #ffffff) 92%, transparent);
+    border: 1px solid color-mix(in srgb, var(--text-color, #111827) 15%, transparent);
+    box-shadow: 0 8px 22px rgb(0 0 0 / 30%);
+    backdrop-filter: blur(4px);
+}
+
+.blong-feedback-bar__count {
+    font-weight: 600;
+}
+
+.blong-feedback-bar__button {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--text-color, #111827) 25%, transparent);
+    background: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+.blong-feedback-bar__button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.blong-feedback-bar__button--primary {
+    border-color: var(--callout-color);
+    background: var(--callout-color);
+    color: #fff;
+}
+
+/* ── Menubar switch ────────────────────────────────────────────────────── */
+
+.blong-feedback-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    margin-inline-start: 0.25rem;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+.blong-feedback-toggle:hover {
+    background: color-mix(in srgb, var(--text-color, #111827) 10%, transparent);
+}
+
+.blong-feedback-toggle--active {
+    color: var(--primary-color, #6366f1);
+    background: color-mix(in srgb, var(--primary-color, #6366f1) 18%, transparent);
+}
+
+.blong-feedback-toggle__count {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 1rem;
+    padding: 0 3px;
+    border-radius: 999px;
+    font-size: 0.6rem;
+    line-height: 1rem;
+    text-align: center;
+    color: #fff;
+    background: var(--primary-color, #6366f1);
+}

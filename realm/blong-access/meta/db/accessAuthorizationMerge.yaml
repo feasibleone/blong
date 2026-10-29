@@ -1,11 +1,17 @@
 role:
-  Guest: guestBasic
+  Guest: guestBasic,loginCapability
   # Well-known `Admin` role grants the right to log in (`loginCapability` →
   # `accessLogin`).  Because this is the SHARED production seed, any realm that
   # grants a user the `Admin` role gets login eligibility for free — realm
   # seeds only MERGE their own capabilities into this role, never repeat it.
   # It also carries `translationManage`, the right to edit the dictionary itself.
-  Admin: loginCapability,translationManage
+  Admin: testManagement,accessModelAdmin,loginCapability,blongRealmRead,translationManage
+  Manager: loginCapability
+  Customer: loginCapability
+  # No `login` capability → the user cannot establish/renew a session
+  # (the login-eligibility gate is always on).
+  NoLogin: guestBasic
+
 capability:
   guestBasic: accessTestGuest,access.profile.get
   # The framework realm's reads, contributed by `core/blong-realm` — the seed lives
@@ -34,7 +40,8 @@ capability:
   # reason `blongRealmRead` lives here). `@@D-635`
   loginCapability: >-
     accessLogin,
-    core.label.list,core.translation.list
+    core.label.list,core.translation.list,
+    feedback.session.add
   # Editing the dictionary is a privilege and stays with the administrator: the two
   # pages that write it are `core.label` and `core.translation` model pages, and they
   # need the reads their browse and open views make as well.
@@ -43,6 +50,18 @@ capability:
     core.label.add,core.label.edit,core.label.remove,
     core.translation.list,core.translation.find,core.translation.get,
     core.translation.add,core.translation.edit,core.translation.remove
+  testManagement: accessTestPrivate,subject.object.schema
+  # Grants the Admin role (testAdmin / testUser) every action the access UI
+  # models need, so the Playwright suite can browse/create/edit the entities
+  # and load schemas + dropdowns through the authorized gateway.
+  accessModelAdmin: >-
+    accessUserFind,accessUserGet,accessUserAdd,accessUserEdit,accessUserRemove,
+    accessRoleFind,accessRoleGet,accessRoleAdd,accessRoleEdit,accessRoleRemove,
+    accessCapabilityFind,accessCapabilityGet,accessCapabilityAdd,accessCapabilityEdit,accessCapabilityRemove,
+    accessActionFind,accessPolicyFind,accessFlowFind,accessAccessFind,
+    accessSessionFind,accessSessionClose,accessAuditFind,
+    accessAclFind,accessAclGet,accessAclAdd,accessAclEdit,accessAclRemove,accessAclList,
+    accessDropdownList,subject.object.schema
 policy:
   password:
     credentialType: password

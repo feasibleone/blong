@@ -1,0 +1,30 @@
+# Two test sessions (`@@T-455`), so the review page and its story have a queue to
+# show on a fresh dev database.
+#
+# `name` is the merge key that maps to `core_resource.resourceName`; the session
+# row's own identity is the `sessionId` the resolver mints, which is why the
+# items and the shot cannot be seeded here — their foreign key is generated. The
+# dev-only handler `feedback.seed` adds those.
+resourceType: feedback.session
+key: sessionId
+session:
+  - name: sport-club-browse
+    pageUrl: /s/club
+    pageTitle: Clubs
+    pageSubject: sport
+    pageObject: club
+    pageKind: browse
+    languageCode: en
+    shotStatus: unavailable
+    status: new
+    submittedAt: '2026-10-20 09:12:00'
+  - name: sport-portal-menu
+    pageUrl: /s/
+    pageTitle: Blong Sport
+    pageSubject: sport
+    pageObject: portal
+    pageKind: page
+    languageCode: bg
+    shotStatus: unavailable
+    status: new
+    submittedAt: '2026-10-21 15:40:00'
