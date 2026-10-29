@@ -480,16 +480,23 @@ The login response also returns `permissions` (the resolved action names) for cl
   literals** and are stored on the row as `credentialParamsJSON` so verification always re-uses
   them.
 - **Roles/capabilities/actions in bulk**: use `accessAuthorizationMerge` with the YAML seed pattern
-  — reference entities by **name**, never by raw ID:
+  — reference entities by **name**, never by raw ID. Where a block goes decides when it is
+  dispatched: the roles (`Admin`, `Manager`, `Customer`, `Guest`) and the capabilities are
+  production provisioning, so their grants go to `meta/db/`; the accounts that hold those roles in
+  a test run go to `meta/dbTest/`, which only the adapter's `dev`/`ci` activations dispatch:
 
     ```yaml
-    # meta/dbTest/accessAuthorizationMerge.yaml
-    user:
-        testUser: {password: testPassword, roles: Admin}
+    # meta/db/accessAuthorizationMerge.yaml — production grants
     role:
         Admin: testManagement # role → capability
     capability:
         testManagement: accessTestPrivate # capability → action
+    ```
+
+    ```yaml
+    # meta/dbTest/accessAuthorizationMerge.yaml — test accounts only
+    user:
+        testUser: {password: testPassword, roles: Admin}
     ```
 
 - **Seed roles for production**: `meta/db/accessRoleMerge.yaml` seeds Admin(bit0)/Manager(bit1)/

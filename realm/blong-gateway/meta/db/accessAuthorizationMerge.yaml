@@ -1,0 +1,28 @@
+# RBAC production seed — the gateway's own management capability.
+#
+# `gatewayManagement` is what an administrator needs in a deployed gateway: register an application,
+# manage bundles and subscriptions, adjust credits, and read the dropdowns the management pages use.
+# It belongs here rather than in `meta/dbTest`, because `Admin` is a production role and a test seed
+# is dispatched by the adapter's `dev`/`ci` activations alone — a release or upgrade process held no
+# such grant and nobody could register an application there (T-492).
+#
+# The demo rows that make those pages browsable stay in `meta/dbTest`: the bundles and their roles
+# (`gatewayBundleMerge.yaml`) and the subscriptions (`gatewaySubscriptionMerge.yaml`).
+#
+# The file name is what derives the method, so this dispatches blong-access's shared
+# `access.authorization.merge` — no realm-local authorization handler — and only the CONTENT carries
+# the gateway names (`gateway.dropdown.list` included: the management pages read their dropdowns
+# through it).
+capability:
+  gatewayManagement: >-
+    gateway.application.register,gateway.bundle.merge,gateway.subscription.merge,
+    gateway.credit.adjust,
+    gateway.application.find,gateway.application.add,gateway.application.edit,
+    gateway.application.remove,gateway.application.get,
+    gateway.bundle.find,gateway.bundle.add,gateway.bundle.edit,
+    gateway.bundle.remove,gateway.bundle.get,
+    gateway.subscription.find,gateway.subscription.add,gateway.subscription.edit,
+    gateway.subscription.remove,gateway.subscription.get,
+    gateway.dropdown.list
+role:
+  Admin: gatewayManagement

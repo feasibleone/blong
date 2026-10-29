@@ -213,10 +213,8 @@ t.test('every added primitive is covered by those tests', {skip: skipped}, t => 
                 read(`meta/dbTest/${SUBJECT}${ADDED_NAME}Merge.yaml`).includes(ADDED_OBJECT),
         ],
         [
-            'the RBAC seed grants it, or every gateway call would be denied',
-            read('meta/dbTest/accessAuthorizationMerge.yaml').includes(
-                `${SUBJECT}${ADDED_NAME}Add`,
-            ),
+            'the production RBAC seed grants it, or every gateway call would be denied',
+            read('meta/db/accessAuthorizationMerge.yaml').includes(`${SUBJECT}${ADDED_NAME}Add`),
         ],
         [
             'meta/model describes the entity',

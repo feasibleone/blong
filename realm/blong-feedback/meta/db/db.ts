@@ -7,10 +7,12 @@ import {handler} from '@feasibleone/blong';
  * order 1, party's are 300+), because `feedback.session` carries foreign keys
  * into `core.resource` and the referenced tables must exist first.
  *
- * `dbTest` is on so `meta/dbTest` seeds an empty-ish database with sessions that
- * the review page can show during development and in the Storybook story. The
- * fixture folder is deliberately absent: the feedback surfaces read the real
- * tables, and a Storybook story points at a running backend instead of a mock.
+ * `meta/dbTest` seeds an empty-ish database with sessions that the review page can show during
+ * development and in the Storybook story. The `dbTest` flag that turns those seeds on belongs to
+ * the shared `srv.db` adapter's `dev`/`ci` activations, not here: a realm that pins it re-enables
+ * the test seeds in every intent, `upgrade` included (F-613). The fixture folder is deliberately
+ * absent: the feedback surfaces read the real tables, and a Storybook story points at a running
+ * backend instead of a mock.
  */
 export default handler(() => ({
     config: {

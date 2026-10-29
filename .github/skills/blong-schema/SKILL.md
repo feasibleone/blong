@@ -543,7 +543,19 @@ credentials and role assignments in one step), write a **custom TypeScript handl
 The YAML seed file references entities by name, and the custom handler resolves names to IDs:
 
 ```yaml
-# realmname/meta/dbTest/realmnameAuthorizationMerge.yaml
+# realmname/meta/db/realmnameAuthorizationMerge.yaml  ← grants are production
+role:
+    # NOTE: `Admin` already grants `loginCapability` (→ `accessLogin`) from the
+    # SHARED blong-access production seed — a realm seed only MERGES its own
+    # capabilities into the existing role, so login eligibility is never
+    # repeated here.  (The accessLogin gate is always on.)
+    Admin: testManagement
+capability:
+    testManagement: accessTestPrivate
+```
+
+```yaml
+# realmname/meta/dbTest/realmnameAuthorizationMerge.yaml  ← accounts are test data
 user:
     testUser:
         password: testPassword
@@ -554,15 +566,13 @@ user:
     testViewer:
         password: testPassword
         roles: Customer
-role:
-    # NOTE: `Admin` already grants `loginCapability` (→ `accessLogin`) from the
-    # SHARED blong-access production seed — a realm seed only MERGES its own
-    # capabilities into the existing role, so login eligibility is never
-    # repeated here.  (The accessLogin gate is always on.)
-    Admin: testManagement
-capability:
-    testManagement: accessTestPrivate
 ```
+
+`Admin`, `Manager`, `Customer` and `Guest` are production roles, so a grant that names them is
+production provisioning and belongs to `meta/db/`; only the accounts that hold them in a test run
+belong to `meta/dbTest/`, which the shared `srv.db` adapter dispatches in its `dev` and `ci`
+activations alone. A realm must never pin `schema.dbTest` itself — that re-enables the test seeds
+in `upgrade`, where their handler groups are not loaded (F-613).
 
 The custom handler (`adapter/db/realmnameAuthorizationMerge.ts`) receives this YAML content as its
 params and resolves names to IDs via database lookups:
@@ -633,7 +643,7 @@ automated tests but not appropriate for production.
 | Asset pattern   | `.db.asset`                     | `.dbTest.asset`                             |
 | Enabled by      | `schema.seed: true`             | `schema.seed: true` + `schema.dbTest: true` |
 | Loaded in       | `dev`, `upgrade`, `integration` | `dev` only                                  |
-| Typical content | Type aliases, reference data    | Test users, test fixtures                   |
+| Typical content | Reference data, role grants     | Test users, test fixtures                   |
 
 ---
 

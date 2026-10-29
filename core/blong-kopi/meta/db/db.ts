@@ -3,9 +3,12 @@ import {handler} from '@feasibleone/blong';
 /**
  * meta/db/db.ts — `$subject` schema/seed configuration.
  *
- * Declares the two tables (`$subject.$object`, `$subject.line`) and enables
- * test seed processing (`dbTest: true`) so `meta/dbTest/*.yaml` loads in the
- * dev/integration intents. No `mock` entries — the model uses the real DB
+ * Declares the two tables (`$subject.$object`, `$subject.line`). No `dbTest` flag: whether
+ * `meta/dbTest/*.yaml` is dispatched is the shared `srv.db` adapter's decision, whose `dev` and
+ * `ci` activations turn it on and whose `upgrade` and `release` activations leave it off. A realm
+ * that pins the flag here re-enables the test seeds in *every* intent — `upgrade` included, where
+ * their handler groups are not loaded and the merge dies mid-migration (F-613).
+ * No `mock` entries — the model uses the real DB
  * tables via the auto-bound CRUD handlers, which is what the tap and Playwright
  * tests exercise.
  *

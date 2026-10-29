@@ -492,8 +492,9 @@ endpoint is loopback-only and is mounted by the dev server, never by a build —
 would be willing to put in a `.blong_devrc`.
 
 A realm that wants a role to see something has to grant it: the template's
-`meta/dbTest/accessAuthorizationMerge.yaml` gives `Admin` the full `Manage` capability, `Manager`
-read + edit and `Guest`/`Customer` read-only. All three also carry `subject.object.schema` — without
+`meta/db/accessAuthorizationMerge.yaml` — a production seed, because the roles themselves are
+production — gives `Admin` the full `Manage` capability, `Manager` read + edit and
+`Guest`/`Customer` read-only. All three also carry `subject.object.schema` — without
 it a read-only role gets a 403 for the page's own schema and renders a blank screen rather than a
 smaller one, which is how the Role item earns its place: a Guest who can browse but is refused a
 save is a different story from an Admin who can do both.

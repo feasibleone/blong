@@ -38,23 +38,27 @@ ${object}:
 }
 
 /**
- * The realm's RBAC test seed.
+ * The realm's RBAC seed — a **production** seed.
  *
  * A new entity is unreachable through the gateway until the realm's `Manage`
  * capability lists its actions, so granting them is part of scaffolding the
- * entity rather than an afterthought. The file belongs to the realm template
- * (it dispatches blong-access's shared `access.authorization.merge`), so it is
- * composed into rather than generated.
+ * entity rather than an afterthought. The grant belongs to the production seed
+ * because the roles (`Admin`, `Manager`, `Customer`, `Guest`) and the
+ * capabilities are production provisioning; only the accounts that hold those
+ * roles in a test run live in `meta/dbTest` (F-613).
+ *
+ * The file belongs to the realm template (it dispatches blong-access's shared
+ * `access.authorization.merge`), so it is composed into rather than generated.
  */
-const RBAC_SEED = 'meta/dbTest/accessAuthorizationMerge.yaml';
+const RBAC_SEED = 'meta/db/accessAuthorizationMerge.yaml';
 
 const seed: PrimitiveDescriptor = {
     id: 'seed',
     title: 'Seed data',
     skill: 'blong-schema',
     summary:
-        'Production seeds (meta/db) and test seeds (meta/dbTest) as <name>Merge.yaml. A test seed ' +
-        "also grants the entity's actions to the realm's Manage capability.",
+        'Production seeds (meta/db) and test seeds (meta/dbTest) as <name>Merge.yaml. Each seed ' +
+        "also grants the entity's actions to the realm's production capabilities.",
     kinds: ['prod', 'test'],
     defaultKind: 'prod',
     roots: ['meta/db', 'meta/dbTest'],
@@ -66,14 +70,28 @@ const seed: PrimitiveDescriptor = {
     },
     compose({host, root, context}) {
         const files = [seedSource(context)];
-        if (context.kind !== 'test') return files;
         const rbac = readPlainSource(host, root, RBAC_SEED);
-        if (!rbac) return files;
+        if (!rbac) {
+            // A realm that ships no RBAC seed must hear that its entity is
+            // unreachable, not be scaffolded in silence (@@F-635).
+            return [
+                {
+                    ...files[0],
+                    notices: [
+                        `no ${RBAC_SEED} in this realm, so the ${context.object} actions were not ` +
+                            'granted; add them to the capabilities that hold the rest of the realm ' +
+                            'or every gateway call will be denied.',
+                    ],
+                },
+            ];
+        }
         /**
-         * Every realm's test seed declares the three capabilities the Storybook
-         * toolbar's Role item demonstrates — full access, read + edit, read-only —
-         * so a new entity joins all three, or switching to Manager or Guest in a
-         * story would show an empty (403) page instead of a narrower one.
+         * The realm's production seed declares the three capabilities the
+         * Storybook toolbar's Role item demonstrates — full access, read + edit,
+         * read-only — so a new entity joins all three, or switching to Manager or
+         * Guest in a story would show an empty (403) page instead of a narrower
+         * one. Written for either kind of seed: the rows a seed carries are not
+         * what decides whether the entity may be called.
          */
         const grants: [string, string[]][] = [
             [`${context.subject}Manage`, ['add', 'find', 'get', 'edit', 'remove']],

@@ -167,10 +167,12 @@ config: {
 },
 ```
 
-**Seed data** lives in `meta/db/` (production seed, e.g. `gatewayBundleMerge.yaml`) and
-`meta/dbTest/` (test seed, e.g. `gatewaySubscriptionMerge.yaml`), applied by the `db` intent. The
-bundle seed grants an `Admin: gatewayManagement` role so management tokens can call the gateway
-routes.
+**Seed data** lives in `meta/db/` (production seeds) and `meta/dbTest/` (test data), applied by the
+`db` adapter's seed phase. The production `accessAuthorizationMerge.yaml` carries the
+`gatewayManagement` capability and the `Admin` grant — it is what lets a released gateway manage
+applications, bundles and subscriptions — while `meta/dbTest/` holds only the demo rows the
+management pages browse: the bundles `gatewayBundleMerge.yaml` and the subscriptions
+`gatewaySubscriptionMerge.yaml`.
 
 ## Management UI (browser)
 
@@ -189,8 +191,9 @@ target).
   without it): for a **production** namespace list it in `orchestrator/subject/init.ts` (like
   `gateway`); for a **dev-only** namespace give it its own `orchestrator/<ns>.dev/init.ts` dispatch
   orchestrator (like `vision`/`customer`/`meterprobe`) so it never exists outside `dev`.
-- **New bundle**: seed via `gatewayBundleMerge.yaml` (name + capabilities/actions + rate/credit
-  limits) or call `gateway.bundle.add`. The wrapped role's bit is allocated by `access.role.ensure`,
+- **New bundle**: seed a demo bundle via `meta/dbTest/gatewayBundleMerge.yaml` (name +
+  capabilities/actions + rate/credit limits) or call `gateway.bundle.add`. The wrapped role's bit is
+  allocated by `access.role.ensure`,
   so nothing has to be coordinated across realms; a seed may still declare one (the metered fixtures
   keep 100+), and a clash is refused (`role.bitTaken`) rather than silently skipped — which used to
   leave a role resource with no role row.

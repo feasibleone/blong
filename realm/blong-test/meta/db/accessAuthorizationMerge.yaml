@@ -1,7 +1,8 @@
-# The Test runs console's server-side methods live in this realm, so their test permission is
-# seeded here too. The Admin test role is additive; this capability only adds the four gateway
-# actions the console calls, and the shared srv.db adapter merges this asset with
-# `access.authorization.merge`.
+# The Test runs console's server-side methods live in this realm, so their permission is seeded
+# here too. This is a PRODUCTION seed: the `Admin` role is a production role and the capability is
+# what the console needs, so the grant holds for every deployment — only the local test accounts
+# holding `Admin` live in `meta/dbTest`. The role's capability list is additive, so this file only
+# adds `testRunServer` to it; `replace` keeps that one capability's action list authoritative.
 replace: true
 role:
   Admin: testRunServer

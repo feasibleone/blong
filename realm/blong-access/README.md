@@ -323,14 +323,16 @@ test client entry that proxies the `access` and `login` namespaces to the server
   role is first created and never reuses a freed one, so seed files list roles by name only. A
   declared bit is honoured or refused (`role.bitTaken`) — never silently skipped — and an existing
   role always keeps the bit it has (`role.bitImmutable` on a change attempt).
-- **Bulk RBAC setup** (test data): `meta/dbTest/accessAuthorizationMerge.yaml` —
-  `user: {name: {password, roles}}`, `role: {name: capability}`, `capability: {name: action}`. The
-  blong-access merge file seeds the access realm's own users/roles/capabilities (testAdmin, Admin,
-  accessModelAdmin, loginCapability, ...). **Realm-specific grants belong in the owning realm's own
-  merge file** — e.g. the commander capabilities live in
-  `realm/blong-commander/meta/dbTest/commander-accessAuthorizationMerge.yaml` (same handler, same
-  format; filename's last `-`-segment maps to `access.authorization.merge`). Both files are
-  additive/idempotent, so they run in any order.
+- **Bulk RBAC setup**: `accessAuthorizationMerge` YAML — `role: {name: capability}` and
+  `capability: {name: action}` are production provisioning and belong in
+  `meta/db/accessAuthorizationMerge.yaml`; `user: {name: {password, roles}}` is a test account and
+  belongs in `meta/dbTest/accessAuthorizationMerge.yaml`, which only the adapter's `dev`/`ci`
+  activations dispatch. The blong-access merge files seed the access realm's own
+  users/roles/capabilities (testAdmin, Admin, accessModelAdmin, loginCapability, ...).
+  **Realm-specific grants belong in the owning realm's own merge file** — e.g. the commander
+  capabilities live in `realm/blong-commander/meta/db/commander-accessAuthorizationMerge.yaml`
+  (same handler, same format; filename's last `-`-segment maps to
+  `access.authorization.merge`). Both files are additive/idempotent, so they run in any order.
 - **New policy/flow** (password rules, MFA steps): policies can now dictate credential-function
   params — seed a `policy:` block with a `credentialParams:` object (function + params) in
   `meta/db/accessAuthorizationMerge.yaml` (the `password` policy is already seeded). Flow/access/

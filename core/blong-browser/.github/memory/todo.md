@@ -497,7 +497,7 @@ translation.collect flag. Unit test the missing rule including empty values. Kee
 node builtin imports.
 
 src/i18n/collect.ts records rendered keys from useText and useTranslate, publishes
-window.__blongI18n for tests, and reports the unanswered keys. Evidence: the collector describe
+window.\_\_blongI18n for tests, and reports the unanswered keys. Evidence: the collector describe
 block passes, including the empty-value rule and the disabled state.
 
 ### T-424 — Write Playwright translation seeds safely in parallel
@@ -616,7 +616,7 @@ the activation and a click. Plan section 4.2 and D-659.
 
 guard.ts installs one capture-phase listener set (pointerdown, mousedown, touchstart, click,
 keydown) while the mode is active: it stops events on an addressable element and calls
-preventDefault, passes [data-feedback-ui] through, swallows Escape everywhere else and reports the
+preventDefault, passes `[data-feedback-ui]` through, swallows Escape everywhere else and reports the
 clicked element to the layer. Timers: useFeedbackFreeze pauses ActionHint's two seconds with its
 remainder, and Hint re-shows a toast with a long fixed life while the mode is on. Tests assert a
 click on a target reaches nobody and still reports the element, and that callout events pass.

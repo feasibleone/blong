@@ -11,6 +11,10 @@ open (1)
 - `T-147` · realm/blong-gateway — The gateway cleanup dialog baselines carry whatever the database
   held
 
+done (1)
+
+- `T-492` · realm/blong-gateway — Move the gatewayManagement grant out of the gateway test seed
+
 <!-- /memory:index -->
 
 ## Open
@@ -25,3 +29,24 @@ dialog shows, not in the chrome the sweep was about. The dialog lists live rows,
 records the day it was written rather than a state the shot can reproduce. Filter the dialog to a
 seeded row, or mask its list, the way the commander explore shots narrow every source to a stable
 subset.
+
+## Done
+
+### T-492 — Move the gatewayManagement grant out of the gateway test seed
+
+> _2026-10-29 · realm/blong-gateway · done_
+
+realm/blong-gateway/meta/dbTest/gatewayBundleMerge.yaml declares the gatewayManagement capability
+and grants it to the production Admin role, so a release or upgrade process holds no such grant and
+nobody can register an application or manage bundles and subscriptions there. The dispatcher
+gateway.bundle.merge lives in adapter/db (a production handler) and already accepts capability and
+role maps, so the split needs no new handler: move the capability and role blocks to a new
+meta/db/accessAuthorizationMerge.yaml — that name is what dispatches access.authorization.merge, as
+it does in kopi, party, sport and feedback — and leave the demo bundle rows, roleBit 100 included,
+in the dbTest file. Not done together with the dbTest placement fix because it widens what an
+administrator may do in a deployed gateway, which is the user's decision rather than a mechanical
+move.
+
+Done: the gatewayManagement capability and the Admin grant now live in
+meta/db/accessAuthorizationMerge.yaml, the demo bundles and subscriptions stay in meta/dbTest, and
+the gateway tap suite passes 21/21 from a clean database.

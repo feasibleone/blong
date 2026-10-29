@@ -1,4 +1,4 @@
-# Commander-specific RBAC grants (test seed).
+# Commander-specific RBAC grants — a PRODUCTION seed.
 #
 # The blong-commander realm owns its own capabilities and role grants instead
 # of polluting the blong-access merge file — each realm seeds the RBAC it
@@ -7,9 +7,10 @@
 # insert-only and the `hasCapability` edge on the Admin role is merged without
 # removing existing grants.
 #
-# It depends on the `Admin` role created by the blong-access test seed
-# (`accessAuthorizationMerge.yaml`); the two files run in either order because
-# both are additive merges.
+# It depends on the `Admin` role created by the blong-access production seed
+# (`meta/db/accessAuthorizationMerge.yaml`); the two files run in either order
+# because both are additive merges. Only the test accounts that hold `Admin`
+# live in `meta/dbTest`.
 capability:
   # Grants the Admin role (testAdmin / testUser) the commander protocol, so the
   # blong-commander Playwright suite can explore every source through the

@@ -1,4 +1,7 @@
-# RBAC test seed — grants the `sport` capabilities to the seeded roles.
+# RBAC production seed — grants the `sport` capabilities to the realm's roles.
+#
+# The roles are production (`Admin`, `Manager`, `Customer`, `Guest`); only the accounts that hold
+# them in a test run live in `meta/dbTest`.
 #
 # A capability lists the **dotted method names** the caller invokes
 # (`sport.athlete.find`), not the handler names (`sportAthleteFind`) — the
@@ -27,11 +30,11 @@
 # derived from it: the content carries the `sport` names, the method is
 # blong-access's shared `access.authorization.merge`.
 #
-# A **test** seed declares the complete action list of the capabilities it names,
-# so shortening one takes effect on an existing database instead of leaving the
-# methods it dropped behind (F-357). That is how the `core.*` grants moved out of
-# here and into `blong-access`: without `replace`, every database that had been
-# seeded once would keep them.
+# `replace` keeps the action lists authoritative: a capability shortened in a later release must
+# lose the methods it dropped on an existing database instead of leaving them granted (F-357). That
+# is how the `core.*` grants moved out of here and into `blong-access`: without it, every database
+# that had been seeded once would keep them. The capabilities named below are this realm's alone,
+# so retracting their lists never drops another realm's contribution.
 replace: true
 role:
   Admin: sportManage

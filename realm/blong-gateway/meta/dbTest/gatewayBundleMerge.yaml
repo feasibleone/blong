@@ -1,7 +1,10 @@
-capability:
-  gatewayManagement: gateway.application.register,gateway.bundle.merge,gateway.subscription.merge,gateway.credit.adjust,gateway.application.find,gateway.application.add,gateway.application.edit,gateway.application.remove,gateway.application.get,gateway.bundle.find,gateway.bundle.add,gateway.bundle.edit,gateway.bundle.remove,gateway.bundle.get,gateway.subscription.find,gateway.subscription.add,gateway.subscription.edit,gateway.subscription.remove,gateway.subscription.get,gateway.dropdown.list
-role:
-  Admin: gatewayManagement
+# Test seed — demo bundles, so the management pages have something to browse in a dev or CI run.
+#
+# A bundle IS an `access.role` (its `roleBit` is the bit its subscribers carry), so these rows also
+# create the `vision` and `customer` roles their subscriptions refer to. Nothing here is production
+# provisioning: the capability that lets an administrator manage bundles and subscriptions is
+# `gatewayManagement`, granted to the `Admin` role by the production seed
+# (`meta/db/accessAuthorizationMerge.yaml`), which a release or upgrade process dispatches too.
 bundle:
   Vision AI:
     roleBit: 100
