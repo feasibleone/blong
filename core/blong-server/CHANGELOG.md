@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-server-v1.6.0...blong-server-v1.7.0) (2026-10-30)
+
+
+### Features
+
+* blong-feedback ([8ce4585](https://github.com/feasibleone/blong/commit/8ce4585dbff462b6b4191d231b2510e30f3962af))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-server-v1.5.0...blong-server-v1.6.0) (2026-10-11)
 
 

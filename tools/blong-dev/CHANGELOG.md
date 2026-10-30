@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.14.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.13.1...blong-dev-v1.14.0) (2026-10-30)
+
+
+### Features
+
+* blong-feedback ([8ce4585](https://github.com/feasibleone/blong/commit/8ce4585dbff462b6b4191d231b2510e30f3962af))
+
+
+### Bug Fixes
+
+* expected errors: ([57b182e](https://github.com/feasibleone/blong/commit/57b182ecec11aec2c5d08412bb39cf1aa0352ef7))
+
 ## [1.13.1](https://github.com/feasibleone/blong/compare/blong-dev-v1.13.0...blong-dev-v1.13.1) (2026-10-28)
 
 

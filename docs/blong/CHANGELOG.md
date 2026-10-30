@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.38.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.37.1...blong-docs-v1.38.0) (2026-10-30)
+
+
+### Features
+
+* blong-feedback ([8ce4585](https://github.com/feasibleone/blong/commit/8ce4585dbff462b6b4191d231b2510e30f3962af))
+
+
+### Bug Fixes
+
+* dbTest seed handling ([c102914](https://github.com/feasibleone/blong/commit/c1029142de54658eb3b08621db90d6fba23d9fac))
+
 ## [1.37.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.37.0...blong-docs-v1.37.1) (2026-10-28)
 
 
