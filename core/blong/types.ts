@@ -7,7 +7,6 @@ import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
 //     RbacAuthorizationV1Api,
 //     Watch,
 // } from '@kubernetes/client-node';
-import type {IncomingWebhook} from '@slack/webhook';
 import type {MongoClient} from 'mongodb';
 import type Assert from 'node:assert';
 import {
@@ -46,16 +45,16 @@ import type {IMock, IModelSpec} from './model.ts';
 //     RbacAuthorizationV1Api,
 //     Watch,
 // } from '@kubernetes/client-node';
-export type * from '@slack/webhook';
 export type * from 'bson';
 export type * from 'mongodb';
 // export type {client} from 'node-vault';
 export type {IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1} from 'openapi-types';
 // export type {Level, LogFn, Logger as PinoLogger} from 'pino';
+export type * from './chat.ts';
+export type * from './feedback.ts';
 export type {Knex} from './knex.js';
 export type * from './model.ts';
 export type * from './widget.ts';
-export type * from './feedback.ts';
 
 export type ServerContext = {
     queryBuilder?: Knex;
@@ -68,7 +67,6 @@ export type ServerContext = {
     kafkaStream?: Duplex;
     mongodb?: MongoClient;
     // s3?: S3Client;
-    slack?: IncomingWebhook;
     // vault?: client;
     /** Live redis client shared with derived adapters. */
     redis?: {
@@ -410,6 +408,41 @@ export interface IError {
     fetchErrors: IErrorFactory['fetch'];
     defineError: IErrorFactory['define'];
     register: IErrorFactory['register'];
+}
+
+/** One container port a component contributes through its `activation.k8s` block. */
+export interface IComponentK8sPort {
+    port: number;
+    containerPort?: number;
+    protocol?: string;
+}
+
+/**
+ * One ingress path a component contributes.
+ *
+ * A webhook is the ordinary case: a process that must be reached from outside declares the port it
+ * opens and the path that reaches it, and `blong-kustomize` turns the pair into a Service port and an
+ * Ingress rule. `serviceName` defaults to the deployment that owns the contributing realm, and
+ * `servicePort` to 8080.
+ */
+export interface IComponentK8sIngress {
+    path: string;
+    host?: string;
+    pathType?: 'Prefix' | 'Exact' | 'ImplementationSpecific';
+    serviceName?: string;
+    servicePort?: number;
+    tls?: {secretName?: string};
+}
+
+/**
+ * The Kubernetes resources a component may contribute from its activation.
+ *
+ * Declared here rather than in `realm/blong-kustomize` because the component is the one that
+ * declares them and must not import the deployer to do it; the deployer reads the same keys.
+ */
+export interface IComponentK8sContribution {
+    k8sPorts?: Record<string, IComponentK8sPort>;
+    k8sIngresses?: Record<string, IComponentK8sIngress>;
 }
 
 export type Config<T, C> = {

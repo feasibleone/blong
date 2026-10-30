@@ -6,7 +6,7 @@
  * attaches `party` for RBAC seeding, so its process starts party's Google mock
  * as well. Two packages test in parallel (`rush ci-test --parallelism=max`), so
  * a fixed port makes the second process fail with `EADDRINUSE` — blong-party and
- * blong-sport shared 9082 in build #648 (@@D-684).
+ * blong-sport shared 9082 in build #648 (@@D-694).
  *
  * The runner gives every package its own number the same way the browser's
  * Playwright config derives the gateway port: from the package's index in

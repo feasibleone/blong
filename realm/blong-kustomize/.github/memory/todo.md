@@ -37,7 +37,7 @@ open (21)
 - `T-452` · realm/blong-kustomize — Gate the committed kustomize trees against the generator
 - `T-485` · realm/blong-kustomize — Re-run the switch-off e2e step after the plumbing fix
 
-done (9)
+done (14)
 
 - `T-279` · realm/blong-kustomize — The operator reports obsolete objects and never deletes them
 - `T-277` · realm/blong-kustomize — The plan resolves no databases, so the init script creates none
@@ -50,6 +50,11 @@ done (9)
 - `T-445` · realm/blong-kustomize — Sport CD Group 4 operator release trigger
 - `T-449` · realm/blong-kustomize — The committed base pins the image the CR is supposed to choose
 - `T-453` · realm/blong-kustomize — A release publishes no operator artifact to deploy from
+- `T-511` · realm/blong-kustomize — Honour adapter-contributed k8sIngresses in the plan
+- `T-512` · realm/blong-kustomize — Publish contributed k8sPorts on the deployment Service
+- `T-513` · realm/blong-kustomize — Test webhook reachability in blong-kustomize
+- `T-514` · realm/blong-kustomize — Add the kustomize deploy block to the chat entry
+- `T-515` · realm/blong-kustomize — Verify blong-kustomize after the reachability change
 
 <!-- /memory:index -->
 
@@ -494,6 +499,64 @@ only needed for a release with no digest asset. Verified: the jq resolver still 
 blong-sport-v0.2.0 to sport and yields nothing for a kustomize or docs tag, the asset names derive
 correctly from the record, bash -n is clean, and the workflow parses with four jobs. What only a
 real release can prove: the job running, and an install from the published assets.
+
+### T-511 — Honour adapter-contributed k8sIngresses in the plan
+
+> _2026-10-29 · realm/blong-kustomize · done_
+
+planFromRegistry filters k8sIngresses to dispatch ports, so an adapter ingress is dropped in
+silence. Resolve an ingress from any application port that declares one, binding serviceName to the
+deployment of the realm that owns the port and servicePort to what it declared @@D-680.
+
+planFromRegistry resolves an ingress from any port that declares one, so an adapter's contribution
+is read; the same filter also sat in contributionFor and was removed, which is what made the
+adapter's k8sPorts reach its deployment.
+
+### T-512 — Publish contributed k8sPorts on the deployment Service
+
+> _2026-10-29 · realm/blong-kustomize · done_
+
+The Deployment takes contributed ports while its Service carries only rpc and http, so an Ingress to
+a webhook port has no endpoints. Add the deployment ports to the Service beside those two, with the
+port name as targetPort @@D-680.
+
+A deployment with ports gets a Service named after itself unless a namespace Service already has
+that name, and serviceResource publishes every contributed port beside rpc and http with the port
+name as targetPort.
+
+### T-513 — Test webhook reachability in blong-kustomize
+
+> _2026-10-29 · realm/blong-kustomize · done_
+
+Extend testTreeGenerate and its snapshot: an adapter ingress lands on its host, the Service carries
+the port, a dispatch-only plan is unchanged, and a webhook sharing a portal host is still refused.
+Review the snapshot diff rather than accepting it.
+
+testPlanFind gains aWebhookIsReachableFromOutside (adapter port to ingress to the deployment
+Service) and testTreeGenerate gains aServicePublishesThePortsItsProcessOpens (the Service carries
+chatSlack 8095); the suite is 128 pass, 0 fail and the pinned tree snapshot did not move.
+
+### T-514 — Add the kustomize deploy block to the chat entry
+
+> _2026-10-29 · realm/blong-kustomize · done_
+
+realm/blong-chat/index.ts declares the suite name, namespace, entry and the absence of a portal, and
+reads the webhook host from the rc file of the k8s intent, so the realm can be deployed on its own.
+
+index.ts declares kustomize.deploy for suite, namespace, entry and profile monolith with no portal;
+the webhook host is named in the k8s rc file and the comment says so. The adapters' k8s keys moved
+to activation.default because a k8s block is invisible to the operator's release pass (D-684).
+
+### T-515 — Verify blong-kustomize after the reachability change
+
+> _2026-10-29 · realm/blong-kustomize · done_
+
+Run blong-dev test in realm/blong-kustomize and blong-dev lint --files on plan.ts, generator.ts and
+the test; the change touches how every deployment publishes ports, so the whole suite must stay
+green.
+
+blong-dev test in realm/blong-kustomize is 128 pass, 0 fail; blong-dev lint is clean; the chat realm
+lints and its test passes after the contribution move.
 
 ## Retired
 

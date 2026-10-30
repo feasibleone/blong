@@ -93,7 +93,7 @@ export default handler(
                     try {
                         // No cookie is the normal first visit, not a failure: declaring the
                         // type keeps the refusal out of the error stream and the dialog
-                        // (@@D-685).
+                        // (@@D-695).
                         await loginTokenRestore({}, {...$meta, expect: 'login.invalidCookie'});
                         assert.fail('login.token.restore should fail without a cookie');
                     } catch (err: unknown) {

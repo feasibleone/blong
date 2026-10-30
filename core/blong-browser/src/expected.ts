@@ -9,7 +9,7 @@
  * at `error` level and raised the global dialog whatever the caller had
  * declared, so a deliberate 403 in a UI flow reached the CI report as
  * `[browser] error: [blong] … failed` beside the refusals nobody asked for
- * (@@D-685).
+ * (@@D-695).
  *
  * The matching rules are the server's `isExpectedError` (`blong-gogo/src/lib.ts`)
  * restated: exact type, any element of an array, and a trailing `.*` prefix

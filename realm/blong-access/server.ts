@@ -42,7 +42,7 @@ export default realm(() => ({
                 // the party realm starts it too: `blong-dev test` and
                 // `blong-dev playwright` export `GOOGLE_MOCK_PORT` from the package's
                 // `rush.json` index, and `realm/blong-party/sim/google` binds the same
-                // variable (@@D-684).  9082 is the standalone default, which is what a
+                // variable (@@D-694).  9082 is the standalone default, which is what a
                 // hand-started `blong` and the browser's static fallback use.
                 google: {
                     baseUrl: `http://localhost:${process.env.GOOGLE_MOCK_PORT ?? 9082}`,

@@ -42,7 +42,7 @@ export async function test(args: string[]): Promise<void> {
     const cwd = process.cwd();
     // A simulated server in a realm's `sim` layer binds a port in this process, and a
     // consuming package starts the same mock: the port has to be the package's own, or
-    // two packages testing in parallel collide on it (@@D-684).
+    // two packages testing in parallel collide on it (@@D-694).
     const env = toolEnv(cwd, mockPortEnv(cwd));
 
     // Fresh coverage output each run so tap V8 JSONs never accumulate.

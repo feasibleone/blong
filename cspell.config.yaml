@@ -170,6 +170,7 @@ words:
   - hget
   - hgetall
   - hincrby
+  - HMAC
   - honored
   - honoring
   - hset
@@ -447,6 +448,8 @@ words:
   - WHATWG
   - worldtimeapi
   - Wrasse
+  - xoxb
+  - xoxe
   - xyflow
   - YHHHHCC
   - ZCMK
@@ -509,8 +512,8 @@ ignorePaths:
   - "**/*.test.tsx"
   - "**/.playwright/**"
   - "**/allure-results/**"
-  - "**/dist/**"
   - "**/build/**"
+  - "**/dist/**"
   - "**/static/**"
   - "**/storybook-static/**"
   - "**/~.schema.ts"

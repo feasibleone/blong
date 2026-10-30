@@ -15,7 +15,7 @@ active (8)
 - `D-671` · realm/blong-feedback — The review story shows a real submission, not a mock screen
 - `D-672` · realm/blong-feedback — The review page edits the callouts in place
 - `D-675` · realm/blong-feedback — The review story runs on a fake realm that applies its edits
-- `D-687` · realm/blong-feedback — blong-feedback runs no Playwright leg of its own
+- `D-697` · realm/blong-feedback — blong-feedback runs no Playwright leg of its own
 
 <!-- /memory:index -->
 
@@ -112,7 +112,7 @@ file is not importable from Node) and because the picture it used to import is t
 bundler mints and Node refuses: the shot is now passed in, and only feedbackReviewShot.ts touches
 the jpg.
 
-### D-687 — blong-feedback runs no Playwright leg of its own
+### D-697 — blong-feedback runs no Playwright leg of its own
 
 > _2026-10-30 · realm/blong-feedback · active_
 
@@ -126,3 +126,7 @@ walks the feedback mode, the callouts, the crop, the submission and the review p
 leg here would duplicate it. A spec added here later has to put the leg back in the script.
 
 ## Superseded
+
+## Retired
+
+- D-687 — renumbered to D-697 (2026-10-30)

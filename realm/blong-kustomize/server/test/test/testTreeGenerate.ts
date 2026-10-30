@@ -1586,6 +1586,58 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 );
             },
 
+            async function aServicePublishesThePortsItsProcessOpens(assert: IAssert) {
+                // An Ingress can only reach a port a Service publishes. A realm that opens a webhook
+                // port contributed it to the Deployment and to nothing else, so the path had a backend
+                // no endpoint answered on (`@@D-680`).
+                const tree = buildKustomizeTree(
+                    lib.suitePlan({
+                        deployments: [
+                            {
+                                name: 'shop',
+                                realms: ['shop'],
+                                layers: ['shop.orchestrator'],
+                                namespaces: ['shop'],
+                                replicas: 1,
+                                resources: {
+                                    requests: {cpu: '50m', memory: '128Mi'},
+                                    limits: {cpu: '1', memory: '512Mi'},
+                                },
+                                ports: [{name: 'chatSlack', port: 8095}],
+                            },
+                        ],
+                        services: [{name: 'shop', namespace: 'shop-suite', deployment: 'shop'}],
+                        ingresses: [
+                            {
+                                name: 'chatSlack',
+                                namespace: 'shop-suite',
+                                path: '/chat/slack',
+                                pathType: 'Prefix',
+                                serviceName: 'shop',
+                                servicePort: 8095,
+                            },
+                        ],
+                    }),
+                );
+                const service = tree.get('services/shop.yaml') as {
+                    spec?: {ports?: unknown[]};
+                };
+                assert.deepEqual(
+                    service.spec?.ports,
+                    [
+                        {name: 'rpc', port: 8091, targetPort: 'rpc', protocol: 'TCP'},
+                        {name: 'http', port: 8080, targetPort: 'http', protocol: 'TCP'},
+                        {
+                            name: 'chatSlack',
+                            port: 8095,
+                            targetPort: 'chatSlack',
+                            protocol: 'TCP',
+                        },
+                    ],
+                    'the ports the process opens beside rpc and http are the ports the Service publishes',
+                );
+            },
+
             async function eachPortalNamesItsOwnService(assert: IAssert) {
                 // A portal is an address, an alias and the process behind it (the portal answer). The
                 // alias is what names the Service, because it is the name a person chose and the one

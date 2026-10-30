@@ -739,6 +739,12 @@
             "projectFolder": "realm/blong-feedback",
             "reviewCategory": "realm",
             "tags": ["realm"]
+        },
+        {
+            "packageName": "@feasibleone/blong-chat",
+            "projectFolder": "realm/blong-chat",
+            "reviewCategory": "realm",
+            "tags": ["realm"]
         }
     ]
 }

@@ -163,8 +163,14 @@ in step (see `[K8S_CONTRIB]` in `_shared/conventions.md`):
 
 ```typescript
 activation: {
-    default: {namespace: 'webhook'},
-    k8s: {k8sIngresses: {shop-webhook: {path: '/webhook/shop'}}},
+    // The port the process opens and the address it answers on both belong here, not to the `k8s`
+    // intent: a webhook address is what the port *is* (`@@D-684`).
+    default: {
+        namespace: 'slack',
+        server: {port: 8095},
+        k8sPorts: {chatSlack: {port: 8095}},
+        k8sIngresses: {chatSlack: {path: '/chat/slack', servicePort: 8095}},
+    },
 }
 ```
 
@@ -173,6 +179,13 @@ Keys: `k8sReplicas`, `k8sResources`, `k8sPorts`, `k8sIngresses`, `k8sSecrets`, `
 and the realms sharing a deployment merge it by that key — a realm adds beside the suite's rather
 than colliding with it. `k8sEnv` and `k8sManifests` stay lists (order, and identity inside the
 object). An ingress with no `serviceName` binds to the owning deployment.
+
+A `k8sPorts` entry is not decoration: the tree appends the deployment's contributed ports to its own
+Service beside `rpc` and `http`, so an Ingress that targets a webhook port has endpoints without a
+second declaration, and a deployment that declares ports gets a Service named after itself when no
+namespace Service already carries that name. A port contributed by an _internal_ realm (`blong`,
+`adapter`) is skipped: those are library realms every process carries, not a process of their own
+(`@@D-680`). An Ingress declaring `servicePort` from a port nobody contributed is a plan-time error.
 
 ## Portals
 
@@ -258,21 +271,21 @@ job and a bare k3d cluster has none.
 
 ### The `sport` scenario
 
-The runbook is not tied to `suite/blong-suite`: `SUITE_SCENARIO` selects the Rush deploy scenario and
-the tree, `ARTIFACT_NAME` the name the suite zip is published under, and `SUITE_ENTRY` the deployable
-entry inside the package. `realm/blong-sport` is the second worked example — `realm/blong-sport/index.ts`
-as the entry, `common/config/rush/deploy-sport.json` as the scenario, `sport.zip` as the artifact,
-namespace `blong-sport`, portal host from `kustomize.deploy.portal.web.host`, profile `monolith`.
-No host is in the source: `.blong_k8src` — the rc file of the `k8s` intent, ignored by git — carries
-`kustomize.deploy.operator.ingress` and `kustomize.deploy.portal.<alias>`, the
-`cert-manager.io/cluster-issuer` annotation included, so a split tree keeps every Ingress in the
-overlay and the committed example shows the host as `PLACEHOLDER` (`@@D-645`).
-The operator's release route (`kustomize.release.approve`, plain JSON-RPC over the ingress with
-`BLONG_RELEASE_TOKEN`) is
-what the generic `.github/workflows/deploy.yaml` calls; `realm/blong-sport/README.md` carries the
-local command and the deployment table. The test-seed rule is the same for every realm: `dbTest`
-belongs to the adapter's `dev`/`ci` activations, not to a realm's `meta/db/db.ts`, or an `upgrade`
-process dispatches handler-backed seeds whose groups are not loaded.
+The runbook is not tied to `suite/blong-suite`: `SUITE_SCENARIO` selects the Rush deploy scenario
+and the tree, `ARTIFACT_NAME` the name the suite zip is published under, and `SUITE_ENTRY` the
+deployable entry inside the package. `realm/blong-sport` is the second worked example —
+`realm/blong-sport/index.ts` as the entry, `common/config/rush/deploy-sport.json` as the scenario,
+`sport.zip` as the artifact, namespace `blong-sport`, portal host from
+`kustomize.deploy.portal.web.host`, profile `monolith`. No host is in the source: `.blong_k8src` —
+the rc file of the `k8s` intent, ignored by git — carries `kustomize.deploy.operator.ingress` and
+`kustomize.deploy.portal.<alias>`, the `cert-manager.io/cluster-issuer` annotation included, so a
+split tree keeps every Ingress in the overlay and the committed example shows the host as
+`PLACEHOLDER` (`@@D-645`). The operator's release route (`kustomize.release.approve`, plain JSON-RPC
+over the ingress with `BLONG_RELEASE_TOKEN`) is what the generic `.github/workflows/deploy.yaml`
+calls; `realm/blong-sport/README.md` carries the local command and the deployment table. The
+test-seed rule is the same for every realm: `dbTest` belongs to the adapter's `dev`/`ci`
+activations, not to a realm's `meta/db/db.ts`, or an `upgrade` process dispatches handler-backed
+seeds whose groups are not loaded.
 
 ### Rights per tenant
 

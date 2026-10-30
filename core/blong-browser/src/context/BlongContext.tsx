@@ -201,7 +201,7 @@ function wrapHandlerProxy(handler: AnyHandlerProxy['handler']): AnyHandlerProxy[
                     // A caller that declared the failure — `{...$meta, expect: 'x.y'}` —
                     // gets it recorded, not broadcast: the same demotion the server
                     // applies at every adapter boundary, so a deliberate refusal in a
-                    // flow leaves no error line and no dialog (@@D-685).
+                    // flow leaves no error line and no dialog (@@D-695).
                     if (isExpectedError(blongErr.type, (args[1] as IMeta | undefined)?.expect)) {
                         console.debug(`[blong] ${method} failed as declared`, {
                             type: blongErr.type,

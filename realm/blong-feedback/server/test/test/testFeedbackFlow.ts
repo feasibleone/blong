@@ -303,7 +303,7 @@ export default handler(
                     assert.equal(shot.shotData, shotData, 'the stored picture is returned');
                     assert.equal(shot.mimeType, 'image/jpeg', 'with its type');
                     // Declared: the refusal is the assertion, so it belongs at `debug`
-                    // rather than beside the failures nobody asked for (@@D-685).
+                    // rather than beside the failures nobody asked for (@@D-695).
                     await assert.rejects(
                         () =>
                             feedbackShotGet(

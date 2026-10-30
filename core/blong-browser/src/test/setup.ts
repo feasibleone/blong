@@ -192,7 +192,7 @@ global.URL.revokeObjectURL = vi.fn();
 // canvas; the real path runs in a browser, where `realm/blong-sport`'s
 // `test/feedback.play.ts` stubs the picker and captures the frame. The unit test
 // asserts the overlay attribute around the grab, so it needs the primitives to
-// exist, not to work (@@D-686).
+// exist, not to work (@@D-696).
 Object.defineProperty(window.HTMLMediaElement.prototype, 'play', {
     writable: true,
     value: vi.fn().mockResolvedValue(undefined),

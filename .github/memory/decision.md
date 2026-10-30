@@ -90,7 +90,7 @@ active (78)
 - `D-656` · cross-cutting — Feedback is a realm of its own, not a table in blong-core
 - `D-668` · docs — The feedback post uses the Playwright baselines as its pictures
 - `D-673` · docs — Both feedback stories are embedded now
-- `D-684` · cross-cutting — A simulated server's port is the package's own, from rush.json
+- `D-694` · cross-cutting — A simulated server's port is the package's own, from rush.json
 
 superseded (7)
 
@@ -1241,7 +1241,7 @@ and a taller frame made it readable, so the post embeds it and the review story 
 keep a cropped poster for a build where no Storybook was staged. Embedding is the better answer for
 a reader: the callouts can be clicked, the review queue can be walked.
 
-### D-684 — A simulated server's port is the package's own, from rush.json
+### D-694 — A simulated server's port is the package's own, from rush.json
 
 > _2026-10-30 · cross-cutting · active_
 
@@ -1400,3 +1400,7 @@ are also the only form that survives a build where no Storybook was staged.
 Both stories are embedded now; the reason the callouts stayed a picture no longer holds.
 
 Superseded by `D-673`.
+
+## Retired
+
+- D-684 — renumbered to D-694 (2026-10-30)

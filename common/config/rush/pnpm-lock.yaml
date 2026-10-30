@@ -54,9 +54,6 @@ importers:
       '@slack/types':
         specifier: ^2.20.1
         version: 2.20.1
-      '@slack/webhook':
-        specifier: ^7.0.7
-        version: 7.0.8(debug@4.4.3(supports-color@10.2.2))
       '@types/react':
         specifier: ^19.1.2
         version: 19.2.14
@@ -454,9 +451,6 @@ importers:
       '@sinclair/typebox-codegen':
         specifier: ^0.11.1
         version: 0.11.1
-      '@slack/webhook':
-        specifier: ^7.0.7
-        version: 7.0.8(debug@4.4.3(supports-color@10.2.2))
       ajv-formats:
         specifier: ^3.0.1
         version: 3.0.1
@@ -1394,6 +1388,43 @@ importers:
         specifier: workspace:*
         version: link:../../tools/blong-dev
     devDependencies:
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: 21.8.0
+        version: 21.8.0(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react@18.3.1)(supports-color@10.2.2)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../realm/blong-chat:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@swc/core':
+        specifier: ^1.7.14
+        version: 1.15.21
       '@types/node':
         specifier: ^24
         version: 24.12.0
@@ -5711,10 +5742,6 @@ packages:
   '@slack/types@2.20.1':
     resolution: {integrity: sha512-eWX2mdt1ktpn8+40iiMc404uGrih+2fxiky3zBcPjtXKj6HLRdYlmhrPkJi7JTJm8dpXR6BWVWEDBXtaWMKD6A==}
     engines: {node: '>= 12.13.0', npm: '>= 6.12.0'}
-
-  '@slack/webhook@7.0.8':
-    resolution: {integrity: sha512-x3gttyRJGZSeIm+juObzYsYEMa/weoeZUU3WDWwOCwmHhShSwtq1sj1jvuKx0mLNIA6VveVlc4zWvluhA6qcxg==}
-    engines: {node: '>= 18', npm: '>= 8.6.0'}
 
   '@slorber/react-helmet-async@1.3.0':
     resolution: {integrity: sha512-e9/OK8VhwUSc67diWI8Rb3I0YgI9/SBQtnhe9aEuK6MhZm7ntZZimXgwXnd8W96YTmSOb9M4d8LwhRZyhWr/1A==}
@@ -19434,14 +19461,6 @@ snapshots:
       '@sinonjs/commons': 3.0.1
 
   '@slack/types@2.20.1': {}
-
-  '@slack/webhook@7.0.8(debug@4.4.3(supports-color@10.2.2))':
-    dependencies:
-      '@slack/types': 2.20.1
-      '@types/node': 24.12.0
-      axios: 1.14.0(debug@4.4.3(supports-color@10.2.2))
-    transitivePeerDependencies:
-      - debug
 
   '@slorber/react-helmet-async@1.3.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:

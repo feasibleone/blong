@@ -73,7 +73,6 @@
         // "pino",
         "bson",
         // "@kubernetes/client-node",
-        "@slack/webhook",
         "@slack/types",
         // "knex",
         "mongodb",

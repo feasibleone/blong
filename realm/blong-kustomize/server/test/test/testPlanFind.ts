@@ -599,6 +599,58 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 );
             },
 
+            async function aWebhookIsReachableFromOutside(assert: IAssert) {
+                // An adapter is not a dispatch port, so the ingress it contributes was filtered out of
+                // the plan — and even once read, its backend was a Service a monolith never had, since
+                // no namespace is named after the suite (`@@D-680`).
+                const view = {
+                    realms: ['chat'],
+                    groups: [
+                        {name: 'chat.chatDispatch', handlerCount: 1, layer: 'orchestrator'},
+                    ],
+                    ports: [
+                        {id: 'chat.chatDispatch', type: 'dispatch', namespace: 'chat'},
+                        {
+                            id: 'chat.slack',
+                            type: 'slack',
+                            namespace: 'slack',
+                            k8s: {
+                                k8sPorts: {chatSlack: {port: 8095}},
+                                k8sIngresses: {
+                                    chatSlack: {path: '/chat/slack', servicePort: 8095},
+                                },
+                            },
+                        },
+                    ],
+                    roles: {},
+                } as IRegistryView;
+                const plan = planFromRegistry(view, {
+                    suiteName: 'demo',
+                    frameworkImage: 'image',
+                    profile: 'monolith',
+                    nodes: NODES,
+                });
+
+                assert.deepEqual(
+                    plan.ingresses.map(ingress => ({
+                        path: ingress.path,
+                        serviceName: ingress.serviceName,
+                        servicePort: ingress.servicePort,
+                    })),
+                    [{path: '/chat/slack', serviceName: 'demo', servicePort: 8095}],
+                    'the path an adapter contributes reaches the plan, on the port it named',
+                );
+                assert.ok(
+                    plan.services.some(service => service.name === 'demo'),
+                    'and the process it belongs to has a Service for the Ingress to point at',
+                );
+                assert.deepEqual(
+                    plan.deployments[0]?.ports,
+                    [{name: 'chatSlack', port: 8095}],
+                    'while the port itself is opened in that process',
+                );
+            },
+
             async function aCollectionItCannotMeanIsRefused(assert: IAssert) {
                 // The shape is checked where it is read, because both sources are data rather than code:
                 // a config file someone edited, and a CR a tenant wrote. A list is the shape the older

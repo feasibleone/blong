@@ -63,7 +63,7 @@ export default handler(
                     try {
                         // Declared: a refusal this step asserts on is not a failure the
                         // stream should name — the gateway demotes it to `debug` and the
-                        // browser does not raise its dialog (@@D-685).
+                        // browser does not raise its dialog (@@D-695).
                         await accessTestPrivate({}, {...$meta, expect: 'gateway.jwtMissingHeader'});
                         assert.fail('accessTestPrivate should have thrown without auth');
                     } catch (err: unknown) {
@@ -85,7 +85,7 @@ export default handler(
                         $meta,
                     );
                     try {
-                        // The RBAC refusal is the assertion, so it is declared (@@D-685).
+                        // The RBAC refusal is the assertion, so it is declared (@@D-695).
                         await accessTestPrivate({}, {...$meta, expect: 'gateway.notAllowed'});
                         assert.fail('accessTestPrivate should have thrown for unauthorized user');
                     } catch (err: unknown) {

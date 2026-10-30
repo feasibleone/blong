@@ -254,6 +254,57 @@ config: {
 
 A complete working example is in the [`test/blong-sim-tcp`](../../../test/blong-sim-tcp) package.
 
+## Simulating a webhook platform
+
+A platform API that speaks JSON at fixed paths needs neither an OpenAPI spec nor a codec: the same
+`adapter.webhook` the real port extends serves it, with `listen` on, `mode: 'reply'` and no
+`identity` hook. The realm's `url` points at the simulator under `integration`, and the test reads
+what arrived from a recorder module rather than from a stub's opinion.
+
+```typescript
+// realm/blong-chat/sim/slackSim.ts
+export default adapter(() => ({
+    extends: 'adapter.webhook',
+    activation: {
+        default: {
+            type: 'slackSim',
+            listen: true,
+            namespace: 'slackSim',
+            hook: 'slackSim',
+            path: '/api/*',
+            // `reply` waits for the chain, so a test can read the answer the platform would give.
+            mode: 'reply',
+            server: {port: 18085},
+            imports: [/slackSim$/],
+        },
+    },
+}));
+```
+
+```typescript
+// realm/blong-chat/sim/slackSim/slackSimServer.ts (trimmed)
+async slackSimServer(context: ISimContext) {
+    const {path, body} = context.request;
+    simRecord({platform: 'slack', path, body}); // the assertion reads this
+    if (path.endsWith('chat.postMessage')) return {code: 200, body: {ok: true, ts: '1700000000.000100'}};
+    if (path.endsWith('views.open')) return {code: 200, body: {ok: true}};
+    // Answer a method you do not implement as a refusal, never as a plausible success.
+    return {code: 200, body: {ok: false, error: 'unknown_method'}};
+}
+```
+
+Two rules make this pattern worth more than a mock:
+
+- **The client side stays real.** A test posts a signed body built with the platform's own algorithm
+  (`createHmac` over the bytes it sends), so the parser, the signature check and the mapping are one
+  assertion. A stub would pass whatever the code did.
+- **A missing method is a refusal.** An unexpected call answered with a plausible body hides the bug
+  the simulator was built to expose.
+
+The `sim` layer loads only under `integration`, and the test group is listed in
+`config.integration.watch.test` or it never runs. A complete example is `realm/blong-chat/sim/` with
+its two groups in `server/test/test/`.
+
 ## Choosing between simulation and mocking
 
 | Situation                                       | Use                                     |

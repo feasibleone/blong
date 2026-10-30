@@ -10,7 +10,6 @@
                     "@kubernetes/client-node",
                     "@microsoft/kiota-abstractions",
                     "@slack/types",
-                    "@slack/webhook",
                     "@types/request",
                     "bson",
                     "form-data",

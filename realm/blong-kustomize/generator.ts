@@ -595,26 +595,39 @@ const unservedNamespaces = (plan: IDeploymentPlan): string[] => {
     return namespaces;
 };
 
-const serviceResource = (plan: IDeploymentPlan, service: IService): Record<string, unknown> => ({
-    apiVersion: 'v1',
-    kind: 'Service',
-    metadata: {name: service.name, namespace: plan.suite.namespace, labels: suiteLabels(plan)},
-    spec: {
-        type: 'ClusterIP',
-        selector: {
-            'app.kubernetes.io/instance': service.deployment,
-            'app.kubernetes.io/part-of': plan.suite.name,
+const serviceResource = (plan: IDeploymentPlan, service: IService): Record<string, unknown> => {
+    const deployment = plan.deployments.find(entry => entry.name === service.deployment);
+    return {
+        apiVersion: 'v1',
+        kind: 'Service',
+        metadata: {name: service.name, namespace: plan.suite.namespace, labels: suiteLabels(plan)},
+        spec: {
+            type: 'ClusterIP',
+            selector: {
+                'app.kubernetes.io/instance': service.deployment,
+                'app.kubernetes.io/part-of': plan.suite.name,
+            },
+            // The namespace is served by `RpcServer`, so the Service targets the RPC
+            // port — the one `ResolutionK8s` hands back for `rpc-<namespace>`. The gateway port rides
+            // beside it for the same reason it does on a namespace Service: the hostname is one and the
+            // resolver picks a port by the spelling of the id it was given.
+            //
+            // A port a realm contributes joins them, because an Ingress can only reach a port a Service
+            // publishes: a webhook declared `k8sPorts` was opened in the container and had no Service
+            // port behind it (`@@D-680`).
+            ports: [
+                {name: 'rpc', port: 8091, targetPort: 'rpc', protocol: 'TCP'},
+                {name: 'http', port: 8080, targetPort: 'http', protocol: 'TCP'},
+                ...(deployment?.ports ?? []).map(port => ({
+                    name: port.name,
+                    port: port.port,
+                    targetPort: port.name,
+                    protocol: port.protocol ?? 'TCP',
+                })),
+            ],
         },
-        // The namespace is served by `RpcServer`, so the Service targets the RPC
-        // port — the one `ResolutionK8s` hands back for `rpc-<namespace>`. The gateway port rides
-        // beside it for the same reason it does on a namespace Service: the hostname is one and the
-        // resolver picks a port by the spelling of the id it was given.
-        ports: [
-            {name: 'rpc', port: 8091, targetPort: 'rpc', protocol: 'TCP'},
-            {name: 'http', port: 8080, targetPort: 'http', protocol: 'TCP'},
-        ],
-    },
-});
+    };
+};
 
 /**
  * The indirection that lets a suite refer to a third-party service by an

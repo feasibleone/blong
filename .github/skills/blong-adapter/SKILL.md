@@ -236,20 +236,72 @@ reaches the `srv.db` adapter.
 
 **Use Cases:**
 
-- Receive HTTP webhooks
-- Handle incoming HTTP requests
-- API endpoint implementation
+- Receive HTTP webhooks from a platform and answer them
+- Post to that platform's API from the same port
+- Any port that has to be reached rather than only reach out
 
-**Implementation:**
+`adapter.webhook` is bidirectional: it posts a descriptor (`{path, method, headers, json}`) and,
+when `listen` is set, receives at a path with `{name}` segments and hands the request to three
+hooks. A port that extends it owns the protocol; the realm sees one vocabulary.
+
+**Implementation — the receiving half:**
 
 ```typescript
-// realmname/adapter/webhook.ts
-import {adapter} from '@feasibleone/blong';
-
-export default adapter(() => ({
+// core/blong-gogo/src/adapter/server/slack.ts (trimmed)
+export default adapter<IConfig>(() => ({
     extends: 'adapter.webhook',
+    activation: {
+        default: {
+            type: 'slack',
+            url: 'https://slack.com/api/', // trailing slash, or the last segment is dropped
+            listen: true,
+            path: '/chat/slack/{appId}/{clientId}/{action?}',
+            hook: 'slackIn',
+            namespace: 'slack',
+            // Slack allows three seconds: acknowledge, then let the realm run on.
+            mode: 'server',
+            server: {port: 8095},
+            response: {code: 200, body: 'EVENT_RECEIVED'},
+            destination: 'chat.in.receive',
+            imports: [/slackIn$/, /\.slack$/],
+            accounts: {},
+        },
+    },
 }));
 ```
+
+The hooks live beside the port in a handler group named after `hook`:
+
+| Hook              | Answers                                                                    |
+| ----------------- | -------------------------------------------------------------------------- |
+| `<hook>.identity` | The verified account and delivery id, or throws (its `statusCode` answers) |
+| `<hook>.message`  | The realm vocabulary, or `false` when there is nothing to process          |
+| `<hook>.server`   | The HTTP answer once the chain ran (`mode: 'reply'` sees the result)       |
+
+**Implementation — the posting half:** a handler group that returns descriptors; the port makes the
+call and returns what the platform said. Secrets come from `this.config.accounts`, never from a
+handler's argument.
+
+```typescript
+// core/blong-gogo/src/adapter/server/slack/slackMessageSendRequestSend.ts (trimmed)
+return function slackMessageSendRequestSend(this: {config?: IConfig}, params: ISendParams) {
+    const token = slackTokenGet(this.config?.accounts, params.account);
+    if (!token) throw errors['slack.accountMissing']({params: {account: params.account ?? ''}});
+    return {
+        path: 'chat.postMessage',
+        method: 'POST',
+        responseType: 'json',
+        headers: {authorization: `Bearer ${token}`},
+        json: {channel: params.conversationId},
+    };
+};
+```
+
+**What the port guarantees so the hooks do not have to:** a fast acknowledgement in `server` mode, a
+repeat delivery acknowledged and processed once (bounded memory, keyed by the delivery id `identity`
+returns), a `message` hook's `false` answered by the server hook, and a clean stop. The worked
+example is `realm/blong-chat` (`adapter/slack.ts`, `adapter/viber.ts`, and the `slackIn`/`viberIn`
+hooks). Full pattern: `@@doc:patterns/webhook#the-three-hooks`.
 
 ### 5. MongoDB Adapter
 

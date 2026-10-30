@@ -64,7 +64,7 @@ open (54)
 - `F-611` · ci — k3d Traefik needs ServiceLB and unprivileged host ports
 - `F-622` · ci — The Kustomize E2E workflow has no verb in blong-dev ci
 - `F-633` · ci — Lint fails a package on warnings, and an any alias hid where nothing is linted
-- `F-637` · ci — A leg that reports no test at all publishes no failure
+- `F-649` · ci — A leg that reports no test at all publishes no failure
 
 resolved (42)
 
@@ -936,7 +936,7 @@ in seven sibling realms only because those packages have no eslint config and ar
 typing it cost one more fix, since whereIn with an unknown array resolved to the overload that takes
 a column list.
 
-### F-637 — A leg that reports no test at all publishes no failure
+### F-649 — A leg that reports no test at all publishes no failure
 
 > _2026-10-30 · ci · open_
 
@@ -1577,3 +1577,7 @@ since its height is its own aspect ratio, and a section has at most two of them.
 Fixed: the poster image is no longer lazy, so it fetches, takes its natural height, and the embed
 shows the whole picture at the article width (verified on the built site: a 830x320 poster renders
 557x215 inside a 558px column).
+
+## Retired
+
+- F-637 — renumbered to F-649 (2026-10-30)

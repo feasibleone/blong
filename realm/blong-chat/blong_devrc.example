@@ -1,0 +1,70 @@
+### BLONG chat realm — local play
+#
+# Copy this file to the chat realm's folder as `.blong_devrc` and `blong` merges it over the suite's
+# `dev` config. Nothing here is a secret: the tokens below are placeholders, and the rc file is
+# gitignored where a real one is kept.
+#
+#   cp blong_devrc.example .blong_devrc
+#   blong ./index.ts
+#
+# The realm listens on 8095 (Slack) and 8096 (Viber) and answers the gateway on 8080. Slack and Viber
+# must both reach the listener from the internet, which is what ngrok is for:
+#
+#   ngrok http 8095 --domain=<your-slack-subdomain>.ngrok.app
+#   ngrok http 8096 --domain=<your-viber-subdomain>.ngrok.app
+#
+# Slack's Request URL is the listener's path with the app and client ids in it — the same two the
+# account below carries:
+#
+#   https://<your-slack-subdomain>.ngrok.app/chat/slack/A1/T1
+#
+# Event Subscriptions and Interactivity share that one URL, which is why the path has no verb in it.
+# You do not have to write it anywhere: the port asks the ngrok agent (`127.0.0.1:4040` by default)
+# which tunnel forwards its own listening port, and rewrites both Slack request URLs on every start —
+# after checking that the tunnel answers. All that step needs from you is a configuration token
+# (`xoxe-1-…`, from `Your Apps → App Config Tokens`); an account that names its own `url` (a
+# simulator) is never repointed.
+#
+# Viber is told its address the same way: the discovered tunnel plus the port's own path, registered
+# with `set_webhook` on start. `webhookUrl` or `ngrokUrl` override that when the tunnel is not the
+# way it is reached, and `chat.slack.ngrokAgentUrl` / `chat.viber.ngrokAgentUrl` name an agent that
+# is not on the default port.
+
+chat:
+    slack:
+        accounts:
+            demo:
+                # `Basic Information → App Credentials`, and `OAuth & Permissions → Bot User OAuth
+                # Token`. The bot needs `chat:write` to post and `files:read` to read what a person
+                # attaches; nothing else is subscribed.
+                appId: A1
+                clientId: T1
+                botToken: xoxb-your-bot-token
+                signingSecret: your-signing-secret
+                # With this set the app's Event Subscriptions and Interactivity follow the tunnel.
+                configToken: xoxe-1-your-app-configuration-token
+                # Optional: the API this account calls. Unset means `https://slack.com/api/` (or the
+                # port's `url`), which is what a simulator account overrides in a test run.
+                # url: http://127.0.0.1:18085/api/
+    viber:
+        accounts:
+            demo:
+                # `Viber Admin Panel → your bot → Edit info` for the token, and the id in the
+                # bot's public URL for the pair the path is built from.
+                appId: pa1
+                clientId: C1
+                authToken: your-viber-auth-token
+                # webhookUrl: https://your-viber-subdomain.ngrok.app/chat/viber/pa1/C1
+    chatDispatch:
+        # Which method receives a message from a person, per account. An account nobody maps falls
+        # to `*`, which is the realm's own `chat.in.message.ignore`: it logs the drop and
+        # acknowledges the platform. `forward` is read from the dispatch port's config, which is why
+        # it sits under `chatDispatch` and not at the top of `chat` (`@@F-641`).
+        forward:
+            '*': chat.in.message.ignore
+            # demo: myRealm.myHandler.receive
+
+# The log level the inbound hooks write at: a signature failure is worth seeing while learning the
+# app's credentials, and quiet once they work.
+adapter:
+    logLevel: debug

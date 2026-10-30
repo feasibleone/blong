@@ -93,8 +93,8 @@ active (74)
 - `D-662` · core/blong-browser — blong-browser names the feedback methods in portal config
 - `D-666` · core/blong-browser — The feedback wiring is read from the static portal config first
 - `D-667` · core/blong-browser — The mode's activity is a context, not a store subscription
-- `D-685` · core/blong-browser — The browser honours $meta.expect like the server does
-- `D-686` · core/blong-browser — The unit setup stubs the media and canvas primitives jsdom lacks
+- `D-695` · core/blong-browser — The browser honours $meta.expect like the server does
+- `D-696` · core/blong-browser — The unit setup stubs the media and canvas primitives jsdom lacks
 
 superseded (3)
 
@@ -1038,7 +1038,7 @@ translated label is not computed for a button nobody is annotating. Card and Edi
 children once and wrap them only when a node exists, so an inactive tree has exactly the DOM it had
 before the feature.
 
-### D-685 — The browser honours $meta.expect like the server does
+### D-695 — The browser honours $meta.expect like the server does
 
 > _2026-10-30 · core/blong-browser · active_
 
@@ -1056,7 +1056,7 @@ The spec keeps its own statement of what it provokes: `blongExpectedBrowserError
 Playwright run expects, which is the half no application code can silence — Chromium prints the
 console error for any non-2xx response itself.
 
-### D-686 — The unit setup stubs the media and canvas primitives jsdom lacks
+### D-696 — The unit setup stubs the media and canvas primitives jsdom lacks
 
 > _2026-10-30 · core/blong-browser · active_
 
@@ -1124,3 +1124,8 @@ Superseded: the seeding it describes was removed once the unbound token was meas
 unreadable.
 
 Superseded by `D-334`.
+
+## Retired
+
+- D-685 — renumbered to D-695 (2026-10-30)
+- D-686 — renumbered to D-696 (2026-10-30)

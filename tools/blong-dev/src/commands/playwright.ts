@@ -54,7 +54,7 @@ export async function playwright(args: string[]): Promise<void> {
     const env: NodeJS.ProcessEnv = {
         // The web servers Playwright starts inherit this, so a mock in a `sim` layer
         // binds the port of *this* package — a consuming package starts the same mock
-        // and two packages testing in parallel would otherwise collide (@@D-684).
+        // and two packages testing in parallel would otherwise collide (@@D-694).
         ...mockPortEnv(cwd),
         PATH: [localBin, blongDevBin, process.env['PATH'] ?? ''].join(PATH_SEP),
     };

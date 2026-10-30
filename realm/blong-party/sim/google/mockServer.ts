@@ -19,7 +19,7 @@ import http from 'node:http';
  * `GOOGLE_MOCK_PORT` when set — `blong-dev test` and `blong-dev playwright`
  * export it per package, so a package that merely *consumes* the party realm
  * (blong-sport attaches it for RBAC seeding) starts its own mock instead of
- * colliding with the party run beside it (@@D-684) — and on 9082 otherwise.
+ * colliding with the party run beside it (@@D-694) — and on 9082 otherwise.
  */
 
 const _port = Number(process.env.GOOGLE_MOCK_PORT ?? 9082);
@@ -163,7 +163,7 @@ function startMockGoogleServer(port: number): void {
         // process serving the same stateless mock on the same host (two packages of
         // the monorepo, or a hand-started `blong` beside a test run).  That mock
         // answers for this one — every client is configured with the *port* — so the
-        // run is unaffected, and naming the variable is the whole fix (@@D-684).
+        // run is unaffected, and naming the variable is the whole fix (@@D-694).
         if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
             console.warn(
                 `[mock-google] port ${port} is already bound by another process — using it ` +

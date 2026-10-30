@@ -719,8 +719,15 @@ export interface IPlanOptions {
 /** Layers whose groups never become a process of their own. */
 const NON_RUNTIME_LAYERS = new Set(['meta', 'error', 'test', 'api', 'init', 'sim']);
 
-/** Framework realms whose namespaces are plumbing, not application services. */
-const INTERNAL_REALMS = new Set(['blong']);
+/**
+ * Framework realms whose namespaces are plumbing, not application services.
+ *
+ * `adapter` is here as well: `core/blong-gogo`'s adapter realm now carries the chat ports' handler
+ * groups, and a group is what makes a realm look deployable — yet its adapters are carried by
+ * whichever realm instantiates them, and it cannot declare `k8sRealmRole: none` in its own config
+ * because `k8s` there is the switch that enables the Kubernetes adapter (`@@D-680`).
+ */
+const INTERNAL_REALMS = new Set(['blong', 'adapter']);
 
 /** Port groups that exist only for tests. */
 const INTERNAL_GROUPS = new Set(['testDispatch']);
@@ -901,8 +908,10 @@ const realmOf = (groupName: string): string => groupName.split('.')[0] ?? groupN
 export const layerSelectors = (view: IRegistryView): string[] => {
     const seen = new Set<string>();
     for (const group of view.groups) {
+        const realm = realmOf(group.name);
+        if (INTERNAL_REALMS.has(realm)) continue;
         const layer = runtimeLayer(group);
-        if (layer) seen.add(`${realmOf(group.name)}.${layer}`);
+        if (layer) seen.add(`${realm}.${layer}`);
     }
     return [...seen];
 };
@@ -1020,11 +1029,16 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
             )
             .flatMap(port => namespaceList(port.namespace));
 
+    /**
+     * What the ports of one realm contribute.
+     *
+     * Every port of the realm, not only the dispatch ones: a webhook port is an adapter, and its
+     * `k8sPorts`, `k8sSecrets` and ingress are exactly what the contribute keys exist for. The realm
+     * filter is the whole identity here — the ports of a realm are its process's ports (`@@D-680`).
+     */
     const contributionFor = (realm: string): IComponentK8sConfig[] =>
         view.ports
-            .filter(
-                port => isApplicationPort(port, view) && (port.id.split('.')[0] ?? '') === realm,
-            )
+            .filter(port => (port.id.split('.')[0] ?? '') === realm)
             .flatMap(port => (port.k8s ? [port.k8s] : []));
 
     const deployments: IDeployment[] = [...byName.entries()].map(([name, own]) => {
@@ -1148,8 +1162,19 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         return [{name: namespaceName, namespace, deployment}];
     });
 
+    /**
+     * A port that must be reachable from outside, whether or not it answers a namespace.
+     *
+     * An ingress contribution used to be read from dispatch ports only, so an adapter that received a
+     * webhook — the case the block exists for — declared one and had it dropped in silence
+     * (`@@D-680`). What makes a port eligible is the contribution, not its kind.
+     */
+    const contributesIngress = (port: IRegistryPort): boolean =>
+        isApplicationPort(port, view) ||
+        Object.keys(port.k8s?.k8sIngresses ?? {}).length > 0;
+
     const ingresses: IIngress[] = view.ports
-        .filter(port => isApplicationPort(port, view))
+        .filter(contributesIngress)
         .flatMap(port =>
             // Read per port rather than merged across them: a rule's Service defaults to the
             // deployment of the realm whose port declared it, so a name two realms both use is two
@@ -1171,6 +1196,20 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
                 }),
             ),
         );
+
+    /**
+     * One address per process that opens a port of its own.
+     *
+     * An Ingress backend is a Service, and a monolith has no namespace named after the suite — so a
+     * webhook path had no object to point at even once its contribution was read. A deployment that
+     * declares ports therefore gets a Service named after itself, unless a namespace Service already
+     * carries that name, which is the realm profile's case.
+     */
+    for (const deployment of deployments) {
+        if (!deployment.ports?.length) continue;
+        if (services.some(service => service.name === deployment.name)) continue;
+        services.push({name: deployment.name, namespace, deployment: deployment.name});
+    }
 
     const manifests: Record<string, unknown>[] = view.ports
         .filter(port => isApplicationPort(port, view))

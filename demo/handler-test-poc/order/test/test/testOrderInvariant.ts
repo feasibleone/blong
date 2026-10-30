@@ -90,7 +90,7 @@ export default handler(({handler: {loginTokenCreate, orderOrderCreate}}) => ({
         async function invalidInput(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
             // Each refusal below is the assertion, so each is declared: the framework
             // logs what a caller expects at `debug` instead of beside the failures
-            // nobody asked for (@@D-685).
+            // nobody asked for (@@D-695).
             await assert.rejects(
                 orderOrderCreate(
                     {items: [], customerId: 'inv-4'},
