@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.0](https://github.com/feasibleone/blong/compare/blong-test-v1.11.0...blong-test-v1.12.0) (2026-10-30)
+
+
+### Features
+
+* blong-feedback ([8ce4585](https://github.com/feasibleone/blong/commit/8ce4585dbff462b6b4191d231b2510e30f3962af))
+
+
+### Bug Fixes
+
+* dbTest seed handling ([c102914](https://github.com/feasibleone/blong/commit/c1029142de54658eb3b08621db90d6fba23d9fac))
+
 ## [1.11.0](https://github.com/feasibleone/blong/compare/blong-test-v1.10.0...blong-test-v1.11.0) (2026-10-19)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/feasibleone/blong/compare/blong-gateway-v1.6.0...blong-gateway-v1.6.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* dbTest seed handling ([c102914](https://github.com/feasibleone/blong/commit/c1029142de54658eb3b08621db90d6fba23d9fac))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.5.4...blong-gateway-v1.6.0) (2026-10-25)
 
 
