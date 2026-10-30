@@ -36,12 +36,21 @@ export default realm(() => ({
                 // Local Google OAuth mock for dev/integration testing.  Production
                 // suites override this (or omit it) to use the real Google
                 // endpoints (see accessIdentityCheck).
+                //
+                // The port is the *package's* own, because the mock is started by the
+                // process that loads the `sim` layer and a suite that merely consumes
+                // the party realm starts it too: `blong-dev test` and
+                // `blong-dev playwright` export `GOOGLE_MOCK_PORT` from the package's
+                // `rush.json` index, and `realm/blong-party/sim/google` binds the same
+                // variable (@@D-684).  9082 is the standalone default, which is what a
+                // hand-started `blong` and the browser's static fallback use.
                 google: {
-                    baseUrl: 'http://localhost:9082',
+                    baseUrl: `http://localhost:${process.env.GOOGLE_MOCK_PORT ?? 9082}`,
                     clientId: 'mock-client',
                     clientSecret: 'mock-secret',
                     redirectUri: 'http://localhost:9101/oauth/callback',
-                }, // One PBKDF2 iteration — see the `default` comment above.  A local
+                },
+                // One PBKDF2 iteration — see the `default` comment above.  A local
                 // login is not a security boundary the way a deployed one is.
                 password: {iterations: 1},
             },

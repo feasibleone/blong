@@ -302,11 +302,13 @@ export default handler(
                     );
                     assert.equal(shot.shotData, shotData, 'the stored picture is returned');
                     assert.equal(shot.mimeType, 'image/jpeg', 'with its type');
+                    // Declared: the refusal is the assertion, so it belongs at `debug`
+                    // rather than beside the failures nobody asked for (@@D-685).
                     await assert.rejects(
                         () =>
                             feedbackShotGet(
                                 {sessionId: '9d1c1f7a-0000-4000-8000-000000000000'},
-                                $meta,
+                                {...$meta, expect: 'feedback.shotMissing'},
                             ) as Promise<unknown>,
                         /has no screenshot/,
                         'an unknown session is refused',

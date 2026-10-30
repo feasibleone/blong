@@ -31,7 +31,10 @@ export default handler(
                 // 1. No auth: protected `$subject` call without any token → 401.
                 async function httpNoAuth(assert: IAssert, {$meta}: {$meta: IMeta}) {
                     try {
-                        await $subject$ObjectFind({paging: {pageNumber: 1, pageSize: 10}}, $meta);
+                        await $subject$ObjectFind(
+                            {paging: {pageNumber: 1, pageSize: 10}},
+                            {...$meta, expect: 'gateway.jwtMissingHeader'},
+                        );
                         assert.fail('$subject$ObjectFind should have thrown without auth');
                     } catch (err: unknown) {
                         const status = getHttpStatus(err);
@@ -53,7 +56,7 @@ export default handler(
                                     $objectStatus: 'draft',
                                 },
                             },
-                            $meta,
+                            {...$meta, expect: 'gateway.notAllowed'},
                         );
                         assert.fail('$subject$ObjectAdd should have thrown for unauthorized user');
                     } catch (err: unknown) {

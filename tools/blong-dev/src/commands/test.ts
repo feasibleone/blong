@@ -3,6 +3,7 @@ import {join} from 'node:path';
 
 import {describeAllurePublish, publishAllureReport} from '../report/allurePublish.ts';
 import {runTap} from '../report/tapReport.ts';
+import {mockPortEnv} from '../utils/mockPort.ts';
 import {toolEnv} from '../utils/toolPath.ts';
 
 /**
@@ -39,7 +40,10 @@ const TAP_TIMEOUT_SECONDS = 240;
  */
 export async function test(args: string[]): Promise<void> {
     const cwd = process.cwd();
-    const env = toolEnv(cwd);
+    // A simulated server in a realm's `sim` layer binds a port in this process, and a
+    // consuming package starts the same mock: the port has to be the package's own, or
+    // two packages testing in parallel collide on it (@@D-684).
+    const env = toolEnv(cwd, mockPortEnv(cwd));
 
     // Fresh coverage output each run so tap V8 JSONs never accumulate.
     rmSync(join(cwd, '.tap', 'coverage'), {recursive: true, force: true});

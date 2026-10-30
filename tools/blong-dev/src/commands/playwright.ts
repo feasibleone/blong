@@ -12,6 +12,7 @@ import {
 } from '../report/reportTypes.ts';
 import {clearRun, writeRun} from '../report/reportWrite.ts';
 import {ensureBrowsers} from '../utils/browsers.ts';
+import {mockPortEnv} from '../utils/mockPort.ts';
 import {runTool, type RunOptions} from '../utils/runTool.ts';
 import {toolEnv} from '../utils/toolPath.ts';
 
@@ -51,7 +52,10 @@ export async function playwright(args: string[]): Promise<void> {
     const v8Dir = join(coverageDir, 'v8');
 
     const env: NodeJS.ProcessEnv = {
-        ...process.env,
+        // The web servers Playwright starts inherit this, so a mock in a `sim` layer
+        // binds the port of *this* package — a consuming package starts the same mock
+        // and two packages testing in parallel would otherwise collide (@@D-684).
+        ...mockPortEnv(cwd),
         PATH: [localBin, blongDevBin, process.env['PATH'] ?? ''].join(PATH_SEP),
     };
 

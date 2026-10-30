@@ -26,6 +26,13 @@ const LOGIN_ASSERTION = (() => {
 })();
 
 test.describe('Access test runs', () => {
+    // The authorization flow asks for refusals on purpose — a protected call with no
+    // token (401), then the same call as a user without the action (403) — and Chromium
+    // logs every non-2xx response as a `Failed to load resource` console error that no
+    // application code can suppress.  The declaration names the method, because the note
+    // carries the request URL; the flow's own assertions are what prove the refusal.
+    test.use({blongExpectedBrowserErrors: ['access/test/private']});
+
     test('runs the browser session flow from the Test runs page', async ({portal}, testInfo) => {
         const page = portal.page;
         test.setTimeout(180_000);

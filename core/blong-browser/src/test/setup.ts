@@ -183,3 +183,25 @@ Object.defineProperty(window, 'matchMedia', {
 // URL.createObjectURL / revokeObjectURL are not implemented in jsdom
 global.URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-url');
 global.URL.revokeObjectURL = vi.fn();
+
+// Media playback and a 2D canvas are not implemented in jsdom either, and it
+// reports each one through `console.error` as `Error: Not implemented:
+// HTMLMediaElement.prototype.play` — which reads as a failure of the code under
+// test rather than as a gap in the simulator. They come from the screen capture
+// (`feedback/capture.ts`), which draws a captured frame through a <video> into a
+// canvas; the real path runs in a browser, where `realm/blong-sport`'s
+// `test/feedback.play.ts` stubs the picker and captures the frame. The unit test
+// asserts the overlay attribute around the grab, so it needs the primitives to
+// exist, not to work (@@D-686).
+Object.defineProperty(window.HTMLMediaElement.prototype, 'play', {
+    writable: true,
+    value: vi.fn().mockResolvedValue(undefined),
+});
+Object.defineProperty(window.HTMLMediaElement.prototype, 'pause', {
+    writable: true,
+    value: vi.fn(),
+});
+window.HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
+    drawImage: vi.fn(),
+})) as unknown as HTMLCanvasElement['getContext'];
+window.HTMLCanvasElement.prototype.toDataURL = vi.fn(() => 'data:image/jpeg;base64,');

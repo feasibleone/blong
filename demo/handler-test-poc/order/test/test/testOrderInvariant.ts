@@ -88,8 +88,14 @@ export default handler(({handler: {loginTokenCreate, orderOrderCreate}}) => ({
 
         // Test invariant: error on invalid input
         async function invalidInput(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+            // Each refusal below is the assertion, so each is declared: the framework
+            // logs what a caller expects at `debug` instead of beside the failures
+            // nobody asked for (@@D-685).
             await assert.rejects(
-                orderOrderCreate({items: [], customerId: 'inv-4'}, $meta) as Promise<unknown>,
+                orderOrderCreate(
+                    {items: [], customerId: 'inv-4'},
+                    {...$meta, expect: 'orderInvalidItems'},
+                ) as Promise<unknown>,
                 {type: 'orderInvalidItems'},
                 'Empty items array throws orderInvalidItems',
             );
@@ -100,7 +106,7 @@ export default handler(({handler: {loginTokenCreate, orderOrderCreate}}) => ({
                         items: [{name: 'Bad', price: -5, quantity: 1}],
                         customerId: 'inv-5',
                     },
-                    $meta,
+                    {...$meta, expect: 'orderNegativePrice'},
                 ) as Promise<unknown>,
                 {type: 'orderNegativePrice'},
                 'Negative price throws orderNegativePrice',

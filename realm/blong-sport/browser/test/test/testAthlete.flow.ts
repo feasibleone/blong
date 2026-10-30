@@ -31,7 +31,10 @@ export default handler(
                 // 1. No auth: protected `sport` call without any token → 401.
                 async function httpNoAuth(assert: IAssert, {$meta}: {$meta: IMeta}) {
                     try {
-                        await sportAthleteFind({paging: {pageNumber: 1, pageSize: 10}}, $meta);
+                        await sportAthleteFind(
+                            {paging: {pageNumber: 1, pageSize: 10}},
+                            {...$meta, expect: 'gateway.jwtMissingHeader'},
+                        );
                         assert.fail('sportAthleteFind should have thrown without auth');
                     } catch (err: unknown) {
                         const status = getHttpStatus(err);
@@ -54,7 +57,7 @@ export default handler(
                                     athleteStatus: 'active',
                                 },
                             },
-                            $meta,
+                            {...$meta, expect: 'gateway.notAllowed'},
                         );
                         assert.fail('sportAthleteAdd should have thrown for unauthorized user');
                     } catch (err: unknown) {

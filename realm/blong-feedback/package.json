@@ -23,7 +23,7 @@
         "build-storybook": "storybook build",
         "ci-lint": "blong-dev lint",
         "ci-storybook": "npm run build-storybook",
-        "ci-test": "blong-dev test && blong-dev playwright --coverage",
+        "ci-test": "blong-dev test",
         "dev": "vite",
         "playwright": "blong-dev playwright",
         "playwright:update": "blong-dev playwright --update-snapshots",

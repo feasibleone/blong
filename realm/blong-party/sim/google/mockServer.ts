@@ -16,7 +16,10 @@ import http from 'node:http';
  *
  * The mock is started as a guarded module-level side effect so it is up as soon
  * as the `sim` layer is imported (integration intent only).  It listens on
- * port 9082 by default (override with GOOGLE_MOCK_PORT).
+ * `GOOGLE_MOCK_PORT` when set — `blong-dev test` and `blong-dev playwright`
+ * export it per package, so a package that merely *consumes* the party realm
+ * (blong-sport attaches it for RBAC seeding) starts its own mock instead of
+ * colliding with the party run beside it (@@D-684) — and on 9082 otherwise.
  */
 
 const _port = Number(process.env.GOOGLE_MOCK_PORT ?? 9082);
@@ -156,6 +159,18 @@ function startMockGoogleServer(port: number): void {
     });
 
     server.on('error', error => {
+        // A busy port is worth one line, not a stack: the usual cause is a second
+        // process serving the same stateless mock on the same host (two packages of
+        // the monorepo, or a hand-started `blong` beside a test run).  That mock
+        // answers for this one — every client is configured with the *port* — so the
+        // run is unaffected, and naming the variable is the whole fix (@@D-684).
+        if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+            console.warn(
+                `[mock-google] port ${port} is already bound by another process — using it ` +
+                    'instead of starting a second mock (set GOOGLE_MOCK_PORT to pick another)',
+            );
+            return;
+        }
         console.error('[mock-google] server error:', error);
     });
     server.listen(port, '0.0.0.0');

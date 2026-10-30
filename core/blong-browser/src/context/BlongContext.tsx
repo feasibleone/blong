@@ -5,6 +5,7 @@
 import type {IHandlerProxy, ILogger, IMeta} from '@feasibleone/blong';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {createContext, use, useMemo, type ReactNode} from 'react';
+import {isExpectedError} from '../expected.js';
 import {blongEvents} from '../lib/eventBus.js';
 import {schemaRegistry as defaultSchemaRegistry} from '../schema/registry.js';
 import {useAppStore, type TranslationDict} from '../state/appStore.js';
@@ -196,6 +197,17 @@ function wrapHandlerProxy(handler: AnyHandlerProxy['handler']): AnyHandlerProxy[
                     return result;
                 } catch (err) {
                     blongEvents.emit('action:error', {method, params, error: err});
+                    const blongErr = err as Partial<IBlongError>;
+                    // A caller that declared the failure — `{...$meta, expect: 'x.y'}` —
+                    // gets it recorded, not broadcast: the same demotion the server
+                    // applies at every adapter boundary, so a deliberate refusal in a
+                    // flow leaves no error line and no dialog (@@D-685).
+                    if (isExpectedError(blongErr.type, (args[1] as IMeta | undefined)?.expect)) {
+                        console.debug(`[blong] ${method} failed as declared`, {
+                            type: blongErr.type,
+                        });
+                        throw err;
+                    }
                     // Name the failed call in the console. A popup that says only
                     // "Not Found" does not say what was not found, and neither does
                     // the dialog's own log line — the method is the context that
@@ -207,7 +219,6 @@ function wrapHandlerProxy(handler: AnyHandlerProxy['handler']): AnyHandlerProxy[
                         params: Object.keys((params as object | undefined) ?? {}),
                         error: err,
                     });
-                    const blongErr = err as Partial<IBlongError>;
                     if (!blongErr.validation?.length) {
                         if (isAuthError(err)) {
                             // Token renewal already failed in the codec — ask the
