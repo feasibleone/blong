@@ -14,10 +14,11 @@ open (4)
 - `F-643` · realm/blong-chat — A realm-layer simulator reads its config from inside the realm block
 - `F-644` · realm/blong-chat — The suite and a running dev process want the same fixed ports
 
-resolved (2)
+resolved (3)
 
 - `F-642` · realm/blong-chat — A nested handler's error arrives as a value, not a rejection
 - `F-646` · realm/blong-chat — A platform limit was assumed, not read, and it shaped the default
+- `F-650` · realm/blong-chat — A wrong example looked like a missing protocol feature
 
 <!-- /memory:index -->
 
@@ -107,3 +108,23 @@ reference page before designing around a limitation — `available_in_surfaces` 
 an entry that can be retested rather than in a comment that reads as fact.
 
 The default is inline now, and the platform rule is asserted in the port tests rather than assumed.
+
+### F-650 — A wrong example looked like a missing protocol feature
+
+> _2026-10-31 · realm/blong-chat · resolved_
+
+The chat realm's own `.http` examples sent `params: [{...}]`, copied from the internal RPC server's
+shape, and the first call failed validation. The repair I reached for was to make the _gateway_
+accept both forms, as a JSON-RPC conformance argument — and it went into `Gateway.ts` as a
+body-schema union plus an unwrap, with a test. It was asked for, so it was not wrong to consider; it
+was wrong to do without checking who else sent the array form, because the answer was nobody: the
+one committed example that looked like it (`demo/blong-hello`) has no exported `Handler` type, so no
+schema validated it, the array was handed to a handler that ignored its argument, and the example
+had been passing by accident. The cost was paid by every realm — each gateway route's published body
+schema became `anyOf` — for a caller shape the framework never promised. The lesson is to price a
+protocol change by who it serves and what it shows: an example that disagrees with the contract is
+the thing to fix, and the cheaper question ("what does the other API do with params?") is exactly
+the one that produces a wrong answer, because two surfaces can share a word and not a meaning.
+
+Reverted: the gateway keeps by-name params (`@@D-698`), and the examples that disagreed were fixed
+instead.

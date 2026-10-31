@@ -7,7 +7,7 @@ import {handler, type IMeta} from '@feasibleone/blong';
  *
  *   POST http://localhost:8080/rpc/hello/hello
  *   Content-Type: application/json
- *   { "jsonrpc": "2.0", "method": "hello.hello", "params": [{"name": "World"}], "id": 1 }
+ *   { "jsonrpc": "2.0", "method": "hello.hello", "params": {"name": "World"}, "id": 1 }
  */
 export default handler(
     () =>

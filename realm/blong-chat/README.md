@@ -83,8 +83,9 @@ curl -s -X POST http://localhost:8080/rpc/chat/prompt/ask -H 'content-type: appl
 Add `"presentation":"form"` to that call and the same question arrives as one button that opens a
 modal with the checkboxes and a text box in it.
 
-JSON-RPC allows positional params, so `"params": [{…}]` and `"params": {…}` are the same call: the
-gateway unwraps a single positional value into the object the method's schema declares.
+`params` is the object the method's schema declares. Positional params — `"params": [{…}]` — belong
+to the internal RPC server on 8091, where a handler's arguments are a list with `$meta` last; the
+public gateway hands one params value to one handler.
 
 A question that nobody answers fails as `chat.promptTimeout` — the alternative is a request that
 holds a connection until the process restarts. A control the platform cannot render is refused with

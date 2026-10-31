@@ -1,0 +1,232 @@
+@host = http://localhost:8080
+// @slack = http://localhost:8095/chat/slack/A1/T1
+@slack = {{$shared blong-chat-slack}}
+@viber = http://localhost:8096/chat/viber/pa1/C1
+@account = blong-bot
+@conversation = C0CDAM7UJ03
+
+### What is waiting for an answer
+#
+# `params` is the object the method's schema declares. Positional params — `params: [{…}]` — belong to
+# the internal RPC server (port 8091), where a handler's arguments are a list with `$meta` last; the
+# public gateway hands one params value to one handler.
+
+POST {{host}}/rpc/chat/prompt/find
+Content-Type: application/json
+
+{ "jsonrpc": "2.0", "method": "chat.prompt.find", "params": {}, "id": 1 }
+
+### Post a message to a conversation
+
+POST {{host}}/rpc/chat/out/messageSend
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "method": "chat.out.messageSend",
+    "params": {
+        "platform": "slack",
+        "account": "{{account}}",
+        "conversationId": "{{conversation}}",
+        "text": "hello from the gateway"
+    },
+    "id": 1
+}
+
+### Ask a single-choice question, answered in the message itself
+#
+# Inline is the default: the options are radio buttons in the message and the submit under them, so a
+# person answers without leaving the conversation (Viber: keyboard buttons). Once answered, the message
+# rewrites itself — the options stay, the pick is marked, the controls go, and the line under them says
+# who answered (`🗨️ <@the-person> answered`). That happens before the ask returns, and
+# `"echoAnswer": false` on one question leaves the message as it was.
+
+POST {{host}}/rpc/chat/prompt/ask
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "method": "chat.prompt.ask",
+    "params": {
+        "platform": "slack",
+        "account": "{{account}}",
+        "conversationId": "{{conversation}}",
+        "text": "Which environment?",
+        "kind": "choice",
+        "options": [
+            {"value": "dev", "label": "Development"},
+            {"value": "prod", "label": "Production"}
+        ],
+        "timeoutMs": 120000
+    },
+    "id": 2
+}
+
+### Ask a single-choice question that also accepts something typed
+#
+# `placeholder` is what asks for a typed alternative — the editor's question tool offers options and a
+# box to type into. Slack cannot put a text input in a message, so inline the message keeps the radio
+# buttons and adds `or reply here: <placeholder>` under them: a typed reply in that conversation
+# answers too. `"presentation": "form"` puts the pair in one place instead — see the next request.
+
+POST {{host}}/rpc/chat/prompt/ask
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "method": "chat.prompt.ask",
+    "params": {
+        "platform": "slack",
+        "account": "{{account}}",
+        "conversationId": "{{conversation}}",
+        "text": "Which environment?",
+        "kind": "choice",
+        "options": [
+            {"value": "dev", "label": "Development"},
+            {"value": "prod", "label": "Production"}
+        ],
+        "placeholder": "Another environment",
+        "presentation": "form",
+        "timeoutMs": 120000
+    },
+    "id": 3
+}
+
+### Ask a multiple-choice question (check boxes)
+#
+# The message shows one checkbox per option and a submit under them; a tick is reported to the realm
+# as it happens, and the submit is what answers. Because a placeholder is given, the answer may also
+# carry `text` — whatever was typed in reply. Viber has no checkbox and refuses this with
+# `chat.platformUnsupported` rather than turning it into two questions.
+
+POST {{host}}/rpc/chat/prompt/ask
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "method": "chat.prompt.ask",
+    "params": {
+        "platform": "slack",
+        "account": "{{account}}",
+        "conversationId": "{{conversation}}",
+        "text": "Which checks should run?",
+        "kind": "multiChoice",
+        "options": [
+            {"value": "unit", "label": "Unit tests", "description": "the fast ones"},
+            {"value": "lint", "label": "Lint"},
+            {"value": "int", "label": "Integration"}
+        ],
+        "placeholder": "Anything else to run",
+        "timeoutMs": 120000
+    },
+    "id": 4
+}
+
+### Ask a free-text question
+#
+# Nothing to pick, so the modal is one text box; on Viber the question is a message and the reply is
+# what answers it, because a typed answer carries no prompt id and is matched by the conversation.
+# This one asks not to be echoed, which is what a caller wants when the answer is a secret or is long.
+
+POST {{host}}/rpc/chat/prompt/ask
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "method": "chat.prompt.ask",
+    "params": {
+        "platform": "slack",
+        "account": "{{account}}",
+        "conversationId": "{{conversation}}",
+        "text": "What should the release be called?",
+        "kind": "text",
+        "placeholder": "v1.2.0-rc.1",
+        "echoAnswer": false,
+        "timeoutMs": 120000
+    },
+    "id": 5
+}
+
+### Answer a question from a program instead of a person
+#
+# A caller that knows the prompt id answers with the flat fields; a prompt nobody is waiting for is
+# acknowledged rather than refused, because the click may have arrived after the ask gave up.
+
+POST {{host}}/rpc/chat/in/answerReceive
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "method": "chat.in.answer.receive",
+    "params": {
+        "platform": "slack",
+        "account": "{{account}}",
+        "conversationId": "{{conversation}}",
+        "promptId": "00000000-0000-4000-8000-000000000000",
+        "value": "dev"
+    },
+    "id": 6
+}
+
+### The Slack challenge
+#
+# What Slack sends when the Request URL is saved. Without the answer the app can never be installed;
+# the signing secret has to match, so this one only works with the real secret in the rc file.
+
+POST {{slack}}
+Content-Type: application/json
+X-Slack-Request-Timestamp: 1700000000
+X-Slack-Signature: v0=replace-with-a-real-signature
+
+{ "type": "url_verification", "challenge": "abc123" }
+
+### A message, as Slack delivers one
+#
+# `event.bot_id` is what keeps a reply from answering itself, and `client_msg_id` is the delivery id
+# Slack retries with — the receiver acknowledges a retry and processes it once.
+
+POST {{slack}}
+Content-Type: application/json
+X-Slack-Request-Timestamp: 1700000000
+X-Slack-Signature: v0=replace-with-a-real-signature
+
+{
+    "type": "event_callback",
+    "event_id": "Ev0001",
+    "event": {
+        "type": "message",
+        "client_msg_id": "Ev0001",
+        "ts": "1700000000.000100",
+        "channel": "D1",
+        "user": "U1",
+        "text": "hello"
+    }
+}
+
+### A button, as Slack posts one back
+#
+# `chatPrompt:<promptId>:<value>` is the choice button; `chatPromptForm:<promptId>` opens the modal a
+# multiple choice or a text question is answered in.
+
+POST {{slack}}
+Content-Type: application/x-www-form-urlencoded
+X-Slack-Request-Timestamp: 1700000000
+X-Slack-Signature: v0=replace-with-a-real-signature
+
+payload={"type":"block_actions","trigger_id":"trigger-1","channel":{"id":"D1"},"user":{"id":"U1"},"actions":[{"action_id":"chatPrompt:00000000-0000-4000-8000-000000000000:dev","value":"dev"}]}
+
+### A Viber message
+#
+# Viber signs the body itself with the bot's auth token, and expects `{status: 0}` back.
+
+POST {{viber}}
+Content-Type: application/json
+X-Viber-Content-Signature: replace-with-a-real-signature
+
+{
+    "event": "message",
+    "timestamp": 1700000000000,
+    "message_token": 1700000000001,
+    "sender": {"id": "U1", "name": "Someone"},
+    "message": {"type": "text", "text": "hello"}
+}
