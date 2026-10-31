@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.2.0...blong-kustomize-v0.3.0) (2026-10-31)
+
+
+### Features
+
+* blong-chat ([045ad99](https://github.com/feasibleone/blong/commit/045ad99ac536a47252629c7739cafdbcf9df6c3d))
+
 ## [0.2.0](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.1.0...blong-kustomize-v0.2.0) (2026-10-28)
 
 
