@@ -1,7 +1,8 @@
-import {handler} from '@feasibleone/blong';
+import {handler, type IMeta} from '@feasibleone/blong';
 import type {IChatAnswer, IChatInbound} from '@feasibleone/blong/types';
 
 import {pendingKey, pendingTake} from '../prompt/pending.ts';
+import {forwardTarget, type IChatDispatchPort} from '../settings.ts';
 
 /**
  * `chat.in.answer.receive` — the answer to a question, delivered once.
@@ -15,6 +16,11 @@ import {pendingKey, pendingTake} from '../prompt/pending.ts';
  * Two callers reach it with two shapes: the platform's port sends a whole `IChatInbound`, while the
  * gateway route sends the flat fields a caller naturally has. The flat form is widened here rather
  * than at every entry point, so one method keeps one contract.
+ *
+ * An answer nobody is waiting for has a consumer when one is configured: the prompt it answers lived
+ * in a promise this process may no longer hold — after a timeout, or in another process — and the
+ * realm that asked is the only one that can decide what a late answer means (`@@D-702`). With no
+ * consumer the answer is acknowledged and logged, which is what a click after a timeout gets.
  */
 export interface IChatAnswerCall {
     platform: string;
@@ -49,7 +55,10 @@ const asInbound = (
 };
 
 export default handler(() => ({
-    async chatInAnswerReceive(params: IChatInbound | IChatAnswerCall): Promise<{handled: boolean}> {
+    async chatInAnswerReceive(
+        params: IChatInbound | IChatAnswerCall,
+        $meta: IMeta,
+    ): Promise<{handled: boolean}> {
         const inbound = asInbound(params);
         const {answer} = inbound;
         const entry = pendingTake(pendingKey(answer.promptId, inbound));
@@ -65,9 +74,14 @@ export default handler(() => ({
             entry.resolve(empty && entry.pick ? {...answer, ...entry.pick} : answer);
             return {handled: true};
         }
-        // Nothing waits for it: the click arrived after the ask gave up, which the port has already
-        // logged as the request it answered. Acknowledging is the whole answer — the platform retries a
-        // refusal, and a caller cannot un-timeout a question.
+        // Nothing waits for it here. The consumer this account is configured with gets it — the realm
+        // that asked may still be holding the session, on this host or on another one (`@@D-702`).
+        const port = this as unknown as IChatDispatchPort;
+        const target = forwardTarget(port.config, inbound.account);
+        if (target && target !== 'chat.in.answer.receive')
+            await port.dispatch(inbound, {...$meta, method: target, mtid: 'request'});
+        // Acknowledged either way: the platform has already been answered, and a caller cannot
+        // un-timeout a question.
         return {handled: true};
     },
 }));

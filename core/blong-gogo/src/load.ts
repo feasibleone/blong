@@ -799,8 +799,23 @@ export default async function loadRealm<T extends TSchema>(
                      * what the run *does* is the owning adapter's — `schema.sync` and `schema.seed`
                      * in the `blong-server` realm's `db` adapter — because the same intent may
                      * activate the equivalent work on another adapter.
+                     *
+                     * It serves nothing, so nothing that would serve is started: no gateway, no
+                     * socket to accept a call on, no introspection surface. That is not an
+                     * optimisation. The gateway is what asks for the generated validations, and
+                     * building them reads every public model through the handler proxy — a
+                     * migration process has no gateway to route them to, so what was left was a
+                     * call dialling a service that does not exist (`F-653`).
                      */
-                    upgrade: {exit: true},
+                    upgrade: {
+                        gateway: false,
+                        rpcServer: false,
+                        apiGateway: false,
+                        restFs: false,
+                        systemDebug: false,
+                        mcp: false,
+                        exit: true,
+                    },
                     /**
                      * A CLI process does its work in-process and exits: it
                      * serves nothing, watches nothing, and resolves every
@@ -1837,6 +1852,68 @@ export default async function loadRealm<T extends TSchema>(
                     getProgress: () => ({done: loadedCount, total: modules.length}),
                 },
             );
+        }
+    }
+    /**
+     * The prototypes this realm ships, registered as lazy port entries.
+     *
+     * A `thunk` folder is scanned, never imported: each `<name>.ts` goes into the registry as
+     * `<realm>.<name>` with a proxy in place of the factory, and the proxy is what pulls the module
+     * — and the `<name>/` group beside it, which is where a base's methods live — the first time
+     * something names it. That is either an instance's `extends: '<realm>.<name>'` or a process
+     * that starts the base itself; both await, so a promise-returning entry needs no change at
+     * either call site (`@@D-720` `@@T-593`).
+     *
+     * Nothing is registered under a name another child already claimed, and a folder that does not
+     * exist is skipped: a realm may declare the folder its published build carries.
+     */
+    for (const folder of Array.isArray((mod as {thunk?: unknown}).thunk)
+        ? ((mod as {thunk?: string[]}).thunk ?? [])
+        : []) {
+        const dir = platformApi.join(base, folder);
+        if (!platformApi.existsSync(dir)) continue;
+        const entries = await platformApi.scan(dir);
+        const groups = new Set(entries.filter(entry => entry.isDirectory()).map(entry => entry.name));
+        const groupNameOf = (name: string): string => name;
+        const layerOf = (apply: (api: {result: unknown}) => {result: unknown}): IRealm =>
+            (
+                apply(
+                    layerProxy(
+                        api?.error,
+                        api?.registry?.objectSchema,
+                        api?.apiSchema,
+                        api?.port,
+                        mergedConfig as unknown as Parameters<typeof layerProxy>[4],
+                        api?.configRuntime,
+                    ),
+                ) as {result: IRealm}
+            ).result;
+        for (const entry of entries) {
+            if (!entry.isFile() || !/\.ts$/.test(entry.name) || /\.test\.ts$/.test(entry.name)) continue;
+            const name = entry.name.replace(/\.ts$/, '');
+            const id = `${String(mergedConfig.name)}.${name}`;
+            if (api!.registry?.ports?.has(id)) continue;
+            let factory: unknown;
+            api!.registry?.thunks?.set(id, async () => {
+                if (factory) return factory;
+                realm ||= new RealmImpl(mergedConfig, api!, rootKind);
+                // The group first: it is where a base's methods live, and the instance that named
+                // this base is attached to them the moment it is created.
+                if (groups.has(name)) {
+                    const group = await api!.watch!.load(mergedConfig, true, false, base, folder, name);
+                    realm.addLayer(groupNameOf(name), layerOf(group as never));
+                }
+                // The module itself is imported and its factory kept — deliberately not registered
+                // as a layer, because a layer becomes a port and a port is started in every process.
+                const module_ = (await import(
+                    /* @vite-ignore */ platformApi.join(dir, entry.name)
+                )) as {default?: unknown};
+                if (typeof module_.default !== 'function') {
+                    throw new Error(`${id} is not an adapter: ${entry.name} has no factory to extend`);
+                }
+                factory = module_.default;
+                return factory;
+            });
         }
     }
     realm ||= new RealmImpl(mergedConfig, api!, rootKind);

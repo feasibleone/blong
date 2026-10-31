@@ -38,15 +38,12 @@ active (78)
 - `D-187` · docs — RBAC and ACL docs are three tiers, and refer to the README instead of linking it
 - `D-314` · ci — Only the job that runs rush rebuild may write the shared pnpm cache
 - `D-316` · ci — Trace links are predicted from the reports base URL
-- `D-317` · ci — The role baseline was regenerated locally, not in CI
-- `D-320` · cross-cutting — The rebuild is coordinated by two durable counters, not a dirty flag
 - `D-321` · cross-cutting — A management write is atomic with its rebuild; a deferred one is counted
 - `D-324` · cross-cutting — core and blong-access are library realms, and super is how a realm
   reaches them
 - `D-326` · cross-cutting — Delegation reaches an earlier group on the same port, and nothing else
 - `D-232` · cross-cutting — The dev shortcuts run package scripts, and t/p complete the package's
   test files
-- `D-338` · ci — A package with no Allure report publishes a rendered page
 - `D-339` · ci — The browser preflight belongs to the leg, not to the workflow
 - `D-385` · cross-cutting — Prose names the layer a component is, not the older term port
 - `D-391` · docs — The blog is for ideas, not for incident detail
@@ -91,17 +88,20 @@ active (78)
 - `D-668` · docs — The feedback post uses the Playwright baselines as its pictures
 - `D-673` · docs — Both feedback stories are embedded now
 - `D-694` · cross-cutting — A simulated server's port is the package's own, from rush.json
+- `D-317` · ci — The role baseline was regenerated locally, not in CI
+- `D-320` · cross-cutting — The rebuild is coordinated by two durable counters, not a dirty flag
+- `D-338` · ci — A package with no Allure report publishes a rendered page
 
 superseded (7)
 
 - `D-171` · ci — The metrics commit carries skip ci
-- `D-318` · cross-cutting — The rebuild follows the last write, and a lagging read falls back
 - `D-323` · cross-cutting — Atomicity stops at the handler boundary, and that boundary is the
   topology
 - `D-336` · cross-cutting — The bank embedding model is the one irreversible choice
 - `D-569` · ci — How to make CI test the framework build of its own commit
 - `D-628` · docs — Dropdown labels are translated client side
 - `D-669` · docs — The feedback post embeds the review page and shows the callouts as a picture
+- `D-318` · cross-cutting — The rebuild follows the last write, and a lagging read falls back
 
 <!-- /memory:index -->
 
@@ -516,39 +516,6 @@ in `allurePublish` rewrites each staged result at publish time instead. That is 
 resolves the base URL before `Run Tests` rather than after it - a package renders its own report
 while the tests are running, so the value has to be in the environment by then.
 
-### D-317 — The role baseline was regenerated locally, not in CI
-
-> _2026-09-28 · ci · active_
-
-The access user role baseline was regenerated on this machine and committed, because the failure was
-a real spec bug - the pivot granted row 0 of a role list that carried no filter, which is the first
-seeded role and not `Manager` - and neither run showed a font-rendering difference. A CI capture of
-baselines stays unneeded until a diff that is genuinely renderer-dependent shows up, so no capture
-job is added for it; the spec now filters the pivot to the role it means, which is also what the
-package's T-173 recorded.
-
-### D-320 — The rebuild is coordinated by two durable counters, not a dirty flag
-
-> _2026-09-29 · cross-cutting · active_
-
-The first cut of the T-174 coordination marked the materialized paths dirty with a boolean row in
-core_counter and let a reader fall back to the source views. Review against the production topology
-killed both halves. A flag is cleared by any rebuild on its way out, so a rebuild running in process
-A that started before process B's merge committed removes B's marker without ever covering B's
-edges: B's own drain then sees nothing owed and the edge stays out of the paths until some later
-rebuild happens to run — a lost update, which is exactly what T-174 was. The counter pair removes
-that: the generation counts every write that skipped its own rebuild and is bumped inside the
-writer's transaction, so it can never count an edge that has not committed; a rebuild reads it at
-its start and publishes that value as covered at its end, so a write committing during a rebuild
-stays uncovered and owes another rebuild. Coverage only grows, and the procedure publishes it
-itself, so a caller that rebuilds without going through the coordinator still records what it
-covered. The procedure also locks the row it publishes to, which is what serializes rebuilds across
-processes — before that, two rebuilds interleaving their DELETE and INSERT over core_path could
-collide on its primary key. The reader was reverted to the materialized paths alone, deliberately: a
-request may be a millisecond behind a write, but never behind a write no rebuild will ever cover,
-and keeping the views on the auth path for a case the counters now prevent would have been the more
-expensive way to be less safe.
-
 ### D-321 — A management write is atomic with its rebuild; a deferred one is counted
 
 > _2026-09-29 · cross-cutting · active_
@@ -622,19 +589,6 @@ bin/blong-dev.ts' because it cannot resolve its own binary from PATH; core/seman
 tools/blong-log gave up raw 'tap' glob arguments for 'blong-dev test' so one file narrows, at the
 cost of the terminal coverage table; tools/blong-graph gained 'playwright' while its 'test' stays
 its UI suite. ## Superseded ## Superseded
-
-### D-338 — A package with no Allure report publishes a rendered page
-
-> _2026-10-01 · ci · active_
-
-T-155 offered making the tap runner an Allure producer, one result file per test, so that every
-package would have an Allure report to link. Taken instead: when no producer left Allure results,
-publishAllureReport renders .ci-report/report.json into .ci-report/publish/index.html, which is what
-the summary Report cell links. The rendering step was chosen over the producer because the page is
-built from data the aggregate report already reads, and because pushing thousands of unit-test
-results through Allure on every run is a cost every package would pay for a link. Only index.html is
-written, so the directory stays one report per package and a later Allure report replaces the page
-instead of sitting beside a stale copy of it.
 
 ### D-339 — The browser preflight belongs to the leg, not to the workflow
 
@@ -1264,6 +1218,52 @@ suite has no per-suite switch, because the layer is auto-discovered from the fol
 A busy port is now one console line naming the variable instead of a stack trace, since two
 hand-started processes still collide.
 
+### D-317 — The role baseline was regenerated locally, not in CI
+
+> _2026-09-28 · ci · active_
+
+The access user role baseline was regenerated on this machine and committed, because the failure was
+a real spec bug - the pivot granted row 0 of a role list that carried no filter, which is the first
+seeded role and not `Manager` - and neither run showed a font-rendering difference. A CI capture of
+baselines stays unneeded until a diff that is genuinely renderer-dependent shows up, so no capture
+job is added for it; the spec now filters the pivot to the role it means, which is also what the
+package's own notes recorded.
+
+### D-320 — The rebuild is coordinated by two durable counters, not a dirty flag
+
+> _2026-09-29 · cross-cutting · active_
+
+The first cut of the coordination marked the materialized paths dirty with a boolean row in
+core_counter and let a reader fall back to the source views. Review against the production topology
+killed both halves. A flag is cleared by any rebuild on its way out, so a rebuild running in process
+A that started before process B's merge committed removes B's marker without ever covering B's
+edges: B's own drain then sees nothing owed and the edge stays out of the paths until some later
+rebuild happens to run — a lost update, which is exactly what this was. The counter pair removes
+that: the generation counts every write that skipped its own rebuild and is bumped inside the
+writer's transaction, so it can never count an edge that has not committed; a rebuild reads it at
+its start and publishes that value as covered at its end, so a write committing during a rebuild
+stays uncovered and owes another rebuild. Coverage only grows, and the procedure publishes it
+itself, so a caller that rebuilds without going through the coordinator still records what it
+covered. The procedure also locks the row it publishes to, which is what serializes rebuilds across
+processes — before that, two rebuilds interleaving their DELETE and INSERT over core_path could
+collide on its primary key. The reader was reverted to the materialized paths alone, deliberately: a
+request may be a millisecond behind a write, but never behind a write no rebuild will ever cover,
+and keeping the views on the auth path for a case the counters now prevent would have been the more
+expensive way to be less safe.
+
+### D-338 — A package with no Allure report publishes a rendered page
+
+> _2026-10-01 · ci · active_
+
+Making the tap runner an Allure producer was considered, one result file per test, so that every
+package would have an Allure report to link. Taken instead: when no producer left Allure results,
+publishAllureReport renders .ci-report/report.json into .ci-report/publish/index.html, which is what
+the summary Report cell links. The rendering step was chosen over the producer because the page is
+built from data the aggregate report already reads, and because pushing thousands of unit-test
+results through Allure on every run is a cost every package would pay for a link. Only index.html is
+written, so the directory stays one report per package and a later Allure report replaces the page
+instead of sitting beside a stale copy of it.
+
 ## Superseded
 
 ### D-171 — The metrics commit carries skip ci
@@ -1282,29 +1282,6 @@ Superseded by `D-172`.
 
 Superseded: the action no longer has a mode that commits onto the pull-request branch, so no metrics
 commit and no skip-ci marker exists in any flow.
-
-### D-318 — The rebuild follows the last write, and a lagging read falls back
-
-> _2026-09-28 · cross-cutting · superseded_
-
-T-174 offered two fixes and both are in place, because they answer different questions. The ordering
-half is the real one: the seed phase defers the materialized-path rebuild, and a bare rebuild at the
-end of the batch can overtake a merge that entered while the batch was open, so the edge never
-reaches the paths — that is the missing blong.flow.find. The runtime now hands every connection a
-coordinator (core/blong-gogo/src/adapter/server/pathRefresh.ts), each edge writer registers before
-it reads the deferral, the seed's drain waits for the count to reach zero and repeats while a writer
-registers during the rebuild, and the last writer out rebuilds what the deferral left owed. The
-fallback half is the belt: a merge that skips its rebuild marks the materialization as behind in
-core_counter (access_pathRefresh.pending, cleared by the procedure itself), and
-access.permission.list augments its answer with core_path's own source views while that marker is
-set. The marker is deliberately the durable signal rather than an in-memory flag, because it is
-written inside the writer's transaction and is therefore visible exactly when the edges are.
-
-Superseded by `D-320`.
-
-Superseded: a boolean marker cannot survive a rebuild in another process clearing it, so a write
-committing during that rebuild was lost rather than owed. The generation and covered counters in
-D-320 replace both the marker and the read-side fallback, neither of which is still in the code.
 
 ### D-323 — Atomicity stops at the handler boundary, and that boundary is the topology
 
@@ -1400,6 +1377,29 @@ are also the only form that survives a build where no Storybook was staged.
 Both stories are embedded now; the reason the callouts stayed a picture no longer holds.
 
 Superseded by `D-673`.
+
+### D-318 — The rebuild follows the last write, and a lagging read falls back
+
+> _2026-09-28 · cross-cutting · superseded_
+
+Two fixes were offered and both are in place, because they answer different questions. The ordering
+half is the real one: the seed phase defers the materialized-path rebuild, and a bare rebuild at the
+end of the batch can overtake a merge that entered while the batch was open, so the edge never
+reaches the paths — that is the missing blong.flow.find. The runtime now hands every connection a
+coordinator (core/blong-gogo/src/adapter/server/pathRefresh.ts), each edge writer registers before
+it reads the deferral, the seed's drain waits for the count to reach zero and repeats while a writer
+registers during the rebuild, and the last writer out rebuilds what the deferral left owed. The
+fallback half is the belt: a merge that skips its rebuild marks the materialization as behind in
+core_counter (access_pathRefresh.pending, cleared by the procedure itself), and
+access.permission.list augments its answer with core_path's own source views while that marker is
+set. The marker is deliberately the durable signal rather than an in-memory flag, because it is
+written inside the writer's transaction and is therefore visible exactly when the edges are.
+
+Superseded by `D-320`.
+
+Superseded: a boolean marker cannot survive a rebuild in another process clearing it, so a write
+committing during that rebuild was lost rather than owed. The generation and covered counters in
+D-320 replace both the marker and the read-side fallback, neither of which is still in the code.
 
 ## Retired
 

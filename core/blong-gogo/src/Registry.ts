@@ -55,6 +55,14 @@ interface IConfig {
 export default class Registry extends Internal implements IRegistry {
     public modules: Map<string | symbol, IRegistry[]> = new Map();
     public ports: Map<string, IAdapterRegistry> = new Map();
+    /**
+     * Prototypes a realm ships for its instances to extend (`@@T-593`).
+     *
+     * Not `ports`: `start()` walks the ports and would serve a base nobody asked for. A resolver here
+     * runs the first time an instance's `extends` names it, and the module it imports is never
+     * registered as a port, so a base costs a process only when something extends it.
+     */
+    public thunks: Map<string, () => Promise<unknown>> = new Map();
     public methods: Map<string, Handlers> = new Map();
     public objectSchema: IObjectSchema = {};
     #stopped = false;

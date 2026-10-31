@@ -50,6 +50,7 @@ export type * from 'mongodb';
 // export type {client} from 'node-vault';
 export type {IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1} from 'openapi-types';
 // export type {Level, LogFn, Logger as PinoLogger} from 'pino';
+export type * from './agent.ts';
 export type * from './chat.ts';
 export type * from './feedback.ts';
 export type {Knex} from './knex.js';
@@ -443,6 +444,27 @@ export interface IComponentK8sIngress {
 export interface IComponentK8sContribution {
     k8sPorts?: Record<string, IComponentK8sPort>;
     k8sIngresses?: Record<string, IComponentK8sIngress>;
+    k8sReplicas?: number;
+    k8sResources?: {requests?: Record<string, string>; limits?: Record<string, string>};
+    /**
+     * Environment for the component's own process. A variable is a value *or* a reference, because a
+     * deployment that has to write a credential here is a deployment that commits it (`@@T-578`).
+     */
+    k8sEnv?: {name: string; value?: string; valueFrom?: Record<string, unknown>}[];
+    /**
+     * Volumes the component owns. Keyed by the name the claim takes, because the key is the identity a
+     * mount and a claim find each other by, and two components asking for one volume want one claim.
+     */
+    k8sVolumes?: Record<
+        string,
+        {size: string; mountPath: string; accessMode?: string; storageClassName?: string}
+    >;
+    k8sSecrets?: Record<
+        string,
+        {literals?: {key: string; value: string}[]; envs?: string[]; files?: string[]}
+    >;
+    k8sAssets?: Record<string, {files?: string[]; literals?: {key: string; value: string}[]}>;
+    k8sManifests?: Record<string, unknown>[];
 }
 
 export type Config<T, C> = {
@@ -580,6 +602,16 @@ export interface IRegistry {
     test: (tester?: unknown) => Promise<void>;
     stop: () => Promise<IRegistry>;
     ports: Map<string, IAdapterRegistry>;
+    /**
+     * Prototypes a realm ships for its instances to extend, loaded on first use.
+     *
+     * Kept apart from `ports` because the two mean different things: a port is a component this
+     * process *runs* — `start()` walks `ports` — while a prototype is a base nobody serves, which
+     * exists so `extends: '<realm>.<name>'` has something to resolve. A `thunk` folder fills this
+     * map with resolvers; an entry is imported the first time an instance names it and never
+     * otherwise (`@@T-593`).
+     */
+    thunks?: Map<string, () => Promise<unknown>>;
     methods: Map<string, Handlers>;
     modules: Map<string | symbol, IRegistry[]>;
     objectSchema: IObjectSchema;
@@ -1151,6 +1183,17 @@ export interface IModuleConfig<T extends TSchema = TNever> {
         | ((layer: ModuleApi) => unknown)[]
         | Record<string, () => Promise<unknown>>;
     glob?: Record<string, () => Promise<object>>;
+    /**
+     * Folders of prototypes: modules that exist to be extended, never to be served.
+     *
+     * A folder named here is scanned and **not** imported. Every `<name>.ts` in it becomes a lazy
+     * port entry named `<realm>.<name>`, and the first use — an instance that names it in `extends`,
+     * or a process that starts it — imports the module and, when a `<name>/` folder sits beside it,
+     * the handler group that gives that base its methods. A base nothing extends is never
+     * evaluated, which is the whole point: an adapter nobody uses otherwise costs its import graph
+     * in every process that carries the realm (@@D-720 @@T-593).
+     */
+    thunk?: string[];
 }
 
 export interface ILogger {

@@ -745,6 +745,12 @@
             "projectFolder": "realm/blong-chat",
             "reviewCategory": "realm",
             "tags": ["realm"]
+        },
+        {
+            "packageName": "@feasibleone/blong-agent",
+            "projectFolder": "realm/blong-agent",
+            "reviewCategory": "realm",
+            "tags": ["realm"]
         }
     ]
 }

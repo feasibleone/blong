@@ -16,13 +16,13 @@ import {
     chatPromptPickActionId,
     chatPromptSubmitActionId,
 } from '../../chatActions.ts';
-import {ngrokPublicUrl} from './ngrokTunnels.ts';
+import {ngrokPublicUrl} from '../impl/ngrokTunnels.ts';
 import {slackPromptAnsweredBlocks, slackPromptBlocks, slackPromptView} from './slack/blocks.ts';
-import {slackAcknowledgeGet} from './slackIn/acknowledge.ts';
-import {slackSignatureMatches} from './slackIn/signature.ts';
-import {slackManifestPointsAt, slackManifestRepoint, slackRequestUrl} from './slackManifest.ts';
+import {slackAcknowledgeGet} from './slack/acknowledge.ts';
+import {slackSignatureMatches} from './slack/signature.ts';
+import {slackManifestPointsAt, slackManifestRepoint, slackRequestUrl} from '../impl/slackManifest.ts';
 import {viberPromptButtons, viberPromptKeyboard} from './viber/keyboard.ts';
-import {viberSignatureMatches} from './viberIn/signature.ts';
+import {viberSignatureMatches} from './viber/signature.ts';
 
 /**
  * Both chat ports, asserted where a live workspace cannot reach: the signature rules, the identifier a

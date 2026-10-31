@@ -1,0 +1,51 @@
+import type {IMeta} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
+
+/**
+ * `agent.session.add` — the row a run is recorded on.
+ *
+ * It carries the engine instance *and* the account inside it, because the same alias may exist in two
+ * instances and a resume that picked the wrong one would reach the wrong endpoint (`@@D-712`), and the
+ * worker that holds the workspace, because only that host may resume it (`@@D-704`).
+ */
+export default handler(({lib: {uuidBuf, rowOut}}) => ({
+    async agentSessionAdd(
+        params: {
+            sessionId: string;
+            ticketId: string;
+            ticketTitle?: string;
+            status: string;
+            engineAdapter: string;
+            engineAccount: string;
+            engineMode: string;
+            modelName?: string;
+            workerId: string;
+            workspacePath: string;
+            baseCommit?: string;
+        },
+        _$meta: IMeta,
+    ): Promise<{session: Record<string, unknown>}> {
+        const qb = this.config?.context?.queryBuilder;
+        if (!qb) throw new Error('Database not available');
+        const now = new Date();
+        const row = {
+            sessionId: uuidBuf(params.sessionId),
+            ticketId: params.ticketId,
+            ticketTitle: params.ticketTitle ?? null,
+            status: params.status,
+            engineAdapter: params.engineAdapter,
+            engineAccount: params.engineAccount,
+            engineMode: params.engineMode,
+            modelName: params.modelName ?? null,
+            engineSessionId: null,
+            workerId: params.workerId,
+            workspacePath: params.workspacePath,
+            baseCommit: params.baseCommit ?? null,
+            lastEventAt: now,
+            createdAt: now,
+            updatedAt: now,
+        };
+        await qb('agent_session').insert(row);
+        return {session: rowOut({...row, sessionId: params.sessionId})};
+    },
+}));

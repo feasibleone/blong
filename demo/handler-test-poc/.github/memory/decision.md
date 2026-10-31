@@ -61,7 +61,7 @@ only ever saw order.order.create.
 The scenarios themselves were left on testLoginTokenCreate: switching them to the ordered direct
 login is what option 1 asks for and it dispatches correctly, but it also hangs on the failed login
 the missing access realm produces, so the switch belongs in the same change as that realm, not
-before it. Both halves and the evidence are in T-149.
+before it. Both halves and the evidence are above.
 
 Superseded: the scenarios were switched to their own login step in the same change that added
 blong-access-mock and srv, exactly as this entry said they should be.

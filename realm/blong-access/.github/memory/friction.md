@@ -15,12 +15,12 @@ open (9)
 - `F-170` · realm/blong-access — Second action resource for one action silently disabled the ACL
   rule
 - `F-174` · realm/blong-access — The ACL matrix never rendered its stored rules
-- `F-312` · realm/blong-access — A pivot ticks whichever row the database happens to return first
 - `F-315` · realm/blong-access — A rebuild that runs before the last delete leaves a grant behind
 - `F-343` · realm/blong-access — A role held directly and inherited from the unit crashed the path
   refresh
 - `F-428` · realm/blong-access — Three traps on the way to a local login leak test
 - `F-618` · realm/blong-access — A login is a resource name the user record does not hold
+- `F-312` · realm/blong-access — A pivot ticks whichever row the database happens to return first
 
 resolved (6)
 
@@ -75,20 +75,6 @@ core_resource.resourceName '(all records)'. Every stored rule rendered as an emp
 phase could not even release it (the blank cell was already at the wanted state, so no click was
 made). resourceLabel() is now shared by resourceOptions and aclMatrixRows; the -tab-matrix-open
 capture proves load. A read handler must emit the joined label exactly as the dropdown builds it.
-
-### F-312 — A pivot ticks whichever row the database happens to return first
-
-> _2026-09-28 · realm/blong-access · open_
-
-The role spec's capability pivot ticks the `granted` cell of the first row, and the pivot renders
-the whole dropdown in whatever order the database returns it: one run granted guestBasic and the
-next granted accessModelAdmin, and the difference (5303 pixels of a 1.44M-pixel capture, 0.37%)
-stayed inside the diff tolerance, so the baseline kept showing the wrong row while every run passed.
-This is T-173's defect in its second instance; the fix is a filterable column plus a named row, and
-a third instance is still open in capability.play.ts's action pivot. Lesson: a pivot capture is only
-evidence when the spec names the row it toggles, because the tolerance that makes these captures
-robust to fonts and antialiasing is far wider than a checkmark in the wrong row. Same shape as F-115
-and F-298: a shared, ordered list where the spec assumed an order.
 
 ### F-315 — A rebuild that runs before the last delete leaves a grant behind
 
@@ -150,6 +136,20 @@ log in" because no role reaches the accessLogin action. Nothing about a login is
 the user record: the name, the role edge and the login-eligibility action live in three tables, and
 each missing one answers with a different error. tools/blong-dev/src/commands/user.ts now writes the
 whole set and reports whether the granted roles reach accessLogin.
+
+### F-312 — A pivot ticks whichever row the database happens to return first
+
+> _2026-09-28 · realm/blong-access · open_
+
+The role spec's capability pivot ticks the `granted` cell of the first row, and the pivot renders
+the whole dropdown in whatever order the database returns it: one run granted guestBasic and the
+next granted accessModelAdmin, and the difference (5303 pixels of a 1.44M-pixel capture, 0.37%)
+stayed inside the diff tolerance, so the baseline kept showing the wrong row while every run passed.
+This is the same defect in its second instance; the fix is a filterable column plus a named row, and
+a third instance is still open in capability.play.ts's action pivot. Lesson: a pivot capture is only
+evidence when the spec names the row it toggles, because the tolerance that makes these captures
+robust to fonts and antialiasing is far wider than a checkmark in the wrong row. Same shape as F-115
+and F-298: a shared, ordered list where the spec assumed an order.
 
 ## Resolved
 

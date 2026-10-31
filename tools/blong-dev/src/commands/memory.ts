@@ -27,7 +27,7 @@
  *   blong-dev memory close <id|id@scope> [--note <text>] [--by <id>] [--reason <text>]
  *   blong-dev memory retire <id|id@scope> [--reason <text>] [--purge]
  *   blong-dev memory reopen <id|id@scope>
- *   blong-dev memory move <id|id@scope> --area <area>
+ *   blong-dev memory move <id|id@scope>[,<id>…] --area <area>
  *   blong-dev memory index [--check] [--files a.md,b.md] [--semantic] [--dry-run]
  *                        [--sources entry,docs,skill] [--stats] [--prune]
  *   blong-dev memory search <query> [--source entry|docs|skill] [--kind <kind>] [--area <area>]
@@ -677,18 +677,44 @@ async function reopen(root: string, id: string | undefined): Promise<void> {
     await ingest(root, [{doc, id: entry.id}]);
 }
 
+/**
+ * Move entries to the area that owns them.
+ *
+ * The ids are a comma list, because misfiled entries arrive as a batch far more often than one at a
+ * time: a plan imported into the root scope leaves twenty there, and a package that grew out of the
+ * root is named fifty times. One id that does not resolve is reported and the rest still move, so a
+ * partial move is visible rather than an all-or-nothing run that stops on the first typo; the exit
+ * code is non-zero when any of them failed.
+ */
 async function move(root: string, id: string | undefined, options: Options): Promise<void> {
-    if (!id) fail('memory move needs an id');
+    const ids = (id ?? '')
+        .split(',')
+        .map(value => value.trim())
+        .filter(Boolean);
+    if (!ids.length) fail('memory move needs an id');
     const area = options.get('area')?.trim();
     if (!area) fail('memory move needs --area <area>');
     if (!isKnownArea(root, area)) fail(`unknown area "${area}"`);
+    const failures: string[] = [];
+    for (const one of ids) {
+        const failure = await moveOne(root, one, area);
+        if (failure !== undefined) failures.push(failure);
+    }
+    if (failures.length > 0) {
+        process.stderr.write(`${failures.map(line => `blong-dev: ${line}`).join('\n')}\n`);
+        process.exitCode = 1;
+    }
+}
+
+/** One entry moved, or the reason it could not be. */
+async function moveOne(root: string, id: string, area: string): Promise<string | undefined> {
     const found = findEntry(root, id);
-    if (!found) fail(`no entry with id ${id}`);
+    if (!found) return `no entry with id ${id}`;
     const {doc, entry} = found;
     assertMigrated(doc);
     if (entry.meta?.area === area) {
         process.stdout.write(`# ${entry.id} already in ${area}\n`);
-        return;
+        return undefined;
     }
 
     const target = ensureDoc(root, area, doc.kind);
@@ -699,7 +725,7 @@ async function move(root: string, id: string | undefined, options: Options): Pro
         writeDoc(doc);
         process.stdout.write(`# ${entry.id} area ${area}\n`);
         await ingest(root, [{doc, id: entry.id}]);
-        return;
+        return undefined;
     }
 
     insertEntry(
@@ -716,6 +742,7 @@ async function move(root: string, id: string | undefined, options: Options): Pro
 
     process.stdout.write(`# ${entry.id} moved to ${relative(root, target.path)}\n`);
     await ingest(root, [{doc: target, id: entry.id}]);
+    return undefined;
 }
 
 /** The switches and the selection a `memory index` run was given. */
@@ -1921,6 +1948,21 @@ function refs(root: string, args: string[], options: Options, flags: Set<string>
                 message: link.message,
             })),
     ];
+    // A body cites ids too — the commonest place a citation lives — so the linter reads the entries as
+    // well as the sites that cite them. Without this the gate and the linter disagreed: `check --refs`
+    // called a broken citation an error while `refs --dangling` did not see it at all (`@@F-661`).
+    const bodies = memoryIdTrouble(root, options);
+    for (const item of bodies.dangling) {
+        errors.push({file: item.file, line: item.line, raw: item.id, message: 'no entry holds this id'});
+    }
+    for (const item of bodies.ambiguous) {
+        errors.push({
+            file: item.files[0] ?? '',
+            line: 0,
+            raw: item.id,
+            message: `held by ${item.files.length} files — ${item.files.join(', ')}`,
+        });
+    }
     const retired = scanned.references.filter(site => site.resolution.code === 'retired');
     const superseded = scanned.references.filter(site => site.resolution.code === 'superseded');
 
@@ -2061,6 +2103,26 @@ function referenceProblems(root: string, options: Options): IProblem[] {
                 : 'warning',
         });
     }
+    // The entries cite each other, and a body is the commonest place a citation lives — so the scan
+    // covers the memory files themselves, not just the source, the docs and the skills. This is the
+    // half `audit` used to be alone in noticing.
+    const {dangling, ambiguous} = memoryIdTrouble(root, options);
+    for (const item of dangling) {
+        problems.push({
+            file: item.file,
+            line: item.line,
+            message: `reference ${item.id} — no entry holds this id`,
+            severity: 'error',
+        });
+    }
+    for (const item of ambiguous) {
+        problems.push({
+            file: item.files[0] ?? '',
+            line: 0,
+            message: `id ${item.id} is held by ${item.files.length} files — ${item.files.join(', ')}`,
+            severity: 'error',
+        });
+    }
     for (const link of scanned.links) {
         if (link.code === 'ok' || !inCorpus(link.file)) continue;
         problems.push({
@@ -2193,25 +2255,35 @@ function comply(root: string, options: Options, flags: Set<string>): void {
     if (rows.some(row => row.severity === 'error')) process.exitCode = 1;
 }
 
-function audit(root: string, options: Options, flags: Set<string>): void {
-    const docs = docsOf(root, options);
-    const entries = docs.flatMap(doc => parseDoc(doc.lines).entries.map(entry => ({doc, entry})));
-    // Ids are per file, so the same id in two files is an id a reference cannot
-    // resolve — reported alongside the missing ones, because that is what it is from
-    // a reader's point of view. A file that holds the id twice is one file, not two.
+/**
+ * The ids a memory body cites and nothing holds, and the ids two files both hold.
+ *
+ * One place rather than three, because the answer is a gate now: `check --refs` fails on what this
+ * returns, `audit` reports it and fails too, and a reader who asks `refs` about one entry sees the
+ * same verdict. An id in the `## Retired` ledger is *known* — it resolves, as a warning that names
+ * its fate — so it is neither dangling nor ambiguous; the ledger line itself is a record, not a
+ * citation, and is skipped.
+ */
+function memoryIdTrouble(
+    root: string,
+    options?: Options,
+): {
+    dangling: Array<{file: string; line: number; id: string}>;
+    ambiguous: Array<{id: string; files: string[]}>;
+} {
+    // Ids are per file, so the same id in two files is an id a reference cannot resolve — reported
+    // beside the missing ones, because that is what it is from a reader's point of view. A file that
+    // holds the id twice is one file, not two.
     const holders = new Map<string, Set<string>>();
+    const ledger = new Set<string>();
     for (const file of listMemoryFiles(root)) {
-        for (const entry of parseDoc(readDoc(file.path, file.kind, file.scope).lines).entries) {
+        const doc = readDoc(file.path, file.kind, file.scope);
+        for (const entry of parseDoc(doc.lines).entries) {
             const seen = holders.get(entry.id) ?? new Set<string>();
             seen.add(relative(root, file.path));
             holders.set(entry.id, seen);
         }
-    }
-    // A retired id is known — it resolves, as a warning that names its successor — so it
-    // is not dangling, and the ledger line itself is not a reference to check.
-    const ledger = new Set<string>();
-    for (const file of listMemoryFiles(root)) {
-        for (const line of readDoc(file.path, file.kind, file.scope).lines) {
+        for (const line of doc.lines) {
             const id = LEDGER_LINE.exec(line.trim())?.groups?.['id'];
             if (id) ledger.add(id);
         }
@@ -2221,16 +2293,50 @@ function audit(root: string, options: Options, flags: Set<string>): void {
         .filter(([, files]) => files.size > 1)
         .map(([id, files]) => ({id, files: [...files]}));
 
+    // Which bodies to read: the memory files a `--files` selection names, or all of them. A selection
+    // of source files has no bodies of its own, so it checks none — `check --files src/x.ts` must not
+    // fail over an entry in a file it was not asked about.
+    const named = (options?.get('files') ?? '')
+        .split(',')
+        .map(entry => entry.trim())
+        .filter(Boolean)
+        .map(entry => resolve(entry))
+        .filter(entry => existsSync(entry));
+    const bodies = named.length
+        ? named
+              .map(entry => describeFile(root, entry))
+              .filter((described): described is IMemoryFileRef => described !== null)
+              .map(described => readDoc(described.path, described.kind, described.scope))
+        : listMemoryFiles(root).map(file => readDoc(file.path, file.kind, file.scope));
+
     const dangling: Array<{file: string; line: number; id: string}> = [];
-    for (const doc of docs) {
+    for (const doc of bodies) {
+        // Inline code and fenced blocks are not citations: a body that shows `@@F-014` as an
+        // example, or quotes a config block, is illustrating the form rather than pointing at an
+        // entry. The source scanner skips them for the same reason, and a body is prose too.
+        let fenced = false;
         doc.lines.forEach((line, index) => {
-            if (ENTRY_HEADING.test(line) || LEDGER_LINE.test(line.trim())) return;
-            for (const match of line.matchAll(/\b[FTD]-\d{3}\b/g)) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('```')) {
+                fenced = !fenced;
+                return;
+            }
+            if (fenced) return;
+            if (ENTRY_HEADING.test(line) || LEDGER_LINE.test(trimmed)) return;
+            const prose = line.replace(/`[^`]*`/g, match => ' '.repeat(match.length));
+            for (const match of prose.matchAll(/\b[FTD]-\d{3}\b/g)) {
                 if (!known.has(match[0]))
                     dangling.push({file: relative(root, doc.path), line: index + 1, id: match[0]});
             }
         });
     }
+    return {dangling, ambiguous};
+}
+
+function audit(root: string, options: Options, flags: Set<string>): void {
+    const docs = docsOf(root, options);
+    const entries = docs.flatMap(doc => parseDoc(doc.lines).entries.map(entry => ({doc, entry})));
+    const {dangling, ambiguous} = memoryIdTrouble(root, options);
 
     const titles = new Map<string, string[]>();
     for (const {entry} of entries) {
@@ -2268,6 +2374,9 @@ function audit(root: string, options: Options, flags: Set<string>): void {
         `# memory audit: ${dangling.length} dangling reference(s), ${ambiguous.length} ambiguous id(s), ` +
             `${duplicates.length} duplicate title(s), ${stale.length} open older than 90 days\n`,
     );
+    // A citation nothing resolves is a broken promise, not a note: the entry it points at was
+    // renamed, pruned or never written, and a reader who follows it learns nothing.
+    if (dangling.length > 0 || ambiguous.length > 0) process.exitCode = 1;
 }
 
 export async function memory(args: string[]): Promise<void> {

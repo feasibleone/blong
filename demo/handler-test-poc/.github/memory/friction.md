@@ -101,7 +101,7 @@ recorded as a friction and a todo in the same package.
 
 > _2026-09-25 · demo/handler-test-poc · resolved_
 
-Option 1 of T-149 (order the login) was implemented and it does not fix the run. Three findings,
+Option 1 of that todo (order the login) was implemented and it does not fix the run. Three findings,
 each reproduced against the demo package.
 
 There is no race to fix. `TestExecutor._executeSteps` awaits a nested array inline ("Nested step

@@ -14,10 +14,7 @@ open (20)
 - `T-154` · core/blong-gogo — The slow-step margin does not reach the registry's start steps
 - `T-183` · core/blong-gogo — Log the gateway's effective port whether or not it was configured
 - `T-225` · core/blong-gogo — A watch reply arrives empty across the request boundary
-- `T-228` · core/blong-gogo — The k8s adapter's list answer carries no kind or apiVersion
-- `T-250` · core/blong-gogo — An unreachable database can kill a process by event
 - `T-272` · core/blong-gogo — The pino implementation callSite path is unverified
-- `T-216` · core/blong-gogo — Fix the adapter's remaining error calls to use params
 - `T-227` · core/blong-gogo — The adapter replies null for a watch, and the generator dies there
 - `T-285` · core/blong-gogo — The intents fixture ignores the config it is handed
 - `T-316` · core/blong-gogo — Debug mode should answer what the ACL guard would run for a call
@@ -28,8 +25,11 @@ open (20)
 - `T-350` · core/blong-gogo — Stop keying a realm child by its function name
 - `T-366` · core/blong-gogo — Decide whether an inactive layer is skipped before it is imported
 - `T-524` · core/blong-gogo — Add slack.prompt.close to retire an expired prompt's controls
+- `T-228` · core/blong-gogo — The k8s adapter's list answer carries no kind or apiVersion
+- `T-250` · core/blong-gogo — An unreachable database can kill a process by event
+- `T-216` · core/blong-gogo — Fix the adapter's remaining error calls to use params
 
-done (17)
+done (32)
 
 - `T-341` · core/blong-gogo — Validate a config reload and reject an invalid snapshot
 - `T-217` · core/blong-gogo — Warn when a CLI config key matches no realm, port or framework key
@@ -48,6 +48,21 @@ done (17)
 - `T-505` · core/blong-gogo — Add the Viber port and its handler groups
 - `T-506` · core/blong-gogo — Test both platform ports
 - `T-507` · core/blong-gogo — Verify blong-gogo after the platform ports
+- `T-540` · core/blong-gogo — Group 2: Add IAgentMessage, IAgentTool, IAgentStepRequest
+- `T-541` · core/blong-gogo — Group 2: core/blong-gogo/src/adapter/server/agent.ts
+- `T-545` · core/blong-gogo — Group 2: agentSim.ts — the scripted kind in both modes, the only one
+- `T-542` · core/blong-gogo — Group 2: agentVercel.ts — VercelEngineAdapter
+- `T-544` · core/blong-gogo — Group 2: agentDeepseek.ts — DeepSeekEngineAdapter over
+- `T-546` · core/blong-gogo — Group 2: core/blong-gogo/package.json
+- `T-543` · core/blong-gogo — Group 2: agentMastra.ts — MastraEngineAdapter
+- `T-547` · core/blong-gogo — Group 2 verify: gogo tests and a lazy-import smoke
+- `T-548` · core/blong-gogo — Group 3: core/blong-gogo/src/adapter/server/workspace.ts and its group
+- `T-549` · core/blong-gogo — Group 3: The path jail
+- `T-550` · core/blong-gogo — Group 3: rollback and prepare git behaviour
+- `T-551` · core/blong-gogo — Group 3: run with the boundary
+- `T-552` · core/blong-gogo — Group 3: Realm instance adapter/workspace.ts with the activation
+- `T-553` · core/blong-gogo — Group 3 verify: gogo tests and lint
+- `T-593` · core/blong-gogo — Build thunk: lazy prototypes with their handler groups
 
 <!-- /memory:index -->
 
@@ -130,34 +145,6 @@ probe). That is why a watch opened correctly and delivered nothing: the adapter 
 values were gone before the controller saw them. The realm therefore runs its watch from a handler,
 and the resync interval is no longer the only trigger that works.
 
-### T-228 — The k8s adapter's list answer carries no kind or apiVersion
-
-> _2026-10-05 · core/blong-gogo · open_
-
-A find answer here holds only metadata, spec and status on each item, while the API server returns
-kind and apiVersion per item as well. Every caller therefore has to know the type from its own
-request, which is what the kustomize diff had to be taught to do after it read eighteen objects as
-obsolete beside eighteen creations (T-226).
-
-Decide whether the adapter should keep the type identity the server sent, or whether a list is
-documented as type-blind, and say so in the adapter so the next consumer does not rediscover it.
-Worth checking first whether the loss is in the client library turning the response into objects
-rather than in the adapter, since the same reply feeds the explorer and the deployment UI.
-
-### T-250 — An unreachable database can kill a process by event
-
-> _2026-10-06 · core/blong-gogo · open_
-
-Found while fixing T-235 and not fixed with it. The knex adapter's start wraps ensureDatabase in
-try/catch and warns, and the intent is plainly to continue: schema sync will surface the real
-failure. What actually happened when the host did not resolve was a process-ending error with a
-stack of one frame (getaddrinfo) and no await above it, which is the shape of an unhandled error
-event on the mysql2 connection rather than a rejected promise the catch could see. Confirm it by
-pointing a dev run at a name that does not resolve with the old code path, then make the failure
-arrive through the caller: attach an error listener the moment the connection exists, or let
-ensureDatabase reject in a way that does not also emit. It matters because a warn-and-continue that
-kills the process is worse than a throw, which at least says where it came from.
-
 ### T-272 — The pino implementation callSite path is unverified
 
 > _2026-10-07 · core/blong-gogo · open_
@@ -166,14 +153,6 @@ Log.ts wraps the level methods of every logger it hands out when log.callSite is
 pino demo run with the flag showed no site, so the logger that wrote that record did not come
 through Log.logger. Find which path builds it and either route it through the wrapper or honour the
 list where the logger is built. The semantic implementation is the one verified end to end.
-
-### T-216 — Fix the adapter's remaining error calls to use params
-
-> _2026-10-05 · core/blong-gogo · open_
-
-Every `_errors[...]({key: value})` call in core/blong-gogo/src/adapter/server/k8s.ts should pass
-params, or its message keeps rendering placeholders. The API-error path was fixed while proving
-T-212; the missingKey, missingResource and other calls were not.
 
 ### T-227 — The adapter replies null for a watch, and the generator dies there
 
@@ -322,6 +301,42 @@ The webhook plan lists prompt.close as part of the Slack port, and the first pas
 that times out leaves its buttons live, so a late click resolves nothing and reads as a broken
 button. Implement it as a chat.update or chat.delete descriptor over the message timestamp the send
 answer carries, and call it from the realm when chatPromptTimeout fires.
+
+### T-228 — The k8s adapter's list answer carries no kind or apiVersion
+
+> _2026-10-05 · core/blong-gogo · open_
+
+A find answer here holds only metadata, spec and status on each item, while the API server returns
+kind and apiVersion per item as well. Every caller therefore has to know the type from its own
+request, which is what the kustomize diff had to be taught to do after it read eighteen objects as
+obsolete beside eighteen creations.
+
+Decide whether the adapter should keep the type identity the server sent, or whether a list is
+documented as type-blind, and say so in the adapter so the next consumer does not rediscover it.
+Worth checking first whether the loss is in the client library turning the response into objects
+rather than in the adapter, since the same reply feeds the explorer and the deployment UI.
+
+### T-250 — An unreachable database can kill a process by event
+
+> _2026-10-06 · core/blong-gogo · open_
+
+Found while fixing an unrelated failure and not fixed with it. The knex adapter's start wraps
+ensureDatabase in try/catch and warns, and the intent is plainly to continue: schema sync will
+surface the real failure. What actually happened when the host did not resolve was a process-ending
+error with a stack of one frame (getaddrinfo) and no await above it, which is the shape of an
+unhandled error event on the mysql2 connection rather than a rejected promise the catch could see.
+Confirm it by pointing a dev run at a name that does not resolve with the old code path, then make
+the failure arrive through the caller: attach an error listener the moment the connection exists, or
+let ensureDatabase reject in a way that does not also emit. It matters because a warn-and-continue
+that kills the process is worse than a throw, which at least says where it came from.
+
+### T-216 — Fix the adapter's remaining error calls to use params
+
+> _2026-10-05 · core/blong-gogo · open_
+
+Every `_errors[...]({key: value})` call in core/blong-gogo/src/adapter/server/k8s.ts should pass
+params, or its message keeps rendering placeholders. The API-error path was fixed while proving
+that; the missingKey, missingResource and other calls were not.
 
 ## Done
 
@@ -551,5 +566,169 @@ editing the dictionary by hand.
 
 blong-dev lint is clean (tsc, cspell, eslint) and blong-dev test in core/blong-gogo is 848 pass, 6
 skip, 0 fail; rush update refreshed the lockfile after the dependency removal.
+
+### T-540 — Group 2: Add IAgentMessage, IAgentTool, IAgentStepRequest
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 2 The agent adapter. Add `IAgentMessage`, `IAgentTool`,
+`IAgentStepRequest`, `IAgentStepResult`, `IAgentSessionRequest`, `IAgentEngineAccount` to
+`core/blong/types.ts`, with the TypeBox tool schema as the neutral form and
+`mode: 'step' | 'native'` on the account (`@@D-708`).
+
+types in core/blong/agent.ts, adapter.agent with the four method handlers, sim kind tested (19
+assertions)
+
+### T-541 — Group 2: core/blong-gogo/src/adapter/server/agent.ts
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 2 The agent adapter. `core/blong-gogo/src/adapter/server/agent.ts`: the
+`adapter.agent` base, the `accounts` map, lazy per-kind import, TypeBox-to-JSON-Schema conversion,
+and the four methods in an `engine/` group. Add the `agent` boolean to `src/adapter/server.ts` with
+default `false`.
+
+types in core/blong/agent.ts, adapter.agent with the four method handlers, sim kind tested (19
+assertions)
+
+### T-545 — Group 2: agentSim.ts — the scripted kind in both modes, the only one
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 2 The agent adapter. `agentSim.ts` — the scripted kind in both modes, the
+only one the realm's tests use.
+
+types in core/blong/agent.ts, adapter.agent with the four method handlers, sim kind tested (19
+assertions)
+
+### T-542 — Group 2: agentVercel.ts — VercelEngineAdapter
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 2 The agent adapter. `agentVercel.ts` — `VercelEngineAdapter`:
+`generateText` with tools declared without `execute`, mapping `toolCalls` into `IAgentStepResult`.
+
+agentVercel.ts: transcript and tool mapping exported pure, 11 assertions, tsc clean
+
+### T-544 — Group 2: agentDeepseek.ts — DeepSeekEngineAdapter over
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 2 The agent adapter. `agentDeepseek.ts` — `DeepSeekEngineAdapter` over
+`@deepseek-ai/dsh-sdk-client`: spawn the runtime with the ticket directory as its working directory,
+route `onUserQuestion` and `approval/request` to a configured handler, `resumeSession` from a stored
+id, and reap the subprocess in `session.close` (`@@D-711`).
+
+agentDeepseek.ts: launch spec pure and tested (8 assertions), one harness per account, sessionKey is
+the resume
+
+### T-546 — Group 2: core/blong-gogo/package.json
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 2 The agent adapter. `core/blong-gogo/package.json`: `ai` and
+`@ai-sdk/openai` as dependencies, while the harness client and `@mastra/core` are imported
+dynamically, so a deployment that configures neither carries neither; `rush update`; then unit tests
+for the conversion, the script, the missing-package error and `session.close`.
+
+ai, @ai-sdk/openai, @mastra/core and @deepseek-ai/dsh-sdk-client installed; the Mastra adapter
+itself is T-543
+
+### T-543 — Group 2: agentMastra.ts — MastraEngineAdapter
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 2 The agent adapter. `agentMastra.ts` — `MastraEngineAdapter`: an `Agent`
+per turn with tool stubs, reading the returned calls only.
+
+agentMastra.ts: prompt rendering and the two call shapes exported pure, 5 assertions; ai pinned to 6
+to sit beside Mastra
+
+### T-547 — Group 2 verify: gogo tests and a lazy-import smoke
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 2 The agent adapter. Verify: `blong-dev test` in `core/blong-gogo`,
+`blong-dev lint --files`, and a smoke that imports the module without loading any engine package.
+
+gogo 956 pass (950 + 6 skip), tsc clean, standalone import of agent.ts ok, lint clean
+
+### T-548 — Group 3: core/blong-gogo/src/adapter/server/workspace.ts and its group
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 3 The workspace adapter.
+`core/blong-gogo/src/adapter/server/workspace.ts` and its group: `prepare`, `read`, `write`, `list`,
+`run`, `rollback`, `remove`, plus the `workspace` boolean in `src/adapter/server.ts`.
+
+implemented and verified in this pass
+
+### T-549 — Group 3: The path jail
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 3 The workspace adapter. The path jail: resolve every path against the
+ticket root, refuse `..` and absolute paths with `agent.workspaceEscape`, and refuse a symlink that
+leaves the root.
+
+implemented and verified in this pass
+
+### T-550 — Group 3: rollback and prepare git behaviour
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 3 The workspace adapter. `rollback` and `prepare` git behaviour: record
+the base commit, restore with `git checkout` and `git clean`, and copy the template when the source
+is not a repository.
+
+implemented and verified in this pass
+
+### T-551 — Group 3: run with the boundary
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 3 The workspace adapter. `run` with the `@@D-710` boundary: `execFile`
+and an argv array, the ticket directory as cwd, a timeout that kills the process group, an output
+cap, an environment scrubbed to a configured allowlist, and `agent.commandDisabled` when the
+deployment switched the capability off.
+
+implemented and verified in this pass
+
+### T-552 — Group 3: Realm instance adapter/workspace.ts with the activation
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 3 The workspace adapter. Realm instance `adapter/workspace.ts` with the
+activation defaults; tests for the jail, the rollback, a template copy in a temp directory, and a
+command that times out and is killed.
+
+implemented and verified in this pass
+
+### T-553 — Group 3 verify: gogo tests and lint
+
+> _2026-10-31 · core/blong-gogo · done_
+
+plans/agent/plan.md, Group 3 The workspace adapter. Verify: `blong-dev test` in `core/blong-gogo`,
+`blong-dev lint --files`.
+
+implemented and verified in this pass
+
+### T-593 — Build thunk: lazy prototypes with their handler groups
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Steps, in order. One, Watch gains a deferred close: the same body as load, returning a function that
+imports and registers on first call, so a registration can be kept and applied late. Two, load.ts
+reads thunk: string[] on the realm definition, scans each folder without importing, and registers
+every entry in registry.ports as a lazy proxy that on first call applies the closure (module and the
+sibling group folders whose group id matches the module's imports), then delegates to the registered
+factory. Three, a fixture realm in the framework tests proves: nothing imported at boot (assert the
+module was not evaluated), the first extends resolves module and groups, and the second call reuses
+the factory rather than re-importing. Four, only then flip core/blong-gogo/src/adapter/server.ts
+from children to thunk and run the four realm integrations; browser stays on import.meta.glob until
+it has an answer of its own. built and flipped: thunk registers a resolver per `NAME.ts` in
+registry.thunks, AdapterBase resolves extends from ports then thunks, and the adapter realm declares
+thunk: ['./server']; proved by a probe that kafka.ts is never evaluated in a full agent run, and by
+no adapter.* port starting
 
 ## Retired

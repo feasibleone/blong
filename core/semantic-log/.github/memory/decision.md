@@ -27,8 +27,6 @@ active (26)
 - `D-257` · core/semantic-log — A note is drawn over the participant that announced it
 - `D-259` · core/semantic-log — A point is drawn with the record that claimed it, not where it was
   announced
-- `D-260` · core/semantic-log — A branch block shows every candidate, and labels the ones it never
-  reached
 - `D-261` · core/semantic-log — A branch block orders its arms so mermaid renders it
 - `D-277` · core/semantic-log — Log cache retention deletes index files and reclaims old ones
 - `D-279` · core/semantic-log — The store reads a secondary index, not cacache's own
@@ -36,6 +34,8 @@ active (26)
 - `D-283` · core/semantic-log — Bare semlog URIs; record link only when folding cost something
 - `D-315` · core/semantic-log — close() waits for the reclaim an open started
 - `D-500` · core/semantic-log — The lineage and fingerprint indexes stay complete; no reader changed
+- `D-260` · core/semantic-log — A branch block shows every candidate, and labels the ones it never
+  reached
 
 superseded (1)
 
@@ -301,18 +301,6 @@ rides the entry hop. This follows from takePoints clearing the holder, which is 
 is the behaviour the ordering todo has to preserve while moving the milestones to the close of the
 call.
 
-### D-260 — A branch block shows every candidate, and labels the ones it never reached
-
-> _2026-09-24 · core/semantic-log · active_
-
-The mark carries every candidate the code declared, in that order, and the renderer labels an arm
-whose predicate never ran, because evaluation stops at the branch taken: the chosen candidate
-position is the whole of what is needed, so no extra field travels. This supersedes the first
-reading of T-140, which truncated the list: the maintainer asked for the full candidate set with a
-note on the arms that were never weighed, which is more informative and hides nothing, as long as
-the drawing says what it means. Verified on the commander dispatch, whose block now reads alt
-result-shape = array, else result-set, else empty — not weighed.
-
 ### D-261 — A branch block orders its arms so mermaid renders it
 
 > _2026-09-24 · core/semantic-log · active_
@@ -472,6 +460,18 @@ index the readers are hot, so an optimisation has to remove comparisons rather t
 Measured on `realm/blong-party`: the browser leg fell from 162.8 s to 8.8 s and
 `acl matrix application` from about 65 s to 3.2 s, with the semantic-log share of the profile gone
 from 75%.
+
+### D-260 — A branch block shows every candidate, and labels the ones it never reached
+
+> _2026-09-24 · core/semantic-log · active_
+
+The mark carries every candidate the code declared, in that order, and the renderer labels an arm
+whose predicate never ran, because evaluation stops at the branch taken: the chosen candidate
+position is the whole of what is needed, so no extra field travels. This supersedes the first
+reading, which truncated the list: the maintainer asked for the full candidate set with a note on
+the arms that were never weighed, which is more informative and hides nothing, as long as the
+drawing says what it means. Verified on the commander dispatch, whose block now reads alt
+result-shape = array, else result-set, else empty — not weighed.
 
 ## Superseded
 

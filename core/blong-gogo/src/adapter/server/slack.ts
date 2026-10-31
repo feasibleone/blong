@@ -2,13 +2,13 @@ import type {IChatAccount, IChatAccountMap} from '@feasibleone/blong/types';
 import {adapter, type Adapter} from '@feasibleone/blong/types';
 import got from 'got';
 
-import {NGROK_AGENT_URL, ngrokPublicUrl, ngrokTunnelsGet} from './ngrokTunnels.ts';
+import {NGROK_AGENT_URL, ngrokPublicUrl, ngrokTunnelsGet} from '../impl/ngrokTunnels.ts';
 import {
     slackManifestPointsAt,
     slackManifestRepoint,
     slackRequestUrl,
     type ISlackManifest,
-} from './slackManifest.ts';
+} from '../impl/slackManifest.ts';
 
 /**
  * slack.ts — the Slack port.
@@ -200,7 +200,7 @@ export default adapter<IConfig>(() => ({
             server: {port: 8095},
             response: {code: 200, body: 'EVENT_RECEIVED'},
             destination: 'chat.in.receive',
-            imports: [/slackIn$/, /\.slack$/],
+            imports: [/\.slack$/],
             accounts: {},
         },
     },

@@ -3,7 +3,7 @@ import {adapter, type Adapter} from '@feasibleone/blong/types';
 import got from 'got';
 
 import {chatPublicUrl} from '../../chatAccounts.ts';
-import {NGROK_AGENT_URL, ngrokPublicUrl, ngrokTunnelsGet} from './ngrokTunnels.ts';
+import {NGROK_AGENT_URL, ngrokPublicUrl, ngrokTunnelsGet} from '../impl/ngrokTunnels.ts';
 
 /**
  * viber.ts — the Viber port.
@@ -44,7 +44,7 @@ export default adapter<IConfig>(() => ({
             server: {port: 8096},
             response: {code: 200, body: {status: 0}},
             destination: 'chat.in.receive',
-            imports: [/viberIn$/, /\.viber$/],
+            imports: [/\.viber$/],
             accounts: {},
         },
     },

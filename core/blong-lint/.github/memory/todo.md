@@ -30,7 +30,7 @@ that the others point at tools/eslint/config.mjs with, which will surface whatev
 missing there. See the friction on the file-scoped run that hid two type errors in a file I had just
 edited.
 
-Half of this landed with the T-187 work: lintCli now refuses an unknown option, a path that does not
-exist, and a run in which no tool read any named path, and it names every path it was given. What
-remains is the whole-package side — the hasTsConfig/hasEslintConfig gating above still skips a tool
-in silence — so this entry stays open for that half only.
+Half of this landed with the earlier lint work: lintCli now refuses an unknown option, a path that
+does not exist, and a run in which no tool read any named path, and it names every path it was
+given. What remains is the whole-package side — the hasTsConfig/hasEslintConfig gating above still
+skips a tool in silence — so this entry stays open for that half only.

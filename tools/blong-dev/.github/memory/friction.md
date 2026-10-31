@@ -24,16 +24,13 @@ open (33)
 - `F-273` · tools/blong-dev — Joining a report failure to the history by name
 - `F-280` · tools/blong-dev — CI=1 locally stops at a sudo prompt from playwright
   install --with-deps
-- `F-317` · tools/blong-dev — The format pass re-wrapped the user's own Manual list
 - `F-324` · tools/blong-dev — Node type stripping rejects TS parameter properties
 - `F-325` · tools/blong-dev — A cached stats read made a finished ingest look stuck
 - `F-326` · tools/blong-dev — A bank can hold a fraction of the tree and still read as healthy
-- `F-336` · tools/blong-dev — A markdownlint rule id with three segments was read as no diagnostic
 - `F-337` · tools/blong-dev — The bank listing lagged the queued backfill
 - `F-383` · tools/blong-dev — memory show --json gives the body as lines, and printing them writes a
   list
 - `F-386` · tools/blong-dev — docs check needs a broker and fails without one
-- `F-401` · tools/blong-dev — A todo's premise can be stale; the code is the premise
 - `F-408` · tools/blong-dev — glossary export collides with memory removeEntry
 - `F-510` · tools/blong-dev — Positional regex groups silently mis-mapped the @@ grammar
 - `F-512` · tools/blong-dev — A link rewrite refused in silence: the column pointed at the bracket
@@ -45,8 +42,11 @@ open (33)
 - `F-547` · tools/blong-dev — A suite-wide run can show silentProjects failing
 - `F-548` · tools/blong-dev — A published summary written before the last leg lags one leg
 - `F-551` · tools/blong-dev — A test inherited the shared-bundle variables the workflow sets
+- `F-317` · tools/blong-dev — The format pass re-wrapped the user's own Manual list
+- `F-336` · tools/blong-dev — A markdownlint rule id with three segments was read as no diagnostic
+- `F-401` · tools/blong-dev — A todo's premise can be stale; the code is the premise
 
-resolved (9)
+resolved (10)
 
 - `F-080` · tools/blong-dev — `blong-dev` CLI not built
 - `F-090` · tools/blong-dev — `blong-dev` was not built, so `npm run ci-lint` could not find it
@@ -57,6 +57,7 @@ resolved (9)
 - `F-442` · tools/blong-dev — A closed todo's id is handed to the next entry
 - `F-549` · tools/blong-dev — The failure message hides the signal that killed the child
 - `F-629` · tools/blong-dev — A subset storybook stage called every other site unknown
+- `F-661` · tools/blong-dev — refs --dangling and audit disagree about which references resolve
 
 <!-- /memory:index -->
 
@@ -222,19 +223,6 @@ e2e leg runs a fixture's playwright command, both abandoned at the prompt before
 collected, plus a detour looking for the sudo in the package's own scripts, where it does not
 appear.
 
-### F-317 — The format pass re-wrapped the user's own Manual list
-
-> _2026-09-29 · tools/blong-dev · open_
-
-The format pass re-wrapped the user's own ## Manual list in the root todo.md into one run-on
-paragraph. The checker exempts that section, because it is the user's and not the tool's, but the
-formatter re-rendered the whole document and knew nothing about sections - so the one command
-documented as safe to run anywhere tidied the one thing the house rules say agents never touch, and
-the damage is silent (it reads as prose and passes check). formatLines now treats ## Manual as
-verbatim to the next heading, with a test. The lesson is wider than this section: a re-render must
-carry every exemption the checker applies, or the gate and the writer disagree about what is owned -
-the same shape as the T-175 rules, where the wrapper produced what the checker rejected.
-
 ### F-324 — Node type stripping rejects TS parameter properties
 
 > _2026-09-30 · tools/blong-dev · open_
@@ -271,18 +259,6 @@ partial corpus that looked like a complete one, and only an intersection against
 `memory list --json` exposed it. Printing the bank's own document count next to the backfill's total
 would have made the gap visible in the first line of output.
 
-### F-336 — A markdownlint rule id with three segments was read as no diagnostic
-
-> _2026-10-01 · tools/blong-dev · open_
-
-Probing the T-187 fix with a file whose first line was prose printed a green tick and exited 1:
-parseMarkdownlint matched MD\d+/[\w-]+, which expects exactly two segments, while markdownlint
-reports MD041/first-line-heading/first-line-h1. The diagnostic was dropped while the tool's exit
-code still failed the run, which is the worst combination — a pass that is not one, and one that had
-been hiding real findings for as long as the tool has emitted multi-segment ids. Lesson: when a
-parser reads a third-party tool's output, feed it a line the tool actually printed rather than a
-hand-written one, and treat a non-zero exit with no parsed diagnostics as a parser bug.
-
 ### F-337 — The bank listing lagged the queued backfill
 
 > _2026-10-01 · tools/blong-dev · open_
@@ -316,20 +292,6 @@ broker transport failure (code -195) because the log/broker server is not runnin
 exits non-zero before it reaches a verdict on anything else. Nothing in the message names the
 missing dependency, so the failure reads like a documentation problem: say which service the
 generator needs, and do not treat a failure on that artefact as a docs regression.
-
-### F-401 — A todo's premise can be stale; the code is the premise
-
-> _2026-10-06 · tools/blong-dev · open_
-
-T-230 was written when the id counter ran per memory file, so a bare id could name two entries. By
-the time it was implemented, highestId already scans every file and nextId allocates one number
-across the workspace, so the collision the todo described no longer happens from ordinary adds. The
-first version of the fixtures was written to the todo rather than to the code - two adds in two
-packages, expecting two T-001s - and the tests failed, not because the resolution was wrong but
-because the setup produced T-001 and T-002. A duplicate now only arrives from a pinned --id, a batch
-import, or a migration, and the fixtures had to build that state explicitly. Lesson: read the
-allocation code before writing a fixture that assumes a collision, and check a todo's premise
-against the source before implementing it.
 
 ### F-408 — glossary export collides with memory removeEntry
 
@@ -483,6 +445,45 @@ in the same change that adds them to the workflow, because `ci-test` runs with t
 without them proves nothing. It reproduced locally in one command by prefixing the same two
 variables, which is the check to make before pushing a workflow change that reaches a test.
 
+### F-317 — The format pass re-wrapped the user's own Manual list
+
+> _2026-09-29 · tools/blong-dev · open_
+
+The format pass re-wrapped the user's own ## Manual list in the root todo.md into one run-on
+paragraph. The checker exempts that section, because it is the user's and not the tool's, but the
+formatter re-rendered the whole document and knew nothing about sections - so the one command
+documented as safe to run anywhere tidied the one thing the house rules say agents never touch, and
+the damage is silent (it reads as prose and passes check). formatLines now treats ## Manual as
+verbatim to the next heading, with a test. The lesson is wider than this section: a re-render must
+carry every exemption the checker applies, or the gate and the writer disagree about what is owned -
+the same shape as the format rules, where the wrapper produced what the checker rejected.
+
+### F-336 — A markdownlint rule id with three segments was read as no diagnostic
+
+> _2026-10-01 · tools/blong-dev · open_
+
+Probing that fix with a file whose first line was prose printed a green tick and exited 1:
+parseMarkdownlint matched MD\d+/[\w-]+, which expects exactly two segments, while markdownlint
+reports MD041/first-line-heading/first-line-h1. The diagnostic was dropped while the tool's exit
+code still failed the run, which is the worst combination — a pass that is not one, and one that had
+been hiding real findings for as long as the tool has emitted multi-segment ids. Lesson: when a
+parser reads a third-party tool's output, feed it a line the tool actually printed rather than a
+hand-written one, and treat a non-zero exit with no parsed diagnostics as a parser bug.
+
+### F-401 — A todo's premise can be stale; the code is the premise
+
+> _2026-10-06 · tools/blong-dev · open_
+
+The todo was written when the id counter ran per memory file, so a bare id could name two entries.
+By the time it was implemented, highestId already scans every file and nextId allocates one number
+across the workspace, so the collision the todo described no longer happens from ordinary adds. The
+first version of the fixtures was written to the todo rather than to the code - two adds in two
+packages, expecting two `T-001`s - and the tests failed, not because the resolution was wrong but
+because the setup produced `T-001` and `T-002`. A duplicate now only arrives from a pinned --id, a
+batch import, or a migration, and the fixtures had to build that state explicitly. Lesson: read the
+allocation code before writing a fixture that assumes a collision, and check a todo's premise
+against the source before implementing it.
+
 ## Resolved
 
 ### F-080 — `blong-dev` CLI not built
@@ -617,3 +618,21 @@ Fixed: stageStorybooks takes the register as an option and the docs command pass
 so a subset stage judges every embed against the register and reports an unstaged site as unstaged.
 A test now pins it ('a subset stage judges every embed against the whole register'), and blong-dev
 docs storybook --only feedback/sport works.
+
+### F-661 — refs --dangling and audit disagree about which references resolve
+
+> _2026-10-31 · tools/blong-dev · resolved_
+
+audit reports 92 references inside memory bodies that name an id nothing holds, while
+refs --dangling reports none, and both are described as the check that every reference resolves. The
+difference is scope: refs scans the source, the docs and the skills, and audit also reads the bodies
+of the entries themselves, so a memory file that cites an id it pruned, purged or renumbered is
+invisible to the gate and visible to the audit. The 92 are old enough that none names an entry this
+work touched, which is how the two were told apart — count them before and after a change rather
+than reading the gate as proof. The disagreement runs the other way too: T-591 is cited from four
+files, and refs --sites names none of them, with or without the scope suffix and after a reindex, so
+a citation can be missing from the audit view while the gate calls it resolved. Neither command can
+be read as proof that a specific entry is cited.
+
+resolved: the three commands share one implementation now (D-719) and all fail on a body reference
+nothing resolves; the 92 it found are reworked and the count is zero

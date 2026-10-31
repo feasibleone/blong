@@ -32,6 +32,15 @@ function sendFailure(sent: unknown): Error | undefined {
  * answered" from "the platform refused".
  */
 export interface IChatAskParams {
+    /**
+     * The id the caller already recorded, when it has one.
+     *
+     * A realm that checkpoints a pending question before asking needs the same id on both sides: the
+     * answer arrives with the prompt it answers, and a promise keyed by an id the caller never saw is an
+     * answer nobody can match (`@@T-574`). Absent, the ask mints its own — the behaviour every other
+     * caller relies on.
+     */
+    promptId?: string;
     platform: 'slack' | 'viber';
     account?: string;
     conversationId: string;
@@ -125,7 +134,7 @@ export default handler(
                 };
                 const timeoutMs = params.timeoutMs ?? DEFAULT_TIMEOUT_MS;
                 const prompt: IChatPrompt = {
-                    promptId: randomUUID(),
+                    promptId: params.promptId ?? randomUUID(),
                     kind: params.kind,
                     text: params.text,
                     ...(params.options && {options: params.options}),

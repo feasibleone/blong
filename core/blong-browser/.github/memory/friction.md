@@ -11,7 +11,6 @@ open (20)
 
 - `F-175` · core/blong-browser — Dropping PrimeReact's filter row changes more than the filter UI
 - `F-253` · core/blong-browser — A screenshot 28px high: the tab strip was the squeezed flex item
-- `F-254` · core/blong-browser — A "race" that was two different baselines and a 1% tolerance
 - `F-319` · core/blong-browser — A Storybook decorator must return an element, not a component
 - `F-320` · core/blong-browser — Importing a raw-.ts workspace package needs
   allowImportingTsExtensions
@@ -34,6 +33,7 @@ open (20)
 - `F-607` · core/blong-browser — globalSetup and globalTeardown are paths, so the harvest never ran
 - `F-624` · core/blong-browser — Another realm cannot see a new blong-browser field until the
   package is built
+- `F-254` · core/blong-browser — A "race" that was two different baselines and a 1% tolerance
 
 resolved (27)
 
@@ -105,25 +105,6 @@ measured its full 46 throughout, which is why measuring it proved nothing. .p-ta
 { flex-shrink: 0 } restores 46/46 and panels at 95, and healed a 2px shift in the k8s pods shot
 nobody had noticed. Lesson: when a flex child has less height than its content, walk the chain
 reading clientHeight and scrollHeight.
-
-### F-254 — A "race" that was two different baselines and a 1% tolerance
-
-> _2026-09-24 · core/blong-browser · open_
-
-T-144 was written from this reasoning: three commander shots carried the flow realm Observe group
-and sixteen did not, so the composed portal menu must land at different moments per page. The
-measurements were real, the conclusion was wrong, and T-144 was closed rather than fixed. Sixteen of
-those baselines were simply stale, and the shared Playwright config allows maxDiffPixelRatio 0.01 -
-14400 pixels on a 1600x900 shot - while the whole missing menu group is 772 pixels, so the drift was
-invisible and the tests passed. Probes settled it: four pages loading in parallel, watched every
-250ms through login, a page open and a drill, showed one state only (store Observe+Explore, rendered
-labels for both groups, marker merged from 1.3s). Nothing raced. The lesson: when two screenshots of
-the same page disagree, check what the comparison tolerates before concluding anything about timing,
-and prefer a run that shows the same page twice over two files captured months apart. The sweep that
-followed needed the tolerance at zero, which is how all of the drift - the menu group in every
-suite, the layout fix, and live-data changes that deserve their own look - became visible at once.
-The tolerance itself is recorded as a todo, because 1% is enough to hide the next change of this
-size.
 
 ### F-319 — A Storybook decorator must return an element, not a component
 
@@ -335,6 +316,25 @@ IPortalFeedbackConfig added to types/portal.ts was invisible from the realm and
 portalConfig.feedback reported as unknown. The page worked around it with a local cast; the real fix
 is either building blong-browser after changing its public types or pointing the realm's tsconfig at
 the development export condition. Worth knowing before the next realm consumes a new browser type.
+
+### F-254 — A "race" that was two different baselines and a 1% tolerance
+
+> _2026-09-24 · core/blong-browser · open_
+
+The todo was written from this reasoning: three commander shots carried the flow realm Observe group
+and sixteen did not, so the composed portal menu must land at different moments per page. The
+measurements were real, the conclusion was wrong, and it was closed rather than fixed. Sixteen of
+those baselines were simply stale, and the shared Playwright config allows maxDiffPixelRatio 0.01 -
+14400 pixels on a 1600x900 shot - while the whole missing menu group is 772 pixels, so the drift was
+invisible and the tests passed. Probes settled it: four pages loading in parallel, watched every
+250ms through login, a page open and a drill, showed one state only (store Observe+Explore, rendered
+labels for both groups, marker merged from 1.3s). Nothing raced. The lesson: when two screenshots of
+the same page disagree, check what the comparison tolerates before concluding anything about timing,
+and prefer a run that shows the same page twice over two files captured months apart. The sweep that
+followed needed the tolerance at zero, which is how all of the drift - the menu group in every
+suite, the layout fix, and live-data changes that deserve their own look - became visible at once.
+The tolerance itself is recorded as a todo, because 1% is enough to hide the next change of this
+size.
 
 ## Resolved
 

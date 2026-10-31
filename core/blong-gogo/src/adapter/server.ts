@@ -17,9 +17,19 @@ export default realm(blong => ({
         s3: blong.type.Boolean(),
         slack: blong.type.Boolean(),
         viber: blong.type.Boolean(),
+        agent: blong.type.Boolean(),
+        workspace: blong.type.Boolean(),
         github: blong.type.Boolean(),
     }),
-    children: ['./server'],
+    /**
+     * The bases are prototypes: a realm instance reaches one with `extends`, and nothing else does.
+     *
+     * `thunk` scans the folder without importing it and registers each `<name>.ts` — with the
+     * `<name>/` group that gives it its methods — behind a lazy entry, so a process pays for the
+     * adapters it actually extends and starts rather than for every base the framework ships
+     * (`@@T-593`).
+     */
+    thunk: ['./server'],
     config: {
         default: {
             tcp: false,
@@ -36,6 +46,8 @@ export default realm(blong => ({
             s3: false,
             slack: false,
             viber: false,
+            agent: false,
+            workspace: false,
             github: false,
         },
     },

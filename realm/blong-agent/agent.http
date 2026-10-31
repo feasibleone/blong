@@ -1,0 +1,53 @@
+# The agent realm, by hand
+#
+# Play through `blong-dev proxy` (it logs in and keeps the session), then run these in order:
+#
+#   blong-dev proxy --port 8099 --target http://localhost:8080 \
+#       --username testAdmin --password testPassword
+#
+# A ticket is claimed before it can be run, and a question the agent asks is answered through
+# `agent.answer.receive` — by its prompt id, so a retried click is safe.
+
+@base = http://localhost:8099
+
+### One pass of the worker: the inbox, then a claim
+POST {{base}}/agent/worker/tick
+content-type: application/json
+
+{"params": {"workerId": "host-local", "engineAccount": "local"}}
+
+### Take one ticket without running it
+POST {{base}}/agent/ticket/claim
+content-type: application/json
+
+{"params": {"workerId": "host-local", "engineAccount": "local"}}
+
+### What the realm recorded for a session
+POST {{base}}/agent/session/get
+content-type: application/json
+
+{"params": {"sessionId": "00000000-0000-0000-0000-000000000000"}}
+
+### Run it, when the claim was made separately
+POST {{base}}/agent/session/run
+content-type: application/json
+
+{"params": {"sessionId": "00000000-0000-0000-0000-000000000000", "workerId": "host-local"}}
+
+### Answer the question it parked on
+POST {{base}}/agent/answer/receive
+content-type: application/json
+
+{"params": {"promptId": "the-prompt-id-from-agent-session-get", "answerText": "the chosen fix"}}
+
+### Close the ticket
+POST {{base}}/agent/ticket/release
+content-type: application/json
+
+{"params": {"ticketId": "T-1001", "workerId": "host-local", "ticketStatus": "done"}}
+
+### What this host left suspended, and what to do about it
+POST {{base}}/agent/recovery/scan
+content-type: application/json
+
+{"params": {"workerId": "host-local"}}

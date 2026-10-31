@@ -20,6 +20,14 @@ export interface IConfig {
     maxRetriesPerRequest?: number;
     enableOfflineQueue?: boolean;
     lazyConnect?: boolean;
+    /**
+     * A channel this adapter subscribes to, and the method a message on it calls.
+     *
+     * A broker is a wake-up, not a transport: the message becomes one ordinary dispatch, so the realm
+     * decides what it means and a message that reaches the wrong process changes nothing (`@@D-709`).
+     * A subscriber cannot serve commands on its own connection, so it is a duplicate of the client.
+     */
+    notify?: {channel?: string; method?: string};
 }
 
 const errorMap: IErrorMap = {
@@ -49,6 +57,11 @@ export interface IRedisClient {
     hdel(key: string, ...fields: string[]): Promise<number>;
     eval(script: string, numKeys: number, ...keysAndArgs: unknown[]): Promise<unknown>;
     scan(cursor: string, ...args: unknown[]): Promise<[string, string[]]>;
+    publish(channel: string, message: string): Promise<number>;
+    subscribe(...channels: string[]): Promise<unknown>;
+    unsubscribe(...channels: string[]): Promise<unknown>;
+    duplicate(): IRedisClient;
+    on(event: 'message', listener: (channel: string, message: string) => void): unknown;
     quit(): Promise<unknown>;
 }
 
@@ -166,6 +179,18 @@ export default adapter<IConfig>(({utError}) => {
         }),
     };
 
+    // Publish: `redis.pub.publish` — the outbound half of the notify block above.
+    const pubOps: Record<string, (params: Record<string, unknown>) => Promise<unknown>> = {
+        publish: async params => {
+            const channel = String(params.channel ?? '');
+            if (!channel) throw new Error('redis.pub.publish needs a channel');
+            const message =
+                typeof params.message === 'string' ? params.message : JSON.stringify(params.message);
+            const subscribers = await redis.publish(channel, message);
+            return {subscribers};
+        },
+    };
+
     // Generic Lua script evaluation: redis.script.eval
     const scriptOps: Record<string, (params: Record<string, unknown>) => Promise<unknown>> = {
         eval: async params => ({
@@ -189,11 +214,61 @@ export default adapter<IConfig>(({utError}) => {
             createClient((this.config as {redis?: IConfig}).redis ?? {});
             this.config.context = {...this.config.context, redis};
         },
-        start() {
+        async start() {
             super.connect();
-            return super.start();
+            const started = super.start();
+            const notify = (this.config as {redis?: IConfig}).redis?.notify;
+            if (!notify?.channel || !notify.method) return started;
+            const self = this as unknown as {
+                config: {context?: Record<string, unknown>};
+                handle?: (params: unknown, $meta: unknown) => Promise<unknown>;
+                log?: {warn?: (entry: unknown) => void};
+            };
+            try {
+                // The duplicate inherits the connection options, including the offline queue this adapter
+                // turns off for commands; a subscriber has to connect by itself, so it is switched back on
+                // for it alone (`@@T-560`).
+                const subscriber = redis.duplicate();
+                (subscriber as unknown as {options?: Record<string, unknown>}).options ??= {};
+                (
+                    subscriber as unknown as {options: Record<string, unknown>}
+                ).options.enableOfflineQueue = true;
+                subscriber.on('message', (_channel, message) => {
+                    let payload: unknown = message;
+                    try {
+                        payload = JSON.parse(message);
+                    } catch {
+                        // A plain string is a payload too.
+                    }
+                    void Promise.resolve(
+                        self.handle?.(payload, {method: notify.method, mtid: 'request'}),
+                    ).catch(error =>
+                        self.log?.warn?.({
+                            $meta: {mtid: 'event', method: 'redis.subscribe'},
+                            message: `a message on ${notify.channel} did not dispatch: ${String((error as Error)?.message ?? error)}`,
+                        }),
+                    );
+                });
+                await subscriber.subscribe(notify.channel);
+                self.config.context = {...self.config.context, redisSubscriber: subscriber};
+            } catch (error) {
+                // A broker that is down must not stop the realm: the wake only shortens a wait that
+                // the worker tick ends anyway.
+                self.log?.warn?.({
+                    $meta: {mtid: 'event', method: 'redis.subscribe'},
+                    message: `redis notify channel ${notify.channel} not subscribed: ${String((error as Error)?.message ?? error)}`,
+                });
+            }
+            return started;
         },
         async stop() {
+            const subscriber = (this.config as {context?: {redisSubscriber?: IRedisClient}}).context
+                ?.redisSubscriber;
+            try {
+                await subscriber?.quit();
+            } catch {
+                // A subscriber that never connected has nothing to leave behind.
+            }
             try {
                 await redis?.quit();
             } catch {
@@ -252,7 +327,9 @@ export default adapter<IConfig>(({utError}) => {
                           ? hashOps
                           : object === 'script'
                             ? scriptOps
-                            : undefined;
+                            : object === 'pub'
+                              ? pubOps
+                              : undefined;
                 const fn = ops?.[operation];
                 if (!fn) throw new Error(`Unknown redis operation: ${object}.${operation}`);
                 return await fn(params);

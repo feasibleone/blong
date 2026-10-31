@@ -19,7 +19,6 @@ open (63)
 - `F-367` · realm/blong-kustomize — The portal gates every page behind a login the realm does not
   have
 - `F-377` · realm/blong-kustomize — kubectl exec truncates a large stdin stream, kubectl cp does not
-- `F-381` · realm/blong-kustomize — A list answer without kind made every live object obsolete
 - `F-384` · realm/blong-kustomize — The generate command wrote a second tree under the working
   directory
 - `F-387` · realm/blong-kustomize — describe() reports framework components as realms
@@ -32,12 +31,9 @@ open (63)
   fixtures
 - `F-394` · realm/blong-kustomize — A CLI entry point imported by a loaded module deadlocks its own
   load
-- `F-395` · realm/blong-kustomize — A camel-cased call name silently becomes a different method
 - `F-396` · realm/blong-kustomize — One deployment walked the deploy path and found six defects
 - `F-397` · realm/blong-kustomize — An object method's arrow body is a parse error wearing a type's
   clothes
-- `F-399` · realm/blong-kustomize — A JSON-patch path one level too shallow replaces the whole
-  member
 - `F-400` · realm/blong-kustomize — A comment can trip a static scan
 - `F-403` · realm/blong-kustomize — A local reconcile with apply wrote junk into the live namespace
 - `F-404` · realm/blong-kustomize — A stale CR shaped the tree, and the realm believed it
@@ -72,7 +68,6 @@ open (63)
 - `F-398` · realm/blong-kustomize — A lookup that matches nothing reads as a timeout
 - `F-468` · realm/blong-kustomize — A namespace-scoped listing made a healthy suite look broken
 - `F-461` · realm/blong-kustomize — A drop that deletes a namespace takes the rights with it
-- `F-472` · realm/blong-kustomize — The reconcile diff was described from its caller, not its code
 - `F-475` · realm/blong-kustomize — The split's third half was missing from two of its readers
 - `F-476` · realm/blong-kustomize — Three kustomize constraints found by composing the overlay
 - `F-477` · realm/blong-kustomize — A skip guard turned a missing requirement into a green run
@@ -98,6 +93,11 @@ open (63)
   handler
 - `F-615` · realm/blong-kustomize — The CR example is the file the runbook applies
 - `F-620` · realm/blong-kustomize — A committed kustomize tree rots because nothing regenerates it
+- `F-381` · realm/blong-kustomize — A list answer without kind made every live object obsolete
+- `F-395` · realm/blong-kustomize — A camel-cased call name silently becomes a different method
+- `F-399` · realm/blong-kustomize — A JSON-patch path one level too shallow replaces the whole
+  member
+- `F-472` · realm/blong-kustomize — The reconcile diff was described from its caller, not its code
 
 resolved (35)
 
@@ -107,20 +107,15 @@ resolved (35)
 - `F-392` · realm/blong-kustomize — A plausible file read was taken as the diagnosis
 - `F-410` · realm/blong-kustomize — A CRD default that reaches an attempt name splits one step into
   two
-- `F-406` · realm/blong-kustomize — The attempt's name did not cover the command line the step runs
 - `F-411` · realm/blong-kustomize — A realm fix needs the suite artifact rebuilt, not only the
   operator
 - `F-414` · realm/blong-kustomize — A positional after a --flag is swallowed by the parser
-- `F-417` · realm/blong-kustomize — A route hunt that was really a missing listener
-- `F-425` · realm/blong-kustomize — Pruning dangling images threw away the build cache and made
-  every build cold
 - `F-430` · realm/blong-kustomize — The operator portal login has never been reachable in the dev
   cluster
 - `F-432` · realm/blong-kustomize — The generated steps ran BestEffort while the processes were
   sized
 - `F-444` · realm/blong-kustomize — A prune that only looks up the kinds its tree names
 - `F-446` · realm/blong-kustomize — A forgotten cluster variable becomes a second cluster
-- `F-452` · realm/blong-kustomize — The operator planned from the first artifact it ever fetched
 - `F-449` · realm/blong-kustomize — Rush links are absolute, so the fill must run where readers
   mount
 - `F-456` · realm/blong-kustomize — The materializer's round trip found three split defects
@@ -131,8 +126,6 @@ resolved (35)
 - `F-480` · realm/blong-kustomize — A switched-off service was read from a namespace nobody named
 - `F-481` · realm/blong-kustomize — The declaration never named the namespace the operator retires
   from
-- `F-486` · realm/blong-kustomize — The mounted fill module started as a no-op
-- `F-487` · realm/blong-kustomize — The fill unpacked a 653 MB artifact into memory
 - `F-494` · realm/blong-kustomize — Every authenticated call dies in the codec handshake
 - `F-493` · realm/blong-kustomize — Port-forward shadowed by a local operator
 - `F-499` · realm/blong-kustomize — The realm CLI loads a database nobody asked for
@@ -147,6 +140,13 @@ resolved (35)
   package
 - `F-619` · realm/blong-kustomize — A cleanup-only sweep asked a namespace the deployment never used
 - `F-621` · realm/blong-kustomize — The realm's own release moved every tree its tests pin
+- `F-406` · realm/blong-kustomize — The attempt's name did not cover the command line the step runs
+- `F-417` · realm/blong-kustomize — A route hunt that was really a missing listener
+- `F-425` · realm/blong-kustomize — Pruning dangling images threw away the build cache and made
+  every build cold
+- `F-452` · realm/blong-kustomize — The operator planned from the first artifact it ever fetched
+- `F-486` · realm/blong-kustomize — The mounted fill module started as a no-op
+- `F-487` · realm/blong-kustomize — The fill unpacked a 653 MB artifact into memory
 
 <!-- /memory:index -->
 
@@ -219,17 +219,6 @@ half a suite with no error of its own. kubectl cp moved the same file in seconds
 matched byte for byte. For anything large, copy with kubectl cp and check the size on the far side
 before believing the upload, because a short stream is indistinguishable from a successful one by
 exit code alone.
-
-### F-381 — A list answer without kind made every live object obsolete
-
-> _2026-10-05 · realm/blong-kustomize · open_
-
-The reconcile compared desired objects against live ones by kind, namespace and name, and the live
-side arrived with only metadata, spec and status, so every key began with a question mark and
-nothing matched: the pass reported eighteen creations beside eighteen obsolete objects of the same
-kinds, which reads like a broken diff and is really a missing field. The fix was one line once the
-probe printed the object's own keys, and the probe would have answered it on the first run; add the
-keys to the diagnostic before reading the diff code again (T-226, T-228).
 
 ### F-384 — The generate command wrote a second tree under the working directory
 
@@ -341,23 +330,6 @@ everything worth testing in a module beside the entry (bin/kustomizeCommand.ts) 
 inbound import, and the trap is worth knowing because the framework advertises importing a bin from
 a test as supported.
 
-### F-395 — A camel-cased call name silently becomes a different method
-
-> _2026-10-06 · realm/blong-kustomize · open_
-
-The volume prune handler asked the handler proxy for clusterPersistentVolumeClaimFind, which reads
-correctly and dispatches nothing of the sort: a method name has exactly three parts, so the proxy
-splits what it is handed on the capital letters and sent cluster.persistent.volumeClaimFind to the
-adapter, whose middle part is now persistent and which answered no verb matched for
-cluster.persistent.volumeClaimFind. The framework's own note in k8s.ts says the adapter answers
-resource plus verb, and the realm's testClusterApply spells every compound kind as one word
-(clusterPersistentvolumeclaimFind), so the right spelling was already in the package - in a test
-file, about a kind nothing else called. What made it expensive is the shape of the failure: the
-first run reported that the adapter is not loaded, because a missing proxy method looks like an
-absent adapter, and only the run after that surfaced the adapter's own complaint. Both were one
-command away, but nothing had run the handler since it was written, which is exactly what T-245
-recorded and why the CLI was worth building before anything else on this list.
-
 ### F-396 — One deployment walked the deploy path and found six defects
 
 > _2026-10-06 · realm/blong-kustomize · open_
@@ -392,22 +364,6 @@ parse are the ones whose methods use a block body. The package's tsconfig also s
 the same file reported an eslint Parsing error too, which made the type look guilty twice. The
 lesson is to compare a failing signature with a neighbouring one character by character before
 theorising: a single grep for the arrow body in the layer showed the only file with it was mine.
-
-### F-399 — A JSON-patch path one level too shallow replaces the whole member
-
-> _2026-10-06 · realm/blong-kustomize · open_
-
-Rehearsing the CI job's notify step against the dev cluster showed the release patching
-/spec/suiteVolume where it meant /spec/suiteVolume/artifact. In JSON patch an add on a member that
-exists replaces it, so the operation worked, the answer said updated true, and the suite's volume
-lost backend and retention — the CRD's defaults filled the gap, which means a node-local suite
-silently became auto because a release happened. Nothing failed and no log line mentioned it; the
-only reason it was seen is that the harness printed the CR's spec before and after, which is the
-habit worth keeping: a patch's success says nothing about what it replaced, so an assertion belongs
-on the _other_ fields. The fix is the nested path, and the paths are now built by an exported
-function with a test of its own, because a path is the kind of contract a reading accepts and a test
-does not. Found by wiring the pipeline (T-247) rather than by reading it — the same lesson this
-realm keeps teaching about deployment runs.
 
 ### F-400 — A comment can trip a static scan
 
@@ -760,21 +716,6 @@ A listing that fails is now reported as a step of its own — the failure names 
 kind — rather than ending the pass before it writes a status (D-499), so this state is readable from
 the CR instead of only from the operator log.
 
-### F-472 — The reconcile diff was described from its caller, not its code
-
-> _2026-10-10 · realm/blong-kustomize · open_
-
-T-318 asserted that the reconcile's diff compares the desired object with the live one whole, and
-that a server-owned `volumeName` therefore read as a change on every pass. The diff does no such
-thing: `diffResources` compares the `spec-hash` label the tree stamps on each manifest with the
-label the apply wrote onto the live object — plan against plan, not object against object, which is
-exactly why a field the server owns cannot affect it. The claim came from the numbers beside it
-(`updated: 1` for a tree nobody had edited) and from the call site in the reconcile, rather than
-from reading `diffResources` and `stampSpecHash`, which would have taken one file open and would
-have shown the permanent update for what it was: the failed apply never writing the new label. The
-lesson is the one this repository keeps teaching — read the function before describing its
-behaviour, and treat a count as evidence to explain rather than as proof of a mechanism.
-
 ### F-475 — The split's third half was missing from two of its readers
 
 > _2026-10-11 · realm/blong-kustomize · open_
@@ -1068,6 +1009,65 @@ rule belongs in the change, not in the memory of whoever made it. Regenerating i
 know the command; knowing that a tree exists at all is the hard part, so the enumeration is git
 ls-files | grep system/kustomize.
 
+### F-381 — A list answer without kind made every live object obsolete
+
+> _2026-10-05 · realm/blong-kustomize · open_
+
+The reconcile compared desired objects against live ones by kind, namespace and name, and the live
+side arrived with only metadata, spec and status, so every key began with a question mark and
+nothing matched: the pass reported eighteen creations beside eighteen obsolete objects of the same
+kinds, which reads like a broken diff and is really a missing field. The fix was one line once the
+probe printed the object's own keys, and the probe would have answered it on the first run; add the
+keys to the diagnostic before reading the diff code again.
+
+### F-395 — A camel-cased call name silently becomes a different method
+
+> _2026-10-06 · realm/blong-kustomize · open_
+
+The volume prune handler asked the handler proxy for clusterPersistentVolumeClaimFind, which reads
+correctly and dispatches nothing of the sort: a method name has exactly three parts, so the proxy
+splits what it is handed on the capital letters and sent cluster.persistent.volumeClaimFind to the
+adapter, whose middle part is now persistent and which answered no verb matched for
+cluster.persistent.volumeClaimFind. The framework's own note in k8s.ts says the adapter answers
+resource plus verb, and the realm's testClusterApply spells every compound kind as one word
+(clusterPersistentvolumeclaimFind), so the right spelling was already in the package - in a test
+file, about a kind nothing else called. What made it expensive is the shape of the failure: the
+first run reported that the adapter is not loaded, because a missing proxy method looks like an
+absent adapter, and only the run after that surfaced the adapter's own complaint. Both were one
+command away, but nothing had run the handler since it was written, which is exactly what was
+recorded and why the CLI was worth building before anything else on this list.
+
+### F-399 — A JSON-patch path one level too shallow replaces the whole member
+
+> _2026-10-06 · realm/blong-kustomize · open_
+
+Rehearsing the CI job's notify step against the dev cluster showed the release patching
+/spec/suiteVolume where it meant /spec/suiteVolume/artifact. In JSON patch an add on a member that
+exists replaces it, so the operation worked, the answer said updated true, and the suite's volume
+lost backend and retention — the CRD's defaults filled the gap, which means a node-local suite
+silently became auto because a release happened. Nothing failed and no log line mentioned it; the
+only reason it was seen is that the harness printed the CR's spec before and after, which is the
+habit worth keeping: a patch's success says nothing about what it replaced, so an assertion belongs
+on the _other_ fields. The fix is the nested path, and the paths are now built by an exported
+function with a test of its own, because a path is the kind of contract a reading accepts and a test
+does not. Found by wiring the pipeline rather than by reading it — the same lesson this realm keeps
+teaching about deployment runs.
+
+### F-472 — The reconcile diff was described from its caller, not its code
+
+> _2026-10-10 · realm/blong-kustomize · open_
+
+The todo asserted that the reconcile's diff compares the desired object with the live one whole, and
+that a server-owned `volumeName` therefore read as a change on every pass. The diff does no such
+thing: `diffResources` compares the `spec-hash` label the tree stamps on each manifest with the
+label the apply wrote onto the live object — plan against plan, not object against object, which is
+exactly why a field the server owns cannot affect it. The claim came from the numbers beside it
+(`updated: 1` for a tree nobody had edited) and from the call site in the reconcile, rather than
+from reading `diffResources` and `stampSpecHash`, which would have taken one file open and would
+have shown the permanent update for what it was: the failed apply never writing the new label. The
+lesson is the one this repository keeps teaching — read the function before describing its
+behaviour, and treat a count as evidence to explain rather than as proof of a mechanism.
+
 ## Resolved
 
 ### F-371 — The browser login fails while the same handler authenticates the token
@@ -1142,26 +1142,6 @@ declared file and the live object, so hash resolved values rather than optional 
 jobName now hashes the argv alone; the defaults omitted and the defaults spelled out produce one
 name, pinned by theAttemptNameIgnoresHowTheIntentsWereSpelled
 
-### F-406 — The attempt's name did not cover the command line the step runs
-
-> _2026-10-06 · realm/blong-kustomize · resolved_
-
-jobName hashes what a deploy-time Job runs, so a changed attempt arrives as a different name and
-nothing has to be updated - that is the reason a Job is immutable and the pass leaves an existing
-attempt alone. The hash covered the kind, the suite, the version, the image, the minimum framework
-version, the entry, the intents and whether the suite has a database, but not the argv those inputs
-produce: T-253 moved db in front of the intents and the name d7aca82b did not move with it. The live
-cluster therefore held an attempt running the old command line while the tree carried the corrected
-one under the same name, and after a Job was made un-updatable the difference was invisible - the
-pass reported 15 unchanged and the CR said Ready over a step that no longer matched the tree. Fixed
-by extracting migrationArgs and hashing the argv itself. Lesson: a name that stands in for a spec
-has to hash the spec, not the inputs the spec is derived from, or a derivation change is a silent
-no-op.
-
-The argv is hashed and the intents field no longer is (F-410); confirmed live on dev-cluster where
-the tenant tree and the operator name one attempt (1f770a10) and a pass reports 0 to update, waiting
-for it rather than replacing an immutable Job
-
 ### F-411 — A realm fix needs the suite artifact rebuilt, not only the operator
 
 > _2026-10-07 · realm/blong-kustomize · resolved_
@@ -1188,43 +1168,6 @@ while every pod beside it connected to db. Every hand-run repro used the other o
 which is what hid it: a positional is only positional when no flag precedes it. The intents are
 emitted before the flags now, and the tree generator's own test asserts that no positional follows a
 flag.
-
-### F-417 — A route hunt that was really a missing listener
-
-> _2026-10-07 · realm/blong-kustomize · resolved_
-
-T-261 sent the reader into the registration path — the port imports patterns, the registry register
-call, the localOnly guard, the route builder in the rpc server — and none of it was the cause: the
-operator process runs no gateway at all, and the path the docs name is a gateway route, so every
-kustomize route 404s while the tenant answers 401 on a route of the same shape. The measurement that
-settles it takes one line and was available from the start: read the listening ports out of the
-process log and the Service, then ask which of the two servers owns the documented path. The entry
-had already observed 404 and had reasoned about which string a pattern is matched against instead; a
-probe of a sibling route would have shown it was not a pattern question at all. Lesson: a 404 whose
-body names the server that answers is evidence about the listener, not about the handler.
-
-The listener question is answered and the fix landed; the lesson stays in the body.
-
-### F-425 — Pruning dangling images threw away the build cache and made every build cold
-
-> _2026-10-07 · realm/blong-kustomize · resolved_
-
-The first version of the retention line in `k3d-dev-cycle.sh` ran
-`podman image prune -f --filter dangling=true` after importing the image. Buildah leaves its stage
-images dangling, but they are also the layer cache: the manifest and source copies, `rush install`
-and `rush deploy` all live in them, so the next build re-executed everything. The build log showed
-four cache hits in a sixty-six step build, with `rush install` (the 3 GB dependency tree plus the
-native build of `node-rdkafka`) and `rush deploy` both running from scratch — the ten to fifteen
-minutes T-263/F-411 measured, paid on every cycle. Retention has to be per generation rather than
-blanket: the epoch is taken before `podman build` and the prune runs with
-`--filter until=<elapsed>s`, which drops the superseded generations and leaves the chain just built
-standing, so the cache stays warm and disk stays bounded to one generation. Lesson: a dangling image
-is not automatically garbage here — on this builder it is the cache, so prune by age relative to the
-current run, never by dangling alone.
-
-fixed by pruning by age relative to the build start; the next full cycle reused the cache (58 of 66
-steps, install and deploy both cached) and the store fell from 9.281 GB to 8.522 GB with one fresh 4
-GB generation kept for the run after it.
 
 ### F-430 — The operator portal login has never been reachable in the dev cluster
 
@@ -1282,26 +1225,6 @@ timeout waits forever on a host that has wedged.
 the runbook now refuses to create a cluster it did not find (CREATE_CLUSTER=1 is the explicit ask,
 and CI passes it) and the dev cycle asks before creating one; a command that hangs past its timeout
 says which one and stops
-
-### F-452 — The operator planned from the first artifact it ever fetched
-
-> _2026-10-09 · realm/blong-kustomize · resolved_
-
-The artifact cache in the operator was keyed by suite and version, and a hit was answered by the
-marker file alone: once an archive had been fetched for 1.13.0 the ready marker made every later
-fetch for 1.13.0 a no-op, so a rebuilt artifact under an unchanged version never reached the
-planning child. The symptom is subtle — the CLI applies a tree carrying the new identity and the
-operator reverts it to the old rendering within a minute, while the pods stay healthy on an older
-directory that is still whole — so it reads as a generator that ignored the change rather than a
-cache that never refreshed. The key now carries the artifact identity, the same name the volume gets
-(D-468), so two artifacts of one version are two cache directories and a rebuild is a fetch. The old
-directories are left behind: a long-lived operator accumulates one per published artifact, and
-nothing prunes them yet (T-286).
-
-Fixed: artifactDir now appends the artifact identity, so the operator's cache is keyed by suite,
-version and digest rather than suite and version. Verified end to end — the republished artifact was
-fetched into a new cache directory, the child rendered 1.13.0-2f56fe0e with both mounts, and the
-reconciled Deployments carry it. Pruning the cache is T-286.
 
 ### F-449 — Rush links are absolute, so the fill must run where readers mount
 
@@ -1457,39 +1380,6 @@ deployment's own override, or the blong-services the workloads default to), so t
 its own objects there instead of falling back to its client's namespace, where its account is
 refused. Pinned by a test in testServiceCatalog and verified on the cluster: the pass reports Ready
 with no failures and the plan names mysql and its four siblings.
-
-### F-486 — The mounted fill module started as a no-op
-
-> _2026-10-11 · realm/blong-kustomize · resolved_
-
-The program guard compared import.meta.url with `pathToFileURL(process.argv[1])`, and that can never
-match for a copy mounted from a ConfigMap: the kubelet publishes a mount as a symlink to a versioned
-directory, so the module url names the versioned path while argv names the path the Job typed. The
-fill Jobs reported Completed seconds after starting and published nothing, and every reader stayed
-Pending on a hostPath of type Directory that nobody created — which reads as a slow rollout and
-looked like the process ignoring SIGTERM. Not one unit test could see it, because they all call
-fillFromEnvironment directly rather than starting the module as a program. The guard matches by
-realpathSync now, and a test spawns the module through a symlink (T-318).
-
-Fixed by matching the program entry with realpathSync against fileURLToPath(import.meta.url), and
-testFill now spawns the module through a symlink to a versioned directory, which is the shape a
-ConfigMap mount has. The realm suite is 111/111.
-
-### F-487 — The fill unpacked a 653 MB artifact into memory
-
-> _2026-10-11 · realm/blong-kustomize · resolved_
-
-unpackZip read the whole archive with readFileSync and inflated each entry in one go, while the fill
-Job template gives that container 512Mi — and this suite's artifact is 653 MB. The unpack was
-OOMKilled part-way, leaving a half-written .staging directory on both nodes, so the identity the
-deployment reads never appeared and the suite rollouts timed out with one old replica pending
-termination. The reader walks the file through a descriptor now and streams each entry through
-inflate into its file, and a test pins the resident memory an unpack spends, which is the one part
-of this a unit test can reach (T-318).
-
-Fixed: unpackZip walks the archive through a file descriptor and streams each entry through
-createInflateRaw into its file, and a test pins the resident memory an unpack spends. The realm
-suite is 111/111 and a cluster cycle filled both nodes and started the whole suite.
 
 ### F-494 — Every authenticated call dies in the codec handshake
 
@@ -1704,6 +1594,117 @@ package's version fails on the one pull request nobody edited by hand.
 Fixed at the source: the fixtures pin the suite version and the version-label step asserts the
 fallback as a relation; blong-kustomize now passes at 0.1.0, 0.2.0 and 0.3.7 with one set of
 snapshots.
+
+### F-406 — The attempt's name did not cover the command line the step runs
+
+> _2026-10-06 · realm/blong-kustomize · resolved_
+
+jobName hashes what a deploy-time Job runs, so a changed attempt arrives as a different name and
+nothing has to be updated - that is the reason a Job is immutable and the pass leaves an existing
+attempt alone. The hash covered the kind, the suite, the version, the image, the minimum framework
+version, the entry, the intents and whether the suite has a database, but not the argv those inputs
+produce: moving db in front of the intents and the name d7aca82b did not move with it. The live
+cluster therefore held an attempt running the old command line while the tree carried the corrected
+one under the same name, and after a Job was made un-updatable the difference was invisible - the
+pass reported 15 unchanged and the CR said Ready over a step that no longer matched the tree. Fixed
+by extracting migrationArgs and hashing the argv itself. Lesson: a name that stands in for a spec
+has to hash the spec, not the inputs the spec is derived from, or a derivation change is a silent
+no-op.
+
+The argv is hashed and the intents field no longer is (F-410); confirmed live on dev-cluster where
+the tenant tree and the operator name one attempt (1f770a10) and a pass reports 0 to update, waiting
+for it rather than replacing an immutable Job
+
+### F-417 — A route hunt that was really a missing listener
+
+> _2026-10-07 · realm/blong-kustomize · resolved_
+
+An earlier reading sent the reader into the registration path — the port imports patterns, the
+registry register call, the localOnly guard, the route builder in the rpc server — and none of it
+was the cause: the operator process runs no gateway at all, and the path the docs name is a gateway
+route, so every kustomize route 404s while the tenant answers 401 on a route of the same shape. The
+measurement that settles it takes one line and was available from the start: read the listening
+ports out of the process log and the Service, then ask which of the two servers owns the documented
+path. The entry had already observed 404 and had reasoned about which string a pattern is matched
+against instead; a probe of a sibling route would have shown it was not a pattern question at all.
+Lesson: a 404 whose body names the server that answers is evidence about the listener, not about the
+handler.
+
+The listener question is answered and the fix landed; the lesson stays in the body.
+
+### F-425 — Pruning dangling images threw away the build cache and made every build cold
+
+> _2026-10-07 · realm/blong-kustomize · resolved_
+
+The first version of the retention line in `k3d-dev-cycle.sh` ran
+`podman image prune -f --filter dangling=true` after importing the image. Buildah leaves its stage
+images dangling, but they are also the layer cache: the manifest and source copies, `rush install`
+and `rush deploy` all live in them, so the next build re-executed everything. The build log showed
+four cache hits in a sixty-six step build, with `rush install` (the 3 GB dependency tree plus the
+native build of `node-rdkafka`) and `rush deploy` both running from scratch — the ten to fifteen
+minutes F-411 measured, paid on every cycle. Retention has to be per generation rather than blanket:
+the epoch is taken before `podman build` and the prune runs with `--filter until=<elapsed>s`, which
+drops the superseded generations and leaves the chain just built standing, so the cache stays warm
+and disk stays bounded to one generation. Lesson: a dangling image is not automatically garbage here
+— on this builder it is the cache, so prune by age relative to the current run, never by dangling
+alone.
+
+fixed by pruning by age relative to the build start; the next full cycle reused the cache (58 of 66
+steps, install and deploy both cached) and the store fell from 9.281 GB to 8.522 GB with one fresh 4
+GB generation kept for the run after it.
+
+### F-452 — The operator planned from the first artifact it ever fetched
+
+> _2026-10-09 · realm/blong-kustomize · resolved_
+
+The artifact cache in the operator was keyed by suite and version, and a hit was answered by the
+marker file alone: once an archive had been fetched for 1.13.0 the ready marker made every later
+fetch for 1.13.0 a no-op, so a rebuilt artifact under an unchanged version never reached the
+planning child. The symptom is subtle — the CLI applies a tree carrying the new identity and the
+operator reverts it to the old rendering within a minute, while the pods stay healthy on an older
+directory that is still whole — so it reads as a generator that ignored the change rather than a
+cache that never refreshed. The key now carries the artifact identity, the same name the volume gets
+(D-468), so two artifacts of one version are two cache directories and a rebuild is a fetch. The old
+directories are left behind: a long-lived operator accumulates one per published artifact, and
+nothing prunes them yet.
+
+Fixed: artifactDir now appends the artifact identity, so the operator's cache is keyed by suite,
+version and digest rather than suite and version. Verified end to end — the republished artifact was
+fetched into a new cache directory, the child rendered 1.13.0-2f56fe0e with both mounts, and the
+reconciled Deployments carry it. Pruning the cache is still open.
+
+### F-486 — The mounted fill module started as a no-op
+
+> _2026-10-11 · realm/blong-kustomize · resolved_
+
+The program guard compared import.meta.url with `pathToFileURL(process.argv[1])`, and that can never
+match for a copy mounted from a ConfigMap: the kubelet publishes a mount as a symlink to a versioned
+directory, so the module url names the versioned path while argv names the path the Job typed. The
+fill Jobs reported Completed seconds after starting and published nothing, and every reader stayed
+Pending on a hostPath of type Directory that nobody created — which reads as a slow rollout and
+looked like the process ignoring SIGTERM. Not one unit test could see it, because they all call
+fillFromEnvironment directly rather than starting the module as a program. The guard matches by
+realpathSync now, and a test spawns the module through a symlink.
+
+Fixed by matching the program entry with realpathSync against fileURLToPath(import.meta.url), and
+testFill now spawns the module through a symlink to a versioned directory, which is the shape a
+ConfigMap mount has. The realm suite is 111/111.
+
+### F-487 — The fill unpacked a 653 MB artifact into memory
+
+> _2026-10-11 · realm/blong-kustomize · resolved_
+
+unpackZip read the whole archive with readFileSync and inflated each entry in one go, while the fill
+Job template gives that container 512Mi — and this suite's artifact is 653 MB. The unpack was
+OOMKilled part-way, leaving a half-written .staging directory on both nodes, so the identity the
+deployment reads never appeared and the suite rollouts timed out with one old replica pending
+termination. The reader walks the file through a descriptor now and streams each entry through
+inflate into its file, and a test pins the resident memory an unpack spends, which is the one part
+of this a unit test can reach.
+
+Fixed: unpackZip walks the archive through a file descriptor and streams each entry through
+createInflateRaw into its file, and a test pins the resident memory an unpack spends. The realm
+suite is 111/111 and a cluster cycle filled both nodes and started the whole suite.
 
 ## Retired
 

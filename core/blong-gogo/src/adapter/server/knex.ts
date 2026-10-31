@@ -62,8 +62,8 @@ import {
     aclConfig,
     aclEntityOf,
     aclKeyColumn,
-} from './acl.ts';
-import {createPathRefresh, type IPathRefresh} from './pathRefresh.ts';
+} from '../impl/acl.ts';
+import {createPathRefresh, type IPathRefresh} from '../impl/pathRefresh.ts';
 
 // Helpers to access the binary-column map stored on the adapter context.
 // Cast through `any` because the base `ServerContext & BrowserContext` type

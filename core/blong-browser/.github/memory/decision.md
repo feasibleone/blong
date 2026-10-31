@@ -41,8 +41,6 @@ active (74)
 - `D-147` · core/blong-browser — The mode icon shows the target mode and keeps the palette gate
 - `D-180` · core/blong-browser — Playwright model helpers extended for the ACL tabs
 - `D-182` · core/blong-browser — Cycle cells: clicking a pivot cell advances its state
-- `D-208` · core/blong-browser — The portal composes portalConfigGet providers, first provider wins
-  on name/title
 - `D-235` · core/blong-browser — Mermaid is re-initialised when the theme changes, not only on the
   first diagram
 - `D-234` · core/blong-browser — The unstable identity is fixed in useDarkMode, not only at its call
@@ -95,6 +93,8 @@ active (74)
 - `D-667` · core/blong-browser — The mode's activity is a context, not a store subscription
 - `D-695` · core/blong-browser — The browser honours $meta.expect like the server does
 - `D-696` · core/blong-browser — The unit setup stubs the media and canvas primitives jsdom lacks
+- `D-208` · core/blong-browser — The portal composes portalConfigGet providers, first provider wins
+  on name/title
 
 superseded (3)
 
@@ -437,21 +437,6 @@ cells hides the row-edit column (cycleOnly). The ACL matrix uses explicit states
 blank) and fixes its entity column from the pivot defaults as readOnly, so the whole matrix is
 click-only. The Playwright helper drives a cycle cell by clicking until the cell title matches the
 wanted label.
-
-### D-208 — The portal composes portalConfigGet providers, first provider wins on name/title
-
-> _2026-09-17 · core/blong-browser · active_
-
-User-decided while closing T-109: several realms may answer portalConfigGet, and the portal composes
-their answers instead of letting the last one replace the rest. Menus concatenate in provider order,
-groups of equal title merge and leaves dedupe by method — mandatory, because every model provider on
-the port returns the same accumulated union menu. name, title, home, profile, languages and
-translations come from the first provider that sets them, and provider order is the suite's children
-order. That flips today's behaviour: the last attached group shadows the earlier ones in the port
-prototype chain (core/blong-gogo/src/Registry.ts:338-340), so a suite's own configured portal title
-was being replaced by whichever realm loaded last. Shadowing stays as it is — handlers call their
-super through it — so the merge is a new, differently named method (portalConfigMerge) rather than a
-change to resolution.
 
 ### D-235 — Mermaid is re-initialised when the theme changes, not only on the first diagram
 
@@ -1070,6 +1055,21 @@ them. The capture's real path runs in a browser, where blong-sport's `test/feedb
 the picker and captures the frame; the unit test asserts only the overlay attribute around the grab,
 so it needs the primitives to exist rather than to work. The suite runs its 737 tests with no
 not-implemented line left.
+
+### D-208 — The portal composes portalConfigGet providers, first provider wins on name/title
+
+> _2026-09-17 · core/blong-browser · active_
+
+User-decided while closing the portal-config todo: several realms may answer portalConfigGet, and
+the portal composes their answers instead of letting the last one replace the rest. Menus
+concatenate in provider order, groups of equal title merge and leaves dedupe by method — mandatory,
+because every model provider on the port returns the same accumulated union menu. name, title, home,
+profile, languages and translations come from the first provider that sets them, and provider order
+is the suite's children order. That flips today's behaviour: the last attached group shadows the
+earlier ones in the port prototype chain (core/blong-gogo/src/Registry.ts:338-340), so a suite's own
+configured portal title was being replaced by whichever realm loaded last. Shadowing stays as it is
+— handlers call their super through it — so the merge is a new, differently named method
+(portalConfigMerge) rather than a change to resolution.
 
 ## Superseded
 

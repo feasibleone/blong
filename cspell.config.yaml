@@ -66,6 +66,7 @@ words:
   - cervicornis
   - cfg
   - chdir
+  - checkpointed
   - Chelonia
   - cirratum
   - cleanup
@@ -80,6 +81,7 @@ words:
   - confirmdialog
   - confirmpopup
   - CONTRIB
+  - cordis
   - coredns
   - Corin
   - Coxless
@@ -96,6 +98,7 @@ words:
   - datetimes
   - dbaeumer
   - dedup
+  - deepseek
   - deepwater
   - DELEGATOR
   - Delphine
@@ -112,6 +115,7 @@ words:
   - dialog
   - Diebold
   - Dimitrov
+  - dirents
   - dismissable
   - DMMT
   - Dockerfiles
@@ -134,6 +138,7 @@ words:
   - ERRORRELEASEJOBTRIGGER
   - errorreleasjobtrigger
   - ESOCKETTIMEDOUT
+  - evals
   - fallbacks
   - fastify
   - Faviidae
@@ -314,6 +319,7 @@ words:
   - pullable
   - quasis
   - quot
+  - qwen
   - rdkafka
   - readlink
   - realmname
@@ -342,6 +348,7 @@ words:
   - reranking
   - resequencer
   - restfs
+  - resumable
   - rgba
   - RMSE
   - Rndi
@@ -396,6 +403,7 @@ words:
   - testrealm
   - testrun
   - thumbindex
+  - thunks
   - Tidepool
   - Tileable
   - tinyint
@@ -427,6 +435,7 @@ words:
   - unmarshal
   - unorderable
   - unparseable
+  - unref
   - unref'd
   - unrefreshable
   - unrole
@@ -448,6 +457,7 @@ words:
   - WHATWG
   - worldtimeapi
   - Wrasse
+  - writable
   - xoxb
   - xoxe
   - xyflow

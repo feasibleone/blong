@@ -509,10 +509,22 @@ export default async function adapter<T, C extends IContext>(
         schema: registry.objectSchema,
         manifest: api.manifest,
     });
+    /**
+     * The base an instance names, from the process or from the realm that ships it.
+     *
+     * A port this process runs answers from `ports`, which is where the loader puts a child it
+     * imported. A prototype a realm ships with `thunk` is not a port — nothing serves it, so nothing
+     * starts it — and it answers from that realm's resolver instead, which is the one place the
+     * module is imported (`@@T-593`).
+     */
+    type BaseFactory = (api: unknown) => object;
+    const resolveBase = async (id: string): Promise<BaseFactory | undefined> =>
+        (adapterFactory(id) as unknown as BaseFactory | undefined) ??
+        ((await registry.thunks?.get(id)?.()) as BaseFactory | undefined);
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'
-            ? adapterFactory(current.extends)!({
+            ? (await resolveBase(current.extends))!({
                   utError,
                   remote,
                   rpc,

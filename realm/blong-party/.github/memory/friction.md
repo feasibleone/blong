@@ -10,8 +10,6 @@ memory.
 open (13)
 
 - `F-171` · realm/blong-party — Party tap suite is fragile on data other suites leave behind
-- `F-172` · realm/blong-party — Playwright baseline pass found a behaviour question, not a
-  screenshot diff
 - `F-281` · realm/blong-party — The party specs assert after real round trips on a five-second
   budget
 - `F-282` · realm/blong-party — Concurrent local logins answered 500 from login/token/create
@@ -27,6 +25,8 @@ open (13)
   short
 - `F-574` · realm/blong-party — A leftover duplicate person made the ACL deny miss
 - `F-613` · realm/blong-party — A realm-level dbTest flag forces test seeds into upgrade
+- `F-172` · realm/blong-party — Playwright baseline pass found a behaviour question, not a
+  screenshot diff
 
 resolved (3)
 
@@ -46,17 +46,6 @@ test.acl.flow asserted exactly one person with lastName 'Doe', but the shared te
 held a duplicate John Doe from another suite and the count assertion failed on data unrelated to the
 change. Relaxed to 'at least one' for the duplicated name. Lesson: in a database shared by several
 suites, never assert an exact count on a fixture that other suites can also create.
-
-### F-172 — Playwright baseline pass found a behaviour question, not a screenshot diff
-
-> _2026-09-16 · realm/blong-party · open_
-
-T-096 was recorded as 're-baseline the party specs'. Running them showed 3 real failures
-(organization/unit create + portal person browse) caused by the ACL guard hiding freshly created
-records from their creator - not by stale screenshots. The blong-access suite (23 tests, including
-the new ACL tabs and exceptions page) passes unchanged. Lesson: a guard that removes records from a
-list breaks the shared create-and-verify model spec, so it must be decided before baselines are
-touched.
 
 ### F-281 — The party specs assert after real round trips on a five-second budget
 
@@ -199,6 +188,17 @@ and died on an undefined party.hierarchy with Cannot read properties of undefine
 flag belongs to the adapter's dev and ci activations; a realm must not pin it, and a seed whose
 handler is missing should not be attempted in a non-test intent. Removing it from both realms and
 enabling access's testAdmin only in the sport upgrade block made the migration complete.
+
+### F-172 — Playwright baseline pass found a behaviour question, not a screenshot diff
+
+> _2026-09-16 · realm/blong-party · open_
+
+The todo was recorded as 're-baseline the party specs'. Running them showed 3 real failures
+(organization/unit create + portal person browse) caused by the ACL guard hiding freshly created
+records from their creator - not by stale screenshots. The blong-access suite (23 tests, including
+the new ACL tabs and exceptions page) passes unchanged. Lesson: a guard that removes records from a
+list breaks the shared create-and-verify model spec, so it must be decided before baselines are
+touched.
 
 ## Resolved
 

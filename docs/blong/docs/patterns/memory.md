@@ -53,12 +53,28 @@ blong-dev memory prune F-101,F-102 --reason "duplicated by F-090"
 nor a reserved label. For a long body use `--body-file`; `--date` and `--status` override the
 defaults (today, and the first status of the kind).
 
+`move` is how an entry reaches the package that owns it: `--area realm/blong-agent` writes it into
+that package's file, removes it from the one that held it, refreshes both indexes and pushes it back
+into the Hindsight index — and the id travels with the entry, so a reference in the source keeps
+resolving. The ids are a comma list, because misfiled entries arrive in batches: a plan imported into
+the root scope leaves thirty there at once, and a package that grew out of the root is named by every
+entry about it. One id that does not resolve is reported and the rest still move, and the run exits
+non-zero, so a partial move is visible rather than an all-or-nothing run that stops on the first typo.
+
 `close` keeps the entry, whatever the kind: the reasoning outlives the status, and the id is never
 reused. A friction becomes `resolved`, a todo `done`, a decision `superseded` by the successor its
 `--by`/`--reason` name, and all three stay readable where they are. An entry that should not be in
 the files at all — a duplicate, a mis-filing, work that was cancelled — is `retire`d instead: the
 entry goes and only its id stays, as a `## Retired` line. `retire` takes `--reason` for the fate the
 line records, and `--purge` to drop the line too, which is the only thing that frees a number.
+
+A body that cites `T-318` when nothing holds that id is an **error**, in every command that checks a
+reference: `check --refs` (the pre-commit hook), `refs --dangling` and `audit` all read the entries
+as well as the sites that cite them, share one implementation, and exit non-zero. An id two files
+hold fails the same way, because a reference cannot resolve to two entries. Inline code and fenced
+blocks are exempt — `` `@@F-014` `` in a body is the form of a reference, not a citation — which is
+why an example is written in backticks. The fix is to name the entry that now carries the reasoning,
+or to drop the number: the enclosing entry is already the record of the work it describes.
 
 ## Reading them
 

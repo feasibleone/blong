@@ -10,7 +10,7 @@
  * integration test can distinguish from a refusal.
  */
 import t from 'tap';
-import {aclCheckSql, type IResolvedAclConfig} from './adapter/server/acl.ts';
+import {aclCheckSql, type IResolvedAclConfig} from './adapter/impl/acl.ts';
 
 const cfg: IResolvedAclConfig = {
     table: 'access_acl',

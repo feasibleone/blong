@@ -143,7 +143,12 @@ export interface IComponentK8sConfig {
      * two variables of one container cannot share a name, so there is no collision a map would
      * resolve.
      */
-    k8sEnv?: {name: string; value: string}[];
+    /**
+     * Environment for the realm's own process. A variable is either a value or a reference — a
+     * Secret key, a field — because a deployment that ships the credential in the tree is a
+     * deployment that commits it;
+     */
+    k8sEnv?: {name: string; value?: string; valueFrom?: Record<string, unknown>}[];
     /**
      * Raw extra manifests, as a list — deliberately.
      *
@@ -221,7 +226,7 @@ export interface IDeployment {
         limits?: Record<string, string>;
     };
     ports?: IComponentPort[];
-    env?: {name: string; value: string}[];
+    env?: {name: string; value?: string; valueFrom?: Record<string, unknown>}[];
     /** Volumes this process mounts, contributed by the realms it serves. */
     volumes?: IComponentVolume[];
 }
@@ -1066,6 +1071,13 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
             'k8sPorts',
         );
         const env = contributions.flatMap(contribution => contribution.k8sEnv ?? []);
+        // A realm that declared a volume gets it in the process that carries that realm, and the tree
+        // emits the claim beside the Deployment (`@@T-317`). Merged by name because two realms of one
+        // process can want the same volume, and the map is what makes that one claim rather than two.
+        const volumes = resolveNamedEntries<IComponentVolume>(
+            mergeNamed(contributions.map(contribution => contribution.k8sVolumes)),
+            'k8sVolumes',
+        );
         return {
             name,
             realms,
@@ -1079,6 +1091,7 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
             resources,
             ...(ports.length ? {ports} : {}),
             ...(env.length ? {env} : {}),
+            ...(volumes.length ? {volumes} : {}),
         };
     });
 

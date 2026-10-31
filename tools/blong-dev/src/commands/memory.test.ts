@@ -291,6 +291,77 @@ t.test('the memory command layer', async t => {
         );
     });
 
+    await t.test('move takes a batch of ids to the area that owns them', async t => {
+        // Misfiled entries arrive as a batch: a plan imported into the root scope leaves twenty
+        // there at once. One id that does not resolve must not keep the others where they are, and
+        // the run still has to say it was not complete.
+        const calls: IStoreCalls = {retained: [], recalled: [], removed: []};
+        const repo = tempRepo(['realm/blong-agent']);
+        t.teardown(repo.restore);
+        setHindsightStoreFactory(() => fakeStore(calls));
+
+        await capture(() =>
+            memory(['add', 'todo', '--title', 'A misfiled task', '--area', 'cross-cutting']),
+        );
+        await capture(() =>
+            memory(['add', 'todo', '--title', 'Another misfiled task', '--area', 'cross-cutting']),
+        );
+
+        const {out, err, code} = await capture(() =>
+            memory(['move', 'T-001,T-002,T-999', '--area', 'realm/blong-agent']),
+        );
+
+        t.equal(code, 1, 'the run reports that one id did not move');
+        t.match(err, /no entry with id T-999/, 'and names the id that did not resolve');
+        t.match(out, /T-001 moved to realm\/blong-agent/, 'the first entry moved anyway');
+        t.match(out, /T-002 moved to realm\/blong-agent/, 'and so did the second');
+
+        const rootFile = readFileSync(join(repo.dir, '.github/memory/todo.md'), 'utf8');
+        t.notMatch(rootFile, /### T-001/, 'the entries leave the file that held them');
+        const packageFile = readFileSync(
+            join(repo.dir, 'realm/blong-agent/.github/memory/todo.md'),
+            'utf8',
+        );
+        t.match(packageFile, /### T-001 — A misfiled task/, 'and arrive in the one that owns them');
+        t.match(
+            packageFile,
+            /· realm\/blong-agent · open_/,
+            'with the area rewritten to the one it was moved to',
+        );
+        t.equal(
+            calls.retained.length,
+            4,
+            'each add and each move queues the entry it touched, so the index follows the move',
+        );
+    });
+
+    await t.test('check --refs fails on a body that cites an id nothing holds', async t => {
+        // A citation nothing resolves is a broken promise: the entry it names was renumbered,
+        // pruned, or never written. Inline code is not a citation — a body showing `@@F-014` as the
+        // form of a reference is illustrating it, the same exemption the source scanner makes.
+        const repo = tempRepo(['realm/blong-agent']);
+        t.teardown(repo.restore);
+
+        await capture(() =>
+            memory([
+                'add',
+                'todo',
+                '--title',
+                'A task whose body cites a former entry',
+                '--area',
+                'cross-cutting',
+                '--body',
+                'Found while fixing T-999, which was pruned.\nShows `T-888` as the form of an id.',
+            ]),
+        );
+
+        const {err, code} = await capture(() => memory(['check', '--refs']));
+
+        t.equal(code, 1, 'the check fails rather than warning');
+        t.match(err, /T-999/, 'and names the id nothing holds');
+        t.notMatch(err, /T-888/, 'while the backticked example is not a citation');
+    });
+
     await t.test('an add with an explicit id takes the id back from the ledger', async t => {
         const repo = tempRepo();
         t.teardown(repo.restore);
@@ -873,7 +944,7 @@ t.test('the memory command layer', async t => {
 
         const {out, code} = await capture(() => memory(['audit']));
 
-        t.equal(code, undefined, 'audit is a report, not a failure');
+        t.equal(code, 1, 'an id two files hold is a failure, not a note');
         t.match(out, /# T-001 is held by 2 files — /, 'an id in two files is named');
         t.match(out, /app\/one\/\.github\/memory\/todo\.md/, 'with the files that hold it');
         t.match(out, /1 ambiguous id\(s\)/, 'and the summary counts it');

@@ -1,0 +1,35 @@
+# RBAC PRODUCTION seed — grants the `agent` capabilities to the realm's roles.
+#
+# This is production provisioning, not a fixture: `Admin`, `Manager`, `Customer` and `Guest` are
+# the roles every deployment has, and the capabilities are what the realm offers. Only the accounts
+# that hold them in a test run (`testAdmin`, `testManager`, `testViewer`, `testGuest`, …) belong to
+# `meta/dbTest`, which is dispatched by the adapter's `dev`/`ci` activations alone.
+#
+# A new entity is unreachable through the gateway until its actions are listed here, so kukum's
+# `seed` primitive appends them to all three capabilities when it scaffolds an entity.
+#
+# `testAdmin` / `testUser` hold `Admin`, so `agentManage` gives them every `agent` action;
+# `testManager` (`Manager`) gets read + edit but not remove; `testViewer` (`Customer`) and
+# `testGuest` (`Guest`) get read-only — which is what lets the Storybook toolbar's Role item show a
+# permission difference rather than three identical screens, and what the access-control test
+# relies on for its 403 (it calls `add`, which none of the read-only roles holds).
+#
+# The file name is deliberately `accessAuthorizationMerge.yaml` (NOT
+# `agent`-prefixed): the seed method is derived from the file name, so this
+# dispatches `access.authorization.merge` to blong-access's SHARED
+# `accessAuthorizationMerge` handler (attached to the `db` adapter), which
+# processes the generic `role`/`capability` params — no realm-local
+# authorization handler is needed. Only the CONTENT carries `agent`
+# placeholders, substituted per realm at scaffold time.
+#
+# Capability names are the NON-dotted handler names (the default convention).
+role:
+  Admin: agentManage
+  Manager: agentMaintain
+  Customer: agentView
+  Guest: agentView
+capability:
+  agentManage: agentSessionGet,agentSessionRun,agentTicketClaim,agentTicketRelease,agentAnswerReceive,agentRecoveryScan
+  agentMaintain: agentSessionGet,agentTicketClaim,agentTicketRelease,agentAnswerReceive
+  agentView: agentSessionGet
+

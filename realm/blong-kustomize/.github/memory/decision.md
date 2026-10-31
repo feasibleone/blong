@@ -76,7 +76,6 @@ active (126)
 - `D-421` · realm/blong-kustomize — One operator replica is the contract, and no lease
 - `D-422` · realm/blong-kustomize — More than one UI, each on its own host and behind its own
   deployment
-- `D-424` · realm/blong-kustomize — A planning run detaches the database by configuration
 - `D-427` · realm/blong-kustomize — The attempt name hashes resolved inputs, not optional CR fields
 - `D-430` · realm/blong-kustomize — Namespace Services are added beside the realm Services
 - `D-437` · realm/blong-kustomize — The registry holds the per-realm config map by reference
@@ -84,17 +83,12 @@ active (126)
   pod home
 - `D-446` · realm/blong-kustomize — Third-party service artifacts come from a YAML catalog in the
   realm
-- `D-447` · realm/blong-kustomize — The reconcile timer stays a safety net, and the mle block stays
-  as it is
 - `D-450` · realm/blong-kustomize — The operator loop sits beside the watch and its timer is
   documented
 - `D-445` · realm/blong-kustomize — The build cache is kept one generation deep, pruned by age
 - `D-451` · realm/blong-kustomize — A deploy-time attempt is named after its container, whole
-- `D-453` · realm/blong-kustomize — A watch-executed group pins through one helper with a fallback
-- `D-454` · realm/blong-kustomize — Structure is pinned per step, not once at the end of the chain
 - `D-455` · realm/blong-kustomize — A registry pass is refused when the process declares no suite
   entry
-- `D-456` · realm/blong-kustomize — The monolith setting rides the profile, on both command lines
 - `D-457` · realm/blong-kustomize — A service is implied by the adapter kinds a plan activates
 - `D-458` · realm/blong-kustomize — The stale subject Service was deleted by hand and the stuck
   rollouts reverted
@@ -123,14 +117,12 @@ active (126)
 - `D-465` · realm/blong-kustomize — The runbook is a library of handler-shaped steps driven by two
   thin CLIs
 - `D-486` · realm/blong-kustomize — The flat tree writer stays; a test holds the split to it
-- `D-488` · realm/blong-kustomize — Materialize the base in JS rather than running kustomize
 - `D-490` · realm/blong-kustomize — The layout default lives in the realm's k8s activation
 - `D-491` · realm/blong-kustomize — The install tree is swept by the operator's own CR pass
 - `D-492` · realm/blong-kustomize — A pass's deletes cascade rather than orphan
 - `D-499` · realm/blong-kustomize — A pass reads every object where it says it lives
 - `D-502` · realm/blong-kustomize — The sweep names what it listed, not only what it decided
 - `D-504` · realm/blong-kustomize — A service is a folder beside the base, opted in by the overlay
-- `D-505` · realm/blong-kustomize — A service folder holds the suite's values, not a deployment's
 - `D-506` · realm/blong-kustomize — The base and the service folders carry no namespace
 - `D-507` · realm/blong-kustomize — The base ships no BlongDeployment; an example sits beside it
 - `D-508` · realm/blong-kustomize — The aliases are the deployment's, and the copy is the suite's
@@ -138,7 +130,6 @@ active (126)
 - `D-511` · realm/blong-kustomize — kubectl is a requirement of the composition steps, not a skip
 - `D-512` · realm/blong-kustomize — A service base stays static; a shared reference is optional
 - `D-510` · realm/blong-kustomize — The two-child overlay's composition is guarded by kubectl
-- `D-516` · realm/blong-kustomize — The workload's own credentials Secret: dropped or kept?
 - `D-517` · realm/blong-kustomize — The mirror's merge keys are a narrowed table, and an unlisted
   list is refused
 - `D-518` · realm/blong-kustomize — The artifact fetch is a realm module the container runs, not
@@ -175,13 +166,21 @@ active (126)
 - `D-680` · realm/blong-kustomize — A webhook listener is reachable: adapter ingresses and Service
   ports
 - `D-684` · realm/blong-kustomize — A k8s contribution belongs in default, or the operator prunes it
+- `D-424` · realm/blong-kustomize — A planning run detaches the database by configuration
+- `D-447` · realm/blong-kustomize — The reconcile timer stays a safety net, and the mle block stays
+  as it is
+- `D-453` · realm/blong-kustomize — A watch-executed group pins through one helper with a fallback
+- `D-454` · realm/blong-kustomize — Structure is pinned per step, not once at the end of the chain
+- `D-456` · realm/blong-kustomize — The monolith setting rides the profile, on both command lines
+- `D-488` · realm/blong-kustomize — Materialize the base in JS rather than running kustomize
+- `D-505` · realm/blong-kustomize — A service folder holds the suite's values, not a deployment's
+- `D-516` · realm/blong-kustomize — The workload's own credentials Secret: dropped or kept?
 
 superseded (15)
 
 - `D-374` · realm/blong-kustomize — Whether the kustomize stacks gain blong-login and
   blong-access-mock
 - `D-378` · realm/blong-kustomize — A failed step is removed, and an unchanged step is still awaited
-- `D-392` · realm/blong-kustomize — The layer profile is removed, not renamed
 - `D-425` · realm/blong-kustomize — How a deployed process stops carrying the deployment realm
 - `D-474` · realm/blong-kustomize — A nodeLocal reader mounts the artifact where the links point
 - `D-472` · realm/blong-kustomize — A nodeLocal reader mounts the artifact root a second time
@@ -197,6 +196,7 @@ superseded (15)
 - `D-433` · realm/blong-kustomize — A realm-level declaration surface is needed for roles and cli
   intents
 - `D-541` · realm/blong-kustomize — The embedded fill module carries no comments
+- `D-392` · realm/blong-kustomize — The layer profile is removed, not renamed
 
 <!-- /memory:index -->
 
@@ -892,24 +892,6 @@ whether two portals differ in content (each its own browser bundle) or only in a
 serving side is a gateway config of the whole suite today, so which process serves which bundle is a
 separate decision rather than something the generator can settle.
 
-### D-424 — A planning run detaches the database by configuration
-
-> _2026-10-06 · realm/blong-kustomize · active_
-
-The user's correction of my first fix for T-235, and it was right on both counts. I had put the rule
-in the framework adapter: the knex adapter skipped its startup work when the active intents said the
-run only plans. The objection is that a framework adapter should not know what k8s means, and the
-answer is a config key the owning realm sets: the knex adapter now honours connect: false, and
-blong-server declares k8s: {connect: false} for the shared srv.db beside its dev, ci, upgrade and
-microservice blocks. That keeps the policy where the knowledge is, lets a realm whose generator
-really reads the database override it for the intent instead of working around it, and leaves the
-framework with a key rather than an intent name. The refinement the naive version of the suggestion
-would have missed: the adapter has to keep loading. plan.ts derives suite.database from the registry
-(view.ports.some(port => port.id.endsWith('.db'))), and the tree owes such a suite a migration Job,
-so an adapter unloaded for the intent would remove that step in silence. connect: false registers
-the port and skips every query, which is why the detached run's tree is byte-identical to one
-generated with the db port disabled outright: the plan is unchanged and only the connection is gone.
-
 ### D-427 — The attempt name hashes resolved inputs, not optional CR fields
 
 > _2026-10-07 · realm/blong-kustomize · active_
@@ -972,31 +954,6 @@ kustomize-e2e job installs the generated set, which is what proves the generator
 Keycloak's deployment and its plain init Job are owned now, while suite-specific realms, roles and
 clients wait for D-433.
 
-### D-447 — The reconcile timer stays a safety net, and the mle block stays as it is
-
-> _2026-10-08 · realm/blong-kustomize · active_
-
-The operator's reconcile loop keeps both triggers in every mode: the watch handler remains the event
-path, and the interval timer stays as a safety net even while a watch runs, rather than being
-skipped in CR mode as it is today. The alternative — making each watch renewal reconcile the CRs it
-listed, which would have removed the timer from CR mode and closed T-251's blind spot in the same
-stroke — was considered and rejected: a silent failure of the watch should still leave a pass
-happening, and the timer is the cheaper guarantee. Two consequences belong to the work rather than
-to the decision: the `if (watching) return;` guard in `startController` has to go, and the thing the
-safety net actually does is weaker than it sounds, because a nameless pass reconciles only the first
-CR in the configured namespace — so the timer should either walk every CR the CRD declares or the
-comment should say it is a partial resync. The second item in that review — the repeated key
-assignment block in `mle.ts` — is explained rather than changed, because the block is the publisher
-and not duplication: `config.sign`/`config.encrypt` take the resolved material so a reader of that
-path gets a key rather than a descriptor (T-267, D-441), and `config.public` keeps the public half
-under the name MLE clients fetch it by, written from `mle.keys`, which is public-only material. That
-is why the route and the login realm, which read the same value through `gateway.config()`, publish
-nothing private. A change that derived `public` from the config's own pair instead was tried,
-verified on the cluster, and then reverted: an MLE-proxied login against the unchanged framework
-answers 200 with a token and no private member, while the change made that answer carry `d` for both
-halves. The real gap was a guard, and `core/blong-gogo/src/mle.test.ts` now is it. F-427 records the
-misreading that led there.
-
 ### D-450 — The operator loop sits beside the watch and its timer is documented
 
 > _2026-10-08 · realm/blong-kustomize · active_
@@ -1038,40 +995,6 @@ cost is that every existing attempt name changes once, so a cluster runs the mig
 under the new name and keeps the old Job as evidence — the shape F-410 already described, and the
 reason the doc says what the hash is for.
 
-### D-453 — A watch-executed group pins through one helper with a fallback
-
-> _2026-10-08 · realm/blong-kustomize · active_
-
-The tree spec now takes its plans from `_fixtures.ts` and pins the configuration each generated
-process is given with `assert.snapshot`, and because the dev server watch runner executes this group
-without a snapshot context (T-214) the pin goes through one `pin(assert, name, value)` helper that
-falls back to asserting the structure was produced. The alternative considered was to implement the
-context the runner lacks, and it was refused on a property of the store rather than on effort: TAP
-keys a snapshot by the subtest titles the tap run produces, the dev server cannot reproduce those
-titles, so a second store would be a second source of truth for the same pins and regenerating one
-would not update the other. What that leaves is a step that pins nothing in the watch run, which the
-helper says out loud instead of a `typeof` guard repeated at every call, and T-214 stays the item
-that closes it. The cost was measured before deciding: restoring the staged store made both pins
-fail with Snapshot entry not found, so the pins are load-bearing in the tap run.
-
-### D-454 — Structure is pinned per step, not once at the end of the chain
-
-> _2026-10-08 · realm/blong-kustomize · active_
-
-The tree spec pins each structure where the step built it, rather than with one `snapshot("*")`
-marker at the end of the chain or `group(name, {autoSnapshot: true})`. Three reasons decided it.
-Failure attribution: a marker snapshots the accumulated context, so a changed port and a changed Job
-name arrive as one diff under one name, while a per-step pin says which structure moved. The
-fallback: a marker is a no-op in the runner that has no snapshot context, where `pin` still asserts
-the structure was produced (T-214), and `autoSnapshot` would pin the temporary directory every step
-returns. And the shape of these steps: `autoSnapshot` is for a group whose steps already return
-their values, which these do not — they return a directory handle and assert on their way. The cost
-is one name per structure, which is what the assert messages used to carry. Two smaller notes from
-the same work: a fixture read out of `lib` is typed `unknown`, so a step that keeps a plan in a
-variable says `as IDeploymentPlan` where it is built, the price of injecting values instead of
-importing them; and a snapshot publishes what a regex on serialized text hid, since the store now
-holds the mount paths and the environment a pod is given.
-
 ### D-455 — A registry pass is refused when the process declares no suite entry
 
 > _2026-10-08 · realm/blong-kustomize · active_
@@ -1087,20 +1010,6 @@ whether it has a suite to write. The risk accepted is a suite process whose conf
 `suite.entry` and that reconciles itself from its own registry: it is refused now, and the reason
 names the flag to pass. The operator is unaffected, because its passes are CR-origin by
 configuration.
-
-### D-456 — The monolith setting rides the profile, on both command lines
-
-> _2026-10-08 · realm/blong-kustomize · active_
-
-The generator emits `--remote.canSkipSocket=true` for a monolith profile and nothing otherwise, on
-the deployment command line and on the migration step, because the setting is a statement about the
-deployment shape and the tree is what knows the shape. Emitting it as a flag rather than as a
-variable reuses the config path the loader already merges, and it keeps the two command lines equal
-in kind: the intents are positional and every flag follows them, so the trailing positional that
-names the rc file is still `release` (T-253), and the migration attempt name changes with the flag,
-which is what makes a corrected command line a new attempt rather than an immutable Job that has to
-be deleted (D-386). The cost is visible in the pinned args: the flag sits between the intents and
-the layer selectors.
 
 ### D-457 — A service is implied by the adapter kinds a plan activates
 
@@ -1371,21 +1280,6 @@ generator.ts states (the two are held together by kubectl kustomize) with a test
 split's local overlay and compares the object set with the flat files. Choosing otherwise is a real
 decision: it puts kubectl in the framework image.
 
-### D-488 — Materialize the base in JS rather than running kustomize
-
-> _2026-10-10 · realm/blong-kustomize · active_
-
-Agreed. If the base is generated in dev or CI and only its overlay in the cluster, the operator
-still has to apply and compare objects, and D-395 says it compares them with the cluster — which a
-base with patches cannot answer without a composer. The chosen route is to materialize in JS: the
-transforms that built the placeholders and the instances (withSuiteVolume, instantiate,
-splitWorkload, splitDeclaration) run the other way, with the plan's values, over the objects the
-base holds, so nothing new enters the image and what is committed is what runs. Reading the base
-rather than rebuilding it from the plan is the point: it is what makes the deployed design the
-committed one. Two checks keep the materializer honest: a round trip against the flat tree, object
-for object, and the kustomize compose (T-290), which pins the overlay's own semantics. The
-alternative, running kustomize, would put kubectl in the framework image every realm process shares.
-
 ### D-490 — The layout default lives in the realm's k8s activation
 
 > _2026-10-10 · realm/blong-kustomize · active_
@@ -1480,26 +1374,6 @@ otherwise: the folder is the suite's to keep and to review, and the generation i
 it does not. What makes this reachable is that the overlay is where the opt-in is written down - a
 base object is applied by every deployment, which is what made the switch unenforceable and left the
 credentials copy behind (T-317).
-
-### D-505 — A service folder holds the suite's values, not a deployment's
-
-> _2026-10-11 · realm/blong-kustomize · active_
-
-A service folder carries the _suite's_ own values — the suite's name and namespace, the namespace
-its services run in, the credentials derived from them — and not a deployment's, because a folder
-every deployment of one suite uses can only hold facts that are that suite's. The artifact's base
-already says the same thing (a committed namespace file, Deployments with a namespace of their own),
-so a second tenant was never able to share an artifact anyway; what a deployment owns is its nodes
-and the artifact its volumes hold, and those are what the base's placeholders and patches carry.
-T-318 assumed the folder held deploy-owned values, was implemented, and was reverted the same day
-because the composition refused it in two ways: a strategic merge patch is matched by the id its own
-metadata declares, so a patch cannot retarget a namespace
-(`PersistentVolumeClaim.v1/mysql-data.shop-services` targets an object the folder holds as
-`mysql-data.PLACEHOLDER-services`), and the credentials are written twice under one name in two
-namespaces, so one placeholder collapsed them into one id
-(`may not add resource with an already registered id`). Both errors came from the composition test
-that T-318's work added, which is kept: it composes base, folder and overlay with kustomize and
-compares the object count with the tree.
 
 ### D-506 — The base and the service folders carry no namespace
 
@@ -1619,26 +1493,6 @@ so a run without it fails instead of passing quietly (D-511). Deliberately not a
 control that pins kustomize's own parent-wins behaviour, because that is a dependency's semantics
 rather than an invariant of ours — the layout stays correct if it ever changes — so the pair of a
 static shape check and this composition is what the design rests on.
-
-### D-516 — The workload's own credentials Secret: dropped or kept?
-
-> _2026-10-11 · realm/blong-kustomize · active_
-
-The CI job's last step fails on an expectation the pass no longer meets:
-`.github/workflows/kustomize.yaml` asserts that after a service is switched off the workload's own
-credentials Secret in the services namespace is still there —
-`The workload's own copy is the contrast — it stays where it is` — while the pass takes it back,
-which is what R3, D-509 and D-512 say should happen and what the live cluster does: the Secret goes,
-the workload, its claim and its Service stay, and they are reported obsolete. The step is the older
-duplicate of a contract T-318's own text asked to move into the runbook, written for the D-461 rule
-that nothing outside the tenant's namespace is removed, which the credentials decision deliberately
-superseded. Two answers are possible. Updating the workflow keeps the decision and removes the
-drift, at the cost of one more edit in CI. Keeping the workflow means the realm changes instead — a
-generated Secret would have to survive in a shared namespace whenever the workload reading it stays
-— and D-509, D-512, the runbook's assertion and the switch-off check would be rewritten to match.
-Either way the duplication is worth removing: a contract asserted in two places has now drifted
-once, and the workflow's step re-asserts what its own `SERVICE_OFF` run already checks inside the
-runbook.
 
 ### D-517 — The mirror's merge keys are a narrowed table, and an unlisted list is refused
 
@@ -2089,6 +1943,153 @@ time except the planner), so the chat adapters declare theirs in activation.defa
 sees them in every intent. The docs example that shows them under k8s is right only for a realm
 whose tree is written once and never reconciled by the operator.
 
+### D-424 — A planning run detaches the database by configuration
+
+> _2026-10-06 · realm/blong-kustomize · active_
+
+The user's correction of my first fix for the database hang, and it was right on both counts. I had
+put the rule in the framework adapter: the knex adapter skipped its startup work when the active
+intents said the run only plans. The objection is that a framework adapter should not know what k8s
+means, and the answer is a config key the owning realm sets: the knex adapter now honours connect:
+false, and blong-server declares k8s: {connect: false} for the shared srv.db beside its dev, ci,
+upgrade and microservice blocks. That keeps the policy where the knowledge is, lets a realm whose
+generator really reads the database override it for the intent instead of working around it, and
+leaves the framework with a key rather than an intent name. The refinement the naive version of the
+suggestion would have missed: the adapter has to keep loading. plan.ts derives suite.database from
+the registry (view.ports.some(port => port.id.endsWith('.db'))), and the tree owes such a suite a
+migration Job, so an adapter unloaded for the intent would remove that step in silence. connect:
+false registers the port and skips every query, which is why the detached run's tree is
+byte-identical to one generated with the db port disabled outright: the plan is unchanged and only
+the connection is gone.
+
+### D-447 — The reconcile timer stays a safety net, and the mle block stays as it is
+
+> _2026-10-08 · realm/blong-kustomize · active_
+
+The operator's reconcile loop keeps both triggers in every mode: the watch handler remains the event
+path, and the interval timer stays as a safety net even while a watch runs, rather than being
+skipped in CR mode as it is today. The alternative — making each watch renewal reconcile the CRs it
+listed, which would have removed the timer from CR mode and closed the blind spot in the same stroke
+— was considered and rejected: a silent failure of the watch should still leave a pass happening,
+and the timer is the cheaper guarantee. Two consequences belong to the work rather than to the
+decision: the `if (watching) return;` guard in `startController` has to go, and the thing the safety
+net actually does is weaker than it sounds, because a nameless pass reconciles only the first CR in
+the configured namespace — so the timer should either walk every CR the CRD declares or the comment
+should say it is a partial resync. The second item in that review — the repeated key assignment
+block in `mle.ts` — is explained rather than changed, because the block is the publisher and not
+duplication: `config.sign`/`config.encrypt` take the resolved material so a reader of that path gets
+a key rather than a descriptor (D-441), and `config.public` keeps the public half under the name MLE
+clients fetch it by, written from `mle.keys`, which is public-only material. That is why the route
+and the login realm, which read the same value through `gateway.config()`, publish nothing private.
+A change that derived `public` from the config's own pair instead was tried, verified on the
+cluster, and then reverted: an MLE-proxied login against the unchanged framework answers 200 with a
+token and no private member, while the change made that answer carry `d` for both halves. The real
+gap was a guard, and `core/blong-gogo/src/mle.test.ts` now is it. F-427 records the misreading that
+led there.
+
+### D-453 — A watch-executed group pins through one helper with a fallback
+
+> _2026-10-08 · realm/blong-kustomize · active_
+
+The tree spec now takes its plans from `_fixtures.ts` and pins the configuration each generated
+process is given with `assert.snapshot`, and because the dev server watch runner executes this group
+without a snapshot context the pin goes through one `pin(assert, name, value)` helper that falls
+back to asserting the structure was produced. The alternative considered was to implement the
+context the runner lacks, and it was refused on a property of the store rather than on effort: TAP
+keys a snapshot by the subtest titles the tap run produces, the dev server cannot reproduce those
+titles, so a second store would be a second source of truth for the same pins and regenerating one
+would not update the other. What that leaves is a step that pins nothing in the watch run, which the
+helper says out loud instead of a `typeof` guard repeated at every call, and that stays open as its
+own item. The cost was measured before deciding: restoring the staged store made both pins fail with
+Snapshot entry not found, so the pins are load-bearing in the tap run.
+
+### D-454 — Structure is pinned per step, not once at the end of the chain
+
+> _2026-10-08 · realm/blong-kustomize · active_
+
+The tree spec pins each structure where the step built it, rather than with one `snapshot("*")`
+marker at the end of the chain or `group(name, {autoSnapshot: true})`. Three reasons decided it.
+Failure attribution: a marker snapshots the accumulated context, so a changed port and a changed Job
+name arrive as one diff under one name, while a per-step pin says which structure moved. The
+fallback: a marker is a no-op in the runner that has no snapshot context, where `pin` still asserts
+the structure was produced, and `autoSnapshot` would pin the temporary directory every step returns.
+And the shape of these steps: `autoSnapshot` is for a group whose steps already return their values,
+which these do not — they return a directory handle and assert on their way. The cost is one name
+per structure, which is what the assert messages used to carry. Two smaller notes from the same
+work: a fixture read out of `lib` is typed `unknown`, so a step that keeps a plan in a variable says
+`as IDeploymentPlan` where it is built, the price of injecting values instead of importing them; and
+a snapshot publishes what a regex on serialized text hid, since the store now holds the mount paths
+and the environment a pod is given.
+
+### D-456 — The monolith setting rides the profile, on both command lines
+
+> _2026-10-08 · realm/blong-kustomize · active_
+
+The generator emits `--remote.canSkipSocket=true` for a monolith profile and nothing otherwise, on
+the deployment command line and on the migration step, because the setting is a statement about the
+deployment shape and the tree is what knows the shape. Emitting it as a flag rather than as a
+variable reuses the config path the loader already merges, and it keeps the two command lines equal
+in kind: the intents are positional and every flag follows them, so the trailing positional that
+names the rc file is still `release`, and the migration attempt name changes with the flag, which is
+what makes a corrected command line a new attempt rather than an immutable Job that has to be
+deleted (D-386). The cost is visible in the pinned args: the flag sits between the intents and the
+layer selectors.
+
+### D-488 — Materialize the base in JS rather than running kustomize
+
+> _2026-10-10 · realm/blong-kustomize · active_
+
+Agreed. If the base is generated in dev or CI and only its overlay in the cluster, the operator
+still has to apply and compare objects, and D-395 says it compares them with the cluster — which a
+base with patches cannot answer without a composer. The chosen route is to materialize in JS: the
+transforms that built the placeholders and the instances (withSuiteVolume, instantiate,
+splitWorkload, splitDeclaration) run the other way, with the plan's values, over the objects the
+base holds, so nothing new enters the image and what is committed is what runs. Reading the base
+rather than rebuilding it from the plan is the point: it is what makes the deployed design the
+committed one. Two checks keep the materializer honest: a round trip against the flat tree, object
+for object, and the kustomize compose, which pins the overlay's own semantics. The alternative,
+running kustomize, would put kubectl in the framework image every realm process shares.
+
+### D-505 — A service folder holds the suite's values, not a deployment's
+
+> _2026-10-11 · realm/blong-kustomize · active_
+
+A service folder carries the _suite's_ own values — the suite's name and namespace, the namespace
+its services run in, the credentials derived from them — and not a deployment's, because a folder
+every deployment of one suite uses can only hold facts that are that suite's. The artifact's base
+already says the same thing (a committed namespace file, Deployments with a namespace of their own),
+so a second tenant was never able to share an artifact anyway; what a deployment owns is its nodes
+and the artifact its volumes hold, and those are what the base's placeholders and patches carry. The
+todo assumed the folder held deploy-owned values, was implemented, and was reverted the same day
+because the composition refused it in two ways: a strategic merge patch is matched by the id its own
+metadata declares, so a patch cannot retarget a namespace
+(`PersistentVolumeClaim.v1/mysql-data.shop-services` targets an object the folder holds as
+`mysql-data.PLACEHOLDER-services`), and the credentials are written twice under one name in two
+namespaces, so one placeholder collapsed them into one id
+(`may not add resource with an already registered id`). Both errors came from the composition test
+that this work added, which is kept: it composes base, folder and overlay with kustomize and
+compares the object count with the tree.
+
+### D-516 — The workload's own credentials Secret: dropped or kept?
+
+> _2026-10-11 · realm/blong-kustomize · active_
+
+The CI job's last step fails on an expectation the pass no longer meets:
+`.github/workflows/kustomize.yaml` asserts that after a service is switched off the workload's own
+credentials Secret in the services namespace is still there —
+`The workload's own copy is the contrast — it stays where it is` — while the pass takes it back,
+which is what R3, D-509 and D-512 say should happen and what the live cluster does: the Secret goes,
+the workload, its claim and its Service stay, and they are reported obsolete. The step is the older
+duplicate of a contract the older todo asked to move into the runbook, written for the D-461 rule
+that nothing outside the tenant's namespace is removed, which the credentials decision deliberately
+superseded. Two answers are possible. Updating the workflow keeps the decision and removes the
+drift, at the cost of one more edit in CI. Keeping the workflow means the realm changes instead — a
+generated Secret would have to survive in a shared namespace whenever the workload reading it stays
+— and D-509, D-512, the runbook's assertion and the switch-off check would be rewritten to match.
+Either way the duplication is worth removing: a contract asserted in two places has now drifted
+once, and the workflow's step re-asserts what its own `SERVICE_OFF` run already checks inside the
+runbook.
+
 ## Superseded
 
 ### D-374 — Whether the kustomize stacks gain blong-login and blong-access-mock
@@ -2122,21 +2123,6 @@ is still reported in this pass so an operator sees why.
 superseded: a failed step is no longer removed, a retry is a new Job under a new name
 
 Superseded by `D-386`.
-
-### D-392 — The layer profile is removed, not renamed
-
-> _2026-10-06 · realm/blong-kustomize · superseded_
-
-The deployment profiles become namespace, realm as the default, group, monolith and custom, and
-layer is removed from the code and not only from the enum: the type, the case in the planner, the
-CRD enum and the test that planned one all go. Nothing is lost by it, because a group or custom
-entry lists realm.layer selectors, so layer granularity is still expressible by whoever wants it,
-and a profile list offering a fifth spelling of one idea is a list nobody keeps consistent. T-231
-carries the four places that move together.
-
-superseded: the list settled as four names, with custom being the group profile
-
-Superseded by `D-399`.
 
 ### D-425 — How a deployed process stops carrying the deployment realm
 
@@ -2382,3 +2368,17 @@ Superseded by `D-542`.
 
 Replaced by a real minifier: swc writes fill.min.mts, which the ConfigMap carries and a test keeps
 fresh.
+
+### D-392 — The layer profile is removed, not renamed
+
+> _2026-10-06 · realm/blong-kustomize · superseded_
+
+The deployment profiles become namespace, realm as the default, group, monolith and custom, and
+layer is removed from the code and not only from the enum: the type, the case in the planner, the
+CRD enum and the test that planned one all go. Nothing is lost by it, because a group or custom
+entry lists realm.layer selectors, so layer granularity is still expressible by whoever wants it,
+and a profile list offering a fifth spelling of one idea is a list nobody keeps consistent.
+
+superseded: the list settled as four names, with custom being the group profile
+
+Superseded by `D-399`.

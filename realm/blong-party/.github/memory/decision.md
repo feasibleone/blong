@@ -22,8 +22,8 @@ active (15)
 - `D-358` · realm/blong-party — The matrix probes declare the refusals they expect
 - `D-359` · realm/blong-party — The failure report is a contract with its own feature
 - `D-360` · realm/blong-party — The matrices cover the unscoped hole with two records
-- `D-361` · realm/blong-party — The three remaining concept cases are deferred, not guessed
 - `D-362` · realm/blong-party — The last three ACL cases: two matrices, no matrix for writes
+- `D-361` · realm/blong-party — The three remaining concept cases are deferred, not guessed
 - `D-478` · realm/blong-party — The party suite carries its own tap budget
 
 <!-- /memory:index -->
@@ -175,20 +175,6 @@ Hal is a column and deliberately not a row: he has no user, and a row labelled l
 viewer to the helper, which would sign in as a user that does not exist. The three cases pass
 against the live graph, which is the concept's claim confirmed rather than restated.
 
-### D-361 — The three remaining concept cases are deferred, not guessed
-
-> _2026-10-04 · realm/blong-party · active_
-
-The named section's cases are covered and verified; three cases from the concept's verdict tables
-are not, and I chose to defer them while the user was away rather than decide for them (T-197). mode
-explicit needs a guarded table that exists nowhere in the repository, which changes blong-party's
-schema and the concept's own statement that nothing declares the shape yet. add with addScope needs
-a write matrix rather than a get probe, and the matrices are deliberately read-only today. mode none
-needs records of an unguarded table in the fixture. Each also costs probes the suite can barely
-afford (148 seconds of tap's 180, with the application matrix at 80), so any of them should come
-with the trim T-196 asks for. Reversal is the same as the decision: pick one and implement it;
-nothing in the four matrices depends on their absence.
-
 ### D-362 — The last three ACL cases: two matrices, no matrix for writes
 
 > _2026-10-04 · realm/blong-party · active_
@@ -205,6 +191,20 @@ drives party.person.add with a submitted belongsTo edge and asserts the scope th
 The tap ceiling for a package was raised with it, from 180s to 240s: an ACL matrix signs in once per
 row and each sign-in costs about 2.4 seconds, so eight viewers is minutes of legitimate work, and
 the probes inside a row already run concurrently.
+
+### D-361 — The three remaining concept cases are deferred, not guessed
+
+> _2026-10-04 · realm/blong-party · active_
+
+The named section's cases are covered and verified; three cases from the concept's verdict tables
+are not, and I chose to defer them while the user was away rather than decide for them. mode
+explicit needs a guarded table that exists nowhere in the repository, which changes blong-party's
+schema and the concept's own statement that nothing declares the shape yet. add with addScope needs
+a write matrix rather than a get probe, and the matrices are deliberately read-only today. mode none
+needs records of an unguarded table in the fixture. Each also costs probes the suite can barely
+afford (148 seconds of tap's 180, with the application matrix at 80), so any of them should come
+with the trim that was asked for. Reversal is the same as the decision: pick one and implement it;
+nothing in the four matrices depends on their absence.
 
 ### D-478 — The party suite carries its own tap budget
 
@@ -228,7 +228,7 @@ ceiling, so the value is a hang ceiling rather than a target. The number no long
 reason is not a smaller matrix: the same investigation that found the budget three seconds short
 found the cost, the semantic-log analysis the suite was running over its own log (D-500 in
 `core/semantic-log`), and that fix took the browser leg from 162.8 s to 8.8 s and the matrices to
-about 13 s of a 60 s file. The 900 s is now purely the ceiling, and trimming the sign-ins (T-196,
-since done) is no longer what stands between the suite and its budget.
+about 13 s of a 60 s file. The 900 s is now purely the ceiling, and trimming the sign-ins (done
+since) is no longer what stands between the suite and its budget.
 
 ## Superseded

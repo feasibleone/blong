@@ -30,7 +30,6 @@ open (54)
 - `F-309` · ci — The test job inherits a build-less cache written by another workflow
 - `F-310` · ci — A repaired CI surfaced failures the broken runs could not reach
 - `F-311` · ci — The report consolidation dropped the trace links
-- `F-313` · cross-cutting — A flag cleared by the repair is not a cross-process signal
 - `F-316` · cross-cutting — The ensure was ruled out of the transaction on a wrong premise
 - `F-328` · docs — A docs link must name its tier or only the build notices
 - `F-329` · docs — A blog request names the feature, not the by-product
@@ -65,6 +64,7 @@ open (54)
 - `F-622` · ci — The Kustomize E2E workflow has no verb in blong-dev ci
 - `F-633` · ci — Lint fails a package on warnings, and an any alias hid where nothing is linted
 - `F-649` · ci — A leg that reports no test at all publishes no failure
+- `F-313` · cross-cutting — A flag cleared by the repair is not a cross-process signal
 
 resolved (42)
 
@@ -94,12 +94,10 @@ resolved (42)
 - `F-225` · ci — tap 30s subprocess default is smaller than an integration file startup
 - `F-287` · docs — A committed dark diagram was unreadable because the theme owns the label colour
 - `F-288` · docs — A committed diagram image was invented before the house convention was read
-- `F-289` · docs — A greedy scripted replacement deleted three plan sections with no git history
 - `F-303` · cross-cutting — The repo formats markdown with a prettier the packages do not have
 - `F-241` · docs — Markdown edits need prettier before markdownlint passes
 - `F-467` · ci — A mask hides a wrong shot; redaction showed one
 - `F-471` · ci — The e2e wait step hides its reason in the diagnostics artifact
-- `F-376` · cross-cutting — Rush deploy honours .npmignore, a deployment is not a publish
 - `F-488` · cross-cutting — The publish allow-lists release packages without their entry points
 - `F-535` · docs — A relative img src in JSX is not an asset the build copies
 - `F-534` · docs — docusaurus serve drops the query from an iframe URL
@@ -112,6 +110,8 @@ resolved (42)
 - `F-597` · cross-cutting — The k3d Kafka broker OOMs and looks like a broken port mapping
 - `F-627` · ci — A namespace rewrite moved cert-manager leader election
 - `F-631` · docs — A lazy poster image never loads and collapses to nothing
+- `F-289` · docs — A greedy scripted replacement deleted three plan sections with no git history
+- `F-376` · cross-cutting — Rush deploy honours .npmignore, a deployment is not a publish
 
 <!-- /memory:index -->
 
@@ -379,21 +379,6 @@ plus a generic hint. The Allure attachment alone is not a viewer link, and nothi
 one, so the loss was silent until a user missed it. Lesson: a feature that moves between report
 formats needs an assertion on its observable, which is what `test/blong-ci-report` now has for the
 summary row and `allurePublish.test.ts` for the attachment link.
-
-### F-313 — A flag cleared by the repair is not a cross-process signal
-
-> _2026-09-29 · cross-cutting · open_
-
-The T-174 fix went in as a dirty flag plus a read-side fallback, and it passed every test that
-existed because all of them ran in one process. The hole only shows up with two: process A rebuilds,
-process B's merge commits while that rebuild runs, and A's rebuild deletes B's flag on its way out
-without ever having seen B's edges — B's own drain then finds nothing owed, the edge is absent from
-the flattened paths, and nothing is scheduled to put it back. The lesson is about the shape of
-inter-process state rather than about this feature: a signal whose clearing is done by the party
-that repairs it must be monotonic and written where the repair can compare it against what it read,
-which is what the generation and covered counters do. It also cost a second lesson: all the existing
-tests were in-process, so the missing coverage was the topology itself — the test that would have
-failed is two coordinators over one database, and it now exists.
 
 ### F-316 — The ensure was ruled out of the transaction on a wrong premise
 
@@ -952,6 +937,21 @@ package whose second leg found nothing looks exactly like one that ran only its 
 operation summary in the job log stays the only place the failure exists. A fix would let the runner
 publish a slice that says it found no tests, rather than publishing nothing.
 
+### F-313 — A flag cleared by the repair is not a cross-process signal
+
+> _2026-09-29 · cross-cutting · open_
+
+The fix went in as a dirty flag plus a read-side fallback, and it passed every test that existed
+because all of them ran in one process. The hole only shows up with two: process A rebuilds, process
+B's merge commits while that rebuild runs, and A's rebuild deletes B's flag on its way out without
+ever having seen B's edges — B's own drain then finds nothing owed, the edge is absent from the
+flattened paths, and nothing is scheduled to put it back. The lesson is about the shape of
+inter-process state rather than about this feature: a signal whose clearing is done by the party
+that repairs it must be monotonic and written where the repair can compare it against what it read,
+which is what the generation and covered counters do. It also cost a second lesson: all the existing
+tests were in-process, so the missing coverage was the topology itself — the test that would have
+failed is two coordinators over one database, and it now exists.
+
 ## Resolved
 
 ### F-083 — The workspace markdown validator mis-resolves two link forms
@@ -1237,23 +1237,6 @@ over the one that has to be told the colours.
 Resolved by removing the renderer and the pairs: the posts embed mermaid, and docs verify now covers
 the blog.
 
-### F-289 — A greedy scripted replacement deleted three plan sections with no git history
-
-> _2026-09-27 · docs · resolved_
-
-A python replacement that took its start index at a new subsection and its end index at the next arc
-heading swallowed everything between them: the Where the posts go, Publishing and The series at a
-glance sections, the 36-post table and the Preparing a missing or partial doc subsection, about 90
-lines. plans/ is untracked, so git could not restore it and the text survived only in the session
-transcript and was written back by hand. Lesson: index-based slicing in a script is a delete with
-extra steps, so anchor on a unique string with a try-asserted count, prefer the edit tool for a
-large removal, and treat a document that git does not track as one where a bad edit is
-unrecoverable.
-
-The lesson was correct and insufficient on its own: what stops the third occurrence is the rule in
-the file being edited, plus keeping a copy of a document git does not track. F-292 carries the
-second incident and the rule.
-
 ### F-303 — The repo formats markdown with a prettier the packages do not have
 
 > _2026-09-28 · cross-cutting · resolved_
@@ -1320,27 +1303,6 @@ why, and the step could say so itself (a todo in the `ci` area asks for exactly 
 
 Addressed by T-317: the wait step now prints the status it polls (message first, then the resource)
 and fails fast on Failed, so the reason no longer lives only in the diagnostics artifact.
-
-### F-376 — Rush deploy honours .npmignore, a deployment is not a publish
-
-> _2026-10-05 · cross-cutting · resolved_
-
-rush deploy applies the .npmignore filter unless the scenario sets includeNpmIgnoreFiles, whose name
-reads backwards: true disables the filter and the default applies it. The repository templates
-ignore every file and un-ignore a short list, so a module that no entry point outside its own
-package names never reaches the deploy tree. The framework image died on
-@feasibleone/semantic-log/attachable.ts, and the suite artifact was missing
-realm/blong-kustomize/plan.ts and its siblings, realm/blong-login/server.ts and core/blong/knex.ts,
-none of which anything failed on until a pod imported it. Both scenarios now set
-includeNpmIgnoreFiles true, which is the rule to copy into a new scenario, and a scanner that
-compares a packed artifact against the source tree found every remaining hole in one pass.
-
-Closed as the deploy half, which is fixed and verified: all three scenarios set
-includeNpmIgnoreFiles true, the framework image and both artifacts build from an unfiltered tree,
-and a dev-cluster cycle fills a node and starts the suite. What the entry could not say is that the
-ignore files were never wrong only for deploys: the same allow-lists decide what npm receives, and
-four of the seven packages that declare ci-publish ship without their declared entry points, two of
-them empty on the registry (F-488, with the fix left as T-322).
 
 ### F-488 — The publish allow-lists release packages without their entry points
 
@@ -1577,6 +1539,48 @@ since its height is its own aspect ratio, and a section has at most two of them.
 Fixed: the poster image is no longer lazy, so it fetches, takes its natural height, and the embed
 shows the whole picture at the article width (verified on the built site: a 830x320 poster renders
 557x215 inside a 558px column).
+
+### F-289 — A greedy scripted replacement deleted three plan sections with no git history
+
+> _2026-09-27 · docs · resolved_
+
+A python replacement that took its start index at a new subsection and its end index at the next arc
+heading swallowed everything between them: the Where the posts go, Publishing and The series at a
+glance sections, the 36-post table and the Preparing a missing or partial doc subsection, about 90
+lines. plans/ is untracked, so git could not restore it and the text survived only in the session
+transcript and was written back by hand. Lesson: index-based slicing in a script is a delete with
+extra steps, so anchor on a unique string with a try-asserted count, prefer the edit tool for a
+large removal, and treat a document that git does not track as one where a bad edit is
+unrecoverable.
+
+The lesson was correct and insufficient on its own: what stops the third occurrence is the rule in
+the file being edited, plus keeping a copy of a document git does not track.
+
+### F-376 — Rush deploy honours .npmignore, a deployment is not a publish
+
+> _2026-10-05 · cross-cutting · resolved_
+
+rush deploy applies the .npmignore filter unless the scenario sets includeNpmIgnoreFiles, whose name
+reads backwards: true disables the filter and the default applies it.
+
+The repository templates ignore every file and un-ignore a short list, so a module that no entry
+point outside its own package names never reaches the deploy tree.
+
+The framework image died on @feasibleone/semantic-log/attachable.ts, and the suite artifact was
+missing realm/blong-kustomize/plan.ts and its siblings, realm/blong-login/server.ts and
+core/blong/knex.ts, none of which anything failed on until a pod imported it.
+
+Both scenarios now set includeNpmIgnoreFiles true, which is the rule to copy into a new scenario,
+and a scanner that compares a packed artifact against the source tree found every remaining hole in
+one pass.
+
+Closed as the deploy half, which is fixed and verified: all three scenarios set
+includeNpmIgnoreFiles true, the framework image and both artifacts build from an unfiltered tree,
+and a dev-cluster cycle fills a node and starts the suite.
+
+What the entry could not say is that the ignore files were never wrong only for deploys: the same
+allow-lists decide what npm receives, and four of the seven packages that declare ci-publish ship
+without their declared entry points, two of them empty on the registry (F-488 carries the fix).
 
 ## Retired
 

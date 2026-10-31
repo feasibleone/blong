@@ -16,7 +16,6 @@ open (16)
 - `T-168` · tools/blong-dev — A closed todo id can be re-issued, re-pointing references at another
   entry
 - `T-151` · tools/blong-dev — Memory bodies silently flatten bullet lists
-- `T-180` · tools/blong-dev — Eleven memory entries escape emphasis markers
 - `T-190` · tools/blong-dev — --since cannot filter a Hindsight recall by date
 - `T-192` · tools/blong-dev — Nothing runs the cspell check yet
 - `T-289` · tools/blong-dev — Json and root files are linted by nothing
@@ -27,12 +26,15 @@ open (16)
 - `T-351` · tools/blong-dev — docs serve --dir should accept an absolute path
 - `T-357` · tools/blong-dev — Confirm the published summary carries every leg
 - `T-362` · tools/blong-dev — blong-dev ci --run does not accept a run id
+- `T-180` · tools/blong-dev — Eleven memory entries escape emphasis markers
 
-done (3)
+done (4)
 
 - `T-346` · tools/blong-dev — Name the projects that ran no tests in the CI report
 - `T-358` · tools/blong-dev — Render the killing signal in the failure message
 - `T-361` · tools/blong-dev — Host one shared Allure bundle for every published report
+- `T-592` · tools/blong-dev — memory audit's dangling references are not what refs --dangling gates
+  on
 
 <!-- /memory:index -->
 
@@ -99,16 +101,6 @@ the items are joined into one paragraph with the `-` markers left inside the tex
 ways out, either is fine: teach the writer to keep a list's structure (blank line between blocks,
 marker on its own line) so a body may be written as prose or as bullets, or say in the instructions
 that a body is prose only, so nobody writes a list and then discovers MD031.
-
-### T-180 — Eleven memory entries escape emphasis markers
-
-> _2026-09-29 · tools/blong-dev · open_
-
-An earlier pass wrote \_ and \* into bodies to stop markdown parsing an identifier or a glob as
-emphasis (Registry.\_validations(), \_shared\_, \_.spec.ts). It renders, but it is noise the wrapper
-cannot see and the house style uses backticks, and a check for it was left out of the T-175 fix
-because it would fail eleven entries at once. Sweep them with blong-dev memory edit, writing the
-token in backticks instead, and then add the rule to checkMarkdown so the escape cannot come back.
 
 ### T-190 — --since cannot filter a Hindsight recall by date
 
@@ -245,6 +237,16 @@ either: when the value matches no recent run number, ask gh for it by id
 the answer that an id was resolved rather than a number. The run list already carries `databaseId`,
 so the lookup is cheap and the shape is the one `IRunSummary` already uses.
 
+### T-180 — Eleven memory entries escape emphasis markers
+
+> _2026-09-29 · tools/blong-dev · open_
+
+An earlier pass wrote \_ and \* into bodies to stop markdown parsing an identifier or a glob as
+emphasis (Registry.\_validations(), \_shared\_, \_.spec.ts). It renders, but it is noise the wrapper
+cannot see and the house style uses backticks, and a check for it was left out of that fix because
+it would fail eleven entries at once. Sweep them with blong-dev memory edit, writing the token in
+backticks instead, and then add the rule to checkMarkdown so the escape cannot come back.
+
 ## Done
 
 ### T-346 — Name the projects that ran no tests in the CI report
@@ -302,7 +304,22 @@ Implemented as the shared directory mode of externalizeAllureMain: the workflow 
 BLONG_ALLURE_MAIN_URL and BLONG_ALLURE_MAIN_DIR, the bundle is written once and deploy-report copies
 it to docs/\_assets through its new assets input.
 
+### T-592 — memory audit's dangling references are not what refs --dangling gates on
+
+> _2026-10-31 · tools/blong-dev · done_
+
+92 references inside memory bodies name an id nothing holds, spread over the root todo (35),
+realm/blong-kustomize, tools/blong-dev and the other packages, and refs --dangling passes because it
+scans source, docs and skills rather than entries. Decide whether a memory body citing a missing id
+is a gate (it would fail CI today on pre-existing debt, so the sweep comes first) or a warning audit
+keeps, and record the scope of each command where a reader will look: the usage text says both check
+that every reference resolves.
+
+decided and built: a dangling body reference is an error in check --refs, refs --dangling and audit
+(D-719); what stays open is the sweep of the 89 citations already in the tree, which is T-338's work
+
 ## Retired
 
 - T-335 — done 2026-10-13
 - T-336 — done 2026-10-13
+- T-591 — renumbered to T-592 (2026-10-31)

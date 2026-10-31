@@ -34,8 +34,9 @@ export interface IConfig {
     /**
      * The prefix of the receiving hooks: `<hook>.identity`, `<hook>.message`, `<hook>.server`.
      *
-     * Defaults to the port's namespace, which is what a port with one handler group wants; a port that
-     * receives as one name and sends as another (UT's `slackIn` beside `slack`) names it.
+     * Defaults to the port's namespace, which is what a port with one handler group wants; a port
+     * whose receiving methods are named after the inbound side (`slackIn.identity` beside its own
+     * `slack` methods) names it.
      */
     hook?: string;
     /**

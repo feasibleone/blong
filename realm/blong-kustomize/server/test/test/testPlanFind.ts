@@ -599,6 +599,56 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 );
             },
 
+            async function aDeclaredVolumeReachesTheProcess(assert: IAssert) {
+                // A volume is the one contribution with a lifetime: the generator mounted whatever the
+                // plan carried, and the plan carried nothing, so a realm that declared a workspace got
+                // no claim and its edits died with the container's filesystem (`@@T-317`).
+                const view = {
+                    realms: ['shop'],
+                    groups: [{name: 'shop.orchestrator', handlerCount: 1, layer: 'orchestrator'}],
+                    ports: [
+                        {
+                            id: 'shop.api',
+                            type: 'dispatch',
+                            namespace: 'shop',
+                            k8s: {
+                                k8sVolumes: {
+                                    shopWorkspace: {size: '5Gi', mountPath: '/srv/shop'},
+                                },
+                            },
+                        },
+                        {
+                            // The same volume from a second port of the same realm: one claim, because
+                            // two objects of one name is a tree kustomize refuses to build.
+                            id: 'shop.worker',
+                            type: 'dispatch',
+                            namespace: 'shopWork',
+                            k8s: {
+                                k8sVolumes: {
+                                    shopWorkspace: {size: '5Gi', mountPath: '/srv/shop'},
+                                },
+                            },
+                        },
+                    ],
+                    roles: {},
+                } as IRegistryView;
+                const plan = planFromRegistry(view, {suiteName: 'demo', frameworkImage: 'image'});
+
+                assert.deepEqual(
+                    plan.deployments[0]?.volumes,
+                    [{name: 'shopWorkspace', size: '5Gi', mountPath: '/srv/shop'}],
+                    'the process carrying the realm mounts the volume it asked for, once',
+                );
+                assert.deepEqual(
+                    planFromRegistry(
+                        {...view, ports: [{id: 'shop.api', type: 'dispatch', namespace: 'shop'}]},
+                        {suiteName: 'demo', frameworkImage: 'image'},
+                    ).deployments[0]?.volumes,
+                    undefined,
+                    'and a realm that declares none carries the field not at all',
+                );
+            },
+
             async function aWebhookIsReachableFromOutside(assert: IAssert) {
                 // An adapter is not a dispatch port, so the ingress it contributes was filtered out of
                 // the plan — and even once read, its backend was a Service a monolith never had, since
