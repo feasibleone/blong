@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.14.0...blong-dev-v1.15.0) (2026-10-31)
+
+
+### Features
+
+* blong-chat ([045ad99](https://github.com/feasibleone/blong/commit/045ad99ac536a47252629c7739cafdbcf9df6c3d))
+
 ## [1.14.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.13.1...blong-dev-v1.14.0) (2026-10-30)
 
 

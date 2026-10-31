@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.45.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.44.0...blong-gogo-v1.45.0) (2026-10-31)
+
+
+### Features
+
+* blong-chat ([045ad99](https://github.com/feasibleone/blong/commit/045ad99ac536a47252629c7739cafdbcf9df6c3d))
+
+
+### Bug Fixes
+
+* remove Gateway positional params ([f0c570a](https://github.com/feasibleone/blong/commit/f0c570a6c8aee0e604ddaa8bbcb14aaaa7b3bc56))
+
 ## [1.44.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.43.1...blong-gogo-v1.44.0) (2026-10-30)
 
 
