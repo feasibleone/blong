@@ -166,6 +166,7 @@ words:
   - Gorgoniidae
   - grayscale
   - greppable
+  - Groq
   - gtag
   - handoff
   - hdel
@@ -224,6 +225,7 @@ words:
   - lightningcss
   - linted
   - Liquibase
+  - LM
   - logviewer
   - LONGTEXT
   - Mandarinfish
@@ -238,6 +240,7 @@ words:
   - Milleporidae
   - Millis
   - Millisec
+  - Mistral
   - mkac
   - mlek
   - mlsk
@@ -280,6 +283,7 @@ words:
   - OpenAPIV3_1
   - openAPIV3Schema
   - openebs
+  - OpenRouter
   - overlaypanel
   - panelmenu
   - paperclip
@@ -389,6 +393,7 @@ words:
   - statefulsets
   - statelessly
   - storageclass
+  - Studio
   - subjectaccessreviews
   - subresource
   - subresources
@@ -409,6 +414,7 @@ words:
   - tinyint
   - TINYTEXT
   - tlnp
+  - Together
   - toggleable
   - Tokenreview
   - tokenreviews
@@ -449,6 +455,7 @@ words:
   - vars
   - vendored
   - vitest
+  - vLLM
   - volitans
   - Voxer
   - wanples
@@ -458,6 +465,7 @@ words:
   - worldtimeapi
   - Wrasse
   - writable
+  - xAI
   - xoxb
   - xoxe
   - xyflow

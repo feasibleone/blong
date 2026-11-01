@@ -98,6 +98,23 @@ the fixture for it is one file.
   is the rule; a shared group would give the wake to one pod and the pod that owns the workspace
   would never hear it.
 
+## One account, any endpoint
+
+`kind` and the model are two different decisions, and separating them is what keeps a deployment's
+vendor out of its code: **`kind`** says who drives the loop (`sim`, `vercel`, `mastra`, `deepseek`),
+**`provider`** says what shape the model answers in. The default provider is the OpenAI
+chat-completions shape, which is what most services publish as their compatible endpoint — OpenAI,
+Azure, Ollama, vLLM, LM Studio, OpenRouter, Groq, Together, Mistral, DeepSeek, xAI, Gemini's
+compatibility base and Anthropic's — so reaching a new host is a base URL, a key and a model name.
+`anthropic` and `gateway` are the native ones, both installed beside `ai`; an image that prunes one
+fails the account that names it alone rather than taking the process down with it, the rule the
+engine kinds already follow.
+
+The call settings are the SDK's own vocabulary: `temperature`, `maxOutputTokens`, `topP`, `seed`,
+`stopSequences`, `providerOptions` and `reasoning`. `reasoningEffort` is a shortcut for the last of
+them, which the SDK translates per provider rather than one vendor's flag the others ignore; a
+`parameters` bag is merged last for everything the typed fields do not cover.
+
 ## See also
 
 - [Handler](./handler.md) — the `super` chain, injected handlers, the `db/<method>` qualification.

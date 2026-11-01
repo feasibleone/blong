@@ -49,6 +49,90 @@ not.
 CI=1 blong ./index.ts integration ollama
 ```
 
+### One account, any endpoint
+
+`kind` says who drives the loop; `provider` says what the model answers in, and it is the only thing
+a new vendor costs. Most services publish the OpenAI chat-completions shape as their compatible
+endpoint, so `openai` — the default — is the whole of OpenAI, Azure, Ollama, vLLM, LM Studio,
+OpenRouter, Groq, Together, Mistral, DeepSeek, xAI, Gemini's compatibility base and Anthropic's. The
+native ones are `anthropic` and `gateway`, and both ship with the framework — `@ai-sdk/anthropic`
+and `@ai-sdk/gateway` beside `ai` — so naming one needs nothing installed. An image that prunes them
+fails the one account that names it and nothing else, the rule an engine kind already follows.
+
+The rc file is YAML and is addressed the way every component is — `<realm>.<instance>.<key>` — so
+an account is `agent.engine.accounts.<alias>` under the suite root:
+
+```yaml
+agent:
+    engine:
+        accounts:
+            # OpenAI itself.
+            gpt:
+                kind: vercel
+                provider: openai
+                modelName: gpt-4.1-mini
+                apiKeyEnv: AGENT_ENGINE_API_KEY
+                reasoningEffort: low
+            # A laptop, no key worth naming.
+            qwen:
+                kind: vercel
+                modelName: 'qwen2.5-coder:14b'
+                baseUrl: http://localhost:11434/v1
+                apiKey: ollama
+            # A router in front of many vendors — one key, one URL.
+            router:
+                kind: vercel
+                modelName: anthropic/claude-sonnet-4-5
+                baseUrl: https://openrouter.ai/api/v1
+                apiKeyEnv: OPENROUTER_KEY
+            # Azure: the deployment name is the model, and the shape is still OpenAI's.
+            azure:
+                kind: vercel
+                modelName: gpt-4o
+                baseUrl: https://my-resource.openai.azure.com/openai/deployments/gpt-4o
+                headers:
+                    api-key: …
+                    api-version: '2024-10-21'
+            # Anthropic natively, which is what thinking budgets and caching want.
+            claude:
+                kind: vercel
+                provider: anthropic
+                modelName: claude-sonnet-4-5
+                apiKeyEnv: ANTHROPIC_API_KEY
+                reasoningEffort: medium
+            # The harness: its own runtime, its own model string.
+            dsh:
+                kind: deepseek
+                mode: native
+                modelName: deepseek-v4-flash
+                apiKeyEnv: AGENT_ENGINE_API_KEY
+                dshHome: /home/node/.dsh
+```
+
+**The file name follows the last intent**, which is the one thing about rc files that bites: a bare
+`dev` run reads `.blong_devrc`, while `integration ollama` reads the file named after that intent
+instead — the stem is the intent, the extension `rc`. An address that seems to have no effect is
+usually in the shared file while the run is looking at another one; `BLONG_ENV` names the suffix
+directly, and a `--agent.engine.accounts.<alias>.<key>=` argument always wins over both.
+
+A parameter the shortcuts do not cover goes in `parameters`, which is merged into the call last —
+`topP`, `seed`, `stopSequences`, `frequencyPenalty`, and `providerOptions` for anything
+vendor-specific. It wins over the shortcut it overlaps, so a `reasoning` written here beats
+`reasoningEffort`:
+
+```yaml
+parameters:
+    topP: 0.9
+    seed: 7
+    providerOptions:
+        openai:
+            reasoningEffort: high
+```
+
+`reasoningEffort` reaches the SDK as its own `reasoning` setting, which translates per provider —
+OpenAI-style effort, Anthropic's thinking budget — rather than a flag one vendor understands and the
+rest ignore.
+
 ## Configuration
 
 | key                                                    | meaning                                                            |

@@ -13,7 +13,7 @@ import type {
     IAgentToolCall,
     IAgentToolDefinition,
 } from '@feasibleone/blong/types';
-import {agentEngineKey} from './agentKey.ts';
+import {agentLanguageModel} from './agentProvider.ts';
 
 /**
  * Mastra as a `step` engine.
@@ -105,17 +105,14 @@ export const mastraStep = async (
             ) => Promise<{text?: string; toolCalls?: unknown[]}>;
         };
     };
-    const key = agentEngineKey(account);
-    const {createOpenAI} = await import('@ai-sdk/openai');
-    const provider = createOpenAI({
-        ...(key && {apiKey: key}),
-        ...(account.baseUrl && {baseURL: account.baseUrl}),
-    });
+    // The same model the `vercel` kind would call: Mastra is another way to drive a turn, not
+    // another vocabulary for the endpoint.
+    const model = await agentLanguageModel(account);
     const agent = new Agent({
         id: `blong-${account.modelName ?? 'agent'}`,
         name: 'blong-agent',
         instructions: request.instructions,
-        model: provider(account.modelName ?? 'gpt-4.1-mini'),
+        model: model as never,
         tools: await mastraTools(request.tools),
         maxSteps: 1,
     });

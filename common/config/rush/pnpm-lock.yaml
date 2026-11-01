@@ -373,6 +373,12 @@ importers:
 
   ../../core/blong-gogo:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: ^4.0.94
+        version: 4.0.94(zod@4.3.6)
+      '@ai-sdk/gateway':
+        specifier: ^4.0.132
+        version: 4.0.132(zod@4.3.6)
       '@ai-sdk/openai':
         specifier: ^4.0.106
         version: 4.0.106(zod@4.3.6)
@@ -2753,6 +2759,12 @@ packages:
 
   '@adobe/css-tools@4.4.4':
     resolution: {integrity: sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg==}
+
+  '@ai-sdk/anthropic@4.0.94':
+    resolution: {integrity: sha512-gD0KmsUZTRuhiYleM2SdMrY0c7m+VeRckLX2VVPnEAlQmaKqSw8+noHiK5ED+SHy4tuDf9VQqcHxlGeObzMNyw==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/gateway@4.0.132':
     resolution: {integrity: sha512-ppStDEz96g+JEuxGiVTP29OKBjPyYZXRxs38wnq3427U2QbZtxe6TukrgSAAq0n4yaHvSvVAWJY9kBlW8XudYg==}
@@ -15133,6 +15145,12 @@ snapshots:
       express: 5.2.1(supports-color@10.2.2)
 
   '@adobe/css-tools@4.4.4': {}
+
+  '@ai-sdk/anthropic@4.0.94(zod@4.3.6)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.35
+      '@ai-sdk/provider-utils': 5.0.72(zod@4.3.6)
+      zod: 4.3.6
 
   '@ai-sdk/gateway@4.0.132(zod@4.3.6)':
     dependencies:

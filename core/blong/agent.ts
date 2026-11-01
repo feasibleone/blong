@@ -36,10 +36,42 @@ export interface IAgentEngineAccount {
     apiKeyEnv?: string;
     /** The API base this account calls — a vendor, or a simulator's address. */
     baseUrl?: string;
+    /**
+     * The wire format this account speaks: `kind` says who drives the loop, this says what the model
+     * answers in (`@@D-723`).
+     *
+     * `openai` is the OpenAI chat-completions shape, and it is what most services publish as their
+     * compatible endpoint — OpenAI itself, Azure, Ollama, vLLM, LM Studio, OpenRouter, Groq, Together,
+     * Mistral, DeepSeek, xAI, Gemini's compatibility base, and Anthropic's. `anthropic` and `gateway`
+     * are the native ones, and each needs the provider package installed beside `ai`; an account that
+     * names one without it fails alone, exactly as an engine kind does (`@@D-700`).
+     *
+     * Unset is inferred: `anthropic` for a base URL or model name that says so, otherwise `openai`.
+     */
+    provider?: AgentEngineProvider;
+    /** Extra request headers — Azure's `api-key` and `api-version` arrive this way. */
+    headers?: Record<string, string>;
+    /** The OpenAI organisation and project an account bills to. */
+    organization?: string;
+    project?: string;
     maxOutputTokens?: number;
     temperature?: number;
-    /** A reasoning budget, for the implementations that support one. */
+    /**
+     * How hard the model thinks, where the provider has a notion of it.
+     *
+     * Reaches the AI SDK as its own `reasoning` setting, which translates per provider: OpenAI-style
+     * effort, Anthropic's thinking budget. `none` and `provider-default` are the two values every
+     * provider understands.
+     */
     reasoningEffort?: string;
+    /**
+     * Anything else the call takes, merged last: `topP`, `seed`, `stopSequences`, `frequencyPenalty`,
+     * `providerOptions` (the per-provider bag), and the rest of the AI SDK's call settings.
+     *
+     * Last, so an account that names `parameters.reasoning` keeps it over `reasoningEffort` — the
+     * escape hatch wins over the shortcut.
+     */
+    parameters?: Record<string, unknown>;
     mode?: AgentEngineMode;
     /** The directory DeepSeek Harness keeps its own session store in (`@@D-711`). */
     dshHome?: string;
@@ -48,6 +80,9 @@ export interface IAgentEngineAccount {
     /** The dialogue a `sim` account replays, one entry per turn. */
     script?: IAgentScriptEntry[];
 }
+
+/** The wire formats a model account may speak (`@@D-723`). */
+export type AgentEngineProvider = 'openai' | 'anthropic' | 'gateway';
 
 /** One line of a scripted dialogue. */
 export type IAgentScriptEntry =

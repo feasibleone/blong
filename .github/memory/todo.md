@@ -119,6 +119,7 @@ done (19)
 - move blong-agent tasks to their proper packages
 - test slack with ollama
 - enhance the planning agent to use a tool to create the tasks and use deterministic formatting
+- read the rc file for each intent
 - hindsight: store explore results
 - planning skill
 - meta/model meta/type should the validated

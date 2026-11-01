@@ -29,6 +29,8 @@
         "test": "blong-dev test"
     },
     "dependencies": {
+        "@ai-sdk/anthropic": "^4.0.94",
+        "@ai-sdk/gateway": "^4.0.132",
         "@ai-sdk/openai": "^4.0.106",
         "@apidevtools/swagger-parser": "^12.1.0",
         "@aws-sdk/client-s3": "^3.1037.0",

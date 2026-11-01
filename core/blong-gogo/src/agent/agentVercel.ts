@@ -13,7 +13,7 @@ import type {
     IAgentToolCall,
     IAgentToolDefinition,
 } from '@feasibleone/blong/types';
-import {agentEngineKey} from './agentKey.ts';
+import {agentLanguageModel, agentCallSettings} from './agentProvider.ts';
 
 /**
  * The Vercel AI SDK as a `step` engine.
@@ -190,23 +190,19 @@ export const vercelStep = async (
     request: IAgentStepRequest,
 ): Promise<IAgentStepResult> => {
     const {generateText} = await import('ai');
-    const key = agentEngineKey(account);
-    const {createOpenAI} = await import('@ai-sdk/openai');
-    const provider = createOpenAI({
-        ...(key && {apiKey: key}),
-        ...(account.baseUrl && {baseURL: account.baseUrl}),
-    });
+    // The model comes from the account's provider — an OpenAI-compatible endpoint, Anthropic, or a
+    // gateway — and the settings from the account's parameters. Nothing here names a vendor.
+    const model = await agentLanguageModel(account);
     const split = vercelSplit(request.history);
     const instructions = [request.instructions, split.instructions]
         .filter((text): text is string => typeof text === 'string' && text.length > 0)
         .join('\n');
     const result = await generateText({
-        model: provider(account.modelName ?? 'gpt-4.1-mini'),
+        model: model as never,
         ...(instructions && {system: instructions}),
         messages: split.messages as never,
         tools: (await vercelTools(request.tools)) as never,
-        ...(account.temperature !== undefined && {temperature: account.temperature}),
-        ...(account.maxOutputTokens !== undefined && {maxOutputTokens: account.maxOutputTokens}),
+        ...agentCallSettings(account),
     } as never);
     const calls = (result.toolCalls ?? []) as Array<{
         toolName: string;
