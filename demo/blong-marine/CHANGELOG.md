@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.10.0...blong-marine-v1.11.0) (2026-11-01)
+
+
+### Features
+
+* blong-agent ([ae5f0fb](https://github.com/feasibleone/blong/commit/ae5f0fb3992e42e74888ca5ac26afe79a9becaf0))
+
 ## [1.10.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.9.0...blong-marine-v1.10.0) (2026-10-25)
 
 

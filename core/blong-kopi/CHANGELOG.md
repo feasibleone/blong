@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.23.0...blong-kopi-v1.24.0) (2026-11-01)
+
+
+### Features
+
+* blong-agent ([ae5f0fb](https://github.com/feasibleone/blong/commit/ae5f0fb3992e42e74888ca5ac26afe79a9becaf0))
+
 ## [1.23.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.22.0...blong-kopi-v1.23.0) (2026-10-30)
 
 
