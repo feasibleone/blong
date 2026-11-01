@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.2](https://github.com/feasibleone/blong/compare/test-v1.16.1...test-v1.16.2) (2026-11-01)
+
+
+### Bug Fixes
+
+* lint ([ff5b930](https://github.com/feasibleone/blong/commit/ff5b93050691420387c3120dfd763ee187340f74))
+
 ## [1.16.1](https://github.com/feasibleone/blong/compare/test-v1.16.0...test-v1.16.1) (2026-10-17)
 
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.46.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.45.0...blong-gogo-v1.46.0) (2026-11-01)
+
+
+### Features
+
+* blong-agent ([ae5f0fb](https://github.com/feasibleone/blong/commit/ae5f0fb3992e42e74888ca5ac26afe79a9becaf0))
+* support Anthropic and gateway providers ([ba418cc](https://github.com/feasibleone/blong/commit/ba418cca748fa10ea15d54c1208896f935cfe6c7))
+
+
+### Bug Fixes
+
+* lint ([ff5b930](https://github.com/feasibleone/blong/commit/ff5b93050691420387c3120dfd763ee187340f74))
+
 ## [1.45.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.44.0...blong-gogo-v1.45.0) (2026-10-31)
 
 

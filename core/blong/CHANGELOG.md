@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.38.0](https://github.com/feasibleone/blong/compare/blong-v1.37.0...blong-v1.38.0) (2026-11-01)
+
+
+### Features
+
+* blong-agent ([ae5f0fb](https://github.com/feasibleone/blong/commit/ae5f0fb3992e42e74888ca5ac26afe79a9becaf0))
+* support Anthropic and gateway providers ([ba418cc](https://github.com/feasibleone/blong/commit/ba418cca748fa10ea15d54c1208896f935cfe6c7))
+
 ## [1.37.0](https://github.com/feasibleone/blong/compare/blong-v1.36.0...blong-v1.37.0) (2026-10-31)
 
 

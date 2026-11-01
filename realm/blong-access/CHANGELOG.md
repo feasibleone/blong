@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/feasibleone/blong/compare/blong-access-v1.15.0...blong-access-v1.16.0) (2026-11-01)
+
+
+### Features
+
+* blong-agent ([ae5f0fb](https://github.com/feasibleone/blong/commit/ae5f0fb3992e42e74888ca5ac26afe79a9becaf0))
+
 ## [1.15.0](https://github.com/feasibleone/blong/compare/blong-access-v1.14.0...blong-access-v1.15.0) (2026-10-31)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/feasibleone/blong/compare/blong-log-v1.7.1...blong-log-v1.8.0) (2026-11-01)
+
+
+### Features
+
+* blong-agent ([ae5f0fb](https://github.com/feasibleone/blong/commit/ae5f0fb3992e42e74888ca5ac26afe79a9becaf0))
+
 ## [1.7.1](https://github.com/feasibleone/blong/compare/blong-log-v1.7.0...blong-log-v1.7.1) (2026-10-17)
 
 

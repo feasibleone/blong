@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.3.0...blong-sport-v0.4.0) (2026-11-01)
+
+
+### Features
+
+* blong-agent ([ae5f0fb](https://github.com/feasibleone/blong/commit/ae5f0fb3992e42e74888ca5ac26afe79a9becaf0))
+
 ## [0.3.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.2.1...blong-sport-v0.3.0) (2026-10-30)
 
 

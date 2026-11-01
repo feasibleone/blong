@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/semantic-log-v1.6.1...semantic-log-v1.7.0) (2026-11-01)
+
+
+### Features
+
+* blong-agent ([ae5f0fb](https://github.com/feasibleone/blong/commit/ae5f0fb3992e42e74888ca5ac26afe79a9becaf0))
+
 ## [1.6.1](https://github.com/feasibleone/blong/compare/semantic-log-v1.6.0...semantic-log-v1.6.1) (2026-10-17)
 
 
