@@ -12,6 +12,7 @@
         "outDir": "dist",
         "target": "ES2022",
         "resolveJsonModule": true,
+        "skipLibCheck": true,
         "strict": true
     },
     "ts-node": {

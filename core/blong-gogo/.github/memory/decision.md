@@ -512,9 +512,11 @@ semantic-log's LogBase owns the emitter's construction, one logger per component
 cluster sink and init/stop. blong cannot extend it: load.ts decides a module is a component by
 testing 'prototype instanceof Internal', and semantic-log knows nothing of Internal (nor should it).
 So SemanticLog still extends Internal and _holds_ a LogBase, and the two hooks it would otherwise
-override are LogBaseOptions: 'envelope' (the $meta a call record carries) and 'translate' (reading
-$meta out of a call site's arguments). Reconsidering this means changing that detection or marking
-the class with system() - not changing the base.
+override are LogBaseOptions: 'envelope' (the
+$meta a call record carries) and 'translate' (reading
+$meta out of a call site's arguments).
+Reconsidering this means changing that detection or marking the class with system() - not changing
+the base.
 
 ### D-231 — What stayed in blong, and why the boundary is where it is
 
@@ -745,7 +747,7 @@ undefined; only the synthetic procedure handlers were stored under both keys (at
 adapter/schema/knex/schemaTable.ts), which is why the docs' super.sqlItemListActive example worked
 while super.mathNumberSum did not. layerProxy now stores both spellings for every
 handler/model/fixture member, mirroring attachHandlers, and leaves validations on the normalised key
-alone because Registry._validations iterates local and a second spelling of each schema would
+alone because Registry.\_validations iterates local and a second spelling of each schema would
 register a second name for it that methodParts cannot split. Both spellings on one object are
 deliberate: findHandler lower-cases what it is given, super does not.
 
@@ -1205,8 +1207,8 @@ retries.
 
 The public gateway keeps by-name params: `params` is the one value the method's schema declares, and
 a handler takes that object. Positional params are the _internal_ RPC server's shape, where a call
-is a list of a handler's arguments with `$meta` last (`rpc.http` posts `[[100, 20, 3, 0.4], {}]`
-to 8091), and copying that shape into a gateway example is what made the two look interchangeable.
+is a list of a handler's arguments with `$meta` last (`rpc.http` posts `[[100, 20, 3, 0.4], {}]` to
+8091), and copying that shape into a gateway example is what made the two look interchangeable.
 There is no need to accept the array form: no committed gateway example sends a wrapped value to a
 method that has a schema — `test/framework/gateway.http`'s `[100, 20, 3, 0.4]` is a method whose
 params really are `number[]`, and `demo/blong-hello`'s `[{...}]` "worked" only because that demo
@@ -1302,7 +1304,7 @@ imports (acl, pathRefresh, slackManifest, ngrokTunnels, workspaceFs, workspacePa
 folderShape.test.ts pins the folder to adapter instances and to group folders named after the base
 that serves them, with no exceptions — the inbound half of slack and viber moved into slack/ and
 viber/ for that reason, and the agent base became engine so its folder had a module of the same
-name. The scan itself is load-bearing and was kept: removing children: ['./server'] and resolving
+name. The scan itself is load-bearing and was kept: removing children: `['./server']` and resolving
 extends by convention made every extended instance lose its methods, because a base's handler groups
 are children of the adapter realm and that is what registers them — the failing call was
 workspace.repo.prepare not found. A lazy base would therefore have to load its groups with it
@@ -1319,9 +1321,9 @@ the base never gets as a port. A prototype therefore needs a second map: registr
 resolver per name, start ignores it, createPort does not reach it, and AdapterBase's extends
 resolution asks ports first and thunks second. The resolver registers the base's handler group as
 methods — those are the base's methods, and an instance imports them — but never registers the
-module as a layer, because a layer becomes a port. The realm declares thunk: ['./server'] instead of
-children, and because every group folder is now named after its base the resolver needs no manifest:
-each base module pairs with the group folder of the same name
+module as a layer, because a layer becomes a port. The realm declares thunk: `['./server']` instead
+of children, and because every group folder is now named after its base the resolver needs no
+manifest: each base module pairs with the group folder of the same name
 
 ## Superseded
 

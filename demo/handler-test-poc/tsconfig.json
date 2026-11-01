@@ -8,6 +8,8 @@
         "sourceMap": true,
         "allowImportingTsExtensions": true,
         "noEmit": true,
+        "skipLibCheck": true,
+
         "outDir": "dist",
         "target": "ES2022",
         "strict": true

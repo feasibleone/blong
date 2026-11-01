@@ -728,7 +728,7 @@ the factory rather than re-importing. Four, only then flip core/blong-gogo/src/a
 from children to thunk and run the four realm integrations; browser stays on import.meta.glob until
 it has an answer of its own. built and flipped: thunk registers a resolver per `NAME.ts` in
 registry.thunks, AdapterBase resolves extends from ports then thunks, and the adapter realm declares
-thunk: ['./server']; proved by a probe that kafka.ts is never evaluated in a full agent run, and by
-no adapter.* port starting
+thunk: `['./server']`; proved by a probe that kafka.ts is never evaluated in a full agent run, and
+by no adapter.\* port starting
 
 ## Retired
