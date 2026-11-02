@@ -5,7 +5,8 @@ import {handler} from '@feasibleone/blong';
  *
  * The four tables are ordered above every framework table (`core.*` is order 1, party's are 300+),
  * because `agent.checkpoint`, `agent.answer` and `agent.event` carry foreign keys into
- * `agent.session` and the referenced table has to exist first.
+ * `agent.session` and the referenced table has to exist first. `agent.persona` comes first of all,
+ * because a session points at the persona it ran under.
  *
  * `dbTest` is deliberately not pinned here: whether `meta/dbTest/*.yaml` is dispatched is the shared
  * `srv.db` adapter's decision, and a realm that pins it re-enables the test seeds in every intent,
@@ -16,6 +17,7 @@ export default handler(() => ({
     config: {
         schema: {
             tables: {
+                'agent.persona': 490,
                 'agent.session': 500,
                 'agent.checkpoint': 501,
                 'agent.answer': 502,

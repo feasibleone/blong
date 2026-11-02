@@ -22,8 +22,14 @@ export default orchestrator(() => ({
     activation: {
         default: {
             namespace: 'chat',
-            imports: [/\.(in|out|prompt)$/],
+            imports: [/\.(in|out|prompt|channel)$/],
             forward: {'*': 'chat.in.message.ignore'},
+            /**
+             * No conversation memory unless a deployment asks for it: `db` needs the shared database
+             * adapter in the process, and `none` is what keeps a listener-only deployment and this
+             * realm's own test suite working without one (`@@D-727`).
+             */
+            channelStore: 'none',
         },
     },
 }));

@@ -22,7 +22,7 @@ export default orchestrator<IAgentDispatchSettings & {workerStart?: boolean}>(({
     activation: {
         default: {
             namespace: 'agent',
-            imports: [/\.(ticket|session|answer|recovery|worker)$/],
+            imports: [/\.(ticket|session|answer|recovery|worker|persona|chat)$/],
             destination: 'db',
             /** The method a human question is asked through, so a test can answer without chat. */
             questionMethod: 'chat.prompt.ask',
@@ -39,6 +39,10 @@ export default orchestrator<IAgentDispatchSettings & {workerStart?: boolean}>(({
             questionTimeoutMs: 1_800_000,
             maxSteps: 40,
             maxToolCalls: 12,
+            /** The window a chat session stays open, when the persona names none (@@D-729). */
+            continuationMinutes: 1440,
+            /** The method a chat turn's reply is sent through. */
+            replyMethod: 'chat.out.message.send',
             /** Whether the port starts the worker itself; a test drives the tick by hand instead. */
             workerStart: true,
         },

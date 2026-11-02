@@ -1,7 +1,7 @@
 import {type Knex} from '@feasibleone/blong/types';
 import {type TObject} from 'typebox';
 import {type IColumnSchema, type ITableConstraints} from './types.ts';
-import {addColumn, methodId} from './utils.ts';
+import {addColumn, declaredWidth, methodId, propType} from './utils.ts';
 
 /**
  * Create or synchronise a database table from a TypeBox `TObject` schema.
@@ -36,7 +36,7 @@ export async function schemaTableSyncImpl(
     tableName: string,
     schema: TObject,
     options: {dropColumns?: boolean} = {},
-): Promise<{created: boolean; added: string[]; dropped: string[]}> {
+): Promise<{created: boolean; added: string[]; dropped: string[]; widened: string[]}> {
     const required = new Set(schema.required ?? []);
     const schemaProps = Object.keys(schema.properties);
     const exists = await knex.schema.hasTable(tableName);
@@ -45,18 +45,36 @@ export async function schemaTableSyncImpl(
             for (const [name, prop] of Object.entries(schema.properties))
                 addColumn(table, name, prop as IColumnSchema, !required.has(name));
         });
-        return {created: true, added: schemaProps, dropped: []};
+        return {created: true, added: schemaProps, dropped: [], widened: []};
     }
     const columnInfo = await knex(tableName).columnInfo();
     const existingColumns = new Set(Object.keys(columnInfo));
     const added: string[] = [];
     const dropped: string[] = [];
+    const widened: string[] = [];
+    const info = columnInfo as Record<string, {maxLength?: number; type?: string}>;
     await knex.schema.alterTable(tableName, table => {
         for (const [name, prop] of Object.entries(schema.properties)) {
             if (!existingColumns.has(name)) {
                 addColumn(table, name, prop as IColumnSchema, true);
                 added.push(name);
+                continue;
             }
+            // A declared string wider than the stored one is the one change a sync used to skip: the
+            // column keeps the width it was created with, and a payload that grew fails the write that
+            // records it (`@@F-672`).
+            const declared = prop as IColumnSchema;
+            // Only a string has a width worth widening. A `uid` or a `varchar` that a key is built on
+            // must not be rewritten here: an altered column loses what it was part of.
+            if (propType(declared) !== 'string') continue;
+            const stored = info[name];
+            const storedType = String(stored?.type ?? '').toLowerCase();
+            if (!['varchar', 'char', 'text', 'mediumtext', 'longtext'].includes(storedType)) continue;
+            const storedWidth = typeof stored?.maxLength === 'number' ? stored.maxLength : undefined;
+            if (storedWidth === undefined) continue;
+            if (declaredWidth(declared) <= storedWidth) continue;
+            addColumn(table, name, declared, !required.has(name))?.alter();
+            widened.push(name);
         }
         if (options.dropColumns) {
             for (const col of existingColumns) {
@@ -67,7 +85,7 @@ export async function schemaTableSyncImpl(
             }
         }
     });
-    return {created: false, added, dropped};
+    return {created: false, added, dropped, widened};
 }
 
 /**

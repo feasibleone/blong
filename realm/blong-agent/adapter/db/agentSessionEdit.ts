@@ -16,6 +16,10 @@ export default handler(({lib: {uuidBuf}}) => ({
                 engineSessionId?: string | null;
                 lastEventAt?: string;
                 baseCommit?: string | null;
+                /** When the conversation was last active, which a chat turn moves on arrival. */
+                lastActivityAt?: string;
+                compactedAt?: string | null;
+                compactionCount?: number;
             };
         },
         _$meta: IMeta,
@@ -29,6 +33,14 @@ export default handler(({lib: {uuidBuf}}) => ({
         if (params.patch.baseCommit !== undefined) patch.baseCommit = params.patch.baseCommit;
         if (params.patch.lastEventAt !== undefined)
             patch.lastEventAt = new Date(params.patch.lastEventAt);
+        if (params.patch.lastActivityAt !== undefined)
+            patch.lastActivityAt = new Date(params.patch.lastActivityAt);
+        if (params.patch.compactedAt !== undefined)
+            patch.compactedAt = params.patch.compactedAt
+                ? new Date(params.patch.compactedAt)
+                : null;
+        if (params.patch.compactionCount !== undefined)
+            patch.compactionCount = params.patch.compactionCount;
         const updated = await qb('agent_session')
             .where('sessionId', uuidBuf(params.sessionId))
             .update(patch);

@@ -630,7 +630,14 @@ export default async function loadRealm<T extends TSchema>(
                         // keeps its own logger regardless: the loader checks the
                         // platform before this key, because the emitter's store is
                         // node-only.
-                        log: {impl: 'semantic'},
+                        log: {
+                            impl: 'semantic',
+                            // Colour when a human is watching, plain text when the
+                            // output is piped or captured, so a terminal keeps the
+                            // colours the pino printer used to give it while a test
+                            // run stays readable as text.
+                            color: isTTY(),
+                        },
                         apiSchema: {},
                         error: {},
                         registry: {},
@@ -672,11 +679,6 @@ export default async function loadRealm<T extends TSchema>(
                             cacache: {
                                 cachePath: '~/.blong/log-cache',
                             },
-                            // Colour when a human is watching, plain text when the
-                            // output is piped or captured, so a terminal keeps the
-                            // colours the pino printer used to give it while a test
-                            // run stays readable as text.
-                            color: isTTY(),
                             // The service that turns the records into templates,
                             // flows and diagrams, run in this process: a
                             // development run can then be drawn from what it just
@@ -1873,7 +1875,9 @@ export default async function loadRealm<T extends TSchema>(
         const dir = platformApi.join(base, folder);
         if (!platformApi.existsSync(dir)) continue;
         const entries = await platformApi.scan(dir);
-        const groups = new Set(entries.filter(entry => entry.isDirectory()).map(entry => entry.name));
+        const groups = new Set(
+            entries.filter(entry => entry.isDirectory()).map(entry => entry.name),
+        );
         const groupNameOf = (name: string): string => name;
         const layerOf = (apply: (api: {result: unknown}) => {result: unknown}): IRealm =>
             (
@@ -1889,7 +1893,8 @@ export default async function loadRealm<T extends TSchema>(
                 ) as {result: IRealm}
             ).result;
         for (const entry of entries) {
-            if (!entry.isFile() || !/\.ts$/.test(entry.name) || /\.test\.ts$/.test(entry.name)) continue;
+            if (!entry.isFile() || !/\.ts$/.test(entry.name) || /\.test\.ts$/.test(entry.name))
+                continue;
             const name = entry.name.replace(/\.ts$/, '');
             const id = `${String(mergedConfig.name)}.${name}`;
             if (api!.registry?.ports?.has(id)) continue;
@@ -1900,7 +1905,14 @@ export default async function loadRealm<T extends TSchema>(
                 // The group first: it is where a base's methods live, and the instance that named
                 // this base is attached to them the moment it is created.
                 if (groups.has(name)) {
-                    const group = await api!.watch!.load(mergedConfig, true, false, base, folder, name);
+                    const group = await api!.watch!.load(
+                        mergedConfig,
+                        true,
+                        false,
+                        base,
+                        folder,
+                        name,
+                    );
                     realm.addLayer(groupNameOf(name), layerOf(group as never));
                 }
                 // The module itself is imported and its factory kept — deliberately not registered
@@ -1909,7 +1921,9 @@ export default async function loadRealm<T extends TSchema>(
                     /* @vite-ignore */ platformApi.join(dir, entry.name)
                 )) as {default?: unknown};
                 if (typeof module_.default !== 'function') {
-                    throw new Error(`${id} is not an adapter: ${entry.name} has no factory to extend`);
+                    throw new Error(
+                        `${id} is not an adapter: ${entry.name} has no factory to extend`,
+                    );
                 }
                 factory = module_.default;
                 return factory;
@@ -2038,9 +2052,7 @@ export default async function loadRealm<T extends TSchema>(
     // The package the suite *is*, for the same reason and by the same route: a planner that writes a
     // deployment names its version, and that version is a fact about the manifest beside the entry
     // rather than a value the entry repeats in its own `kustomize.deploy` config.
-    api.registry.setPackage?.(
-        (mod as {pkg?: {name?: string; version?: string}}).pkg ?? {},
-    );
+    api.registry.setPackage?.((mod as {pkg?: {name?: string; version?: string}}).pkg ?? {});
     // Resolved from the active intents (see the `exit` keys in the synthetic
     // config above). The runner uses it to decide whether this process outlives
     // its work; absent means "keep running". Set here rather than in the

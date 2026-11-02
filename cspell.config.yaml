@@ -8,6 +8,8 @@ language: en-GB
 ignoreRegExpList: [ semlog://\S+ ]
 words:
   - Abyssal
+  - acked
+  - acks
   - ACMR
   - Acropora
   - Acroporidae
@@ -300,6 +302,7 @@ words:
   - persistentvolumeclaims
   - persistentvolumes
   - Petrova
+  - pickpersona
   - pino
   - pkce
   - pkill
@@ -381,6 +384,7 @@ words:
   - SIGALRM
   - SIGILL
   - singularize
+  - slackrc
   - SMPP
   - softwaregroup
   - spanid
@@ -418,6 +422,7 @@ words:
   - toggleable
   - Tokenreview
   - tokenreviews
+  - toolless
   - topo
   - totp
   - touchstart

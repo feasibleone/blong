@@ -33,10 +33,26 @@ export default handler(({lib: {error, slackSignatureMatches}}) => {
     });
 
     return async function slackInIdentity(request: IHookRequest, $meta: IMeta) {
-        const port = this as unknown as {config?: {accounts?: IChatAccountMap}};
+        const port = this as unknown as {
+            config?: {accounts?: IChatAccountMap};
+            log?: {warn?: (entry: unknown) => void};
+        };
         const {appId, clientId} = request.params ?? {};
         const found = chatAccountFind(port.config?.accounts, appId, clientId);
-        if (!found) throw errors['slack.requestAccountMissing']({params: {appId, clientId}}, $meta);
+        if (!found) {
+            // Said before the throw, because the 404 reaches the platform and nothing else: an app
+            // whose Request URL carries ids no account declares looks exactly like a message that was
+            // never sent, and the two ids are the whole difference.
+            port.log?.warn?.({
+                account: Object.keys(port.config?.accounts ?? {}),
+                appId,
+                clientId,
+                message:
+                    'the request names an app and client no account declares; check the appId and ' +
+                    'clientId of the account, and the Request URL the app points at',
+            });
+            throw errors['slack.requestAccountMissing']({params: {appId, clientId}}, $meta);
+        }
         if (
             !slackSignatureMatches({
                 secret: found.account.signingSecret,

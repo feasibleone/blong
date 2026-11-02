@@ -33,7 +33,31 @@ export default server(() => ({
     ],
     config: {
         default: {
-            agent: {},
+            agent: {
+                agentDispatch: {
+                    // The personas this deployment offers, in the one block every intent merges. An
+                    // intent decides where a message comes from and which account answers it; the cast
+                    // of characters is not a property of a platform (`@@D-726`).
+                    personaPresets: {
+                        chat: {
+                            title: 'General assistant',
+                            description: 'Talks things through. No tools, no workspace.',
+                            workspaceMode: 'none',
+                            tools: [],
+                            instructions: 'You are a concise assistant in a chat channel.',
+                            sortOrder: 0,
+                        },
+                        reviewer: {
+                            title: 'Code reviewer',
+                            description: 'Reads a change and says what is wrong with it.',
+                            workspaceMode: 'none',
+                            tools: [],
+                            instructions: 'You review code and say what to change.',
+                            sortOrder: 10,
+                        },
+                    },
+                },
+            },
             gateway: {port: 8080},
             // The suite definition the `k8s` generator and the operator read. The profile is a monolith
             // because the worker and the methods it calls have to answer on one namespace and share one
@@ -60,6 +84,7 @@ export default server(() => ({
         // The upgrade intent reads this block to know which realms a migration process carries.
         upgrade: {
             agent: {},
+            chat: {},
             login: {},
             core: {},
             access: {},
@@ -101,10 +126,24 @@ export default server(() => ({
             agent: {
                 agentDispatch: {
                     questionMethod: 'chat.prompt.ask',
-                    questionTimeoutMs: 60_000,
+                    questionTimeoutMs: 15_000,
+                    // The account the personas inherit. The simulator's is `chat`; a deployment points
+                    // this at its own account in its rc file, because a persona names an account and a
+                    // machine is what has one (`@@D-724`).
+                    engineAccount: 'chat',
                 },
             },
             chat: {
+                // The intent that makes a channel remember which persona it talks to (`@@D-727`).
+                //
+                // `forward` is keyed by the account alias, not by the platform: the realm asks it for
+                // the account that received the message, so a `slack` key would never match and every
+                // message would take the `*` entry — which is how a real workspace ends up talking to
+                // this realm and getting silence.
+                chatDispatch: {
+                    channelStore: 'db',
+                    forward: {'*': 'agent.chat.receive'},
+                },
                 slack: {
                     server: {port: TEST_PORTS.slack},
                     accounts: {
@@ -122,7 +161,47 @@ export default server(() => ({
             // The empty block is what loads the simulator child.
             slackSim: {},
             testRealm: {},
-            watch: {test: ['test.agent.chat']},
+            watch: {test: ['test.agent.chat', 'test.agent.persona']},
+        },
+        // The real thing: a platform's own workspace, no simulator and no scripted account. It exists so
+        // a machine's account can live in `.blong_slackrc` — the rc file is named after the last intent,
+        // and a suffix of its own is what keeps a laptop's bot token out of every `integration chat` run
+        // (`@@F-667`). Run `blong ./index.ts dev slack`, or `b slack`.
+        slack: {
+            rpcServer: {port: 0},
+            gateway: {port: 0},
+            // Every namespace this deployment serves is in this one process, so a dispatch to itself
+            // must not leave it: without in-process resolution the webhook's hop to `chat.in.receive`
+            // goes out over a socket to a name only a cluster has, hangs, and — because the platform is
+            // answered before the realm runs — drops the message with nothing to show for it (`@@F-669`).
+            remote: {canSkipSocket: true},
+            srv: {},
+            core: {},
+            access: {},
+            login: {},
+            agent: {
+                agentDispatch: {
+                    // A conversation is answered by the consumer the chat realm forwards to, and a
+                    // person reading a channel gets longer than a test's fifteen seconds to answer the
+                    // persona question.
+                    questionMethod: 'chat.prompt.ask',
+                    questionTimeoutMs: 120_000,
+                    continuationMinutes: 1440,
+                    // A chat deployment claims no tickets: the pool's tickets name accounts it does not
+                    // have, and a tick that asks about one takes the process down with it (`@@F-670`).
+                    // The recovery scan is off for the same reason — its sessions are a test's.
+                    workerStart: false,
+                },
+            },
+            chat: {
+                chatDispatch: {
+                    channelStore: 'db',
+                    forward: {'*': 'agent.chat.receive'},
+                },
+                // The account itself is the machine's: `chat.slack.accounts` is merged from the rc,
+                // because a bot token and a signing secret are not a source tree's to hold.
+                slack: {server: {port: 8095}},
+            },
         },
         // The wake-up channel, when a broker is configured: run `blong ./index.ts integration notify`.
         // Only the notify group is scheduled, because a wake changes *when* a resume happens rather

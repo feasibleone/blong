@@ -26,6 +26,19 @@ export function propType(prop: IColumnSchema): string {
     return 'unknown';
 }
 
+/**
+ * The branch of a nullable property that carries its options.
+ *
+ * `stringNull` is a union of `null` and the string, so the `maxLength` a caller wrote sits on the
+ * union's branch and not on the property — which is why every nullable string column was created
+ * `varchar(255)` whatever its declaration said (`@@F-673`).
+ */
+export function propBranch(prop: IColumnSchema): IColumnSchema {
+    if (prop.maxLength != null) return prop;
+    const anyOf = (prop as {anyOf?: IColumnSchema[]}).anyOf;
+    return anyOf?.find(branch => branch?.maxLength != null) ?? prop;
+}
+
 export function propDefault(prop: IColumnSchema): unknown {
     if (prop.default !== undefined) return prop.default;
     else if ('anyOf' in prop && Array.isArray(prop.anyOf)) {
@@ -40,20 +53,21 @@ export function addColumn(
     columnName: string,
     prop: IColumnSchema,
     isNullable: boolean,
-): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let column: any;
     const defaultValue = propDefault(prop);
     switch (defaultValue) {
         case 'auto-increment':
             column = table.bigIncrements(columnName);
-            return;
+            return column;
         case 'ulid':
             column = table.binary(columnName, 16).primary();
-            return;
+            return column;
         case 'uuid':
             column = table.uuid(columnName, {useBinaryUuid: true, primaryKey: true}).primary();
-            return;
+            return column;
     }
     switch (propType(prop)) {
         case 'datetime':
@@ -71,14 +85,17 @@ export function addColumn(
         case 'uid':
             column = table.binary(columnName, 16);
             break;
-        case 'string':
+        case 'string': {
+            const declared = propBranch(prop);
             // A MySQL TEXT holds 65 535 bytes, so a declared length above that is
             // a request for LONGTEXT — what a data-URL screenshot needs (`@@D-661`).
-            if (prop.maxLength != null && prop.maxLength > 65535)
+            if (declared.maxLength != null && declared.maxLength > 65535)
                 column = table.text(columnName, 'longtext');
-            else if (prop.maxLength != null && prop.maxLength > 255) column = table.text(columnName);
-            else column = table.string(columnName, prop.maxLength ?? 255);
+            else if (declared.maxLength != null && declared.maxLength > 255)
+                column = table.text(columnName);
+            else column = table.string(columnName, declared.maxLength ?? 255);
             break;
+        }
         case 'bigint':
             column = table.bigInteger(columnName).unsigned();
             break;
@@ -102,7 +119,22 @@ export function addColumn(
     if (isNullable) column.nullable();
     else column.notNullable();
     if (defaultValue !== undefined) column.defaultTo(defaultValue);
+    return column;
 }
+
+/**
+ * The width a declared string actually gets, in bytes.
+ *
+ * The mapping in `addColumn` is three steps — a `varchar` up to 255, `text` up to 65 535, then
+ * `longtext` — and a sync that only adds columns never climbs them. This is what a comparison needs:
+ * a declared 8000 against a stored `varchar(255)` is a widening the table does not have (`@@F-672`).
+ */
+export const declaredWidth = (prop: IColumnSchema): number => {
+    const maxLength = propBranch(prop).maxLength ?? 255;
+    if (maxLength > 65535) return 4294967295;
+    if (maxLength > 255) return 65535;
+    return maxLength;
+};
 
 export function sqlTypeToTypebox(sqlType: string): TSchema {
     switch (sqlType.toUpperCase()) {

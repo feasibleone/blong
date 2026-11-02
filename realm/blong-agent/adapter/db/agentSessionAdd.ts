@@ -12,15 +12,23 @@ export default handler(({lib: {uuidBuf, rowOut}}) => ({
     async agentSessionAdd(
         params: {
             sessionId: string;
-            ticketId: string;
+            /** Null for a chat session: there is no ticket, and the source says so. */
+            ticketId?: string | null;
             ticketTitle?: string;
+            /** `ticket` or `chat`; absent is a ticket session, which is what the pool opens. */
+            source?: string;
+            /** The persona it runs under, when one was resolved. */
+            personaId?: string | null;
+            /** The conversation it belongs to, in the chat realm's own key. */
+            channelKey?: string | null;
             status: string;
             engineAdapter: string;
             engineAccount: string;
             engineMode: string;
             modelName?: string;
             workerId: string;
-            workspacePath: string;
+            /** Null when the persona claims no workspace. */
+            workspacePath?: string | null;
             baseCommit?: string;
         },
         _$meta: IMeta,
@@ -30,8 +38,11 @@ export default handler(({lib: {uuidBuf, rowOut}}) => ({
         const now = new Date();
         const row = {
             sessionId: uuidBuf(params.sessionId),
-            ticketId: params.ticketId,
+            ticketId: params.ticketId ?? null,
             ticketTitle: params.ticketTitle ?? null,
+            source: params.source ?? 'ticket',
+            personaId: params.personaId ? uuidBuf(params.personaId) : null,
+            channelKey: params.channelKey ?? null,
             status: params.status,
             engineAdapter: params.engineAdapter,
             engineAccount: params.engineAccount,
@@ -39,8 +50,10 @@ export default handler(({lib: {uuidBuf, rowOut}}) => ({
             modelName: params.modelName ?? null,
             engineSessionId: null,
             workerId: params.workerId,
-            workspacePath: params.workspacePath,
+            workspacePath: params.workspacePath ?? null,
             baseCommit: params.baseCommit ?? null,
+            turnCount: 0,
+            lastActivityAt: now,
             lastEventAt: now,
             createdAt: now,
             updatedAt: now,

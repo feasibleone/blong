@@ -32,6 +32,13 @@ export interface IAgentSessionRunParams {
     channel?: {platform?: string; account?: string; conversationId?: string};
     /** The answer a resume folds in as the result of the tool call that was pending. */
     answer?: {promptId: string; answerText: string; senderName?: string};
+    /**
+     * The tools this run may use, by name.
+     *
+     * Absent is every tool; an empty array is none, which is what a toolless persona asks for. A model
+     * that is offered no tool cannot park the session on a question, which is the whole point of one.
+     */
+    tools?: string[];
 }
 
 export interface IAgentSessionRunResult {
@@ -81,12 +88,22 @@ export default handler(
             if (status === 'suspended' && !params.answer)
                 throw errorAgentSessionSuspended({sessionId: params.sessionId});
             const ticketId = String(session.ticketId ?? '');
+            /**
+             * Only a session that took a ticket from the pool gives it back: a chat session has no ticket
+             * to release, and the task adapter would be asked to release an id nobody claimed.
+             */
+            const releasable =
+                ticketId.length > 0 && String(session.source ?? 'ticket') === 'ticket';
             const account = String(session.engineAccount ?? '');
             const mode = String(session.engineMode ?? 'step');
             const workspacePath = String(session.workspacePath ?? '');
             const workerId =
                 params.workerId ?? (session.workerId ? String(session.workerId) : undefined);
-            const tools = agentToolDefinitions();
+            const offered = agentToolDefinitions();
+            const tools =
+                params.tools === undefined
+                    ? offered
+                    : offered.filter(tool => params.tools?.includes(tool.toolName));
             const instructions = params.instructions ?? DEFAULT_INSTRUCTIONS;
 
             await agentSessionEdit(
@@ -180,7 +197,7 @@ export default handler(
                     for (const reported of run.events ?? [])
                         await logEvent(reported.kind, reported.payload);
                     await logEvent('step', {text: run.text, finishReason: run.finishReason});
-                    if (workerId)
+                    if (releasable && workerId)
                         await agentTicketRelease(
                             {ticketId, workerId, ticketStatus: 'done', summary: run.text},
                             $meta,
@@ -216,7 +233,7 @@ export default handler(
                             },
                             $meta,
                         );
-                        if (workerId)
+                        if (releasable && workerId)
                             await agentTicketRelease(
                                 {ticketId, workerId, ticketStatus: 'done', summary: turn.text},
                                 $meta,

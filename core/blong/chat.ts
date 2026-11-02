@@ -94,10 +94,33 @@ export interface IChatInbound {
      * selection, which is what lets a submit that arrives without one still be answered.
      */
     pick?: {promptId: string; value?: string; values?: string[]};
+    /** The channel row this realm keeps, when it keeps one and the message arrived through it. */
+    channel?: IChatChannel;
 }
 
 /** The controls a caller can ask for, in the one vocabulary every platform maps from. */
 export type ChatPromptKind = 'choice' | 'multiChoice' | 'text' | 'confirm';
+
+/**
+ * A conversation this realm remembers, and the binding it carries for whatever consumes its messages.
+ *
+ * The three binding fields are the consumer's own vocabulary: this realm stores and returns them, and
+ * never interprets them, so a second consumer realm brings its own kind and parameters (`@@D-725`).
+ */
+export interface IChatChannel {
+    channelId: string;
+    platform: string;
+    account?: string;
+    conversationId: string;
+    conversationTitle?: string;
+    /** Who receives this channel's messages; absent falls back to the port's configured forward. */
+    consumerMethod?: string;
+    bindingKind?: string;
+    bindingKey?: string;
+    bindingParams?: string;
+    lastActivityAt?: string;
+    turnCount?: number;
+}
 
 /**
  * How a question asks for its answer: in the conversation, or in a form it opens.

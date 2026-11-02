@@ -25,7 +25,9 @@ export default handler(({lib: {uuidBuf}}) => ({
             sessionId: uuidBuf(params.sessionId),
             sequence: params.sequence,
             kind: params.kind,
-            payloadJSON: params.payloadJSON ?? null,
+            // A payload is a trace, not a document: one long tool result must not fail the write that
+            // records it, and every caller would otherwise have to remember the column's width (`@@F-672`).
+            payloadJSON: params.payloadJSON === undefined ? null : params.payloadJSON.slice(0, 8000),
             createdAt: new Date(),
         });
         return {eventId: params.eventId};

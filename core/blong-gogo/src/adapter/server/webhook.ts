@@ -506,7 +506,24 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                                 },
                                 memory,
                             );
-                            detached?.catch(error => this.log?.warn?.(error));
+                            // A detached dispatch that fails is logged when it fails; one that never
+                            // settles leaves the platform acked and the realm silent, which reads from
+                            // outside exactly like a message nobody received (`@@F-668`). The note is at
+                            // debug and two minutes out, because a destination that *asks a question* is
+                            // still running on purpose — it is a hint for the case that is stuck, not a
+                            // verdict on the case that is waiting.
+                            const destination = cfg.destination;
+                            const watchdog = setTimeout(() => {
+                                this.log?.debug?.({
+                                    destination,
+                                    message:
+                                        'the webhook was acked and its destination is still running',
+                                });
+                            }, 120_000);
+                            (watchdog as unknown as {unref?: () => void}).unref?.();
+                            detached
+                                ?.catch(error => this.log?.warn?.(error))
+                                .finally(() => clearTimeout(watchdog));
                             return answer(shaped);
                         } catch (error) {
                             // A handler throws `errors[name]({params}, $meta)`, and with `$meta` the factory

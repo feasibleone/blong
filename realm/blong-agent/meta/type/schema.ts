@@ -11,12 +11,69 @@ import {schema} from '@feasibleone/blong';
  * `completedAt`), because the gateway validates CRUD params against the `NotNull` columns.
  */
 export default schema(async ({lib: {type}}) => ({
+    /**
+     * A persona is everything one needs to work: the harness, the model and its parameters, the tools it
+     * may use, the ceilings it runs under, its instructions, and how long a conversation with it stays
+     * one conversation. It names an engine account and never a secret (@@D-724).
+     */
+    persona: type.Object(
+        {
+            personaId: type.uuid(),
+            /** The slug config, the slash command and a channel binding all name. */
+            personaKey: type.stringNotNull({maxLength: 64}),
+            title: type.stringNotNull({maxLength: 128}),
+            description: type.stringNull({maxLength: 512}),
+            enabled: type.booleanNotNull(),
+            sortOrder: type.integerNotNull(),
+            /** Absent means the realm default, so a persona may only change the model and the tools. */
+            engineAdapter: type.stringNull({maxLength: 64}),
+            engineAccount: type.stringNull({maxLength: 64}),
+            engineMode: type.stringNull({maxLength: 16}),
+            provider: type.stringNull({maxLength: 32}),
+            modelName: type.stringNull({maxLength: 128}),
+            /** A JSON object merged over the account's own parameters. */
+            parameters: type.stringNull({maxLength: 8000}),
+            /** A JSON array of tool names; `[]` is a toolless persona and null is every tool. */
+            tools: type.stringNull({maxLength: 4000}),
+            disallowedTools: type.stringNull({maxLength: 4000}),
+            instructions: type.stringNull({maxLength: 8000}),
+            /** `none` or `claim`: a toolless chat persona owns no workspace. */
+            workspaceMode: type.stringNotNull({maxLength: 16}),
+            maxSteps: type.integerNull(),
+            maxToolCalls: type.integerNull(),
+            /** How long a channel keeps one session before the next message starts another. */
+            continuationMinutes: type.integerNotNull(),
+            /** `summarize` by default, or `prune`, `restart`, `off` (@@D-728). */
+            compaction: type.stringNotNull({maxLength: 16}),
+            compactionTokens: type.integerNull(),
+            compactionKeep: type.integerNull(),
+            /** A cheaper model for the summary; null uses the persona's own. */
+            compactionModel: type.stringNull({maxLength: 128}),
+            greeting: type.stringNull({maxLength: 2000}),
+            createdAt: type.dateTimeNotNull(),
+            updatedAt: type.dateTimeNotNull(),
+        },
+        {
+            constraints: {
+                primaryKey: 'personaId',
+                unique: {personaKey: {columns: ['personaKey']}},
+                index: {enabled: {}, sortOrder: {}},
+            },
+        },
+    ),
+
     session: type.Object(
         {
             sessionId: type.uuid(),
             /** The task adapter's own id, not a foreign key: the pool lives elsewhere. */
-            ticketId: type.stringNotNull({maxLength: 64}),
+            ticketId: type.stringNull({maxLength: 64}),
             ticketTitle: type.stringNull({maxLength: 255}),
+            /** `ticket` or `chat`: why the session exists, which decides who answers it. */
+            source: type.stringNull({maxLength: 16}),
+            /** The persona a chat session runs under; a ticket session may have one too. */
+            personaId: type.uidNull(),
+            /** The conversation this session belongs to, as the chat realm keys it. */
+            channelKey: type.stringNull({maxLength: 255}),
             /** `claimed`, `running`, `awaiting`, `suspended`, `done`, `failed`. */
             status: type.stringNotNull({maxLength: 32}),
             /** The adapter instance that ran it, then the account inside that instance (`@@D-712`). */
@@ -29,8 +86,13 @@ export default schema(async ({lib: {type}}) => ({
             engineSessionId: type.stringNull({maxLength: 128}),
             /** The host that holds the workspace: only this worker may resume the session. */
             workerId: type.stringNotNull({maxLength: 128}),
-            workspacePath: type.stringNotNull({maxLength: 1000}),
+            /** Null when the persona claims no workspace, which is what a toolless chat persona does. */
+            workspacePath: type.stringNull({maxLength: 1000}),
             baseCommit: type.stringNull({maxLength: 64}),
+            turnCount: type.integerNull(),
+            lastActivityAt: type.dateTimeNull(),
+            compactedAt: type.dateTimeNull(),
+            compactionCount: type.integerNull(),
             lastEventAt: type.dateTimeNull(),
             createdAt: type.dateTimeNotNull(),
             updatedAt: type.dateTimeNotNull(),
@@ -42,6 +104,8 @@ export default schema(async ({lib: {type}}) => ({
                     ticketId: {},
                     status: {},
                     workerId: {},
+                    channelKey: {},
+                    personaId: {},
                 },
             },
         },

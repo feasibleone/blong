@@ -97,6 +97,13 @@ export default adapter<
                         {text: 'It was already right, so nothing was written.'},
                     ],
                 },
+                // A conversation: no tools, so every turn is one answer, and the script running out
+                // leaves the kind answering `Nothing left to do.` instead of failing (`@@D-729`).
+                chat: {
+                    kind: 'sim',
+                    mode: 'step',
+                    script: [{text: 'Ready when you are.'}, {text: 'Still here.'}],
+                },
             },
         },
         // A real model on a LAN host, over Ollama's OpenAI-compatible endpoint. No extra provider
