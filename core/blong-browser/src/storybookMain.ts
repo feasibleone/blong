@@ -24,6 +24,7 @@
  * to the `realmPackages` array — the helper resolves story paths automatically.
  */
 import type {StorybookConfig} from '@storybook/react-vite';
+import {existsSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {dirname, resolve} from 'node:path';
 import {storybookBackend, storybookBackendDefine} from './storybookBackend.ts';
@@ -119,8 +120,20 @@ export function defineBlongStorybookMain(options: IBlongStorybookMainOptions): S
     // which setting `allow` at all otherwise discards.
     const monorepoRoot = resolve(importMetaDirname, '../../..');
 
+    /**
+     * A package's `public/` folder, served at the root in Storybook.
+     *
+     * `vite build` copies it into `dist/` by itself, which is why a brand logo
+     * named as `import.meta.env.BASE_URL` + `logo.svg` works in the deployed
+     * app; Storybook has no such default and would answer 404 for the same
+     * path. Guarded by the existence check because most packages have no
+     * `public/` and Storybook warns about a static directory that is not there.
+     */
+    const publicDir = resolve(importMetaDirname, '../public');
+
     return {
         stories: [...localStories, ...realmStories],
+        ...(existsSync(publicDir) ? {staticDirs: [{from: publicDir, to: '/'}]} : {}),
         addons: [
             getAbsolutePath('@storybook/addon-a11y', importMetaDirname),
             ...extraAddons.map(a => getAbsolutePath(a, importMetaDirname)),

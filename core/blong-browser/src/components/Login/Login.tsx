@@ -34,6 +34,7 @@ import React, {useState} from 'react';
 import {useBlong} from '../../context/BlongContext.js';
 import {Button} from '../Button/Button.js';
 import {SocialLoginButton} from '../SocialLoginButton/SocialLoginButton.js';
+import {Text} from '../Text/Text.js';
 import {useTranslate} from '../../hooks/useText.js';
 
 type LoginStep = 'credentials' | 'otp' | 'newPassword';
@@ -267,7 +268,13 @@ export function Login({
                         ) : (
                             <i className={`blong-login__brand-icon ${logoIcon}`} />
                         )}
-                        {title && <span className="blong-login__brand-name">{title}</span>}
+                        {title && (
+                            // A brand name is a label like any other: `Text` looks it up
+                            // in the active dictionary and falls back to the string the
+                            // suite configured, so a translation can rename the product
+                            // without the suite knowing the language.
+                            <Text className="blong-login__brand-name">{title}</Text>
+                        )}
                     </div>
                 )}
             </div>
@@ -463,7 +470,9 @@ export function Login({
                         ) : orgIcon ? (
                             <i className={`blong-login__org-icon ${orgIcon}`} />
                         ) : null}
-                        {orgTitle && <span className="blong-login__org-name">{orgTitle}</span>}
+                        {orgTitle && (
+                            <Text className="blong-login__org-name">{orgTitle}</Text>
+                        )}
                     </div>
                 ) : null}
             </div>

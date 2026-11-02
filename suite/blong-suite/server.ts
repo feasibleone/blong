@@ -120,7 +120,32 @@ export default server(() => ({
                     // it decides the address and not the page. The alias is what names the portal and
                     // its Service (`web-http`), and it is a map rather than a list so a suite config,
                     // a CR and an overlay can each add a portal without knowing the others.
-                    portal: {web: {host: 'blong-suite.test', realm: 'core'}},
+                    //
+                    // The host above is the *fallback*, not the deployment's address: a `k8s` run
+                    // reads `kustomize.deploy.portal.web.host` from the rc file beside this package
+                    // and that is what the ingress carries (@@D-645). `tls.secretName` is the suite's
+                    // own statement — that it publishes a page, and which Secret cert-manager writes
+                    // the certificate into — the same way `realm/blong-sport` names `sport-tls`.
+                    //
+                    // `realm` names the process behind the portal's own Service (`web-http`):
+                    // it serves `/` and `/s/` — the bundle is one build of the whole suite, so
+                    // this decides the address and not the page — and it is the fallback for
+                    // every namespace the ingress gives no path of its own. It no longer has to
+                    // be a process that answers everything the menu reaches: the tree now writes
+                    // `/rpc/<namespace>` per deployment (`@@D-736`), so `core`, `access`, `login`
+                    // and `marine` each reach the pod that serves them and `core` would front the
+                    // portal just as well. `marine` stays because it is the realm the suite is
+                    // about and the one the portal drives at steady state; what it still decides
+                    // is where a namespace with no process of its own lands — `blong` today, whose
+                    // pages the Observe menu draws (that namespace is currently unserved: it has
+                    // neither a process nor a path).
+                    portal: {
+                        web: {
+                            host: 'blong-suite.test',
+                            realm: 'marine',
+                            tls: {secretName: 'marine-tls'},
+                        },
+                    },
                     suiteVolume: {
                         backend: 'nodeLocal',
                         artifact: {
@@ -144,6 +169,14 @@ export default server(() => ({
         // root is safe before the pipeline that fills it exists: the static plugin warns and serves
         // nothing when the directory is not there.
         release: {
+            // How a *deployed* process finds another realm's process: the Service of that name. It
+            // belongs here rather than beside the deployment settings, because only a released
+            // process is split: the default profile this suite deploys with (`realm`) gives each
+            // realm a Deployment of its own, so a method another realm owns has to cross a Service
+            // boundary. Without it every such dispatch dials `127.0.0.1` — the portal answered
+            // `Not Found` for `marine.coral.find` while the marine pod was running, and
+            // `blong.flow.find` refused the connection on `127.0.0.1:9455` (`@@D-736`).
+            resolution: {impl: 'kubernetes'},
             gateway: {
                 static: {root: '/opt/deploy/suite/suite/blong-suite/dist'},
             },

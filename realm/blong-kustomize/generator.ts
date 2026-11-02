@@ -238,6 +238,13 @@ export const deploymentIntents = (intents: readonly string[] | undefined): strin
 export const DEFAULT_UI_PATH = '/';
 
 /**
+ * The prefix the public JSON-RPC surface answers under, and therefore the prefix a split
+ * deployment's Ingress routes on: `marine.coral.find` is served at `/rpc/marine/coral/find`, so the
+ * first segment after `rpc` is the namespace whose process owns the method.
+ */
+export const RPC_PREFIX = '/rpc/';
+
+/**
  * The container command line.
  *
  * The image's entry point is `blong.ts`, which runs whatever entry point it is given and, with
@@ -2606,6 +2613,25 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
             serviceName: gatewayServiceName(name),
             servicePort: 8080,
         });
+        // Every namespace whose own process is not the portal's goes to that process, because the
+        // portal's Service reaches one pod and a pod answers only for the realms it carries. A split
+        // deployment therefore needs a path per namespace: without them the browser's
+        // `POST /rpc/marine/coral/find` reached the portal's process, which has no `marine` route and
+        // answered `Not Found` while the marine pod was up and healthy (`@@D-736`). The owner is the
+        // deployment *named* after the namespace — the realm's own process — and a namespace no
+        // deployment is named after stays on the portal, which is where the companions live. The
+        // portal's own namespace is listed too: it routes to the same pod the fallback reaches, and
+        // keeping the rule uniform means a CR that moves the portal to another process does not
+        // silently drop a path.
+        for (const deployment of plan.deployments) {
+            if (!deployment.namespaces.includes(deployment.name)) continue;
+            addPath(entry.host, {
+                path: `${RPC_PREFIX}${deployment.name}`,
+                pathType: 'Prefix',
+                serviceName: deployment.name,
+                servicePort: 8080,
+            });
+        }
         if (entry.tls && !tlsByHost.has(entry.host)) tlsByHost.set(entry.host, entry.tls);
         // A host's annotations are the controller's, so two portals on one host share them: merging
         // per key is the honest rendering of that, and the doc on `portalAuthAnnotations` says why a

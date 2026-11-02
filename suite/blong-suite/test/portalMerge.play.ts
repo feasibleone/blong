@@ -16,8 +16,9 @@ test('the suite portal carries both realms’ menus', async ({portal}) => {
     await expect(portal.page.getByTestId('portal-menu-marine')).toBeVisible();
     await expect(portal.page.getByTestId('portal-menu-blong')).toBeVisible();
     // The title the suite configured, kept because the first provider to set one is
-    // the model aggregator — which reads that same `ui.portal.portal` slice.
-    await expect(portal.page.locator('.blong-portal-brand')).toHaveText('Blong Suite');
+    // the model aggregator — which reads that same `ui.portal.portal` slice. It is the
+    // suite's brand name now (`ui.portal.portal.brand`), not the package name.
+    await expect(portal.page.locator('.blong-portal-brand')).toHaveText('Marine Biology');
     await expect(portal.page.locator('.blong-portal-menubar')).toHaveScreenshot(
         'portal-merged.png',
     );

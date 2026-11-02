@@ -1,9 +1,109 @@
 /* Portal shell — full-height column layout */
 .blong-portal {
+    /* Height the brand takes in the menubar. The bar's height is its content's,
+       so a logo is capped here rather than given a pixel height: a suite may
+       point at a 32px or a 200px file and the bar stays the height its text
+       always made it. */
+    --blong-portal-brand-height: 1.75rem;
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
+}
+
+/* Brand in the menubar: mark and name on one line, never growing the bar. */
+.blong-portal-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    line-height: 1;
+}
+
+.blong-portal-brand-logo {
+    display: block;
+    height: var(--blong-portal-brand-height);
+    max-height: var(--blong-portal-brand-height);
+    width: auto;
+    object-fit: contain;
+}
+
+.blong-portal-brand-icon {
+    font-size: var(--blong-portal-brand-height);
+    line-height: 1;
+}
+
+.blong-portal-brand-name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* The portal's empty state — the whitespace below the toolbar, where the brand
+   is drawn at full size while no page is open. */
+.blong-portal-welcome {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 2rem;
+}
+
+.blong-portal-welcome__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+    opacity: 0.9;
+}
+
+.blong-portal-welcome__logo {
+    display: block;
+    /* A square mark reads as a mark at this size; the caps keep a landscape
+       file (a wordmark, say) from taking over the empty state. */
+    height: 8rem;
+    width: auto;
+    max-width: min(40vw, 320px);
+    max-height: 40vh;
+    object-fit: contain;
+}
+
+.blong-portal-welcome__icon {
+    font-size: 5rem;
+    line-height: 1;
+}
+
+.blong-portal-welcome__title {
+    margin: 0;
+    font-size: 2.25rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.blong-portal-welcome__org {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    opacity: 0.8;
+}
+
+.blong-portal-welcome__org-logo {
+    display: block;
+    height: 1.5rem;
+    width: auto;
+    object-fit: contain;
+}
+
+.blong-portal-welcome__org-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.blong-portal-welcome__org-name {
+    white-space: nowrap;
 }
 
 .blong-portal-body {

@@ -54,6 +54,29 @@ its fields are what the workflow reads:
 `artifact` is the name the zip is published under; `suite` and `namespace` are the CR's name and
 tenant. A second suite is a second key plus its scenario file — the workflow does not change.
 
+The two tenant deployments are `sport` (one process, the `monolith` profile) and `suite` — the
+framework's own full-stack suite, deployed with the default `realm` profile, so each realm that
+serves something is a process of its own:
+
+```json
+{
+    "suite": {
+        "release": "blong-suite",
+        "package": "@feasibleone/blong-suite",
+        "packagePath": "suite/blong-suite",
+        "scenario": "suite",
+        "artifact": "suite.zip",
+        "namespace": "blong-suite",
+        "suite": "blong-suite",
+        "entry": "./index.ts",
+        "profile": "realm"
+    }
+}
+```
+
+`profile` is documentation, not input: the split is the CR's `spec.profile`, which the operator
+re-derives the plan from, and `realm` is what `plan.ts` falls back to when a CR names none.
+
 One entry is not a tenant's suite at all: the deployment realm's own install, marked
 `"installer": true`, which `resolve` skips when it looks for the alias a tag names. It is there for
 the other readers of the map — the workflow job that publishes the operator's artifact, and

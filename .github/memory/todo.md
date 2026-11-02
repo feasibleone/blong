@@ -117,8 +117,7 @@ done (20)
 - F-623
 - tunnel
 - qwen2.5-coder:14b,phi4-mini:latest
-- move blong-agent tasks to their proper packages
-- test slack with ollama
+- log inactive layers, etc.
 - enhance the planning agent to use a tool to create the tasks and use deterministic formatting
 - read the rc file for each intent
 - hindsight: store explore results
@@ -151,7 +150,6 @@ done (20)
 - lib unit tests - allow easy testing of library() functions
 - skills as tools
 - component diagram for a suite
-- https://github.com/tt-a1i/archify
 - https://github.com/trailhq/Graft
 - time bound debug tokens
 - match and mask

@@ -1,9 +1,16 @@
+/// <reference types="vite/client" />
 import {browser} from '@feasibleone/blong';
 import pkg from './package.json' with {type: 'json'};
 
 /**
  * index.browser.ts — standalone browser bootstrap for `sport`.
+ *
+ * Where this build keeps its static files (`public/` → the bundle root). The
+ * prefix is `/s/` in an app build and `/` in Storybook, so the brand logo is
+ * named from it rather than from a path that only one of the two serves.
  */
+const assetBase = import.meta.env?.BASE_URL ?? './';
+
 export default browser(blong => ({
     url: import.meta.url,
     pkg: {
@@ -21,6 +28,7 @@ export default browser(blong => ({
         sport: blong.type.Object({}),
         ui: blong.type.Object({}),
         feedback: blong.type.Object({}),
+        access: blong.type.Object({}),
     }),
     children: [
         async function blong() {
@@ -34,6 +42,17 @@ export default browser(blong => ({
         },
         async function party() {
             return import('@feasibleone/blong-party/browser.ts');
+        },
+        /**
+         * The access realm's browser half: the `access.*` subject namespace and the
+         * self-service profile component the account menu opens.
+         *
+         * The server loads this realm from the framework loader, but the browser does
+         * not — a portal whose `profile.page` names `access.user.profile` without this
+         * child resolves the name to nothing and the menu entry opens an empty tab.
+         */
+        async function access() {
+            return import('@feasibleone/blong-access/browser.ts');
         },
         /** Translation tables and their editor pages */
         async function core() {
@@ -61,7 +80,25 @@ export default browser(blong => ({
             ui: {
                 portal: {
                     portal: {
-                        title: 'Blong Sport',
+                        title: 'National Olympic Register',
+                        // The suite's brand. The login screen, the menubar and the
+                        // portal's empty state all read this block, so one entry here
+                        // is what turns the default globe-and-"Blong Portal" into
+                        // something a deployment belongs to.
+                        brand: {
+                            logoUrl: `${assetBase}sport-logo.svg`,
+                            orgTitle: 'Bulgarian Olympic Committee',
+                            orgIcon: 'pi pi-building',
+                        },
+                        // The self-service profile page, opened from the top-right
+                        // account menu. `page` is the component method, `get` the read the
+                        // avatar is drawn from; without the block the menu has no "Profile"
+                        // entry at all, which is what left a deployment with no way to
+                        // change a password or a language.
+                        profile: {
+                            page: 'access.user.profile',
+                            get: 'access.profile.get',
+                        },
                         // Where the database half of the dictionary comes from.
                         // `blong-browser` reads these names from the merged portal
                         // config, so it needs no dependency on core (`D-630`).
@@ -94,6 +131,10 @@ export default browser(blong => ({
             gateway: {},
             sport: {},
             feedback: {},
+            // Empty, and not optional: the loader skips a child whose name the
+            // merged config does not carry, so `access: {}` is what makes the
+            // realm load at all (the account menu's profile page lives in it).
+            access: {},
         },
         // TEST-ONLY: the `integration` intent (active in a browser run) exposes the
         // wrapped handler as `window.__blongHandler` and the store as

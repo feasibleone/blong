@@ -10,6 +10,17 @@
         "entry": "./index.ts",
         "profile": "monolith"
     },
+    "suite": {
+        "release": "blong-suite",
+        "package": "@feasibleone/blong-suite",
+        "packagePath": "suite/blong-suite",
+        "scenario": "suite",
+        "artifact": "suite.zip",
+        "namespace": "blong-suite",
+        "suite": "blong-suite",
+        "entry": "./index.ts",
+        "profile": "realm"
+    },
     "operator": {
         "installer": true,
         "release": "blong-kustomize",

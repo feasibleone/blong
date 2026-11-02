@@ -83,6 +83,17 @@ describe('mergePortalConfigs', () => {
         expect(config.feedback).toEqual({enabled: true, submit: 'feedback.session.add'});
     });
 
+    it('keeps the brand of the provider that declares it', () => {
+        // Same rule, and the same failure if it is left out: the shell draws the
+        // toolbar mark and the empty state from the *merged* config, so a brand
+        // this function drops is a suite whose logo never appears.
+        const config = mergePortalConfigs([
+            {},
+            {...modelAnswer, brand: {logoUrl: '/s/manta.png', orgTitle: 'Feasible One'}},
+        ]);
+        expect(config.brand).toEqual({logoUrl: '/s/manta.png', orgTitle: 'Feasible One'});
+    });
+
     it('ignores empty answers and empty values', () => {
         const config = mergePortalConfigs([
             undefined,

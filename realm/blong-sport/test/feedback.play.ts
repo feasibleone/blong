@@ -86,6 +86,22 @@ const COMMENTS = [
 ];
 
 /**
+ * A search text that matches no club.
+ *
+ * The first comment is on the browse card's own field, and `click()` aims at a
+ * locator's centre: with rows under it that point is a data cell — whose nearest
+ * stamped ancestor is the table — and with none it is the header row, whose label is
+ * the id the document assertions expect. A dev database keeps every club the other
+ * specs created, so the page is searched to nothing before the capture instead of
+ * being read as whatever the last run left behind.
+ *
+ * The search box rather than the Legal Name column filter: that column comes from the
+ * joined `party_organization`, and the filter still builds `where sport_club.legalName`,
+ * which the database rejects (`@@T-602`).
+ */
+const NO_SUCH_CLUB = 'zz-no-such-club';
+
+/**
  * Take every open session out of the reviewer's queue.
  *
  * The review page lists the `new` queue newest first, and a dev database keeps
@@ -138,6 +154,8 @@ test('feedback mode captures comments and the review page hands them over', asyn
     // table's column header.
     await portal.menuClick('sport.club.browse');
     await portal.waitForTableData();
+    await portal.page.fill('[data-testid="browse-search"]', NO_SUCH_CLUB);
+    await expect(portal.page.locator('.p-datatable-tbody')).toContainText('No rows.');
 
     // The picture the capture stub will use: this page, before the mode is on.
     await seedShot(portal.page);
@@ -330,7 +348,11 @@ test('feedback mode captures comments and the review page hands them over', asyn
     // Every item is named by the path the page emitted — nothing was stored to
     // produce it.
     await expect(portal.page.locator('pre')).toContainText('column:legalName');
-    await expect(portal.page.locator('pre')).toContainText('/label');
+    // The first item is on the browse card's field, and the field is the segment that
+    // is asserted: the tail below it is whatever the click landed on — the table when
+    // the pointer fell between two header cells, a column's label when it fell on the
+    // text — so pinning the tail made the assertion depend on column widths.
+    await expect(portal.page.locator('pre')).toContainText('field:club');
     // The reviewer's wording is the one quoted: it was written to the row, not to a
     // document.
     await expect(portal.page.locator('pre')).toContainText('needs a label of its own');
@@ -345,7 +367,9 @@ test('feedback mode captures comments and the review page hands them over', asyn
     await callout.getByRole('button', {name: 'Close this comment'}).click();
     await expect(portal.page.locator('[data-review-box="callout"]')).toHaveCount(1);
     await portal.page.getByRole('button', {name: 'Generate prose'}).click();
-    await expect(portal.page.locator('pre')).not.toContainText('The header wraps and cuts the text.');
+    await expect(portal.page.locator('pre')).not.toContainText(
+        'The header wraps and cuts the text.',
+    );
     await portal.page.getByRole('button', {name: 'legalName'}).click();
     await expect(portal.page.locator('[data-review-box="callout"]')).toHaveCount(2);
     await portal.page.getByRole('button', {name: 'Generate prose'}).click();

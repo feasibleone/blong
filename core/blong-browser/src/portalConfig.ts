@@ -87,6 +87,12 @@ export function mergePortalConfigs(
     };
     const theme = firstSet(providers, 'theme');
     if (theme !== undefined) config.theme = theme;
+    // The brand is a scalar block like `theme`, and it is listed here for the same
+    // reason: this function builds the merged config key by key, so a block it does
+    // not name is dropped even though every provider answered with it. A brand that
+    // survives composition is what lets the toolbar and the empty state draw it.
+    const brand = firstSet(providers, 'brand');
+    if (brand !== undefined) config.brand = brand;
     const home = firstSet(providers, 'home');
     if (home !== undefined) config.home = home;
     const profile = firstSet(providers, 'profile');

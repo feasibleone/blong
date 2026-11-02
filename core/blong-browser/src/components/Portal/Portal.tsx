@@ -21,7 +21,7 @@ import {usePortal} from '../../hooks/usePortal.js';
 import {useTranslate} from '../../hooks/useText.js';
 import testid from '../../lib/testid.js';
 import {useAppStore} from '../../state/appStore.js';
-import type {IMenuItem} from '../../types/portal.js';
+import type {IMenuItem, IPortalBrand, IPortalConfig} from '../../types/portal.js';
 import {Button} from '../Button/Button.js';
 import {ErrorDialog} from '../Error/Error.js';
 import {Hint} from '../Hint/Hint.js';
@@ -221,10 +221,19 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
         buildMenuModel(portalConfig?.menu, command, handler, t, feedbackTarget).then(setMenu);
     }, [portalConfig?.menu, command, handler, t, feedbackTarget]);
 
+    const brand = brandOf(portalConfig);
     const start =
         logo ??
-        (portalConfig?.title ? (
-            <span className="blong-portal-brand">{portalConfig.title}</span>
+        (portalConfig?.title || brand ? (
+            <span className="blong-portal-brand">
+                <BrandMark brand={brand} />
+                {portalConfig?.title && (
+                    // The brand name is a label: `Text` reads it from the active
+                    // dictionary and falls back to the configured string, so a
+                    // translation can rename the portal.
+                    <Text className="blong-portal-brand-name">{portalConfig.title}</Text>
+                )}
+            </span>
         ) : undefined);
 
     return (
@@ -241,72 +250,160 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
             />
 
             <div className="blong-portal-body">
-                <TabView
-                    activeIndex={activeIndex >= 0 ? activeIndex : 0}
-                    onTabChange={e => setActiveTab(tabs[e.index]?.id ?? null)}
-                    scrollable
-                    className="blong-portal-tabs"
-                    renderActiveOnly={false}
-                >
-                    {tabs.map(tab => (
-                        <TabPanel
-                            __TYPE="TabPanel"
-                            key={tab.id}
-                            header={
-                                <span
-                                    className="blong-tab-header"
-                                    {...testid(`portal.tab${tab.id}`)}
-                                    {...(feedbackActive
-                                        ? feedbackAttributes(
-                                              portalFeedbackId('tab', tab.id),
-                                              'tab',
-                                              tab.title,
-                                          )
-                                        : {})}
-                                >
-                                    {tab.dirty && <span className="blong-tab-dirty">● </span>}
-                                    <Text>{tab.title}</Text>
-
-                                    <Button
-                                        icon="pi pi-times"
-                                        className="p-button-text p-button-sm blong-tab-close p-0 vertical-align-baseline"
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            closeTab(tab.id);
-                                        }}
-                                        {...testid(`portal.tab.close${tab.id}`)}
-                                    />
-                                </span>
-                            }
-                        >
-                            {tab.component ? (
-                                <TabErrorBoundary>
-                                    <Suspense
-                                        fallback={
-                                            <div style={{padding: 32}}>
-                                                <ProgressSpinner />
-                                            </div>
-                                        }
+                {tabs.length === 0 ? (
+                    <PortalWelcome
+                        brand={brand}
+                        title={portalConfig?.title}
+                    />
+                ) : (
+                    <TabView
+                        activeIndex={activeIndex >= 0 ? activeIndex : 0}
+                        onTabChange={e => setActiveTab(tabs[e.index]?.id ?? null)}
+                        scrollable
+                        className="blong-portal-tabs"
+                        renderActiveOnly={false}
+                    >
+                        {tabs.map(tab => (
+                            <TabPanel
+                                __TYPE="TabPanel"
+                                key={tab.id}
+                                header={
+                                    <span
+                                        className="blong-tab-header"
+                                        {...testid(`portal.tab${tab.id}`)}
+                                        {...(feedbackActive
+                                            ? feedbackAttributes(
+                                                  portalFeedbackId('tab', tab.id),
+                                                  'tab',
+                                                  tab.title,
+                                              )
+                                            : {})}
                                     >
-                                        {React.createElement(
-                                            tab.component as React.ComponentType<
-                                                Record<string, unknown>
-                                            >,
-                                            {
-                                                ...(tab.params as Record<string, unknown>),
-                                                tabId: tab.id,
-                                            },
-                                        )}
-                                    </Suspense>
-                                </TabErrorBoundary>
-                            ) : (
-                                <div className="blong-portal-loading">
-                                    <ProgressSpinner />
-                                </div>
-                            )}
-                        </TabPanel>
-                    ))}
-                </TabView>
+                                        {tab.dirty && <span className="blong-tab-dirty">● </span>}
+                                        <Text>{tab.title}</Text>
+
+                                        <Button
+                                            icon="pi pi-times"
+                                            className="p-button-text p-button-sm blong-tab-close p-0 vertical-align-baseline"
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                closeTab(tab.id);
+                                            }}
+                                            {...testid(`portal.tab.close${tab.id}`)}
+                                        />
+                                    </span>
+                                }
+                            >
+                                {tab.component ? (
+                                    <TabErrorBoundary>
+                                        <Suspense
+                                            fallback={
+                                                <div style={{padding: 32}}>
+                                                    <ProgressSpinner />
+                                                </div>
+                                            }
+                                        >
+                                            {React.createElement(
+                                                tab.component as React.ComponentType<
+                                                    Record<string, unknown>
+                                                >,
+                                                {
+                                                    ...(tab.params as Record<string, unknown>),
+                                                    tabId: tab.id,
+                                                },
+                                            )}
+                                        </Suspense>
+                                    </TabErrorBoundary>
+                                ) : (
+                                    <div className="blong-portal-loading">
+                                        <ProgressSpinner />
+                                    </div>
+                                )}
+                            </TabPanel>
+                        ))}
+                    </TabView>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/** The brand block of a portal config, if the merged config carries one. */
+const brandOf = (portalConfig: IPortalConfig | null | undefined): IPortalBrand | undefined =>
+    portalConfig?.brand;
+
+/**
+ * The brand mark at toolbar size.
+ *
+ * A logo image is capped by CSS (`--blong-portal-brand-height`) rather than by
+ * an attribute: the menubar's height is its content's, so a mark that names a
+ * pixel height grows the bar on a 200px file and shrinks it on a 16px one. The
+ * fallback is a glyph, which costs nothing when a suite names neither.
+ */
+function BrandMark({brand}: {brand?: IPortalBrand}) {
+    if (brand?.logoUrl) {
+        return (
+            <img
+                className="blong-portal-brand-logo"
+                src={brand.logoUrl}
+                alt=""
+                aria-hidden="true"
+            />
+        );
+    }
+    if (brand?.logoIcon) return <i className={`blong-portal-brand-icon ${brand.logoIcon}`} />;
+    return null;
+}
+
+/**
+ * What the portal shows while no page is open.
+ *
+ * The whitespace below the toolbar is the only room a portal has for the thing
+ * it belongs to, so the brand is drawn there at full size: the logo, the portal
+ * name and the organisation, centred. It renders only when the suite configured
+ * a brand — a portal without one keeps the empty body it always had, which is
+ * what leaves every existing screenshot unchanged.
+ */
+function PortalWelcome({brand, title}: {brand?: IPortalBrand; title?: string}) {
+    if (!brand && !title) return null;
+    return (
+        <div className="blong-portal-welcome">
+            <div className="blong-portal-welcome__brand">
+                {brand?.logoUrl ? (
+                    <img
+                        className="blong-portal-welcome__logo"
+                        src={brand.logoUrl}
+                        alt=""
+                        aria-hidden="true"
+                    />
+                ) : brand?.logoIcon ? (
+                    <i className={`blong-portal-welcome__icon ${brand.logoIcon}`} />
+                ) : null}
+                {title && (
+                    <Text
+                        as="h1"
+                        className="blong-portal-welcome__title"
+                    >
+                        {title}
+                    </Text>
+                )}
+                {(brand?.orgLogoUrl || brand?.orgIcon || brand?.orgTitle) && (
+                    <div className="blong-portal-welcome__org">
+                        {brand.orgLogoUrl ? (
+                            <img
+                                className="blong-portal-welcome__org-logo"
+                                src={brand.orgLogoUrl}
+                                alt=""
+                                aria-hidden="true"
+                            />
+                        ) : brand.orgIcon ? (
+                            <i className={`blong-portal-welcome__org-icon ${brand.orgIcon}`} />
+                        ) : null}
+                        {brand.orgTitle && (
+                            <Text className="blong-portal-welcome__org-name">{brand.orgTitle}</Text>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

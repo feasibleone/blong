@@ -57,6 +57,7 @@ type HandlerCall = (params: object, meta: object) => Promise<unknown>;
 export function AccountMenu({profilePage, profileGet}: IAccountMenuProps) {
     const {handler} = useBlong();
     const profile = useAppStore(s => s.auth.profile);
+    const isAuthenticated = useAppStore(s => s.auth.isAuthenticated);
     const portalConfig = useAppStore(s => s.portal.portalConfig);
     const setProfile = useAppStore(s => s.setProfile);
     const openTab = useAppStore(s => s.openTab);
@@ -71,8 +72,13 @@ export function AccountMenu({profilePage, profileGet}: IAccountMenuProps) {
 
     // Populate the store profile from the configured profile-get method so the
     // avatar shows the user's initials right after login (best-effort).
+    //
+    // Gated on an established session: the call reaches the server through the
+    // gateway broker, which exists only once a session does, so an anonymous
+    // load of the portal would otherwise answer `remote.bindingFailed` and put
+    // an error dialog in front of the login screen.
     useEffect(() => {
-        if (!get) return;
+        if (!get || !isAuthenticated) return;
         let cancelled = false;
         void (async () => {
             try {
@@ -102,7 +108,7 @@ export function AccountMenu({profilePage, profileGet}: IAccountMenuProps) {
         return () => {
             cancelled = true;
         };
-    }, [get, handler, setProfile]);
+    }, [get, handler, setProfile, isAuthenticated]);
 
     const initials = useMemo(() => profile?.initials ?? deriveInitials(profile?.name), [profile]);
 

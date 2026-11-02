@@ -57,7 +57,76 @@ describe('Portal', () => {
         });
         render(<Portal />);
         await flushEffects();
-        expect(screen.getByText('My App')).toBeInTheDocument();
+        // Twice on purpose: the menubar keeps the small name while no page is
+        // open, and the empty state below it carries the large one.
+        expect(screen.getAllByText('My App')).toHaveLength(2);
+        expect(document.querySelector('.blong-portal-brand-name')).toHaveTextContent('My App');
+        expect(document.querySelector('.blong-portal-welcome__title')).toHaveTextContent('My App');
+    });
+
+    it('renders the brand logo in the menubar and in the empty state', async () => {
+        act(() => {
+            useAppStore.setState(s => ({
+                ...s,
+                portal: {
+                    ...s.portal,
+                    portalConfig: {
+                        name: 'app',
+                        title: 'Blong Sport',
+                        brand: {logoUrl: '/sport-logo.svg', orgTitle: 'Feasible One'},
+                        menu: [],
+                    },
+                },
+            }));
+        });
+        render(<Portal />);
+        await flushEffects();
+        expect(document.querySelector('.blong-portal-brand-logo')).toHaveAttribute(
+            'src',
+            '/sport-logo.svg',
+        );
+        expect(document.querySelector('.blong-portal-welcome__logo')).toHaveAttribute(
+            'src',
+            '/sport-logo.svg',
+        );
+        expect(screen.getByText('Feasible One')).toBeInTheDocument();
+    });
+
+    it('renders no empty state for a portal without a title or brand', () => {
+        const {container} = render(<Portal />);
+        expect(container.querySelector('.blong-portal-welcome')).toBeNull();
+    });
+
+    it('translates the portal name and the organisation through the dictionary', async () => {
+        // A suite configures the brand in one language and the reader is in another:
+        // both labels go through `Text`, so a dictionary entry renames them without
+        // the suite knowing which language is active.
+        act(() => {
+            useAppStore.setState(s => ({
+                ...s,
+                translations: {
+                    'My App': 'Моето приложение',
+                    'Feasible One': 'Осъществима Едно',
+                },
+                portal: {
+                    ...s.portal,
+                    portalConfig: {
+                        name: 'app',
+                        title: 'My App',
+                        brand: {orgTitle: 'Feasible One', logoUrl: '/manta.png'},
+                        menu: [],
+                    },
+                },
+            }));
+        });
+        render(<Portal />);
+        await flushEffects();
+        expect(document.querySelector('.blong-portal-brand-name')).toHaveTextContent(
+            'Моето приложение',
+        );
+        expect(document.querySelector('.blong-portal-welcome__org-name')).toHaveTextContent(
+            'Осъществима Едно',
+        );
     });
 
     it('renders custom logo prop', () => {

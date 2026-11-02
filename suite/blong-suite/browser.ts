@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /**
  * browser.ts — blong-suite browser entry point.
  *
@@ -14,6 +15,13 @@
 import {browser} from '@feasibleone/blong';
 import pkg from './package.json' with {type: 'json'};
 
+/**
+ * Where this build keeps its static files (`public/` → the bundle root). The
+ * prefix is `/s/` in an app build and `/` in Storybook, so the brand logo is
+ * named from it rather than from a path that only one of the two serves.
+ */
+const assetBase = import.meta.env?.BASE_URL ?? './';
+
 export default browser(blong => ({
     url: import.meta.url,
     pkg: {
@@ -23,6 +31,8 @@ export default browser(blong => ({
     validation: blong.type.Object({
         marine: blong.type.Object({}),
         blong: blong.type.Object({}),
+        access: blong.type.Object({}),
+        kustomize: blong.type.Object({}),
     }),
     children: [
         /** Built-in blong-browser realm: RPC, auth, portal, auth orchestrators */
@@ -32,6 +42,17 @@ export default browser(blong => ({
         /** blong-login browser realm — `login.*` subject namespace (login.token.* etc.) */
         async function login() {
             return import('@feasibleone/blong-login/browser.ts');
+        },
+        /**
+         * The access realm's browser half: the `access.*` subject namespace and the
+         * self-service profile component the account menu opens.
+         *
+         * The server loads this realm through the framework loader, but the browser
+         * does not, so a portal whose `profile.page` names `access.user.profile` needs
+         * the child here or the name resolves to nothing.
+         */
+        async function access() {
+            return import('@feasibleone/blong-access/browser.ts');
         },
         /** Marine biology realm (brings blong-browser infrastructure with it) */
         async function marine() {
@@ -54,13 +75,37 @@ export default browser(blong => ({
             ui: {
                 portal: {
                     portal: {
-                        title: 'Blong Suite',
+                        title: 'Marine Biology',
+                        // The suite's brand. One block feeds the login screen, the
+                        // menubar mark and the portal's empty state — the manta is
+                        // the blong mark (`img/manta200.png`), copied beside the
+                        // entry so the bundle carries it.
+                        brand: {
+                            logoUrl: `${assetBase}manta.png`,
+                            orgTitle: 'Feasible One',
+                            orgIcon: 'pi pi-building',
+                        },
+                        // The self-service profile page, opened from the top-right
+                        // account menu (`IPortalConfig.profile`): the component that
+                        // draws it and the read the avatar comes from. Without the
+                        // block the menu carries no "Profile" entry, and a
+                        // deployment has no way to change a password or a language.
+                        profile: {
+                            page: 'access.user.profile',
+                            get: 'access.profile.get',
+                        },
                     },
                 },
             },
             login: {},
             marine: {},
             blong: {},
+            // A child realm loads only when the merged config names it (`if (config)`
+            // in the loader's child loop), so an empty block is what loads the
+            // realm at all. `access` carries the self-service profile page the
+            // account menu opens; `kustomize` the Deployments page.
+            access: {},
+            kustomize: {},
         },
         integration: {
             ui: {

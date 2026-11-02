@@ -21,7 +21,11 @@ capability:
   matrixFixtureRead: partyFixtureGet
   # The matrix resolves its column names to record ids as `testAdmin` before any
   # viewer signs in, so the harness role must hold the read on every probed
-  # table.  `party.consent` is the one the Admin role's own list does not cover.
+  # table.  The party realm's production seed grants `Admin` the consent
+  # capabilities too, but the harness read is kept beside the fixture: a matrix
+  # that only ran because a production grant happened to cover it would fail the
+  # day that grant is narrowed, and the failure would name the matrix rather than
+  # the grant.
   matrixHarnessRead: party.consent.find,party.consent.get
 role:
   # The harness role: `Admin` is seeded by blong-access's dbTest merge and is

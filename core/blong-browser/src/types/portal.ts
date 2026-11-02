@@ -37,6 +37,34 @@ export type IMenuItem =
           items: IMenuItem[];
       };
 
+/**
+ * The suite's brand, as the shell draws it.
+ *
+ * Every field is optional and every one is a value rather than an import: a
+ * suite names its logo in configuration (`ui.portal.portal.brand` in its
+ * `browser.ts`) and `blong-browser` ships no asset of its own, so a deployment
+ * that turns the block off looks exactly as it did before branding existed
+ * (`@@D-734`).
+ *
+ * Two sizes are drawn from one logo. The toolbar takes `logoUrl` at the height
+ * of the menubar's own content — the bar keeps its height, which is what makes
+ * a logo safe to add there — and the portal's empty state (no tab open) draws
+ * the same file large, centred in the whitespace, beside `title` and the
+ * organisation. Pass `logoIcon` instead when the mark is a PrimeIcons glyph.
+ */
+export interface IPortalBrand {
+    /** Product logo — an image URL, drawn in the menubar and in the empty state. */
+    logoUrl?: string;
+    /** PrimeIcons class used when `logoUrl` is absent (`pi pi-bolt`). */
+    logoIcon?: string;
+    /** Organisation line under the title in the portal's empty state. */
+    orgTitle?: string;
+    /** Organisation logo, drawn small beside `orgTitle`. */
+    orgLogoUrl?: string;
+    /** PrimeIcons class used when `orgLogoUrl` is absent. */
+    orgIcon?: string;
+}
+
 /** Portal configuration YAML shape */
 export interface IPortalConfig {
     name: string;
@@ -45,6 +73,8 @@ export interface IPortalConfig {
     home?: IAction;
     menu?: IMenuItem[];
     rightMenu?: IMenuItem[];
+    /** The suite's brand: logo and organisation beside the title (`@@D-734`). */
+    brand?: IPortalBrand;
     /**
      * Self-service account profile wiring for the top-right account menu.
      * `page` is the component method that returns the profile page (e.g.

@@ -13,6 +13,7 @@ import {InputText, Message, Password} from '../../primereact/index.js';
 import React, {useState} from 'react';
 import {Button} from '../Button/Button.js';
 import {SocialLoginButton} from '../SocialLoginButton/SocialLoginButton.js';
+import {Text} from '../Text/Text.js';
 import {useTranslate} from '../../hooks/useText.js';
 
 export interface ISelfRegistrationCredentials {
@@ -135,7 +136,7 @@ export function SelfRegistration({
                             <i className={`blong-self-registration__brand-icon ${logoIcon}`} />
                         )}
                         {title && (
-                            <span className="blong-self-registration__brand-name">{title}</span>
+                            <Text className="blong-self-registration__brand-name">{title}</Text>
                         )}
                     </div>
                 )}
@@ -282,7 +283,7 @@ export function SelfRegistration({
                             <i className={`blong-self-registration__org-icon ${orgIcon}`} />
                         ) : null}
                         {orgTitle && (
-                            <span className="blong-self-registration__org-name">{orgTitle}</span>
+                            <Text className="blong-self-registration__org-name">{orgTitle}</Text>
                         )}
                     </div>
                 )}

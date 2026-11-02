@@ -1,4 +1,5 @@
 import {describe, expect, it, vi} from 'vitest';
+import {useAppStore} from '../../state/appStore.js';
 import {fireEvent, render, screen, waitFor} from '../../test/render.js';
 import {Login} from './Login.js';
 
@@ -23,6 +24,24 @@ describe('Login', () => {
         );
         expect(screen.getByText('Admin Login')).toBeInTheDocument();
         expect(container).toMatchSnapshot();
+    });
+
+    it('translates the product and organisation names through the dictionary', () => {
+        // The suite configures one brand for every reader: both labels go through
+        // `Text`, so a dictionary entry renames them in the active language.
+        useAppStore.setState(s => ({
+            ...s,
+            translations: {'Admin Login': 'Админ вход', Feely: 'Фийли'},
+        }));
+        render(
+            <Login
+                onLogin={vi.fn()}
+                title="Admin Login"
+                orgTitle="Feely"
+            />,
+        );
+        expect(document.querySelector('.blong-login__brand-name')).toHaveTextContent('Админ вход');
+        expect(document.querySelector('.blong-login__org-name')).toHaveTextContent('Фийли');
     });
 
     it('renders with external error', () => {

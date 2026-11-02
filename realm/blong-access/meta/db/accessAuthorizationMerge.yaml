@@ -38,9 +38,20 @@ capability:
   # ship this list itself — it is a library realm with no `adapter/db`, so a seed asset
   # of its own would be dispatched to the generic knex merge and fail at boot (the same
   # reason `blongRealmRead` lives here). `@@D-635`
+  #
+  # `core.dropdown.list` is here for the same reason and is not optional: every picker
+  # of every model page reads it, so a role without it opens pages whose dropdowns come
+  # back 403 — which reads as a broken page rather than as a missing grant.
+  #
+  # The three `access.profile` methods are the self-service page every deployment
+  # publishes from the account menu (read your own record, edit it, change your own
+  # password). None of them is a privilege over anybody else's data, and `guestBasic`
+  # already carried the read, so a role that could log in but not open the page was the
+  # gap — the menu item appeared and the tab answered 403.
   loginCapability: >-
     accessLogin,
-    core.label.list,core.translation.list,
+    core.label.list,core.translation.list,core.dropdown.list,
+    access.profile.get,access.profile.edit,access.profile.password.change,
     feedback.session.add
   # Editing the dictionary is a privilege and stays with the administrator: the two
   # pages that write it are `core.label` and `core.translation` model pages, and they
@@ -88,6 +99,14 @@ policy:
 # no scope could cover yet.  A `deny` rule still wins over it: the party realm's
 # test seed uses exactly that to hide one organization from the admin as well.
 # List the guarded actions here as realms opt their tables in.
+#
+# `party.consent` is deliberately absent, and it is the one table that must stay so:
+# it declares `acl: {mode: 'explicit'}`, and `realm/blong-party/meta/dbTest` uses it
+# as the worked example of explicit mode — a table where a rule is the only way in and
+# the Admin role's wildcard allow is *not* one. Adding its actions here grants the
+# administrator every consent record and turns that matrix into a table of ticks. The
+# RBAC side is separate: the party realm's own seed grants Admin the consent
+# capabilities, so the page opens and lists nothing until a rule names a record.
 acl:
   - principal: Admin
     principalType: role

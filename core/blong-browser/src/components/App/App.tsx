@@ -198,6 +198,10 @@ function AppShell({
         }
     }, []);
     const registerPage = appConfig.login?.registerPage;
+    // The suite's brand, when it named one (`ui.portal.portal.brand`). Read from
+    // the static config and not from the merged portal config: the login screen
+    // paints before a session exists, and composing the merged config needs one.
+    const brand = appConfig.portal?.brand;
     const googleEnabled = Boolean(appConfig.google?.baseUrl && appConfig.google?.clientId);
     const onGoogle = React.useCallback(() => {
         void handler.authGoogleRedirect({}, {});
@@ -242,8 +246,12 @@ function AppShell({
         ) : (
             <Login
                 onLogin={loginHandler}
-                logoIcon="pi pi-globe"
-                title="Blong Portal"
+                logoIcon={brand?.logoIcon ?? 'pi pi-globe'}
+                logoUrl={brand?.logoUrl}
+                title={appConfig.portal?.title ?? 'Blong Portal'}
+                orgTitle={brand?.orgTitle}
+                orgIcon={brand?.orgIcon}
+                orgLogoUrl={brand?.orgLogoUrl}
                 registerPage={registerPage}
                 defaultUsername={appConfig.login?.username}
                 passwordHint={appConfig.login?.tokenHint}

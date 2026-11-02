@@ -132,4 +132,21 @@ describe('AccountMenu', () => {
         expect(screen.queryByText('Profile')).toBeNull();
         expect(screen.getByText('Sign out')).toBeInTheDocument();
     });
+
+    it('does not fetch the profile before a session exists', async () => {
+        // The call needs the gateway broker, which exists only with a session: an
+        // anonymous portal load answered `remote.bindingFailed` and raised an error
+        // dialog in front of the login screen.
+        const dispatch = vi.fn(async () => ({}));
+        act(() => {
+            useAppStore.setState(s => ({
+                ...s,
+                auth: {token: null, profile: null, permissions: {}, isAuthenticated: false},
+                portal: {...s.portal, portalConfig: profileConfig},
+            }));
+        });
+        render(<AccountMenu />, {dispatch});
+        await flushEffects();
+        expect(dispatch).not.toHaveBeenCalled();
+    });
 });

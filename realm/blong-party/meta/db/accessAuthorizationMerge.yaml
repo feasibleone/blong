@@ -1,5 +1,5 @@
 role:
-  Admin: organizationView,organizationEdit,organizationDelete,personView,personEdit,personDelete,unitView,unitEdit,unitDelete
+  Admin: organizationView,organizationEdit,organizationDelete,personView,personEdit,personDelete,unitView,unitEdit,unitDelete,consentView,consentEdit,consentDelete
 capability:
   organizationView: party.organization.find,party.organization.get
   organizationEdit: party.organization.edit,party.organization.add
@@ -10,3 +10,10 @@ capability:
   unitView: party.unit.find,party.unit.get
   unitEdit: party.unit.edit,party.unit.add
   unitDelete: party.unit.remove
+  # Consent is a party object like the other three and its page sits in the menu
+  # every deployment shows, so it is granted the same way. A database seeded
+  # before these lines keeps the Admin role without them and the page answers
+  # 403 on a read the menu already offers.
+  consentView: party.consent.find,party.consent.get
+  consentEdit: party.consent.edit,party.consent.add
+  consentDelete: party.consent.remove

@@ -1,0 +1,52 @@
+# RBAC seed — the marine realm's capabilities, granted to the shared roles.
+#
+# The realm ships no earlier seed because it was only ever reached through
+# Storybook, where the mock adapter answers every call. A deployed suite mounts
+# it as a real realm (`blong-suite` lists it), so its pages go through the same
+# gateway as every other realm's and a role without these methods opens a page
+# that answers 403 — the menu is built from the models, not from the grants.
+#
+# The file name derives the method: this dispatches blong-access's shared
+# `access.authorization.merge`, and only the content carries the marine names.
+#
+#   Admin   — everything (the only role a deployment is guaranteed to have)
+#   Manager — read + create/edit, no remove
+#   Customer, Guest — read only, because the demo content is what a
+#   self-registered guest is meant to see
+#
+# `marine.dropdown.list` is the picker the species and coral pages use for their
+# family/habitat references, and `subject.object.schema` is the model system's
+# schema read; a view capability needs both or the page renders without them.
+replace: true
+role:
+  Admin: marineManage
+  Manager: marineMaintain
+  Customer: marineView
+  Guest: marineView
+capability:
+  marineView: >-
+    marine.coral.find,marine.coral.get,
+    marine.family.find,marine.family.get,
+    marine.species.find,marine.species.get,
+    marine.habitat.find,marine.habitat.get,
+    marine.dropdown.list,subject.object.schema
+  marineMaintain: >-
+    marine.coral.find,marine.coral.get,
+    marine.family.find,marine.family.get,
+    marine.species.find,marine.species.get,
+    marine.habitat.find,marine.habitat.get,
+    marine.dropdown.list,subject.object.schema,
+    marine.coral.add,marine.coral.edit,
+    marine.family.add,marine.family.edit,
+    marine.species.add,marine.species.edit,
+    marine.habitat.add,marine.habitat.edit
+  marineManage: >-
+    marine.coral.find,marine.coral.get,
+    marine.family.find,marine.family.get,
+    marine.species.find,marine.species.get,
+    marine.habitat.find,marine.habitat.get,
+    marine.dropdown.list,subject.object.schema,
+    marine.coral.add,marine.coral.edit,marine.coral.remove,
+    marine.family.add,marine.family.edit,marine.family.remove,
+    marine.species.add,marine.species.edit,marine.species.remove,
+    marine.habitat.add,marine.habitat.edit,marine.habitat.remove

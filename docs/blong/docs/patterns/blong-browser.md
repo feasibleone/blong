@@ -40,6 +40,49 @@ The blong-browser realm automatically registers the portal shell, auth handling,
 storage adapter, and (in storybook/integration environments) the mock adapter. No explicit
 initialisation is needed.
 
+## Branding the Portal
+
+A deployment belongs to somebody, and three places say so: the login screen, the mark at the left of
+the menubar, and the empty state the portal draws while no page is open. All three read one block,
+inside the inner `ui.portal.portal` key — the same placement `profile` has, and not a sibling of it
+(`D-011`):
+
+```typescript
+// suite/blong-suite/browser.ts
+config: {
+    default: {
+        ui: {
+            portal: {
+                portal: {
+                    title: 'Blong Marine',
+                    brand: {
+                        logoUrl: `${import.meta.env.BASE_URL}manta.png`,
+                        orgTitle: 'Feasible One',
+                        orgIcon: 'pi pi-building',
+                    },
+                },
+            },
+        },
+    },
+},
+```
+
+Every field is optional and every one is a value rather than an import: `blong-browser` ships no
+asset of its own, so a suite that omits the block looks exactly as it did before branding existed.
+`logoUrl` (or `logoIcon`, a PrimeIcons class) is drawn at the height the menubar's own content sets
+(`--blong-portal-brand-height`), so the bar keeps its height whatever the file's pixel size, and the
+same file is drawn large in the empty state beside `title` and the organisation.
+
+Two sources feed those readers, and the difference is deliberate: the login screen paints before a
+session exists, so it reads the **static** browser config, while the menubar and the empty state read
+the **merged** portal config that `portalConfigGet` composes after login. A new provider key
+therefore has to be named in `mergePortalConfigs` (`core/blong-browser/src/portalConfig.ts`) as well
+as in `IPortalConfig`, or the shell silently renders without it (`@@F-677`).
+
+Assets live in the package's `public/` folder — `vite build` copies it to the bundle root, and the
+Storybook helper serves it too — and are named through `import.meta.env.BASE_URL`, which is `/s/` in
+an app build and `/` in Storybook.
+
 ---
 
 ## Contributing Pages from a Realm

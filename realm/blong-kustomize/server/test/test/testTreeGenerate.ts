@@ -1638,6 +1638,61 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 );
             },
 
+            async function eachPortalRoutesEveryNamespaceToItsOwnProcess(assert: IAssert) {
+                // The portal's Service reaches one pod, and a pod answers only for the realms it
+                // carries. A split deployment therefore publishes one path per namespace beside the
+                // portal's own, and each points at the Service named after that namespace — without
+                // them the browser's `/rpc/marine/coral/find` reached the portal's process, which has
+                // no `marine` route, and was answered `Not Found` while the marine pod was healthy
+                // (`@@D-736`).
+                const tree = buildKustomizeTree(
+                    lib.suitePlan({
+                        profile: 'realm',
+                        deployments: [
+                            {
+                                name: 'core',
+                                realms: ['core'],
+                                layers: ['core.orchestrator'],
+                                namespaces: ['core', 'subject'],
+                                replicas: 1,
+                            },
+                            {
+                                name: 'marine',
+                                realms: ['marine', 'core'],
+                                layers: ['marine.orchestrator'],
+                                namespaces: ['marine', 'core'],
+                                replicas: 1,
+                            },
+                        ],
+                        portal: {web: {host: 'marine.example', deployment: 'core'}},
+                    }),
+                );
+                const ingress = tree.get('ingresses/marine-example.yaml') as {
+                    spec?: {
+                        rules?: Array<{
+                            http?: {
+                                paths?: Array<{
+                                    path?: string;
+                                    backend?: {service?: {name?: string}};
+                                }>;
+                            };
+                        }>;
+                    };
+                };
+                assert.deepEqual(
+                    ingress.spec?.rules?.[0]?.http?.paths?.map(entry => [
+                        entry.path,
+                        entry.backend?.service?.name,
+                    ]),
+                    [
+                        ['/', 'web-http'],
+                        ['/rpc/core', 'core'],
+                        ['/rpc/marine', 'marine'],
+                    ],
+                    'every namespace a deployment is named after has a path to its own Service',
+                );
+            },
+
             async function eachPortalNamesItsOwnService(assert: IAssert) {
                 // A portal is an address, an alias and the process behind it (the portal answer). The
                 // alias is what names the Service, because it is the name a person chose and the one
