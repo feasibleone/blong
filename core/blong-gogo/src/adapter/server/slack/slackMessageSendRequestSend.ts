@@ -1,7 +1,7 @@
 import type {IChatAccountMap, IChatAttachment, IChatSendParams} from '@feasibleone/blong/types';
 import {handler} from '@feasibleone/blong/types';
 
-import {slackMarkdown, splitSlackText} from './markdown.ts';
+import {slackMarkdown, splitSlackText} from '../../impl/markdown.ts';
 
 /**
  * `slack.message.send` — the request `chat.postMessage` is made with.
@@ -16,7 +16,10 @@ import {slackMarkdown, splitSlackText} from './markdown.ts';
  * answer at length in one message rather than in a wall that Slack refuses (`@@D-730`).
  */
 const sections = (text: string): unknown[] =>
-    splitSlackText(text, 2_900).map(chunk => ({type: 'section', text: {type: 'mrkdwn', text: chunk}}));
+    splitSlackText(text, 2_900).map(chunk => ({
+        type: 'section',
+        text: {type: 'mrkdwn', text: chunk},
+    }));
 
 const images = (attachments: IChatAttachment[] | undefined): unknown[] =>
     (attachments ?? [])
