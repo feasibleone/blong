@@ -44,6 +44,16 @@ import {existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync} fr
 import {dirname, join, relative} from 'node:path';
 import stripJsonComments from 'strip-json-comments';
 
+import {
+    DIAGRAM_MANIFEST,
+    archifyCandidates,
+    capturePosters,
+    chromiumPosterBrowser,
+    loadDiagrams,
+    renderDiagram,
+    rendererEnvironment,
+    resolveArchify,
+} from '../docs/diagrams.ts';
 import {serveStatic} from '../docs/staticServer.ts';
 import {
     STORYBOOK_MANIFEST,
@@ -568,6 +578,7 @@ async function verify(root: string, args: string[]): Promise<void> {
     const blocks = pages.reduce((total, page) => total + page.blocks, 0);
     const imageCount = pages.reduce((total, page) => total + page.images, 0);
     const storyCount = pages.reduce((total, page) => total + page.stories, 0);
+    const diagramCount = pages.reduce((total, page) => total + page.diagrams, 0);
 
     // Which Storybooks this run can load a story from. Nothing is staged in CI or in a docs-only
     // build, and an unusable site is not a defect there: the embed's poster is the page's answer.
@@ -607,6 +618,8 @@ async function verify(root: string, args: string[]): Promise<void> {
         blocks: number;
         storiesRendered: number;
         stories: number;
+        diagramsRendered: number;
+        diagrams: number;
         storiesFailed: string[];
         errors: string[];
         imagesFailed: string[];
@@ -638,11 +651,19 @@ async function verify(root: string, args: string[]): Promise<void> {
                     '[data-storybook-id]',
                     page.stories,
                 );
+                // The figure rather than the frame: in `linked` mode there is no iframe, and the
+                // poster is still what tells the reader a diagram is there.
+                const diagramsRendered = await waitForCount(
+                    tab,
+                    'figure[data-archify-slug]',
+                    page.diagrams,
+                );
                 const storiesFailed = await storiesThatFailedToRender(context, origin, tab, staged);
                 const imagesFailed = await imagesThatFailedToLoad(tab);
                 if (
                     drawn < page.blocks ||
                     storiesRendered < page.stories ||
+                    diagramsRendered < page.diagrams ||
                     storiesFailed.length > 0 ||
                     errors.length > 0 ||
                     imagesFailed.length > 0
@@ -651,6 +672,7 @@ async function verify(root: string, args: string[]): Promise<void> {
                         ...page,
                         drawn,
                         storiesRendered,
+                        diagramsRendered,
                         storiesFailed,
                         errors,
                         imagesFailed,
@@ -661,6 +683,7 @@ async function verify(root: string, args: string[]): Promise<void> {
                     ...page,
                     drawn: 0,
                     storiesRendered: 0,
+                    diagramsRendered: 0,
                     storiesFailed: [],
                     errors: [(error as Error).message.split('\n')[0]],
                     imagesFailed: [],
@@ -677,12 +700,13 @@ async function verify(root: string, args: string[]): Promise<void> {
 
     if (asJson) {
         process.stdout.write(
-            `${JSON.stringify({pages: pages.length, blocks, storyCount, failures}, null, 4)}\n`,
+            `${JSON.stringify({pages: pages.length, blocks, storyCount, diagramCount, failures}, null, 4)}\n`,
         );
     } else if (failures.length === 0) {
         process.stdout.write(
-            `blong-dev docs: ${blocks} diagram(s), ${storyCount} embedded story(ies) and ` +
-                `${imageCount} image(s) on ${pages.length} page(s) all rendered` +
+            `blong-dev docs: ${blocks} diagram(s), ${storyCount} embedded story(ies), ` +
+                `${diagramCount} interactive diagram(s) and ${imageCount} image(s) on ` +
+                `${pages.length} page(s) all rendered` +
                 (staged.size === 0
                     ? storyCount === 0
                         ? ''
@@ -696,7 +720,8 @@ async function verify(root: string, args: string[]): Promise<void> {
         for (const failure of failures) {
             process.stderr.write(
                 `  ${failure.file} — drew ${failure.drawn} of ${failure.blocks}, ` +
-                    `rendered ${failure.storiesRendered} of ${failure.stories} embedded story(ies)\n`,
+                    `rendered ${failure.storiesRendered} of ${failure.stories} embedded story(ies), ` +
+                    `${failure.diagramsRendered} of ${failure.diagrams} interactive diagram(s)\n`,
             );
             for (const error of failure.errors) process.stderr.write(`      ${error}\n`);
             for (const story of failure.storiesFailed) {
@@ -715,6 +740,116 @@ function valueOf(args: string[], flag: string): string | undefined {
     const index = args.indexOf(flag);
     if (index !== -1) return args[index + 1];
     return args.find(arg => arg.startsWith(`${flag}=`))?.slice(flag.length + 1);
+}
+
+/** Every value a repeatable `--flag a --flag b` or `--flag a,b` names. */
+function valuesOf(args: string[], flag: string): string[] {
+    const found: string[] = [];
+    for (let index = 0; index < args.length; index++) {
+        const arg = args[index] as string;
+        if (arg === flag) {
+            const value = args[index + 1];
+            if (value !== undefined) found.push(...value.split(',').filter(Boolean));
+        } else if (arg.startsWith(`${flag}=`)) {
+            found.push(
+                ...arg
+                    .slice(flag.length + 1)
+                    .split(',')
+                    .filter(Boolean),
+            );
+        }
+    }
+    return found;
+}
+
+/**
+ * `blong-dev docs diagram [--only <slug[,slug]>] [--archify <path>] [--dry-run] [--no-posters]`
+ *
+ * Render every diagram in `docs/blong/diagrams.json` and capture the poster each of its pages
+ * shows when the diagram was not staged, which is what a plain `npm run build` — the CI shape —
+ * gets, because the rendered files are a build output and are not committed.
+ *
+ * The renderer is not a dependency of this repository, so this command is not part of the build and
+ * not part of `docs check`: it runs before a deploy, the way `docs storybook` does, and it says how
+ * to point it at the CLI rather than failing with a stack trace when it cannot find one.
+ */
+async function diagram(root: string, args: string[]): Promise<void> {
+    const dryRun = args.includes('--dry-run');
+    const withPosters = !args.includes('--no-posters');
+    const all = loadDiagrams(root);
+    const only = valuesOf(args, '--only');
+    if (only.length > 0) {
+        const unknown = only.filter(slug => !all.some(entry => entry.slug === slug));
+        if (unknown.length > 0) {
+            process.stderr.write(
+                `blong-dev docs: unknown diagram(s): ${unknown.join(', ')}\n` +
+                    `Known diagrams: ${all.map(entry => entry.slug).join(', ')}\n`,
+            );
+            process.exit(1);
+        }
+    }
+    const selected = only.length === 0 ? all : all.filter(entry => only.includes(entry.slug));
+    const archify = resolveArchify(root, valueOf(args, '--archify'), process.env);
+    if (archify === undefined && !dryRun) {
+        process.stderr.write(
+            'blong-dev docs: no diagram renderer to run\n' +
+                'Archify is neither installed for this repository nor found as an agent skill.\n' +
+                'Install it as a git dependency of docs/blong, pass --archify <archify.mjs>, or set\n' +
+                `ARCHIFY_BIN. Looked in:\n${archifyCandidates(root, process.env)
+                    .map(path => `  ${relative(root, path)}\n`)
+                    .join('')}`,
+        );
+        process.exit(1);
+    }
+
+    // One environment for every render: the browser is resolved once, and both the render and the
+    // poster capture use the same Chromium. `--chrome-sandbox` keeps Chrome's sandbox on.
+    const environment = await rendererEnvironment({sandbox: args.includes('--chrome-sandbox')});
+
+    const failures: string[] = [];
+    const rendered = [];
+    for (const entry of selected) {
+        const result = renderDiagram(root, entry, archify ?? '', {dryRun, environment});
+        const gates = Object.entries(result.gates)
+            .map(([gate, outcome]) => `${gate} ${outcome}`)
+            .join(', ');
+        if (result.ok) {
+            process.stdout.write(
+                `  ${entry.slug}: ${dryRun ? 'would render' : gates || 'rendered'}\n`,
+            );
+            if (!dryRun) rendered.push(entry);
+        } else {
+            failures.push(entry.slug);
+            process.stderr.write(`  ${entry.slug}: ${result.problem ?? 'failed'}\n`);
+        }
+    }
+    if (dryRun) return;
+
+    if (withPosters && rendered.length > 0) {
+        const browser = await chromiumPosterBrowser().catch((error: Error) => {
+            process.stderr.write(`blong-dev docs: cannot capture posters — ${error.message}\n`);
+            process.exit(1);
+        });
+        try {
+            for (const entry of rendered) {
+                await capturePosters(entry, browser);
+                process.stdout.write(`  ${entry.slug}: poster captured in both themes\n`);
+            }
+        } finally {
+            await browser.close();
+        }
+    }
+
+    if (failures.length > 0) {
+        process.stderr.write(
+            `blong-dev docs: ${failures.length} diagram(s) did not render — the gate that stopped ` +
+                `each one is above, and its receipt is under dev/archify/\n`,
+        );
+        process.exit(1);
+    }
+    process.stdout.write(
+        `blong-dev docs: ${rendered.length} diagram(s) staged into docs/blong/static/diagrams/\n`,
+    );
 }
 
 /** Wait until a page shows at least `expected` elements matching `selector`, or the budget runs out. */
@@ -899,6 +1034,9 @@ export async function docs(args: string[]): Promise<void> {
         case 'storybook':
             storybook(root, rest);
             break;
+        case 'diagram':
+            await diagram(root, rest);
+            break;
         case 'serve':
             await serve(root, rest);
             break;
@@ -913,9 +1051,11 @@ export async function docs(args: string[]): Promise<void> {
                     '  blong-dev docs check    [--only <id[,id]>] [--filter <glob>]\n' +
                     '  blong-dev docs verify   [--base <url>] [--filter <glob>] [--json]\n' +
                     '  blong-dev docs storybook [--only <name[,name]>] [--no-build] [--dry-run]\n' +
+                    '  blong-dev docs diagram [--only <slug[,slug]>] [--archify <path>] [--dry-run] [--no-posters]\n' +
                     '  blong-dev docs serve    [--port <port>] [--dir <path>]\n' +
                     `\nRegister: ${MANIFEST}\n` +
-                    `Storybooks: ${STORYBOOK_MANIFEST}\n`,
+                    `Storybooks: ${STORYBOOK_MANIFEST}\n` +
+                    `Diagrams: ${DIAGRAM_MANIFEST}\n`,
             );
             break;
         default:

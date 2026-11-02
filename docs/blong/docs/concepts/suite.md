@@ -13,6 +13,21 @@ certain business entity. They take architectural decisions on how the solution i
 deployed and specific configuration for that deployment. They are the place where the solution is
 glued together by reusing the functionality of the different realms.
 
+## What a suite contains
+
+A suite is the top of one hierarchy, and nothing below it is a second kind of thing: a realm is
+contained by it, layers by a realm, handler groups by a layer, and handlers and their private
+library functions by a group. The containment is the scaffold — `blong realm <name>` writes it — and
+the names carry it from there:
+
+<ArchifyDiagram
+    slug="blong-structure"
+    title="Suite, realm, layer, handler group and handler"
+    height="620px"
+    posterLight={require('./img/diagrams/blong-structure-light.png').default}
+    posterDark={require('./img/diagrams/blong-structure-dark.png').default}
+/>
+
 ## Platform
 
 The suites can define entry points for the different platforms, for example:

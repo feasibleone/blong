@@ -76,7 +76,7 @@ open (67)
 - `T-583` · docs — Group 8: docs/blong/docs/patterns/agent-engine.md — the engine port
 - `T-584` · skills — Group 8: .github/skills/blong-agent/SKILL.md so a later agent finds
 
-done (19)
+done (20)
 
 - `T-342` · ci — Decide the cache payload shape before landing step 2
 - `T-188` · ci — The Storybook leg produces no .ci-report slice
@@ -97,6 +97,7 @@ done (19)
 - `T-484` · cross-cutting — Close the feedback plan tasks with their evidence
 - `T-521` · docs — Document the webhook port and correct the affected skills
 - `T-338` · cross-cutting — The memory files mention 57 ids whose entries are gone
+- `T-597` · docs — Count ArchifyDiagram embeds in docs verify
 
 <!-- /memory:index -->
 
@@ -426,12 +427,12 @@ sweep them deliberately with a run of each suite after a baseline regeneration.
 > _2026-09-22 · docs · open_
 
 blong-dev docs check is side-effect-free for artefacts whose generator only writes the registered
-destination, but not for the two produced by Playwright specs: writing their markdown
-needs --update-snapshots, which also rewrites that package's committed _.play.ts-snapshots
-baselines, and check does not snapshot or restore those. So a full docs check can leave modified
-baselines. Both artefacts are already guarded by their own packages (ci-ui runs the same spec, which
-compares the artefact and fails when it is stale), so the workaround is to run check filtered to
-flows._ and png.\*. The proper fix is a second, compare-only command per artefact in
+destination, but not for the two produced by Playwright specs: writing their markdown needs
+--update-snapshots, which also rewrites that package's committed _.play.ts-snapshots baselines, and
+check does not snapshot or restore those. So a full docs check can leave modified baselines. Both
+artefacts are already guarded by their own packages (ci-ui runs the same spec, which compares the
+artefact and fails when it is stale), so the workaround is to run check filtered to flows._ and
+png.\*. The proper fix is a second, compare-only command per artefact in
 docs/blong/docs-artifacts.json. Recorded as item 5 in the Further considerations of
 plans/docs/VISUAL_DOCS_PLAN.md.
 
@@ -930,9 +931,9 @@ of the runner. Deferred on purpose when the CI build was repaired, since reporti
 `.ci-report/storybook.log` (its own file in the directory a bridge would read), and prints one
 summary line from it, so the count a slice needs is already in the log the CI artifact uploads.
 
-Closed by the bridge it proposed: test-storybook writes .ci-report/storybook.json with
---json --outputFile, blong-dev report jest converts it under --runner storybook, and the leg
-passes --status so a non-zero exit always leaves a failing slice.
+Closed by the bridge it proposed: test-storybook writes .ci-report/storybook.json with --json
+--outputFile, blong-dev report jest converts it under --runner storybook, and the leg passes
+--status so a non-zero exit always leaves a failing slice.
 
 ### T-352 — Publish a package's non-tap leg failure in the bundle
 
@@ -953,8 +954,8 @@ message, so the bundle no longer names two legs of a three-failure run.
 > _2026-10-16 · ci · done_
 
 Remove or raise the in-file `setTimeout(60_000)` in `demo/blong-cli/index.test.ts` and
-`core/blong-kukum/index.test.ts` so the runner's `--timeout=240` decides (@@D-247). Both files
-ran 2.5x longer on the shared runner than on the previous run and expired there; kukum's expiry was
+`core/blong-kukum/index.test.ts` so the runner's `--timeout=240` decides (@@D-247). Both files ran
+2.5x longer on the shared runner than on the previous run and expired there; kukum's expiry was
 inside `kukum.source.check`, which lints the whole package for a request that names one file, so
 scoping that lint to the named files is the other half of the fix.
 
@@ -1232,3 +1233,16 @@ one, inline code and fenced blocks excepted (`@@D-719`). The count is zero as th
 
 swept: 54 sentences reworked and the catalogue dropped, and the gate that prevents a recurrence is
 D-719 — check --refs, refs --dangling and audit all fail on a citation nothing resolves
+
+### T-597 — Count ArchifyDiagram embeds in docs verify
+
+> _2026-11-02 · docs · done_
+
+`blong-dev docs verify` counts the mermaid blocks, the pictures, the `<StorybookStory>` embeds and
+now the `<ArchifyDiagram>` embeds a page declares, and compares them with what rendered, because a
+tag the MDX parser drops takes its content with it and leaves a page that reads as if it never had
+one. `visualPages.ts` carries a `diagrams` count beside `stories`, taken outside quoted code with
+the same `stripCode` rule, and `commands/docs.ts` compares it against `figure[data-archify-slug]` —
+a selector present for both the poster and the live frame, which is what makes the count meaningful
+in a build that never staged the diagrams. It matters most for the architecture page, whose diagram
+is the only visual it has.

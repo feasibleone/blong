@@ -1,0 +1,280 @@
+{
+    "schema_version": 2,
+    "diagram_type": "workflow",
+    "meta": {
+        "title": "A CI run and the evidence it leaves",
+        "output": "docs/blong/static/diagrams/blong-ci.html",
+        "locale": "en",
+        "quality_profile": "showcase",
+        "views": [
+            {
+                "id": "red",
+                "label": "A red run",
+                "focus": ["legs", "report", "bundle", "tool", "verdict"],
+                "note": "The bundle names the tests; the artifact holds the reason; the diagnosis answers with both."
+            },
+            {
+                "id": "green",
+                "label": "A green run",
+                "focus": ["legs", "report", "comment", "merge"],
+                "note": "Nothing failed, so nothing is published to the site \u2014 and the comment is still the summary."
+            }
+        ]
+    },
+    "lanes": [
+        {
+            "id": "pr",
+            "label": "Pull request"
+        },
+        {
+            "id": "runner",
+            "label": "Build"
+        },
+        {
+            "id": "evidence",
+            "label": "Run evidence"
+        },
+        {
+            "id": "site",
+            "label": "Reports site"
+        },
+        {
+            "id": "diag",
+            "label": "Diagnosis"
+        }
+    ],
+    "phases": [
+        {
+            "id": "run",
+            "label": "Run",
+            "fromCol": 0,
+            "toCol": 2
+        },
+        {
+            "id": "record",
+            "label": "Record",
+            "fromCol": 3,
+            "toCol": 3,
+            "variant": "emphasis"
+        },
+        {
+            "id": "explain",
+            "label": "Explain",
+            "fromCol": 4,
+            "toCol": 5,
+            "variant": "dashed"
+        }
+    ],
+    "mainPath": ["push", "build", "legs", "report", "artifact", "tool", "verdict"],
+    "nodes": [
+        {
+            "id": "push",
+            "lane": "pr",
+            "col": 0,
+            "type": "external",
+            "label": "Push",
+            "sublabel": "a branch or a PR",
+            "width": 130,
+            "icon": "active",
+            "brand": "github"
+        },
+        {
+            "id": "build",
+            "lane": "runner",
+            "col": 1,
+            "type": "backend",
+            "label": "Install and build",
+            "sublabel": "rush install, build",
+            "width": 140,
+            "icon": "neutral"
+        },
+        {
+            "id": "legs",
+            "lane": "runner",
+            "col": 2,
+            "type": "backend",
+            "label": "Test legs",
+            "sublabel": "tap, playwright, jest",
+            "tag": "ci-test-jobs: 2",
+            "width": 145,
+            "icon": "decision"
+        },
+        {
+            "id": "report",
+            "lane": "evidence",
+            "col": 3,
+            "type": "backend",
+            "label": "One report",
+            "sublabel": "summary plus slices",
+            "tag": "ci-report.md",
+            "width": 140,
+            "icon": "briefcase"
+        },
+        {
+            "id": "comment",
+            "lane": "pr",
+            "col": 3,
+            "type": "frontend",
+            "label": "PR comment",
+            "sublabel": "the same document",
+            "width": 140,
+            "icon": "person",
+            "brand": "github"
+        },
+        {
+            "id": "artifact",
+            "lane": "evidence",
+            "col": 4,
+            "type": "database",
+            "label": "Reports artifact",
+            "sublabel": "raw TAP, jest logs",
+            "width": 140,
+            "icon": "database",
+            "brand": "github-actions"
+        },
+        {
+            "id": "bundle",
+            "lane": "site",
+            "col": 4,
+            "type": "cloud",
+            "label": "Failures bundle",
+            "sublabel": "one per red run",
+            "tag": "latest alias",
+            "width": 140,
+            "icon": "cloud"
+        },
+        {
+            "id": "tool",
+            "lane": "diag",
+            "col": 4,
+            "type": "security",
+            "label": "blong-dev ci",
+            "sublabel": "bundle plus job log",
+            "width": 140,
+            "icon": "security"
+        },
+        {
+            "id": "verdict",
+            "lane": "diag",
+            "col": 5,
+            "type": "backend",
+            "label": "Verdict",
+            "sublabel": "with the prior run",
+            "tag": "new or recurring",
+            "width": 145,
+            "icon": "success"
+        },
+        {
+            "id": "merge",
+            "lane": "pr",
+            "col": 5,
+            "type": "backend",
+            "label": "Merge to main",
+            "sublabel": "opens the release PR",
+            "width": 140,
+            "icon": "flag"
+        }
+    ],
+    "edges": [
+        {
+            "id": "run",
+            "from": "push",
+            "to": "build",
+            "label": "opens the run",
+            "variant": "default"
+        },
+        {
+            "id": "legs-run",
+            "from": "build",
+            "to": "legs",
+            "variant": "default"
+        },
+        {
+            "id": "slices",
+            "from": "legs",
+            "to": "report",
+            "label": "a slice per leg",
+            "variant": "emphasis"
+        },
+        {
+            "id": "posted",
+            "from": "report",
+            "to": "comment",
+            "label": "used verbatim",
+            "variant": "default"
+        },
+        {
+            "id": "raw",
+            "from": "report",
+            "to": "artifact",
+            "label": "with the raw streams",
+            "variant": "default"
+        },
+        {
+            "id": "published",
+            "from": "report",
+            "to": "bundle",
+            "label": "only when something failed",
+            "variant": "dashed",
+            "role": "branch"
+        },
+        {
+            "id": "first",
+            "from": "bundle",
+            "to": "tool",
+            "label": "names what failed",
+            "variant": "default"
+        },
+        {
+            "id": "reason",
+            "from": "artifact",
+            "to": "tool",
+            "label": "holds the reason",
+            "variant": "dashed"
+        },
+        {
+            "id": "answered",
+            "from": "tool",
+            "to": "verdict",
+            "label": "reports",
+            "variant": "emphasis"
+        },
+        {
+            "id": "green",
+            "from": "legs",
+            "to": "merge",
+            "label": "all green",
+            "variant": "default",
+            "role": "branch"
+        }
+    ],
+    "cards": [
+        {
+            "dot": "rose",
+            "title": "A bundle is not a verdict",
+            "items": [
+                "Red means a test failed: a run whose only entry is a flaky test is green",
+                "A run with nothing to report publishes no bundle, and the 404 is the answer rather than a failure",
+                "The site keeps the last fifteen runs, so an older comparison is not available"
+            ]
+        },
+        {
+            "dot": "cyan",
+            "title": "Why one document",
+            "items": [
+                "The run summary and the pull-request comment are the same artefact, written once",
+                "There is no summary of the summary to reconcile, and nothing a reviewer reads twice",
+                "Under it sit the per-package slices, which is what a package page is built from"
+            ]
+        },
+        {
+            "dot": "amber",
+            "title": "What the diagnosis needs",
+            "items": [
+                "The bundle names the tests but not the reason; the raw TAP stream inside the artifact holds it",
+                "The previous published run of the same package separates a regression from a runner that was slower",
+                "A leg that failed without publishing its slice reads as leg-gap, which is a finding about the tooling"
+            ]
+        }
+    ]
+}

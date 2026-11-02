@@ -1,0 +1,180 @@
+{
+    "schema_version": 1,
+    "diagram_type": "architecture",
+    "meta": {
+        "title": "What the runtime does around one handler",
+        "output": "docs/blong/static/diagrams/blong-handler-runtime.html",
+        "locale": "en",
+        "quality_profile": "showcase",
+        "views": [
+            {
+                "id": "contract",
+                "label": "The type is the contract",
+                "focus": ["handler", "validate", "docs"],
+                "note": "A Handler type generates the schema that validates the call and documents it."
+            },
+            {
+                "id": "call",
+                "label": "How it is called",
+                "focus": ["caller", "proxy", "handler"],
+                "note": "Nothing imports a handler: the proxy resolves it."
+            }
+        ]
+    },
+    "components": [
+        {
+            "id": "caller",
+            "type": "external",
+            "label": "Caller",
+            "sublabel": "gateway, orchestrator, test",
+            "pos": [40, 290],
+            "size": [160, 68],
+            "icon": "person"
+        },
+        {
+            "id": "tests",
+            "type": "backend",
+            "label": "Tests and chains",
+            "sublabel": "tap, playwright, cucumber",
+            "tag": "same dispatch",
+            "pos": [240, 150],
+            "size": [170, 68],
+            "icon": "success"
+        },
+        {
+            "id": "config",
+            "type": "backend",
+            "label": "Configuration",
+            "sublabel": "merged from the active intents",
+            "tag": "co-located schema",
+            "pos": [240, 430],
+            "size": [170, 68],
+            "icon": "neutral"
+        },
+        {
+            "id": "proxy",
+            "type": "messagebus",
+            "label": "handler() proxy",
+            "sublabel": "injects, reloads, mocks",
+            "tag": "no direct imports",
+            "pos": [460, 290],
+            "size": [165, 68],
+            "icon": "messagebus"
+        },
+        {
+            "id": "handler",
+            "type": "backend",
+            "label": "Your handler",
+            "sublabel": "one exported function",
+            "tag": "subjectObjectPredicate",
+            "pos": [680, 290],
+            "size": [180, 68],
+            "icon": "backend"
+        },
+        {
+            "id": "validate",
+            "type": "security",
+            "label": "Validation",
+            "sublabel": "generated ~.schema.ts",
+            "tag": "input and output",
+            "pos": [920, 150],
+            "size": [175, 68],
+            "icon": "security"
+        },
+        {
+            "id": "telemetry",
+            "type": "messagebus",
+            "label": "Checkpoints",
+            "sublabel": "steps, branches, flows",
+            "pos": [920, 290],
+            "size": [175, 68],
+            "icon": "clock"
+        },
+        {
+            "id": "docs",
+            "type": "cloud",
+            "label": "API documentation",
+            "sublabel": "OpenAPI from the type",
+            "pos": [920, 430],
+            "size": [175, 68],
+            "icon": "cloud"
+        }
+    ],
+    "connections": [
+        {
+            "id": "call",
+            "from": "caller",
+            "to": "proxy",
+            "label": "dispatch",
+            "variant": "emphasis"
+        },
+        {
+            "id": "test",
+            "from": "tests",
+            "to": "proxy",
+            "label": "same path",
+            "variant": "dashed"
+        },
+        {
+            "id": "armed",
+            "from": "config",
+            "to": "proxy",
+            "label": "merged for this run"
+        },
+        {
+            "id": "invoke",
+            "from": "proxy",
+            "to": "handler",
+            "label": "call",
+            "variant": "emphasis"
+        },
+        {
+            "id": "schema",
+            "from": "handler",
+            "to": "validate",
+            "label": "type becomes schema"
+        },
+        {
+            "id": "checkpoint",
+            "from": "handler",
+            "to": "telemetry",
+            "label": "checkpoint",
+            "variant": "dashed"
+        },
+        {
+            "id": "document",
+            "from": "handler",
+            "to": "docs",
+            "label": "type becomes spec"
+        }
+    ],
+    "cards": [
+        {
+            "dot": "emerald",
+            "title": "Nothing imports a handler",
+            "items": [
+                "A cross-handler dependency goes through the proxy, which is what keeps inversion of control intact",
+                "The same indirection lets a mock handler replace an adapter for one test",
+                "And lets a changed file be swapped without restarting the process"
+            ]
+        },
+        {
+            "dot": "cyan",
+            "title": "The type is the contract",
+            "items": [
+                "Exporting a Handler type is what makes the framework generate the schema and validate the call",
+                "The same type produces the API documentation, so the two cannot disagree",
+                "Configuration schemas sit beside the component they configure"
+            ]
+        },
+        {
+            "dot": "amber",
+            "title": "Free once the call is described",
+            "items": [
+                "A checkpoint records the step and the branch a run took; the semantic log turns those into observed flows",
+                "Caching, dependency analysis and coverage attribution read the same method registry",
+                "None of this is code the handler author writes"
+            ]
+        }
+    ]
+}

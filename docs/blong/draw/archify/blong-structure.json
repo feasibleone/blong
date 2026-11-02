@@ -1,0 +1,135 @@
+{
+    "schema_version": 1,
+    "diagram_type": "tree",
+    "meta": {
+        "title": "What a Blong solution is made of",
+        "output": "docs/blong/static/diagrams/blong-structure.html",
+        "locale": "en",
+        "quality_profile": "showcase"
+    },
+    "layout": {
+        "direction": "right",
+        "gapX": 44,
+        "gapY": 26,
+        "nodeW": 190
+    },
+    "nodes": [
+        {
+            "id": "suite",
+            "label": "Suite",
+            "sublabel": "one entry point, many realms"
+        },
+        {
+            "id": "core",
+            "label": "blong-core",
+            "parent": "suite",
+            "sublabel": "library realm: resource graph",
+            "collapsed": true
+        },
+        {
+            "id": "access",
+            "label": "blong-access",
+            "parent": "suite",
+            "sublabel": "library realm: RBAC",
+            "collapsed": true
+        },
+        {
+            "id": "transfer",
+            "label": "transfer",
+            "parent": "suite",
+            "sublabel": "realm: money movement"
+        },
+        {
+            "id": "gateway",
+            "label": "gateway",
+            "parent": "transfer",
+            "sublabel": "layer: public API",
+            "collapsed": true
+        },
+        {
+            "id": "orchestrator",
+            "label": "orchestrator",
+            "parent": "transfer",
+            "sublabel": "layer: business process"
+        },
+        {
+            "id": "transferGroup",
+            "label": "transfer",
+            "parent": "orchestrator",
+            "sublabel": "handler group"
+        },
+        {
+            "id": "prepare",
+            "label": "transferTransferPrepare",
+            "parent": "transferGroup",
+            "sublabel": "handler, one file"
+        },
+        {
+            "id": "commit",
+            "label": "transferTransferCommit",
+            "parent": "transferGroup",
+            "sublabel": "handler, one file"
+        },
+        {
+            "id": "limitRule",
+            "label": "transferLimitRuleGet",
+            "parent": "transferGroup",
+            "sublabel": "injected library function"
+        },
+        {
+            "id": "adapter",
+            "label": "adapter",
+            "parent": "transfer",
+            "sublabel": "layer: integration"
+        },
+        {
+            "id": "knex",
+            "label": "knex",
+            "parent": "adapter",
+            "sublabel": "handler group: SQL"
+        },
+        {
+            "id": "error",
+            "label": "error",
+            "parent": "transfer",
+            "sublabel": "layer: typed errors",
+            "collapsed": true
+        },
+        {
+            "id": "portal",
+            "label": "browser platform",
+            "parent": "suite",
+            "sublabel": "portal, actions, models",
+            "collapsed": true
+        }
+    ],
+    "cards": [
+        {
+            "dot": "cyan",
+            "title": "Names carry the hierarchy",
+            "items": [
+                "A handler is named subjectObjectPredicate: subject is the namespace, object the entity, predicate the action",
+                "The file, the export and the wire name are the same triple",
+                "Standard predicates come first: get, find, add, edit, remove, merge, insert, update, delete"
+            ]
+        },
+        {
+            "dot": "emerald",
+            "title": "A layer is a folder of handler groups",
+            "items": [
+                "Well-known layers are discovered without configuration: error, sim, adapter, orchestrator, gateway, meta, test",
+                "Which of them activate is decided by the intents the process was started with",
+                "Adapters never call adapters: coordination belongs to an orchestrator"
+            ]
+        },
+        {
+            "dot": "amber",
+            "title": "Library realms are carried, not called",
+            "items": [
+                "A library realm travels with every process that uses it, and its schema is created in each database",
+                "The call stays in the process and joins the caller's transaction",
+                "blong-party is a normal realm: its data must not be copied per database"
+            ]
+        }
+    ]
+}

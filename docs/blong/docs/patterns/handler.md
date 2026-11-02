@@ -4,6 +4,20 @@ Handlers are functions that are called by adapters and orchestrators to implemen
 functionality. Handlers can be based on user-defined APIs or be related to internal logic, for
 example the [adapter loop](../concepts/adapter#adapter-loop).
 
+## What the framework adds around one
+
+A handler is a plain function, and everything else in this picture is provided: the call arrives
+through the proxy, the type it exports becomes both the schema that validates it and the
+documentation that describes it, and the checkpoints it records become the flows the docs draw.
+
+<ArchifyDiagram
+    slug="blong-handler-runtime"
+    title="What the runtime does around one handler"
+    height="600px"
+    posterLight={require('../concepts/img/diagrams/blong-handler-runtime-light.png').default}
+    posterDark={require('../concepts/img/diagrams/blong-handler-runtime-dark.png').default}
+/>
+
 ## Internal handlers
 
 The internal handlers have predefined meaning and names and are often related to some common

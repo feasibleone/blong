@@ -3,6 +3,18 @@
 The framework works with several API concepts, which are used in different contexts and have
 different purposes. These are:
 
+Before the details, one call through all of them: a client posts to the gateway, the gateway
+authorizes and validates, an orchestrator coordinates, an adapter writes, and the reply travels back
+— with `$meta` forwarded at every hop and a checkpoint left on the way.
+
+<ArchifyDiagram
+    slug="blong-rpc-call"
+    title="One RPC call, end to end"
+    height="700px"
+    posterLight={require('./img/diagrams/blong-rpc-call-light.png').default}
+    posterDark={require('./img/diagrams/blong-rpc-call-dark.png').default}
+/>
+
 ## Gateway API
 
 The API exposed by the gateway layer, which is the public facing interface of the server. It can be

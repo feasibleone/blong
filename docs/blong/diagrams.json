@@ -1,0 +1,121 @@
+{
+    "$comment": [
+        "Register of the interactive architecture diagrams the documentation site publishes.",
+        "",
+        "A diagram is authored as an Archify candidate (see `draw/archify/<slug>.json`), rendered to a",
+        "single self-contained HTML file, and served from the docs site's own origin beside its pages:",
+        "`static/diagrams/<slug>.html` is published verbatim at `/diagrams/<slug>.html` in `npm start`,",
+        "in `npm run build`, in `npm run serve` and in `npm run deploy`. A page embeds one with",
+        "`<ArchifyDiagram slug=\"…\" />`.",
+        "",
+        "The rendered HTML is NOT committed: it is a build output of about a megabyte per diagram, and",
+        "it comes from a tool the repository does not depend on. `blong-dev docs diagram` renders every",
+        "entry that has a candidate and captures each one's poster, so the deploy runs it first and a",
+        "plain `npm run build` shows the poster instead of an empty frame — the same arrangement the",
+        "Storybooks use (`storybook-sites.json`).",
+        "",
+        "Read and used by `blong-dev docs diagram` (tools/blong-dev/src/docs/diagrams.ts), whose header",
+        "records why the rendered HTML is staged and the poster is the committed artefact.",
+        "(tools/blong-dev/src/docs/diagrams.ts):",
+        "  blong-dev docs diagram [--only <slug[,slug]>] [--dry-run] [--no-posters]",
+        "",
+        "Paths in this file are relative to `docs/blong/` — the directory this file sits in.",
+        "",
+        "Fields:",
+        "  title      what the diagram is, for the command's summary and the index page",
+        "  type       the Archify diagram type: architecture, workflow, sequence, tree, …",
+        "  candidate  the authored JSON, the source of truth; edit this, never the rendered HTML",
+        "  output     where the rendered HTML is staged (gitignored)",
+        "  poster     the committed picture a page shows when the diagram was not staged, in both",
+        "             themes; captured by the command, so it cannot drift from the candidate",
+        "  height     the frame height an embed uses by default, a CSS length",
+        "  page       the docs page that embeds it, relative to `docs/blong/`, for the index"
+    ],
+    "version": 1,
+    "diagrams": {
+        "blong-architecture": {
+            "title": "Blong deployment architecture",
+            "type": "architecture",
+            "candidate": "draw/archify/blong-architecture.json",
+            "output": "static/diagrams/blong-architecture.html",
+            "poster": {
+                "light": "docs/concepts/img/diagrams/blong-architecture-light.png",
+                "dark": "docs/concepts/img/diagrams/blong-architecture-dark.png"
+            },
+            "height": "620px",
+            "page": "docs/concepts/architecture.md"
+        },
+        "blong-structure": {
+            "title": "What a Blong solution is made of",
+            "type": "tree",
+            "candidate": "draw/archify/blong-structure.json",
+            "output": "static/diagrams/blong-structure.html",
+            "poster": {
+                "light": "docs/concepts/img/diagrams/blong-structure-light.png",
+                "dark": "docs/concepts/img/diagrams/blong-structure-dark.png"
+            },
+            "height": "620px",
+            "page": "docs/concepts/suite.md"
+        },
+        "blong-rpc-call": {
+            "title": "One RPC call, end to end",
+            "type": "sequence",
+            "candidate": "draw/archify/blong-rpc-call.json",
+            "output": "static/diagrams/blong-rpc-call.html",
+            "poster": {
+                "light": "docs/concepts/img/diagrams/blong-rpc-call-light.png",
+                "dark": "docs/concepts/img/diagrams/blong-rpc-call-dark.png"
+            },
+            "height": "700px",
+            "page": "docs/concepts/api.md"
+        },
+        "blong-intents": {
+            "title": "Intents decide what a process becomes",
+            "type": "workflow",
+            "candidate": "draw/archify/blong-intents.json",
+            "output": "static/diagrams/blong-intents.html",
+            "poster": {
+                "light": "docs/concepts/img/diagrams/blong-intents-light.png",
+                "dark": "docs/concepts/img/diagrams/blong-intents-dark.png"
+            },
+            "height": "720px",
+            "page": "docs/concepts/intents.md"
+        },
+        "blong-handler-runtime": {
+            "title": "What the runtime does around one handler",
+            "type": "architecture",
+            "candidate": "draw/archify/blong-handler-runtime.json",
+            "output": "static/diagrams/blong-handler-runtime.html",
+            "poster": {
+                "light": "docs/concepts/img/diagrams/blong-handler-runtime-light.png",
+                "dark": "docs/concepts/img/diagrams/blong-handler-runtime-dark.png"
+            },
+            "height": "600px",
+            "page": "docs/patterns/handler.md"
+        },
+        "blong-deployment": {
+            "title": "From a merged commit to a running suite",
+            "type": "workflow",
+            "candidate": "draw/archify/blong-deployment.json",
+            "output": "static/diagrams/blong-deployment.html",
+            "poster": {
+                "light": "docs/concepts/img/diagrams/blong-deployment-light.png",
+                "dark": "docs/concepts/img/diagrams/blong-deployment-dark.png"
+            },
+            "height": "760px",
+            "page": "docs/patterns/deployment.md"
+        },
+        "blong-ci": {
+            "title": "A CI run and the evidence it leaves",
+            "type": "workflow",
+            "candidate": "draw/archify/blong-ci.json",
+            "output": "static/diagrams/blong-ci.html",
+            "poster": {
+                "light": "docs/concepts/img/diagrams/blong-ci-light.png",
+                "dark": "docs/concepts/img/diagrams/blong-ci-dark.png"
+            },
+            "height": "700px",
+            "page": "docs/rationale/ci-report.md"
+        }
+    }
+}

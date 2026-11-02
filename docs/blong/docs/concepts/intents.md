@@ -28,6 +28,19 @@ flowchart TD
     L1 --> L2["well-known layer folders are auto-discovered,<br/>so most layers need no file at all"]
 ```
 
+The same mechanism as a process: the active set is resolved (an exclusion group stops the run before
+anything else happens), its blocks merge and validate, the layers that name an active intent arm
+themselves, and what results is one of several process shapes — a dev server, a service, a test
+runner, or a job that does its work and exits.
+
+<ArchifyDiagram
+    slug="blong-intents"
+    title="Intents decide what a process becomes"
+    height="720px"
+    posterLight={require('./img/diagrams/blong-intents-light.png').default}
+    posterDark={require('./img/diagrams/blong-intents-dark.png').default}
+/>
+
 ## Well-Known Intents
 
 The table says what an intent is _for_ and how long the process lives; what it turns on — every

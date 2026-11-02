@@ -15,6 +15,7 @@ import {
     countImages,
     countMermaidBlocks,
     countStorybookEmbeds,
+    countArchifyEmbeds,
     routeForDocsFile,
     stripCode,
 } from './visualPages.ts';
@@ -69,6 +70,27 @@ t.test('countImages counts image references', t => {
         0,
         'a plain link is not an image',
     );
+    t.end();
+});
+
+t.test('countArchifyEmbeds counts the interactive diagrams a page owes', t => {
+    t.equal(countArchifyEmbeds('prose only\n'), 0, 'prose embeds nothing');
+    t.equal(
+        countArchifyEmbeds('<ArchifyDiagram slug="blong-architecture" linked />\n'),
+        1,
+        'one tag is one diagram, with or without a frame',
+    );
+    t.equal(
+        countArchifyEmbeds('<ArchifyDiagram slug="a" />\n\ntext\n\n<ArchifyDiagram slug="b" />\n'),
+        2,
+        'two tags are two diagrams',
+    );
+    t.equal(
+        countArchifyEmbeds('```mdx\n<ArchifyDiagram slug="a" />\n```\n'),
+        0,
+        'a tag quoted in a fence is an example',
+    );
+    t.equal(countArchifyEmbeds('the `<ArchifyDiagram>` tag in backticks is prose\n'), 0);
     t.end();
 });
 

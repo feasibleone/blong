@@ -1,0 +1,60 @@
+/* A diagram is a panel in the page, not a piece of chrome: one frame, one caption line, the site's
+ * own border and radius so it reads as an illustration beside the prose. */
+
+.diagram {
+    margin: 1.5rem 0;
+    border: 1px solid var(--ifm-color-emphasis-300);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--ifm-background-surface-color);
+}
+
+.frame {
+    display: block;
+    width: 100%;
+    border: 0;
+}
+
+/* The poster is a button because it opens something: the live diagram. It is styled as the picture
+ * it holds. */
+.poster {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.image {
+    display: block;
+    /* The whole picture, at its own shape: a poster that crops its screenshot shows a narrower
+     * diagram than the one it stands for. */
+    width: 100%;
+    height: auto;
+}
+
+/* The hover state is the picture dimming, not a veil over it: a full-bleed overlay span stopped
+ * the image painting altogether in Chromium, which left a blank panel where the poster should be. */
+.poster:hover .image,
+.poster:focus-visible .image {
+    filter: brightness(0.94);
+}
+
+.caption {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 0;
+    padding: 0.4rem 0.75rem;
+    border-top: 1px solid var(--ifm-color-emphasis-200);
+    color: var(--ifm-color-emphasis-700);
+    font-size: 0.85rem;
+}
+
+.open {
+    white-space: nowrap;
+}

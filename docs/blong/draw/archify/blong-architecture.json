@@ -1,0 +1,612 @@
+{
+    "schema_version": 1,
+    "diagram_type": "architecture",
+    "meta": {
+        "title": "Blong deployment: six processes, six shapes",
+        "output": "docs/blong/static/diagrams/blong-architecture.html",
+        "locale": "en",
+        "quality_profile": "showcase",
+        "legend": {
+            "mode": "all",
+            "entries": {
+                "external": {
+                    "label": "Caller, platform or external system"
+                },
+                "security": {
+                    "label": "Gateway \u2014 the public API of a realm"
+                },
+                "messagebus": {
+                    "label": "Orchestrator \u2014 the business process"
+                },
+                "frontend": {
+                    "visible": false
+                },
+                "backend": {
+                    "label": "Adapter \u2014 the integration"
+                },
+                "database": {
+                    "label": "Store \u2014 a schema, an object or a volume"
+                },
+                "cloud": {
+                    "visible": false
+                }
+            }
+        },
+        "views": [
+            {
+                "id": "back-office",
+                "label": "Back office",
+                "focus": [
+                    "backOffice",
+                    "gatewayAdmin",
+                    "orchAdmin",
+                    "adapterAdmin",
+                    "objectAdapter",
+                    "mysql"
+                ],
+                "note": "A gateway, an orchestrator and two adapters \u2014 one writes SQL, one writes files."
+            },
+            {
+                "id": "public-app",
+                "label": "Self-service",
+                "focus": ["mobileApp", "webApp", "gatewayApp", "orchApp", "adapterApp", "mysql"],
+                "note": "The same shape with one adapter, and the same database as the back office."
+            },
+            {
+                "id": "device",
+                "label": "Device \u2014 the adapter is the entry",
+                "focus": ["device", "streamAdapter", "orchPos", "adapterPos", "mysqlOther"],
+                "note": "No gateway: the codec in the stream adapter is the boundary, and this realm's schema lives in another database."
+            },
+            {
+                "id": "chat-agent",
+                "label": "Chat and agent \u2014 webhooks and SDKs",
+                "focus": [
+                    "platform",
+                    "webhookAdapter",
+                    "orchChat",
+                    "orchAgent",
+                    "engineAdapter",
+                    "modelApi",
+                    "tickets"
+                ],
+                "note": "Inbound is a webhook the platform posts to; outbound is an SDK. The agent is a worker nothing calls, and it asks a person through chat."
+            },
+            {
+                "id": "third-party",
+                "label": "Third party",
+                "focus": [
+                    "partnerApp",
+                    "gatewayPartner",
+                    "orchPartner",
+                    "httpAdapter",
+                    "externalApi"
+                ],
+                "note": "The orchestrator leaves through an HTTP adapter."
+            }
+        ]
+    },
+    "layout": {
+        "mode": "grid"
+    },
+    "components": [
+        {
+            "id": "backOffice",
+            "type": "external",
+            "label": "Back office web",
+            "sublabel": "administration front end",
+            "pos": [40, 20],
+            "size": [164, 64],
+            "icon": "briefcase"
+        },
+        {
+            "id": "mobileApp",
+            "type": "external",
+            "label": "Mobile app",
+            "sublabel": "end user, native",
+            "pos": [324, 20],
+            "size": [164, 64],
+            "icon": "person"
+        },
+        {
+            "id": "webApp",
+            "type": "external",
+            "label": "End-user web",
+            "sublabel": "browser, portal",
+            "pos": [324, 96],
+            "size": [164, 64],
+            "icon": "person"
+        },
+        {
+            "id": "device",
+            "type": "external",
+            "label": "POS or ATM",
+            "sublabel": "edge device",
+            "pos": [608, 20],
+            "size": [164, 64],
+            "icon": "active"
+        },
+        {
+            "id": "partnerApp",
+            "type": "external",
+            "label": "Partner system",
+            "sublabel": "third party",
+            "pos": [892, 20],
+            "size": [164, 64],
+            "icon": "external"
+        },
+        {
+            "id": "platform",
+            "type": "external",
+            "label": "Slack / Viber",
+            "sublabel": "the chat platform",
+            "pos": [1176, 20],
+            "size": [164, 64],
+            "icon": "external"
+        },
+        {
+            "id": "tickets",
+            "type": "database",
+            "label": "Ticket pool",
+            "sublabel": "claimed one at a time",
+            "pos": [1460, 20],
+            "size": [164, 64],
+            "icon": "database"
+        },
+        {
+            "id": "gatewayAdmin",
+            "type": "security",
+            "label": "Gateway",
+            "sublabel": "authorize, validate",
+            "pos": [40, 190],
+            "size": [164, 64],
+            "icon": "security"
+        },
+        {
+            "id": "orchAdmin",
+            "type": "messagebus",
+            "label": "Orchestrator",
+            "sublabel": "namespace: admin",
+            "pos": [40, 300],
+            "size": [164, 64],
+            "icon": "decision"
+        },
+        {
+            "id": "adapterAdmin",
+            "type": "backend",
+            "label": "SQL adapter",
+            "sublabel": "knex",
+            "pos": [40, 410],
+            "size": [164, 64],
+            "icon": "messagebus"
+        },
+        {
+            "id": "objectAdapter",
+            "type": "backend",
+            "label": "Object adapter",
+            "sublabel": "files, documents",
+            "pos": [40, 520],
+            "size": [164, 64],
+            "icon": "messagebus"
+        },
+        {
+            "id": "gatewayApp",
+            "type": "security",
+            "label": "Gateway",
+            "sublabel": "authorize, validate",
+            "pos": [324, 190],
+            "size": [164, 64],
+            "icon": "security"
+        },
+        {
+            "id": "orchApp",
+            "type": "messagebus",
+            "label": "Orchestrator",
+            "sublabel": "namespace: app",
+            "pos": [324, 300],
+            "size": [164, 64],
+            "icon": "decision"
+        },
+        {
+            "id": "adapterApp",
+            "type": "backend",
+            "label": "SQL adapter",
+            "sublabel": "knex",
+            "pos": [324, 410],
+            "size": [164, 64],
+            "icon": "messagebus"
+        },
+        {
+            "id": "streamAdapter",
+            "type": "backend",
+            "label": "Stream adapter",
+            "sublabel": "ISO 8583 codec",
+            "pos": [608, 190],
+            "size": [164, 64],
+            "icon": "messagebus"
+        },
+        {
+            "id": "orchPos",
+            "type": "messagebus",
+            "label": "Orchestrator",
+            "sublabel": "namespace: pos",
+            "pos": [608, 300],
+            "size": [164, 64],
+            "icon": "decision"
+        },
+        {
+            "id": "adapterPos",
+            "type": "backend",
+            "label": "SQL adapter",
+            "sublabel": "knex",
+            "pos": [608, 410],
+            "size": [164, 64],
+            "icon": "messagebus"
+        },
+        {
+            "id": "gatewayPartner",
+            "type": "security",
+            "label": "Gateway",
+            "sublabel": "token, rate limit",
+            "pos": [892, 190],
+            "size": [164, 64],
+            "icon": "security"
+        },
+        {
+            "id": "orchPartner",
+            "type": "messagebus",
+            "label": "Orchestrator",
+            "sublabel": "namespace: fspiop",
+            "pos": [892, 300],
+            "size": [164, 64],
+            "icon": "decision"
+        },
+        {
+            "id": "httpAdapter",
+            "type": "backend",
+            "label": "HTTP adapter",
+            "sublabel": "the partner's API",
+            "pos": [892, 410],
+            "size": [164, 64],
+            "icon": "messagebus"
+        },
+        {
+            "id": "webhookAdapter",
+            "type": "backend",
+            "label": "Webhook adapter",
+            "sublabel": "answers the platform",
+            "pos": [1176, 190],
+            "size": [164, 64],
+            "icon": "messagebus"
+        },
+        {
+            "id": "orchChat",
+            "type": "messagebus",
+            "label": "Orchestrator",
+            "sublabel": "namespace: chat",
+            "pos": [1176, 300],
+            "size": [164, 64],
+            "icon": "decision"
+        },
+        {
+            "id": "chatOut",
+            "type": "backend",
+            "label": "Chat adapter",
+            "sublabel": "Slack and Viber SDK",
+            "pos": [1176, 410],
+            "size": [164, 64],
+            "icon": "messagebus"
+        },
+        {
+            "id": "orchAgent",
+            "type": "messagebus",
+            "label": "Orchestrator",
+            "sublabel": "namespace: agent",
+            "pos": [1460, 300],
+            "size": [164, 64],
+            "icon": "decision"
+        },
+        {
+            "id": "engineAdapter",
+            "type": "backend",
+            "label": "Engine adapter",
+            "sublabel": "the model's SDK",
+            "pos": [1460, 410],
+            "size": [164, 64],
+            "icon": "messagebus"
+        },
+        {
+            "id": "mysql",
+            "type": "database",
+            "label": "MySQL",
+            "sublabel": "schemas: admin, app",
+            "pos": [180, 620],
+            "size": [188, 68],
+            "brand": "mysql"
+        },
+        {
+            "id": "mysqlOther",
+            "type": "database",
+            "label": "MySQL",
+            "sublabel": "another server: pos",
+            "pos": [608, 620],
+            "size": [188, 68],
+            "brand": "mysql"
+        },
+        {
+            "id": "slackApi",
+            "type": "external",
+            "label": "Slack and Viber",
+            "sublabel": "their API",
+            "pos": [1160, 620],
+            "size": [188, 68],
+            "icon": "external"
+        },
+        {
+            "id": "modelApi",
+            "type": "external",
+            "label": "Model provider",
+            "sublabel": "OpenAI-compatible",
+            "pos": [1452, 620],
+            "size": [188, 68],
+            "icon": "external"
+        },
+        {
+            "id": "objectStore",
+            "type": "database",
+            "label": "Object storage",
+            "sublabel": "files and documents",
+            "pos": [40, 720],
+            "size": [188, 68],
+            "icon": "database"
+        },
+        {
+            "id": "externalApi",
+            "type": "external",
+            "label": "Partner API",
+            "sublabel": "their service",
+            "pos": [892, 720],
+            "size": [188, 68],
+            "icon": "external"
+        }
+    ],
+    "boundaries": [
+        {
+            "kind": "region",
+            "label": "Process \u2014 admin",
+            "wraps": ["gatewayAdmin", "orchAdmin", "adapterAdmin", "objectAdapter"],
+            "pad": 16
+        },
+        {
+            "kind": "region",
+            "label": "Process \u2014 app",
+            "wraps": ["gatewayApp", "orchApp", "adapterApp"],
+            "pad": 16
+        },
+        {
+            "kind": "region",
+            "label": "Process \u2014 pos \u00b7 adapter entry",
+            "wraps": ["streamAdapter", "orchPos", "adapterPos"],
+            "pad": 16
+        },
+        {
+            "kind": "region",
+            "label": "Process \u2014 fspiop",
+            "wraps": ["gatewayPartner", "orchPartner", "httpAdapter"],
+            "pad": 16
+        },
+        {
+            "kind": "region",
+            "label": "Process \u2014 chat \u00b7 webhooks and SDK",
+            "wraps": ["webhookAdapter", "orchChat", "chatOut"],
+            "pad": 16
+        },
+        {
+            "kind": "region",
+            "label": "Process \u2014 agent \u00b7 a worker",
+            "wraps": ["orchAgent", "engineAdapter"],
+            "pad": 16
+        }
+    ],
+    "connections": [
+        {
+            "id": "back-office",
+            "from": "backOffice",
+            "to": "gatewayAdmin",
+            "variant": "security"
+        },
+        {
+            "id": "mobile",
+            "from": "mobileApp",
+            "to": "gatewayApp",
+            "variant": "security"
+        },
+        {
+            "id": "web",
+            "from": "webApp",
+            "to": "gatewayApp",
+            "variant": "security"
+        },
+        {
+            "id": "partner",
+            "from": "partnerApp",
+            "to": "gatewayPartner",
+            "variant": "security"
+        },
+        {
+            "id": "webhook",
+            "from": "platform",
+            "to": "webhookAdapter",
+            "variant": "security",
+            "label": "webhook"
+        },
+        {
+            "id": "admin-dispatch",
+            "from": "gatewayAdmin",
+            "to": "orchAdmin",
+            "variant": "default"
+        },
+        {
+            "id": "app-dispatch",
+            "from": "gatewayApp",
+            "to": "orchApp",
+            "variant": "default"
+        },
+        {
+            "id": "partner-dispatch",
+            "from": "gatewayPartner",
+            "to": "orchPartner",
+            "variant": "default"
+        },
+        {
+            "id": "pos-dispatch",
+            "from": "streamAdapter",
+            "to": "orchPos",
+            "variant": "default"
+        },
+        {
+            "id": "chat-dispatch",
+            "from": "webhookAdapter",
+            "to": "orchChat",
+            "variant": "default"
+        },
+        {
+            "id": "claim",
+            "from": "tickets",
+            "to": "orchAgent",
+            "variant": "default",
+            "label": "claim"
+        },
+        {
+            "id": "cross-orch",
+            "from": "orchAgent",
+            "to": "orchChat",
+            "variant": "default",
+            "label": "private API"
+        },
+        {
+            "id": "admin-sql",
+            "from": "orchAdmin",
+            "to": "adapterAdmin",
+            "variant": "emphasis"
+        },
+        {
+            "id": "admin-object",
+            "from": "orchAdmin",
+            "to": "objectAdapter",
+            "variant": "emphasis"
+        },
+        {
+            "id": "app-sql",
+            "from": "orchApp",
+            "to": "adapterApp",
+            "variant": "emphasis"
+        },
+        {
+            "id": "pos-sql",
+            "from": "orchPos",
+            "to": "adapterPos",
+            "variant": "emphasis"
+        },
+        {
+            "id": "partner-http",
+            "from": "orchPartner",
+            "to": "httpAdapter",
+            "variant": "emphasis"
+        },
+        {
+            "id": "chat-out",
+            "from": "orchChat",
+            "to": "chatOut",
+            "variant": "emphasis"
+        },
+        {
+            "id": "agent-engine",
+            "from": "orchAgent",
+            "to": "engineAdapter",
+            "variant": "emphasis"
+        },
+        {
+            "id": "admin-db",
+            "from": "adapterAdmin",
+            "to": "mysql",
+            "variant": "emphasis"
+        },
+        {
+            "id": "app-db",
+            "from": "adapterApp",
+            "to": "mysql",
+            "variant": "emphasis"
+        },
+        {
+            "id": "pos-db",
+            "from": "adapterPos",
+            "to": "mysqlOther",
+            "variant": "emphasis"
+        },
+        {
+            "id": "object-store",
+            "from": "objectAdapter",
+            "to": "objectStore",
+            "variant": "emphasis"
+        },
+        {
+            "id": "partner-api",
+            "from": "httpAdapter",
+            "to": "externalApi",
+            "variant": "emphasis"
+        },
+        {
+            "id": "chat-api",
+            "from": "chatOut",
+            "to": "slackApi",
+            "variant": "emphasis"
+        },
+        {
+            "id": "model-api",
+            "from": "engineAdapter",
+            "to": "modelApi",
+            "variant": "emphasis"
+        },
+        {
+            "id": "cross-adapter",
+            "from": "orchPartner",
+            "to": "adapterPos",
+            "variant": "security",
+            "label": "discouraged"
+        }
+    ],
+    "cards": [
+        {
+            "dot": "cyan",
+            "title": "Six processes, and they are not alike",
+            "items": [
+                "admin: a gateway, an orchestrator, a SQL adapter and an object adapter",
+                "app: the same with one adapter; pos: no gateway, the device speaks a protocol into a stream adapter",
+                "chat: no gateway either \u2014 the platform posts to a webhook adapter, and the answer leaves through an SDK",
+                "agent: a worker nothing calls; it claims a ticket and asks a person through chat's private API",
+                "fspiop: a partner gateway, an orchestrator, and an adapter that leaves the cluster"
+            ]
+        },
+        {
+            "dot": "emerald",
+            "title": "What the arrow colours mean",
+            "items": [
+                "Red: the public API \u2014 a caller or a platform arrives at a gateway or a webhook",
+                "Neutral: the private API \u2014 dispatch to an orchestrator, a claim, and one realm calling another",
+                "Green: an integration \u2014 into an adapter, and the adapter into the store or the external API it talks to",
+                "Red dashed: an orchestrator reaching another realm's adapter, which is possible and discouraged"
+            ]
+        },
+        {
+            "dot": "amber",
+            "title": "Stores, and where a schema lives",
+            "items": [
+                "A realm owns its schema, not the server: one MySQL can hold admin and app, another holds pos",
+                "A schema belongs to one database, so the same deployment can split them and a second server is a config change",
+                "Object storage is a store too \u2014 files and documents a realm owns, written by an object adapter",
+                "The agent's workspace is a volume, one claim per host, because a resume must find the files a session made"
+            ]
+        }
+    ]
+}

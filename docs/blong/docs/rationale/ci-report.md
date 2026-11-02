@@ -11,6 +11,17 @@ document**. `ci-report.md` is written once per run, published as an artefact and
 the comment. There is no summary that summarises the summary, nothing to reconcile when the two
 disagree, and nothing a reviewer has to read twice.
 
+The path that decision produces, from a push to the answer somebody looking at a red build actually
+wants — which test failed, and why:
+
+<ArchifyDiagram
+    slug="blong-ci"
+    title="A CI run and the evidence it leaves"
+    height="700px"
+    posterLight={require('../concepts/img/diagrams/blong-ci-light.png').default}
+    posterDark={require('../concepts/img/diagrams/blong-ci-dark.png').default}
+/>
+
 ## One row per package, and the delta in the same cell
 
 The report's core is a table with one row per test package. Its shape follows from a rule that

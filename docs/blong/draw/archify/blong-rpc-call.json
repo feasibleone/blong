@@ -1,0 +1,257 @@
+{
+    "schema_version": 1,
+    "diagram_type": "sequence",
+    "meta": {
+        "title": "One RPC call, end to end",
+        "output": "docs/blong/static/diagrams/blong-rpc-call.html",
+        "locale": "en",
+        "quality_profile": "showcase",
+        "views": [
+            {
+                "id": "happy",
+                "label": "The reply",
+                "focus": ["client", "gateway", "orchestrator", "adapter", "mysql"],
+                "note": "Authorize, validate, coordinate, write, answer."
+            },
+            {
+                "id": "library",
+                "label": "A library realm is local",
+                "focus": ["orchestrator", "core"],
+                "note": "The call does not leave the process and joins the caller's transaction."
+            },
+            {
+                "id": "trace",
+                "label": "What is recorded",
+                "focus": ["orchestrator", "log"],
+                "note": "A checkpoint records the step and the branch; the semantic log turns those into flows."
+            }
+        ]
+    },
+    "participants": [
+        {
+            "id": "client",
+            "type": "external",
+            "label": "API client",
+            "sublabel": "web, mobile, partner",
+            "icon": "person"
+        },
+        {
+            "id": "gateway",
+            "type": "security",
+            "label": "Gateway",
+            "sublabel": "authorize, validate",
+            "icon": "security"
+        },
+        {
+            "id": "orchestrator",
+            "type": "backend",
+            "label": "Orchestrator",
+            "sublabel": "business process",
+            "icon": "decision"
+        },
+        {
+            "id": "core",
+            "type": "backend",
+            "label": "blong-core",
+            "sublabel": "library realm",
+            "icon": "database"
+        },
+        {
+            "id": "adapter",
+            "type": "backend",
+            "label": "Adapter",
+            "sublabel": "knex",
+            "icon": "messagebus"
+        },
+        {
+            "id": "mysql",
+            "type": "database",
+            "label": "MySQL",
+            "sublabel": "schema, procedures",
+            "icon": "database",
+            "brand": "mysql"
+        },
+        {
+            "id": "log",
+            "type": "messagebus",
+            "label": "Semantic log",
+            "sublabel": "checkpoints",
+            "icon": "clock"
+        }
+    ],
+    "segments": [
+        {
+            "from": 150,
+            "to": 245,
+            "label": "Ingress and checks"
+        },
+        {
+            "from": 252,
+            "to": 446,
+            "label": "Business logic"
+        },
+        {
+            "from": 450,
+            "to": 538,
+            "label": "Response"
+        }
+    ],
+    "messages": [
+        {
+            "id": "call",
+            "from": "client",
+            "to": "gateway",
+            "y": 170,
+            "label": "POST /rpc/transfer/transfer/prepare",
+            "variant": "emphasis",
+            "note": "authorize from role bits, validate the type"
+        },
+        {
+            "id": "dispatch",
+            "from": "gateway",
+            "to": "orchestrator",
+            "y": 232,
+            "label": "dispatch with $meta",
+            "variant": "default"
+        },
+        {
+            "id": "library",
+            "from": "orchestrator",
+            "to": "core",
+            "y": 268,
+            "label": "super.<method>",
+            "variant": "default",
+            "note": "in-process, joins the caller's transaction"
+        },
+        {
+            "id": "library-return",
+            "from": "core",
+            "to": "orchestrator",
+            "y": 326,
+            "label": "resource rows",
+            "variant": "return"
+        },
+        {
+            "id": "handler",
+            "from": "orchestrator",
+            "to": "adapter",
+            "y": 356,
+            "label": "runtime.handler(...)",
+            "variant": "default"
+        },
+        {
+            "id": "sql",
+            "from": "adapter",
+            "to": "mysql",
+            "y": 386,
+            "label": "SQL",
+            "variant": "default"
+        },
+        {
+            "id": "rows",
+            "from": "mysql",
+            "to": "adapter",
+            "y": 414,
+            "label": "rows",
+            "variant": "return"
+        },
+        {
+            "id": "result",
+            "from": "adapter",
+            "to": "orchestrator",
+            "y": 442,
+            "label": "result",
+            "variant": "return"
+        },
+        {
+            "id": "checkpoint",
+            "from": "orchestrator",
+            "to": "log",
+            "y": 472,
+            "label": "checkpoint",
+            "variant": "dashed"
+        },
+        {
+            "id": "reply",
+            "from": "orchestrator",
+            "to": "gateway",
+            "y": 502,
+            "label": "result or typed error",
+            "variant": "return"
+        },
+        {
+            "id": "respond",
+            "from": "gateway",
+            "to": "client",
+            "y": 530,
+            "label": "200 or expected error",
+            "variant": "return"
+        }
+    ],
+    "activations": [
+        {
+            "participant": "gateway",
+            "from": 168,
+            "to": 512,
+            "type": "security"
+        },
+        {
+            "participant": "orchestrator",
+            "from": 232,
+            "to": 506,
+            "type": "backend"
+        },
+        {
+            "participant": "core",
+            "from": 264,
+            "to": 332,
+            "type": "backend"
+        },
+        {
+            "participant": "adapter",
+            "from": 352,
+            "to": 448,
+            "type": "backend"
+        },
+        {
+            "participant": "mysql",
+            "from": 382,
+            "to": 418,
+            "type": "database"
+        },
+        {
+            "participant": "log",
+            "from": 468,
+            "to": 480,
+            "type": "messagebus"
+        }
+    ],
+    "cards": [
+        {
+            "dot": "rose",
+            "title": "Two things the gateway adds",
+            "items": [
+                "Authorization reads the role bits the token carries, and the expansion is cached per role bit",
+                "Validation uses the schema generated from the handler's own Handler type, so the check cannot drift from the code"
+            ]
+        },
+        {
+            "dot": "emerald",
+            "title": "Invariants of a call",
+            "items": [
+                "Every dispatch is made through the handler() proxy \u2014 direct imports break inversion of control",
+                "$meta is forwarded as the second argument at every hop",
+                "A typed error travels with its parameters; $meta.expect marks the ones a test expects"
+            ]
+        },
+        {
+            "dot": "cyan",
+            "title": "Beyond the reply",
+            "items": [
+                "A checkpoint records the step a run reached and the branch it took",
+                "The semantic log turns those records into the observed flows the docs draw",
+                "Logs, metrics and traces leave the process on their own path"
+            ]
+        }
+    ]
+}

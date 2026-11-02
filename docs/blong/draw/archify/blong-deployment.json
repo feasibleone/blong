@@ -1,0 +1,332 @@
+{
+    "schema_version": 2,
+    "diagram_type": "workflow",
+    "meta": {
+        "title": "From a merged commit to a running suite",
+        "output": "docs/blong/static/diagrams/blong-deployment.html",
+        "locale": "en",
+        "quality_profile": "showcase",
+        "views": [
+            {
+                "id": "happy",
+                "label": "The happy path",
+                "focus": [
+                    "merge",
+                    "release",
+                    "resolve",
+                    "artifact",
+                    "approve",
+                    "patch",
+                    "reconcile",
+                    "ready"
+                ],
+                "note": "A merged commit reaches a running suite without a human touching the cluster."
+            },
+            {
+                "id": "refused",
+                "label": "A token that does not match",
+                "focus": ["approve", "refuse"],
+                "note": "The route answers 401 before the handler that touches the CR runs."
+            },
+            {
+                "id": "image",
+                "label": "Waiting for the image",
+                "focus": ["release", "image", "resolve"],
+                "note": "A release is not a promise that its framework image is pullable yet."
+            }
+        ]
+    },
+    "lanes": [
+        {
+            "id": "github",
+            "label": "GitHub"
+        },
+        {
+            "id": "workflow",
+            "label": "Deploy workflow"
+        },
+        {
+            "id": "operator",
+            "label": "Operator"
+        },
+        {
+            "id": "cluster",
+            "label": "Cluster"
+        },
+        {
+            "id": "refused",
+            "label": "Refused",
+            "variant": "exception"
+        }
+    ],
+    "phases": [
+        {
+            "id": "publish",
+            "label": "Publish the release",
+            "fromCol": 0,
+            "toCol": 1
+        },
+        {
+            "id": "build",
+            "label": "Build the artifact",
+            "fromCol": 2,
+            "toCol": 3,
+            "variant": "emphasis"
+        },
+        {
+            "id": "converge",
+            "label": "Approve and converge",
+            "fromCol": 4,
+            "toCol": 5,
+            "variant": "security"
+        }
+    ],
+    "mainPath": [
+        "merge",
+        "release",
+        "resolve",
+        "artifact",
+        "approve",
+        "patch",
+        "reconcile",
+        "ready"
+    ],
+    "nodes": [
+        {
+            "id": "merge",
+            "lane": "github",
+            "col": 0,
+            "type": "external",
+            "label": "Merge to main",
+            "sublabel": "on main",
+            "width": 110,
+            "icon": "flag"
+        },
+        {
+            "id": "release",
+            "lane": "github",
+            "col": 1,
+            "type": "backend",
+            "label": "release-please",
+            "sublabel": "one tag per component",
+            "tag": "<component>-v<version>",
+            "width": 128,
+            "icon": "briefcase",
+            "brand": "github-actions"
+        },
+        {
+            "id": "resolve",
+            "lane": "workflow",
+            "col": 2,
+            "type": "backend",
+            "label": "resolve",
+            "sublabel": "tag to alias, version",
+            "tag": "waits for the image",
+            "width": 128,
+            "icon": "decision"
+        },
+        {
+            "id": "artifact",
+            "lane": "workflow",
+            "col": 3,
+            "type": "backend",
+            "label": "artifact",
+            "sublabel": "rush deploy, then zip",
+            "tag": "sha256",
+            "width": 128,
+            "icon": "neutral"
+        },
+        {
+            "id": "asset",
+            "lane": "github",
+            "col": 3,
+            "type": "database",
+            "label": "Release asset",
+            "sublabel": "the zip on the release",
+            "width": 126,
+            "icon": "database",
+            "brand": "github"
+        },
+        {
+            "id": "approve",
+            "lane": "workflow",
+            "col": 4,
+            "type": "security",
+            "label": "deploy",
+            "sublabel": "posts an approval",
+            "tag": "token, not a session",
+            "width": 128,
+            "icon": "security"
+        },
+        {
+            "id": "refuse",
+            "lane": "refused",
+            "col": 4,
+            "type": "security",
+            "label": "401",
+            "sublabel": "token mismatch",
+            "tag": "the CR is untouched",
+            "width": 128,
+            "icon": "failure"
+        },
+        {
+            "id": "patch",
+            "lane": "operator",
+            "col": 4,
+            "type": "backend",
+            "label": "Patch the CR",
+            "sublabel": "version, artifact, digest",
+            "tag": "minFrameworkVersion",
+            "width": 128,
+            "icon": "success"
+        },
+        {
+            "id": "reconcile",
+            "lane": "operator",
+            "col": 5,
+            "type": "backend",
+            "label": "Reconcile",
+            "sublabel": "fill volume, migrate",
+            "tag": "status write",
+            "width": 128,
+            "icon": "waiting",
+            "brand": "kubernetes"
+        },
+        {
+            "id": "ready",
+            "lane": "cluster",
+            "col": 5,
+            "type": "cloud",
+            "label": "Ready",
+            "sublabel": "pods mount the volume",
+            "tag": "one Service per namespace",
+            "width": 128,
+            "icon": "cloud",
+            "brand": "kubernetes"
+        },
+        {
+            "id": "image",
+            "lane": "github",
+            "col": 2,
+            "type": "cloud",
+            "label": "Framework image",
+            "sublabel": "ghcr.io/\u2026/gogo",
+            "tag": "waited for, not promised",
+            "icon": "cloud",
+            "brand": "docker",
+            "width": 140
+        }
+    ],
+    "edges": [
+        {
+            "id": "merged",
+            "from": "merge",
+            "to": "release",
+            "label": "release PR merged",
+            "variant": "default"
+        },
+        {
+            "id": "published",
+            "from": "release",
+            "to": "resolve",
+            "label": "release: published",
+            "variant": "emphasis"
+        },
+        {
+            "id": "build",
+            "from": "resolve",
+            "to": "artifact",
+            "label": "the alias's scenario",
+            "variant": "default"
+        },
+        {
+            "id": "upload",
+            "from": "artifact",
+            "to": "asset",
+            "label": "upload with the digest",
+            "variant": "default"
+        },
+        {
+            "id": "post",
+            "from": "artifact",
+            "to": "approve",
+            "label": "URL and sha256",
+            "variant": "default"
+        },
+        {
+            "id": "rejected",
+            "from": "approve",
+            "to": "refuse",
+            "label": "wrong token",
+            "variant": "security",
+            "role": "error"
+        },
+        {
+            "id": "approved",
+            "from": "approve",
+            "to": "patch",
+            "label": "approve",
+            "variant": "emphasis"
+        },
+        {
+            "id": "converge",
+            "from": "patch",
+            "to": "reconcile",
+            "label": "converge",
+            "variant": "default"
+        },
+        {
+            "id": "filled",
+            "from": "asset",
+            "to": "reconcile",
+            "label": "fill Job downloads it",
+            "variant": "dashed",
+            "toSide": "top",
+            "fromSide": "right"
+        },
+        {
+            "id": "running",
+            "from": "reconcile",
+            "to": "ready",
+            "label": "status Ready",
+            "variant": "emphasis"
+        },
+        {
+            "id": "image-ready",
+            "from": "image",
+            "to": "resolve",
+            "label": "must be pullable",
+            "variant": "dashed",
+            "role": "async"
+        }
+    ],
+    "cards": [
+        {
+            "dot": "cyan",
+            "title": "The deployment map",
+            "items": [
+                ".github/deployments.json is the only place a suite is named",
+                "An alias maps to the release component, the rush deploy scenario, the artifact name, the namespace and the profile",
+                "The entry marked installer is the operator's own install, and resolve skips it"
+            ]
+        },
+        {
+            "dot": "amber",
+            "title": "Why a release often deploys nothing",
+            "items": [
+                "release-please publishes the whole batch at once, one release per changed package",
+                "Only a tag the map names runs a build and a call; the rest report a notice and stop",
+                "A release is not a promise that its framework image is pullable yet, so resolve waits for it"
+            ]
+        },
+        {
+            "dot": "rose",
+            "title": "One door into the cluster",
+            "items": [
+                "The only credential the workflow holds is the operator's release token",
+                "It addresses one JSON-RPC route, and the check happens before the handler that touches the CR",
+                "The suite's own manifests never carry the operator, only the CR and the bindings it needs"
+            ]
+        }
+    ]
+}

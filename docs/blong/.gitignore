@@ -9,6 +9,12 @@
 # rather than committed, and a plain `npm run build` renders each embed's poster instead.
 /static/storybook
 
+# The interactive diagrams the pages embed (`diagrams.json`), staged by `npm run stage-diagrams`.
+# A self-contained build output of about a megabyte per diagram, rendered by a tool this repository
+# does not depend on, so it is rebuilt for a deploy rather than committed — and a plain
+# `npm run build` renders each embed's committed poster instead.
+/static/diagrams
+
 # Generated files
 .docusaurus
 .cache-loader

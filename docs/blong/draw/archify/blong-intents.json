@@ -1,0 +1,224 @@
+{
+    "schema_version": 2,
+    "diagram_type": "workflow",
+    "meta": {
+        "title": "Intents decide what a process becomes",
+        "output": "docs/blong/static/diagrams/blong-intents.html",
+        "locale": "en",
+        "quality_profile": "showcase"
+    },
+    "lanes": [
+        {
+            "id": "intents",
+            "label": "Intents"
+        },
+        {
+            "id": "config",
+            "label": "Configuration"
+        },
+        {
+            "id": "layers",
+            "label": "Layers"
+        },
+        {
+            "id": "process",
+            "label": "Process shape"
+        },
+        {
+            "id": "refused",
+            "label": "Refused",
+            "variant": "exception"
+        }
+    ],
+    "phases": [
+        {
+            "id": "resolve",
+            "label": "Resolve",
+            "fromCol": 0,
+            "toCol": 1
+        },
+        {
+            "id": "merge",
+            "label": "Merge and validate",
+            "fromCol": 2,
+            "toCol": 3,
+            "variant": "emphasis"
+        },
+        {
+            "id": "activate",
+            "label": "Activate",
+            "fromCol": 4,
+            "toCol": 5,
+            "variant": "dashed"
+        }
+    ],
+    "mainPath": ["cmd", "active", "merge", "validate", "discover", "activate", "shape"],
+    "nodes": [
+        {
+            "id": "cmd",
+            "lane": "intents",
+            "col": 0,
+            "type": "external",
+            "label": "Command line",
+            "sublabel": "positional intents",
+            "width": 150,
+            "icon": "active"
+        },
+        {
+            "id": "active",
+            "lane": "intents",
+            "col": 1,
+            "type": "backend",
+            "label": "Active intents",
+            "sublabel": "the set the run is built from",
+            "tag": "default first",
+            "width": 160,
+            "icon": "decision"
+        },
+        {
+            "id": "merge",
+            "lane": "config",
+            "col": 2,
+            "type": "backend",
+            "label": "Merge config blocks",
+            "sublabel": "default, then each intent",
+            "tag": "later wins",
+            "width": 160,
+            "icon": "neutral"
+        },
+        {
+            "id": "validate",
+            "lane": "config",
+            "col": 3,
+            "type": "backend",
+            "label": "Validate each block",
+            "sublabel": "the component's own schema",
+            "width": 160,
+            "icon": "success"
+        },
+        {
+            "id": "refuse",
+            "lane": "refused",
+            "col": 2,
+            "type": "security",
+            "label": "Refused",
+            "sublabel": "unknown intent or exclusion group",
+            "tag": "stops before merging",
+            "width": 180,
+            "icon": "failure"
+        },
+        {
+            "id": "discover",
+            "lane": "layers",
+            "col": 4,
+            "type": "backend",
+            "label": "Discover layers",
+            "sublabel": "well-known folders",
+            "width": 170,
+            "icon": "waiting"
+        },
+        {
+            "id": "activate",
+            "lane": "layers",
+            "col": 5,
+            "type": "backend",
+            "label": "Activate or leave off",
+            "sublabel": "names an active intent",
+            "width": 170,
+            "icon": "success"
+        },
+        {
+            "id": "shape",
+            "lane": "process",
+            "col": 5,
+            "type": "cloud",
+            "label": "The process that results",
+            "sublabel": "service, test runner, or a job that exits",
+            "width": 200,
+            "icon": "cloud"
+        }
+    ],
+    "edges": [
+        {
+            "id": "read",
+            "from": "cmd",
+            "to": "active",
+            "label": "read the arguments",
+            "variant": "default"
+        },
+        {
+            "id": "merge-blocks",
+            "from": "active",
+            "to": "merge",
+            "label": "one block per intent",
+            "variant": "emphasis"
+        },
+        {
+            "id": "exclusion",
+            "from": "active",
+            "to": "refuse",
+            "label": "two in one group",
+            "variant": "security",
+            "role": "error"
+        },
+        {
+            "id": "validated",
+            "from": "merge",
+            "to": "validate",
+            "variant": "default"
+        },
+        {
+            "id": "armed",
+            "from": "validate",
+            "to": "discover",
+            "label": "with its validated config",
+            "variant": "default"
+        },
+        {
+            "id": "discovery",
+            "from": "discover",
+            "to": "activate",
+            "label": "auto-discovery default or declared",
+            "variant": "default"
+        },
+        {
+            "id": "run",
+            "from": "activate",
+            "to": "shape",
+            "label": "only what activated runs",
+            "variant": "emphasis"
+        }
+    ],
+    "cards": [
+        {
+            "dot": "cyan",
+            "title": "What the active set contains",
+            "items": [
+                "default is always merged first; every named intent contributes its own block on top",
+                "server and browser are injected by the platform, never typed on the command line",
+                "ci is appended by the framework whenever the process runs on CI",
+                "No arguments means dev + microservice + integration"
+            ]
+        },
+        {
+            "dot": "emerald",
+            "title": "Nothing implies anything",
+            "items": [
+                "microservice activates layers; dev and integration activate the realms their runs need",
+                "k8s activates every realm a suite declares, because the tree it writes is that set",
+                "release activates neither: a pod carries one --realm.layer flag per split the deployment chose",
+                "Layer folder names double as intent names in layer.server.ts and layer.browser.ts"
+            ]
+        },
+        {
+            "dot": "amber",
+            "title": "How the run ends",
+            "items": [
+                "k8s, upgrade and cli are short-lived: they do their work and exit",
+                "dev reloads in process; integration reruns tests on change and exits when CI is set",
+                "playwright hands the process lifetime to the runner",
+                "config is validated and hot-reloaded, not only read at startup"
+            ]
+        }
+    ]
+}

@@ -40,6 +40,8 @@ export interface IVisualPage {
     images: number;
     /** How many stories the page embeds with `<StorybookStory>`. */
     stories: number;
+    /** How many interactive diagrams the page embeds with `<ArchifyDiagram>`. */
+    diagrams: number;
 }
 
 /** A fenced block that opens with the mermaid info string. */
@@ -69,6 +71,9 @@ export function countImages(markdown: string): number {
 
 /** The tag a page embeds a story with. */
 const STORYBOOK_EMBED = /<StorybookStory\b/g;
+
+/** The tag a page embeds an interactive diagram with. */
+const ARCHIFY_EMBED = /<ArchifyDiagram\b/g;
 
 /**
  * `markdown` with every fenced block and inline code span emptied out.
@@ -103,6 +108,16 @@ export function stripCode(markdown: string): string {
  */
 export function countStorybookEmbeds(markdown: string): number {
     return stripCode(markdown).match(STORYBOOK_EMBED)?.length ?? 0;
+}
+
+/**
+ * How many interactive diagrams `markdown` embeds.
+ *
+ * Counted outside code for the same reason a story is: the page that documents the tag shows it in a
+ * fence, and an example is not an embed.
+ */
+export function countArchifyEmbeds(markdown: string): number {
+    return stripCode(markdown).match(ARCHIFY_EMBED)?.length ?? 0;
 }
 
 /**
@@ -153,9 +168,10 @@ function pagesUnder(
         const blocks = countMermaidBlocks(markdown);
         const images = countImages(markdown);
         const stories = countStorybookEmbeds(markdown);
-        if (blocks === 0 && images === 0 && stories === 0) continue;
+        const diagrams = countArchifyEmbeds(markdown);
+        if (blocks === 0 && images === 0 && stories === 0 && diagrams === 0) continue;
         const file = relative(dir, path).split('\\').join('/');
-        pages.push({file, route: routeFor(file, markdown), blocks, images, stories});
+        pages.push({file, route: routeFor(file, markdown), blocks, images, stories, diagrams});
     }
     return pages;
 }

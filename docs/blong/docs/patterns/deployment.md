@@ -4,6 +4,16 @@ The repository deploys a suite the same way a released product would: an operato
 `BlongDeployment`, a release workflow builds the artifact, and the operator's gateway is the only
 door the workflow opens. `realm/blong-sport` is the worked example; the mechanism is generic.
 
+The whole path, from the merged commit to a pod that mounts the suite's version volume:
+
+<ArchifyDiagram
+    slug="blong-deployment"
+    title="From a merged commit to a running suite"
+    height="760px"
+    posterLight={require('../concepts/img/diagrams/blong-deployment-light.png').default}
+    posterDark={require('../concepts/img/diagrams/blong-deployment-dark.png').default}
+/>
+
 ## The three halves
 
 - **Operator** — one per cluster, installed once, reconciling every tenant's CR; in
