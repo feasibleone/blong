@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.47.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.46.0...blong-gogo-v1.47.0) (2026-11-02)
+
+
+### Features
+
+* agent persona ([492b178](https://github.com/feasibleone/blong/commit/492b1788c1db8b81fcb11757bdae1b35c353eac4))
+
+
+### Bug Fixes
+
+* move plain module ([8f1e103](https://github.com/feasibleone/blong/commit/8f1e103602c9b006b288b61cf476ac330d40ca92))
+
 ## [1.46.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.45.0...blong-gogo-v1.46.0) (2026-11-01)
 
 
