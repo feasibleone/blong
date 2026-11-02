@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.39.0](https://github.com/feasibleone/blong/compare/blong-v1.38.0...blong-v1.39.0) (2026-11-02)
+
+
+### Features
+
+* agent persona ([492b178](https://github.com/feasibleone/blong/commit/492b1788c1db8b81fcb11757bdae1b35c353eac4))
+
 ## [1.38.0](https://github.com/feasibleone/blong/compare/blong-v1.37.0...blong-v1.38.0) (2026-11-01)
 
 
