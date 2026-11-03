@@ -23,6 +23,7 @@
  * fixture fails a test outright when the browser throws while the page loads.
  */
 import type {Expect, Page, Request, Response} from '@playwright/test';
+import type {Portal} from '../playwright.js';
 import {captureDocs} from './docs.js';
 import type {ITestFn} from './model.js';
 
@@ -98,6 +99,22 @@ export interface IOpenPagesOptions {
      * asked to maintain. Requires {@link IOpenPagesOptions.docs}.
      */
     docsOnly?: boolean;
+    /**
+     * How many pages one test opens (default 1).
+     *
+     * A test's largest cost is its boot: a fresh browser context fetches the app, draws the
+     * login screen, signs in and waits for the composed portal before the first click — ten
+     * seconds on a CI runner, and every page-open test pays it again. Opening six pages in
+     * one test pays it once and visits six pages, which is what took blong-sport's 46 page
+     * tests to 630 s (`@@D-748`).
+     *
+     * Each page is still captured under its own name, and the tab it opened is closed again
+     * before the next one: a capture with three tabs behind it is a different picture from
+     * one with a single tab, so grouping must not move a baseline. A failure names the page
+     * it was on in the error, not just the group, and the group is a *slice of the list* —
+     * so a failure costs at most `groupSize - 1` pages of evidence, never the whole spec.
+     */
+    groupSize?: number;
 }
 
 /**
@@ -176,48 +193,68 @@ export function openPages(
         baselinePrefix,
         docs,
         docsOnly = false,
+        groupSize = 1,
     }: IOpenPagesOptions,
 ): void {
     if (docsOnly && docs === undefined) {
         throw new Error('openPages: docsOnly needs a docs() name for the images it writes');
     }
-    for (const entry of methods) {
-        const page: IOpenPage = typeof entry === 'string' ? {method: entry} : entry;
+    const pages: IOpenPage[] = methods.map(entry =>
+        typeof entry === 'string' ? {method: entry} : entry,
+    );
+    const groups: IOpenPage[][] = [];
+    for (let index = 0; index < pages.length; index += Math.max(1, groupSize)) {
+        groups.push(pages.slice(index, index + Math.max(1, groupSize)));
+    }
+    for (const group of groups) {
+        const first = group[0] as IOpenPage;
+        const name = `${docsOnly ? 'document' : 'open'} ${first.method}${group.length > 1 ? ` +${group.length - 1}` : ''}`;
+        test(name, async ({portal}) => {
+            for (const page of group) {
+                await openOne(portal, page);
+                if (group.length > 1) {
+                    // Back to the empty portal, so the next capture is the picture its
+                    // baseline was taken in — one tab and nothing behind it.
+                    await portal.tabsCloseAll();
+                }
+            }
+        });
+    }
+
+    async function openOne(portal: Portal, page: IOpenPage): Promise<void> {
         const baseline =
             page.screenshot ??
             screenshot?.(page.method) ??
             `${page.method.replace(/\./g, '-')}.png`;
-        test(`${docsOnly ? 'document' : 'open'} ${page.method}`, async ({portal}) => {
-            await portal.menuClick(page.method);
-            const searchText = page.searchText ?? defaultSearchText;
-            const wantsData = page.waitForTableData ?? waitForTableData;
-            if (searchText !== undefined) {
-                // The page's own first read has to settle first: a read still in
-                // flight would be the one the search wait mistakes for its own.
-                // `@@F-603`
-                if (wantsData) await portal.waitForTableData();
-                const [subject, object] = page.method.split('.');
-                await fillBrowseSearch(portal.page, searchText, `/rpc/${subject}/${object}/find`);
-            }
+        await portal.menuClick(page.method);
+        const searchText = page.searchText ?? defaultSearchText;
+        const wantsData = page.waitForTableData ?? waitForTableData;
+        if (searchText !== undefined) {
+            // The page's own first read has to settle first: a read still in
+            // flight would be the one the search wait mistakes for its own.
+            // `@@F-603`
             if (wantsData) await portal.waitForTableData();
-            const target =
-                page.region === undefined ? portal.page : portal.page.locator(page.region).first();
-            if (!docsOnly) {
-                await expect(target).toHaveScreenshot(
-                    baselinePrefix === undefined ? baseline : `${baselinePrefix}-${baseline}`,
-                    page.mask === undefined
-                        ? {}
-                        : {mask: page.mask.map(selector => portal.page.locator(selector))},
-                );
-            }
-            const docsName = page.docs ?? docs?.(page.method);
-            if (docsName !== undefined) {
-                await captureDocs(portal, {
-                    name: docsName,
-                    ...(page.region === undefined ? {} : {region: page.region}),
-                    ...(page.mask === undefined ? {} : {mask: page.mask}),
-                });
-            }
-        });
+            const [subject, object] = page.method.split('.');
+            await fillBrowseSearch(portal.page, searchText, `/rpc/${subject}/${object}/find`);
+        }
+        if (wantsData) await portal.waitForTableData();
+        const target =
+            page.region === undefined ? portal.page : portal.page.locator(page.region).first();
+        if (!docsOnly) {
+            await expect(target).toHaveScreenshot(
+                baselinePrefix === undefined ? baseline : `${baselinePrefix}-${baseline}`,
+                page.mask === undefined
+                    ? {}
+                    : {mask: page.mask.map(selector => portal.page.locator(selector))},
+            );
+        }
+        const docsName = page.docs ?? docs?.(page.method);
+        if (docsName !== undefined) {
+            await captureDocs(portal, {
+                name: docsName,
+                ...(page.region === undefined ? {} : {region: page.region}),
+                ...(page.mask === undefined ? {} : {mask: page.mask}),
+            });
+        }
     }
 }

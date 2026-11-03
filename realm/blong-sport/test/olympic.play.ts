@@ -7,7 +7,7 @@
  * re-evaluates this file, and a name minted per run would change under it while
  * the row created by the previous attempt stayed behind.
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {browseModel, cleanupModel, createAndEditModel, quiet} from './sportPlay.js';
 
 test.use({blongPermissions: true});

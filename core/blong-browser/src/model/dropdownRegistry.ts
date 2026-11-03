@@ -99,3 +99,15 @@ class DropdownRegistry {
 
 /** Singleton dropdown registry — shared across all components */
 export const dropdownRegistry = new DropdownRegistry();
+
+/**
+ * Drop every cached option list, so the next form reads them again.
+ *
+ * A list is cached for the life of the page, and a write changes what belongs in one: a
+ * document created in this session must appear in the attachment form's picker, and it did
+ * not until the page was reloaded. The cost is one read per form opened after a write — the
+ * same read a reload would have made (`@@D-748`).
+ */
+export function invalidateDropdowns(): void {
+    dropdownRegistry.clear();
+}

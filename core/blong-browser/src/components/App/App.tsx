@@ -29,6 +29,7 @@ import {ErrorDialog} from '../Error/Error.js';
 import {FeedbackLayer} from '../../feedback/FeedbackLayer.js';
 import {FeedbackToggle} from '../../feedback/FeedbackToggle.js';
 import {FeedbackActiveContext} from '../../feedback/useFeedbackTarget.js';
+import {prefetchPageSystem} from '../../prefetch.js';
 import {ActionHint} from '../Hint/Hint.js';
 import {LanguageSwitcher} from '../LanguageSwitcher/LanguageSwitcher.js';
 import {Login} from '../Login/Login.js';
@@ -88,6 +89,12 @@ function AppShell({
     // gates the first paint to avoid a login-screen flash while the request
     // round-trips.
     const [restored, setRestored] = React.useState(false);
+    React.useEffect(() => {
+        // The shell is on screen; everything a page needs can arrive while the reader
+        // logs in, so the first menu click opens a page instead of its code.
+        prefetchPageSystem();
+    }, []);
+
     React.useEffect(() => {
         let cancelled = false;
         (async () => {

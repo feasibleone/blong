@@ -275,6 +275,26 @@ export class Portal {
         await this.page.getByTestId(`portal-tab-close${tabId}`).click();
     }
 
+    /**
+     * Close every open tab, back to the empty portal.
+     *
+     * The portal keeps closed-page state out of the shell but not out of the tab strip: a
+     * page opened while two tabs are standing is a different picture from one opened on an
+     * empty portal, and a test that visits several pages in a row must therefore pass
+     * through empty between them or every capture after the first moves (`@@D-748`).
+     */
+    async tabsCloseAll(): Promise<void> {
+        const closeButtons = this.page.locator('.blong-tab-close');
+        for (let remaining = await closeButtons.count(); remaining > 0; remaining -= 1) {
+            await this.#guard(closeButtons.last().click({timeout: BLONG_ELEMENT_TIMEOUT}));
+            await this.page
+                .locator('.blong-tab-close')
+                .nth(remaining - 1)
+                .waitFor({state: 'detached', timeout: BLONG_ELEMENT_TIMEOUT})
+                .catch(() => undefined);
+        }
+    }
+
     // ── Editor toolbar ───────────────────────────────────────────────────────
 
     /** Click the Save button and wait for the success icon. */
@@ -409,6 +429,79 @@ export class Portal {
     }
 }
 
+/** What a session needs to become an authenticated portal. */
+export interface ISignInOptions {
+    /** Login name. */
+    username: string;
+    /** Login password. */
+    password: string;
+    /** Grant every permission after login, so permission-gated controls are visible. */
+    permissions?: boolean;
+    /** UI language to activate, which awaits the database dictionary. */
+    language?: string;
+}
+
+/**
+ * Open the app and sign in, returning the helper a spec drives.
+ *
+ * The sequence is the same whether the page is this test's own or one a whole worker
+ * shares, so it lives here rather than inside the fixture: a shared session
+ * (`./playwright/shared.js`) boots once per worker and must sign in exactly the way a
+ * per-test boot does, or a spec would measure a different app depending on which
+ * fixture it imported.
+ */
+export async function openPortal(
+    page: Page,
+    options: ISignInOptions,
+    existing?: Portal,
+): Promise<Portal> {
+    const {username, password, permissions = false, language} = options;
+    // A caller that already built the helper keeps it — the `portal` fixture constructs
+    // one before navigating so that a page which throws *while booting* is reported, and
+    // two helpers watching one page would report every console line twice.
+    const portal = existing ?? new Portal(page, {expected: []});
+
+    // Navigate to the app root. Relative (`./`), not `/`: the dev server serves the app
+    // under the framework base path (`/s/`, see `defineBlongViteConfig`), and an
+    // origin-absolute `/` would resolve past it to a 404 page.
+    await page.goto('./');
+    await portal.login(username, password);
+
+    if (permissions) {
+        // Grant all permissions so permission-gated toolbar buttons are visible
+        await page.evaluate(() => {
+            const store = (window as unknown as Record<string, unknown>).__blongStore as
+                | {getState: () => {setPermissions: (p: boolean) => void}}
+                | undefined;
+            store?.getState().setPermissions(true);
+        });
+    }
+
+    if (language) {
+        // The same store the permission escape uses, and only exposed by a test intent.
+        // Activation awaits the database dictionary, so a spec asserts on a page that is
+        // already translated.
+        await page.evaluate(async value => {
+            const win = window as unknown as {
+                __blongI18n?: {activate?: (value: string) => Promise<void>};
+                __blongStore?: {
+                    getState: () => {languageActivate?: (value: string) => Promise<void>};
+                };
+            };
+            // `activate` is the app's own hook (it awaits the database dictionary); the
+            // store form is the fallback for a portal that exposes `testHook`.
+            if (win.__blongI18n?.activate) await win.__blongI18n.activate(value);
+            else await win.__blongStore?.getState().languageActivate?.(value);
+        }, language);
+        await page.waitForSelector(`html[data-language="${language}"]`, {
+            state: 'attached',
+            timeout: BLONG_ELEMENT_TIMEOUT,
+        });
+    }
+
+    return portal;
+}
+
 /**
  * Playwright test fixture extended with blong portal and coverage support.
  *
@@ -461,47 +554,18 @@ export const test = coverageFixture(
                 });
             }
 
-            // Navigate to the app root. Relative (`./`), not `/`: the dev server serves
-            // the app under the framework base path (`/s/`, see `defineBlongViteConfig`),
-            // and an origin-absolute `/` would resolve past it to a 404 page.
-            await page.goto('./');
-
-            await portal.login(blongUsername, blongPassword);
-
-            if (blongPermissions) {
-                // Grant all permissions so permission-gated toolbar buttons are visible
-                await page.evaluate(() => {
-                    const store = (window as unknown as Record<string, unknown>).__blongStore as
-                        | {getState: () => {setPermissions: (p: boolean) => void}}
-                        | undefined;
-                    store?.getState().setPermissions(true);
-                });
-            }
-
-            if (blongLanguage) {
-                // The same store the permission escape uses, and only exposed by a
-                // test intent. Activation awaits the database dictionary, so a spec
-                // asserts on a page that is already translated.
-                await page.evaluate(async language => {
-                    const win = window as unknown as {
-                        __blongI18n?: {activate?: (value: string) => Promise<void>};
-                        __blongStore?: {
-                            getState: () => {
-                                languageActivate?: (value: string) => Promise<void>;
-                            };
-                        };
-                    };
-                    // `activate` is the app's own hook (it awaits the database
-                    // dictionary); the store form is the fallback for a portal
-                    // that exposes `testHook`.
-                    if (win.__blongI18n?.activate) await win.__blongI18n.activate(language);
-                    else await win.__blongStore?.getState().languageActivate?.(language);
-                }, blongLanguage);
-                await page.waitForSelector(`html[data-language="${blongLanguage}"]`, {
-                    state: 'attached',
-                    timeout: BLONG_ELEMENT_TIMEOUT,
-                });
-            }
+            // The boot and the sign-in, exactly as a shared session does them: the
+            // fixture is the portal object plus the per-test bookkeeping around it.
+            await openPortal(
+                page,
+                {
+                    username: blongUsername,
+                    password: blongPassword,
+                    permissions: blongPermissions,
+                    language: blongLanguage,
+                },
+                portal,
+            );
 
             // eslint-disable-next-line @eslint-react/rules-of-hooks -- Playwright fixture `use()`, not a React Hook
             await use(portal);

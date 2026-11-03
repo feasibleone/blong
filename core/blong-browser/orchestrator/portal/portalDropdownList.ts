@@ -1,8 +1,15 @@
 import {type IMeta, handler} from '@feasibleone/blong';
 
-// Module-level promise cache keyed by '{subject}.dropdown.list'.
-// Caches the in-flight / resolved promise so concurrent calls from
-// multiple components don't issue duplicate backend requests.
+/**
+ * In-flight calls keyed by '{subject}.dropdown.list'.
+ *
+ * The point is de-duplication, not caching: the widgets of one form mount together and must
+ * not each ask for the same list. The entry is therefore dropped when the call settles —
+ * keeping the resolved promise made the first answer of a session the only answer, so a
+ * record created or deleted afterwards was still offered by every picker, and a form could
+ * submit an id that no longer exists (the foreign key refused the insert). A list is
+ * re-read when a page opens, which is what a reload did (`@@D-748`).
+ */
 const pending = new Map<string, Promise<Record<string, unknown>>>();
 
 export default handler(
@@ -32,8 +39,10 @@ export default handler(
                                 return out;
                             })
                             .catch(() => {
-                                pending.delete(method);
                                 return {} as Record<string, unknown>;
+                            })
+                            .finally(() => {
+                                pending.delete(method);
                             });
                         pending.set(method, promise);
                     }

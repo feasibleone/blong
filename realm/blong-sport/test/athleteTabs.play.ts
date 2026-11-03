@@ -12,7 +12,7 @@
  * (competition → edition → participation), which is why this file also creates a
  * competition and an edition of its own.
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {browseModel, cleanupModel, createAndEditModel, quiet, snapshotName} from './sportPlay.js';
 
 test.use({blongPermissions: true});

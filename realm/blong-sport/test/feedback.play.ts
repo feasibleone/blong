@@ -22,7 +22,7 @@
  * painted rectangle, while drawing, cropping, scaling and encoding stay under
  * test (`@@D-658`).
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {snapshotName} from './sportPlay.js';
 
 test.use({blongPermissions: true});

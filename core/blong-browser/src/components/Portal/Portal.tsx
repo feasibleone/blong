@@ -13,8 +13,10 @@ import {
 } from '../../primereact/shell.js';
 import './Portal.css';
 
+import {useQueryClient} from '@tanstack/react-query';
 import React, {Suspense, useCallback} from 'react';
 import {useBlong} from '../../context/BlongContext.js';
+import {invalidateDropdowns} from '../../model/dropdownRegistry.js';
 import {feedbackAttributes, portalFeedbackId} from '../../feedback/ids.js';
 import {useFeedbackActive} from '../../feedback/useFeedbackTarget.js';
 import {usePortal} from '../../hooks/usePortal.js';
@@ -179,6 +181,7 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
     // translated when the menu model is built (`D-625`).
     const t = useTranslate();
     const openTab = useAppStore(s => s.openTab);
+    const queryClient = useQueryClient();
 
     const command = useCallback(
         ({
@@ -190,19 +193,28 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
         }) => {
             void (async () => {
                 try {
+                    const opened = await component();
+                    // A page reads what the session already knows, and the session outlives
+                    // the page: an option list or a record read before a write was still
+                    // answering for it, so a document deleted a moment ago was offered to the
+                    // attachment form and its insert failed on the foreign key. A reload
+                    // always gave the fresh answer; opening a page is the same moment, so it
+                    // asks again (`@@D-748`).
+                    invalidateDropdowns();
+                    void queryClient.invalidateQueries();
                     openTab({
                         id: `${action}?${JSON.stringify(params)}`,
                         actionName: action,
                         params,
                         title,
-                        component: await component(),
+                        component: opened,
                     });
                 } catch {
                     // Tab stays as loading spinner; dispatch may have shown an error already
                 }
             })();
         },
-        [openTab],
+        [openTab, queryClient],
     );
 
     const activeIndex = tabs.findIndex(t => t.id === activeTabId);

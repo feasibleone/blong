@@ -5,7 +5,7 @@
  * realm's own menubar entry, so the capture is the open Sport menu rather than
  * seven top-level groups.
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {snapshotName} from './sportPlay.js';
 
 test.use({blongPermissions: true});

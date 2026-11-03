@@ -9,7 +9,7 @@
  * across `party_person` and `sport_athlete`, with a dropdown into the classifier
  * tables (`sport.sport`, `sport.discipline`). @@D-595 @@D-596
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {browseModel, cleanupModel, createAndEditModel} from './sportPlay.js';
 
 test.use({blongPermissions: true});

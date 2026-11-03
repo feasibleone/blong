@@ -358,26 +358,25 @@ page titles. The seed was restored rather than committed with the leaks.
 
 > _2026-11-03 · core/blong-browser · open_
 
-The harness exists: `demo/blong-marine/test/latency.play.ts` boots the login screen three times on
-the dev server, once more with a trace collecting, and three times against `vite build` plus
-`vite preview` of the same app, then prints one table and the median per leg. It runs in CI
-unconditionally and locally with `BLONG_LATENCY=1`; it costs a build (about 3 s, compression off)
-and asserts only that every leg reached the portal, that each boot was a single document load, and
-that each fetched a module graph — the numbers are the deliverable, not a threshold. The helper is
-`core/blong-browser/src/playwright/latency.ts` (`measureBoot`, `serveBuiltApp`, `latencyTable`,
-`latencySummary`, `reportLatency`), published as `@feasibleone/blong-browser/playwright/latency`, so
-another app copies the spec in one file. Two additions made the build leg possible: `preview.proxy`
-in `vite.ts` mirrors `server.proxy` (a build served from disk otherwise answers its own `/rpc` and
-cannot log in), and `BLONG_SKIP_COMPRESSION` skips the gzip/brotli plugins, which are 92% of a
-build's time and are a publish artifact no browser reads.
+The harness exists and has run in CI (2026-11-03, marine, median per leg): dev 3658 ms, dev + trace
+4519 ms, build 2678 ms, with the same 272 scripts on the dev legs and 107 on the build legs. The
+whole difference sits in loading and mounting the app — `goto` 633 against 215 ms and `boot` 2602
+against 1911 — while `submit` (298 against 283) and `menubar` (245 against 238) barely move, because
+they wait on the gateway rather than on modules. So a bundled app is worth about 1 s per test on a
+CI runner, against 45 ms on a warm laptop: the cost is CPU-bound parsing, which a slow runner pays
+and a fast one does not. Collecting a trace costs about 860 ms per test, which is what every failure
+pays.
 
-Measured locally on 2026-11-03, warm, median per leg: dev 477 ms (271 scripts), dev + trace 1112 ms,
-build 431 ms (107 scripts). So the bundled build saves about 45 ms of a 477 ms boot here — the
-module count is no longer what a boot waits for, after the dependency scan (D-746) and the shell
-split (D-745) — while collecting a trace more than doubles it, which is what a failing test in CI
-pays. The decision still needs a CI runner's numbers: read them from the run's output (the
-`[latency]` block) or the `boot-latency` annotation in the Allure result, and close this todo either
-way.
+The decision this feeds is the author's and is still open: asked on 2026-11-03, answered away, so no
+route was taken. The three are Serve a build to the CI Playwright run, which saves about 1 s per
+test and costs one build per run — net positive beyond roughly twenty specs — but breaks both the
+browser V8 coverage that maps dev-server URLs to source (a build needs source maps and a second
+mapping in `coverage.ts`) and the `integration` intent's rerun in place; pre-bundling the browser
+package in the app's dev config (`optimizeDeps.include`), which cuts the 93 package modules a dev
+boot fetches without leaving the dev server, at the price of hot reload for that package in an app's
+dev loop and a risk of a second copy of its React contexts; and accepting the cost, which keeps
+a 3.7 s test and a simple runner. Do not choose one on the way past — the runner shape is the
+author's call.
 
 ## Done
 

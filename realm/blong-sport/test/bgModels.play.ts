@@ -81,6 +81,16 @@ const pinnedRow: Record<string, string> = {
 const NO_MATCH = 'zzz-no-such-record';
 
 openPages(test, expect, {
+    /**
+     * Six pages per test.
+     *
+     * A test's largest cost is its boot — a fresh context fetches the app, draws the login
+     * screen and signs in before the first click, ten seconds on a CI runner — so one page
+     * per test spent 23 boots photographing 23 tables, and the file 46 boots for a suite of
+     * pictures (`@@D-748`). Each page is still captured under its own baseline, and the tab
+     * is closed again between them, so no picture changed.
+     */
+    groupSize: 6,
     methods: models.map(object => ({
         method: `sport.${object}.browse`,
         screenshot: `bg-${object}-browse.png`,
@@ -88,24 +98,32 @@ openPages(test, expect, {
     })),
 });
 
-for (const object of models) {
-    test(`bg create ${object} (empty form)`, async ({portal}) => {
-        await portal.menuClick(`sport.${object}.browse`);
-        await portal.waitForTableData();
-        // The create entry is a toolbar action whose label is translated, so the
-        // accessible name is the Bulgarian one in this run.
-        await portal.page
-            .getByRole('button', {name: /^(Create|Създай)$/})
-            .first()
-            .click();
-        // `:visible`, because the Browse tab stays mounted beside the new one and its
-        // own form is the first match in the document — waiting for that one to appear
-        // waits for a panel the reader is not looking at.
-        await portal.page.waitForSelector('.blong-form:visible, form:visible');
-        // A translated landmark: the page title the model generated, translated
-        // through the dictionary. A fallback to English fails here instead of
-        // writing an English baseline.
-        await expect(portal.page.locator('.p-tabview, .p-tabpanel').first()).toBeVisible();
-        await expect(portal.page).toHaveScreenshot(`bg-${object}-new.png`);
+/** The create forms, six per test, for the reason the page groups give above. */
+const FORM_GROUP = 6;
+for (let index = 0; index < models.length; index += FORM_GROUP) {
+    const group = models.slice(index, index + FORM_GROUP);
+    test(`bg create ${group[0]} +${group.length - 1} (empty form)`, async ({portal}) => {
+        for (const object of group) {
+            await portal.menuClick(`sport.${object}.browse`);
+            await portal.waitForTableData();
+            // The create entry is a toolbar action whose label is translated, so the
+            // accessible name is the Bulgarian one in this run.
+            await portal.page
+                .getByRole('button', {name: /^(Create|Създай)$/})
+                .first()
+                .click();
+            // `:visible`, because the Browse tab stays mounted beside the new one and its
+            // own form is the first match in the document — waiting for that one to appear
+            // waits for a panel the reader is not looking at.
+            await portal.page.waitForSelector('.blong-form:visible, form:visible');
+            // A translated landmark: the page title the model generated, translated
+            // through the dictionary. A fallback to English fails here instead of
+            // writing an English baseline.
+            await expect(portal.page.locator('.p-tabview, .p-tabpanel').first()).toBeVisible();
+            await expect(portal.page).toHaveScreenshot(`bg-${object}-new.png`);
+            // Back to the empty portal, so the next picture is the one its baseline was
+            // taken in: the page just captured is the only tab in it.
+            await portal.tabsCloseAll();
+        }
     });
 }

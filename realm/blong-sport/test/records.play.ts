@@ -10,7 +10,9 @@
  * Names are fixed and every created object is cleaned first, so a retry finds the
  * same rows its earlier attempt left behind.
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+// One signed-in page for the whole file: sixteen tests, sixteen boots is most of what
+// this spec costs on a runner (`@@D-748`).
+import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {browseModel, cleanupModel, createAndEditModel, quiet} from './sportPlay.js';
 
 test.use({blongPermissions: true});

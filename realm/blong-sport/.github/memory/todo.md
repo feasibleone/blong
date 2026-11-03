@@ -24,7 +24,7 @@ open (15)
 - `T-400` · realm/blong-sport — Assert one resource row and a person with two roles
 - `T-598` · realm/blong-sport — Swap the sport logo for an approved Olympic asset
 
-done (24)
+done (25)
 
 - `T-374` · realm/blong-sport — sport P1 scaffold and boot
 - `T-376` · realm/blong-sport — sport P3 schema and seeds
@@ -50,6 +50,7 @@ done (24)
 - `T-478` · realm/blong-sport — Prove the flow end to end with Playwright
 - `T-601` · realm/blong-sport — Sport feedback flow asserts a label target it no longer captures
 - `T-604` · realm/blong-sport — The feedback spec races its own list read before the capture
+- `T-606` · realm/blong-sport — Sport's login screen loads the whole CRUD and test UI
 
 <!-- /memory:index -->
 
@@ -483,3 +484,35 @@ longer remounts what it annotates. Verified in the app (the club search term and
 survive the toggle, node identity kept), by a unit test in
 core/blong-browser/src/feedback/feedback.test.tsx, and by test/feedback.play.ts which now passes
 without a baseline change.
+
+### T-606 — Sport's login screen loads the whole CRUD and test UI
+
+> _2026-11-03 · realm/blong-sport · done_
+
+The suite's cost was the boot: in the CI report the cheapest test in blong-sport — a boot, a login
+and one assertion — took 9470 ms, and the 166 durations summed to 2282 s, exactly the 38m 02s the
+build reports, so the run was one serial stream paying that floor 166 times. Three things were wrong
+and are fixed, each measured on the app's dev server with a fresh context. The login screen fetched
+478 scripts and 11.5 MB because an eager layer file in `realm/blong-party` imported its page module
+at the top and the page imports the package root; the page now loads inside its registration, so the
+graph is 230 scripts and 5.6 MB (D-747). `App` warms the page system on an idle callback after the
+shell paints, leaving the login form at 880 ms while the first page open fell from 314-376 ms to
+228-278 ms (D-747). And the tests no longer boot per test: every sport spec except the harvesting
+`bgModels.play.ts` imports `test` from `@feasibleone/blong-browser/playwright/shared`, which signs
+in once per worker and closes every tab between tests — so a file pays one boot instead of one per
+test (D-748). Sharing worked only after three session caches were fixed, which is where the earlier
+four failures came from: an option list read before a write kept answering for it, and a form
+submitted a document id the database had already lost.
+
+Measured locally after the change: `records` 16 tests in 24 s (it was 215 s in CI), `relationships`
+plus `competition` 39 tests in 32 s (they were 564 s), the remaining eight specs 81 tests in 31 s,
+`bgModels` 8 tests in 40 s after the `groupSize` grouping. What the next CI run should show is 166
+boots falling to roughly one per file per worker, plus the smaller boot.
+
+Left open deliberately: the citations of this entry in `prefetch.ts`, `pages.ts`, `shared.ts` and
+the cache fixes want retargeting to D-747 and D-748 before this can be closed, and `bgModels` is the
+one spec that cannot share a page (a shared page cannot attribute what it rendered to one test), so
+its `groupSize` remains the answer there.
+
+Closed with the boot fixed (D-747), the session caches fixed and the shared signed-in portal in use
+across blong-sport (D-748); the citations were retargeted to those two entries first.

@@ -6,7 +6,7 @@
  * created here. Names are fixed and every created object is cleaned first: a
  * retry re-evaluates the file, so a minted name would change under it. @@D-600
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {browseModel, cleanupModel, createAndEditModel, quiet} from './sportPlay.js';
 
 test.use({blongPermissions: true});

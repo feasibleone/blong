@@ -13,7 +13,7 @@
  * passed in dev: the clubs it saw had been made by `organisations` and
  * `relationships` in the same database, and CI has no such history.
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {cleanupModel, createAndEditModel, quiet} from './sportPlay.js';
 
 test.use({blongPermissions: true});

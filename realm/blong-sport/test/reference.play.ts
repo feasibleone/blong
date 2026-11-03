@@ -5,7 +5,7 @@
  * each carries its readable name in `core_resource` and the browse shows the
  * `col-12 xl:col-6` two-card layout. @@D-608
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {browseModel, cleanupModel, createAndEditModel} from './sportPlay.js';
 
 test.use({blongPermissions: true});

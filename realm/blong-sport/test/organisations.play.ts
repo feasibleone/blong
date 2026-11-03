@@ -4,7 +4,7 @@
  * Both profiles share the `party.organization` primary key, so the form splits
  * one flat payload across the party row and the profile row. @@D-595
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {browseModel, cleanupModel, createAndEditModel} from './sportPlay.js';
 
 test.use({blongPermissions: true});

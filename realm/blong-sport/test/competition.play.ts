@@ -11,7 +11,7 @@
  * the earlier attempt created stayed behind — two rows of one name also make a
  * dropdown label ambiguous.
  */
-import {expect, test} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {browseModel, cleanupModel, createAndEditModel, quiet} from './sportPlay.js';
 
 test.use({blongPermissions: true});
