@@ -24,7 +24,7 @@ open (15)
 - `T-400` · realm/blong-sport — Assert one resource row and a person with two roles
 - `T-598` · realm/blong-sport — Swap the sport logo for an approved Olympic asset
 
-done (23)
+done (24)
 
 - `T-374` · realm/blong-sport — sport P1 scaffold and boot
 - `T-376` · realm/blong-sport — sport P3 schema and seeds
@@ -49,6 +49,7 @@ done (23)
 - `T-476` · realm/blong-sport — Show the mode against real model pages
 - `T-478` · realm/blong-sport — Prove the flow end to end with Playwright
 - `T-601` · realm/blong-sport — Sport feedback flow asserts a label target it no longer captures
+- `T-604` · realm/blong-sport — The feedback spec races its own list read before the capture
 
 <!-- /memory:index -->
 
@@ -457,3 +458,28 @@ regenerated again once the stamping is understood.
 Fixed in test/feedback.play.ts: the table is searched to nothing before the capture (so the pointers
 and the screenshots stop depending on the clubs other specs created) and the document assertion pins
 the field segment rather than the pixel-fragile tail. Baselines regenerated.
+
+### T-604 — The feedback spec races its own list read before the capture
+
+> _2026-11-03 · realm/blong-sport · done_
+
+`realm/blong-sport/test/feedback.play.ts` fails on its first screenshot (`feedback-hover-1.png`,
+2808 pixels, ratio 0.01) on a clean handler as well: the spec searches the club table to nothing,
+waits for `No rows.`, and the table then fills again before the capture, because the initial
+unfiltered read is still in flight and its answer lands after the search's. Reproduced with
+`adapter/db/profile.ts` restored to HEAD, so it is the spec's race and not the joined-column filter
+fix (`@@D-743`).
+
+What it needs is a wait that means "this answer is the last one", not "a table rendered":
+`waitForTableData` resolves on the empty state the search produced while the earlier request is
+unresolved. Either the widget should cancel an in-flight list read when its params change, or the
+spec should assert on a value only the searched answer can carry and then let the page settle before
+capturing. Check the other specs that empty a table through the search box before capturing — the
+same race is in each of them.
+
+Fixed in D-744: FeedbackRegion and FeedbackPath render their provider whether the mode is on or off,
+and the Card/Editor/TableWidget call sites pass path={node?.path}, so switching feedback mode no
+longer remounts what it annotates. Verified in the app (the club search term and the empty table
+survive the toggle, node identity kept), by a unit test in
+core/blong-browser/src/feedback/feedback.test.tsx, and by test/feedback.play.ts which now passes
+without a baseline change.

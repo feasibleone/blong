@@ -275,6 +275,15 @@ export default defineBlongConfig({
 });
 ```
 
+The realm's specs then run **twice** — in the suite's app and in the realm's own — and Playwright
+writes a screenshot beside the test file, named after the test plus the project, which is the
+realm's package name in both runs. The two runs therefore read and write **one** set of baselines,
+so the two applications have to render the same shell: give the realm's own app the browser realms
+the suite mounts (`demo/blong-marine` names `access`, `blong` and `kustomize` for exactly this
+reason, @@D-741). Otherwise the capture taken by whichever package ran last becomes the other one's
+expectation, and it fails on the pixels that differ — three menu groups, in the case that found this
+(`F-680`).
+
 Standalone realms (e.g. `blong-marine`) do NOT need `realmPackages` — their own `test/` folder is
 the default project.
 

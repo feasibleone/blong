@@ -554,7 +554,7 @@ function FieldRow({
                 className={`field grid${isLast ? ' mb-0' : ''}`}
                 {...field?.attributes}
             >
-                {field ? <FeedbackPath path={field.path}>{skeleton}</FeedbackPath> : skeleton}
+                <FeedbackPath path={field?.path}>{skeleton}</FeedbackPath>
             </div>
         );
     }
@@ -585,7 +585,7 @@ function FieldRow({
             className={`field grid${isLast ? ' mb-0' : ''}${fieldClass ? ' ' + fieldClass : ''}`}
             {...field?.attributes}
         >
-            {field ? <FeedbackPath path={field.path}>{row}</FeedbackPath> : row}
+            <FeedbackPath path={field?.path}>{row}</FeedbackPath>
         </div>
     );
 }
@@ -1069,11 +1069,7 @@ export function Card({
                     className="blong-card__body"
                     {...card?.attributes}
                 >
-                    {card ? (
-                        <FeedbackPath path={card.path}>{cardContent}</FeedbackPath>
-                    ) : (
-                        cardContent
-                    )}
+                    <FeedbackPath path={card?.path}>{cardContent}</FeedbackPath>
                 </div>
             )}
             {isSelected && (
@@ -1126,11 +1122,7 @@ export function Card({
                     className="blong-card__body"
                     {...card?.attributes}
                 >
-                    {card ? (
-                        <FeedbackPath path={card.path}>{cardContent}</FeedbackPath>
-                    ) : (
-                        cardContent
-                    )}
+                    <FeedbackPath path={card?.path}>{cardContent}</FeedbackPath>
                 </div>
             )}
         </PrimeCard>

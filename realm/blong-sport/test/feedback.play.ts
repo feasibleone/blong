@@ -95,9 +95,10 @@ const COMMENTS = [
  * specs created, so the page is searched to nothing before the capture instead of
  * being read as whatever the last run left behind.
  *
- * The search box rather than the Legal Name column filter: that column comes from the
- * joined `party_organization`, and the filter still builds `where sport_club.legalName`,
- * which the database rejects (`@@T-602`).
+ * The search box rather than the Legal Name column filter, because the capture is
+ * taken with the filter row empty. That column is read from the joined
+ * `party_organization`, and filtering it is asserted on its own
+ * (`clubFilter.play.ts`, `@@D-743`) rather than through a capture.
  */
 const NO_SUCH_CLUB = 'zz-no-such-club';
 

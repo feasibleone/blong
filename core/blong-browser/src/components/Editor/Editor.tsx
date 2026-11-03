@@ -760,11 +760,7 @@ export function Editor({
             >
                 <span className="p-error">{validationHint}</span>
             </OverlayPanel>
-            {toolbarPath ? (
-                <FeedbackPath path={toolbarPath}>{toolbarElement}</FeedbackPath>
-            ) : (
-                toolbarElement
-            )}
+            <FeedbackPath path={toolbarPath}>{toolbarElement}</FeedbackPath>
             <Form
                 id={formId}
                 schema={schema}
@@ -802,11 +798,7 @@ export function Editor({
     if (!designable) {
         return (
             <FeedbackPageContext value={feedbackContext ?? null}>
-                {page ? (
-                    <FeedbackPath path={page.path}>{editorContent}</FeedbackPath>
-                ) : (
-                    editorContent
-                )}
+                <FeedbackPath path={page?.path}>{editorContent}</FeedbackPath>
             </FeedbackPageContext>
         );
     }
@@ -822,7 +814,7 @@ export function Editor({
 
     return (
         <FeedbackPageContext value={feedbackContext ?? null}>
-            {page ? <FeedbackPath path={page.path}>{designed}</FeedbackPath> : designed}
+            <FeedbackPath path={page?.path}>{designed}</FeedbackPath>
         </FeedbackPageContext>
     );
 }

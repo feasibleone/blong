@@ -166,6 +166,19 @@ function profileSpec(object: string): IProfileSpec {
 }
 
 /**
+ * The table a flat payload column is read from — the party half or the profile row.
+ *
+ * The payload is flat, so a caller names a column without its table (`legalName`,
+ * `clubShortName`); the two halves live in different tables, and a clause that
+ * names the wrong one is `Unknown column 'sport_club.legalName' in 'where clause'`
+ * (`@@D-743`). A column in neither list keeps the profile table, so a typo still
+ * reads as the same error it always did.
+ */
+function carrierOf(spec: IProfileSpec, column: string): string {
+    return spec.partyColumns.includes(column) ? spec.partyTable : spec.table;
+}
+
+/**
  * `binary(16)` columns must leave as base64 — the generic CRUD does this in
  * `prepareResultRows`, and a raw Buffer would reach the client as
  * `{type: 'Buffer', data: [...]}` and match nothing.
@@ -217,25 +230,33 @@ async function profileFind(
 
     for (const [column, value] of Object.entries({...filterBy, ...where})) {
         if (value === undefined || value === null) continue;
-        query = query.where(`${spec.table}.${column}`, asBinary(value) as never);
+        query = query.where(
+            `${carrierOf(spec, column)}.${column}`,
+            asBinary(value) as never,
+        );
     }
 
     if (search) {
-        const columns = [...spec.partyColumns, ...spec.columns].filter(column =>
-            /Name$|^firstName$|^lastName$/.test(column),
-        );
+        const columns = [...spec.partyColumns, ...spec.columns]
+            .filter(column => /Name$|^firstName$|^lastName$/.test(column))
+            .map(column => `${carrierOf(spec, column)}.${column}`);
         query = query.andWhere(function (this: KnexQb) {
             for (const column of columns) this.orWhereILike(column, `%${search}%`);
         });
     }
 
     if (Array.isArray(order)) {
-        query = query.orderBy(
-            order.map((entry: {field: string; dir?: string}) => ({
-                column: entry.field,
-                order: entry.dir ?? 'asc',
-            })),
-        );
+        // The term names its carrier for the same reason a filter does: the
+        // statement reads two tables, so an unqualified name is a question about
+        // which one the reader meant the moment a column exists in both.
+        const terms = order
+            .map((entry: {field?: string; dir?: string}) => ({
+                column: typeof entry?.field === 'string' ? entry.field : '',
+                order: (entry?.dir ?? 'asc').toLowerCase(),
+            }))
+            .filter(term => term.column.length > 0)
+            .map(term => ({...term, column: `${carrierOf(spec, term.column)}.${term.column}`}));
+        if (terms.length) query = query.orderBy(terms);
     } else if (order) {
         query = query.orderBy(order);
     }

@@ -36,7 +36,7 @@ open (21)
 - `F-254` · core/blong-browser — A "race" that was two different baselines and a 1% tolerance
 - `F-679` · core/blong-browser — Profile fetch before a session raised a binding error dialog
 
-resolved (28)
+resolved (29)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -74,6 +74,7 @@ resolved (28)
 - `F-609` · core/blong-browser — A shared capture helper cannot assume which side filters
 - `F-677` · core/blong-browser — A new portal config block is dropped unless mergePortalConfigs
   names it
+- `F-680` · core/blong-browser — A realm's screenshots are shared with every suite that composes it
 
 <!-- /memory:index -->
 
@@ -776,3 +777,29 @@ belongs in `mergePortalConfigs` in the same change, and `portalConfig.test.ts` n
 `brand`.
 
 mergePortalConfigs now names brand and portalConfig.test.ts asserts it
+
+### F-680 — A realm's screenshots are shared with every suite that composes it
+
+> _2026-11-03 · core/blong-browser · resolved_
+
+A realm's Playwright specs run in two applications: the realm's own config, and every suite that
+lists the package in `realmPackages` (`suite/blong-suite` lists `blong-marine`). Playwright names a
+screenshot after the test file, the project name and the directory the test itself sits in, and
+`defineBlongConfig` derives the project name from the package name in both configs (`blong-marine`),
+so both applications read and write the same baseline file beside the test.
+
+The two portals differ: the suite also loads the `access`, `blong` (the Observe group) and
+`kustomize` browser realms, so its menubar carries three groups the realm-only app does not have.
+Whichever package ran `--update-snapshots` last owns the baseline and the other run fails, which
+reads as an intermittent rendering difference and is not one. No permission grant adds a menu group:
+the portal menu is composed from the models of the realms that are loaded, which is what
+`meta/db/accessAuthorizationMerge.yaml` states in its own comment. Chasing this through
+`portalConfigMerge`, `findHandlers`, the app store and the `blongPermissions` fixture cost a long
+read; the shared file name was the whole answer.
+
+Locally the confusion is worse: `reuseExistingServer` is on outside CI, so a backend or Vite server
+left running from the other package silently answers the run, and an update then captures the wrong
+application into the shared baseline.
+
+Closed by D-741: both apps mount the same realms, so one baseline serves both and the marine run is
+green.

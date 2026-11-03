@@ -8,7 +8,7 @@
  */
 
 import {act, render, screen} from '@testing-library/react';
-import type {ReactNode} from 'react';
+import {type ReactNode, useState} from 'react';
 import {beforeEach, describe, expect, test, vi} from 'vitest';
 
 import {useAppStore} from '../state/appStore.js';
@@ -40,6 +40,7 @@ import {
 import {
     FeedbackActiveContext,
     FeedbackPath,
+    FeedbackRegion,
     useFeedbackNode,
     useFeedbackTarget,
     useFeedbackTargetFactory,
@@ -341,16 +342,41 @@ function Probe() {
 
 function Nested() {
     const card = useFeedbackNode('card', 'clubDetails', 'Club details');
+    // The provider is rendered either way: a call site that returned its children
+    // bare would remount them when the mode is switched on (`@@D-744`).
     return (
         <div {...card?.attributes}>
-            {card ? (
-                <FeedbackPath path={card.path}>
-                    <Probe />
-                </FeedbackPath>
-            ) : (
+            <FeedbackPath path={card?.path}>
                 <Probe />
-            )}
+            </FeedbackPath>
         </div>
+    );
+}
+
+/** A component with state of its own, standing in for a table's filters or a form. */
+function Counter() {
+    const [count, setCount] = useState(0);
+    return (
+        <button
+            type="button"
+            data-testid="counter"
+            onClick={() => setCount(value => value + 1)}
+        >
+            {`count:${count}`}
+        </button>
+    );
+}
+
+/** A region around stateful content, the way a table and a card use one. */
+function Region({active}: {active: boolean}) {
+    return withMode(
+        active,
+        <FeedbackRegion
+            kind="table"
+            name="club"
+        >
+            <Counter />
+        </FeedbackRegion>,
     );
 }
 
@@ -387,9 +413,37 @@ describe('the target hook', () => {
         const [probe] = screen.getAllByTestId('probe');
         expect(probe.hasAttribute(FEEDBACK_ID_ATTR)).toBe(false);
         expect(compose).not.toHaveBeenCalled();
-        // The card renders no step of its own while the mode is off: the field is
-        // its direct child, not a child of a provider.
+        // The card's own element carries no identifier while the mode is off, and
+        // the provider above the field renders no element at all.
         expect(probe.parentElement?.getAttribute(FEEDBACK_ID_ATTR)).toBeNull();
+    });
+
+    test('a region keeps the state of what it annotates across the toggle', () => {
+        const {rerender} = render(<Region active={false} />);
+        act(() => screen.getByTestId('counter').click());
+        expect(screen.getByTestId('counter').textContent).toBe('count:1');
+        // Switching the mode on must not remount what it annotates: a table's
+        // search, filters, sort and page — and a form's fields — are the state the
+        // reader set up for the thing they are about to comment on (`@@D-744`).
+        rerender(<Region active />);
+        expect(screen.getByTestId('counter').textContent).toBe('count:1');
+    });
+
+    test('a region hands the identifier to the element it annotates', () => {
+        render(
+            withMode(
+                true,
+                <FeedbackRegion
+                    kind="table"
+                    name="club"
+                >
+                    <span data-testid="region-child" />
+                </FeedbackRegion>,
+            ),
+        );
+        expect(screen.getByTestId('region-child').getAttribute(FEEDBACK_ID_ATTR)).toBe(
+            'blong.portal.page/table:club',
+        );
     });
 
     test('carries the identifier and the label while it is on', () => {

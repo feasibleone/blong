@@ -16,6 +16,18 @@ import {v4} from 'uuid';
 import yaml from 'yaml';
 import {methodParts} from '../../lib.ts';
 import {
+    aclActionId,
+    aclActionName,
+    aclActorId,
+    aclActorOf,
+    aclAllowed,
+    aclCheckSql,
+    aclConfig,
+    aclEntityOf,
+    aclKeyColumn,
+} from '../impl/acl.ts';
+import {createPathRefresh, type IPathRefresh} from '../impl/pathRefresh.ts';
+import {
     binaryToStr,
     discoverBinaryColumns,
     isBinaryColumn,
@@ -26,6 +38,7 @@ import {
 } from '../schema/knex/binary.ts';
 import {ensureDatabase} from '../schema/knex/database.ts';
 import {wrapKnex} from '../schema/knex/json.ts';
+import {normalizeOrderBy} from '../schema/knex/order.ts';
 import {
     bindSyntheticHandlers,
     schemaProcedureBindImpl,
@@ -52,18 +65,6 @@ import {
     readSqlFiles,
     snakeToCamel,
 } from '../schema/knex/utils.ts';
-import {
-    aclActionId,
-    aclActionName,
-    aclActorId,
-    aclActorOf,
-    aclAllowed,
-    aclCheckSql,
-    aclConfig,
-    aclEntityOf,
-    aclKeyColumn,
-} from '../impl/acl.ts';
-import {createPathRefresh, type IPathRefresh} from '../impl/pathRefresh.ts';
 
 // Helpers to access the binary-column map stored on the adapter context.
 // Cast through `any` because the base `ServerContext & BrowserContext` type
@@ -104,8 +105,12 @@ function ensurePathRefresh(config: {
 
 export type {IConfig, ISchemaTable} from '../schema/knex/types.ts';
 
-const errorMap: IErrorMap = {
-    'knex.generic': 'Knex Error',
+export const errorMap: IErrorMap = {
+    // The method and the verb are in the *message*, not only in the log: this is the
+    // one refusal a reader cannot attribute from the error name, and a caller who saw
+    // it in a dialog spent a day looking for a reserved word that was not there
+    // (`@@T-599` → `@@D-742`).
+    'knex.generic': 'Knex Error: no operation for {operation} in {method}',
     'knex.invalid': 'Invalid Knex Operation',
     'knex.notFound': 'Knex Not Found',
     'knex.exists': 'Knex Exists',
@@ -764,7 +769,11 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                                 | {constraints?: {primaryKey?: string}}
                                 | undefined
                         )?.constraints?.primaryKey ?? `${object}Id`;
-                    const {query: joined, selections: labelSelections} = attachLabelJoins(
+                    const {
+                        query: joined,
+                        selections: labelSelections,
+                        aliases: labelAliases,
+                    } = attachLabelJoins(
                         qb(table),
                         qb.raw,
                         objectSchema,
@@ -790,8 +799,13 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     const joinSelections = nameSelection
                         ? [...labelSelections, nameSelection]
                         : labelSelections;
+                    // A filter on a joined label names the alias that carries it, not
+                    // the base table — filtering the Legal Name column of a club sent
+                    // `where sport_club.legalName` and the database rejected it
+                    // (`@@D-743`).
                     const qualify = (key: string) =>
-                        joinSelections.length && !key.includes('.') ? `${table}.${key}` : key;
+                        labelAliases[key] ??
+                        (joinSelections.length && !key.includes('.') ? `${table}.${key}` : key);
                     for (const [key, val] of Object.entries(where)) {
                         if (isBinaryColumn(binaryCols, table, key) && typeof val === 'string') {
                             query = query.where(qualify(key), strToBinary(val));
@@ -866,7 +880,11 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     const qb = this.config.context.queryBuilder!;
                     const binaryCols = getBinaryCols(this.config.context);
                     const opts = tableOptions(objectSchema, this.config, subject, object);
-                    const {query: joined, selections: labelSelections} = attachLabelJoins(
+                    const {
+                        query: joined,
+                        selections: labelSelections,
+                        aliases: labelAliases,
+                    } = attachLabelJoins(
                         qb(table),
                         qb.raw,
                         objectSchema,
@@ -901,9 +919,12 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     // A join puts a second table in the statement, so the base
                     // table's own columns are named explicitly: `sportId` exists on
                     // both the row and its target, and an unqualified reference is
-                    // ambiguous to MySQL.
+                    // ambiguous to MySQL. A column that is itself a label belongs to
+                    // the join's alias, and filtering it by the name it is shown under
+                    // is what a reader does (`@@D-743`).
                     const qualify = (key: string) =>
-                        joinSelections.length && !key.includes('.') ? `${table}.${key}` : key;
+                        labelAliases[key] ??
+                        (joinSelections.length && !key.includes('.') ? `${table}.${key}` : key);
                     for (const [key, val] of Object.entries({...filterBy, ...where})) {
                         if (isBinaryColumn(binaryCols, table, key) && typeof val === 'string') {
                             query = query.where(qualify(key), strToBinary(val));
@@ -924,7 +945,13 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                                 }
                             });
                     }
-                    if (order) query = query.orderBy(order);
+                    // The caller's order clause, folded into what knex reads: the
+                    // browser sends `{field, dir}`, and knex formats a term it cannot
+                    // read as the literal `undefined` — `order by `undefined`` and a
+                    // MySQL error on every sorted column @@D-742.
+                    for (const term of normalizeOrderBy(order)) {
+                        query = query.orderBy(term.column, term.order);
+                    }
                     // Record-level ACL: the filter is applied before paging so both
                     // the page and its total only contain readable records.
                     const aclFilter = await aclReadFilter(opts);
@@ -1292,7 +1319,12 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 case 'remove': {
                     const {key: keyName = `${object}Id`, [keyName]: key} = params;
                     if (!(keyName in params)) {
-                        throw this.error(_errors['knex.missingKey']({key: keyName}), $meta);
+                        // `params` is the map the factory interpolates (`{key}`), not a
+                        // property on the error: passing `{key}` rendered `?key?`.
+                        throw this.error(
+                            _errors['knex.missingKey']({params: {key: keyName}}),
+                            $meta,
+                        );
                     }
                     const binaryCols = getBinaryCols(this.config.context);
                     const opts = tableOptions(objectSchema, this.config, subject, object);
@@ -1300,7 +1332,10 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         isBinaryColumn(binaryCols, table, keyName) && typeof key === 'string';
                     const masterKey = isBinaryKey ? strToBinary(key as string) : key;
                     if (!masterKey) {
-                        throw this.error(_errors['knex.missingKey']({key: keyName}), $meta);
+                        throw this.error(
+                            _errors['knex.missingKey']({params: {key: keyName}}),
+                            $meta,
+                        );
                     }
                     const qb = this.config.context.queryBuilder!;
                     // Record-level ACL: refuse to delete a record the caller may
@@ -1461,7 +1496,21 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         .del();
                 }
             }
-            throw this.error(_errors['knex.generic']({}), $meta);
+            // The one throw in this switch that a reader cannot attribute from the
+            // error: the method was routed here, so its verb looked like CRUD to the
+            // gateway, and no case above claimed it. Naming the verb in the log is
+            // what turns "Knex Error" into a diagnosis — without it the only trace
+            // is the dialog a caller sees @@D-742.
+            this.log?.warn?.({
+                $meta: {mtid: 'event', method: method ?? 'unknown'},
+                message: `knex: no operation for '${operation}' (${method})`,
+            });
+            throw this.error(
+                _errors['knex.generic']({
+                    params: {method: method ?? '(none)', operation: operation ?? '(none)'},
+                }),
+                $meta,
+            );
         },
         /**
          * `{subject}.dropdown.list` — produce `{value, label}` pairs for every
@@ -2111,9 +2160,13 @@ function attachResourceName(
  * `core_resource.resourceName`. A name that matches no declared foreign key is
  * ignored, so the parameter can widen no query. Every join is a left join, so a
  * record whose key points nowhere still comes back, with the label empty.
+ *
+ * The alias map is the other half of the answer: a browse column read from the
+ * joined table is filterable by the name it is displayed under, and that name
+ * belongs to the alias, not to the base table `@@D-743`.
  * @@D-614
  */
-function attachLabelJoins(
+export function attachLabelJoins(
     query: Knex.QueryBuilder,
     raw: Knex['raw'],
     objectSchema: IObjectSchema,
@@ -2123,8 +2176,12 @@ function attachLabelJoins(
     table: string,
     labels: unknown,
     language?: string,
-): {query: Knex.QueryBuilder; selections: Array<string | Knex.Raw>} {
-    if (!Array.isArray(labels)) return {query, selections: []};
+): {
+    query: Knex.QueryBuilder;
+    selections: Array<string | Knex.Raw>;
+    aliases: Record<string, string>;
+} {
+    if (!Array.isArray(labels)) return {query, selections: [], aliases: {}};
     const definition = resolveTableSpec(
         objectSchema,
         config?.schema?.tables?.[`${subject}.${object}`],
@@ -2142,10 +2199,11 @@ function attachLabelJoins(
         (name): name is string =>
             typeof name === 'string' && /^[A-Za-z][A-Za-z0-9]*Name$/.test(name),
     );
-    if (!wanted.length) return {query, selections: []};
+    if (!wanted.length) return {query, selections: [], aliases: {}};
 
     let joined = query;
     const selections: Array<string | Knex.Raw> = [];
+    const aliases: Record<string, string> = {};
     for (const labelField of wanted) {
         const fkColumn = `${labelField.slice(0, -'Name'.length)}Id`;
         const declaration = foreign[fkColumn];
@@ -2173,6 +2231,7 @@ function attachLabelJoins(
                 `${table}.${fkColumn}`,
             );
             selections.push(`${alias}.${labelColumn} as ${labelField}`);
+            aliases[labelField] = `${alias}.${labelColumn}`;
         } else if (target.resource) {
             joined = joined.leftJoin(
                 {[alias]: 'core_resource'},
@@ -2193,9 +2252,12 @@ function attachLabelJoins(
             } else {
                 selections.push(`${alias}.resourceName as ${labelField}`);
             }
+            // A filter compares the stored name: the translation is a projection,
+            // so the column the alias carries is what a `where` has to name.
+            aliases[labelField] = `${alias}.resourceName`;
         }
     }
-    return {query: joined, selections};
+    return {query: joined, selections, aliases};
 }
 
 /**

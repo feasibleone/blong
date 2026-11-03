@@ -88,11 +88,16 @@ export interface IFeedbackNode {
 /**
  * Publish a composed path to the subtree.
  *
- * Only rendered where a node exists: an inactive tree never reaches this
- * component, so it costs no element and no context.
+ * Rendered whether or not the mode is on — with no path when it is off. A call site
+ * that returned its children bare instead would move the whole subtree under a
+ * different parent the moment the mode is switched on, and React remounts a subtree
+ * whose parent changes: a table lost its search and its page, a form lost its
+ * fields, at exactly the moment the reader meant to comment on them (`@@D-744`).
+ * Nothing is visible either way: a provider renders no element, and `null` is the
+ * value a consumer already reads outside one.
  */
-export function FeedbackPath({path, children}: {path: string; children: ReactNode}) {
-    return <FeedbackPathContext value={path}>{children}</FeedbackPathContext>;
+export function FeedbackPath({path, children}: {path?: string; children: ReactNode}) {
+    return <FeedbackPathContext value={path ?? null}>{children}</FeedbackPathContext>;
 }
 
 /**
@@ -228,13 +233,21 @@ export function FeedbackRegion({
     children: ReactNode;
 }) {
     const node = useFeedbackNode(kind, name, label);
-    if (!node) return children;
     // The point of the region is that it adds no element of its own: the caller's
     // child *is* the target, so the attributes are merged into it rather than into
     // a wrapper that would change every layout it touches.
-    const body = isValidElement(children)
-        ? // eslint-disable-next-line @eslint-react/no-clone-element
-          cloneElement(children as ReactElement<Record<string, string>>, node.attributes)
-        : children;
-    return <FeedbackPathContext value={node.path}>{body}</FeedbackPathContext>;
+    const body =
+        !node || !isValidElement(children)
+            ? children
+            : // eslint-disable-next-line @eslint-react/no-clone-element
+              cloneElement(children as ReactElement<Record<string, string>>, node.attributes);
+    // The provider is rendered whether or not the mode is on, and the tree keeps its
+    // shape across the toggle. Returning `children` bare would move everything a
+    // region annotates underneath a different parent at the moment the mode is
+    // switched on, and React remounts a subtree when its parent changes: a table lost
+    // its search, its filters, its sort and its page, and re-read the list under the
+    // reader — which is the state they were about to comment on (`@@D-744`).
+    // A context provider renders no element, so an inactive tree still gains nothing
+    // it can see; `null` is the value `useFeedbackPath` already answers outside one.
+    return <FeedbackPathContext value={node?.path ?? null}>{body}</FeedbackPathContext>;
 }

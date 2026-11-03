@@ -36,7 +36,7 @@ open (23)
 - `T-437` · core/blong-browser — A five second table wait flakes under parallel load
 - `T-438` · core/blong-browser — The harvest records record names as label keys
 
-done (31)
+done (33)
 
 - `T-369` · core/blong-browser — Resolve TestRun source pointers from a real run
 - `T-367` · core/blong-browser — Test UI phases 2-4: runner, host, Playwright
@@ -69,6 +69,9 @@ done (31)
 - `T-489` · core/blong-browser — A callout is moved, resized, and points at its element
 - `T-490` · core/blong-browser — The submission picture is cropped to what matters
 - `T-491` · core/blong-browser — The mode's chrome gets out of the way
+- `T-603` · core/blong-browser — Choose how realm baselines stop colliding with the suite that hosts
+  them
+- `T-602` · core/blong-browser — A browse filter on a joined column builds the wrong table alias
 
 <!-- /memory:index -->
 
@@ -772,3 +775,53 @@ identifier line inside.
 Default shortcut is F2; the outline badge is shortTargetId with the full path in its title; the
 callout is one bevelled box — a thick top bevel as the drag handle, a borderless text area, the
 remove button and a corner resizer — with no identifier line inside.
+
+### T-603 — Choose how realm baselines stop colliding with the suite that hosts them
+
+> _2026-11-03 · core/blong-browser · done_
+
+The diagnosis is settled (F-680): a realm's Playwright baselines live beside its tests and carry the
+package-derived project name, so `demo/blong-marine` and every suite that lists it in
+`realmPackages` write one set of files while rendering different menubars.
+
+The fix is a choice the repository owner has to make, because each option changes a different part
+of the tree and the baseline capture follows from it.
+
+Option A (preferred): in `defineBlongConfig` give a composed realm project a `snapshotPathTemplate`
+that carries the host package, e.g. `portal-home-blong-suite-blong-marine-linux.png` for the suite
+run while the realm's own run keeps today's names. Needs the new baselines captured by the
+`baselines.yaml` workflow on the runner, not locally (fonts differ, T-123), and a line in the
+`blong-playwright` skill next to the `realmPackages` paragraph.
+
+Option C: add the `access`, `blong` and `kustomize` browser children to `demo/blong-marine` so the
+demonstration app renders the same menubar as the suite and the shared baseline is honest. Changes
+what the demo app is.
+
+Option B: drop `realmPackages` from `suite/blong-suite/playwright.config.ts`. No new baselines, but
+the realm's pages stop being exercised inside the suite; `test/portalMerge.play.ts` still covers the
+suite's own menu.
+
+Whichever is chosen, also state in the skill that `reuseExistingServer` (on outside CI) lets a
+server started by the other package answer a run, which makes an update capture the wrong
+application.
+
+Implemented as option C: the marine demo app mounts access, blong and kustomize and declares the
+packages, so one portal shell renders in both apps (D-741 in demo/blong-marine).
+
+### T-602 — A browse filter on a joined column builds the wrong table alias
+
+> _2026-11-02 · core/blong-browser · done_
+
+A browse column that comes from a joined table cannot be filtered. The Legal Name column of
+`sport.club.browse` is read from `party_organization`, and filling its column filter sends
+`where sport_club.legalName = ?`, which the database rejects with
+`Unknown column 'sport_club.legalName' in 'where clause'` and the page answers with an error dialog.
+The query is built from the column's `fieldName`, which names the column rather than the table that
+carries it, so a joined column needs its alias. Until it is fixed the feedback spec empties the
+table through the browse search box instead (`realm/blong-sport/test/feedback.play.ts`).
+
+Fixed in D-743: the generic find filters a label through the join alias attachLabelJoins reports,
+and the sport profile helper qualifies each filter, search column and order term with the table that
+carries it (sport.table or the party table). Verified against the sport database: sport.club.find
+with filterBy.legalName returns one row where it used to answer Unknown column
+'sport_club.legalName'; a new spec (test/clubFilter.play.ts) asserts the UI answer.

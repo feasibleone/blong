@@ -634,12 +634,10 @@ export function TableWidget({
                             columnAttributes && tablePath
                                 ? appendSegment(tablePath, 'column', field)
                                 : undefined;
-                        const headerText = columnPath ? (
+                        const headerText = (
                             <FeedbackPath path={columnPath}>
                                 <Text>{header}</Text>
                             </FeedbackPath>
-                        ) : (
-                            <Text>{header}</Text>
                         );
 
                         return (
