@@ -41,7 +41,12 @@ export default browser(blong => ({
             ui: {
                 portal: {
                     portal: {
-                        title: 'Blong Suite',
+                        title: 'Marine Biology',
+                        brand: {
+                            logoUrl: `public/manta.png`,
+                            orgTitle: 'Feasible One',
+                            orgIcon: 'pi pi-building',
+                        },
                     },
                 },
             },
