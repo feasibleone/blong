@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.33.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.33.0...blong-browser-v1.33.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* browser optimizations ([fe90754](https://github.com/feasibleone/blong/commit/fe907546914e84915b08481ca6a198d4a5a7cc6a))
+
 ## [1.33.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.32.0...blong-browser-v1.33.0) (2026-11-03)
 
 

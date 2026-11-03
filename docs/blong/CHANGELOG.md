@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.41.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.41.0...blong-docs-v1.41.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* continuous deployment issues ([8b84ac3](https://github.com/feasibleone/blong/commit/8b84ac3e33baf217d8e750d85345cfe66e92775c))
+
 ## [1.41.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.40.0...blong-docs-v1.41.0) (2026-11-03)
 
 

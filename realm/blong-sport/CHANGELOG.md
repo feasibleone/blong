@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/feasibleone/blong/compare/blong-sport-v0.5.0...blong-sport-v0.5.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* browser optimizations ([fe90754](https://github.com/feasibleone/blong/commit/fe907546914e84915b08481ca6a198d4a5a7cc6a))
+
 ## [0.5.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.4.0...blong-sport-v0.5.0) (2026-11-03)
 
 

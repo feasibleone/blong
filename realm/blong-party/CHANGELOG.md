@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.1](https://github.com/feasibleone/blong/compare/blong-party-v1.14.0...blong-party-v1.14.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* browser optimizations ([fe90754](https://github.com/feasibleone/blong/commit/fe907546914e84915b08481ca6a198d4a5a7cc6a))
+
 ## [1.14.0](https://github.com/feasibleone/blong/compare/blong-party-v1.13.0...blong-party-v1.14.0) (2026-11-03)
 
 
