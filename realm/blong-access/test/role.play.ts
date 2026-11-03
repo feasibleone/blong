@@ -19,7 +19,7 @@ test.describe('Access Role', () => {
     cleanupModel(test, expect, {
         subject: 'access',
         object: 'role',
-        search: 'ACC-PLAY',
+        search: 'ACC-PLAY-Matrix',
         removeMethod: 'access.role.remove',
     });
 
