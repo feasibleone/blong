@@ -1,20 +1,20 @@
 {
   "schema": 1,
-  "commit": "9685e0bd343c5a83e780722c65c2aa43f3a8eac5",
-  "run": 656,
-  "updatedAt": "2026-11-02T11:41:50.560Z",
+  "commit": "2225567d76609af132c6052e72ec8f0aec7fee29",
+  "run": 662,
+  "updatedAt": "2026-11-03T18:28:02.972Z",
   "tests": {
-    "total": 9051,
-    "passed": 9046,
+    "total": 9154,
+    "passed": 9149,
     "failed": 0,
     "flaky": 0,
-    "durationMs": 2513450,
-    "testsMs": 3135741.2949999995
+    "durationMs": 3632860,
+    "testsMs": 4641831.188999999
   },
   "coverage": {
     "lines": {
-      "hit": 70488,
-      "found": 89873
+      "hit": 70790,
+      "found": 90366
     }
   },
   "packages": {
@@ -24,8 +24,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 102,
-        "durationMs": 213227,
-        "testsMs": 201713.452
+        "durationMs": 291161,
+        "testsMs": 278440.125
       },
       "coverage": {
         "linesHit": 9967,
@@ -38,8 +38,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 2,
-        "durationMs": 7620,
-        "testsMs": 7620
+        "durationMs": 11063,
+        "testsMs": 11063
       }
     },
     "blong-allure": {
@@ -48,22 +48,22 @@
         "failed": 0,
         "flaky": 0,
         "total": 63,
-        "durationMs": 1665,
-        "testsMs": 1665
+        "durationMs": 3444,
+        "testsMs": 3444
       }
     },
     "blong-browser": {
       "tests": {
-        "passed": 737,
+        "passed": 753,
         "failed": 0,
         "flaky": 0,
-        "total": 737,
-        "durationMs": 33643,
-        "testsMs": 33643
+        "total": 753,
+        "durationMs": 45340,
+        "testsMs": 45340
       },
       "coverage": {
-        "linesHit": 4165,
-        "linesTotal": 6626
+        "linesHit": 4218,
+        "linesTotal": 6762
       }
     },
     "blong-chain": {
@@ -72,8 +72,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 188,
-        "durationMs": 6733,
-        "testsMs": 1145.0220000000002
+        "durationMs": 9085,
+        "testsMs": 1311.818
       }
     },
     "blong-chat": {
@@ -82,8 +82,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 46,
-        "durationMs": 9865,
-        "testsMs": 1243.437
+        "durationMs": 10283,
+        "testsMs": 1467.401
       }
     },
     "blong-ci-report": {
@@ -92,8 +92,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 142,
-        "durationMs": 6681,
-        "testsMs": 6681
+        "durationMs": 6481,
+        "testsMs": 6481
       }
     },
     "blong-cli": {
@@ -102,8 +102,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 14,
-        "durationMs": 11884,
-        "testsMs": 11884
+        "durationMs": 19712,
+        "testsMs": 19712
       },
       "coverage": {
         "linesHit": 253,
@@ -116,8 +116,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 28,
-        "durationMs": 118728,
-        "testsMs": 124519.152
+        "durationMs": 157218,
+        "testsMs": 165007.231
       },
       "coverage": {
         "linesHit": 1826,
@@ -130,18 +130,18 @@
         "failed": 0,
         "flaky": 0,
         "total": 5,
-        "durationMs": 4313,
-        "testsMs": 12.142000000000001
+        "durationMs": 5851,
+        "testsMs": 14.907
       }
     },
     "blong-dev": {
       "tests": {
-        "passed": 1358,
+        "passed": 1420,
         "failed": 0,
         "flaky": 0,
-        "total": 1360,
-        "durationMs": 105805,
-        "testsMs": 105805
+        "total": 1422,
+        "durationMs": 153845,
+        "testsMs": 153845
       }
     },
     "blong-eip": {
@@ -150,8 +150,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 23,
-        "durationMs": 7322,
-        "testsMs": 77.13199999999999
+        "durationMs": 10541,
+        "testsMs": 131.822
       }
     },
     "blong-feedback": {
@@ -160,8 +160,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 16,
-        "durationMs": 11179,
-        "testsMs": 108.732
+        "durationMs": 16313,
+        "testsMs": 398.272
       }
     },
     "blong-gateway": {
@@ -170,8 +170,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 40,
-        "durationMs": 110563,
-        "testsMs": 172616.449
+        "durationMs": 153511,
+        "testsMs": 245090.681
       },
       "coverage": {
         "linesHit": 2958,
@@ -180,16 +180,16 @@
     },
     "blong-gogo": {
       "tests": {
-        "passed": 1080,
+        "passed": 1099,
         "failed": 0,
         "flaky": 0,
-        "total": 1080,
-        "durationMs": 61912,
-        "testsMs": 46.948
+        "total": 1099,
+        "durationMs": 92521,
+        "testsMs": 71.118
       },
       "coverage": {
-        "linesHit": 20953,
-        "linesTotal": 30493
+        "linesHit": 21087,
+        "linesTotal": 30607
       }
     },
     "blong-graph": {
@@ -198,8 +198,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 12,
-        "durationMs": 2627,
-        "testsMs": 2627
+        "durationMs": 4011,
+        "testsMs": 4011
       }
     },
     "blong-int-adapter": {
@@ -208,8 +208,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 165,
-        "durationMs": 27396,
-        "testsMs": 8227.690000000002
+        "durationMs": 35309,
+        "testsMs": 10600.874999999993
       },
       "coverage": {
         "linesHit": 4230,
@@ -222,8 +222,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 12,
-        "durationMs": 4481,
-        "testsMs": 28.861000000000004
+        "durationMs": 7004,
+        "testsMs": 35.556000000000004
       }
     },
     "blong-int-sql": {
@@ -232,8 +232,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 5,
-        "durationMs": 9303,
-        "testsMs": 4161.7080000000005
+        "durationMs": 13646,
+        "testsMs": 4210.348
       }
     },
     "blong-kopi": {
@@ -242,8 +242,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 10,
-        "durationMs": 42114,
-        "testsMs": 30963.446
+        "durationMs": 79745,
+        "testsMs": 64095.563
       },
       "coverage": {
         "linesHit": 704,
@@ -256,8 +256,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 623,
-        "durationMs": 155108,
-        "testsMs": 4.33
+        "durationMs": 219010,
+        "testsMs": 5.58
       },
       "coverage": {
         "linesHit": 3851,
@@ -266,12 +266,12 @@
     },
     "blong-kustomize": {
       "tests": {
-        "passed": 129,
+        "passed": 130,
         "failed": 0,
         "flaky": 0,
-        "total": 130,
-        "durationMs": 20192,
-        "testsMs": 5800.168999999999
+        "total": 131,
+        "durationMs": 28137,
+        "testsMs": 8066.916000000004
       }
     },
     "blong-lib": {
@@ -280,8 +280,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 214,
-        "durationMs": 5855,
-        "testsMs": 5855
+        "durationMs": 8020,
+        "testsMs": 8020
       }
     },
     "blong-log": {
@@ -290,22 +290,22 @@
         "failed": 0,
         "flaky": 0,
         "total": 104,
-        "durationMs": 38357,
-        "testsMs": 33651
+        "durationMs": 45415,
+        "testsMs": 38957
       }
     },
     "blong-marine": {
       "tests": {
-        "passed": 20,
+        "passed": 21,
         "failed": 0,
         "flaky": 0,
-        "total": 20,
-        "durationMs": 124060,
-        "testsMs": 220399
+        "total": 21,
+        "durationMs": 192843,
+        "testsMs": 375462
       },
       "coverage": {
-        "linesHit": 354,
-        "linesTotal": 1289
+        "linesHit": 468,
+        "linesTotal": 1453
       }
     },
     "blong-mock": {
@@ -314,8 +314,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 16,
-        "durationMs": 4217,
-        "testsMs": 4217
+        "durationMs": 6935,
+        "testsMs": 6935
       }
     },
     "blong-party": {
@@ -324,8 +324,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 93,
-        "durationMs": 152332,
-        "testsMs": 221242.512
+        "durationMs": 224542,
+        "testsMs": 321562.783
       },
       "coverage": {
         "linesHit": 5060,
@@ -338,8 +338,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 15,
-        "durationMs": 68460,
-        "testsMs": 56841.38
+        "durationMs": 98151,
+        "testsMs": 81742.227
       },
       "coverage": {
         "linesHit": 901,
@@ -352,8 +352,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 2,
-        "durationMs": 6374,
-        "testsMs": 45.583
+        "durationMs": 9566,
+        "testsMs": 68.719
       }
     },
     "blong-sim-tcp": {
@@ -362,32 +362,32 @@
         "failed": 0,
         "flaky": 0,
         "total": 1,
-        "durationMs": 6876,
-        "testsMs": 20.386
+        "durationMs": 9569,
+        "testsMs": 15.25
       }
     },
     "blong-sport": {
       "tests": {
-        "passed": 173,
+        "passed": 176,
         "failed": 0,
         "flaky": 0,
-        "total": 173,
-        "durationMs": 857933,
-        "testsMs": 1533434.74
+        "total": 176,
+        "durationMs": 1261251,
+        "testsMs": 2283163.851
       }
     },
     "blong-suite": {
       "tests": {
-        "passed": 22,
+        "passed": 23,
         "failed": 0,
         "flaky": 0,
-        "total": 22,
-        "durationMs": 115619,
-        "testsMs": 204003
+        "total": 23,
+        "durationMs": 163227,
+        "testsMs": 305291
       },
       "coverage": {
-        "linesHit": 49,
-        "linesTotal": 366
+        "linesHit": 50,
+        "linesTotal": 445
       }
     },
     "blong-template": {
@@ -396,8 +396,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 111,
-        "durationMs": 3058,
-        "testsMs": 3058
+        "durationMs": 4324,
+        "testsMs": 4324
       }
     },
     "blong-ttk": {
@@ -406,8 +406,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 168,
-        "durationMs": 4702,
-        "testsMs": 4702
+        "durationMs": 6979,
+        "testsMs": 6979
       }
     },
     "config-hot-reload": {
@@ -416,8 +416,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 2,
-        "durationMs": 5471,
-        "testsMs": 8.405999999999999
+        "durationMs": 7393,
+        "testsMs": 53.9
       }
     },
     "framework": {
@@ -426,8 +426,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 3,
-        "durationMs": 13968,
-        "testsMs": 839.871
+        "durationMs": 25888,
+        "testsMs": 1700.333
       },
       "coverage": {
         "linesHit": 1348,
@@ -440,8 +440,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 24,
-        "durationMs": 7797,
-        "testsMs": 819.7469999999998
+        "durationMs": 12034,
+        "testsMs": 1219.913
       }
     },
     "semantic-log": {
@@ -450,8 +450,8 @@
         "failed": 0,
         "flaky": 0,
         "total": 3280,
-        "durationMs": 126010,
-        "testsMs": 126010
+        "durationMs": 183492,
+        "testsMs": 183492
       },
       "coverage": {
         "linesHit": 13869,
@@ -460,6 +460,25 @@
     }
   },
   "history": [
+    {
+      "commit": "2225567d76609af132c6052e72ec8f0aec7fee29",
+      "run": 662,
+      "date": "2026-11-03T18:28:02.972Z",
+      "tests": {
+        "total": 9154,
+        "passed": 9149,
+        "failed": 0,
+        "flaky": 0,
+        "durationMs": 3632860,
+        "testsMs": 4641831.188999999
+      },
+      "coverage": {
+        "lines": {
+          "hit": 70790,
+          "found": 90366
+        }
+      }
+    },
     {
       "commit": "9685e0bd343c5a83e780722c65c2aa43f3a8eac5",
       "run": 656,
@@ -628,25 +647,6 @@
         "lines": {
           "hit": 66709,
           "found": 84063
-        }
-      }
-    },
-    {
-      "commit": "a94f78d096cd920ec47c06f2c2aee12f0b7ab807",
-      "run": 631,
-      "date": "2026-10-17T21:05:36.662Z",
-      "tests": {
-        "total": 8165,
-        "passed": 8160,
-        "failed": 0,
-        "flaky": 0,
-        "durationMs": 2173835,
-        "testsMs": 2067277.3259999997
-      },
-      "coverage": {
-        "lines": {
-          "hit": 65583,
-          "found": 82526
         }
       }
     }
