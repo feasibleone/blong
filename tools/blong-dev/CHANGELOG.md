@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.2](https://github.com/feasibleone/blong/compare/blong-dev-v1.16.1...blong-dev-v1.16.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* browser optimizations ([fe90754](https://github.com/feasibleone/blong/commit/fe907546914e84915b08481ca6a198d4a5a7cc6a))
+
 ## [1.16.1](https://github.com/feasibleone/blong/compare/blong-dev-v1.16.0...blong-dev-v1.16.1) (2026-11-03)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.5.0...blong-kustomize-v0.5.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* continuous deployment issues ([8b84ac3](https://github.com/feasibleone/blong/commit/8b84ac3e33baf217d8e750d85345cfe66e92775c))
+
 ## [0.5.0](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.4.0...blong-kustomize-v0.5.0) (2026-11-03)
 
 
