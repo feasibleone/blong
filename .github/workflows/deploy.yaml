@@ -273,6 +273,7 @@ jobs:
                   # has to download and hash the zip to find out what it is.
                   echo "$digest  ${{ steps.record.outputs.versioned }}" \
                       > "$RUNNER_TEMP/${{ steps.record.outputs.versioned }}.sha256"
+                  echo "digest=$digest" >> "$GITHUB_OUTPUT"
                   echo "sha256=$digest"
 
             - name: Attach them to the release
@@ -284,6 +285,73 @@ jobs:
                       "$RUNNER_TEMP/${{ steps.record.outputs.versioned }}.sha256" \
                       "$RUNNER_TEMP/${{ steps.record.outputs.alias }}" \
                       --clobber
+
+            # The operator is the only writer of Deployments, and the runner has no cluster access,
+            # so the release asks the operator to put the new artifact in front of itself: the route
+            # takes the same token as a tenant's release, and the `blong-operator` suite is what tells
+            # the operator this announcement is about its own install tree (D-750). No image is left
+            # to guesswork — the framework version is read from the manifest at the tag, the same
+            # place the tenant path reads it.
+            - name: Ask the operator to update itself
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  DEPLOY_ENDPOINT: ${{ secrets.DEPLOY_ENDPOINT }}
+                  DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+                  VERSION: ${{ steps.record.outputs.version }}
+                  DIGEST: ${{ steps.zip.outputs.digest }}
+                  VERSIONED: ${{ steps.record.outputs.versioned }}
+                  FRAMEWORK_IMAGE: ghcr.io/feasibleone/blong-gogo
+              run: |
+                  set -euo pipefail
+                  if [ -z "$DEPLOY_ENDPOINT" ] || [ -z "$DEPLOY_TOKEN" ]; then
+                      echo "::error::DEPLOY_ENDPOINT and DEPLOY_TOKEN are required repository secrets"
+                      exit 1
+                  fi
+                  tag="${{ github.event.release.tag_name }}"
+                  gogo=$(git show "$tag:.release-please-manifest.json" | jq -r '."core/blong-gogo"')
+                  if [ -z "$gogo" ] || [ "$gogo" = "null" ]; then
+                      echo "::error::$tag does not carry a core/blong-gogo version"
+                      exit 1
+                  fi
+                  artifact_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${VERSIONED}"
+                  body=$(jq -n \
+                      --arg id "operator-${GITHUB_RUN_ID}" \
+                      --arg token "$DEPLOY_TOKEN" \
+                      --arg version "$VERSION" \
+                      --arg artifactUrl "$artifact_url" \
+                      --arg artifactDigest "$DIGEST" \
+                      --arg frameworkImage "$FRAMEWORK_IMAGE" \
+                      --arg frameworkVersion "v$gogo" \
+                      '{jsonrpc: "2.0",
+                        id: $id,
+                        method: "kustomize.release.approve",
+                        params: {
+                          token: $token,
+                          suite: "blong-operator",
+                          version: $version,
+                          artifactUrl: $artifactUrl,
+                          artifactDigest: $artifactDigest,
+                          frameworkImage: $frameworkImage,
+                          frameworkVersion: $frameworkVersion
+                      }}')
+                  set +e
+                  http=$(curl -sS --fail-with-body \
+                      -o "$RUNNER_TEMP/operator-answer.json" \
+                      -w '%{http_code}' \
+                      -X POST "$DEPLOY_ENDPOINT" \
+                      -H 'content-type: application/json' \
+                      -d "$body")
+                  status=$?
+                  set -e
+                  cat "$RUNNER_TEMP/operator-answer.json" 2>/dev/null || true
+                  echo
+                  echo "HTTP $http"
+                  # The same summary the tenant path writes: the operator's own release describes
+                  # itself in the same words, because it is the same document (D-751).
+                  if summary=$(jq -er '.result.markdown // empty' "$RUNNER_TEMP/operator-answer.json" 2>/dev/null); then
+                      printf '%s\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
+                  fi
+                  exit "$status"
 
     deploy:
         name: Ask the operator
@@ -345,4 +413,12 @@ jobs:
                   cat "$RUNNER_TEMP/answer.json" 2>/dev/null || true
                   echo
                   echo "HTTP $http"
+                  # The operator builds the summary, so a job page, a chat channel and the log all
+                  # say the same thing about the same release (D-751). Written before the exit so
+                  # the summary exists even when the call failed: a refused release is exactly the
+                  # one a reader needs the page for. An `if`, not `a && b`, so an answer with no
+                  # markdown cannot replace the status this step reports.
+                  if summary=$(jq -er '.result.markdown // empty' "$RUNNER_TEMP/answer.json" 2>/dev/null); then
+                      printf '%s\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
+                  fi
                   exit "$status"

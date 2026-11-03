@@ -32,6 +32,7 @@ import {
     resolveNodes,
 } from '../../plan.ts';
 import {DEFAULT_SERVICES_NAMESPACE} from '../../services.ts';
+import {serialisePass} from '../../queue.ts';
 
 type ClusterCall = (params: unknown, $meta: IMeta) => Promise<unknown>;
 
@@ -78,9 +79,7 @@ export interface IListingScope {
     cleanupOnly?: boolean;
 }
 
-/** The listings a pass needs, one per resource type _and namespace_ (@@T-282 @@D-464). */
-export const listingScopes = (
-    managed: IDesiredResource[],
+/** The listings a pass needs, one per resource type _and namespace_ (@@T-282 @@D-464). */export const listingScopes = (    managed: IDesiredResource[],
     swept: readonly string[],
     tenantNamespace: string,
     servicesNamespace?: string,
@@ -144,6 +143,36 @@ export const unreadableFailures = (
     unreadable: ReadonlyArray<{key: string; message: string; cleanupOnly: boolean}>,
 ): Array<{key: string; message: string}> =>
     unreadable.filter(entry => !entry.cleanupOnly).map(({key, message}) => ({key, message}));
+
+/**
+ * The refusals a cleanup-only listing expects, and says it expects.
+ *
+ * A namespace nothing creates answers `forbidden` rather than `not found` — the API server cannot
+ * tell the two apart — so the sweep for the credentials a switched-off service left behind asks a
+ * question it is routinely refused. Declaring that on the call's `$meta` is the framework's own
+ * signal: the adapter logs the failure at debug instead of as an error with a stack, which is the
+ * difference between an expected refusal and a real rights failure, and the two were
+ * indistinguishable in the log when both were errors (@@F-684).
+ */
+export const CLEANUP_EXPECTED = ['k8s.forbidden', 'k8s.notFound'];
+
+/** The caller's declared expectations plus the two a cleanup-only listing adds. */
+export const withExpect = (declared: IMeta['expect'], added: readonly string[]): string[] => {
+    const patterns = ([] as string[]).concat(declared ?? []);
+    for (const pattern of added) if (!patterns.includes(pattern)) patterns.push(pattern);
+    return patterns;
+};
+
+/**
+ * Whether a pass asked for by a release may delete objects of one kind (@@D-750 @@F-685).
+ *
+ * Only the steps, for the reason the call site gives: the tree a release pass plans is the install
+ * tree *this process* holds, and that tree cannot name the Ingress — its host is the installer's —
+ * so a live object the tree does not mention may be one the process simply cannot write. Pure and
+ * exported because the rule is the interesting part, and a test can hold it down without a cluster.
+ */
+export const mayPrune = (resourceType: string, release: object | undefined): boolean =>
+    !release || resourceType === 'job';
 
 /**
  * Whether anything the tree names lives in a namespace.
@@ -505,561 +534,635 @@ export default handler(({handler}) => {
         }
     };
 
-    return {
-        async kustomizeReconcileRun(
-            params: {
-                apply?: boolean;
-                prune?: boolean;
-                from?: 'registry' | 'cr';
-                /**
-                 * Which CR to reconcile. One operator serves many suites, so a pass names the one
-                 * it was triggered by; without a name it takes the first CR in the namespace, which
-                 * is what a hand-run pass and the realm's own tests want.
-                 */
-                name?: string;
-                /** The CR's namespace — the tenant. Falls back to the configured suite namespace. */
-                namespace?: string;
-                /** Where artifacts are cached and trees are written; the realm config decides. */
-                cacheDir?: string;
-            } = {},
-            $meta?: IMeta,
-        ): Promise<{
-            reconciled: number;
-            applied: boolean;
-            origin?: 'registry' | 'cr';
+    /**
+     * One pass, and only one at a time (@@D-749).
+     *
+     * Two triggers reconcile the same suite — the watch renewal and the interval — and a pass
+     * both replaces its generation directory and prunes the same old Job attempts: two of them
+     * at once is one pass reading a half-written tree, two framework children in this
+     * container's cgroup, and a delete that answers `notFound` because the other pass got there
+     * first. Serialising the pass is what makes the memory ceiling a number rather than a race.
+     */
+    const runPass = async function (
+        this: unknown,
+        params: {
+            apply?: boolean;
+            prune?: boolean;
+            from?: 'registry' | 'cr';
             /**
-             * Which CR the pass reconciled, when it read one.
-             *
-             * The caller that named one does not need it back; the caller that named none — the
-             * deployment page's button, which reconciles whatever the operator serves — does, and so
-             * does anyone reading a log line about a pass that read a declaration .
+             * Which CR to reconcile. One operator serves many suites, so a pass names the one
+             * it was triggered by; without a name it takes the first CR in the namespace, which
+             * is what a hand-run pass and the realm's own tests want.
              */
-            suite?: {name?: string; namespace?: string};
-            created?: number;
-            updated?: number;
-            unchanged?: number;
-            obsolete?: number;
-            deleted?: number;
-            skipped?: string[];
-            failures?: Array<{key: string; message: string}>;
-            reason?: string;
-        }> {
-            const self = this as unknown as {registry?: IDescribeCapable; config?: IPlanConfig};
-            const meta = $meta as IMeta;
-            // Two origins for the same plan: the config this process loaded, and the CR it is
-            // reconciling. The registry is what the suite actually runs; the CR is the declaration
-            // an operator was handed. Reading the second one closes the loop the CRD opened, and
-            // anything the CR does not name stays with the config rather than falling to a default
-            // .
-            const options = planOptionsOf(self.config);
-            let origin: 'registry' | 'cr' = 'registry';
-            // Kept out here because the status is written at the end of the pass, back to the CR the
-            // pass was triggered by — and only a CR pass has one.
-            let declared: IBlongDeploymentSpec | undefined;
-            let declaredName: string | undefined;
-            /** The declaration's `uid`, which is what an object it owns is removed by . */
-            let declaredUid: string | undefined;
-            if (params.from === 'cr') {
-                // `custom` is the resource type a custom resource reaches the adapter as — not the
-                // kind, which is not a name it knows. The coordinates below are what it reads the
-                // object with, and without them it has nothing to build a path from.
-                const list = call('clusterCustomFind');
-                if (!list) {
-                    return {
-                        reconciled: 0,
-                        applied: false,
-                        reason: 'the cluster adapter is not loaded',
-                    };
-                }
-                const tenant = params.namespace ?? options.namespace ?? options.suiteName;
-                // The coordinates, not just the namespace: the adapter reaches a custom resource
-                // through its group, version and plural, and a `BlongDeployment` is not a kind it
-                // knows from the client's own API list. Held once because the two listings below
-                // differ only in the scope they name.
-                const coordinates = {
-                    group: OPERATOR_GROUP,
-                    version: OPERATOR_VERSION,
-                    plural: OPERATOR_PLURAL,
-                };
-                const listing = async (scope: object) =>
-                    (await list({...coordinates, ...scope}, meta)) as {
-                        items?: Array<{
-                            metadata?: {name?: string; namespace?: string; uid?: string};
-                            spec?: IBlongDeploymentSpec;
-                        }>;
-                    };
-                // The narrow question first, and only widened when nobody named a namespace and that
-                // one holds nothing — see `crListingScope`, which is where the rule is written down.
-                let found = await listing({namespace: tenant});
-                const {scope, namespaced} = crListingScope({
-                    named: params.namespace,
-                    configured: tenant,
-                    held: found?.items?.length ?? 0,
-                });
-                if (!namespaced) {
-                    const all = await listing({namespaced: false});
-                    if (all?.items?.length) found = all;
-                }
-                // Filtered here rather than in the API call: the adapter's find answers a list, and
-                // one namespace holds one suite in practice, so a name is a lookup into a handful of
-                // items rather than a reason for a second verb. The item is kept whole because the
-                // status is written back to the object it was read from.
-                const item = found?.items?.find(
-                    entry => params.name === undefined || entry.metadata?.name === params.name,
-                );
-                declared = item?.spec;
-                declaredName = item?.metadata?.name;
-                // The listing type names only what the pass reads for the plan; the uid is what an
-                // owner reference needs, and it comes from the same object .
-                declaredUid = item?.metadata?.uid;
-                if (!declared) {
-                    return {
-                        reconciled: 0,
-                        applied: false,
-                        reason: params.name
-                            ? `no BlongDeployment ${params.name} in ${scope}`
-                            : `no BlongDeployment names a suite in ${scope}`,
-                    };
-                }
-                // The CR's namespace is the tenant: the suite deploys where it was declared, not
-                // where this process happens to be configured — which is what the cluster-wide
-                // listing above has to hand back rather than the namespace it searched.
-                options.namespace = item?.metadata?.namespace ?? tenant;
-                Object.assign(options, planOptionsFromSpec(declared));
-                origin = 'cr';
+            name?: string;
+            /** The CR's namespace — the tenant. Falls back to the configured suite namespace. */
+            namespace?: string;
+            /** Where artifacts are cached and trees are written; the realm config decides. */
+            cacheDir?: string;
+            /**
+             * What a release published, when the pass was asked for by one rather than by the loop.
+             *
+             * Only a registry pass takes it: the release names the version and the artifact the
+             * *operator* runs — which is the tree this process is — while a CR pass reads the same
+             * facts off the declaration it was handed. Merged over the loaded plan rather than
+             * replacing it, because the release knows the artifact and knows nothing of the backend
+             * or the retention the installer chose (@@D-750).
+             */
+            release?: {
+                version?: string;
+                artifactUrl?: string;
+                artifactDigest?: string;
+                frameworkImage?: string;
+                frameworkVersion?: string;
+            };
+        } = {},
+        $meta?: IMeta,
+    ): Promise<{
+        reconciled: number;
+        applied: boolean;
+        origin?: 'registry' | 'cr';
+        /**
+         * Which CR the pass reconciled, when it read one.
+         *
+         * The caller that named one does not need it back; the caller that named none — the
+         * deployment page's button, which reconciles whatever the operator serves — does, and so
+         * does anyone reading a log line about a pass that read a declaration .
+         */
+        suite?: {name?: string; namespace?: string};
+        created?: number;
+        updated?: number;
+        unchanged?: number;
+        obsolete?: number;
+        deleted?: number;
+        skipped?: string[];
+        failures?: Array<{key: string; message: string}>;
+        reason?: string;
+    }> {
+        const self = this as unknown as {registry?: IDescribeCapable; config?: IPlanConfig};
+        const meta = $meta as IMeta;
+        // Two origins for the same plan: the config this process loaded, and the CR it is
+        // reconciling. The registry is what the suite actually runs; the CR is the declaration
+        // an operator was handed. Reading the second one closes the loop the CRD opened, and
+        // anything the CR does not name stays with the config rather than falling to a default
+        // .
+        const options = planOptionsOf(self.config);
+        // A release's own facts, laid over the loaded plan. The artifact is merged member by member
+        // rather than assigned: the release names a url and a digest and knows nothing of the backend
+        // or the retention the installer chose, and a wholesale `suiteVolume` reset a node-local
+        // volume to the CRD's default the one time it was done that way (see the same rule in
+        // `kustomize.release.notify`).
+        if (params.release?.version) {
+            const {artifactUrl, artifactDigest} = params.release;
+            options.suiteVersion = params.release.version;
+            if (params.release.frameworkImage) options.frameworkImage = params.release.frameworkImage;
+            if (params.release.frameworkVersion) {
+                options.minFrameworkVersion = params.release.frameworkVersion;
             }
-            // A registry pass reconciles the suite *this process is*, so a process that declares no
-            // suite entry has no tree of its own to apply: running this realm's CLI against a cluster
-            // planned the realm's own ports — `blong`, `codec`, `kustomize` — and deployed them as a
-            // suite's workloads into whatever namespace it was handed (@@F-406), and the failure was
-            // silent, because a pass reports what it created. Refused rather than narrowed by
-            // namespace: a namespace says where a pass may write, not whether it has a suite to
-            // write .
-            if (origin === 'registry' && !options.entry) {
+            if (artifactUrl) {
+                options.suiteVolume = {
+                    ...options.suiteVolume,
+                    artifact: {
+                        source: 'url',
+                        url: artifactUrl,
+                        ...(artifactDigest ? {digest: artifactDigest} : {}),
+                    },
+                };
+            }
+        }
+        let origin: 'registry' | 'cr' = 'registry';
+        // Kept out here because the status is written at the end of the pass, back to the CR the
+        // pass was triggered by — and only a CR pass has one.
+        let declared: IBlongDeploymentSpec | undefined;
+        let declaredName: string | undefined;
+        /** The declaration's `uid`, which is what an object it owns is removed by . */
+        let declaredUid: string | undefined;
+        if (params.from === 'cr') {
+            // `custom` is the resource type a custom resource reaches the adapter as — not the
+            // kind, which is not a name it knows. The coordinates below are what it reads the
+            // object with, and without them it has nothing to build a path from.
+            const list = call('clusterCustomFind');
+            if (!list) {
                 return {
                     reconciled: 0,
                     applied: false,
-                    reason:
-                        'a registry pass reconciles the suite this process is, and this process ' +
-                        'declares no suite entry (`--kustomize.deploy.suite.entry`)',
+                    reason: 'the cluster adapter is not loaded',
                 };
             }
-            // Where the tree comes from is the whole difference between the two origins. A pass from
-            // the registry plans in-process, because that process *is* the suite. A pass from a CR
-            // must not: the operator is installed once and reconciles suites it does not hold, so the
-            // tree is written by a short-lived child that loads that suite's artifact, and this
-            // process applies what the child wrote (@@D-395).
-            const suiteName = declaredName ?? options.suiteName;
-            const suiteNamespace = options.namespace ?? options.suiteName;
-            let tree: KustomizeTree;
-            if (origin === 'cr' && declared) {
-                const generated = (await suiteGenerate(
-                    {
-                        spec: declared,
-                        name: suiteName,
-                        namespace: suiteNamespace,
-                        cacheDir: params.cacheDir,
-                    },
-                    meta,
-                )) as {tree: KustomizeTree};
-                tree = generated.tree;
-            } else {
-                // A pass this process plans itself has to be *told* the nodes: it is not the run that
-                // wrote the tree, and a `nodeLocal` volume is one directory per node (@@D-470). The CR
-                // wins where it names them, the realm's config answers otherwise, and the cluster is
-                // asked only for a selector . A CR pass needs none of this: it asks
-                // `kustomize.suite.generate` for a tree, and that leg reads the same source itself.
-                const nodeFind = call('clusterNodeFind');
-                options.nodes = await resolveNodes(options.nodeSource, async selector => {
-                    if (!nodeFind) return undefined;
-                    const found = (await nodeFind({labelSelector: selector}, $meta as IMeta)) as {
-                        items?: unknown[];
-                    };
-                    return clusterNodeNames(found);
-                });
-                tree = buildKustomizeTree(planFromRegistry(registryView(self.registry), options));
+            const tenant = params.namespace ?? options.namespace ?? options.suiteName;
+            // The coordinates, not just the namespace: the adapter reaches a custom resource
+            // through its group, version and plural, and a `BlongDeployment` is not a kind it
+            // knows from the client's own API list. Held once because the two listings below
+            // differ only in the scope they name.
+            const coordinates = {
+                group: OPERATOR_GROUP,
+                version: OPERATOR_VERSION,
+                plural: OPERATOR_PLURAL,
+            };
+            const listing = async (scope: object) =>
+                (await list({...coordinates, ...scope}, meta)) as {
+                    items?: Array<{
+                        metadata?: {name?: string; namespace?: string; uid?: string};
+                        spec?: IBlongDeploymentSpec;
+                    }>;
+                };
+            // The narrow question first, and only widened when nobody named a namespace and that
+            // one holds nothing — see `crListingScope`, which is where the rule is written down.
+            let found = await listing({namespace: tenant});
+            const {scope, namespaced} = crListingScope({
+                named: params.namespace,
+                configured: tenant,
+                held: found?.items?.length ?? 0,
+            });
+            if (!namespaced) {
+                const all = await listing({namespaced: false});
+                if (all?.items?.length) found = all;
             }
-            const {managed, skipped} = collectManifests(tree);
+            // Filtered here rather than in the API call: the adapter's find answers a list, and
+            // one namespace holds one suite in practice, so a name is a lookup into a handful of
+            // items rather than a reason for a second verb. The item is kept whole because the
+            // status is written back to the object it was read from.
+            const item = found?.items?.find(
+                entry => params.name === undefined || entry.metadata?.name === params.name,
+            );
+            declared = item?.spec;
+            declaredName = item?.metadata?.name;
+            // The listing type names only what the pass reads for the plan; the uid is what an
+            // owner reference needs, and it comes from the same object .
+            declaredUid = item?.metadata?.uid;
+            if (!declared) {
+                return {
+                    reconciled: 0,
+                    applied: false,
+                    reason: params.name
+                        ? `no BlongDeployment ${params.name} in ${scope}`
+                        : `no BlongDeployment names a suite in ${scope}`,
+                };
+            }
+            // The CR's namespace is the tenant: the suite deploys where it was declared, not
+            // where this process happens to be configured — which is what the cluster-wide
+            // listing above has to hand back rather than the namespace it searched.
+            options.namespace = item?.metadata?.namespace ?? tenant;
+            Object.assign(options, planOptionsFromSpec(declared));
+            origin = 'cr';
+        }
+        // A registry pass reconciles the suite *this process is*, so a process that declares no
+        // suite entry has no tree of its own to apply: running this realm's CLI against a cluster
+        // planned the realm's own ports — `blong`, `codec`, `kustomize` — and deployed them as a
+        // suite's workloads into whatever namespace it was handed (@@F-406), and the failure was
+        // silent, because a pass reports what it created. Refused rather than narrowed by
+        // namespace: a namespace says where a pass may write, not whether it has a suite to
+        // write .
+        if (origin === 'registry' && !options.entry) {
+            return {
+                reconciled: 0,
+                applied: false,
+                reason:
+                    'a registry pass reconciles the suite this process is, and this process ' +
+                    'declares no suite entry (`--kustomize.deploy.suite.entry`)',
+            };
+        }
+        // Where the tree comes from is the whole difference between the two origins. A pass from
+        // the registry plans in-process, because that process *is* the suite. A pass from a CR
+        // must not: the operator is installed once and reconciles suites it does not hold, so the
+        // tree is written by a short-lived child that loads that suite's artifact, and this
+        // process applies what the child wrote (@@D-395).
+        const suiteName = declaredName ?? options.suiteName;
+        const suiteNamespace = options.namespace ?? options.suiteName;
+        let tree: KustomizeTree;
+        if (origin === 'cr' && declared) {
+            const generated = (await suiteGenerate(
+                {
+                    spec: declared,
+                    name: suiteName,
+                    namespace: suiteNamespace,
+                    cacheDir: params.cacheDir,
+                },
+                meta,
+            )) as {tree: KustomizeTree};
+            tree = generated.tree;
+        } else {
+            // A pass this process plans itself has to be *told* the nodes: it is not the run that
+            // wrote the tree, and a `nodeLocal` volume is one directory per node (@@D-470). The CR
+            // wins where it names them, the realm's config answers otherwise, and the cluster is
+            // asked only for a selector . A CR pass needs none of this: it asks
+            // `kustomize.suite.generate` for a tree, and that leg reads the same source itself.
+            const nodeFind = call('clusterNodeFind');
+            options.nodes = await resolveNodes(options.nodeSource, async selector => {
+                if (!nodeFind) return undefined;
+                const found = (await nodeFind({labelSelector: selector}, $meta as IMeta)) as {
+                    items?: unknown[];
+                };
+                return clusterNodeNames(found);
+            });
+            tree = buildKustomizeTree(planFromRegistry(registryView(self.registry), options));
+        }
+        const {managed, skipped} = collectManifests(tree);
 
-            // A pass says what it was asked to do before it does it. The controller logs what the
-            // call answered, which is not the same thing: while the dispatch was broken (@@T-225) that
-            // line reported a pass that had run and changed nothing, and the only way to tell it
-            // apart from a pass that never ran was to look here.
+        // A pass says what it was asked to do before it does it. The controller logs what the
+        // call answered, which is not the same thing: while the dispatch was broken (@@T-225) that
+        // line reported a pass that had run and changed nothing, and the only way to tell it
+        // apart from a pass that never ran was to look here.
+        (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
+            $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
+            message:
+                `reconcile: reading from ${origin}, apply ${params.apply === true}, ` +
+                `prune ${params.prune === true}: ${managed.length} managed, ` +
+                `${skipped.length} skipped`,
+        });
+
+        // One listing per resource type *and namespace*, selected by ownership: everything the
+        // label returns belongs to this suite, which is what lets a live object the plan no
+        // longer mentions be treated as obsolete rather than as a stranger. Which namespaces
+        // those are is `listingScopes`' answer, and it is the objects that give it.
+        const groups: Array<{
+            resourceType: string;
+            namespace: string;
+            desired: IDesiredResource[];
+            live: IClusterObject[];
+        }> = [];
+        // A scope the pass cannot read is a failure of that scope, not the end of the pass: what
+        // it cannot see is reported, and everything else in the tree is still applied. A
+        // namespace whose Rights went with it is the case (@@F-461), and it is worth naming — the
+        // alternative is a pass that dies before it writes a status, leaving a CR that describes
+        // a cluster nobody has since.
+        const unreadable: Array<{key: string; message: string; cleanupOnly: boolean}> = [];
+        const servicesNamespace = options.servicesNamespace ?? DEFAULT_SERVICES_NAMESPACE;
+        for (const scope of listingScopes(
+            managed,
+            sweptResourceTypes(),
+            suiteNamespace,
+            servicesNamespace,
+            // What the tree and the declaration together say about services: a brought service
+            // names objects in that namespace, and a switched-off one is still declared. A
+            // deployment that mentions neither has nothing there and no rights there, so it does
+            // not ask — see `listingScopes` and @@D-651.
+            treeNamesNamespace(tree, servicesNamespace) ||
+                Object.keys({...(options.services ?? {}), ...(declared?.services ?? {})}).length >
+                    0,
+        )) {
+            const find = call(wireName(scope.resourceType, 'Find'));
+            if (!find) {
+                // A kind the tree names and the cluster cannot look up is a pass that would apply
+                // what it cannot reconcile, so it says so. One only the sweep is interested in is
+                // skipped: the adapter does not answer for it either way.
+                if (!scope.desired.length) continue;
+                return {
+                    reconciled: 0,
+                    applied: false,
+                    reason: `the cluster adapter does not answer ${scope.resourceType} lookups`,
+                };
+            }
+            let found: {items?: IClusterObject[]} | undefined;
+            // A cleanup-only listing is allowed to be refused, so it says so on the call rather than
+            // only on the answer: the adapter logs an expected failure at debug, and the sweep was
+            // otherwise two error lines with stacks per pass, which is exactly what a real refusal
+            // would look like (@@F-684).
+            const scopeMeta =
+                scope.cleanupOnly === true
+                    ? {...meta, expect: withExpect(meta.expect, CLEANUP_EXPECTED)}
+                    : meta;
+            try {
+                found = (await find(
+                    {
+                        namespace: scope.namespace,
+                        labelSelector: `${PART_OF_LABEL}=${suiteName}`,
+                    },
+                    scopeMeta,
+                )) as {items?: IClusterObject[]};
+            } catch (error) {
+                unreadable.push({
+                    key: `${scope.namespace}/${scope.resourceType}`,
+                    message: message(error),
+                    cleanupOnly: scope.cleanupOnly === true,
+                });
+                continue;
+            }
+            groups.push({
+                resourceType: scope.resourceType,
+                namespace: scope.namespace,
+                desired: scope.desired,
+                live: found?.items ?? [],
+            });
+        }
+
+        // What the sweep found, per kind the tree does not name at all.
+        //
+        // The tally below reports what the diff decided, not what the listing returned, and the
+        // two disagree in the case that matters: an object the tree no longer mentions that the
+        // listing did not return looks exactly like one that was never listed, so `0 obsolete`
+        // beside a surviving credentials Secret says nothing about why it survived. The counts
+        // are named here, once per pass, which is what separates a listing that came back empty
+        // (the object wears labels this suite does not own, or the scope asked the wrong
+        // namespace) from one that was never made. The namespace is part of the entry because it
+        // is the fact in doubt: a kind the tree stopped naming still has to be looked for where
+        // the object was left — and a scope that could not be read at all is named beside the
+        // counts rather than left to the status, where `0` would read as `nothing was there`.
+        const swept = groups
+            .filter(group => !group.desired.length)
+            .map(group => `${group.namespace}/${group.resourceType}=${group.live.length}`);
+        if (swept.length || unreadable.length) {
             (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
                 $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
                 message:
-                    `reconcile: reading from ${origin}, apply ${params.apply === true}, ` +
-                    `prune ${params.prune === true}: ${managed.length} managed, ` +
-                    `${skipped.length} skipped`,
+                    `reconcile: the tree names none of these, so the listing is all ` +
+                    `there is (namespace/kind=count): ${swept.join(', ')}` +
+                    (unreadable.length
+                        ? `; unreadable: ${unreadable
+                              .map(entry =>
+                                  // `expected` in the line as well as on the call: a reader scanning
+                                  // for a rights failure must be able to skip this one the way the
+                                  // adapter's own log level lets them (@@F-684).
+                                  entry.cleanupOnly
+                                      ? `${entry.key} (${entry.message}; cleanup only, expected)`
+                                      : `${entry.key} (${entry.message})`,
+                              )
+                              .join('; ')}`
+                        : ''),
             });
+        }
 
-            // One listing per resource type *and namespace*, selected by ownership: everything the
-            // label returns belongs to this suite, which is what lets a live object the plan no
-            // longer mentions be treated as obsolete rather than as a stranger. Which namespaces
-            // those are is `listingScopes`' answer, and it is the objects that give it.
-            const groups: Array<{
-                resourceType: string;
-                namespace: string;
-                desired: IDesiredResource[];
-                live: IClusterObject[];
-            }> = [];
-            // A scope the pass cannot read is a failure of that scope, not the end of the pass: what
-            // it cannot see is reported, and everything else in the tree is still applied. A
-            // namespace whose Rights went with it is the case (@@F-461), and it is worth naming — the
-            // alternative is a pass that dies before it writes a status, leaving a CR that describes
-            // a cluster nobody has since.
-            const unreadable: Array<{key: string; message: string; cleanupOnly: boolean}> = [];
-            const servicesNamespace = options.servicesNamespace ?? DEFAULT_SERVICES_NAMESPACE;
-            for (const scope of listingScopes(
-                managed,
-                sweptResourceTypes(),
-                suiteNamespace,
-                servicesNamespace,
-                // What the tree and the declaration together say about services: a brought service
-                // names objects in that namespace, and a switched-off one is still declared. A
-                // deployment that mentions neither has nothing there and no rights there, so it does
-                // not ask — see `listingScopes` and @@D-651.
-                treeNamesNamespace(tree, servicesNamespace) ||
-                    Object.keys({...(options.services ?? {}), ...(declared?.services ?? {})}).length >
-                        0,
-            )) {
-                const find = call(wireName(scope.resourceType, 'Find'));
-                if (!find) {
-                    // A kind the tree names and the cluster cannot look up is a pass that would apply
-                    // what it cannot reconcile, so it says so. One only the sweep is interested in is
-                    // skipped: the adapter does not answer for it either way.
-                    if (!scope.desired.length) continue;
-                    return {
-                        reconciled: 0,
-                        applied: false,
-                        reason: `the cluster adapter does not answer ${scope.resourceType} lookups`,
-                    };
-                }
-                let found: {items?: IClusterObject[]} | undefined;
-                try {
-                    found = (await find(
-                        {
-                            namespace: scope.namespace,
-                            labelSelector: `${PART_OF_LABEL}=${suiteName}`,
-                        },
-                        meta,
-                    )) as {items?: IClusterObject[]};
-                } catch (error) {
-                    unreadable.push({
-                        key: `${scope.namespace}/${scope.resourceType}`,
-                        message: message(error),
-                        cleanupOnly: scope.cleanupOnly === true,
-                    });
-                    continue;
-                }
-                groups.push({
-                    resourceType: scope.resourceType,
-                    namespace: scope.namespace,
-                    desired: scope.desired,
-                    live: found?.items ?? [],
-                });
+        const readOnly = !params.apply;
+
+        /**
+         * The suite's keys, before the processes that read them.
+         *
+         * The tree cannot carry them — a regenerated tree must be byte-identical, which the
+         * realm's tests pin — so the deployment creates them, and it has to create them *before*
+         * the Deployments: a pod that comes up in this same pass would otherwise hold only the
+         * framework's per-process fallback, and the browser session opened against it would
+         * belong to that one replica until it restarts . A read-only pass creates nothing,
+         * the same rule pruning follows.
+         */
+        let keys: {name: string; created: boolean; reason?: string} | undefined;
+        if (!readOnly) {
+            const ensure = call('kustomizeGatewayKeysEnsure') as unknown as
+                | ((
+                      params: {
+                          namespace: string;
+                          suite?: string;
+                          owner?: {name: string; uid: string};
+                      },
+                      $meta?: IMeta,
+                  ) => Promise<typeof keys>)
+                | undefined;
+            // The pair is the pass's to write and the declaration's to own: a CR pass hands it
+            // the object it read, so Kubernetes removes the Secret with it, while a registry pass
+            // read no declaration and claims no owner.
+            const owner =
+                declaredName && declaredUid
+                    ? {name: declaredName, uid: declaredUid}
+                    : undefined;
+            keys = ensure
+                ? await ensure({namespace: suiteNamespace, suite: suiteName, owner}, meta)
+                : undefined;
+        }
+        let created = 0;
+        let updated = 0;
+        let unchanged = 0;
+        let obsolete = 0;
+        let deleted = 0;
+        const failures: Array<{key: string; message: string}> = unreadableFailures(unreadable);
+        /**
+         * Per kind, so a count that looks wrong can be traced to the kind that produced it.
+         *
+         * `18 created beside 18 obsolete` says only that _something_ is compared wrongly; the
+         * kind it happens to says whether it is the name, the namespace or the kind string, and
+         * finding that out from the log beats reading the diff code again.
+         */
+        const tally: string[] = [];
+
+        for (const group of groups) {
+            const diff = diffResources(group.desired, group.live);
+            const toApply = appliesUpdate(group.resourceType) ? diff.update : [];
+            created += diff.create.length;
+            updated += toApply.length;
+            unchanged += diff.unchanged.length + (diff.update.length - toApply.length);
+            obsolete += diff.obsolete.length;
+            if (diff.create.length || diff.obsolete.length) {
+                tally.push(
+                    `${group.resourceType} +${diff.create.length}/-${diff.obsolete.length}`,
+                );
             }
-
-            // What the sweep found, per kind the tree does not name at all.
-            //
-            // The tally below reports what the diff decided, not what the listing returned, and the
-            // two disagree in the case that matters: an object the tree no longer mentions that the
-            // listing did not return looks exactly like one that was never listed, so `0 obsolete`
-            // beside a surviving credentials Secret says nothing about why it survived. The counts
-            // are named here, once per pass, which is what separates a listing that came back empty
-            // (the object wears labels this suite does not own, or the scope asked the wrong
-            // namespace) from one that was never made. The namespace is part of the entry because it
-            // is the fact in doubt: a kind the tree stopped naming still has to be looked for where
-            // the object was left — and a scope that could not be read at all is named beside the
-            // counts rather than left to the status, where `0` would read as `nothing was there`.
-            const swept = groups
-                .filter(group => !group.desired.length)
-                .map(group => `${group.namespace}/${group.resourceType}=${group.live.length}`);
-            if (swept.length || unreadable.length) {
+            // The same count on both sides means the keys never matched, and the pair says which
+            // part of the key did it — the kind string, the namespace, or the name the plan
+            // derives. Logged only in that state, so a healthy pass stays quiet and a broken one
+            // names itself on the first run .
+            if (diff.create.length && diff.obsolete.length) {
                 (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
                     $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
                     message:
-                        `reconcile: the tree names none of these, so the listing is all ` +
-                        `there is (namespace/kind=count): ${swept.join(', ')}` +
-                        (unreadable.length
-                            ? `; unreadable: ${unreadable
-                                  .map(entry =>
-                                      entry.cleanupOnly
-                                          ? `${entry.key} (${entry.message}; cleanup only)`
-                                          : `${entry.key} (${entry.message})`,
-                                  )
-                                  .join('; ')}`
-                            : ''),
+                        `reconcile: ${group.resourceType} wants ` +
+                        `${resourceKey(diff.create[0].object)} but the cluster has ` +
+                        `${resourceKey(diff.obsolete[0])} [keys ${Object.keys(
+                            diff.obsolete[0],
+                        ).join(',')} apiVersion ${String(diff.obsolete[0].apiVersion)}]`,
                 });
             }
+            if (readOnly) continue;
 
-            const readOnly = !params.apply;
-
-            /**
-             * The suite's keys, before the processes that read them.
-             *
-             * The tree cannot carry them — a regenerated tree must be byte-identical, which the
-             * realm's tests pin — so the deployment creates them, and it has to create them *before*
-             * the Deployments: a pod that comes up in this same pass would otherwise hold only the
-             * framework's per-process fallback, and the browser session opened against it would
-             * belong to that one replica until it restarts . A read-only pass creates nothing,
-             * the same rule pruning follows.
-             */
-            let keys: {name: string; created: boolean; reason?: string} | undefined;
-            if (!readOnly) {
-                const ensure = call('kustomizeGatewayKeysEnsure') as unknown as
-                    | ((
-                          params: {
-                              namespace: string;
-                              suite?: string;
-                              owner?: {name: string; uid: string};
-                          },
-                          $meta?: IMeta,
-                      ) => Promise<typeof keys>)
-                    | undefined;
-                // The pair is the pass's to write and the declaration's to own: a CR pass hands it
-                // the object it read, so Kubernetes removes the Secret with it, while a registry pass
-                // read no declaration and claims no owner.
-                const owner =
-                    declaredName && declaredUid
-                        ? {name: declaredName, uid: declaredUid}
-                        : undefined;
-                keys = ensure
-                    ? await ensure({namespace: suiteNamespace, suite: suiteName, owner}, meta)
-                    : undefined;
+            for (const entry of [...diff.create, ...toApply]) {
+                const apply = call(wireName(group.resourceType, 'Apply'));
+                if (!apply) {
+                    failures.push({key: resourceKey(entry.object), message: 'no apply verb'});
+                    continue;
+                }
+                try {
+                    await apply(applyParams(entry), meta);
+                } catch (error) {
+                    failures.push({key: resourceKey(entry.object), message: message(error)});
+                }
             }
-            let created = 0;
-            let updated = 0;
-            let unchanged = 0;
-            let obsolete = 0;
-            let deleted = 0;
-            const failures: Array<{key: string; message: string}> = unreadableFailures(unreadable);
-            /**
-             * Per kind, so a count that looks wrong can be traced to the kind that produced it.
-             *
-             * `18 created beside 18 obsolete` says only that _something_ is compared wrongly; the
-             * kind it happens to says whether it is the name, the namespace or the kind string, and
-             * finding that out from the log beats reading the diff code again.
-             */
-            const tally: string[] = [];
 
-            for (const group of groups) {
-                const diff = diffResources(group.desired, group.live);
-                const toApply = appliesUpdate(group.resourceType) ? diff.update : [];
-                created += diff.create.length;
-                updated += toApply.length;
-                unchanged += diff.unchanged.length + (diff.update.length - toApply.length);
-                obsolete += diff.obsolete.length;
-                if (diff.create.length || diff.obsolete.length) {
-                    tally.push(
-                        `${group.resourceType} +${diff.create.length}/-${diff.obsolete.length}`,
+            // A Job is a step, not a process: the seed fills the volume and the migration
+            // brings the schema up to date, and everything APPLY_ORDER puts after them reads
+            // what they wrote. So the loop waits here rather than rolling a process against a
+            // volume or a schema that is not ready yet — and the unchanged ones are waited on
+            // too, because a Job that failed in an earlier pass is still a step not taken.
+            if (group.resourceType === 'job') {
+                const findStep = call(wireName(group.resourceType, 'Find'));
+                for (const entry of [...diff.create, ...diff.update, ...diff.unchanged]) {
+                    const failure = await waitForStep(entry.object, findStep, meta);
+                    if (!failure) continue;
+                    failures.push({key: resourceKey(entry.object), message: failure});
+                    // The failed Job is **left where it is** (@@D-386, Q6). It used to be removed so
+                    // that the next pass could create the same object again — a Job's spec is
+                    // immutable — but the name now carries the attempt (version and hash), so a
+                    // retry is a different object and nothing has to be deleted for it to exist.
+                    // What is kept instead is the evidence: the Job that failed, its events and
+                    // its logs, which a pass that deleted it while reporting the failure took
+                    // away from whoever reads the report.
+                }
+            }
+
+            if (!params.prune) continue;
+            // A pass asked for by a release removes its own step attempts and nothing else
+            // (@@D-750 @@F-685). What it plans is the install tree this process holds, and that tree
+            // carries no Ingress: the host lives in the installer's rc file, which the operator's own
+            // configuration does not name, so "the tree does not mention it" is not "nobody wants
+            // it" — pruning on that reading deleted the address the release route is reached on. A
+            // Job is the one kind a pass owns outright: the attempt name carries the artifact
+            // identity, and the older attempts are exactly what accumulates.
+            if (params.release && !mayPrune(group.resourceType, params.release)) continue;
+            // A Job is not pruned by obsolescence the way the other kinds are: an older attempt is
+            // obsolete the moment a new one is generated, and it is exactly what a failed deploy is
+            // read from. So the retirement of Job attempts is a decision of its own — the newest
+            // few stay, failures included — and it is taken here, where the deletion is, from the
+            // retention the objects carry themselves.
+            const pastRetention =
+                group.resourceType === 'job'
+                    ? jobsPastRetention(diff.obsolete)
+                    : prunableByObsolescence(diff.obsolete);
+            for (const object of prunable(pastRetention, suiteNamespace)) {
+                const remove = call(wireName(group.resourceType, 'Remove'));
+                if (!remove) {
+                    failures.push({key: resourceKey(object), message: 'no delete verb'});
+                    continue;
+                }
+                try {
+                    await remove(
+                        {name: object.metadata?.name, namespace: object.metadata?.namespace},
+                        meta,
                     );
+                    deleted += 1;
+                } catch (error) {
+                    failures.push({key: resourceKey(object), message: message(error)});
                 }
-                // The same count on both sides means the keys never matched, and the pair says which
-                // part of the key did it — the kind string, the namespace, or the name the plan
-                // derives. Logged only in that state, so a healthy pass stays quiet and a broken one
-                // names itself on the first run .
-                if (diff.create.length && diff.obsolete.length) {
-                    (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
-                        $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
-                        message:
-                            `reconcile: ${group.resourceType} wants ` +
-                            `${resourceKey(diff.create[0].object)} but the cluster has ` +
-                            `${resourceKey(diff.obsolete[0])} [keys ${Object.keys(
-                                diff.obsolete[0],
-                            ).join(',')} apiVersion ${String(diff.obsolete[0].apiVersion)}]`,
-                    });
-                }
-                if (readOnly) continue;
+            }
+        }
 
-                for (const entry of [...diff.create, ...toApply]) {
-                    const apply = call(wireName(group.resourceType, 'Apply'));
-                    if (!apply) {
-                        failures.push({key: resourceKey(entry.object), message: 'no apply verb'});
-                        continue;
-                    }
-                    try {
-                        await apply(applyParams(entry), meta);
-                    } catch (error) {
-                        failures.push({key: resourceKey(entry.object), message: message(error)});
-                    }
-                }
-
-                // A Job is a step, not a process: the seed fills the volume and the migration
-                // brings the schema up to date, and everything APPLY_ORDER puts after them reads
-                // what they wrote. So the loop waits here rather than rolling a process against a
-                // volume or a schema that is not ready yet — and the unchanged ones are waited on
-                // too, because a Job that failed in an earlier pass is still a step not taken.
-                if (group.resourceType === 'job') {
-                    const findStep = call(wireName(group.resourceType, 'Find'));
-                    for (const entry of [...diff.create, ...diff.update, ...diff.unchanged]) {
-                        const failure = await waitForStep(entry.object, findStep, meta);
-                        if (!failure) continue;
-                        failures.push({key: resourceKey(entry.object), message: failure});
-                        // The failed Job is **left where it is** (@@D-386, Q6). It used to be removed so
-                        // that the next pass could create the same object again — a Job's spec is
-                        // immutable — but the name now carries the attempt (version and hash), so a
-                        // retry is a different object and nothing has to be deleted for it to exist.
-                        // What is kept instead is the evidence: the Job that failed, its events and
-                        // its logs, which a pass that deleted it while reporting the failure took
-                        // away from whoever reads the report.
-                    }
-                }
-
-                if (!params.prune) continue;
-                // A Job is not pruned by obsolescence the way the other kinds are: an older attempt is
-                // obsolete the moment a new one is generated, and it is exactly what a failed deploy is
-                // read from. So the retirement of Job attempts is a decision of its own — the newest
-                // few stay, failures included — and it is taken here, where the deletion is, from the
-                // retention the objects carry themselves.
-                const pastRetention =
-                    group.resourceType === 'job'
-                        ? jobsPastRetention(diff.obsolete)
-                        : prunableByObsolescence(diff.obsolete);
-                for (const object of prunable(pastRetention, suiteNamespace)) {
-                    const remove = call(wireName(group.resourceType, 'Remove'));
-                    if (!remove) {
-                        failures.push({key: resourceKey(object), message: 'no delete verb'});
-                        continue;
-                    }
-                    try {
-                        await remove(
-                            {name: object.metadata?.name, namespace: object.metadata?.namespace},
+        // The install tree piles up the same way the tenant's namespace does, and nothing swept
+        // it (@@D-491): an operator image is an identity, so every rollout leaves another fill Job
+        // per node in the namespace the operator is installed in — 28 Jobs across 14 identities
+        // were sitting there against a retention of three. Swept here, by the same rule and with
+        // the same cascade, and only over Jobs that name a retention label themselves, so the
+        // install-owned RBAC, Deployment and Service beside them stay out of reach (@@D-461).
+        //
+        // Only a pass triggered by a CR does this, because that pass is the operator and the
+        // namespace is the operator's own. A tenant's pass runs this same code and would be
+        // refused there — a failure per pass, over objects it has no business reading.
+        if (params.prune && !readOnly && origin === 'cr') {
+            const findJob = call(wireName('job', 'Find'));
+            const removeJob = call(wireName('job', 'Remove'));
+            if (findJob && removeJob) {
+                try {
+                    const found = (await findJob({namespace: OPERATOR_NAMESPACE}, meta)) as {
+                        items?: IClusterObject[];
+                    };
+                    const retired = jobsPastRetention(
+                        (found.items ?? []).filter(hasRetentionLabel),
+                    );
+                    for (const object of retired) {
+                        await removeJob(
+                            {
+                                name: object.metadata?.name,
+                                namespace: object.metadata?.namespace,
+                            },
                             meta,
                         );
                         deleted += 1;
-                    } catch (error) {
-                        failures.push({key: resourceKey(object), message: message(error)});
                     }
+                } catch (error) {
+                    failures.push({
+                        key: `${OPERATOR_NAMESPACE}/job`,
+                        message: message(error),
+                    });
                 }
             }
+        }
 
-            // The install tree piles up the same way the tenant's namespace does, and nothing swept
-            // it (@@D-491): an operator image is an identity, so every rollout leaves another fill Job
-            // per node in the namespace the operator is installed in — 28 Jobs across 14 identities
-            // were sitting there against a retention of three. Swept here, by the same rule and with
-            // the same cascade, and only over Jobs that name a retention label themselves, so the
-            // install-owned RBAC, Deployment and Service beside them stay out of reach (@@D-461).
-            //
-            // Only a pass triggered by a CR does this, because that pass is the operator and the
-            // namespace is the operator's own. A tenant's pass runs this same code and would be
-            // refused there — a failure per pass, over objects it has no business reading.
-            if (params.prune && !readOnly && origin === 'cr') {
-                const findJob = call(wireName('job', 'Find'));
-                const removeJob = call(wireName('job', 'Remove'));
-                if (findJob && removeJob) {
-                    try {
-                        const found = (await findJob({namespace: OPERATOR_NAMESPACE}, meta)) as {
-                            items?: IClusterObject[];
-                        };
-                        const retired = jobsPastRetention(
-                            (found.items ?? []).filter(hasRetentionLabel),
-                        );
-                        for (const object of retired) {
-                            await removeJob(
-                                {
-                                    name: object.metadata?.name,
-                                    namespace: object.metadata?.namespace,
-                                },
-                                meta,
-                            );
-                            deleted += 1;
-                        }
-                    } catch (error) {
-                        failures.push({
-                            key: `${OPERATOR_NAMESPACE}/job`,
-                            message: message(error),
-                        });
-                    }
-                }
-            }
+        const reason = readOnly
+            ? 'read-only pass; set apply to deploy'
+            : failures.length
+              ? 'some steps failed and are reported; the rest were applied'
+              : undefined;
+        // A pass reports its own outcome, not only the controller that triggered it: a watch
+        // triggers a pass directly, and a pass with no line of its own is indistinguishable from
+        // one that never ran (the shape @@T-225 hid behind for three days).
+        (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
+            $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
+            message:
+                `reconcile: pass from ${origin}, apply ${readOnly ? 'no' : 'yes'}: ` +
+                `${created} to create, ${updated} to update, ${unchanged} unchanged, ` +
+                `${obsolete} obsolete, ${deleted} deleted` +
+                `${tally.length ? ` (${tally.join(', ')})` : ''}` +
+                `${failures.length ? `, ${failures.length} failed` : ''}`,
+        });
 
-            const reason = readOnly
-                ? 'read-only pass; set apply to deploy'
-                : failures.length
-                  ? 'some steps failed and are reported; the rest were applied'
-                  : undefined;
-            // A pass reports its own outcome, not only the controller that triggered it: a watch
-            // triggers a pass directly, and a pass with no line of its own is indistinguishable from
-            // one that never ran (the shape @@T-225 hid behind for three days).
-            (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
-                $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
-                message:
-                    `reconcile: pass from ${origin}, apply ${readOnly ? 'no' : 'yes'}: ` +
-                    `${created} to create, ${updated} to update, ${unchanged} unchanged, ` +
-                    `${obsolete} obsolete, ${deleted} deleted` +
-                    `${tally.length ? ` (${tally.join(', ')})` : ''}` +
-                    `${failures.length ? `, ${failures.length} failed` : ''}`,
-            });
-
-            // The status is what a reader sees without reading logs: a phase, the version this pass
-            // applied, and the counts behind both. Written only by a pass that could have changed the
-            // cluster — a read-only pass reports in its log and claims nothing about the CR — and the
-            // write never fails the pass it describes, because the work is already done.
-            if (params.apply === true && origin === 'cr' && declaredName) {
-                const wantedDeployments = managed.filter(entry => entry.kind === 'Deployment');
-                const deployments = await deploymentAvailability(
-                    wantedDeployments,
-                    suiteNamespace,
-                    meta,
-                );
-                const available = deployments.filter(entry => entry.available > 0).length;
-                const phase: StatusPhase = failures.length
-                    ? 'Failed'
-                    : available === deployments.length
-                      ? 'Ready'
-                      : 'Progressing';
-                const waiting = deployments
-                    .filter(entry => entry.available === 0)
-                    .map(entry => entry.name);
-                const edit = call('kustomizeStatusEdit');
-                await edit?.(
-                    {
-                        name: declaredName,
-                        namespace: suiteNamespace,
-                        phase,
-                        observedVersion: declared?.version,
-                        message: failures.length
-                            ? `${failures.length} step(s) failed, first: ${failures[0].key}`
-                            : waiting.length
-                              ? `applied; waiting for ${waiting.join(', ')}`
-                              : `${created} created, ${updated} updated, ${unchanged} unchanged`,
-                        deployments,
-                        lastResult: {
-                            at: new Date().toISOString(),
-                            created,
-                            updated,
-                            unchanged,
-                            obsolete,
-                            deleted,
-                            failures: failures.length,
-                        },
+        // The status is what a reader sees without reading logs: a phase, the version this pass
+        // applied, and the counts behind both. Written only by a pass that could have changed the
+        // cluster — a read-only pass reports in its log and claims nothing about the CR — and the
+        // write never fails the pass it describes, because the work is already done.
+        if (params.apply === true && origin === 'cr' && declaredName) {
+            const wantedDeployments = managed.filter(entry => entry.kind === 'Deployment');
+            const deployments = await deploymentAvailability(
+                wantedDeployments,
+                suiteNamespace,
+                meta,
+            );
+            const available = deployments.filter(entry => entry.available > 0).length;
+            const phase: StatusPhase = failures.length
+                ? 'Failed'
+                : available === deployments.length
+                  ? 'Ready'
+                  : 'Progressing';
+            const waiting = deployments
+                .filter(entry => entry.available === 0)
+                .map(entry => entry.name);
+            const edit = call('kustomizeStatusEdit');
+            await edit?.(
+                {
+                    name: declaredName,
+                    namespace: suiteNamespace,
+                    phase,
+                    observedVersion: declared?.version,
+                    message: failures.length
+                        ? `${failures.length} step(s) failed, first: ${failures[0].key}`
+                        : waiting.length
+                          ? `applied; waiting for ${waiting.join(', ')}`
+                          : `${created} created, ${updated} updated, ${unchanged} unchanged`,
+                    deployments,
+                    lastResult: {
+                        at: new Date().toISOString(),
+                        created,
+                        updated,
+                        unchanged,
+                        obsolete,
+                        deleted,
+                        failures: failures.length,
                     },
-                    meta,
-                );
-            }
-            return {
-                reconciled: groups.reduce((total, group) => total + group.live.length, 0),
-                applied: !readOnly && failures.length === 0,
-                origin,
-                // Which declaration this pass answered for. A caller that named the CR knows it
-                // already; the one that named none was answered about whichever the cluster holds,
-                // and a pass that does not say which is one nobody can act on .
-                ...(origin === 'cr' && declaredName
-                    ? {suite: {name: declaredName, namespace: suiteNamespace}}
-                    : {}),
-                created,
-                updated,
-                unchanged,
-                obsolete,
-                deleted,
-                skipped: skipped.map(entry => `${entry.path}: ${entry.reason}`),
-                // Whether this pass had to make the keys, so a run that created a suite's first pair
-                // says so rather than leaving the reader to diff secrets .
-                ...(keys ? {keys} : {}),
-                ...(failures.length ? {failures} : {}),
-                ...(reason ? {reason} : {}),
-            };
+                },
+                meta,
+            );
+        }
+        return {
+            reconciled: groups.reduce((total, group) => total + group.live.length, 0),
+            applied: !readOnly && failures.length === 0,
+            origin,
+            // Which declaration this pass answered for. A caller that named the CR knows it
+            // already; the one that named none was answered about whichever the cluster holds,
+            // and a pass that does not say which is one nobody can act on .
+            ...(origin === 'cr' && declaredName
+                ? {suite: {name: declaredName, namespace: suiteNamespace}}
+                : {}),
+            created,
+            updated,
+            unchanged,
+            obsolete,
+            deleted,
+            skipped: skipped.map(entry => `${entry.path}: ${entry.reason}`),
+            // Whether this pass had to make the keys, so a run that created a suite's first pair
+            // says so rather than leaving the reader to diff secrets .
+            ...(keys ? {keys} : {}),
+            ...(failures.length ? {failures} : {}),
+            ...(reason ? {reason} : {}),
+        };
+    };
+
+    return {
+        kustomizeReconcileRun(params: Parameters<typeof runPass>[0], $meta?: IMeta) {
+            // `.call(this)`: the pass reads the port it was invoked on — its config, registry and
+            // log — and a queue must not take that away from it.
+            return serialisePass(() => runPass.call(this, params, $meta));
         },
     };
 });

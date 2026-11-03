@@ -99,7 +99,7 @@ open (63)
   member
 - `F-472` · realm/blong-kustomize — The reconcile diff was described from its caller, not its code
 
-resolved (35)
+resolved (38)
 
 - `F-371` · realm/blong-kustomize — The browser login fails while the same handler authenticates the
   token
@@ -147,6 +147,9 @@ resolved (35)
 - `F-452` · realm/blong-kustomize — The operator planned from the first artifact it ever fetched
 - `F-486` · realm/blong-kustomize — The mounted fill module started as a no-op
 - `F-487` · realm/blong-kustomize — The fill unpacked a 653 MB artifact into memory
+- `F-683` · realm/blong-kustomize — The operator OOM was only visible in cgroup counters
+- `F-684` · realm/blong-kustomize — An expected refusal was logged like a real one
+- `F-685` · realm/blong-kustomize — A release pass pruned the install tree's Ingress
 
 <!-- /memory:index -->
 
@@ -1705,6 +1708,52 @@ of this a unit test can reach.
 Fixed: unpackZip walks the archive through a file descriptor and streams each entry through
 createInflateRaw into its file, and a test pins the resident memory an unpack spends. The realm
 suite is 111/111 and a cluster cycle filled both nodes and started the whole suite.
+
+### F-683 — The operator OOM was only visible in cgroup counters
+
+> _2026-11-03 · realm/blong-kustomize · resolved_
+
+The OOM took a full investigation because the pod was the only evidence: no metrics-server in the
+cluster, and the crash came about sixty seconds after start, so every fresh pod lost its history.
+What found it was running the same entry locally against the dev cluster while sampling /proc RSS,
+then raising the live Deployment to 1Gi and sampling /sys/fs/cgroup/memory.current and memory.peak
+from inside the container: a 250-277MB baseline plus generation children of about 160MB each, three
+at once. The plain 404 the release job reported is the far end of the chain: Traefik skips an
+ingress whose Service has no endpoints, so a crash-looping operator reads as a missing route rather
+than an unhealthy pod. The local reproduction was itself misleading for a while, because without
+/cache the pass died on EACCES before it generated anything and the process sat at a comfortable
+250MB.
+
+### F-684 — An expected refusal was logged like a real one
+
+> _2026-11-03 · realm/blong-kustomize · resolved_
+
+Every reconcile logged two k8s.forbidden errors with full stack traces for the services-namespace
+sweep, and the code below them caught and ignored them, so an expected refusal and a real rights
+failure were the same lines in the log. The framework already answers this: AdapterBase.error logs a
+failure at debug when $meta.expect names it, which is the mechanism tests use to declare a call that
+is meant to fail. A cleanup-only listing now says so on the call, and what remains of the refusal is
+the pass's own one-line tally at info, marked cleanup only.
+
+Resolved: a cleanup-only listing declares k8s.forbidden and k8s.notFound on its , so the adapter
+logs at debug and the pass keeps one info line marked cleanup only.
+
+### F-685 — A release pass pruned the install tree's Ingress
+
+> _2026-11-03 · realm/blong-kustomize · resolved_
+
+The first live operator release deleted the operator's Ingress. The pass that answers a release
+plans the install tree the process holds, and that tree names no Ingress at all: the host is the
+installer's, read from the .blong_k8src rc file, which the deployed operator's own configuration
+does not carry. So a live Ingress the tree did not mention was read as obsolete and pruned, and the
+public host answered 404 with a healthy pod behind it: the same symptom as the OOM an hour earlier,
+from the opposite cause. What a release pass may delete is now its own step attempts and nothing
+else. The lesson is about the generic reconcile being pointed at an install tree: it prunes what the
+tree does not name, and an install tree is not a complete statement of what the installer created.
+Reproduced deliberately after the fact by reading the pass tally, which said ingress +0/-1.
+
+Resolved: a release pass prunes only its own Job attempts (mayPrune), and the deleted Ingress was
+restored by applying the install tree.
 
 ## Retired
 

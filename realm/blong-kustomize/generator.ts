@@ -42,6 +42,7 @@ import {
     OPERATOR_NAME,
     OPERATOR_NAMESPACE,
     OPERATOR_NAMESPACED_RULES,
+    OPERATOR_RESOURCES,
     OPERATOR_VERSION,
 } from './operator.ts';
 import type {
@@ -1210,8 +1211,14 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
                                 {name: 'rpc', containerPort: 8091, protocol: 'TCP'},
                                 {name: 'http', containerPort: 8080, protocol: 'TCP'},
                             ],
-                            // Sized like the processes it deploys rather than left BestEffort.
-                            resources: containerResources(),
+                            // Sized for the process *and* the generation child it runs in itself, not
+                            // like the suites it deploys: the two share this container's cgroup
+                            // (@@D-749). Copied, because the constant is readonly and a manifest is a
+                            // value a caller may edit.
+                            resources: {
+                                requests: {...OPERATOR_RESOURCES.requests},
+                                limits: {...OPERATOR_RESOURCES.limits},
+                            },
                         },
                     ],
                     volumes: [

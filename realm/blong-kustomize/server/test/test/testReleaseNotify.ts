@@ -1,6 +1,10 @@
-import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
+import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 import {realmCommand} from '../../../bin/kustomizeCommand.ts';
-import {releasePatch} from '../../../orchestrator/controller/kustomizeReleaseNotify.ts';
+import {
+    releaseMarkdown,
+    releasePatch,
+    type IReleaseReport,
+} from '../../../orchestrator/controller/kustomizeReleaseNotify.ts';
 
 /**
  * server/test/test/testReleaseNotify.ts — a release announcing itself to a cluster; the answer says
@@ -21,6 +25,7 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                     updated: boolean;
                     gitops: {pushed: boolean; reason?: string};
                     reason?: string;
+                    markdown: string;
                 };
                 assert.equal(
                     answer.gitops.pushed,
@@ -40,6 +45,85 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                 assert.ok(
                     typeof answer.reason === 'string' && answer.reason.length > 0,
                     'the answer says why, which is what a caller reporting to a user needs',
+                );
+                assert.match(
+                    answer.markdown,
+                    /^### Release deploy — `blong-suite` `1\.13\.0`/,
+                    'and the same answer carries the summary a workflow or a channel posts (@@D-751)',
+                );
+                assert.match(
+                    answer.markdown,
+                    /\*\*Result:\*\* not applied/,
+                    'including the verdict, which is the line a reader scans for',
+                );
+            },
+
+            async function theSummaryNamesWhatTheReleaseMoved(assert: IAssert) {
+                // One rendering, two readers (@@D-751): a job summary renders tables, a chat channel
+                // does not, so the document is a bullet list and every value is quoted. What is worth
+                // pinning is the content a person acts on — the version it moved between, what the
+                // artifact was, and what the pass did.
+                const summary = releaseMarkdown({
+                    suite: 'blong-suite',
+                    version: '1.17.0',
+                    previousVersion: '1.16.0',
+                    namespace: 'blong-suite',
+                    seam: 'cr',
+                    updated: true,
+                    changed: [
+                        {
+                            field: 'Artifact',
+                            value: '`suite.zip` at `sha256:d377817e8e0e…`',
+                        },
+                    ],
+                } as IReleaseReport);
+                assert.match(
+                    summary,
+                    /^### Release deploy — `blong-suite` `1\.16\.0` → `1\.17\.0`/,
+                    'the title states the move, which is the one thing a release is about',
+                );
+                assert.match(
+                    summary,
+                    /- \*\*Result:\*\* applied/,
+                    'the verdict is a line of its own',
+                );
+                assert.match(
+                    summary,
+                    /- \*\*Artifact:\*\* `suite\.zip` at `sha256:d377817e8e0e…`/,
+                    'and the artifact is named as a reader knows it, with the digest that names its volume',
+                );
+                assert.doesNotMatch(
+                    summary,
+                    /- \*\*Version:\*\*/,
+                    'the version is not repeated below the title',
+                );
+
+                const operator = releaseMarkdown({
+                    suite: 'blong-operator',
+                    version: '0.5.0',
+                    namespace: 'blong-system',
+                    seam: 'operator',
+                    updated: true,
+                    changed: [],
+                    pass: {
+                        created: 2,
+                        updated: 1,
+                        unchanged: 4,
+                        obsolete: 5,
+                        deleted: 1,
+                        skipped: 7,
+                        failures: [{key: 'blong-system/job', message: 'the step did not finish'}],
+                    },
+                } as IReleaseReport);
+                assert.match(
+                    operator,
+                    /- \*\*Pass:\*\* 2 created, 1 updated, 4 unchanged, 5 obsolete, 1 deleted, 7 install-owned left to the install, 1 failed/,
+                    'an operator release reports what its own pass did, the skipped kinds included',
+                );
+                assert.match(
+                    operator,
+                    /- \*\*Failed:\*\* `blong-system\/job` — the step did not finish/,
+                    'and names a failed step rather than only counting it',
                 );
             },
 
@@ -99,6 +183,44 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                         },
                     ],
                     'the digest travels inside the artifact and the framework version is its own member',
+                );
+            },
+
+            async function theOperatorsOwnReleaseIsAnsweredByAPass(
+                assert: IAssert,
+                {$meta}: {$meta: IMeta},
+            ) {
+                // There is no CR for the operator to patch, so its own release is answered by the
+                // pass that writes its install tree — a registry pass, with the release's facts
+                // (@@D-750). This process is not the operator (its config names no suite entry), so
+                // the pass refuses for that reason: what the step pins is the *routing*, because a
+                // release that reached the patch branch would answer "no BlongDeployment
+                // blong-operator" and roll nothing.
+                const answer = (await kustomizeReleaseNotify(
+                    {
+                        suite: 'blong-operator',
+                        version: '0.5.0',
+                        artifactUrl: 'https://example.test/blong-kustomize-0.5.0.zip',
+                        artifactDigest: 'a'.repeat(64),
+                        frameworkImage: 'ghcr.io/feasibleone/blong-gogo',
+                        frameworkVersion: 'v1.42.0',
+                    },
+                    $meta,
+                )) as {
+                    updated: boolean;
+                    reason?: string;
+                    pass?: {applied?: boolean; reason?: string};
+                };
+                assert.ok(answer.pass, 'the announcement is answered by the reconcile pass');
+                assert.match(
+                    String(answer.pass?.reason),
+                    /declares no suite entry/,
+                    'and the pass planned, rather than a custom resource being looked for',
+                );
+                assert.equal(
+                    answer.updated,
+                    false,
+                    'nothing was applied, because this process has no install tree to write',
                 );
             },
 

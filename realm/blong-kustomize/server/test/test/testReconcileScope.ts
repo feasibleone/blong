@@ -2,9 +2,12 @@ import {type IAssert, handler} from '@feasibleone/blong';
 
 import type {IClusterObject, IDesiredResource} from '../../../apply.ts';
 import {
+    CLEANUP_EXPECTED,
     availableReplicas,
     listingScopes,
+    mayPrune,
     unreadableFailures,
+    withExpect,
 } from '../../../orchestrator/controller/kustomizeReconcileRun.ts';
 
 /**
@@ -100,7 +103,13 @@ export default handler(({lib: {group}}) => ({
                     unused.every(scope => scope.cleanupOnly !== true),
                     'and nothing is added that could only answer forbidden',
                 );
-                const declaredService = listingScopes([], ['secret'], 'shop', 'shop-services', true);
+                const declaredService = listingScopes(
+                    [],
+                    ['secret'],
+                    'shop',
+                    'shop-services',
+                    true,
+                );
                 assert.deepEqual(
                     declaredService.map(scope => `${scope.resourceType}@${scope.namespace}`).sort(),
                     ['secret@shop', 'secret@shop-services'],
@@ -119,9 +128,54 @@ export default handler(({lib: {group}}) => ({
                     'a scope that exists to find leftovers cannot fail a pass that applied everything',
                 );
                 assert.deepEqual(
-                    unreadableFailures([{key: 'shop/secret', message: 'forbidden', cleanupOnly: false}]),
+                    unreadableFailures([
+                        {key: 'shop/secret', message: 'forbidden', cleanupOnly: false},
+                    ]),
                     [{key: 'shop/secret', message: 'forbidden'}],
                     'while a scope that holds this deployment does fail it',
+                );
+            },
+
+            async function aCleanupScopeSaysWhatItExpectsToBeRefused(assert: IAssert) {
+                // The refusal is declared on the call, because that is what tells the adapter to log
+                // it at debug instead of as an error with a stack — otherwise every pass wrote two
+                // errors that looked exactly like a real rights failure (@@F-684).
+                assert.deepEqual(
+                    withExpect(undefined, CLEANUP_EXPECTED),
+                    ['k8s.forbidden', 'k8s.notFound'],
+                    'the two refusals a namespace nothing creates can answer',
+                );
+                assert.deepEqual(
+                    withExpect('k8s.notFound', CLEANUP_EXPECTED),
+                    ['k8s.notFound', 'k8s.forbidden'],
+                    "and a caller's own expectation is kept, not replaced",
+                );
+                assert.deepEqual(
+                    withExpect(['k8s.forbidden'], CLEANUP_EXPECTED),
+                    ['k8s.forbidden', 'k8s.notFound'],
+                    'without repeating one it already declared',
+                );
+            },
+
+            async function aReleasePassPrunesOnlyItsOwnSteps(assert: IAssert) {
+                // Found live: the release pass deleted the operator's Ingress, because the tree a
+                // release plans is the install tree *this process* holds and that tree cannot name
+                // the host — it is the installer's. What the pass can delete is its own attempts
+                // (@@F-685).
+                assert.equal(
+                    mayPrune('job', {version: '0.5.0'}),
+                    true,
+                    'a release pass retires its own step attempts, which is what accumulates',
+                );
+                assert.equal(
+                    mayPrune('ingress', {version: '0.5.0'}),
+                    false,
+                    'and nothing else: an object the tree cannot name may be one this process cannot write',
+                );
+                assert.equal(
+                    mayPrune('ingress', undefined),
+                    true,
+                    'while a pass the loop or a CR triggered prunes everything it owns, as before',
                 );
             },
 

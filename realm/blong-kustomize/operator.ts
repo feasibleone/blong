@@ -103,6 +103,19 @@ export const OPERATOR_ENV = {
 } as const;
 
 /**
+ * How big the operator's container is.
+ *
+ * Its own sizing rather than the suite default in `plan.ts`, because a pass runs a generation child —
+ * a complete framework run of the suite's artifact — inside this same container, and the two share
+ * one cgroup. Measured in the dev cluster: a 250MB process beside children of about 160MB each, which
+ * is why the 512Mi default was OOMKilled on the first pass (@@D-749).
+ */
+export const OPERATOR_RESOURCES = {
+    requests: {cpu: '50m', memory: '256Mi'},
+    limits: {cpu: '1', memory: '1Gi'},
+} as const;
+
+/**
  * The two identity questions and the one verb each needs: a `TokenReview` and a `SubjectAccessReview`,
  * both cluster-scoped (@@D-376).
  */

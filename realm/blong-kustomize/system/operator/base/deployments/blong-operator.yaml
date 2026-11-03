@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: a0524b711a7a25e8
+    blong.feasible.one/spec-hash: 8b6a8264d9b6d1f7
   name: blong-operator
 spec:
   replicas: 1
@@ -63,10 +63,10 @@ spec:
           resources:
             limits:
               cpu: "1"
-              memory: 512Mi
+              memory: 1Gi
             requests:
               cpu: 50m
-              memory: 128Mi
+              memory: 256Mi
           volumeMounts:
             - mountPath: /opt/deploy/suite
               name: suite

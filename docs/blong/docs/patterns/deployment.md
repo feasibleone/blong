@@ -131,6 +131,16 @@ name the install tree falls back to. The versioned name is what a version instal
 release cannot overwrite; the digest is an asset rather than a sentence in the release notes because
 it is a script that reads it, and what it names is the directory the artifact lands in.
 
+The same job then deploys what it published, and the caller is the operator's own release route:
+`suite: blong-operator` tells the operator the announcement is about its own install tree, so instead
+of patching a `BlongDeployment` — which it does not have — it runs the registry pass that plans that
+tree, with the release's version and artifact laid over its own configuration. The pass
+applies the fill Jobs for the new artifact identity first and waits for them, then the Deployment
+that runs the operator, so an artifact nothing can fetch leaves the running process where it was. The
+install-owned kinds — the namespace, the CRD, the ServiceAccount and the RBAC objects — are skipped
+by name, so a release can never widen the rights the operator runs under; a tag that changes one of
+them still needs `npm run deploy` from a checkout (or `kubectl apply -k system/operator/local`).
+
 `deploy` builds the JSON-RPC body with `jq -n --arg` — never shell interpolation, because the token
 and the URL are data — and posts it to `secrets.DEPLOY_ENDPOINT` with
 `secrets.DEPLOY_TOKEN`. The route is plain JSON-RPC over HTTPS: the gate is the token, not a bearer
@@ -146,6 +156,12 @@ A wrong or missing token is answered `401` with `kustomize.release.tokenMismatch
 `kustomize.release.tokenMissing`; the CR is untouched, because the check happens before the notify
 handler. A correct token patches the CR's `version`, `suiteVolume.artifact` (URL and digest) and,
 when the release moved it, `minFrameworkVersion`, and the operator converges.
+
+The answer is a report as well as a verdict: `report` carries the suite, the version it moved to —
+and from, when the operator could read the previous value — the fields the seam applied and, for the
+operator's own release, the pass counts; `markdown` is those facts as one document. The workflow
+appends that document to the job summary, and a chat notification can post it unchanged, so the two
+never describe one release differently.
 
 ## Where an address comes from
 

@@ -331,6 +331,29 @@ install names only the version — and the digest travels as an asset rather tha
 release notes, because it is a script that reads it and what it names is the directory the artifact
 lands in.
 
+#### The release updates the running operator
+
+A `blong-kustomize-v<version>` release is also deployed by CI, and it is the operator that deploys
+it: `.github/workflows/deploy.yaml` attaches the assets and then posts `kustomize.release.approve`
+with `suite: blong-operator`, which the operator answers with a _registry_ pass — the plan it holds
+itself, with the release's version and artifact laid over it (@@D-750). The pass creates the fill
+Jobs for the new artifact identity and waits for them before it touches the Deployment, so a release
+whose artifact cannot be fetched leaves the running operator where it was. The trade is that the
+route leads back into the process that answers it: the new Deployment replaces the pod mid-pass, and
+the release call returns once the API server has accepted it rather than when the new pod is serving.
+
+The answer is a report, and the answer renders it once: `kustomize.release.notify` returns the facts
+(`report`) and the same facts as one markdown document (`markdown`), which the workflow appends to
+the job summary (@@D-751). Every deploy — a tenant's and the operator's — says the version it moved
+to (and from, when the previous value could be read), the artifact and its digest, the framework it
+moved, and, for the operator, what its pass did. A chat notification reads the same document, so a
+channel and a job page cannot describe one release differently.
+
+What a release can never do is change the objects the install owns — the namespace, the CRD, the
+ServiceAccount and the four RBAC objects. They are skipped by name (see `INSTALL_OWNED_KINDS` in
+`apply.ts`), and a release that changes one of them needs the install tree applied by hand:
+`npm run deploy` (or `kubectl apply -k system/operator/local`) from a checkout of the tag.
+
 The steps themselves live in the end-to-end runbook (`test/blong-int-kustomize`, the same code CI
 runs): `deploy.sh` only chooses between them. `machine prepare` with `OPERATOR_ONLY=1` publishes
 `kustomize.zip` to the in-cluster file server, and `operator deploy` regenerates the tree with the

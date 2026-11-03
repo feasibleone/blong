@@ -18,7 +18,10 @@ export default validation(
                 params: type.Object({
                     /** The shared secret the operator was started with; never logged. */
                     token: type.String(),
-                    /** The `BlongDeployment` to patch, by its own name. */
+                    /**
+                     * The `BlongDeployment` to patch, by its own name — or `blong-operator`, which
+                     * is the operator's own release and has no CR to patch (@@D-750).
+                     */
                     suite: type.String(),
                     /** The tenant namespace; the operator's own config answers when omitted. */
                     namespace: type.Optional(type.String()),
@@ -34,7 +37,9 @@ export default validation(
                     frameworkVersion: type.Optional(type.String()),
                 }),
                 // Left open: the answer is the notify handler's own report, and a caller reads
-                // `updated` and `reason` from it rather than from a second contract.
+                // `updated` and `reason` from it rather than from a second contract — plus `report`
+                // for the facts behind the verdict and `markdown` for the one document a job summary
+                // or a chat channel posts (@@D-751).
                 result: type.Object({}, {additionalProperties: true}),
             };
         },
