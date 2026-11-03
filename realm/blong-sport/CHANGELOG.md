@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.4.0...blong-sport-v0.5.0) (2026-11-03)
+
+
+### Features
+
+* basic branding ([dc8f4d6](https://github.com/feasibleone/blong/commit/dc8f4d686932823754627aa3f295c565704bdc74))
+
+
+### Bug Fixes
+
+* automated testing issues ([7b02ab9](https://github.com/feasibleone/blong/commit/7b02ab9dac4d1f4116fbf3248e86566f3d425803))
+* browser optimizations ([ce6f76f](https://github.com/feasibleone/blong/commit/ce6f76fb1b85fd42dc23b4c95414983582ac3183))
+* update screenshots ([d15afec](https://github.com/feasibleone/blong/commit/d15afecf8666e8b6337c7aee8b5493f138609b90))
+
 ## [0.4.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.3.0...blong-sport-v0.4.0) (2026-11-01)
 
 

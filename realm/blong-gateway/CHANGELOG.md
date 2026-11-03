@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/feasibleone/blong/compare/blong-gateway-v1.7.0...blong-gateway-v1.7.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* update screenshots ([d15afec](https://github.com/feasibleone/blong/commit/d15afecf8666e8b6337c7aee8b5493f138609b90))
+
 ## [1.7.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.6.1...blong-gateway-v1.7.0) (2026-11-01)
 
 

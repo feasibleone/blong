@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.33.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.32.0...blong-browser-v1.33.0) (2026-11-03)
+
+
+### Features
+
+* basic branding ([dc8f4d6](https://github.com/feasibleone/blong/commit/dc8f4d686932823754627aa3f295c565704bdc74))
+
+
+### Bug Fixes
+
+* automated testing issues ([7b02ab9](https://github.com/feasibleone/blong/commit/7b02ab9dac4d1f4116fbf3248e86566f3d425803))
+* browser optimizations ([ce6f76f](https://github.com/feasibleone/blong/commit/ce6f76fb1b85fd42dc23b4c95414983582ac3183))
+
 ## [1.32.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.31.0...blong-browser-v1.32.0) (2026-11-02)
 
 

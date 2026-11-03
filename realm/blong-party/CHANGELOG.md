@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.14.0](https://github.com/feasibleone/blong/compare/blong-party-v1.13.0...blong-party-v1.14.0) (2026-11-03)
+
+
+### Features
+
+* basic branding ([dc8f4d6](https://github.com/feasibleone/blong/commit/dc8f4d686932823754627aa3f295c565704bdc74))
+
+
+### Bug Fixes
+
+* update screenshots ([d15afec](https://github.com/feasibleone/blong/commit/d15afecf8666e8b6337c7aee8b5493f138609b90))
+
 ## [1.13.0](https://github.com/feasibleone/blong/compare/blong-party-v1.12.0...blong-party-v1.13.0) (2026-11-01)
 
 
