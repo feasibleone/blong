@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.12.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.11.0...blong-marine-v1.12.0) (2026-11-03)
+
+
+### Features
+
+* basic branding ([dc8f4d6](https://github.com/feasibleone/blong/commit/dc8f4d686932823754627aa3f295c565704bdc74))
+
+
+### Bug Fixes
+
+* automated testing issues ([7b02ab9](https://github.com/feasibleone/blong/commit/7b02ab9dac4d1f4116fbf3248e86566f3d425803))
+* browser optimizations ([ce6f76f](https://github.com/feasibleone/blong/commit/ce6f76fb1b85fd42dc23b4c95414983582ac3183))
+* screenshot ([3b07498](https://github.com/feasibleone/blong/commit/3b07498fd790b7a959289610ff259313f61f2b03))
+
 ## [1.11.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.10.0...blong-marine-v1.11.0) (2026-11-01)
 
 

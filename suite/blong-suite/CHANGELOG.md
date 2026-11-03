@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.16.0...blong-suite-v1.17.0) (2026-11-03)
+
+
+### Features
+
+* basic branding ([dc8f4d6](https://github.com/feasibleone/blong/commit/dc8f4d686932823754627aa3f295c565704bdc74))
+
 ## [1.16.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.15.1...blong-suite-v1.16.0) (2026-11-01)
 
 

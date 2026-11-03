@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/feasibleone/blong/compare/blong-access-mock-v1.1.0...blong-access-mock-v1.1.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* access mock seed ([516689c](https://github.com/feasibleone/blong/commit/516689c9b843ba289c1368264d2078bb66756df6))
+* automated testing issues ([7b02ab9](https://github.com/feasibleone/blong/commit/7b02ab9dac4d1f4116fbf3248e86566f3d425803))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-access-mock-v1.0.1...blong-access-mock-v1.1.0) (2026-10-11)
 
 

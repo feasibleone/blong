@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.48.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.47.0...blong-gogo-v1.48.0) (2026-11-03)
+
+
+### Features
+
+* basic branding ([dc8f4d6](https://github.com/feasibleone/blong/commit/dc8f4d686932823754627aa3f295c565704bdc74))
+
+
+### Bug Fixes
+
+* automated testing issues ([7b02ab9](https://github.com/feasibleone/blong/commit/7b02ab9dac4d1f4116fbf3248e86566f3d425803))
+
 ## [1.47.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.46.0...blong-gogo-v1.47.0) (2026-11-02)
 
 
