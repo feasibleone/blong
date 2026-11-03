@@ -13,10 +13,10 @@
 
 // ── Re-exported functions / utilities (not affected by defaultProps removal) ─
 
-export {addLocale, locale, PrimeReactProvider} from 'primereact/api';
 export {confirmDialog} from 'primereact/confirmdialog';
 export {confirmPopup} from 'primereact/confirmpopup';
 export {SplitterPanel} from 'primereact/splitter';
+export * from './shell.js';
 // ── Type re-exports ──────────────────────────────────────────────────────────
 
 export type {AutoCompleteProps} from 'primereact/autocomplete';
@@ -72,125 +72,67 @@ export type DataTableSortParams = Parameters<
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     NonNullable<import('primereact/datatable').DataTableProps<Record<string, any>[]>['onSort']>
 >[0];
-/** TabPanelProps extended with the `__TYPE` discriminator PrimeReact TabView uses to identify
- *  panel children. React 19 removed defaultProps support, so callers pass `__TYPE="TabPanel"`
- *  explicitly; this type makes that prop valid. */
-export type TabPanelProps = import('primereact/tabview').TabPanelProps & {__TYPE?: string};
 
 // ── Component wrappers ───────────────────────────────────────────────────────
 
 import {AutoComplete as PrimeAutoComplete} from 'primereact/autocomplete';
-import {Avatar as PrimeAvatar} from 'primereact/avatar';
 import {BreadCrumb as PrimeBreadCrumb} from 'primereact/breadcrumb';
-import {Button as PrimeButton, type ButtonProps} from 'primereact/button';
 import {Calendar as PrimeCalendar} from 'primereact/calendar';
 import {Card as PrimeCard} from 'primereact/card';
 import {Checkbox as PrimeCheckbox} from 'primereact/checkbox';
 import {Chips as PrimeChips} from 'primereact/chips';
 import {Column as PrimeColumn} from 'primereact/column';
-import {ConfirmDialog as PrimeConfirmDialog} from 'primereact/confirmdialog';
-import {ConfirmPopup as PrimeConfirmPopup} from 'primereact/confirmpopup';
 import {DataTable as PrimeDataTable} from 'primereact/datatable';
 import {DataView as PrimeDataView} from 'primereact/dataview';
-import {Dialog as PrimeDialog} from 'primereact/dialog';
-import {Dropdown as PrimeDropdown} from 'primereact/dropdown';
 import {FileUpload as PrimeFileUpload} from 'primereact/fileupload';
 import {Image as PrimeImage} from 'primereact/image';
 import {InputMask as PrimeInputMask} from 'primereact/inputmask';
 import {InputNumber as PrimeInputNumber} from 'primereact/inputnumber';
-import {InputText as PrimeInputText, type InputTextProps} from 'primereact/inputtext';
 import {InputTextarea as PrimeInputTextarea} from 'primereact/inputtextarea';
-import {Menu as PrimeMenu} from 'primereact/menu';
-import {Menubar as PrimeMenubar} from 'primereact/menubar';
-import {Message as PrimeMessage} from 'primereact/message';
 import {MultiSelect as PrimeMultiSelect} from 'primereact/multiselect';
-import {OverlayPanel as PrimeOverlayPanel} from 'primereact/overlaypanel';
 import {Panel as PrimePanel} from 'primereact/panel';
 import {PanelMenu as PrimePanelMenu} from 'primereact/panelmenu';
-import {Password as PrimePassword} from 'primereact/password';
 import {ProgressBar as PrimeProgressBar} from 'primereact/progressbar';
-import {ProgressSpinner as PrimeProgressSpinner} from 'primereact/progressspinner';
 import {SelectButton as PrimeSelectButton} from 'primereact/selectbutton';
 import {Skeleton as PrimeSkeleton} from 'primereact/skeleton';
 import {SplitButton as PrimeSplitButton} from 'primereact/splitbutton';
 import {Splitter as PrimeSplitter} from 'primereact/splitter';
 import {Steps as PrimeSteps} from 'primereact/steps';
 import {TabMenu as PrimeTabMenu} from 'primereact/tabmenu';
-import type {TabPanelProps as PrimeTabPanelProps} from 'primereact/tabview';
-import {TabPanel as PrimeTabPanel, TabView as PrimeTabView} from 'primereact/tabview';
-import {Toast as PrimeToast} from 'primereact/toast';
 import {Toolbar as PrimeToolbar} from 'primereact/toolbar';
 import {Tree as PrimeTree} from 'primereact/tree';
 import {TreeSelect as PrimeTreeSelect} from 'primereact/treeselect';
 import {TreeTable as PrimeTreeTable} from 'primereact/treetable';
 import React from 'react';
-import {Text} from '../components/Text/Text.js';
-import {nameOfLabel} from '../feedback/ids.js';
-import {
-    FeedbackPath,
-    useFeedbackActive,
-    useFeedbackNode,
-} from '../feedback/useFeedbackTarget.js';
 import {usePlaceholder} from '../hooks/useText.js';
-import {useAppStore} from '../state/appStore.js';
 
 import type {AutoCompleteProps} from 'primereact/autocomplete';
-import type {AvatarProps} from 'primereact/avatar';
 import type {BreadCrumbProps} from 'primereact/breadcrumb';
 import type {CalendarProps} from 'primereact/calendar';
 import type {CardProps} from 'primereact/card';
 import type {CheckboxProps} from 'primereact/checkbox';
 import type {ChipsProps} from 'primereact/chips';
 import type {ColumnProps} from 'primereact/column';
-import type {ConfirmDialogProps} from 'primereact/confirmdialog';
-import type {ConfirmPopupProps} from 'primereact/confirmpopup';
 import type {DataViewProps} from 'primereact/dataview';
-import type {DialogProps} from 'primereact/dialog';
-import type {DropdownProps} from 'primereact/dropdown';
 import type {FileUploadProps} from 'primereact/fileupload';
 import type {ImageProps} from 'primereact/image';
 import type {InputMaskProps} from 'primereact/inputmask';
 import type {InputNumberProps} from 'primereact/inputnumber';
 import type {InputTextareaProps} from 'primereact/inputtextarea';
-import type {MenuProps} from 'primereact/menu';
-import type {MenubarProps} from 'primereact/menubar';
-import type {MessageProps} from 'primereact/message';
 import type {MultiSelectProps} from 'primereact/multiselect';
-import type {OverlayPanelProps} from 'primereact/overlaypanel';
 import type {PanelProps} from 'primereact/panel';
 import type {PanelMenuProps} from 'primereact/panelmenu';
-import type {PasswordProps} from 'primereact/password';
 import type {ProgressBarProps} from 'primereact/progressbar';
-import type {ProgressSpinnerProps} from 'primereact/progressspinner';
 import type {SelectButtonProps} from 'primereact/selectbutton';
 import type {SkeletonProps} from 'primereact/skeleton';
 import type {SplitButtonProps} from 'primereact/splitbutton';
 import type {SplitterProps} from 'primereact/splitter';
 import type {StepsProps} from 'primereact/steps';
 import type {TabMenuProps} from 'primereact/tabmenu';
-import type {TabViewProps} from 'primereact/tabview';
-import type {ToastProps} from 'primereact/toast';
 import type {ToolbarProps} from 'primereact/toolbar';
 import type {TreeProps} from 'primereact/tree';
 import type {TreeSelectProps} from 'primereact/treeselect';
 import type {TreeTableProps} from 'primereact/treetable';
-
-// Avatar — shape:'square', size:'normal', imageAlt:'avatar'
-export function Avatar({
-    shape = 'square',
-    size = 'normal',
-    imageAlt = 'avatar',
-    ...props
-}: AvatarProps) {
-    return (
-        <PrimeAvatar
-            shape={shape}
-            size={size}
-            imageAlt={imageAlt}
-            {...props}
-        />
-    );
-}
 
 // AutoComplete — delay:300, minLength:1, scrollHeight:'200px', dropdownIcon:'pi pi-chevron-down', removeTokenIcon:'pi pi-times-circle'
 export function AutoComplete({
@@ -216,60 +158,6 @@ export function AutoComplete({
 // BreadCrumb — no meaningful non-null defaults
 export function BreadCrumb(props: BreadCrumbProps) {
     return <PrimeBreadCrumb {...props} />;
-}
-
-/**
- * Button — wraps PrimeReact Button with automatic label translation via the
- * `Text` component and a default `iconPos='left'`.
- *
- * It is also the place buttons become feedback targets (`@@T-488`): the name is
- * the action when the caller has one (stable across translations and rewording)
- * and the slug of the English label otherwise.
- */
-export function Button({
-    'aria-label': ariaLabel,
-    label,
-    iconPos = 'left',
-    feedbackName,
-    ...props
-}: ButtonProps & {feedbackName?: string}) {
-    const translations = useAppStore(s => s.translations);
-    // The slug is only derived while the mode is on: a button that is not being
-    // annotated costs one context read and nothing else (`@@D-667`).
-    const active = useFeedbackActive();
-    const name = active
-        ? (feedbackName ?? nameOfLabel(typeof label === 'string' ? label : ariaLabel))
-        : undefined;
-    const node = useFeedbackNode('button', name, typeof label === 'string' ? label : ariaLabel);
-    if (typeof label === 'string') {
-        const accessibleName = ariaLabel ?? translations[label] ?? label;
-        return (
-            <PrimeButton
-                {...node?.attributes}
-                {...props}
-                iconPos={iconPos}
-                label={
-                    (node ? (
-                        <FeedbackPath path={node.path}>
-                            <Text>{label}</Text>
-                        </FeedbackPath>
-                    ) : (
-                        <Text>{label}</Text>
-                    )) as unknown as string
-                }
-                aria-label={accessibleName}
-            />
-        );
-    }
-    return (
-        <PrimeButton
-            {...node?.attributes}
-            {...props}
-            iconPos={iconPos}
-            label={label}
-            aria-label={ariaLabel}
-        />
-    );
 }
 
 // Calendar — showOnFocus:true, selectionMode:'single', iconPos:'right', hourFormat:'24', icon:'pi pi-calendar'
@@ -395,21 +283,6 @@ export function Column({
     );
 }
 
-// ConfirmDialog — no meaningful non-null defaults
-export function ConfirmDialog(props: ConfirmDialogProps) {
-    return <PrimeConfirmDialog {...props} />;
-}
-
-// ConfirmPopup — dismissable:true
-export function ConfirmPopup({dismissable = true, ...props}: ConfirmPopupProps) {
-    return (
-        <PrimeConfirmPopup
-            dismissable={dismissable}
-            {...props}
-        />
-    );
-}
-
 // DataTable — first:0, size:'normal', editMode:'cell', sortMode:'single', columnResizeMode:'fit',
 //             defaultSortOrder:1, filterDelay:300, filterDisplay:'menu', pageLinkSize:5,
 //             csvSeparator:',', exportFilename:'download', breakpoint:'960px',
@@ -507,61 +380,6 @@ export function DataView({
     );
 }
 
-// Dialog — modal:true, position:'center', draggable:true, resizable:true, closable:true,
-//          closeOnEscape:true, focusOnShow:true, showHeader:true, keepInViewport:true, minX:0, minY:0
-export function Dialog({
-    modal = true,
-    position = 'center',
-    draggable = true,
-    resizable = true,
-    closable = true,
-    closeOnEscape = true,
-    focusOnShow = true,
-    showHeader = true,
-    keepInViewport = true,
-    minX = 0,
-    minY = 0,
-    baseZIndex = 0,
-    ...props
-}: DialogProps) {
-    return (
-        <PrimeDialog
-            modal={modal}
-            position={position}
-            draggable={draggable}
-            resizable={resizable}
-            closable={closable}
-            closeOnEscape={closeOnEscape}
-            focusOnShow={focusOnShow}
-            showHeader={showHeader}
-            keepInViewport={keepInViewport}
-            minX={minX}
-            minY={minY}
-            baseZIndex={baseZIndex}
-            {...props}
-        />
-    );
-}
-
-// Dropdown — dropdownIcon:'pi pi-chevron-down', scrollHeight:'200px', filterMatchMode:'contains'
-export function Dropdown({
-    dropdownIcon = 'pi pi-chevron-down',
-    scrollHeight = '200px',
-    filterMatchMode = 'contains',
-    placeholder,
-    ...props
-}: DropdownProps) {
-    return (
-        <PrimeDropdown
-            dropdownIcon={dropdownIcon}
-            scrollHeight={scrollHeight}
-            filterMatchMode={filterMatchMode}
-            {...usePlaceholder(placeholder)}
-            {...props}
-        />
-    );
-}
-
 // FileUpload — mode:'advanced', previewWidth:50
 export type FileUpload = PrimeFileUpload;
 export function FileUpload({
@@ -628,58 +446,9 @@ export function InputNumber({
     );
 }
 
-// InputText — no meaningful non-null/non-false defaults (validateOnly:false is the default)
-export function InputText({placeholder, ...props}: InputTextProps) {
-    return (
-        <PrimeInputText
-            {...usePlaceholder(placeholder)}
-            {...props}
-        />
-    );
-}
-
 // InputTextarea — no meaningful non-null defaults (autoResize:false is default)
 export function InputTextarea(props: InputTextareaProps) {
     return <PrimeInputTextarea {...props} />;
-}
-
-// Menubar — no meaningful non-null defaults
-export function Menubar(props: MenubarProps) {
-    return <PrimeMenubar {...props} />;
-}
-
-// Menu — popup:false, popupAlignment:'left', tabIndex:0, autoZIndex:true, baseZIndex:0
-export type Menu = PrimeMenu;
-export function Menu({
-    ref,
-    popup = false,
-    popupAlignment = 'left',
-    tabIndex = 0,
-    autoZIndex = true,
-    baseZIndex = 0,
-    ...props
-}: MenuProps & {ref?: React.Ref<PrimeMenu>}) {
-    return (
-        <PrimeMenu
-            ref={ref}
-            popup={popup}
-            popupAlignment={popupAlignment}
-            tabIndex={tabIndex}
-            autoZIndex={autoZIndex}
-            baseZIndex={baseZIndex}
-            {...props}
-        />
-    );
-}
-
-// Message — severity:'info'
-export function Message({severity = 'info', ...props}: MessageProps) {
-    return (
-        <PrimeMessage
-            severity={severity}
-            {...props}
-        />
-    );
 }
 
 // MultiSelect — display:'comma', dropdownIcon:'pi pi-chevron-down', scrollHeight:'200px',
@@ -711,22 +480,6 @@ export function MultiSelect({
     );
 }
 
-// OverlayPanel — dismissable:true
-export type OverlayPanel = PrimeOverlayPanel;
-export function OverlayPanel({
-    ref,
-    dismissable = true,
-    ...props
-}: OverlayPanelProps & {ref?: React.Ref<PrimeOverlayPanel>}) {
-    return (
-        <PrimeOverlayPanel
-            dismissable={dismissable}
-            ref={ref}
-            {...props}
-        />
-    );
-}
-
 // Panel — expandIcon:'pi pi-plus', collapseIcon:'pi pi-minus'
 export function Panel({
     expandIcon = 'pi pi-plus',
@@ -747,23 +500,6 @@ export function PanelMenu(props: PanelMenuProps) {
     return <PrimePanelMenu {...props} />;
 }
 
-// Password — feedback:true, mediumRegex:'...', strongRegex:'...'
-export function Password({
-    feedback = false,
-    mediumRegex = '^(((?=.*[a-z])(?=.*[A-Z]))|((?=.*[a-z])(?=.*[0-9]))|((?=.*[A-Z])(?=.*[0-9])))(?=.{6,})',
-    strongRegex = '^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.{8,})',
-    ...props
-}: PasswordProps) {
-    return (
-        <PrimePassword
-            feedback={feedback}
-            mediumRegex={mediumRegex}
-            strongRegex={strongRegex}
-            {...props}
-        />
-    );
-}
-
 // ProgressBar — showValue:true, unit:'%', mode:'determinate'
 export function ProgressBar({
     showValue = true,
@@ -776,23 +512,6 @@ export function ProgressBar({
             showValue={showValue}
             unit={unit}
             mode={mode}
-            {...props}
-        />
-    );
-}
-
-// ProgressSpinner — strokeWidth:'2', fill:'none', animationDuration:'2s'
-export function ProgressSpinner({
-    strokeWidth = '2',
-    fill = 'none',
-    animationDuration = '2s',
-    ...props
-}: ProgressSpinnerProps) {
-    return (
-        <PrimeProgressSpinner
-            strokeWidth={strokeWidth}
-            fill={fill}
-            animationDuration={animationDuration}
             {...props}
         />
     );
@@ -875,45 +594,6 @@ export function TabMenu({activeIndex = 0, ...props}: TabMenuProps) {
     return (
         <PrimeTabMenu
             activeIndex={activeIndex}
-            {...props}
-        />
-    );
-}
-
-// TabPanel — thin wrapper that adds `__TYPE` to the prop type.
-// React 19 no longer applies defaultProps, so PrimeReact's TabView cannot auto-inject
-// __TYPE:'TabPanel' onto elements.  Callers pass it explicitly; this wrapper makes that valid.
-// TabView never mounts TabPanel — it only reads element.props — so the wrapper is transparent.
-export function TabPanel({__TYPE: _type, ...props}: TabPanelProps) {
-    return <PrimeTabPanel {...(props as PrimeTabPanelProps)} />;
-}
-
-// TabView — activeIndex:0, renderActiveOnly:true
-export function TabView({activeIndex = 0, renderActiveOnly = true, ...props}: TabViewProps) {
-    return (
-        <PrimeTabView
-            activeIndex={activeIndex}
-            renderActiveOnly={renderActiveOnly}
-            {...props}
-        />
-    );
-}
-
-// Toast — position:'top-right', baseZIndex:0, appendTo:'self'
-export type Toast = PrimeToast;
-export function Toast({
-    ref,
-    position = 'top-right',
-    baseZIndex = 0,
-    appendTo = 'self',
-    ...props
-}: ToastProps & {ref?: React.Ref<PrimeToast>}) {
-    return (
-        <PrimeToast
-            position={position}
-            baseZIndex={baseZIndex}
-            appendTo={appendTo}
-            ref={ref}
             {...props}
         />
     );

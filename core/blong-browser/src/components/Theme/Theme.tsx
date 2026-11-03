@@ -17,7 +17,7 @@ import './glass.css';
 import './wood-assets.css';
 import './wood.css';
 
-import {addLocale, locale} from '../../primereact/index.js';
+import {addLocale, locale} from '../../primereact/shell.js';
 import {updateGlassReflections} from './glassReflection.js';
 import {
     FALLBACK_THEME_OPTION,

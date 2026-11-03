@@ -7,7 +7,7 @@
  */
 import './OAuthCallback.css';
 
-import {ProgressSpinner} from '../../primereact/index.js';
+import {ProgressSpinner} from '../../primereact/shell.js';
 
 import React, {useEffect, useState} from 'react';
 import {Button} from '../Button/Button.js';

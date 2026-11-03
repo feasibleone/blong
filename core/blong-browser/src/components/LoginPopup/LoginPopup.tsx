@@ -11,7 +11,7 @@
  */
 import './LoginPopup.css';
 
-import {Dialog, InputText, Message, Password} from '../../primereact/index.js';
+import {Dialog, InputText, Message, Password} from '../../primereact/shell.js';
 
 import {useState} from 'react';
 import {useBlong} from '../../context/BlongContext.js';

@@ -13,7 +13,7 @@
  * Props mirror IPortalProps so callers can customise the shell (logo, etc.)
  * while the provider wiring is always handled here.
  */
-import {ConfirmDialog, ConfirmPopup, PrimeReactProvider} from '../../primereact/index.js';
+import {ConfirmDialog, ConfirmPopup, PrimeReactProvider} from '../../primereact/shell.js';
 import './App.css';
 
 import type {IHandlerProxy, ILogger} from '@feasibleone/blong';

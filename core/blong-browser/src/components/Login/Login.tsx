@@ -28,7 +28,7 @@
  */
 import './Login.css';
 
-import {InputText, Message, Password} from '../../primereact/index.js';
+import {InputText, Message, Password} from '../../primereact/shell.js';
 
 import React, {useState} from 'react';
 import {useBlong} from '../../context/BlongContext.js';

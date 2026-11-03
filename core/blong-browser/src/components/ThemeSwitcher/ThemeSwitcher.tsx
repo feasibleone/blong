@@ -1,7 +1,7 @@
 import './ThemeSwitcher.css';
 
 import {useText, useTranslate} from '../../hooks/useText.js';
-import {Button, Dropdown} from '../../primereact/index.js';
+import {Button, Dropdown} from '../../primereact/shell.js';
 import {useTheme, type PaletteType} from '../Theme/Theme.js';
 import {THEME_GROUPS} from '../Theme/themeRegistry.js';
 

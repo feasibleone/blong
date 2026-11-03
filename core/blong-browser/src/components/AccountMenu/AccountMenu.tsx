@@ -3,8 +3,8 @@ import './AccountMenu.css';
 import React, {useEffect, useMemo, useRef} from 'react';
 import {useBlong} from '../../context/BlongContext.js';
 import {useText} from '../../hooks/useText.js';
-import type {MenuItem} from '../../primereact/index.js';
-import {Avatar, Menu} from '../../primereact/index.js';
+import type {MenuItem} from '../../primereact/shell.js';
+import {Avatar, Menu} from '../../primereact/shell.js';
 import {useAppStore} from '../../state/appStore.js';
 
 /**

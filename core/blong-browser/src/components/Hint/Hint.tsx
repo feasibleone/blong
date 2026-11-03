@@ -4,7 +4,7 @@
  * Also exports ActionHint — singleton OverlayPanel for ActionButton
  * success/error feedback anchored near the triggering button.
  */
-import {OverlayPanel, Toast} from '../../primereact/index.js';
+import {OverlayPanel, Toast} from '../../primereact/shell.js';
 
 import {useEffect, useRef} from 'react';
 import {useFeedbackFreeze} from '../../feedback/useFeedbackFreeze.js';

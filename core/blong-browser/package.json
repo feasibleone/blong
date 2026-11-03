@@ -42,6 +42,7 @@
         "./playwright/coverage": "./src/playwright/coverage.ts",
         "./playwright/diagram": "./src/playwright/diagram.ts",
         "./playwright/docs": "./src/playwright/docs.ts",
+        "./playwright/latency": "./src/playwright/latency.ts",
         "./playwright/model": "./src/playwright/model.ts",
         "./playwright/pages": "./src/playwright/pages.ts",
         "./playwright/redact": "./src/playwright/redact.ts",

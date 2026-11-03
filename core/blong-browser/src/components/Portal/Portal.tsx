@@ -10,7 +10,7 @@ import {
     TabPanel,
     TabView,
     type MenuItem,
-} from '../../primereact/index.js';
+} from '../../primereact/shell.js';
 import './Portal.css';
 
 import React, {Suspense, useCallback} from 'react';

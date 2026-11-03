@@ -1,7 +1,7 @@
 import './LanguageSwitcher.css';
 
 import {useMemo} from 'react';
-import {Dropdown} from '../../primereact/index.js';
+import {Dropdown} from '../../primereact/shell.js';
 import {useAppStore} from '../../state/appStore.js';
 import {useTranslate} from '../../hooks/useText.js';
 

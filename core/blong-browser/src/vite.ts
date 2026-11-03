@@ -123,6 +123,23 @@ export function defineBlongViteConfig({
         base: '/s/',
         plugins: [react(), dropFixtures(), sourceMapRegister()],
         define: sourceLinkDefine(packageRootOf(importMetaUrl)),
+        optimizeDeps: {
+            /**
+             * What the dependency scan crawls, and why it is named.
+             *
+             * Left to itself the scanner walks every `.html` under the root, which
+             * includes any static Storybook build a checkout carries
+             * (`storybook-static/`). That bundle references Storybook-only packages
+             * (`@sinclair/typebox-codegen` among them) which the app does not install,
+             * so the scan aborts with *"Skipping dependency pre-bundling"* — and the
+             * browser then discovers dependencies one import at a time, each discovery
+             * rewriting the optimized bundle and **reloading the page**. A cold
+             * Playwright run paid four document loads (~2.3 s) for the login screen
+             * instead of one (~0.9 s), and CI is cold on every checkout: this is the
+             * 4-5 s the specs spend before the login form exists, @@D-746.
+             */
+            entries: ['index.html'],
+        },
         build: {
             minify: false,
             assetsInlineLimit: 0,
@@ -133,11 +150,20 @@ export function defineBlongViteConfig({
                     keepNames: true,
                 },
                 plugins: [
-                    gzipPlugin(), // Generates .gz files
-                    gzipPlugin({
-                        customCompression: content => brotliCompressSync(Buffer.from(content)),
-                        fileName: '.br', // Generates .br files
-                    }),
+                    // Compression is a publish step: the `.gz`/`.br` siblings are for
+                    // whatever serves the build, and no browser reads them locally. It is
+                    // also 92% of a build's time (27.7 s of 30.1 s measured), which is why
+                    // a build made to *time* the app sets `BLONG_SKIP_COMPRESSION`.
+                    ...(process.env['BLONG_SKIP_COMPRESSION']
+                        ? []
+                        : [
+                              gzipPlugin(), // Generates .gz files
+                              gzipPlugin({
+                                  customCompression: content =>
+                                      brotliCompressSync(Buffer.from(content)),
+                                  fileName: '.br', // Generates .br files
+                              }),
+                          ]),
                 ],
             },
         },
@@ -197,6 +223,20 @@ export function defineBlongViteConfig({
                     dir(new URL(import.meta.resolve('primeicons/package.json')).pathname),
                     dir(new URL(import.meta.resolve('primereact/package.json')).pathname),
                 ],
+            },
+        },
+        /**
+         * The same proxy for a *built* app.
+         *
+         * `server.proxy` is a dev-server option and `vite preview` ignores it, so a build
+         * served from disk answered every `/rpc/*` call from its own origin and the login
+         * form could not authenticate — the app looked broken in exactly the way a missing
+         * gateway looks. Preview is how a build is sanity-checked locally and how the boot
+         * comparison measures it (`@@T-605`), so the proxy is declared for it too.
+         */
+        preview: {
+            proxy: {
+                '/rpc': rpcTarget,
             },
         },
         resolve: {

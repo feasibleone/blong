@@ -20,10 +20,11 @@ open (10)
 - `F-612` · realm/blong-sport — The migration job cannot create the database it must connect to
 - `F-634` · realm/blong-sport — A child namespace is not a config key, and excess checking hides it
 
-resolved (2)
+resolved (3)
 
 - `F-585` · realm/blong-sport — An overridden CRUD handler cannot delegate to the generic one
 - `F-616` · realm/blong-sport — A JSON import attribute is lost by tap's TypeScript loader
+- `F-681` · realm/blong-sport — An empty table is not proof the filter ran
 
 <!-- /memory:index -->
 
@@ -169,3 +170,30 @@ runner's record keeps the exit code and drops the reason.
 Resolved by removing the read: the sport entry no longer imports package.json at all, because the
 suite version now comes from the manifest through describe().pkg (D-646). The trap is still real for
 any entry that does import one under tap.
+
+### F-681 — An empty table is not proof the filter ran
+
+> _2026-11-03 · realm/blong-sport · resolved_
+
+`clubFilter.play.ts` asserted `No rows.` after filtering by a name no club can have, and then that
+the list came back. On a fresh database the first half passes because the table is empty before the
+filter is even typed, and the second half fails — there is no club to come back. It passed in dev
+only because `organisations.play.ts` (`ENT-PLAY-CL-01 Club`) and `relationships.play.ts`
+(`ENT-PLAY-RL Club`) had run in the same database, and CI starts one that nothing seeds: the realm
+carries no club seed, and `meta/dbTest` seeds a document and nothing else.
+
+The spec now owns its row: `cleanupModel` for its `ENT-PLAY-CF` marker, then `createAndEditModel`
+with `quiet` because the create is a prerequisite rather than a page to picture, then the filter
+assertion — beginning with the created row being visible, which turns an empty table into a failed
+precondition instead of a pass. `quiet` belongs on the cleanup as well: its default capture policy
+pictures the first delete confirmation, so a spec that takes no screenshots still wrote a baseline
+into a directory nothing compared. Verified against a scratch database
+(`--srv.db.knex.connection.database=blong-sport-citest`) that has no clubs: cleanup, create and
+filter pass, twice in a row, the row lands in the scratch database, and no snapshot directory is
+created.
+
+The first attempt at that verification was wrong in a way worth remembering: port 8080 was still
+held by a leftover watcher, so the override backend died with `EADDRINUSE` _after_ seeding its own
+database, and the runs silently spoke to the old server and the dev database — the result looked
+green for the wrong reason. Confirm the port is your process (`ss -tlnp | grep ':8080'`) and check
+where the row landed before believing a run used the database it was given.
