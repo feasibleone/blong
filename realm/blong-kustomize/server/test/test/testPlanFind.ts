@@ -6,6 +6,7 @@ import type {
     IResolvedPortalMap,
 } from '../../../plan.ts';
 import {
+    ASSET_DEPLOYMENT,
     planFromRegistry,
     planOptionsFromSpec,
     planOptionsOf,
@@ -655,9 +656,7 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 // no namespace is named after the suite (`@@D-680`).
                 const view = {
                     realms: ['chat'],
-                    groups: [
-                        {name: 'chat.chatDispatch', handlerCount: 1, layer: 'orchestrator'},
-                    ],
+                    groups: [{name: 'chat.chatDispatch', handlerCount: 1, layer: 'orchestrator'}],
                     ports: [
                         {id: 'chat.chatDispatch', type: 'dispatch', namespace: 'chat'},
                         {
@@ -759,9 +758,11 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
             async function aPortalNamesTheProcessBehindIt(assert: IAssert) {
                 // A portal is an address *and* the process behind it, and the planner is where the two
                 // are joined. The realm is what a suite names, because a deployment name follows the
-                // profile and would stop meaning the same thing the moment the split changed. Both
-                // ways of leaving it out are refused: with several processes there is no
-                // non-arbitrary answer, and a companion has no process for a portal to land on.
+                // profile and would stop meaning the same thing the moment the split changed. What is
+                // *not* needed for the page is a realm at all: the bundle is served by the asset
+                // server, so a several-process suite that names no realm lands there — and the
+                // refusal it used to be is still the answer when the asset server is switched off.
+                // A companion is refused either way, because it owns no process to answer the rest.
                 const view = {
                     realms: ['srv', 'marine', 'admin'],
                     groups: [
@@ -795,10 +796,20 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                     {web: {host: 'demo.example', deployment: 'demo'}},
                     'and a suite with one process may leave the realm out',
                 );
+                assert.deepEqual(
+                    portal({portal: {web: {host: 'demo.example'}}}),
+                    {web: {host: 'demo.example', deployment: ASSET_DEPLOYMENT}},
+                    'several processes and no realm lands on the asset server, because the page ' +
+                        'is a bundle and no realm is needed to serve it',
+                );
                 assert.throws(
-                    () => portal({portal: {web: {host: 'demo.example'}}}),
+                    () =>
+                        portal({
+                            portal: {web: {host: 'demo.example'}},
+                            assetServer: {enabled: false},
+                        }),
                     /names no realm/,
-                    'several processes and no realm is refused, because the first is arbitrary',
+                    'and with no asset server it is refused, because the first process is arbitrary',
                 );
                 assert.throws(
                     () => portal({portal: {web: {realm: 'srv', host: 'demo.example'}}}),

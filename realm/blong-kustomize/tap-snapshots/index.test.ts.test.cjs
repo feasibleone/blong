@@ -491,6 +491,14 @@ Object {
     },
     Object {
       "service": Object {
+        "name": "admin-http",
+        "port": Object {
+          "number": 8080,
+        },
+      },
+    },
+    Object {
+      "service": Object {
         "name": "adminPanel-http",
         "port": Object {
           "number": 8080,
@@ -1342,6 +1350,18 @@ Object {
             },
           },
           "path": "/shop",
+          "pathType": "Prefix",
+        },
+        Object {
+          "backend": Object {
+            "service": Object {
+              "name": "store-http",
+              "port": Object {
+                "number": 8080,
+              },
+            },
+          },
+          "path": "/rpc/",
           "pathType": "Prefix",
         },
       ],

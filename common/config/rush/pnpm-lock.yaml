@@ -124,6 +124,31 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  ../../core/blong-asset:
+    dependencies:
+      '@fastify/static':
+        specifier: ^10.1.6
+        version: 10.1.6
+      fastify:
+        specifier: ^5.12.7
+        version: 5.12.7
+      fastify-plugin:
+        specifier: ^6.0.0
+        version: 6.0.0
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: 21.8.0
+        version: 21.8.0(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react@18.3.1)(supports-color@10.2.2)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   ../../core/blong-browser:
     dependencies:
       '@dnd-kit/core':
@@ -427,6 +452,9 @@ importers:
       '@feasibleone/blong-allure':
         specifier: workspace:^1.0.0
         version: link:../blong-allure
+      '@feasibleone/blong-asset':
+        specifier: workspace:^0.1.0
+        version: link:../blong-asset
       '@feasibleone/blong-chain':
         specifier: workspace:^1.0.0
         version: link:../blong-chain

@@ -5,7 +5,7 @@ name: Kustomize E2E
 # tree, and waits for the operator to report `Ready` on the CR — which exercises the watch, a
 # reconcile pass, the migration Job and the status write in one go.
 #
-# It lives here rather than in `infitx-org/actions/.github/workflows/rush.yaml` because everything it
+# It lives here rather than in `feasibleone/actions/.github/workflows/rush.yaml` because everything it
 # knows is blong's: the path filter lists blong's packages, the steps name blong's suites and CRs, and
 # the cluster, the image and the 90-minute budget are spent on one product — while that shared
 # workflow is a reusable `workflow_call` that `wanples` and `release-cd` also drive. A job that only

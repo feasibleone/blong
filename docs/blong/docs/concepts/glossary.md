@@ -12,6 +12,10 @@ protocol it speaks. See [adapter](./adapter.md) and the [adapter pattern](../pat
 **API definition** — The TypeBox schema or OpenAPI spec a handler derives its contract from, and the
 source of truth for validation and docs. See [API](./api.md) and [OpenAPI](./openapi.md).
 
+**asset server** — The process that serves a suite's browser bundle under /s/, with the security and
+cache headers a page needs; it is not a realm, and it runs beside the suite's processes. See the
+[kustomize pattern](../patterns/kustomize.md).
+
 **callout** — The box a feedback comment is typed in, drawn beside its element and joined to it by
 an arrow, and stored as a fraction of the picture rather than in pixels. See the
 [feedback pattern](../patterns/feedback.md).

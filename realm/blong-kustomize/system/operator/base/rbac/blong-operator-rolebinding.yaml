@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 3871c38df604a4e4
+    blong.feasible.one/spec-hash: 272168642c23ed7d
   name: blong-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io

@@ -8,6 +8,7 @@
  * can be unit-tested directly and reused by both the `k8s` port and the
  * `kustomize.plan.find` handler.
  */
+import {posix} from 'node:path';
 import {
     type IBackingService,
     type IBackingServiceRequest,
@@ -435,8 +436,14 @@ export type IPortalAuth = {type: 'basic'; secretName?: string} | {type: 'oauth2'
 
 export interface ISuitePortalRequest {
     /**
-     * The realm whose own process serves it. Omitted only when the suite has exactly one process,
-     * which is the one case where the question has a single answer (see `planFromRegistry`).
+     * The realm whose own process answers beside the portal: `/documentation`, the one public page a
+     * gateway serves.
+     *
+     * It no longer decides who serves the browser bundle — that is the asset server's work, and it
+     * is deployed whether or not a realm is named. Omitted is ordinary now: a suite with a UI whose
+     * documentation nothing needs names no realm at all, and a suite of several processes that omits
+     * it gets a portal with the asset paths only (the tree refuses to guess which process should
+     * catch the rest).
      */
     realm?: string;
     /** The DNS name it answers on. Omitted means every host, of which a namespace may have one. */
@@ -461,6 +468,100 @@ export type ISuitePortalMap = Record<string, ISuitePortalRequest>;
 
 /** The portals a plan carries: the same map, each entry naming the process behind it. */
 export type IResolvedPortalMap = Record<string, ISuitePortal>;
+
+/**
+ * Where an artifact is mounted in every container that reads it.
+ *
+ * Absolute, and the same for the processes and for the asset server: an entry or a bundle path is
+ * resolved against this path, and a relative one would be resolved against the framework's own
+ * directory rather than the working one.
+ */
+export const SUITE_MOUNT = '/opt/deploy/suite';
+
+/** Where the artifact's entry point sits inside the mounted volume when a suite names none. */
+export const DEFAULT_SUITE_ENTRY = `${SUITE_MOUNT}/index.ts`;
+
+/** The prefix a browser build answers under (`core/blong-browser/src/vite.ts` sets the same). */
+export const ASSET_DEFAULT_BASE = '/s/';
+
+/** The name of the process that serves a suite's browser bundle. */
+export const ASSET_DEPLOYMENT = 'assets';
+
+/** The Service the portal's static paths point at, named after the process and its port. */
+export const ASSET_SERVICE = 'assets-http';
+
+/** The ConfigMap the deployment's header and cache policy travels in. */
+export const ASSET_CONFIG_MAP = 'assets-config';
+
+/** Where the ConfigMap is mounted, and the file the server reads it from. */
+export const ASSET_CONFIG_DIR = '/etc/blong-asset';
+
+/** The CLI inside the framework image, which is what a generated Deployment runs. */
+export const ASSET_BIN = '/opt/blong/common/deploy/core/blong-asset/bin/blongAsset.ts';
+
+/**
+ * The Content-Security-Policy a suite may shape.
+ *
+ * The defaults live in the package that writes the header (`core/blong-asset`), and this is the
+ * subset a suite owning the build is in a position to know: a hash for a block the bundle injects,
+ * a host its API is reached on, and the two directives a page with a framework occasionally has to
+ * loosen.
+ */
+export interface IAssetServerCsp {
+    disabled?: boolean;
+    scriptHashes?: string[];
+    styleHashes?: string[];
+    directives?: Record<string, string | string[]>;
+    reportUri?: string;
+    upgradeInsecureRequests?: boolean;
+}
+
+/** How long a response may be cached, as the suite's build names its files. */
+export interface IAssetServerCache {
+    html?: string;
+    immutable?: string;
+    asset?: string;
+    immutablePattern?: string;
+}
+
+/**
+ * A suite's own statement about its bundle: where the build put it, and what it may load.
+ *
+ * `enabled` is resolved rather than required: a suite that publishes a portal publishes a bundle, so
+ * a portal turns the server on, and a suite that has no browser build (or wants the built-in
+ * development serve to answer) says `enabled: false`.
+ */
+export interface IAssetServerRequest {
+    enabled?: boolean;
+    /** The build output inside the artifact; default `<the entry's directory>/dist`. */
+    root?: string;
+    /** The prefix it answers under; default `/s/`. */
+    base?: string;
+    /** An image of its own, when the deployment does not use the framework image. */
+    image?: string;
+    replicas?: number;
+    resources?: {requests?: Record<string, string>; limits?: Record<string, string>};
+    /** Literal header overrides, the last word over the built-in set. */
+    headers?: Record<string, string>;
+    csp?: IAssetServerCsp;
+    cache?: IAssetServerCache;
+    /** Origins allowed to read the bundle; none by default. */
+    corsOrigins?: string[];
+    /** HSTS; sent only over TLS, and `false` turns it off. */
+    hsts?: {maxAge?: number; includeSubDomains?: boolean; preload?: boolean} | false;
+    referrerPolicy?: string;
+    frameOptions?: string;
+    /** Serve the package's own `favicon.ico` and `robots.txt` when the bundle has none. */
+    builtIns?: boolean;
+}
+
+/** The asset server as the tree renders it: the request resolved against the suite. */
+export interface IAssetServerPlan extends IAssetServerRequest {
+    deployment: string;
+    serviceName: string;
+    root: string;
+    base: string;
+}
 
 /** The versioned artifact volume (see the SuiteVolume abstraction in Phase 6). */
 export interface ISuiteVolume {
@@ -616,6 +717,15 @@ export interface IDeploymentPlan {
     nodes: string[];
     /** Every published entry point, each resolved to the process behind it, by alias. */
     portal: IResolvedPortalMap;
+    /**
+     * The process that serves the browser bundle, when the suite publishes one.
+     *
+     * It is not in {@link deployments}: those are the realm processes, whose split follows the
+     * registry, while this one serves files and belongs to the deployment rather than to any realm.
+     */
+    assetServer?: IAssetServerPlan;
+    /** What the suite declared about it, as it declared it — the form a CR carries. */
+    assetServerRequest?: IAssetServerRequest;
     /** The realm's own operator: identity, permissions, and its Deployment. */
     operator: ISuiteOperator;
     /** When set, the tree carries the CRD and this suite's CR. */
@@ -706,6 +816,8 @@ export interface IPlanOptions {
     suiteVolume?: ISuiteVolumeRequest;
     /** Every portal the suite publishes, by alias. Empty is ordinary: a realm-only suite has no UI. */
     portal?: ISuitePortalMap;
+    /** The process that serves the browser bundle, and the policy its headers carry. */
+    assetServer?: IAssetServerRequest;
     operator?: ISuiteOperatorRequest;
     /**
      * Secret generator entries for the whole suite, by name.
@@ -983,6 +1095,41 @@ const deploymentNames = (
 };
 
 /**
+ * The asset server a suite's bundle is published by, or nothing when it has no UI.
+ *
+ * A portal is what turns it on: a suite that publishes an address publishes the build behind it, so
+ * naming the server is not a second decision. A suite without a portal can still ask for one — a
+ * bundle served for another host — and `enabled: false` keeps the built-in development serve as the
+ * only one, which is what a suite whose page is not a build needs.
+ *
+ * The root defaults to `dist/` beside the artifact's entry: a suite's metadata run is
+ * `blong ./suite/blong-suite/index.ts` and its build writes `dist/` next to that file, so the two
+ * paths are one convention rather than a value every suite repeats.
+ */
+export const resolveAssetServer = (
+    request: IAssetServerRequest | undefined,
+    portal: ISuitePortalMap,
+    entry?: string,
+): IAssetServerPlan | undefined => {
+    const asked = request ?? {};
+    const enabled = asked.enabled ?? Object.keys(portal).length > 0;
+    if (!enabled) return undefined;
+    const entryPath = entry ?? DEFAULT_SUITE_ENTRY;
+    const defaultRoot = `${posix.dirname(entryPath).replace(/\/+$/, '')}/dist`;
+    const base = asked.base ?? ASSET_DEFAULT_BASE;
+    return {
+        ...asked,
+        deployment: ASSET_DEPLOYMENT,
+        serviceName: ASSET_SERVICE,
+        // An absolute path inside the mount: the container's working directory is `/opt/deploy`,
+        // not the artifact's, so a relative root would name the wrong tree.
+        root: asked.root ?? defaultRoot,
+        base: base.startsWith('/') ? (base.endsWith('/') ? base : `${base}/`) : `/${base}/`,
+        replicas: asked.replicas ?? 1,
+    };
+};
+
+/**
  * Derive the deployment plan from a registry view. Pure: no cluster, no
  * filesystem, no framework — which is what makes it unit-testable.
  */
@@ -994,6 +1141,12 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     // the suites' portals — so an install that honoured them would render a portal for the operator's own
     // process, beside the address it was asked for @@D-645.
     const portalEntries = options.install ? {} : (options.portal ?? {});
+    // The bundle's server, resolved before the portals because a portal without a realm lands on it:
+    // the static files are not a realm's work, and the question "which process serves `/s/`" has an
+    // answer that does not depend on the split.
+    const assetServer = options.install
+        ? undefined
+        : resolveAssetServer(options.assetServer, portalEntries, options.entry);
     // What the deployment brings with it, before anything renders it: the adapter kinds its ports carry
     // decide which services are available, the deployment opts in the ones it brings, and the databases
     // its connections name are the list a database service is asked to create (`services.ts`).
@@ -1108,25 +1261,33 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         }
     }
 
-    // A portal names the realm whose process serves it, and the two ways of not naming one are
-    // refused rather than guessed: a suite split into several processes would get whichever
-    // deployment the map happened to yield first — the arbitrary answer the namespace Services were
-    // fixed out of  — and a companion has no process for a portal to land on, which is a
-    // realm-role mistake worth hearing about at plan time rather than from a 503 at the Ingress.
+    // A portal names the realm whose process answers beside it, and the ways of not naming one are
+    // answered rather than guessed: a suite with one process has exactly one candidate, a suite with
+    // an asset server has one for the page itself (the static files are nobody's realm), and a suite
+    // with neither is a question worth hearing about at plan time rather than from a 503 at the
+    // Ingress.
     const portal: IResolvedPortalMap = {};
     for (const [name, entry] of Object.entries(portalEntries)) {
         const where = `portal "${name}"`;
         if (entry.realm === undefined) {
             const [only] = deployments;
-            if (!only || deployments.length !== 1) {
-                throw new Error(
-                    `${where} names no realm, and a portal without one needs a suite with exactly ` +
-                        `one process: this plan has ${deployments.length}, so name the realm whose ` +
-                        'process serves it',
-                );
+            if (only && deployments.length === 1) {
+                portal[name] = {...entry, deployment: only.name};
+                continue;
             }
-            portal[name] = {...entry, deployment: only.name};
-            continue;
+            if (assetServer) {
+                // The page is the bundle, which the asset server answers: no realm is being named
+                // because none is needed for `/` or `/s/`. What is *not* published this way is a
+                // path only a process answers — `/documentation`, a webhook — so a suite that needs
+                // one names the realm that serves it.
+                portal[name] = {...entry, deployment: assetServer.deployment};
+                continue;
+            }
+            throw new Error(
+                `${where} names no realm, and this suite has ${deployments.length} processes and ` +
+                    'no asset server: name the realm whose process answers beside the page, or ' +
+                    'declare a portal path only the bundle serves',
+            );
         }
         const deployment = deploymentForRealm(entry.realm);
         if (!deployment) {
@@ -1183,32 +1344,29 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
      * (`@@D-680`). What makes a port eligible is the contribution, not its kind.
      */
     const contributesIngress = (port: IRegistryPort): boolean =>
-        isApplicationPort(port, view) ||
-        Object.keys(port.k8s?.k8sIngresses ?? {}).length > 0;
+        isApplicationPort(port, view) || Object.keys(port.k8s?.k8sIngresses ?? {}).length > 0;
 
-    const ingresses: IIngress[] = view.ports
-        .filter(contributesIngress)
-        .flatMap(port =>
-            // Read per port rather than merged across them: a rule's Service defaults to the
-            // deployment of the realm whose port declared it, so a name two realms both use is two
-            // rules for a suite to resolve rather than one silently replaced.
-            resolveNamedEntries<IComponentIngress>(port.k8s?.k8sIngresses, 'k8sIngresses').map(
-                ingress => ({
-                    name: ingress.name,
-                    namespace,
-                    host: ingress.host,
-                    path: ingress.path,
-                    pathType: ingress.pathType ?? 'Prefix',
-                    serviceName:
-                        ingress.serviceName ??
-                        deploymentForRealm(port.id.split('.')[0] ?? '') ??
-                        deployments[0]?.name ??
-                        '',
-                    servicePort: ingress.servicePort ?? 8080,
-                    tls: ingress.tls,
-                }),
-            ),
-        );
+    const ingresses: IIngress[] = view.ports.filter(contributesIngress).flatMap(port =>
+        // Read per port rather than merged across them: a rule's Service defaults to the
+        // deployment of the realm whose port declared it, so a name two realms both use is two
+        // rules for a suite to resolve rather than one silently replaced.
+        resolveNamedEntries<IComponentIngress>(port.k8s?.k8sIngresses, 'k8sIngresses').map(
+            ingress => ({
+                name: ingress.name,
+                namespace,
+                host: ingress.host,
+                path: ingress.path,
+                pathType: ingress.pathType ?? 'Prefix',
+                serviceName:
+                    ingress.serviceName ??
+                    deploymentForRealm(port.id.split('.')[0] ?? '') ??
+                    deployments[0]?.name ??
+                    '',
+                servicePort: ingress.servicePort ?? 8080,
+                tls: ingress.tls,
+            }),
+        ),
+    );
 
     /**
      * One address per process that opens a port of its own.
@@ -1281,6 +1439,12 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         assets,
         suiteVolume: resolveSuiteVolume(options.suiteVolume),
         portal,
+        // Absent rather than `undefined` when a suite has no UI: a plan is pinned in a snapshot, and
+        // a key that only ever holds nothing is a diff on every tree that has no page.
+        ...(assetServer ? {assetServer} : {}),
+        // The declaration rather than the resolution: the operator regenerates the tree from the CR,
+        // and a field the CR could not carry is a setting that reverts on the next pass.
+        ...(options.assetServer ? {assetServerRequest: options.assetServer} : {}),
         operator: resolveSuiteOperator(options.operator),
         crd: options.crd,
         install: options.install ?? false,
@@ -1350,6 +1514,8 @@ export interface IPlanConfig {
     suiteVolume?: ISuiteVolumeRequest;
     /** Every portal this suite publishes, by alias, named by address rather than by content. */
     portal?: ISuitePortalMap;
+    /** The process that serves the browser bundle, and the policy its headers carry. */
+    assetServer?: IAssetServerRequest;
     /** The realm's own operator: its Deployment and the loop it runs. */
     operator?: ISuiteOperatorRequest;
     /** How this process runs the operator's loop; the environment can turn it on instead. */
@@ -1423,6 +1589,8 @@ export interface IBlongDeploymentSpec {
     storageClassName?: string;
     /** The portals this suite publishes; a tenant may name their `host` and nothing else. */
     portal?: ISuitePortalMap;
+    /** The process that serves the browser bundle, when a tenant wants one of its own. */
+    assetServer?: IAssetServerRequest;
     /**
      * The nodes a `nodeLocal` deployment runs on, when the tenant names them — as a list of names or
      * as a label selector for the cluster to answer. A tenant that says nothing leaves the realm's
@@ -1458,6 +1626,7 @@ export const planOptionsFromSpec = (spec: IBlongDeploymentSpec = {}): Partial<IP
     if (spec.storageClassName !== undefined) options.storageClassName = spec.storageClassName;
     if (spec.suiteVolume !== undefined) options.suiteVolume = spec.suiteVolume;
     if (spec.portal !== undefined) options.portal = spec.portal;
+    if (spec.assetServer !== undefined) options.assetServer = spec.assetServer;
     if (spec.nodeSource !== undefined) options.nodeSource = spec.nodeSource;
     return options;
 };
@@ -1483,6 +1652,7 @@ export const planOptionsOf = (config: IPlanConfig | undefined): IPlanOptions => 
     nodeSource: config?.nodes,
     suiteVolume: config?.suiteVolume,
     portal: config?.portal,
+    assetServer: config?.assetServer,
     operator: config?.operator,
     secrets: config?.secrets,
     assets: config?.assets,

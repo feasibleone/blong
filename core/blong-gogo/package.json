@@ -47,6 +47,7 @@
         "@fastify/type-provider-typebox": "^6.3.0",
         "@feasibleone/blong": "workspace:^1.0.0",
         "@feasibleone/blong-allure": "workspace:^1.0.0",
+        "@feasibleone/blong-asset": "workspace:^0.1.0",
         "@feasibleone/blong-chain": "workspace:^1.0.0",
         "@feasibleone/blong-config": "workspace:^1.0.0",
         "@feasibleone/blong-lib": "workspace:^1.0.0",

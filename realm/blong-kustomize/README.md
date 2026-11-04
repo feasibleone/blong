@@ -50,8 +50,11 @@ with a patch when the object carries a value the deploy owns — a Deployment's 
 system/kustomize/
 ├── base/                     # committed: the same files for every deploy, and no namespace
 │   ├── kustomization.yaml    # the labels, and the files below — never the templates
-│   ├── deployments/          # one Deployment per process, with a placeholder volume
-│   ├── services/             # one per orchestrator namespace (+ one gateway per portal)
+│   ├── deployments/          # one Deployment per process, and one for the browser bundle,
+│   │                         #   each with a placeholder volume
+│   ├── services/             # one per orchestrator namespace, one per portal, and the
+│   │                         #   bundle server's
+│   ├── configmaps/           # the fill script, and the policy the bundle server applies
 │   ├── ingresses/            # one per host: the portals and the contributed webhooks
 │   ├── rbac/                 # the suite's ServiceAccount and least-privilege Role, the UI's
 │   │                         # auth-review pair, and the bindings the operator gets here
@@ -79,8 +82,8 @@ that CR names for it, and the halves are shared by every deployment of the suite
 come from the overlay's children — `local/suite/` and `local/backing/`, each with a `namespace:`
 field — because kustomize's field is a rewrite rather than a default: it moves every namespaceable
 object and renames every `Namespace`, so a field on the overlay's root would pull the services'
-workloads into the tenant's namespace and collide the two `Namespace` objects (@@F-440). The operator,
-which has no kustomize binary, stamps the same two from those children in
+workloads into the tenant's namespace and collide the two `Namespace` objects (@@F-440). The
+operator, which has no kustomize binary, stamps the same two from those children in
 `materializeGeneratedTree`, and the `Namespace` objects are the overlay's because each is named
 after what it holds — a name being the one thing a patch cannot retarget. The single exception is a
 folder whose objects a generator _builds_ (`secrets/`, `assets/`): a generated object has no
@@ -117,24 +120,33 @@ folders) and each component's merged config, and returns an `IDeploymentPlan`:
 
 ## Portals
 
-A portal is a published entry point: an address, and the process behind it. A suite may publish more
-than one, because a portal is an address rather than a property of the suite — two hostnames that
-answer different things are two entries, and each is served by the process that owns the page it
-shows. They are written as a **map keyed by alias**, so a suite config, a CR and an overlay can each
-add one without knowing the others' position in a list.
+A portal is a published entry point: an address, and the paths that address answers on. A suite may
+publish more than one, because a portal is an address rather than a property of the suite — two
+hostnames that answer different things are two entries. They are written as a **map keyed by
+alias**, so a suite config, a CR and an overlay can each add one without knowing the others'
+position in a list.
 
-- The **alias** — the key — is the portal's name, and it is what its Service is called
-  (`<alias>-http`). It is a name a person chose, so it survives a profile change, which a deployment
-  name does not.
+- The **alias** — the key — is the portal's name, and it is what the Service beside it is called
+  (`<alias>-http`) when a realm answers there. It is a name a person chose, so it survives a profile
+  change, which a deployment name does not.
 - `host` is the DNS name; `path` is the prefix it answers on (default `/`), and `auth` is how the
   ingress controller protects it.
-- `realm` names the process that serves it. It is the realm rather than the deployment because a
-  deployment is named after the profile and would stop meaning the same thing the moment the split
-  changed. A portal that names no realm is allowed only when the suite has exactly one process; with
-  several, or for a `companion` that owns no process at all, it is refused rather than guessed.
-- One Service per portal, and one Ingress per _host_ carrying every path that host serves — the
-  portals plus whatever a realm contributed. Two entries claiming one path on one host are refused,
-  because the controller would pick whichever it read first.
+- `realm` names the process that answers **beside** the page — `/documentation`, which is the one
+  public page a gateway serves. It no longer decides who serves the browser bundle: that is the
+  asset server's work, and it is deployed whether or not a realm is named. Omitted is ordinary now:
+  a suite whose host serves only the bundle and `/rpc/*` names no realm at all, and a suite of
+  several processes that omits one gets the bundle paths only (the tree refuses to guess which
+  process should catch the rest).
+- `/s/`, `/s` and the root prefix are the **asset server's**: `/s/` is the prefix the build uses and
+  `/` redirects there. The root is a prefix rather than an exact path because a controller cannot
+  tell an `Exact /` from a `Prefix /` — Traefik treats them as one path and picks one — so the
+  realm's own surfaces are named explicitly instead: `/documentation` goes to the portal's process.
+  The host's other paths are the per-namespace `/rpc/<name>` routes.
+- One Service per portal **when a realm answers there**, named after the alias, and one Ingress per
+  _host_ carrying every path that host serves — the bundle's paths, the portal's fallback, and
+  whatever a realm contributed. Two entries claiming one path _and type_ on one host are refused,
+  because the controller would pick whichever it read first; an `Exact /` and a `Prefix /` are two
+  different rules and are allowed together.
 
 The annotations are the controller's, so they belong to the host: two portals on one host share
 them, and a realm's webhook may not share a portal's host — it would inherit that authentication, so
@@ -145,11 +157,52 @@ TLS certificate, and the auth is enforced by the ingress controller the cluster 
 declares that it has a portal and the tenant names the host in the CR.
 
 ```ts
-// in a suite's config: the suite declares the portal and the process behind it
+// in a suite's config: the suite declares the portal, the process that answers beside it, and the
+// policy its bundle may load
 portal: {web: {realm: 'core'}},
+assetServer: {csp: {scriptHashes: ["'sha256-…'"]}},
 // in the CR the tenant applies: the same alias, now with the address it answers on
 portal: {web: {realm: 'core', host: 'shop.example.test', auth: {type: 'basic'}}},
 ```
+
+## The browser bundle
+
+A suite that publishes a portal publishes a bundle, so the process that serves it follows from the
+portal rather than from a second setting: the asset server is enabled whenever a portal exists, and
+`enabled: false` is the escape hatch that leaves the framework's built-in serve (a development
+arrangement) as the only one.
+
+It is a Deployment, a Service and a ConfigMap of its own — `assets`, `assets-http`, `assets-config`
+— running `core/blong-asset` from the framework image with the artifact volume mounted read-only.
+The process loads no realm, holds no API token, drops every capability and cannot write its own
+root; what it serves is `/s/` (a precompressed sibling preferred), the redirect from `/`, and the
+shell for a client-side route.
+
+`assetServer` is the suite's and the tenant's statement about what the build may load:
+
+- `root` — the build output, default `dist/` beside the artifact's entry.
+- `base` — the prefix, default `/s/`.
+- `csp` — `scriptHashes`/`styleHashes` to whitelist in addition to the shell's own inline blocks
+  (the server hashes those itself), `directives` to add, override or remove, `reportUri`, and
+  `disabled` for a bundle no policy can describe. `script-src` keeps `'unsafe-eval'` because
+  `core/blong-template` compiles templates with `new Function`, and `style-src` keeps
+  `'unsafe-inline'` because a component library writes style attributes; a bundle that needs neither
+  removes them through `directives`.
+- `headers`, `corsOrigins`, `hsts`, `referrerPolicy`, `frameOptions` — the rest of the set, where
+  the defaults are not what a suite needs.
+- `cache` — the `html`, `immutable` and `asset` lifetimes, and the pattern that decides which file
+  gets which.
+- `image`, `replicas`, `resources` — the deployment shape.
+
+The policy travels as a `ConfigMap`, and the declaration travels in the CR, because the operator
+regenerates the tree from it: a directive the CR could not carry would revert on the next pass. The
+pod template carries the config's fingerprint as an annotation, so a changed policy is a changed
+Deployment and the process is rolled — a `ConfigMap` on its own does not restart anything, and the
+old policy would keep answering from a pod that already read it.
+
+A portal whose `path` is not `/` keeps the realm's serve: the tree writes the bundle's paths only
+for a portal at the root, because the build's `base` and the server's `base` are one value and
+moving it is a change to both.
 
 ## The suite volume
 
@@ -208,6 +261,10 @@ kustomize: {
         servicesNamespace: 'blong-services',
         suiteVolume: {backend: 'auto', retention: 3, attemptRetention: 5},
         portal: {web: {host: 'ui.example.test', realm: 'core', auth: {type: 'basic'}}},
+        assetServer: {
+            csp: {scriptHashes: ["'sha256-…'"], directives: {'connect-src': ["'self'"]}},
+            cache: {immutable: 'public, max-age=31536000, immutable'},
+        },
         crd: true,
         outputDir: 'system/kustomize',
     },
@@ -224,15 +281,15 @@ Service, its claim and its init config. The namespace, the `ExternalName` alias 
 dials and the credentials are the deployment's rather than the design's, so the overlay writes them
 (@@D-504 @@D-506).
 
-The credentials are the deployment's to declare, in `services.<name>.credentials` (@@D-509): `values`
-are written into a Secret the tree generates, `secret` names one the deployment owns elsewhere and
-mounts as it stands, and `generate` asks for the descriptor's own derivation — derived from suite,
-service and version, so the same plan writes the same Secret on every pass. Naming a Secret and
-supplying values at once is refused, because they are two answers to one question, and declaring
-nothing writes no Secret at all: a workload whose base reads one then has that reference taken out,
-rather than left waiting for a Secret nobody writes. A generated Secret is written twice — beside
-the workload, where the service reads it, and in the suite's namespace, where the suite's own
-processes read it as environment — because a pod sees only its own namespace. Both copies carry
+The credentials are the deployment's to declare, in `services.<name>.credentials` (@@D-509):
+`values` are written into a Secret the tree generates, `secret` names one the deployment owns
+elsewhere and mounts as it stands, and `generate` asks for the descriptor's own derivation — derived
+from suite, service and version, so the same plan writes the same Secret on every pass. Naming a
+Secret and supplying values at once is refused, because they are two answers to one question, and
+declaring nothing writes no Secret at all: a workload whose base reads one then has that reference
+taken out, rather than left waiting for a Secret nobody writes. A generated Secret is written twice
+— beside the workload, where the service reads it, and in the suite's namespace, where the suite's
+own processes read it as environment — because a pod sees only its own namespace. Both copies carry
 `blong.feasible.one/generated-credentials`, which is what lets a pass take them back when the
 declaration stops asking: a credential this realm derived is the one object it deletes outside the
 tenant's namespace (@@D-461 @@D-462).
@@ -316,11 +373,11 @@ RELEASE=1 FRAMEWORK_VERSION=v1.43.1 npm run deploy
 ```
 
 Two things the operator runs, and they change for different reasons. Its **image** is the framework
-(`core/blong-gogo`), so a framework change needs `BUILD_IMAGE=1`; the operator's **artifact** is this
-realm, which it fetches and runs the way every process runs a suite — so a change to `generator.ts`,
-`materialize.ts` or the reconcile path reaches a cluster only when that artifact is republished _and_
-the pod is restarted. `npm run deploy` does both, and only for the operator: no suite tree, no tenant
-declaration, no pods that did not change.
+(`core/blong-gogo`), so a framework change needs `BUILD_IMAGE=1`; the operator's **artifact** is
+this realm, which it fetches and runs the way every process runs a suite — so a change to
+`generator.ts`, `materialize.ts` or the reconcile path reaches a cluster only when that artifact is
+republished _and_ the pod is restarted. `npm run deploy` does both, and only for the operator: no
+suite tree, no tenant declaration, no pods that did not change.
 
 The release form names a published version and builds nothing, which is what a pipeline would run.
 The realm is a release of its own (`blong-kustomize-v<version>`), and that release carries three
@@ -340,7 +397,8 @@ itself, with the release's version and artifact laid over it (@@D-750). The pass
 Jobs for the new artifact identity and waits for them before it touches the Deployment, so a release
 whose artifact cannot be fetched leaves the running operator where it was. The trade is that the
 route leads back into the process that answers it: the new Deployment replaces the pod mid-pass, and
-the release call returns once the API server has accepted it rather than when the new pod is serving.
+the release call returns once the API server has accepted it rather than when the new pod is
+serving.
 
 The answer is a report, and the answer renders it once: `kustomize.release.notify` returns the facts
 (`report`) and the same facts as one markdown document (`markdown`), which the workflow appends to
@@ -378,11 +436,12 @@ Before the first apply:
                         cert-manager.io/cluster-issuer: letsencrypt-prod
     ```
 
-  A realm that names no host installs the Service and no Ingress, which is the right tree for a
-  cluster that reaches the API in-cluster. Point the host's DNS at the ingress controller and let
-  cert-manager sign it — the `ClusterIssuer` annotation is the switch between `letsencrypt-staging`
-  (fast, untrusted, `curl -k`) and `letsencrypt-prod` (publicly trusted, rate-limited) — while the
-  controller itself is the cluster's.
+    A realm that names no host installs the Service and no Ingress, which is the right tree for a
+    cluster that reaches the API in-cluster. Point the host's DNS at the ingress controller and let
+    cert-manager sign it — the `ClusterIssuer` annotation is the switch between
+    `letsencrypt-staging` (fast, untrusted, `curl -k`) and `letsencrypt-prod` (publicly trusted,
+    rate-limited) — while the controller itself is the cluster's.
+
 - **The release token.** A release call is authenticated by a shared token. Create the Secret the
   operator Deployment reads, then restart it:
 
@@ -392,10 +451,11 @@ Before the first apply:
     kubectl -n blong-system rollout restart deploy/blong-operator
     ```
 
-  The same value is the `DEPLOY_TOKEN` a pipeline sends to
-  `POST /rpc/kustomize/release/approve`; the route is plain JSON-RPC and the token is in the body.
-  The operator refuses the call with 401 when the Secret is missing or the value does not match. The
-  Secret must exist before the patched install tree is applied, or the operator pod waits on it.
+    The same value is the `DEPLOY_TOKEN` a pipeline sends to `POST /rpc/kustomize/release/approve`;
+    the route is plain JSON-RPC and the token is in the body. The operator refuses the call with 401
+    when the Secret is missing or the value does not match. The Secret must exist before the patched
+    install tree is applied, or the operator pod waits on it.
+
 - **The operator's own artifact.** The operator runs this realm from an artifact, not from the
   working copy. `OPERATOR_ARTIFACT_URL` names the zip the fill Job fetches; the local runbook
   publishes one, and a released install names the published `kustomize.zip`.

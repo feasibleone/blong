@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 034177bea867c94f
+    blong.feasible.one/spec-hash: 987684c2005e2568
   name: blongdeployments.blong.feasible.one
 spec:
   group: blong.feasible.one
@@ -40,6 +40,79 @@ spec:
           properties:
             spec:
               properties:
+                assetServer:
+                  properties:
+                    base:
+                      type: string
+                    builtIns:
+                      type: boolean
+                    cache:
+                      properties:
+                        asset:
+                          type: string
+                        html:
+                          type: string
+                        immutable:
+                          type: string
+                        immutablePattern:
+                          type: string
+                      type: object
+                    corsOrigins:
+                      items:
+                        type: string
+                      type: array
+                    csp:
+                      properties:
+                        directives:
+                          additionalProperties:
+                            x-kubernetes-preserve-unknown-fields: true
+                          type: object
+                        disabled:
+                          type: boolean
+                        reportUri:
+                          type: string
+                        scriptHashes:
+                          items:
+                            type: string
+                          type: array
+                        styleHashes:
+                          items:
+                            type: string
+                          type: array
+                        upgradeInsecureRequests:
+                          type: boolean
+                      type: object
+                    enabled:
+                      type: boolean
+                    frameOptions:
+                      type: string
+                    headers:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    hsts:
+                      x-kubernetes-preserve-unknown-fields: true
+                    image:
+                      type: string
+                    referrerPolicy:
+                      type: string
+                    replicas:
+                      minimum: 0
+                      type: integer
+                    resources:
+                      properties:
+                        limits:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        requests:
+                          additionalProperties:
+                            type: string
+                          type: object
+                      type: object
+                    root:
+                      type: string
+                  type: object
                 entry:
                   type: string
                 externalServices:

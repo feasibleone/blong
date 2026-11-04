@@ -61,7 +61,9 @@ export const latestMigrationJob = (items: unknown[]): string | undefined => {
             const at = String(left.metadata?.creationTimestamp ?? '');
             const bt = String(right.metadata?.creationTimestamp ?? '');
             return at === bt
-                ? String(left.metadata?.name ?? '').localeCompare(String(right.metadata?.name ?? ''))
+                ? String(left.metadata?.name ?? '').localeCompare(
+                      String(right.metadata?.name ?? ''),
+                  )
                 : at.localeCompare(bt);
         })
         .at(-1)?.metadata?.name;
@@ -301,7 +303,9 @@ export const backingServicesCheck = async (
                 )),
             {timeoutMs: 120_000, intervalMs: 5_000},
         );
-        io.log('and took the generated credentials back, while the workload they were made for stayed');
+        io.log(
+            'and took the generated credentials back, while the workload they were made for stayed',
+        );
     }
     const servicesNamespace = servicesNamespaceOf({tree, suiteNamespace: namespace});
     if (!servicesNamespace) {
@@ -455,6 +459,22 @@ export const portalChecks = async (
             io,
         );
         if (!endpoints) fail(`${service} has no endpoints, so the portal's path leads nowhere`);
+        // The page and the API are two backends now: the first path is the bundle's (`/s`), and the
+        // process that answers `/rpc/login` is the login deployment. Forwarding the page's Service
+        // for the round trip asks a file server to create a token, which it answers with a 404 — so
+        // the login leg takes the RPC backend the same Ingress routes it to, and falls back to the
+        // page's Service only on an Ingress that publishes no per-namespace path.
+        const loginService =
+            (await getField(
+                {
+                    namespace,
+                    resource: `ingress/${ingress}`,
+                    jsonPath:
+                        '{.spec.rules[0].http.paths[?(@.path=="/rpc/login")].backend.service.name}',
+                    optional: true,
+                },
+                io,
+            )) || service;
         const forward = await portForward({namespace, service, localPort: 18080}, io);
         try {
             await portalPage(forward, io);
@@ -464,11 +484,19 @@ export const portalChecks = async (
                 );
                 continue;
             }
-            await loginRoundTrip(
-                forward,
-                {user: credentials.user, password: credentials.password},
-                io,
-            );
+            const loginForward =
+                loginService === service
+                    ? forward
+                    : await portForward({namespace, service: loginService, localPort: 18081}, io);
+            try {
+                await loginRoundTrip(
+                    loginForward,
+                    {user: credentials.user, password: credentials.password},
+                    io,
+                );
+            } finally {
+                if (loginForward !== forward) loginForward.stop();
+            }
         } finally {
             forward.stop();
         }

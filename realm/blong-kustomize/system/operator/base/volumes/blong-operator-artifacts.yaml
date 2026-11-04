@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: f7d5c0edb0bf1921
+    blong.feasible.one/spec-hash: f8726b65601bb3a0
   name: blong-operator-artifacts
 spec:
   accessModes:

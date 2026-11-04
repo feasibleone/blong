@@ -751,6 +751,12 @@
             "projectFolder": "realm/blong-agent",
             "reviewCategory": "realm",
             "tags": ["realm"]
+        },
+        {
+            "packageName": "@feasibleone/blong-asset",
+            "projectFolder": "core/blong-asset",
+            "reviewCategory": "core",
+            "tags": ["core"]
         }
     ]
 }

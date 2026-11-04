@@ -118,6 +118,7 @@ dist
 help
 .tap
 temp
+plans
 storybook-static
 sandbox
 *storybook.log

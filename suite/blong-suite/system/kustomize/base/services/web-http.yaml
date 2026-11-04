@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 6cc93e530a845795
+    blong.feasible.one/spec-hash: 93570d961538ac80
   name: web-http
 spec:
   ports:
@@ -15,6 +15,6 @@ spec:
       protocol: TCP
       targetPort: http
   selector:
-    app.kubernetes.io/instance: core
+    app.kubernetes.io/instance: marine
     app.kubernetes.io/part-of: blong-suite
   type: ClusterIP

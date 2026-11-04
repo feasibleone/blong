@@ -13,7 +13,7 @@ jobs:
       security-events: write
       id-token: write
       pull-requests: write
-    uses: infitx-org/actions/.github/workflows/release-docker.yaml@main
+    uses: feasibleone/actions/.github/workflows/release-docker.yaml@main
     secrets:
       token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}

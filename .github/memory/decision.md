@@ -12,10 +12,7 @@ active (82)
 - `D-031` · ci — The mongosh liveness probe crash-looped the dev MongoDB pod
 - `D-051` · cross-cutting — The deploy snapshot is regenerated, not deprecated
 - `D-052` · cross-cutting — The eval harness globs were fixed beyond the rubric
-- `D-068` · ci — CI waits for real MySQL readiness and dumps diagnostics on failure
 - `D-069` · ci — CI metrics deltas compare against the last merged main state
-- `D-070` · ci — Complex CI steps became composite actions in the actions repo
-- `D-071` · cross-cutting — Packages are grouped into six category folders
 - `D-072` · skills — The blong-theme skill distils the wood variant's lessons
 - `D-102` · skills — One canonical skills section for the kukum API, not per-skill recipes
 - `D-138` · docs — The kukum docs keep every link inside the docs tree
@@ -62,7 +59,6 @@ active (82)
 - `D-522` · cross-cutting — The publish guard fails on a present target, not on an unbuilt one
 - `D-526` · cross-cutting — A gateway disables local resolution
 - `D-540` · cross-cutting — No automatic check judges a citation correct; the audit view is the tool
-- `D-545` · ci — The CI cache stays warm but stops gating the run
 - `D-546` · ci — The cache archive can carry the pnpm store alone
 - `D-551` · ci — The cache carries the store as one packed file
 - `D-557` · docs — Two published Storybook sites, not one composed build
@@ -95,6 +91,10 @@ active (82)
 - `D-732` · docs — A diagram renders without any environment variable
 - `D-733` · docs — The architecture diagram opens as a full page, not a frame
 - `D-743` · cross-cutting — A joined column is filtered through the table that carries it
+- `D-068` · ci — CI waits for real MySQL readiness and dumps diagnostics on failure
+- `D-070` · ci — Complex CI steps became composite actions in the actions repo
+- `D-071` · cross-cutting — Packages are grouped into six category folders
+- `D-545` · ci — The CI cache stays warm but stops gating the run
 
 superseded (7)
 
@@ -102,10 +102,10 @@ superseded (7)
 - `D-323` · cross-cutting — Atomicity stops at the handler boundary, and that boundary is the
   topology
 - `D-336` · cross-cutting — The bank embedding model is the one irreversible choice
-- `D-569` · ci — How to make CI test the framework build of its own commit
 - `D-628` · docs — Dropdown labels are translated client side
 - `D-669` · docs — The feedback post embeds the review page and shows the callouts as a picture
 - `D-318` · cross-cutting — The rebuild follows the last write, and a lagging read falls back
+- `D-569` · ci — How to make CI test the framework build of its own commit
 
 <!-- /memory:index -->
 
@@ -149,18 +149,6 @@ did not ask for: `globToRegExp` did not match `**/` against zero directories, an
 string-includes bug. Without them the "fixed items" (suite wiring and the like) could not score at
 all, so they were fixed inside the change.
 
-### D-068 — CI waits for real MySQL readiness and dumps diagnostics on failure
-
-> _2026-08-21 · ci · active_
-
-`test/integration/wait.sh` now waits for real MySQL readiness (`mysqladmin ping` plus a
-`blong-admin SELECT 1`) instead of just a listening port, fixing the cold-start race behind
-`test/blong-suite`'s "Process from config.webServer was not able to start". On failure a repo-owned
-script, `test/integration/ci-diagnostics.sh`, dumps k8s and MySQL state: the shared
-`infitx-org/actions` rush workflow detects the script in its `setup` "Config check" step and, only
-when it exists, runs it and uploads a `ci-diagnostics` artifact, which keeps the shared action
-repository-agnostic. Verified: `wait.sh` syntax OK and `rush.yaml` valid YAML.
-
 ### D-069 — CI metrics deltas compare against the last merged main state
 
 > _2026-09-09 · ci · active_
@@ -181,57 +169,6 @@ run with no baseline renders exactly as before. Keying conventions to keep: top-
 produced null deltas), and per-package `packages[<name>].coverage = {linesHit, linesTotal}`. blong's
 `release.yaml` gained an `update-metrics` job calling the reusable workflow at `@main` with
 `RELEASE_PLEASE_TOKEN`.
-
-### D-070 — Complex CI steps became composite actions in the actions repo
-
-> _2026-09-09 · ci · active_
-
-The shared `rush.yaml` is a REUSABLE workflow consumed with `uses: …@main`, so it runs in the
-CALLER's checkout and a plain `run: node scripts/x.mjs` from the actions repo would not resolve.
-That had pushed logic into giant bash blocks and heredocs embedded in YAML, which are hard to lint,
-test and diff and are full of quoting hazards. The two genuinely complex blocks became composite
-actions committed in the actions repo and invoked as
-`uses: infitx-org/actions/.github/actions/<name>@main` (GitHub clones the actions repo into
-`${{ github.action_path }}` at runtime): `render-ci` (report parse, baseline diff, metrics snapshot,
-step summary — dependency-free `.mjs`) and `deploy-report` (gh-pages publish: clone and init, copy,
-prune numeric run directories, regenerate index.html, force push, resolve the pages URL).
-Conventions that must hold: actions are dependency-free plain node with no `@actions/*` and no build
-step; composite steps use `shell: bash` and `run: node "${{ github.action_path }}/index.mjs"`;
-inputs flow through an explicit `env: INPUT_*:` mapping; outputs are appended to `$GITHUB_OUTPUT`
-and declared under the action's `outputs:`; and all filesystem work is anchored to
-`$GITHUB_WORKSPACE` by `process.chdir` or `join(workspace, …)`. `publish-report` gained a `- *node`
-setup step so Node is guaranteed on PATH. Deferred: the remaining small bash (Assemble comment, List
-reports, Config check, List Dockerfiles). Consumers stay pinned to `rush.yaml@main`, so these
-actions are exercised only after merging to the actions repo's main.
-
-### D-071 — Packages are grouped into six category folders
-
-> _2026-09-12 · cross-cutting · active_
-
-The repository was reorganised into `core/`, `realm/`, `suite/`, `demo/`, `test/` and `tools/` so
-that search and discovery stay focused, with every package at depth 2 (`category/package`) keeping
-relative paths such as `../../common/...` identical everywhere. Scope choice: only packages under
-`core/` were relocated — `ext/rest-fs`, `docs/blong` and the gitignored `dev/` stayed put, even
-though `ext/rest-fs` is dev tooling that would fit `tools/`, because the shared `infitx-org/actions`
-CI workflow and both `.vscode/launch.json` files assume `ext/` exists. User-confirmed assignments:
-framework to `core/`, reusable realms to `realm/`, reusable suites to `suite/`, demonstration realms
-and suites to `demo/`, framework tests to `test/`, dev tooling to `tools/`. Explicitly chosen:
-`config-hot-reload` and `blong-kopi` stay in `core/`; `blong-eip` goes to `demo/`;
-`blong-access-mock` and `blong-test` to `realm/`; `blong-sim-api` and `blong-sim-tcp` to `test/`;
-`blong-ttk` to `tools/`; `blong-allure`, `blong-chain` and `blong-cucumber` stay in `core/`.
-Framework test packages merged into the pre-existing top-level `test/` folder (which also holds the
-non-package `test/integration/` k8s manifests) and `@feasibleone/test` was renamed `test/framework`
-to avoid `test/test/`. `core/common/chromatic.sh` moved to repo-root `common/chromatic.sh`, removing
-the undocumented `core/common` sibling trick, and both consumers now use
-`../../common/chromatic.sh`. `tools/blong-graph/tsconfig.json` extended `core/blong/tsconfig.json`,
-whose `rootDir: "."` TypeScript resolves relative to the BASE config's directory, so `rootDir`
-became `core/blong` and every blong-graph source file fell outside it (TS6059) with `outDir`
-pointing at `core/blong/dist` — a pre-existing bug, verified with a minimal repro, fixed by an
-explicit `rootDir`/`outDir` override in blong-graph's own config, with a note to reconsider a
-standalone tsconfig. Deliberately not rewritten: `plans/**` (~1000 stale references),
-`.github/memory/*.md` and the regenerated Docusaurus `docs/blong/build/`. `rush.json`'s `projects`
-array was rewritten in place and never reordered, because `blong-browser/src/playwright/config.ts`
-derives Playwright ports from each package's index.
 
 ### D-072 — The blong-theme skill distils the wood variant's lessons
 
@@ -822,31 +759,6 @@ changed, and --fix-anchors rewrites only an anchor whose replacement is unambigu
 asked to re-read the entry it cites, because that is the only check. One citation of the 388 was
 wrong: a comment cited F-379 (.dockerignore) for the adapter method-naming fact F-395 holds.
 
-### D-545 — The CI cache stays warm but stops gating the run
-
-> _2026-10-14 · ci · active_
-
-The plan for the 58-minute run rests on four choices made after the measurements in @@F-522. The
-dependency cache stays: a warm tree is worth keeping when third-party dependencies did not change,
-and a cold install cannot be assumed to stay at its measured 2m43s — node-rdkafka alone is 1m47s of
-it today and a future dependency may add a build of its own. The write moves off the critical path:
-every job declares `needs: setup` today, so the 29-minute archive save at the end of that job delays
-tests, chromatic, audit, deprecation and lint, and half of a miss run is the save. The change lands
-in the shared reusable workflow in infitx-org/actions, which wanples and release-cd also drive, so
-it has to keep working for their layouts (`app/`, `library/`) rather than being blong-local.
-Wall-clock time comes before runner cost, and the work lands incrementally with a measurement after
-each step: prune, then the key, then the gate. Lazy-loading node-rdkafka is kept as the fallback for
-the case where the warm cache is abandoned, and a Docker dependency image is a candidate to be
-re-decided by the step that re-measures, not part of the plan.
-
-Two things the plan does not decide. The first is whether the cache can drop
-`common/temp/node_modules` and `*/node_modules` — 132k of its files, and the only copy of
-node-rdkafka's 556 MB build — and rely on the store plus pnpm's side-effects cache instead, which is
-the first spike. The second is the lockfile key: the last 25 lockfile changes are dependency changes
-spanning 2026-09-09 to 2026-10-13, and no release or version commit is among them, so a version bump
-does not invalidate the cache; only a real dependency change does, which is what the `restore-keys`
-fallback is for, and re-keying on the third-party sections would add little.
-
 ### D-546 — The cache archive can carry the pnpm store alone
 
 > _2026-10-14 · ci · active_
@@ -1345,6 +1257,94 @@ instead. That is why the fix carries a spec that asserts the answer
 The order clause takes the same treatment, because the statement reads two tables and a name in both
 of them is a question MySQL refuses to answer — `@@D-742` holds the client shape that reached it.
 
+### D-068 — CI waits for real MySQL readiness and dumps diagnostics on failure
+
+> _2026-08-21 · ci · active_
+
+`test/integration/wait.sh` now waits for real MySQL readiness (`mysqladmin ping` plus a
+`blong-admin SELECT 1`) instead of just a listening port, fixing the cold-start race behind
+`test/blong-suite`'s "Process from config.webServer was not able to start". On failure a repo-owned
+script, `test/integration/ci-diagnostics.sh`, dumps k8s and MySQL state: the shared
+`feasibleone/actions` rush workflow detects the script in its `setup` "Config check" step and, only
+when it exists, runs it and uploads a `ci-diagnostics` artifact, which keeps the shared action
+repository-agnostic. Verified: `wait.sh` syntax OK and `rush.yaml` valid YAML.
+
+### D-070 — Complex CI steps became composite actions in the actions repo
+
+> _2026-09-09 · ci · active_
+
+The shared `rush.yaml` is a REUSABLE workflow consumed with `uses: …@main`, so it runs in the
+CALLER's checkout and a plain `run: node scripts/x.mjs` from the actions repo would not resolve.
+That had pushed logic into giant bash blocks and heredocs embedded in YAML, which are hard to lint,
+test and diff and are full of quoting hazards. The two genuinely complex blocks became composite
+actions committed in the actions repo and invoked as
+`uses: feasibleone/actions/.github/actions/<name>@main` (GitHub clones the actions repo into
+`${{ github.action_path }}` at runtime): `render-ci` (report parse, baseline diff, metrics snapshot,
+step summary — dependency-free `.mjs`) and `deploy-report` (gh-pages publish: clone and init, copy,
+prune numeric run directories, regenerate index.html, force push, resolve the pages URL).
+Conventions that must hold: actions are dependency-free plain node with no `@actions/*` and no build
+step; composite steps use `shell: bash` and `run: node "${{ github.action_path }}/index.mjs"`;
+inputs flow through an explicit `env: INPUT_*:` mapping; outputs are appended to `$GITHUB_OUTPUT`
+and declared under the action's `outputs:`; and all filesystem work is anchored to
+`$GITHUB_WORKSPACE` by `process.chdir` or `join(workspace, …)`. `publish-report` gained a `- *node`
+setup step so Node is guaranteed on PATH. Deferred: the remaining small bash (Assemble comment, List
+reports, Config check, List Dockerfiles). Consumers stay pinned to `rush.yaml@main`, so these
+actions are exercised only after merging to the actions repo's main.
+
+### D-071 — Packages are grouped into six category folders
+
+> _2026-09-12 · cross-cutting · active_
+
+The repository was reorganised into `core/`, `realm/`, `suite/`, `demo/`, `test/` and `tools/` so
+that search and discovery stay focused, with every package at depth 2 (`category/package`) keeping
+relative paths such as `../../common/...` identical everywhere. Scope choice: only packages under
+`core/` were relocated — `ext/rest-fs`, `docs/blong` and the gitignored `dev/` stayed put, even
+though `ext/rest-fs` is dev tooling that would fit `tools/`, because the shared
+`feasibleone/actions` CI workflow and both `.vscode/launch.json` files assume `ext/` exists.
+User-confirmed assignments: framework to `core/`, reusable realms to `realm/`, reusable suites to
+`suite/`, demonstration realms and suites to `demo/`, framework tests to `test/`, dev tooling to
+`tools/`. Explicitly chosen: `config-hot-reload` and `blong-kopi` stay in `core/`; `blong-eip` goes
+to `demo/`; `blong-access-mock` and `blong-test` to `realm/`; `blong-sim-api` and `blong-sim-tcp` to
+`test/`; `blong-ttk` to `tools/`; `blong-allure`, `blong-chain` and `blong-cucumber` stay in
+`core/`. Framework test packages merged into the pre-existing top-level `test/` folder (which also
+holds the non-package `test/integration/` k8s manifests) and `@feasibleone/test` was renamed
+`test/framework` to avoid `test/test/`. `core/common/chromatic.sh` moved to repo-root
+`common/chromatic.sh`, removing the undocumented `core/common` sibling trick, and both consumers now
+use `../../common/chromatic.sh`. `tools/blong-graph/tsconfig.json` extended
+`core/blong/tsconfig.json`, whose `rootDir: "."` TypeScript resolves relative to the BASE config's
+directory, so `rootDir` became `core/blong` and every blong-graph source file fell outside it
+(TS6059) with `outDir` pointing at `core/blong/dist` — a pre-existing bug, verified with a minimal
+repro, fixed by an explicit `rootDir`/`outDir` override in blong-graph's own config, with a note to
+reconsider a standalone tsconfig. Deliberately not rewritten: `plans/**` (~1000 stale references),
+`.github/memory/*.md` and the regenerated Docusaurus `docs/blong/build/`. `rush.json`'s `projects`
+array was rewritten in place and never reordered, because `blong-browser/src/playwright/config.ts`
+derives Playwright ports from each package's index.
+
+### D-545 — The CI cache stays warm but stops gating the run
+
+> _2026-10-14 · ci · active_
+
+The plan for the 58-minute run rests on four choices made after the measurements in @@F-522. The
+dependency cache stays: a warm tree is worth keeping when third-party dependencies did not change,
+and a cold install cannot be assumed to stay at its measured 2m43s — node-rdkafka alone is 1m47s of
+it today and a future dependency may add a build of its own. The write moves off the critical path:
+every job declares `needs: setup` today, so the 29-minute archive save at the end of that job delays
+tests, chromatic, audit, deprecation and lint, and half of a miss run is the save. The change lands
+in the shared reusable workflow in feasibleone/actions, which wanples and release-cd also drive, so
+it has to keep working for their layouts (`app/`, `library/`) rather than being blong-local.
+Wall-clock time comes before runner cost, and the work lands incrementally with a measurement after
+each step: prune, then the key, then the gate. Lazy-loading node-rdkafka is kept as the fallback for
+the case where the warm cache is abandoned, and a Docker dependency image is a candidate to be
+re-decided by the step that re-measures, not part of the plan.
+
+Two things the plan does not decide. The first is whether the cache can drop
+`common/temp/node_modules` and `*/node_modules` — 132k of its files, and the only copy of
+node-rdkafka's 556 MB build — and rely on the store plus pnpm's side-effects cache instead, which is
+the first spike. The second is the lockfile key: the last 25 lockfile changes are dependency changes
+spanning 2026-09-09 to 2026-10-13, and no release or version commit is among them, so a version bump
+does not invalidate the cache; only a real dependency change does, which is what the `restore-keys`
+fallback is for, and re-keying on the third-party sections would add little.
+
 ## Superseded
 
 ### D-171 — The metrics commit carries skip ci
@@ -1410,25 +1410,6 @@ re-embedding is owed.
 Evidence in plans/memory-index/embedding-model-comparison.md, harness and results in
 plans/memory-index/eval/.
 
-### D-569 — How to make CI test the framework build of its own commit
-
-> _2026-10-17 · ci · superseded_
-
-F-555 can be fixed three ways and the choice is the user's, because it changes shared infrastructure
-that four repositories run on. Option A carries each project's dist as a per-run artifact, uploaded
-by setup and downloaded by the jobs that need it, leaving the lockfile-keyed cache to the pnpm store
-and the per-project .rush trees; it is the durable fix and the one recommended. Option B sets
-NODE_OPTIONS=--conditions=blong-dev on the test jobs so CI resolves core/blong/types.ts the way the
-dev shell does, which makes the suites test framework source and leaves the default condition of the
-exports map untested. Option C bumps the cache key prefix once, which unblocks the current run and
-brings the trap back on the next types.ts change. Until one is applied, Build stays red for the
-release pull request and no change to a runtime export or runtime logic in types.ts reaches CI.
-
-Option A was applied on 2026-10-17 in infitx-org/actions: rush.yaml and release-docker.yaml pack the
-dist trees of the run into a build artifact, the lockfile-keyed cache keeps only the dependency
-store and the .rush trees, publish-package and chromatic read the artifact of their own run, and
-setup-node in the release workflow now builds on every release so that artifact always exists.
-
 ### D-628 — Dropdown labels are translated client side
 
 > _2026-10-25 · docs · superseded_
@@ -1481,6 +1462,25 @@ Superseded by `D-320`.
 Superseded: a boolean marker cannot survive a rebuild in another process clearing it, so a write
 committing during that rebuild was lost rather than owed. The generation and covered counters in
 D-320 replace both the marker and the read-side fallback, neither of which is still in the code.
+
+### D-569 — How to make CI test the framework build of its own commit
+
+> _2026-10-17 · ci · superseded_
+
+F-555 can be fixed three ways and the choice is the user's, because it changes shared infrastructure
+that four repositories run on. Option A carries each project's dist as a per-run artifact, uploaded
+by setup and downloaded by the jobs that need it, leaving the lockfile-keyed cache to the pnpm store
+and the per-project .rush trees; it is the durable fix and the one recommended. Option B sets
+NODE_OPTIONS=--conditions=blong-dev on the test jobs so CI resolves core/blong/types.ts the way the
+dev shell does, which makes the suites test framework source and leaves the default condition of the
+exports map untested. Option C bumps the cache key prefix once, which unblocks the current run and
+brings the trap back on the next types.ts change. Until one is applied, Build stays red for the
+release pull request and no change to a runtime export or runtime logic in types.ts reaches CI.
+
+Option A was applied on 2026-10-17 in feasibleone/actions: rush.yaml and release-docker.yaml pack
+the dist trees of the run into a build artifact, the lockfile-keyed cache keeps only the dependency
+store and the .rush trees, publish-package and chromatic read the artifact of their own run, and
+setup-node in the release workflow now builds on every release so that artifact always exists.
 
 ## Retired
 

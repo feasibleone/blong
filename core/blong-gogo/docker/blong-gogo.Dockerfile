@@ -84,6 +84,7 @@ COPY realm/blong-sport/package.json ./realm/blong-sport/
 COPY realm/blong-feedback/package.json ./realm/blong-feedback/
 COPY realm/blong-chat/package.json ./realm/blong-chat/
 COPY realm/blong-agent/package.json ./realm/blong-agent/
+COPY core/blong-asset/package.json ./core/blong-asset/
 # END GENERATED package manifests
 # The Node headers this image was built from, for `node-gyp`: `node-rdkafka` (a dependency of
 # `blong-gogo`, and the only native build here) is compiled against them, and without this node-gyp
@@ -134,7 +135,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 COPY --chown=node --from=builder /opt/blong/common/deploy /opt/blong/common/deploy
 RUN ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong.ts /usr/local/bin/blong && \
-    ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong-watch.ts /usr/local/bin/blong-watch
+    ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong-watch.ts /usr/local/bin/blong-watch && \
+    ln -s /opt/blong/common/deploy/core/blong-asset/bin/blongAsset.ts /usr/local/bin/blong-asset
 WORKDIR /opt/deploy
 USER node
 

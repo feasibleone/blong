@@ -46,6 +46,7 @@ import {
     OPERATOR_VERSION,
 } from './operator.ts';
 import type {
+    IAssetServerPlan,
     IComponentVolume,
     IDeployment,
     IDeploymentPlan,
@@ -58,12 +59,21 @@ import type {
     ISuitePortalMap,
 } from './plan.ts';
 import {
+    ASSET_BIN,
+    ASSET_CONFIG_DIR,
+    ASSET_CONFIG_MAP,
     DEFAULT_ATTEMPT_RETENTION,
     DEFAULT_PROFILE,
     DEFAULT_RESOURCES,
     DEFAULT_RETENTION,
+    DEFAULT_SUITE_ENTRY,
+    SUITE_MOUNT,
 } from './plan.ts';
 import {DEFAULT_SERVICES_NAMESPACE, type IBackingService} from './services.ts';
+
+// The mount is the planner’s constant, because the asset server’s root is derived from it before
+// any tree is built; it stays exported here for the callers that already import it from the tree.
+export {SUITE_MOUNT};
 
 const KUSTOMIZE_API = 'kustomize.config.k8s.io/v1beta1';
 
@@ -151,17 +161,6 @@ const image = (plan: IDeploymentPlan): string =>
     `${plan.suite.frameworkImage}:${plan.suite.minFrameworkVersion ?? 'latest'}`;
 
 /**
- * Where a process reads the suite artifact from.
- *
- * One path for every container that touches the volume, because Rush's deploy link script writes
- * *absolute* links computed from its own working directory: unpack and link at one path and read at
- * another, and every link in the artifact dangles — which is exactly how the first live deployment
- * failed (`blong -> /cache/1/core/blong` while the deployment mounted the same directory at
- * `/opt/deploy/suite`). The image's working directory is `/opt/deploy`, which holds this path.
- */
-export const SUITE_MOUNT = '/opt/deploy/suite';
-
-/**
  * Where the artifact directories live on a node: one directory per suite, and inside it one per
  * artifact identity.
  *
@@ -198,15 +197,6 @@ export const CR_DECLARATION = 'local/declaration/blongdeployment.yaml';
 
 /** The file a template's folder carries: the object an instance's kustomization includes. */
 export const TEMPLATE_FILE = 'template.yaml';
-
-/**
- * Where the artifact's entry point sits inside the mounted volume.
- *
- * Absolute, like every entry this file emits: the framework hands the argument to `import()`, which
- * resolves a relative specifier against the framework's own directory rather than the working
- * directory, so the container that names one exits with a module-not-found path inside the image.
- */
-const DEFAULT_SUITE_ENTRY = `${SUITE_MOUNT}/index.ts`;
 
 /**
  * The intents a deployed process runs with — `release`, last, because the trailing name picks the rc
@@ -810,6 +800,170 @@ const httpServiceResource = (
         type: 'ClusterIP',
         selector: {
             'app.kubernetes.io/instance': entry.deployment,
+            'app.kubernetes.io/part-of': plan.suite.name,
+        },
+        ports: [{name: 'http', port: 8080, targetPort: 'http', protocol: 'TCP'}],
+    },
+});
+
+/**
+ * The policy the asset server reads, as the document the package's CLI expects.
+ *
+ * The keys are the ones `core/blong-asset` names, and they travel as a `ConfigMap` rather than as
+ * environment variables: a policy with directives and hashes is a document, and one a person can
+ * read in `kubectl describe` when a page misbehaves in a cluster nobody can open a shell in. The
+ * values are the suite's, resolved by the plan, so the same policy reaches the operator's
+ * regeneration of the tree.
+ */
+const assetServerConfig = (asset: IAssetServerPlan): Record<string, unknown> => ({
+    base: asset.base,
+    headers: {
+        ...(asset.csp ? {csp: asset.csp} : {}),
+        ...(asset.headers ? {headers: asset.headers} : {}),
+        ...(asset.corsOrigins ? {corsOrigins: asset.corsOrigins} : {}),
+        ...(asset.hsts !== undefined ? {hsts: asset.hsts} : {}),
+        ...(asset.referrerPolicy ? {referrerPolicy: asset.referrerPolicy} : {}),
+        ...(asset.frameOptions ? {frameOptions: asset.frameOptions} : {}),
+    },
+    ...(asset.cache ? {cache: asset.cache} : {}),
+    ...(asset.builtIns !== undefined ? {builtIns: asset.builtIns} : {}),
+});
+
+const assetConfigMapResource = (
+    plan: IDeploymentPlan,
+    asset: IAssetServerPlan,
+): Record<string, unknown> => ({
+    apiVersion: 'v1',
+    kind: 'ConfigMap',
+    metadata: {
+        name: ASSET_CONFIG_MAP,
+        namespace: plan.suite.namespace,
+        labels: suiteLabels(plan),
+    },
+    data: {'config.json': JSON.stringify(assetServerConfig(asset), null, 2)},
+});
+
+/**
+ * The process that serves the bundle, beside the suite's own.
+ *
+ * It reads the same artifact volume and runs from the same image, so a deploy publishes one artifact
+ * and one image for both halves — what differs is the command. The container is the hardened one: no
+ * API token, no privilege escalation, no writable root, and no capability to drop because it never
+ * had one. A static file server is the one process in a deployment that can afford all of that, and
+ * saying so is the point of giving it a Deployment of its own rather than a realm's.
+ */
+const assetDeploymentResource = (
+    plan: IDeploymentPlan,
+    asset: IAssetServerPlan,
+): Record<string, unknown> => {
+    const {volume, mount} = suiteVolume(plan);
+    const selector = {
+        'app.kubernetes.io/instance': asset.deployment,
+        'app.kubernetes.io/part-of': plan.suite.name,
+    };
+    // The policy is a ConfigMap, and a ConfigMap does not roll a Deployment: a suite that adds a
+    // hash or a host would have the new document applied and the old policy still in the pod. The
+    // pod template names the fingerprint, so a policy change is a spec change like any other.
+    const configFingerprint = createHash('sha256')
+        .update(JSON.stringify(assetServerConfig(asset)))
+        .digest('hex')
+        .slice(0, 16);
+    return {
+        apiVersion: 'apps/v1',
+        kind: 'Deployment',
+        metadata: {
+            name: asset.deployment,
+            namespace: plan.suite.namespace,
+            labels: {...suiteLabels(plan), ...selector},
+        },
+        spec: {
+            replicas: asset.replicas ?? 1,
+            selector: {matchLabels: selector},
+            template: {
+                metadata: {
+                    labels: {...suiteLabels(plan), ...selector},
+                    annotations: {'blong.feasible.one/asset-config': configFingerprint},
+                },
+                spec: {
+                    // Nothing here talks to the API server, and a token in the pod is a credential
+                    // an attacker gets for free the moment a path traversal bug is real.
+                    automountServiceAccountToken: false,
+                    securityContext: {
+                        runAsNonRoot: true,
+                        runAsUser: 1000,
+                        runAsGroup: 1000,
+                        seccompProfile: {type: 'RuntimeDefault'},
+                    },
+                    containers: [
+                        {
+                            name: 'asset',
+                            image: asset.image ?? image(plan),
+                            // The image's entry point is the framework's own (`blong.ts`), so a
+                            // process that is not a suite names the command line it runs instead.
+                            command: ['node', ASSET_BIN],
+                            args: [
+                                `--root=${asset.root}`,
+                                `--config=${ASSET_CONFIG_DIR}/config.json`,
+                                '--host=0.0.0.0',
+                                '--port=8080',
+                            ],
+                            env: [{name: 'NODE_ENV', value: 'production'}],
+                            ports: [{name: 'http', containerPort: 8080, protocol: 'TCP'}],
+                            resources: asset.resources ?? containerResources(),
+                            volumeMounts: [
+                                mount,
+                                {name: 'asset-config', mountPath: ASSET_CONFIG_DIR, readOnly: true},
+                                {name: 'tmp', mountPath: '/tmp'},
+                            ],
+                            // The process is alive before the bundle exists (a volume is filled by
+                            // a Job), so liveness asks the process and readiness asks the bundle:
+                            // a pod that answered both the same way would be taken out of the
+                            // Service and restarted at once when the artifact arrived late.
+                            livenessProbe: {
+                                httpGet: {path: '/healthz', port: 'http'},
+                                initialDelaySeconds: 3,
+                                periodSeconds: 10,
+                            },
+                            readinessProbe: {
+                                httpGet: {path: '/readyz', port: 'http'},
+                                initialDelaySeconds: 2,
+                                periodSeconds: 5,
+                                failureThreshold: 3,
+                            },
+                            securityContext: {
+                                allowPrivilegeEscalation: false,
+                                readOnlyRootFilesystem: true,
+                                capabilities: {drop: ['ALL']},
+                            },
+                        },
+                    ],
+                    volumes: [
+                        volume,
+                        {name: 'asset-config', configMap: {name: ASSET_CONFIG_MAP}},
+                        {name: 'tmp', emptyDir: {sizeLimit: '16Mi'}},
+                    ],
+                },
+            },
+        },
+    };
+};
+
+/** The address the portal's static paths point at: the asset process, on the image's HTTP port. */
+const assetServiceResource = (
+    plan: IDeploymentPlan,
+    asset: IAssetServerPlan,
+): Record<string, unknown> => ({
+    apiVersion: 'v1',
+    kind: 'Service',
+    metadata: {
+        name: asset.serviceName,
+        namespace: plan.suite.namespace,
+        labels: suiteLabels(plan),
+    },
+    spec: {
+        type: 'ClusterIP',
+        selector: {
+            'app.kubernetes.io/instance': asset.deployment,
             'app.kubernetes.io/part-of': plan.suite.name,
         },
         ports: [{name: 'http', port: 8080, targetPort: 'http', protocol: 'TCP'}],
@@ -1911,8 +2065,8 @@ const crdResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
                                             type: 'object',
                                             properties: {
                                                 // The address and the process, never the content:
-                                                // a tenant names the host, and the realm that owns
-                                                // the page it serves.
+                                                // a tenant names the host, and the realm that answers
+                                                // beside the page it serves.
                                                 realm: {type: 'string'},
                                                 host: {type: 'string'},
                                                 path: {type: 'string', default: DEFAULT_UI_PATH},
@@ -1942,6 +2096,82 @@ const crdResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
                                                     additionalProperties: {type: 'string'},
                                                 },
                                             },
+                                        },
+                                    },
+                                    assetServer: {
+                                        // The process that serves the browser bundle. Declared
+                                        // because the operator regenerates the tree from this
+                                        // declaration: a policy the CR could not carry would revert
+                                        // to the artifact's own on the next pass.
+                                        type: 'object',
+                                        properties: {
+                                            enabled: {type: 'boolean'},
+                                            root: {type: 'string'},
+                                            base: {type: 'string'},
+                                            image: {type: 'string'},
+                                            replicas: {type: 'integer', minimum: 0},
+                                            resources: {
+                                                type: 'object',
+                                                properties: {
+                                                    requests: {
+                                                        type: 'object',
+                                                        additionalProperties: {type: 'string'},
+                                                    },
+                                                    limits: {
+                                                        type: 'object',
+                                                        additionalProperties: {type: 'string'},
+                                                    },
+                                                },
+                                            },
+                                            headers: {
+                                                type: 'object',
+                                                additionalProperties: {type: 'string'},
+                                            },
+                                            csp: {
+                                                type: 'object',
+                                                properties: {
+                                                    disabled: {type: 'boolean'},
+                                                    scriptHashes: {
+                                                        type: 'array',
+                                                        items: {type: 'string'},
+                                                    },
+                                                    styleHashes: {
+                                                        type: 'array',
+                                                        items: {type: 'string'},
+                                                    },
+                                                    // A directive's value is a string or a list,
+                                                    // which a structural schema cannot spell as a
+                                                    // union at a leaf: preserved rather than
+                                                    // pruned, and checked where it is read.
+                                                    directives: {
+                                                        type: 'object',
+                                                        additionalProperties: {
+                                                            'x-kubernetes-preserve-unknown-fields': true,
+                                                        },
+                                                    },
+                                                    reportUri: {type: 'string'},
+                                                    upgradeInsecureRequests: {type: 'boolean'},
+                                                },
+                                            },
+                                            cache: {
+                                                type: 'object',
+                                                properties: {
+                                                    html: {type: 'string'},
+                                                    immutable: {type: 'string'},
+                                                    asset: {type: 'string'},
+                                                    immutablePattern: {type: 'string'},
+                                                },
+                                            },
+                                            corsOrigins: {
+                                                type: 'array',
+                                                items: {type: 'string'},
+                                            },
+                                            // `false` or the numbers HSTS is sent with: preserved
+                                            // for the reason the directives are.
+                                            hsts: {'x-kubernetes-preserve-unknown-fields': true},
+                                            referrerPolicy: {type: 'string'},
+                                            frameOptions: {type: 'string'},
+                                            builtIns: {type: 'boolean'},
                                         },
                                     },
                                     suiteVolume: {
@@ -2064,6 +2294,10 @@ const blongDeploymentResource = (plan: IDeploymentPlan): Record<string, unknown>
         // the operator has to make for itself — and the CRD declares no such field, so the API
         // server would prune it on the way in.
         portal: portalRequests(plan),
+        // The static half of the same declaration: the policy the bundle's server applies. Written
+        // only when the suite declared one, because a field it omits falls back to the artifact's
+        // own config on the operator's pass.
+        ...(plan.assetServerRequest ? {assetServer: plan.assetServerRequest} : {}),
         // The same rule for the services a deployment brings with it, and one more reason for it: the
         // operator regenerates the tree from this declaration, so a switch the CR cannot carry is a
         // service switched off that comes back on the next pass. Written only when the
@@ -2527,6 +2761,22 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
     for (const deployment of plan.deployments) {
         tree.set(`deployments/${deployment.name}.yaml`, deploymentResource(plan, deployment));
     }
+    // The process the bundle is served by, beside the suite's own: a file server is not a realm, so
+    // it is planned as its own object rather than as a deployment the split below invents.
+    if (plan.assetServer) {
+        tree.set(
+            `deployments/${plan.assetServer.deployment}.yaml`,
+            assetDeploymentResource(plan, plan.assetServer),
+        );
+        tree.set(
+            `services/${plan.assetServer.serviceName}.yaml`,
+            assetServiceResource(plan, plan.assetServer),
+        );
+        tree.set(
+            `configmaps/${ASSET_CONFIG_MAP}.yaml`,
+            assetConfigMapResource(plan, plan.assetServer),
+        );
+    }
     for (const service of plan.services) {
         tree.set(`services/${service.name}.yaml`, serviceResource(plan, service));
     }
@@ -2575,13 +2825,20 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
     const pathsByHost = new Map<string | undefined, IIngressPath[]>();
     const annotationsByHost = new Map<string | undefined, Record<string, string>>();
     const tlsByHost = new Map<string | undefined, {secretName?: string}>();
+    /** The hosts whose RPC surface already has its catch-all, which is one rule per host. */
+    const rpcFallbackHosts = new Set<string>();
     const addPath = (host: string | undefined, entry: IIngressPath): void => {
         const paths = pathsByHost.get(host) ?? [];
-        const taken = paths.find(path => path.path === entry.path);
+        // The type is part of the identity: an `Exact /` and a `Prefix /` are two rules with two
+        // different meanings (the redirect and the fallback), and the controller evaluates them
+        // separately.
+        const taken = paths.find(
+            path => path.path === entry.path && path.pathType === entry.pathType,
+        );
         if (taken) {
             throw new Error(
-                `two entries claim path "${entry.path}" on host "${host ?? '(none)'}": ` +
-                    `${taken.serviceName} and ${entry.serviceName}`,
+                `two entries claim path "${entry.path}" (${entry.pathType}) on host ` +
+                    `"${host ?? '(none)'}": ${taken.serviceName} and ${entry.serviceName}`,
             );
         }
         paths.push(entry);
@@ -2614,12 +2871,53 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
                     `would inherit the portal's authentication`,
             );
         }
-        addPath(entry.host, {
-            path: entry.path ?? DEFAULT_UI_PATH,
-            pathType: 'Prefix',
-            serviceName: gatewayServiceName(name),
-            servicePort: 8080,
-        });
+        // The bundle's own paths, and the process that answers beside it.
+        //
+        // `/s/` is the prefix the build uses, and `/` is the address the asset server redirects to
+        // it: both belong to the files rather than to a realm — a suite no longer names the realm
+        // that serves its UI, because serving files is not a realm's work. The root is a *prefix*
+        // the asset server owns, because a controller cannot tell two rules apart when they name
+        // one path: an `Exact /` beside a `Prefix /` is one path to Traefik, which answered the
+        // root from the realm and left the redirect unserved (found on the dev cluster). The
+        // process keeps only the paths it alone answers, named explicitly, and a portal that names
+        // no realm has none.
+        const portalPath = entry.path ?? DEFAULT_UI_PATH;
+        const asset = plan.assetServer;
+        const bundleHere = asset !== undefined && portalPath === DEFAULT_UI_PATH;
+        if (bundleHere) {
+            const assetAddress = asset.base.replace(/\/$/, '');
+            if (assetAddress && assetAddress !== '/') {
+                addPath(entry.host, {
+                    path: assetAddress,
+                    pathType: 'Exact',
+                    serviceName: asset.serviceName,
+                    servicePort: 8080,
+                });
+            }
+            addPath(entry.host, {
+                path: asset.base,
+                pathType: 'Prefix',
+                serviceName: asset.serviceName,
+                servicePort: 8080,
+            });
+            addPath(entry.host, {
+                path: portalPath,
+                pathType: 'Prefix',
+                serviceName: asset.serviceName,
+                servicePort: 8080,
+            });
+        }
+        // The realm's own surfaces, named rather than left to a prefix that would take the root
+        // with them: the API documentation is the one public page a gateway serves, and a suite
+        // that names no realm publishes none of it.
+        if (!asset || entry.deployment !== asset.deployment) {
+            addPath(entry.host, {
+                path: bundleHere ? `${portalPath.replace(/\/$/, '')}/documentation` : portalPath,
+                pathType: 'Prefix',
+                serviceName: gatewayServiceName(name),
+                servicePort: 8080,
+            });
+        }
         // Every namespace whose own process is not the portal's goes to that process, because the
         // portal's Service reaches one pod and a pod answers only for the realms it carries. A split
         // deployment therefore needs a path per namespace: without them the browser's
@@ -2638,6 +2936,26 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
                 serviceName: deployment.name,
                 servicePort: 8080,
             });
+        }
+        // And one catch-all behind them, because a namespace no process is *named* after is still a
+        // namespace the browser calls: `srv.subject` is a companion every process carries, so
+        // `subject.object.schema` — the schema a model page draws its table from — has no deployment
+        // of its own and no path of its own. It used to reach the portal's process through the root
+        // fallback; with the root given to the bundle, the API surface needs the same answer named
+        // explicitly. Longest-prefix matching keeps the per-namespace rules above in front of it.
+        //
+        // One rule per host rather than one per portal: two portals on one host are two addresses of
+        // one page, and whichever process answers a companion namespace is the right one, because
+        // every process carries the companions.
+        const hostKey = entry.host ?? '(none)';
+        if ((!asset || entry.deployment !== asset.deployment) && !rpcFallbackHosts.has(hostKey)) {
+            addPath(entry.host, {
+                path: RPC_PREFIX,
+                pathType: 'Prefix',
+                serviceName: gatewayServiceName(name),
+                servicePort: 8080,
+            });
+            rpcFallbackHosts.add(hostKey);
         }
         if (entry.tls && !tlsByHost.has(entry.host)) tlsByHost.set(entry.host, entry.tls);
         // A host's annotations are the controller's, so two portals on one host share them: merging
@@ -2661,8 +2979,11 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
             ),
         );
     }
-    // One Service per portal, in the order the map was declared.
+    // One Service per portal, in the order the map was declared — except a portal the asset server
+    // answers: it already has the one Service its paths point at, and a second object naming it
+    // would be a name nothing reads.
     for (const [name, entry] of Object.entries(plan.portal)) {
+        if (plan.assetServer && entry.deployment === plan.assetServer.deployment) continue;
         tree.set(
             `services/${gatewayServiceName(name)}.yaml`,
             httpServiceResource(plan, name, entry),
@@ -3371,8 +3692,7 @@ const serviceScopeOf = (
 const isServicePlumbing = (path: string, plan: IDeploymentPlan): boolean =>
     path.startsWith('rbac/') &&
     tenantNamespaces(plan).some(
-        namespace =>
-            namespace !== plan.suite.namespace && path.endsWith(`-${namespace}.yaml`),
+        namespace => namespace !== plan.suite.namespace && path.endsWith(`-${namespace}.yaml`),
     );
 
 /**

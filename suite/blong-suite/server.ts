@@ -110,14 +110,15 @@ export default server(() => ({
                             credentials: {generate: true},
                         },
                     },
-                    // A portal names its address and the process behind it, and here both are named
-                    // for a reason. The host is the e2e run's: the cluster's own ingress controller
-                    // answers it, and the runbook reaches the suite by sending that Host rather than
-                    // by port-forwarding, which is what makes the published path an assertion instead
-                    // of a manifest nobody dials. `core` is the realm whose process fronts it — the
-                    // one `both` realm, so it has a process of its own *and* every other process
-                    // carries it; the bundle is one build of the whole suite, so which process serves
-                    // it decides the address and not the page. The alias is what names the portal and
+                    // A portal names its address, the process that answers beside it and the alias
+                    // that names its Service. The host is the e2e run's: the cluster's own ingress
+                    // controller answers it, and the runbook reaches the suite by sending that Host
+                    // rather than by port-forwarding, which is what makes the published path an
+                    // assertion instead of a manifest nobody dials. `marine` is the realm whose
+                    // process answers beside the page — the one `both` realm, so it has a process of
+                    // its own *and* every other process carries it — while the bundle itself is
+                    // served by the asset server the tree deploys. The alias is what names the
+                    // portal and
                     // its Service (`web-http`), and it is a map rather than a list so a suite config,
                     // a CR and an overlay can each add a portal without knowing the others.
                     //
@@ -127,18 +128,16 @@ export default server(() => ({
                     // own statement — that it publishes a page, and which Secret cert-manager writes
                     // the certificate into — the same way `realm/blong-sport` names `sport-tls`.
                     //
-                    // `realm` names the process behind the portal's own Service (`web-http`):
-                    // it serves `/` and `/s/` — the bundle is one build of the whole suite, so
-                    // this decides the address and not the page — and it is the fallback for
-                    // every namespace the ingress gives no path of its own. It no longer has to
-                    // be a process that answers everything the menu reaches: the tree now writes
-                    // `/rpc/<namespace>` per deployment (`@@D-736`), so `core`, `access`, `login`
-                    // and `marine` each reach the pod that serves them and `core` would front the
-                    // portal just as well. `marine` stays because it is the realm the suite is
-                    // about and the one the portal drives at steady state; what it still decides
-                    // is where a namespace with no process of its own lands — `blong` today, whose
-                    // pages the Observe menu draws (that namespace is currently unserved: it has
-                    // neither a process nor a path).
+                    // `realm` names the process behind the portal's documentation Service
+                    // (`web-http`): it is what catches `/documentation`. It no longer serves `/s/` —
+                    // the bundle is served by the asset server, which `realm/blong-kustomize`
+                    // deploys beside the suite's processes — and it no longer has to be a process
+                    // that answers everything the menu reaches: the tree writes `/rpc/<namespace>`
+                    // per deployment (@@D-736), so `core`, `access`, `login` and `marine` each reach
+                    // the pod that serves them.
+                    // `marine` stays because it is the realm the suite is about and the one the
+                    // portal drives at steady state; what it decides now is only which process
+                    // serves `/documentation`.
                     portal: {
                         web: {
                             host: 'blong-suite.test',
@@ -161,13 +160,13 @@ export default server(() => ({
                 },
             },
         },
-        // A released suite serves its own UI out of the artifact it was deployed from (Phase 15 H): the
-        // browser build is the suite package's own `vite build`, which emits `dist/` beside the entry
-        // the line above names — so the path here is the artifact root, then this package, then its
-        // build output — and `/s` is the prefix that build's `base` uses. Serving it from the process
-        // that already answers the API is what keeps the Ingress pointed at one Service. Naming the
-        // root is safe before the pipeline that fills it exists: the static plugin warns and serves
-        // nothing when the directory is not there.
+        // What a process still serves for itself, now that the deployed tree gives `/s/` to the
+        // asset server: the browser build is the suite package's own `vite build`, which emits
+        // `dist/` beside the entry the line above names, and `/s` is the prefix that build's `base`
+        // uses. The built-in plugin stays useful for a run that reaches a pod directly rather than
+        // through the Ingress, and it is what a development run uses. Naming the root is safe before
+        // the pipeline that fills it exists: the static plugin warns and serves nothing when the
+        // directory is not there.
         release: {
             // How a *deployed* process finds another realm's process: the Service of that name. It
             // belongs here rather than beside the deployment settings, because only a released

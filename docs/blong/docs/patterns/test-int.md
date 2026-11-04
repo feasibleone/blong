@@ -16,7 +16,7 @@ are published to the runner, applies the manifests and runs the bulk test comman
 
 ```yaml
 # .github/workflows/build.yaml — the package's ci-test does the rest
-uses: infitx-org/actions/.github/workflows/rush.yaml@main
+uses: feasibleone/actions/.github/workflows/rush.yaml@main
 ```
 
 ```text
@@ -105,7 +105,7 @@ and test layers, so one back end can be exercised without the other six.
    `test/integration/`.
 2. List it in `test/integration/kustomization.yaml`.
 3. Add the port mapping to the k3d cluster arguments in the shared
-   `infitx-org/actions/.github/workflows/rush.yaml` —
+   `feasibleone/actions/.github/workflows/rush.yaml` —
    `-p <containerPort>:<nodePort>@agent:0:direct`. That file lives in the CI repository, so this is
    the one step that is not in this tree.
 4. Point the adapter's config at `localhost:<containerPort>`, the way the existing ones do.

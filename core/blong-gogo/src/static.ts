@@ -9,6 +9,15 @@ export type IConfig = {
     root: string;
 };
 
+/**
+ * The development serve: a process's own `/s`, from the build beside its entry.
+ *
+ * A deployment no longer serves its bundle this way — `realm/blong-kustomize` gives `/s/` to
+ * `@feasibleone/blong-asset`, a process that carries nothing of the API. This plugin stays for the
+ * run a developer makes and for a process reached directly, and the two are one registration apart:
+ * `@feasibleone/blong-asset` exports the same routes as a fastify plugin (`assetPlugin`), so a
+ * future in-process serve replaces this file's body rather than growing a second set of rules.
+ */
 export default fp<IConfig>(async function staticPlugin(fastify: FastifyInstance, config: IConfig) {
     await fastify.register(helmet, {
         contentSecurityPolicy: false, // Prevents helmet from wasting bytes on images/scripts/JSON

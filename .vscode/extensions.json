@@ -1,5 +1,23 @@
 {
-  // See http://go.microsoft.com/fwlink/?LinkId=827846
-  // for the documentation about the extensions.json format
-  "recommendations": ["dbaeumer.vscode-eslint", "connor4312.esbuild-problem-matchers", "ms-vscode.extension-test-runner"]
+    // See http://go.microsoft.com/fwlink/?LinkId=827846
+    // for the documentation about the extensions.json format
+    "recommendations": [
+        "dbaeumer.vscode-eslint",
+        "connor4312.esbuild-problem-matchers",
+        "ms-vscode.extension-test-runner",
+        "wmaurer.change-case",
+        "streetsidesoftware.code-spell-checker",
+        "ms-azuretools.vscode-containers",
+        "ms-azuretools.vscode-docker",
+        "mhutchie.git-graph",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "ms-vscode.live-server",
+        "ziyasal.vscode-open-in-github",
+        "esbenp.prettier-vscode",
+        "humao.rest-client",
+        "timonwong.shellcheck",
+        "mtxr.sqltools",
+        "vscode-icons-team.vscode-icons",
+        "redhat.vscode-yaml"
+    ]
 }

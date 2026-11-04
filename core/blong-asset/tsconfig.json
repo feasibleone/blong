@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "rootDir": ".",
+        "allowJs": true,
+        "checkJs": false,
+        "moduleResolution": "bundler",
+        "esModuleInterop": true,
+        "module": "preserve",
+        "sourceMap": true,
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "outDir": "dist",
+        "target": "ES2022",
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "strict": true,
+        "types": ["node"]
+    },
+    "include": ["./package.json", "**/*.ts"],
+    "exclude": ["node_modules", ".lint", "dist"]
+}

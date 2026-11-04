@@ -46,8 +46,13 @@ import {
 import {suiteGenerateArgs} from '../../../orchestrator/generate/kustomizeSuiteGenerate.ts';
 import {
     type IDeploymentPlan,
+    ASSET_BIN,
+    ASSET_CONFIG_MAP,
+    ASSET_DEPLOYMENT,
+    ASSET_SERVICE,
     DEFAULT_PROFILE,
     DEFAULT_RETENTION,
+    resolveAssetServer,
     resolveSuiteOperator,
 } from '../../../plan.ts';
 import {loadServiceCatalog, resolveBackingServices} from '../../../services.ts';
@@ -1688,9 +1693,323 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         ['/', 'web-http'],
                         ['/rpc/core', 'core'],
                         ['/rpc/marine', 'marine'],
+                        ['/rpc/', 'web-http'],
                     ],
-                    'every namespace a deployment is named after has a path to its own Service',
+                    'every namespace a deployment is named after has a path to its own Service, ' +
+                        'and the companions land on the portal’s process',
                 );
+            },
+
+            async function theBundleIsServedByItsOwnProcess(assert: IAssert) {
+                // The static half of a suite is not a realm's work: `/s/` is a directory of files a
+                // build wrote, and serving it from a business process means that process carries a
+                // static surface it has no reason to have. The tree therefore writes one Deployment,
+                // one Service and one ConfigMap for it, and the portal points the bundle's paths at
+                // them while the realm keeps the one page only a process serves.
+                const portal = {web: {host: 'shop.example', realm: 'core'}};
+                const plan = lib.suitePlan({
+                    deployments: [
+                        {
+                            name: 'core',
+                            realms: ['core'],
+                            layers: ['core.orchestrator'],
+                            namespaces: ['core', 'subject'],
+                            replicas: 1,
+                        },
+                    ],
+                    services: [{name: 'core', namespace: 'shop-suite', deployment: 'core'}],
+                    portal: {web: {host: 'shop.example', deployment: 'core'}},
+                    assetServer: resolveAssetServer(
+                        {
+                            csp: {scriptHashes: ["'sha256-extra='"]},
+                            cache: {html: 'no-cache, must-revalidate'},
+                        },
+                        portal,
+                        '/opt/deploy/suite/suite/blong-suite/index.ts',
+                    ),
+                }) as IDeploymentPlan;
+                const tree = buildKustomizeTree(plan);
+
+                const deployment = tree.get(`deployments/${ASSET_DEPLOYMENT}.yaml`) as {
+                    spec?: {
+                        template?: {
+                            metadata?: {annotations?: Record<string, string>};
+                            spec?: {
+                                automountServiceAccountToken?: boolean;
+                                containers?: Array<{
+                                    command?: string[];
+                                    args?: string[];
+                                    volumeMounts?: Array<{name?: string; mountPath?: string}>;
+                                    livenessProbe?: {httpGet?: {path?: string}};
+                                    readinessProbe?: {httpGet?: {path?: string}};
+                                    securityContext?: Record<string, unknown>;
+                                }>;
+                                volumes?: Array<{name?: string}>;
+                            };
+                        };
+                    };
+                };
+                const container = deployment.spec?.template?.spec?.containers?.[0];
+                assert.match(
+                    deployment.spec?.template?.metadata?.annotations?.[
+                        'blong.feasible.one/asset-config'
+                    ] ?? '',
+                    /^[0-9a-f]{16}$/,
+                    'the pod names its policy fingerprint, so a changed policy is a new rollout',
+                );
+                assert.deepEqual(
+                    container?.command,
+                    ['node', ASSET_BIN],
+                    'the CLI runs from the image',
+                );
+                assert.deepEqual(
+                    container?.args,
+                    [
+                        '--root=/opt/deploy/suite/suite/blong-suite/dist',
+                        '--config=/etc/blong-asset/config.json',
+                        '--host=0.0.0.0',
+                        '--port=8080',
+                    ],
+                    'with the bundle’s root beside the artifact’s entry, and its policy mounted',
+                );
+                assert.equal(
+                    deployment.spec?.template?.spec?.automountServiceAccountToken,
+                    false,
+                    'a file server has no reason to hold an API token',
+                );
+                assert.equal(
+                    container?.securityContext?.readOnlyRootFilesystem,
+                    true,
+                    'and nothing in it writes to its own root',
+                );
+                assert.equal(
+                    container?.livenessProbe?.httpGet?.path,
+                    '/healthz',
+                    'liveness asks the process',
+                );
+                assert.equal(
+                    container?.readinessProbe?.httpGet?.path,
+                    '/readyz',
+                    'readiness asks the bundle, which a fill may still be writing',
+                );
+                assert.deepEqual(
+                    deployment.spec?.template?.spec?.volumes?.map(volume => volume.name),
+                    ['suite', 'asset-config', 'tmp'],
+                    'it reads the same artifact volume the suite does, and nothing else writable',
+                );
+
+                const service = tree.get(`services/${ASSET_SERVICE}.yaml`) as {
+                    spec?: {selector?: Record<string, string>; ports?: unknown[]};
+                };
+                assert.deepEqual(
+                    service.spec?.selector,
+                    {
+                        'app.kubernetes.io/instance': ASSET_DEPLOYMENT,
+                        'app.kubernetes.io/part-of': 'shop',
+                    },
+                    'the Service selects the asset process rather than the suite’s',
+                );
+                assert.deepEqual(service.spec?.ports, [
+                    {name: 'http', port: 8080, targetPort: 'http', protocol: 'TCP'},
+                ]);
+
+                const config = tree.get(`configmaps/${ASSET_CONFIG_MAP}.yaml`) as {
+                    data?: Record<string, string>;
+                };
+                const policy = JSON.parse(config.data?.['config.json'] ?? '{}') as {
+                    base?: string;
+                    headers?: {csp?: {scriptHashes?: string[]}};
+                    cache?: {html?: string};
+                };
+                assert.equal(policy.base, '/s/', 'the prefix the build uses is the default');
+                assert.deepEqual(
+                    policy.headers?.csp?.scriptHashes,
+                    ["'sha256-extra='"],
+                    'a suite can whitelist a hash the build injects',
+                );
+                assert.equal(
+                    policy.cache?.html,
+                    'no-cache, must-revalidate',
+                    'and it overrides the cache policy it knows better than the default does',
+                );
+
+                const ingress = tree.get('ingresses/shop-example.yaml') as {
+                    spec?: {
+                        rules?: Array<{
+                            http?: {
+                                paths?: Array<{
+                                    path?: string;
+                                    pathType?: string;
+                                    backend?: {service?: {name?: string}};
+                                }>;
+                            };
+                        }>;
+                    };
+                };
+                assert.deepEqual(
+                    ingress.spec?.rules?.[0]?.http?.paths?.map(entry => [
+                        entry.path,
+                        entry.pathType,
+                        entry.backend?.service?.name,
+                    ]),
+                    [
+                        ['/s', 'Exact', ASSET_SERVICE],
+                        ['/s/', 'Prefix', ASSET_SERVICE],
+                        ['/', 'Prefix', ASSET_SERVICE],
+                        ['/documentation', 'Prefix', 'web-http'],
+                        ['/rpc/core', 'Prefix', 'core'],
+                        ['/rpc/', 'Prefix', 'web-http'],
+                    ],
+                    'the bundle owns the root, the process keeps the page it alone serves, and ' +
+                        'a companion namespace reaches it through the RPC catch-all',
+                );
+                assert.ok(
+                    tree.has('services/web-http.yaml'),
+                    'a portal that names a realm keeps the Service its fallback points at',
+                );
+
+                // The split is the profile's, and the asset server is not: a monolith is one process
+                // for the API and still a separate one for the files, because the reason is the
+                // surface rather than the split.
+                const monolith = buildKustomizeTree(
+                    lib.suitePlan({
+                        profile: 'monolith',
+                        deployments: [
+                            {
+                                name: 'shop',
+                                realms: ['shop'],
+                                layers: ['shop.orchestrator'],
+                                namespaces: ['shop'],
+                                replicas: 1,
+                            },
+                        ],
+                        services: [{name: 'shop', namespace: 'shop-suite', deployment: 'shop'}],
+                        portal: {web: {host: 'shop.example', deployment: 'shop'}},
+                        assetServer: resolveAssetServer(
+                            {},
+                            {web: {host: 'shop.example'}},
+                            '/opt/deploy/suite/index.ts',
+                        ),
+                    }),
+                );
+                assert.ok(
+                    monolith.has(`deployments/${ASSET_DEPLOYMENT}.yaml`),
+                    'a monolith still gets the asset process beside its one API process',
+                );
+                assert.ok(
+                    monolith.has('services/web-http.yaml'),
+                    'while the portal keeps the Service its fallback points at',
+                );
+
+                // A portal that names no realm has no fallback at all: the bundle and the per-namespace
+                // RPC routes are the host's whole surface, and no second Service is written for it.
+                const realmFree = buildKustomizeTree(
+                    lib.suitePlan({
+                        deployments: [
+                            {
+                                name: 'core',
+                                realms: ['core'],
+                                layers: ['core.orchestrator'],
+                                namespaces: ['core'],
+                                replicas: 1,
+                            },
+                        ],
+                        services: [{name: 'core', namespace: 'shop-suite', deployment: 'core'}],
+                        portal: {web: {host: 'shop.example', deployment: ASSET_DEPLOYMENT}},
+                        assetServer: resolveAssetServer(
+                            {},
+                            {web: {host: 'shop.example'}},
+                            '/opt/deploy/suite/index.ts',
+                        ),
+                    }),
+                );
+                assert.equal(
+                    realmFree.has('services/web-http.yaml'),
+                    false,
+                    'a portal served entirely by the bundle names no process and gets no second Service',
+                );
+                assert.deepEqual(
+                    (
+                        realmFree.get('ingresses/shop-example.yaml') as {
+                            spec?: {
+                                rules?: Array<{
+                                    http?: {paths?: Array<{path?: string; pathType?: string}>};
+                                }>;
+                            };
+                        }
+                    ).spec?.rules?.[0]?.http?.paths?.map(entry => [entry.path, entry.pathType]),
+                    [
+                        ['/s', 'Exact'],
+                        ['/s/', 'Prefix'],
+                        ['/', 'Prefix'],
+                        ['/rpc/core', 'Prefix'],
+                    ],
+                    'and the host carries only the paths that have something behind them',
+                );
+
+                // Switching the server off is the escape hatch that keeps the built-in serve: the tree
+                // is exactly what it was before this process existed.
+                const off = buildKustomizeTree(
+                    lib.suitePlan({
+                        deployments: [
+                            {
+                                name: 'core',
+                                realms: ['core'],
+                                layers: ['core.orchestrator'],
+                                namespaces: ['core'],
+                                replicas: 1,
+                            },
+                        ],
+                        services: [{name: 'core', namespace: 'shop-suite', deployment: 'core'}],
+                        portal: {web: {host: 'shop.example', deployment: 'core'}},
+                        assetServer: resolveAssetServer(
+                            {enabled: false},
+                            portal,
+                            '/opt/deploy/suite/index.ts',
+                        ),
+                    }),
+                );
+                assert.equal(
+                    off.has(`deployments/${ASSET_DEPLOYMENT}.yaml`),
+                    false,
+                    'a suite that turns the server off gets no asset Deployment',
+                );
+                assert.ok(
+                    off.has('services/web-http.yaml'),
+                    'and the portal is served by the process it names, as it was before',
+                );
+
+                // A split tree moves the same object as every other workload: the base carries the
+                // placeholder volume and image, and the overlay puts this deploy's back. It is the
+                // generic workload split, which is the point of not making the asset server a
+                // special case of the tree.
+                const dir = mkdtempSync(join(tmpdir(), 'kustomize-assets-'));
+                try {
+                    writeKustomizeTree(tree, dir, {layout: 'split', plan});
+                    const base = readKustomizeTree(join(dir, 'base'));
+                    const local = readKustomizeTree(join(dir, 'local'));
+                    assert.ok(
+                        base.has(`deployments/${ASSET_DEPLOYMENT}.yaml`),
+                        'the base carries the asset Deployment',
+                    );
+                    assert.equal(
+                        (
+                            base.get(`deployments/${ASSET_DEPLOYMENT}.yaml`) as {
+                                spec?: {
+                                    template?: {spec?: {containers?: Array<{image?: string}>}};
+                                };
+                            }
+                        ).spec?.template?.spec?.containers?.[0]?.image,
+                        'PLACEHOLDER',
+                        'with the image it runs as a placeholder the deploy fills',
+                    );
+                    assert.ok(
+                        local.has(`suite/patches/${ASSET_DEPLOYMENT}.yaml`),
+                        'and the overlay holds the patch that puts the volume and image back',
+                    );
+                } finally {
+                    rmSync(dir, {recursive: true, force: true});
+                }
             },
 
             async function eachPortalNamesItsOwnService(assert: IAssert) {
@@ -2935,6 +3254,30 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                             annotations: {'cert-manager.io/cluster-issuer': 'letsencrypt-staging'},
                             deployment: 'shop',
                         },
+                    },
+                    // The bundle's process, and the policy it carries: the operator regenerates the
+                    // tree from this declaration, so a directive, a hash or a cache rule the CRD
+                    // does not declare is a policy that reverts on the next pass.
+                    assetServer: resolveAssetServer(
+                        {
+                            csp: {
+                                scriptHashes: ["'sha256-shop='"],
+                                directives: {'connect-src': ["'self'", 'https://api.shop.example']},
+                            },
+                            corsOrigins: ['https://shop.example'],
+                            hsts: {maxAge: 31536000, includeSubDomains: true},
+                            headers: {'x-frame-options': 'SAMEORIGIN'},
+                            cache: {html: 'no-cache'},
+                        },
+                        {shop: {host: 'shop.example'}},
+                        '/opt/deploy/suite/suite/shop/index.ts',
+                    ),
+                    assetServerRequest: {
+                        csp: {directives: {'connect-src': ["'self'", 'https://api.shop.example']}},
+                        corsOrigins: ['https://shop.example'],
+                        hsts: {maxAge: 31536000, includeSubDomains: true},
+                        headers: {'x-frame-options': 'SAMEORIGIN'},
+                        cache: {html: 'no-cache'},
                     },
                     // Both shapes of a service switch travel with the CR: a service a deployment runs
                     // itself, and one whose image it pins. The operator regenerates the tree from the

@@ -21,7 +21,6 @@ open (67)
 - `T-058` · cross-cutting — Test runs skipped after the folder restructure, for lack of backends
 - `T-059` · ci — `rush ci-coverage` was never run end-to-end
 - `T-060` · cross-cutting — `rush.json` `tags` still say `core` for moved packages
-- `T-061` · cross-cutting — `ext/rest-fs` could move under `tools/` once the CI globs land
 - `T-076` · skills — The handler file-name rule is not a repo-wide convention yet
 - `T-077` · skills — The file-name rule still needs promoting from kukum to the skills
 - `T-078` · docs — The full docusaurus build of `docs/blong` was never run
@@ -75,16 +74,15 @@ open (67)
 - `T-526` · docs — Write the bidirectional webhook blog post after a real deployment
 - `T-583` · docs — Group 8: docs/blong/docs/patterns/agent-engine.md — the engine port
 - `T-584` · skills — Group 8: .github/skills/blong-agent/SKILL.md so a later agent finds
+- `T-061` · cross-cutting — `ext/rest-fs` could move under `tools/` once the CI globs land
 
 done (20)
 
-- `T-342` · ci — Decide the cache payload shape before landing step 2
 - `T-188` · ci — The Storybook leg produces no .ci-report slice
 - `T-352` · ci — Publish a package's non-tap leg failure in the bundle
 - `T-353` · ci — Drop the in-file 60s tap timeouts in two packages
 - `T-356` · ci — Make red mean a failed test, not a flaky one
 - `T-355` · ci — Build blong-dev ci, the publisher fix and the blong-ci skill
-- `T-365` · ci — Carry \*/dist as a per-run artifact in the shared Rush workflow
 - `T-407` · docs — Document the label-column pattern in the doc site
 - `T-446` · ci — Sport CD Group 5 generic release pipeline
 - `T-448` · docs — Sport CD Group 7 documentation
@@ -98,6 +96,8 @@ done (20)
 - `T-521` · docs — Document the webhook port and correct the affected skills
 - `T-338` · cross-cutting — The memory files mention 57 ids whose entries are gone
 - `T-597` · docs — Count ArchifyDiagram embeds in docs verify
+- `T-342` · ci — Decide the cache payload shape before landing step 2
+- `T-365` · ci — Carry \*/dist as a per-run artifact in the shared Rush workflow
 
 <!-- /memory:index -->
 
@@ -275,13 +275,6 @@ the scaffolder and `copy-template.mjs` template resolution were smoke-tested.
 The `tags` in `rush.json` still say `core` for packages now under `realm/`, `suite/`, `demo/`,
 `test/` and `tools/`. That was left unchanged deliberately, because nothing filters on `tag:*`
 today, but it is worth aligning with the new categories.
-
-### T-061 — `ext/rest-fs` could move under `tools/` once the CI globs land
-
-> _2026-09-10 · cross-cutting · open_
-
-Consider moving `ext/rest-fs` to `tools/rest-fs` once the widened `infitx-org/actions` CI globs are
-merged to `main` and other consumers no longer rely on `ext/`.
 
 ### T-076 — The handler file-name rule is not a repo-wide convention yet
 
@@ -889,32 +882,14 @@ and `blong-chat` as the interruption surface (via **blong-docs**).
 plans/agent/plan.md, Group 8 Docs. `.github/skills/blong-agent/SKILL.md` so a later agent finds the
 realm by its description.
 
+### T-061 — `ext/rest-fs` could move under `tools/` once the CI globs land
+
+> _2026-09-10 · cross-cutting · open_
+
+Consider moving `ext/rest-fs` to `tools/rest-fs` once the widened `feasibleone/actions` CI globs are
+merged to `main` and other consumers no longer rely on `ext/`.
+
 ## Done
-
-### T-342 — Decide the cache payload shape before landing step 2
-
-> _2026-10-14 · ci · done_
-
-Step 2 of the CI cache plan waits on a choice that run 38593732609 turned into a real decision
-rather than a mechanical one, and it is the user's to make. The archive holds 208 877 files and its
-save costs 41m22s, while a local `tar` plus `zstd` of the same tree takes 2.8s, a restore of that
-same 767 MB takes 20s in six jobs and the 271 MB Playwright archive saves in 6s — so the price is
-per enumerated file, about 12 ms each, and the `build / audit` job pays the same rate for 20m40s
-through the `**/audit/auditResults.json` glob of its `Upload Audit Results` step. Narrowing
-`CACHE_PATHS` to the store plus `*/dist` and `*/.rush` therefore takes 208 877 files to 85 358 and
-still leaves roughly seventeen minutes of save, which is why the choice matters. The options are to
-pack the store into a single `deps.tar.zst` and cache that one file, which keeps the warm cache the
-user asked for and turns the save into an upload measured in seconds; to pack and narrow the list at
-the same time; to narrow alone; or to drop the pnpm cache and have every job install from the npm
-registry in parallel. The recommendation is to pack, in both `rush.yaml` and `release-docker.yaml`
-because the two share one key and have to agree on the payload, and to fix the audit glob in the
-same change, since it is twenty minutes of billed runner time per run for one small file. Nothing of
-step 2 is written yet: the diagnosis is F-522, the strategy is D-545 and D-546, and the
-implementation is one edit to `CACHE_PATHS` plus a pack step and an unpack step.
-
-Decided and implemented: the store travels as one deps.tar.zst, the derived trees leave the payload,
-and the audit job gates on a ci-audit script with its glob narrowed. Both workflow files updated in
-infitx-org/actions, awaiting push.
 
 ### T-188 — The Storybook leg produces no .ci-report slice
 
@@ -1043,23 +1018,6 @@ Every step landed: the publisher carries the failure message, its location and a
 artifact; .github/skills/blong-ci/SKILL.md documents the interpretation; the fixture is run 622 with
 run 621 as its green counterpart; and the fresh-context subagent validation ran four variants and
 found three real defects, all fixed.
-
-### T-365 — Carry \*/dist as a per-run artifact in the shared Rush workflow
-
-> _2026-10-17 · ci · done_
-
-Pick one of the three fixes recorded in the decision entry on the stale CI dist and apply it in
-infitx-org/actions/.github/workflows/rush.yaml. The recommended one is to build the artifact
-handoff: in the setup job upload every \*/dist tree with actions/upload-artifact, and in the tests,
-chromatic, audit and lint jobs download it before running, so the archive cached under
-hashFiles('common/config/rush/pnpm-lock.yaml') carries only common/temp/deps.tar.zst and the
-per-project .rush trees. Refresh the comment above CACHE_PATHS to say why the dist is no longer in
-it, and grep for other repositories in this workspace that reuse rush.yaml before changing the
-interface. The build for the release pull request stays red until this lands.
-
-Done with the decision entry: pack and upload in setup (rush.yaml) and setup-node
-(release-docker.yaml), download and unpack in every job that reads the tree, and both cache lists
-stay identical as their comments require.
 
 ### T-407 — Document the label-column pattern in the doc site
 
@@ -1244,3 +1202,45 @@ the same `stripCode` rule, and `commands/docs.ts` compares it against `figure[da
 a selector present for both the poster and the live frame, which is what makes the count meaningful
 in a build that never staged the diagrams. It matters most for the architecture page, whose diagram
 is the only visual it has.
+
+### T-342 — Decide the cache payload shape before landing step 2
+
+> _2026-10-14 · ci · done_
+
+Step 2 of the CI cache plan waits on a choice that run 38593732609 turned into a real decision
+rather than a mechanical one, and it is the user's to make. The archive holds 208 877 files and its
+save costs 41m22s, while a local `tar` plus `zstd` of the same tree takes 2.8s, a restore of that
+same 767 MB takes 20s in six jobs and the 271 MB Playwright archive saves in 6s — so the price is
+per enumerated file, about 12 ms each, and the `build / audit` job pays the same rate for 20m40s
+through the `**/audit/auditResults.json` glob of its `Upload Audit Results` step. Narrowing
+`CACHE_PATHS` to the store plus `*/dist` and `*/.rush` therefore takes 208 877 files to 85 358 and
+still leaves roughly seventeen minutes of save, which is why the choice matters. The options are to
+pack the store into a single `deps.tar.zst` and cache that one file, which keeps the warm cache the
+user asked for and turns the save into an upload measured in seconds; to pack and narrow the list at
+the same time; to narrow alone; or to drop the pnpm cache and have every job install from the npm
+registry in parallel. The recommendation is to pack, in both `rush.yaml` and `release-docker.yaml`
+because the two share one key and have to agree on the payload, and to fix the audit glob in the
+same change, since it is twenty minutes of billed runner time per run for one small file. Nothing of
+step 2 is written yet: the diagnosis is F-522, the strategy is D-545 and D-546, and the
+implementation is one edit to `CACHE_PATHS` plus a pack step and an unpack step.
+
+Decided and implemented: the store travels as one deps.tar.zst, the derived trees leave the payload,
+and the audit job gates on a ci-audit script with its glob narrowed. Both workflow files updated in
+feasibleone/actions, awaiting push.
+
+### T-365 — Carry \*/dist as a per-run artifact in the shared Rush workflow
+
+> _2026-10-17 · ci · done_
+
+Pick one of the three fixes recorded in the decision entry on the stale CI dist and apply it in
+feasibleone/actions/.github/workflows/rush.yaml. The recommended one is to build the artifact
+handoff: in the setup job upload every \*/dist tree with actions/upload-artifact, and in the tests,
+chromatic, audit and lint jobs download it before running, so the archive cached under
+hashFiles('common/config/rush/pnpm-lock.yaml') carries only common/temp/deps.tar.zst and the
+per-project .rush trees. Refresh the comment above CACHE_PATHS to say why the dist is no longer in
+it, and grep for other repositories in this workspace that reuse rush.yaml before changing the
+interface. The build for the release pull request stays red until this lands.
+
+Done with the decision entry: pack and upload in setup (rush.yaml) and setup-node
+(release-docker.yaml), download and unpack in every job that reads the tree, and both cache lists
+stay identical as their comments require.

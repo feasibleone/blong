@@ -62,6 +62,7 @@ kustomize: {
     storageClassName: 'local-path',
     suiteVolume: {backend: 'auto', retention: 3, attemptRetention: 5},
     portal: {web: {realm: 'core', host: 'ui.example.test', auth: {type: 'basic'}}},
+    assetServer: {csp: {scriptHashes: ["'sha256-…'"]}},
     operator: {enabled: true, replicas: 1},
     crd: true,
 }
@@ -80,12 +81,17 @@ kustomize: {
 | `suiteVolume.rwxProvider` | `openebs` — sets the class to `openebs-rwx`                                                                                                     |
 | `suiteVolume.rwxManifest` | Remote manifest that installs the RWX provider                                                                                                  |
 | `suiteVolume.artifact`    | `{source: 'url', url}` for the cluster, or `{source: 'path', path}` locally                                                                     |
-| `portal.<alias>.realm`    | The realm whose own process serves the portal; omissible only with one process                                                                  |
+| `portal.<alias>.realm`    | The realm whose process answers beside the page; omissible                                                                                      |
 | `portal.<alias>.host`     | The DNS name the portal answers on, and `.path` its prefix; the alias names the Service                                                         |
 | `portal.<alias>.auth`     | `{type: 'basic', secretName?}` or `{type: 'oauth2', authUrl?}`                                                                                  |
 | `operator`                | `{enabled?, replicas?, image?}` — the operator's Deployment (`enabled` defaults to false); its ServiceAccount, Role and ClusterRole always ship |
 | `crd`                     | Also emit the CR that asks an installed operator for it                                                                                         |
 | `outputDir`               | Where the tree is written (default `system/kustomize`)                                                                                          |
+
+`assetServer` is the bundle's own statement: `enabled` (default on when a portal exists), `root`
+(default `dist/` beside the artifact's entry), `base` (default `/s/`), `csp` (`scriptHashes`,
+`styleHashes`, `directives`, `reportUri`, `disabled`), `headers`, `corsOrigins`, `hsts`,
+`referrerPolicy`, `frameOptions`, `cache`, `image`, `replicas`, `resources` and `builtIns`.
 
 These settings belong in the suite's `default` block and **not** under `k8s`: the generator and the
 operator process both read them, and a setting that appears only under `k8s` makes an operator pass
@@ -181,19 +187,36 @@ portal: {
 },
 ```
 
-The key is the portal's name and it is what its Service is called (`<alias>-http`), which is why it
-is a name a person chose: a deployment name follows the profile and would stop meaning the same
-thing the moment the split changed. `realm` therefore names the process, not the deployment. A
-portal that names no realm is allowed only where the suite has a single process, and a `companion` —
-carried by every process and owning none — is refused rather than given someone else's. The tree
+The key is the portal's name and it is what its Service is called (`<alias>-http`) when a realm
+answers beside it, which is why it is a name a person chose: a deployment name follows the profile
+and would stop meaning the same thing the moment the split changed. `realm` names that process — the
+one that answers `/documentation`, the only public page a gateway serves — and not the bundle's:
+`/s/`, `/s` and the root prefix are the asset server's, and it is deployed whether or not a realm is
+named. The root is a prefix rather than an exact path because a controller cannot tell an `Exact /`
+from a `Prefix /` (Traefik treats them as one path and answers from whichever it keeps), so a
+realm's surface is named explicitly. A portal that names no realm is ordinary where the host serves
+only the bundle and `/rpc/*`; with several processes and no realm the tree writes the bundle's paths
+alone rather than guessing which process should catch the rest, and a `companion` — carried by every
+process and owning none — is refused for the fallback rather than given someone else's. The tree
 then emits one Service per portal and one Ingress per host, carrying every path that host serves: a
-certificate and a DNS record belong to a host, so the portals and the webhooks realms contribute
-land in one object. Two entries claiming one path on one host are refused, because the controller
-would answer from whichever it read first. The annotations are the controller's and therefore the
-host's: two portals on one host share them, and a realm's webhook may not share a portal's host at
-all — the tree refuses it, because the alternative is a webhook behind the portal's authentication,
-which an `oauth2` portal would answer with a browser redirect and a `basic` one with a password
-prompt (T-241).
+certificate and a DNS record belong to a host, so the bundle's paths, the documentation path and the
+webhooks realms contribute land in one object. Two entries claiming one path and type on one host
+are refused, because the controller would answer from whichever it read first. The annotations are
+the controller's and therefore the host's: two portals on one host share them, and a realm's webhook
+may not share a portal's host at all — the tree refuses it, because the alternative is a webhook
+behind the portal's authentication, which an `oauth2` portal would answer with a browser redirect
+and a `basic` one with a password prompt (T-241).
+
+## The browser bundle
+
+A suite that publishes a portal publishes a bundle, so the process that serves it follows from the
+portal rather than from a second setting. `core/blong-asset` is a server of its own — a Deployment
+`assets`, a Service `assets-http` and a ConfigMap `assets-config` — running from the framework image
+with the artifact volume mounted read-only. It loads no realm, holds no API token, drops every
+capability and cannot write its own root. It serves `/s/` with a precompressed sibling preferred,
+redirects `/` there, answers a client-side route with the shell, and refuses a path that would leave
+the bundle. `realm/blong-kustomize/README.md` carries the policy keys; `core/blong-asset/README.md`
+carries the defaults and the accepted trade-offs.
 
 A portal usually belongs to the tenant rather than to the suite — the host is a DNS record and a TLS
 certificate, and the auth is enforced by the controller the cluster runs — so a suite declares that

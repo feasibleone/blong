@@ -39,6 +39,7 @@ words:
   - autodocs
   - autoinstaller
   - autoinstallers
+  - automount
   - autonumber
   - autostash
   - avvio
@@ -174,6 +175,7 @@ words:
   - gtag
   - handoff
   - hdel
+  - healthz
   - Hejlsberg
   - hepatus
   - heredocs
@@ -184,6 +186,7 @@ words:
   - honored
   - honoring
   - hset
+  - hsts
   - huggingface
   - Hydrozoa
   - idempotently
@@ -331,6 +334,7 @@ words:
   - qwen
   - rdkafka
   - readlink
+  - readyz
   - realmname
   - realmnameitemlistactive
   - realpath
@@ -366,12 +370,14 @@ words:
   - romeovs
   - roundtrip
   - rushstack
+  - SAMEORIGIN
   - sasl
   - savepoint
   - Scleractinia
   - sdev
   - seagrass
   - Seagrass
+  - seccomp
   - Segoe
   - Sela
   - selectbutton
