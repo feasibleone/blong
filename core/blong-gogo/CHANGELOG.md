@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.49.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.48.0...blong-gogo-v1.49.0) (2026-11-04)
+
+
+### Features
+
+* blong-asset server ([3bc74fd](https://github.com/feasibleone/blong/commit/3bc74fd1f746c18dfca676076a5990de637635cd))
+
 ## [1.48.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.47.0...blong-gogo-v1.48.0) (2026-11-03)
 
 

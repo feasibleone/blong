@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.42.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.41.1...blong-docs-v1.42.0) (2026-11-04)
+
+
+### Features
+
+* blong-asset server ([3bc74fd](https://github.com/feasibleone/blong/commit/3bc74fd1f746c18dfca676076a5990de637635cd))
+
 ## [1.41.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.41.0...blong-docs-v1.41.1) (2026-11-03)
 
 
