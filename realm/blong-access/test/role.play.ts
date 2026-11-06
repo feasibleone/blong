@@ -26,7 +26,7 @@ test.describe('Access Role', () => {
     browseModel(test, expect, {
         subject: 'access',
         object: 'role',
-        searchText: 'Admin',
+        searchText: 'full access',
     });
 
     createAndEditModel(test, expect, {
