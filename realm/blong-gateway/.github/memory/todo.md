@@ -11,9 +11,10 @@ open (1)
 - `T-147` · realm/blong-gateway — The gateway cleanup dialog baselines carry whatever the database
   held
 
-done (1)
+done (2)
 
 - `T-492` · realm/blong-gateway — Move the gatewayManagement grant out of the gateway test seed
+- `T-617` · realm/blong-gateway — The gateway merge flow no longer announces its checkpoints
 
 <!-- /memory:index -->
 
@@ -50,3 +51,18 @@ move.
 Done: the gatewayManagement capability and the Admin grant now live in
 meta/db/accessAuthorizationMerge.yaml, the demo bundles and subscriptions stay in meta/dbTest, and
 the gateway tap suite passes 21/21 from a clean database.
+
+### T-617 — The gateway merge flow no longer announces its checkpoints
+
+> _2026-11-06 · realm/blong-gateway · done_
+
+test/observedMergeFlow.play.ts fails at HEAD: the run produces no checkpoint notes (the diagram says
+nothing observed yet), so docs/observedMergeFlow.md is stale and blong-dev docs check exits
+non-zero. Confirmed by reverting core/blong-gogo/src/adapter/server/knex.ts to HEAD and running the
+spec — two failures, identical. Something between the merge handler and the progress capture stopped
+announcing its points; regenerating the artefact from the current code would delete four notes it
+should still show, so do not run docs generate until the capture is fixed.
+
+Not reproducible: spec green in dev and CI shape, artefact carries the four notes, docs check
+reports it up to date. The spec now captures after its assertions so a failing run cannot rewrite
+the artefact (F-700).

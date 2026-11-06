@@ -132,11 +132,6 @@ test('a checkpoint and a branch are drawn for a flow this realm served', async (
         test.skip(true, 'the service declared no calls for this execution, so there is no hop');
         return;
     }
-    await captureDiagram(portal, expect, {
-        name: 'observed-merge-flow-gateway',
-        artifact: 'docs/observedMergeFlow.md',
-        diagram,
-    });
 
     // What the feature adds, and what the receiver's answer exists for: the handler's work is
     // drawn beside the hop it answered. `merge-started` is the first checkpoint the handler
@@ -155,6 +150,15 @@ test('a checkpoint and a branch are drawn for a flow this realm served', async (
         'a checkpoint is drawn as a note, over the participant that announced it',
     ).toMatch(/Note over db: point: merge-started\n/);
     expect(diagram, 'and every phase it announced').toMatch(/Note over db: point: graph-merged\n/);
+
+    // Written last, deliberately: the capture rewrites a committed artefact, and a diagram that
+    // failed an assertion above is not one to commit. Capturing first is how a failing run left a
+    // point-less artefact behind for a reviewer to notice and revert @@F-700.
+    await captureDiagram(portal, expect, {
+        name: 'observed-merge-flow-gateway',
+        artifact: 'docs/observedMergeFlow.md',
+        diagram,
+    });
 });
 
 test('the branch the handler took is drawn as an alt block', async ({portal}) => {
