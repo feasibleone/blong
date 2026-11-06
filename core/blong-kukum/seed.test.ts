@@ -178,6 +178,49 @@ for (const kind of ['prod', 'test']) {
     });
 }
 
+t.test('the realm roles are provisioned, not just the shared ones', t => {
+    const root = scaffoldedRealm();
+    try {
+        const merged = change(planned(root, 'prod'), RBAC_SEED).content;
+        for (const role of ['Test Admin', 'Test Manager', 'Test Customer', 'Test Guest']) {
+            t.match(merged, new RegExp(`^\\s*${role}:`, 'm'), `${role} is declared`);
+        }
+        t.same(
+            list(merged, 'Test Admin'),
+            ['testManage', 'loginCapability'],
+            'the realm admin holds this realm’s manage capability and the login gate',
+        );
+        t.same(
+            list(merged, 'Test Customer'),
+            ['testView', 'loginCapability'],
+            'the realm customer holds the reads',
+        );
+    } finally {
+        rmSync(root, {recursive: true, force: true});
+    }
+    t.end();
+});
+
+t.test('a realm whose seed predates the realm roles gains them', t => {
+    const root = mkdtempSync(join(tmpdir(), 'kukum-seed-'));
+    try {
+        // The shape a realm scaffolded before the roles existed has: the shared
+        // four only, no `Test Admin` line to append to.
+        const template = readFileSync(join(REALM_TEMPLATE_ROOT, RBAC_SEED), 'utf8');
+        const legacy = templateTokens(template, context.subject, context.object)
+            .split('\n')
+            .filter(line => !line.trimStart().startsWith('Test Admin'))
+            .join('\n');
+        mkdirSync(join(root, 'meta', 'db'), {recursive: true});
+        writeFileSync(join(root, RBAC_SEED), legacy);
+        const merged = change(planned(root, 'prod'), RBAC_SEED).content;
+        t.match(merged, /^\s*Test Admin:/m, 'the role is created rather than appended to');
+    } finally {
+        rmSync(root, {recursive: true, force: true});
+    }
+    t.end();
+});
+
 t.test('the grant is idempotent, so re-adding an entity changes nothing', t => {
     const root = scaffoldedRealm();
     try {

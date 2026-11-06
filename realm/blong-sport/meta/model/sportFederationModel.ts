@@ -9,6 +9,9 @@ export default model(
                 object: 'federation',
                 objectTitle: 'National Sports Federation',
                 public: true,
+                // The registry order is federations, clubs, athletes, coaches,
+                // specialists, affiliations — not alphabetical. @@D-780
+                menu: {group: 'Registry', order: 1},
                 nameField: 'federation.legalName',
                 schema: {
                     properties: {

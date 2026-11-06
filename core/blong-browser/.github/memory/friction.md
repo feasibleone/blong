@@ -36,7 +36,7 @@ open (21)
 - `F-254` · core/blong-browser — A "race" that was two different baselines and a 1% tolerance
 - `F-679` · core/blong-browser — Profile fetch before a session raised a binding error dialog
 
-resolved (29)
+resolved (31)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -75,6 +75,8 @@ resolved (29)
 - `F-677` · core/blong-browser — A new portal config block is dropped unless mergePortalConfigs
   names it
 - `F-680` · core/blong-browser — A realm's screenshots are shared with every suite that composes it
+- `F-690` · core/blong-browser — menuClick assumed one menubar group per subject
+- `F-694` · core/blong-browser — A menu chain opened without a wait leaves the leaf hidden
 
 <!-- /memory:index -->
 
@@ -803,3 +805,40 @@ application into the shared baseline.
 
 Closed by D-741: both apps mount the same realms, so one baseline serves both and the marine run is
 green.
+
+### F-690 — menuClick assumed one menubar group per subject
+
+> _2026-11-06 · core/blong-browser · resolved_
+
+The shared Playwright helper Portal.menuClick opened the group named after the method's subject
+(portal-menu-sport) and then clicked the leaf. That was true only while the aggregator put every
+page of a subject in one group: once a model could say where it belongs, the athlete leaf moved to
+People and Organisations and the helper opened the wrong submenu, then waited five seconds on a leaf
+that was never rendered. The helper now reads the composed menu the portal already holds
+(portal.portalConfig.menu through the integration test hook) and clicks the group ids that actually
+contain the method, falling back to the subject group when no store is exposed. The cost was a full
+ten-minute suite run that reported green with baselines captured from a menu the tests had not
+navigated, followed by a reproduction that failed every spec of two files; a helper that assumes a
+navigation layout must be re-read whenever the layout becomes configurable.
+
+menuClick now follows the composed menu; the sport suite navigates and re-baselines green
+
+### F-694 — A menu chain opened without a wait leaves the leaf hidden
+
+> _2026-11-06 · core/blong-browser · resolved_
+
+`menuClick` opened the group chain with one click each and no wait, so a group click that landed
+while the previous submenu was still rendering left the chain half open. The leaf then resolved in
+the DOM but stayed hidden, and the click spent its whole element budget on an element no wait could
+reveal — reported as a `locator.click` timeout on `portal-menu-<subject>-<object>-browse`. It cost
+two intermittent flakes per suite run (`cleanup sport sport`, `create sport document`) and looked
+like a data problem because the tests were unrelated.
+
+The fix walks the chain again until the leaf is visible, waiting after each group click for the next
+target — the group below it, or the leaf — with a short menu-specific budget, so a closed chain
+retries cheaply instead of hanging. Any deeper menu shape makes this race more likely, so a test
+helper that opens a menu must assert the item is visible rather than trust that the click that
+opened its parent already took effect.
+
+Fixed in playwright.ts: menuClick walks the group chain until the leaf is visible, waiting for the
+next target after each group click.

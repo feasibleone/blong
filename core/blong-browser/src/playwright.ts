@@ -60,6 +60,16 @@ export const BLONG_ELEMENT_TIMEOUT = Number(process.env['BLONG_ELEMENT_TIMEOUT']
  */
 export const BLONG_BOOT_TIMEOUT = Number(process.env['BLONG_BOOT_TIMEOUT']) || 15_000;
 
+/**
+ * How long a menu click waits for the submenu it just opened to render.
+ *
+ * A group in the menubar is a toggle whose popup is a React state change, so the
+ * next clickable item is in the DOM a frame later — not at once, and not late
+ * enough to deserve the element budget. Bounding the wait keeps a closed chain a
+ * cheap retry instead of a five-second hang on an element that never appears.
+ */
+const MENU_SETTLE_TIMEOUT = 750;
+
 /** Options configurable via playwright.config.ts `use` block or CLI. */
 export interface IBlongTestOptions {
     /** Login username. */
@@ -253,19 +263,86 @@ export class Portal {
      * Click a portal menu item by its semantic triple.
      * For grouped menus, first opens the parent group.
      *
+     * The group a page sits in is the model's own decision (`classifier`,
+     * `menu.group`, `menu.root` — `@@D-777`), so it is read from the composed
+     * menu rather than guessed from the method's subject: a page whose subject is
+     * `sport` may be under `Registry` or inside the shared
+     * `Classifiers` root, and clicking `portal-menu-sport` would open the wrong
+     * submenu and then wait on a leaf that is not rendered.
+     *
      * @param method - semantic triple, e.g. 'marine.coral.browse'
      */
     async menuClick(method: string): Promise<void> {
         const menuId = method.replace(/\./g, '-');
-        const subject = method.split('.')[0]!;
+        // The groups that contain the page, outermost first. A menu without a
+        // test hook (or a page it does not carry) falls back to the subject group,
+        // which is what a flat, single-group menu needs.
+        const path = await this.#menuPath(method);
+        const groups = path.length ? path : [method.split('.')[0]!];
+        const item = this.page.getByTestId(`portal-menu-${menuId}`);
 
-        // Open the group menu first (hover to expand submenu)
-        const group = this.page.getByTestId(`portal-menu-${subject}`);
-        await this.#guard(group.click());
+        // Opening a group is a toggle and the submenu it opens renders a moment
+        // later, so a group click that lands while the previous submenu is still
+        // settling can leave the chain closed — the leaf is then in the DOM but
+        // hidden, and the click below waits out its timeout on an element no
+        // amount of waiting can reveal. Walk the chain again until the leaf is
+        // actually visible, which is also what reopens a group that a click closed.
+        for (let attempt = 0; attempt < 3; attempt++) {
+            if (await item.isVisible().catch(() => false)) break;
+            for (const [index, groupId] of groups.entries()) {
+                const group = this.page.getByTestId(`portal-menu-${groupId}`).first();
+                if (!(await group.count())) continue;
+                if (!(await group.isVisible().catch(() => false))) continue;
+                await this.#guard(group.click());
+                // The click only requests the submenu: the next target — the group
+                // below this one, or the leaf itself — appears a frame or two later,
+                // and clicking before it does is what leaves the chain half open.
+                const next =
+                    index + 1 < groups.length
+                        ? this.page.getByTestId(`portal-menu-${groups[index + 1]}`).first()
+                        : item;
+                await next
+                    .waitFor({state: 'visible', timeout: MENU_SETTLE_TIMEOUT})
+                    .catch(() => undefined);
+            }
+        }
 
         // Click the specific menu item
-        const item = this.page.getByTestId(`portal-menu-${menuId}`);
         await this.#guard(item.click({timeout: BLONG_ELEMENT_TIMEOUT}));
+    }
+
+    /**
+     * The ids of the groups holding `method`, outermost first.
+     *
+     * Read from the composed portal config (`portal.portalConfig.menu`) through the
+     * integration test hook. An empty answer means the store or the menu is not
+     * reachable from this deployment, and the caller falls back.
+     */
+    async #menuPath(method: string): Promise<string[]> {
+        return this.page.evaluate(target => {
+            const store = (globalThis as {__blongStore?: {getState?: () => unknown}}).__blongStore;
+            const state = store?.getState?.() as
+                | {portal?: {portalConfig?: {menu?: unknown[]}}}
+                | undefined;
+            const menu = state?.portal?.portalConfig?.menu;
+            if (!Array.isArray(menu)) return [];
+            type Node = {id?: string; method?: string; items?: Node[]} | string;
+            const walk = (items: Node[], ancestors: string[]): string[] | undefined => {
+                for (const item of items) {
+                    if (typeof item === 'string') {
+                        if (item === target) return ancestors;
+                        continue;
+                    }
+                    if (Array.isArray(item.items)) {
+                        const found = walk(item.items, [...ancestors, item.id ?? '']);
+                        if (found) return found;
+                    }
+                    if (item.method === target) return ancestors;
+                }
+                return undefined;
+            };
+            return (walk(menu as Node[], []) ?? []).filter(Boolean);
+        }, method);
     }
 
     // ── Tabs ─────────────────────────────────────────────────────────────────

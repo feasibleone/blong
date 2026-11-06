@@ -176,6 +176,48 @@ export function appendCommaListValue(
 }
 
 /**
+ * Declare a comma-separated YAML scalar, creating it inside `section` when the
+ * document does not have it yet.
+ *
+ * A realm's RBAC seed grows in two directions: a new entity adds actions to the
+ * capabilities the seed already declares (`appendCommaListValue`), and a new
+ * capability or realm-scoped role has to be *declared* first — a realm scaffolded
+ * before the realm roles existed has no `Party Admin:` line to append to. The
+ * entry is written after the last line of its section, with the indentation its
+ * siblings use, so a composed file reads as if it had been written by hand.
+ *
+ * Returns `undefined` only when the document has no such section and no `role:`
+ * style block can be appended at all — the caller then warns instead of guessing.
+ */
+export function ensureCommaListValue(
+    source: string,
+    section: string,
+    key: string,
+    values: string[],
+): string | undefined {
+    if (new RegExp(`^\\s*${escapeRegExp(key)}\\s*:`, 'm').test(source)) {
+        return appendCommaListValue(source, key, values);
+    }
+    const lines = source.split('\n');
+    const header = new RegExp(`^${escapeRegExp(section)}\\s*:\\s*$`);
+    const headerIndex = lines.findIndex(line => header.test(line));
+    if (headerIndex === -1) return undefined;
+    // The section runs to the next top-level key (a non-indented, non-comment
+    // line); its last entry is where a new sibling belongs.
+    let last = headerIndex;
+    for (let index = headerIndex + 1; index < lines.length; index++) {
+        const line = lines[index];
+        if (line.trim() === '' || line.trimStart().startsWith('#')) continue;
+        if (!/^\s/.test(line)) break;
+        last = index;
+    }
+    const indent = /^(\s*)/.exec(lines[last])?.[1] || '  ';
+    const entry = `${indent}${key}: ${values.join(',')}`;
+    lines.splice(last + 1, 0, entry);
+    return lines.join('\n');
+}
+
+/**
  * Read a shared template artifact that is not TypeScript, so it never carries
  * the generated marker (YAML seeds, for example).
  */

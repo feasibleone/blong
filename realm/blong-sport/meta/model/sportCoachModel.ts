@@ -9,6 +9,7 @@ export default model(
                 object: 'coach',
                 objectTitle: 'Coach',
                 public: true,
+                menu: {group: 'Registry', order: 4},
                 nameField: 'coach.personName',
                 schema: {
                     properties: {

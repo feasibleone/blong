@@ -232,3 +232,97 @@ describe('Portal', () => {
         expect(portalConfig?.menu).toHaveLength(1);
     });
 });
+
+/**
+ * The menubar offers only what the session may open.
+ *
+ * A page answers with the action its first read calls; the portal compares that
+ * against the granted actions, so a role scoped to one realm no longer sees every
+ * other realm's groups and does not learn about a missing grant by clicking.
+ */
+describe('Portal menu permissions', () => {
+    /** A slice per page, each naming the action it needs. */
+    const dispatch = async (method: string) => {
+        const target = method.replace(/^component\//, '');
+        const permission =
+            target === 'sport.athlete.browse'
+                ? 'sport.athlete.find'
+                : target === 'core.label.browse'
+                  ? 'core.label.find'
+                  : undefined;
+        return {title: target, permission, icon: 'pi pi-list', component: FakeTabSimple};
+    };
+
+    function menuWithTwoPages() {
+        act(() => {
+            useAppStore.setState(s => ({
+                ...s,
+                portal: {
+                    ...s.portal,
+                    portalConfig: {
+                        name: 'app',
+                        title: 'App',
+                        menu: [
+                            {
+                                id: 'sport',
+                                title: 'Sport',
+                                items: ['sport.athlete.browse', 'core.label.browse'],
+                            },
+                        ],
+                    },
+                },
+            }));
+        });
+    }
+
+    function grant(permissions: Record<string, boolean> | boolean) {
+        act(() => {
+            useAppStore.setState(s => ({...s, auth: {...s.auth, permissions}}));
+        });
+    }
+
+    it('hides a page whose action is not granted', async () => {
+        grant({'sport.athlete.find': true});
+        menuWithTwoPages();
+        render(<Portal />, {dispatch});
+        await flushEffects();
+        expect(
+            document.querySelector('[data-testid=portal-menu-sport-athlete-browse]'),
+        ).not.toBeNull();
+        expect(document.querySelector('[data-testid=portal-menu-core-label-browse]')).toBeNull();
+    });
+
+    it('hides a group whose pages are all out of reach', async () => {
+        grant({'other.realm.find': true});
+        menuWithTwoPages();
+        render(<Portal />, {dispatch});
+        await flushEffects();
+        expect(document.querySelector('[data-testid=portal-menu-sport]')).toBeNull();
+    });
+
+    it('matches a grant written with the handler name', async () => {
+        // `access.authorization.list` strips dots and case, so a capability may be
+        // seeded as `accessUserFind`; the menu must agree, or the page is hidden
+        // while the server would have allowed its calls.
+        grant({sportAthleteFind: true});
+        menuWithTwoPages();
+        render(<Portal />, {dispatch});
+        await flushEffects();
+        expect(
+            document.querySelector('[data-testid=portal-menu-sport-athlete-browse]'),
+        ).not.toBeNull();
+    });
+
+    it('shows every page when permissions are the test-mode boolean', async () => {
+        grant(true);
+        menuWithTwoPages();
+        render(<Portal />, {dispatch});
+        await flushEffects();
+        expect(
+            document.querySelector('[data-testid=portal-menu-sport-athlete-browse]'),
+        ).not.toBeNull();
+        expect(
+            document.querySelector('[data-testid=portal-menu-core-label-browse]'),
+        ).not.toBeNull();
+    });
+});

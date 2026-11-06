@@ -9,6 +9,7 @@ export default model(
                 object: 'category',
                 objectTitle: 'Category',
                 public: true,
+                classifier: true,
                 nameField: 'category.categoryName',
                 schema: {
                     properties: {

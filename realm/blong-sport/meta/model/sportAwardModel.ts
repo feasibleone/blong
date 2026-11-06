@@ -9,6 +9,7 @@ export default model(
                 object: 'award',
                 objectTitle: 'Award',
                 public: true,
+                classifier: true,
                 nameField: 'award.awardName',
                 schema: {
                     properties: {

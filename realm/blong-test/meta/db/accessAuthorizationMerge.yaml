@@ -6,5 +6,11 @@
 replace: true
 role:
   Admin: testRunServer
+  # The Test runs console's own roles (`@@D-778`): the one capability it has is a
+  # management one, so Customer and Guest hold the login gate alone.
+  Test Admin: testRunServer,loginCapability
+  Test Manager: testRunServer,loginCapability
+  Test Customer: loginCapability
+  Test Guest: loginCapability
 capability:
   testRunServer: test.run.start,test.run.eventFind,test.run.snapshotGet,test.run.cancel

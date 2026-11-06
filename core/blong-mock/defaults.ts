@@ -74,9 +74,13 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
     return mergeWithSymbols<IResolvedModelSpec, IModelSpec>(
         {
             subject,
-            subjectTitle: capital(subject),
+            // A realm may name its menu group itself (`Translations` for the two
+            // core dictionary pages); the capitalized subject is only the default.
+            subjectTitle: spec.subjectTitle ?? capital(subject),
             object,
             objectTitle,
+            classifier: spec.classifier ?? false,
+            menu: spec.menu ?? {},
             keyField,
             nameField,
             openLayout,
@@ -146,7 +150,11 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                 title: `Browse ${objectTitle}`,
                 icon: 'pi pi-list',
                 permission: {
-                    browse: `${subject}.${object}.browse`,
+                    // The action the page actually calls. `browse` used to be
+                    // `${subject}.${object}.browse`, which no role is ever granted:
+                    // a menu that filters on this would hide every model page, and a
+                    // permission check inside the page could never pass.
+                    browse: `${subject}.${object}.find`,
                     add: `${subject}.${object}.add`,
                     edit: `${subject}.${object}.edit`,
                     delete: `${subject}.${object}.remove`,

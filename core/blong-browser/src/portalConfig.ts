@@ -87,6 +87,12 @@ export function mergePortalConfigs(
     };
     const theme = firstSet(providers, 'theme');
     if (theme !== undefined) config.theme = theme;
+    // The model aggregator reads `menuMode` from the static slice it is configured
+    // with, but a deployment that ships it through a realm's own portal handler
+    // reaches the shell only here — and a composed answer that dropped it would
+    // silently re-enable the generated menu.
+    const menuMode = firstSet(providers, 'menuMode');
+    if (menuMode !== undefined) config.menuMode = menuMode;
     // The brand is a scalar block like `theme`, and it is listed here for the same
     // reason: this function builds the merged config key by key, so a block it does
     // not name is dropped even though every provider answered with it. A brand that

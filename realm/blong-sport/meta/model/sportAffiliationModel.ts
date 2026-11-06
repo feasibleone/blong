@@ -9,6 +9,7 @@ export default model(
                 object: 'affiliation',
                 objectTitle: 'Affiliation Period',
                 public: true,
+                menu: {group: 'Registry', order: 6},
                 nameField: 'affiliation.affiliationKind',
                 schema: {
                     properties: {

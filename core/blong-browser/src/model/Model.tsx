@@ -1,5 +1,6 @@
 import type {IComponent} from '@feasibleone/blong';
 import {useEffect} from 'react';
+import {ErrorDialog} from '../components/Error/Error.js';
 import {Portal} from '../components/Portal/Portal.js';
 import {useBlong} from '../index.js';
 import {useAppStore} from '../state/appStore.js';
@@ -21,7 +22,10 @@ export function Model({
 
         void (async () => {
             try {
-                const component = await (handler[`component/${componentName}`]({}, {}) as Promise<IComponent>);
+                const component = await (handler[`component/${componentName}`](
+                    {},
+                    {},
+                ) as Promise<IComponent>);
                 const tab: ITab = {
                     id: 'test-tab',
                     actionName: 'test-action',
@@ -38,5 +42,11 @@ export function Model({
         };
         // eslint-disable-next-line @eslint-react/exhaustive-deps -- run once on mount
     }, []);
-    return <Portal />;
+    return (
+        <>
+            <Portal />
+            {/* The shell mounts the dialog; a story renders the portal alone. */}
+            <ErrorDialog />
+        </>
+    );
 }

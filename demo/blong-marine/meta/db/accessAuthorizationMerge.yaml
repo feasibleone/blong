@@ -23,6 +23,12 @@ role:
   Manager: marineMaintain
   Customer: marineView
   Guest: marineView
+  # The realm's own roles (`@@D-778`): the demo is loaded beside other realms in
+  # `blong-suite`, so its readers should not have to hold `Admin`.
+  Marine Admin: marineManage,loginCapability
+  Marine Manager: marineMaintain,loginCapability
+  Marine Customer: marineView,loginCapability
+  Marine Guest: marineView,loginCapability
 capability:
   marineView: >-
     marine.coral.find,marine.coral.get,

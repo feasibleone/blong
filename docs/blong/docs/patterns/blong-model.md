@@ -137,6 +137,39 @@ export default model(
 
 ---
 
+## Menu Placement
+
+The aggregator builds the menubar from the specs, so a realm with a handful of models needs no menu
+code at all: each browse page joins the group named by `subjectTitle` (the capitalized subject by
+default). A realm with twenty pages says where each one belongs instead of letting one group grow
+past the height of a laptop screen:
+
+```typescript
+classifier: true,                                 // reference data a form picks from
+menu: {group: 'Registry'},                       // a flat group of its own
+menu: {group: 'Registry', order: 3},             // …at a chosen position in it
+menu: {root: 'Reference', group: 'Sport'},        // nested two levels deep
+menu: {title: 'Athletes', icon: 'pi pi-user'},    // leaf label and icon
+menu: {hidden: true},                             // no entry; still reachable by method
+```
+
+`classifier: true` is the flag for dropdown sources — sport, discipline, area, category, cycle. Every
+realm's classifiers land in one `Classifiers` group with a submenu per realm, so the list a form
+picks from is found in one place and the realm's own group holds the pages people open all day.
+
+A group title is the merge key: two realms that both declare `Registry` contribute to one group, and
+the ids the portal derives from the titles stay language independent. `subjectTitle` renames a
+subject's group (`Translations` for the core dictionary pages).
+
+`order` fixes a page's position inside its group — lowest first. Pages that name no order come after
+the ordered ones, alphabetically, so a group where nothing is ordered is simply sorted by label; the
+comparison uses the English label, because that is what the model declares.
+
+A realm whose menu is written by hand configures `ui.portal.portal.menu`, which *adds* groups to the
+generated ones, and sets `menuMode: 'replace'` when it should be the whole menubar.
+
+---
+
 ## Fixture Data for Storybook and Tests
 
 The mock adapter auto-generates all CRUD mock handlers from the handlers whose group name ends in

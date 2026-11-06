@@ -118,6 +118,7 @@ words:
   - dgram
   - diag
   - dialog
+  - dialogs
   - Diebold
   - Dimitrov
   - dirents
@@ -267,6 +268,7 @@ words:
   - myapp
   - mydas
   - mysqladmin
+  - mysqldump
   - namespaceable
   - nematocysts
   - Nerida

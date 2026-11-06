@@ -9,6 +9,7 @@ export default model(
                 object: 'cycle',
                 objectTitle: 'Olympic Cycle',
                 public: true,
+                classifier: true,
                 nameField: 'cycle.cycleName',
                 schema: {
                     properties: {

@@ -18,6 +18,13 @@ role:
   Manager: feedbackMaintain
   Customer: feedbackView
   Guest: feedbackView
+  # Feedback's own roles (`@@D-778`): review is a privilege over other people's
+  # submissions, and a deployment should be able to grant it without granting
+  # anything else. `loginCapability` is the login gate, not a feedback grant.
+  Feedback Admin: feedbackManage,loginCapability
+  Feedback Manager: feedbackMaintain,loginCapability
+  Feedback Customer: feedbackView,loginCapability
+  Feedback Guest: feedbackView,loginCapability
 capability:
   feedbackManage: >-
     feedback.session.find,feedback.session.list,feedback.session.get,

@@ -19,6 +19,9 @@ export default model(
                 object: 'athlete',
                 objectTitle: 'Athlete',
                 public: true,
+                // The registry pages sit in their own group: the realm's own holds
+                // the competition side, and the order is the register's. @@D-780
+                menu: {group: 'Registry', order: 3},
                 nameField: 'athlete.personName',
 
                 schema: {

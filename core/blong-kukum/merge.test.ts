@@ -5,6 +5,7 @@ import {
     appendDescribeBlock,
     appendStringEntry,
     appendYamlBlock,
+    ensureCommaListValue,
     hasDescribeBlock,
     hasYamlKey,
     insertMapEntry,
@@ -80,6 +81,40 @@ t.test('appendYamlBlock keeps the document, and its comments, intact', t => {
         appendYamlBlock(source, 'gadget', 'gadget:\n    - gadgetId: 1\n'),
         '# a comment\nwidget:\n    - widgetId: 1\ngadget:\n    - gadgetId: 1\n',
         'the new block is appended after the existing one',
+    );
+    t.end();
+});
+
+t.test('ensureCommaListValue declares an entry its section does not have yet', t => {
+    const source = ['role:', '  Admin: testManage', 'capability:', '  testManage: testItemAdd', ''].join(
+        '\n',
+    );
+    t.equal(
+        ensureCommaListValue(source, 'role', 'Test Admin', ['testManage', 'loginCapability']),
+        [
+            'role:',
+            '  Admin: testManage',
+            '  Test Admin: testManage,loginCapability',
+            'capability:',
+            '  testManage: testItemAdd',
+            '',
+        ].join('\n'),
+        'the entry joins its own section, before the next one',
+    );
+    t.equal(
+        ensureCommaListValue(source, 'role', 'Admin', ['loginCapability']),
+        source.replace('Admin: testManage', 'Admin: testManage,loginCapability'),
+        'an existing entry is appended to instead',
+    );
+    t.equal(
+        ensureCommaListValue(source, 'role', 'Admin', ['testManage']),
+        source,
+        'idempotent',
+    );
+    t.equal(
+        ensureCommaListValue('# no sections here\n', 'role', 'Admin', ['testManage']),
+        undefined,
+        'no section means the caller must warn',
     );
     t.end();
 });

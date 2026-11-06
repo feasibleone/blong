@@ -385,7 +385,7 @@ The `Portal` class wraps common interactions:
 | Method                           | Description                                                                                                                                                           |
 | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `login(username, password)`      | Fill and submit the login form                                                                                                                                        |
-| `menuClick(method)`              | Open a portal menu item by semantic triple                                                                                                                            |
+| `menuClick(method)`              | Open a portal menu item by semantic triple; groups are read from the composed menu, so placement is the model's decision (`@@D-777`)                                  |
 | `save()`                         | Click save and wait for success icon                                                                                                                                  |
 | `edit()`                         | Click the edit button                                                                                                                                                 |
 | `cancel()`                       | Click the reset/cancel button                                                                                                                                         |

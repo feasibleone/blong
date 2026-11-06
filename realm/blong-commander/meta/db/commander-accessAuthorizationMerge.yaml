@@ -29,3 +29,11 @@ capability:
     keycloakDevRealmList,keycloakDevUserFind
 role:
   Admin: commanderAdmin
+  # Commander's own roles (`@@D-778`). `commanderAdmin` is a single
+  # exploration capability — every source is reachable through it — so the
+  # ladder stops at Admin and Manager; Customer and Guest hold the login gate
+  # alone.
+  Commander Admin: commanderAdmin,loginCapability
+  Commander Manager: commanderAdmin,loginCapability
+  Commander Customer: loginCapability
+  Commander Guest: loginCapability

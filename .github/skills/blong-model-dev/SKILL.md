@@ -32,6 +32,7 @@ For using the model in realm development, use the **blong-model** skill.
 core/blong-browser/src/model/
   defaults.ts             ← withDefaults() + deepMerge() — fills in standard values for partial specs
   dropdownRegistry.ts     ← On-demand dropdown load + deduplication + cache
+  menu.ts                 ← Where a model's page sits in the menubar (placement, classifier root)
   index.ts                ← Public re-exports
   defaults.test.ts        ← Unit tests for withDefaults
   Model.tsx               ← <Model> React component for Storybook / standalone usage
@@ -62,6 +63,9 @@ interface IModelSpec {
     subject: string; // namespace, e.g. 'marine'
     object: string; // entity, e.g. 'coral'
     objectTitle?: string; // defaults to capital(object)
+    subjectTitle?: string; // menubar group; defaults to capital(subject)
+    classifier?: boolean; // reference data — shared `Classifiers` root, one submenu per realm
+    menu?: IModelMenu; // {hidden, root, group, title, icon, order} — placement override
     keyField?: string; // defaults to '${object}Id'
     nameField?: string; // defaults to '${object}.${object}Name'
     schema?: ISchemaOverlay;
@@ -99,20 +103,27 @@ interface IDropdownOption {
 
 Fills in standard values for every optional field. Key defaults:
 
-| Field                  | Default value                                     |
-| ---------------------- | ------------------------------------------------- |
-| `objectTitle`          | `capital(object)` — `'coral'` → `'Coral'`         |
-| `keyField`             | `'${object}Id'`                                   |
-| `nameField`            | `'${object}.${object}Name'`                       |
-| `methods.find`         | `'${subject}.${object}.find'`                     |
-| `methods.get`          | `'${subject}.${object}.get'`                      |
-| `methods.add`          | `'${subject}.${object}.add'`                      |
-| `methods.edit`         | `'${subject}.${object}.edit'`                     |
-| `methods.remove`       | `'${subject}.${object}.remove'`                   |
-| `methods.report`       | `'${subject}.${object}.report'`                   |
-| `browser.title`        | `'${objectTitle} List'`                           |
-| `browser.icon`         | `'pi pi-list'`                                    |
-| `browser.permission.*` | `'${subject}.${object}.{browse/add/edit/delete}'` |
+| Field                  | Default value                                |
+| ---------------------- | -------------------------------------------- |
+| `subjectTitle`         | `capital(subject)` unless the spec names one |
+| `classifier`           | `false`                                      |
+| `menu`                 | `{}` — a flat group titled `subjectTitle`    |
+| `objectTitle`          | `capital(object)` — `'coral'` → `'Coral'`    |
+| `keyField`             | `'${object}Id'`                              |
+| `nameField`            | `'${object}.${object}Name'`                  |
+| `methods.find`         | `'${subject}.${object}.find'`                |
+| `methods.get`          | `'${subject}.${object}.get'`                 |
+| `methods.add`          | `'${subject}.${object}.add'`                 |
+| `methods.edit`         | `'${subject}.${object}.edit'`                |
+| `methods.remove`       | `'${subject}.${object}.remove'`              |
+| `methods.report`       | `'${subject}.${object}.report'`              |
+| `browser.title`        | `'${objectTitle} List'`                      |
+| `browser.icon`         | `'pi pi-list'`                               |
+| `browser.permission.*` | `find`/`add`/`edit`/`remove` of the entity   |
+
+The browse gate is the `find` action — the one the page actually calls. The portal hides a menu
+entry whose `permission` the session does not hold, so a gate naming a method nobody is granted
+would hide the page from everybody.
 
 The `deepMerge()` helper in `defaults.ts` deeply merges plain objects, overwriting arrays and
 primitives. It is also exported for use elsewhere in the model system.
@@ -261,12 +272,31 @@ export default async (models: IModelSpec[], blong: IHandlerProxy<unknown>) => {
         components[`${subject}.${object}.open`] = await subjectObjectOpen(model, blong);
         if (model.report?.permission)
             components[`${subject}.${object}.report`] = await subjectObjectReport(model, blong);
+        addMenuEntry(this.config.context.menus, model); // menu.ts: placement, not subjectTitle
     }
     return components;
 };
 ```
 
 This is called from `orchestrator/portal.ts` inside `createHandlers` when `kind === 'model'`.
+
+### The menu (`src/model/menu.ts`)
+
+The aggregator accumulates `config.context.menus` — root group title → its entries — and
+`portalConfigGet` answers `menuGroups(menus)`. Placement is per model, and the module is pure so the
+rules are unit-tested (`menu.test.ts`) without a port:
+
+- default `{root: subjectTitle}`; `classifier: true` → `{root: 'Classifiers', group: subjectTitle}`;
+  `menu.group` alone → a flat group of that title; `menu.root`+`menu.group` → nested; `menu.hidden`
+  → no entry.
+- Every group is sorted by `menu.order` first and then by label, so a group nobody ordered is
+  alphabetical (`sortEntries`); the leaf carries its label as the sort key and drops `order` from
+  the answer, because `IAction` has no such field.
+- Group titles are the cross-realm merge key (`mergePortalConfigs`); ids are slugs of the title, so
+  a nested classifier submenu cannot collide with the realm's own group test id.
+- The `Classifiers` root is listed last: reference data is looked up by exception.
+- `ui.portal.portal.menuMode: 'replace'` drops the generated groups entirely — the escape hatch for
+  a realm with a hand-written menubar.
 
 ---
 

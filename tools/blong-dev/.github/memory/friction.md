@@ -48,7 +48,7 @@ open (35)
 - `F-682` · tools/blong-dev — report.json's playwright durationMs is half its own test sum
 - `F-689` · tools/blong-dev — blong-dev lint --files skipped tsc and eslint
 
-resolved (10)
+resolved (11)
 
 - `F-080` · tools/blong-dev — `blong-dev` CLI not built
 - `F-090` · tools/blong-dev — `blong-dev` was not built, so `npm run ci-lint` could not find it
@@ -60,6 +60,7 @@ resolved (10)
 - `F-549` · tools/blong-dev — The failure message hides the signal that killed the child
 - `F-629` · tools/blong-dev — A subset storybook stage called every other site unknown
 - `F-661` · tools/blong-dev — refs --dangling and audit disagree about which references resolve
+- `F-691` · tools/blong-dev — user --role split a role name on its space
 
 <!-- /memory:index -->
 
@@ -664,3 +665,14 @@ be read as proof that a specific entry is cited.
 
 resolved: the three commands share one implementation now (D-719) and all fail on a body reference
 nothing resolves; the 92 it found are reworked and the count is zero
+
+### F-691 — user --role split a role name on its space
+
+> _2026-11-06 · tools/blong-dev · resolved_
+
+blong-dev user add --role 'Sport Customer' answered unknown role Sport. parseRoleNames split the
+value on whitespace as well as commas, which was harmless while every role was one word and breaks
+as soon as a realm names one after itself with a space. It now splits on commas only, and the test
+that asserted the whitespace form was replaced by one that keeps Sport Admin whole.
+
+commas only; a realm role keeps its space

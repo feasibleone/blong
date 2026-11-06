@@ -46,8 +46,11 @@ test('withDefaults', t => {
 
     t.test('generates browser permission defaults', t => {
         const result = withDefaults({subject: 'finance', object: 'payment'});
-        t.equal(result.browser.permission.browse, 'finance.payment.browse');
+        // The browse gate is the action the page calls, not a `.browse` name no
+        // role is granted — the menubar filters entries on it.
+        t.equal(result.browser.permission.browse, 'finance.payment.find');
         t.equal(result.browser.permission.add, 'finance.payment.add');
+        t.equal(result.browser.permission.delete, 'finance.payment.remove');
         t.end();
     });
 

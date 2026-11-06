@@ -23,11 +23,26 @@
 # placeholders, substituted per realm at scaffold time.
 #
 # Capability names are the NON-dotted handler names (the default convention).
+#
+# Two sets of roles, and they answer different questions:
+#
+#   - `Admin`, `Manager`, `Customer`, `Guest` are the deployment-wide roles a realm
+#     merges its capabilities into. They are declared by `blong-access`; the lines
+#     here are how this realm joins them.
+#   - `$Subject Admin` … are this realm's own roles. A deployment loads several
+#     realms, so "can see the sport register" and "can do anything" are not the
+#     same grant: these four name only capabilities of this realm, and
+#     `loginCapability` (which is realm-independent and is what lets the holder
+#     open the portal at all).
 role:
   Admin: $subjectManage
   Manager: $subjectMaintain
   Customer: $subjectView
   Guest: $subjectView
+  $Subject Admin: $subjectManage,loginCapability
+  $Subject Manager: $subjectMaintain,loginCapability
+  $Subject Customer: $subjectView,loginCapability
+  $Subject Guest: $subjectView,loginCapability
 capability:
   $subjectManage: $subject$ObjectAdd,$subject$ObjectFind,$subject$ObjectGet,$subject$ObjectEdit,$subject$ObjectRemove,subject.object.schema
   $subjectMaintain: $subject$ObjectAdd,$subject$ObjectFind,$subject$ObjectGet,$subject$ObjectEdit,subject.object.schema

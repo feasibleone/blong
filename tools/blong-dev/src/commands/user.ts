@@ -127,11 +127,17 @@ export interface IUserAddOptions {
 /** A parsed `parseArgs` result, as `readConnection` and this module both need it. */
 type IParsed = ReturnType<typeof parseArgs>;
 
-/** Split a `--role Admin,Manager` value into names, dropping blanks and repeats. */
+/**
+ * Split a `--role Admin,Manager` value into names, dropping blanks and repeats.
+ *
+ * Only a comma separates names: a realm-scoped role is named with a space
+ * (`Sport Admin`, `Party Customer`), so splitting on whitespace turned
+ * `--role 'Sport Admin'` into the unknown roles `Sport` and `Admin`.
+ */
 export function parseRoleNames(raw: string | undefined): string[] {
     if (!raw) return [];
     const names = raw
-        .split(/[,\s]+/)
+        .split(',')
         .map(name => name.trim())
         .filter(Boolean);
     return [...new Set(names)];

@@ -26,3 +26,11 @@ capability:
     gateway.dropdown.list
 role:
   Admin: gatewayManagement
+  # The gateway's own roles (`@@D-778`). Its single capability is a management one,
+  # so the ladder stops at Admin and Manager; Customer and Guest hold the login
+  # gate and nothing of this realm, which is what makes them safe to hand out
+  # while the realm grows a read-only capability.
+  Gateway Admin: gatewayManagement,loginCapability
+  Gateway Manager: gatewayManagement,loginCapability
+  Gateway Customer: loginCapability
+  Gateway Guest: loginCapability

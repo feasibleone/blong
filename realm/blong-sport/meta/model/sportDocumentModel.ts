@@ -14,6 +14,7 @@ export default model(
                 object: 'document',
                 objectTitle: 'Document',
                 public: true,
+                classifier: true,
                 nameField: 'document.documentTitle',
                 schema: {
                     properties: {

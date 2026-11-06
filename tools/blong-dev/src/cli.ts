@@ -41,6 +41,9 @@ switch (command) {
     case 'sql':
         await (await import('./commands/sql.ts')).sql(args);
         break;
+    case 'db':
+        await (await import('./commands/db.ts')).db(args);
+        break;
     case 'user':
         await (await import('./commands/user.ts')).user(args);
         break;

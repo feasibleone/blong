@@ -72,6 +72,15 @@ export interface IPortalConfig {
     theme?: string;
     home?: IAction;
     menu?: IMenuItem[];
+    /**
+     * How the model-generated groups and the configured `menu` combine.
+     *
+     * `merge` (default) adds the configured groups to the generated ones; `replace`
+     * drops the generated ones, so `menu` is the whole menubar. Read by the model
+     * aggregator before it answers `portalConfigGet` — the switch a realm with a
+     * hand-written menu sets instead of hiding every model (`@@D-777`).
+     */
+    menuMode?: 'merge' | 'replace';
     rightMenu?: IMenuItem[];
     /** The suite's brand: logo and organisation beside the title (`@@D-734`). */
     brand?: IPortalBrand;

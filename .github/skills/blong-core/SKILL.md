@@ -451,6 +451,13 @@ The login response also returns `permissions` (the resolved action names) for cl
 
 ### Extending access
 
+> **Realm-scoped roles.** Beyond the deployment-wide `Admin`/`Manager`/`Customer`/`Guest`, every
+> realm that seeds access declares four roles of its own, named after the realm with a space —
+> `Sport Admin`, `Sport Manager`, `Sport Customer`, `Sport Guest` — listing only that realm's
+> capabilities plus `loginCapability` (the login gate; without it the role cannot open the portal).
+> `blong-kopi` scaffolds the lines and kukum's `seed` primitive creates them in an older seed. A new
+> realm capability belongs in both the shared role and the realm-scoped role that should hold it.
+
 > **Capability/action naming convention**: use NON-dotted **handler names** by default
 > (`invoiceInvoiceAdd`, `invoiceManage`) in action/capability seeds and in the `permissions` /
 > `permissionMap` matching (the `accessAuthorizationList` handler returns methodIds with dots

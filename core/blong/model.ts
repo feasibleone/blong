@@ -189,6 +189,46 @@ export interface IModelDetail {
 }
 
 /**
+ * Where one generated page appears in the portal menu.
+ *
+ * Defaults keep a realm's pages in one group titled after its subject (`Sport`),
+ * which is fine until a realm has twenty of them: a menubar that long cannot fit
+ * a laptop screen. A model therefore says where it belongs instead of the realm
+ * rewriting the whole menu:
+ *
+ * - `classifier: true` on the model is shorthand for the common reference-data
+ *   root — every realm's classifiers live under one `Classifiers` menu, one
+ *   submenu per realm, so the pickers a form needs are found in one place.
+ * - `group` moves the page into another flat group (`Registry`).
+ * - `root` + `group` nests it two levels deep.
+ * - `hidden` keeps it out of the menu; the page is still reachable by method.
+ * - `order` is its position inside the group; the entries without one follow,
+ *   alphabetically by label, so a group a realm never ordered is simply sorted.
+ *
+ * Group titles are matched by title when several realms contribute (they merge),
+ * so a title shared between realms is one group with the entries of both.
+ */
+export interface IModelMenu {
+    /** Keep the page out of the generated menu (it stays reachable by method). */
+    hidden?: boolean;
+    /** Parent group. Defaults to the subject title (`Sport`), or `Classifiers`. */
+    root?: string;
+    /** Sub-group inside `root`; a classifier defaults to its subject title. */
+    group?: string;
+    /** Leaf label. Defaults to the page's own title. */
+    title?: string;
+    /** PrimeIcons class for the leaf, e.g. `pi pi-sitemap`. */
+    icon?: string;
+    /**
+     * Position inside the group: lowest first. Entries that name no order come
+     * after the ordered ones, alphabetically; a group where nothing is ordered is
+     * sorted alphabetically end to end. The comparison uses the English label,
+     * because that is what the model declares — a translation may sort differently.
+     */
+    order?: number;
+}
+
+/**
  * ModelSpec — the browser-side description of one "subject.object" domain entity.
  *
  * Used by modelFactory() to auto-generate Browse/New/Open/Report pages.
@@ -200,6 +240,16 @@ export interface IModelSpec {
     object: string;
     /** Human-readable title, e.g. 'Coral'. Defaults to capitalized object. */
     objectTitle?: string;
+    /** Menu group title for the subject's pages. Defaults to capitalized subject. */
+    subjectTitle?: string;
+    /**
+     * This object is reference data a form picks from — a classifier (sport,
+     * discipline, area, …). Its page joins the shared `Classifiers` menu under
+     * this realm's submenu instead of padding the realm's own group.
+     */
+    classifier?: boolean;
+    /** Menu placement override for the generated browse page. */
+    menu?: IModelMenu;
     /** Primary key field path, e.g. 'coralId'. Defaults to `${object}Id`. */
     keyField?: string;
     /** Name field path (dotted), e.g. 'coral.coralName'. Defaults to `${object}.${object}Name`. */

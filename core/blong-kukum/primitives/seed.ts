@@ -6,7 +6,7 @@ import {
     type PrimitiveDescriptor,
     type PrimitiveFile,
 } from '../engine.ts';
-import {appendCommaListValue, readPlainSource} from '../merge.ts';
+import {appendCommaListValue, ensureCommaListValue, readPlainSource} from '../merge.ts';
 import {seedRowName} from './shared.ts';
 
 /** `seed` — production and test seed data, including the RBAC grant. */
@@ -70,6 +70,8 @@ const seed: PrimitiveDescriptor = {
     },
     compose({host, root, context}) {
         const files = [seedSource(context)];
+        /** The realm name as a person writes it: `test` → `Test`, for role names. */
+        const Subject = capitalize(context.subject);
         const rbac = readPlainSource(host, root, RBAC_SEED);
         if (!rbac) {
             // A realm that ships no RBAC seed must hear that its entity is
@@ -118,6 +120,43 @@ const seed: PrimitiveDescriptor = {
                             .map(capability => `'${capability}'`)
                             .join(' or ')}; add the ${context.object} actions to them by hand ` +
                             'or every call will be denied through the gateway.',
+                    ],
+                },
+            ];
+        }
+        /**
+         * The realm-scoped roles (`Test Admin`, `Test Manager`, …).
+         *
+         * One deployment loads several realms, so the shared `Admin` role is not
+         * enough to hand somebody "the sport pages": these roles grant this
+         * realm's capabilities and nothing from a neighbour. `loginCapability`
+         * rides along because the login gate is realm-independent — without it
+         * the role could not open the portal at all.
+         *
+         * A realm scaffolded before the roles existed gains them here, which is
+         * why the entries are *created* rather than appended to.
+         */
+        const realmRoles: [string, string[]][] = [
+            [`${Subject} Admin`, [`${context.subject}Manage`, 'loginCapability']],
+            [`${Subject} Manager`, [`${context.subject}Maintain`, 'loginCapability']],
+            [`${Subject} Customer`, [`${context.subject}View`, 'loginCapability']],
+            [`${Subject} Guest`, [`${context.subject}View`, 'loginCapability']],
+        ];
+        const missingRoles: string[] = [];
+        for (const [role, capabilities] of realmRoles) {
+            const next = ensureCommaListValue(merged, 'role', role, capabilities);
+            if (next === undefined) missingRoles.push(role);
+            else merged = next;
+        }
+        if (missingRoles.length) {
+            return [
+                {
+                    ...files[0],
+                    notices: [
+                        `${RBAC_SEED} does not declare ${missingRoles
+                            .map(entry => `'${entry}'`)
+                            .join(' or ')}; add it by hand, or the realm will have no role ` +
+                            'scoped to its own pages.',
                     ],
                 },
             ];

@@ -153,30 +153,39 @@ defaults based on the naming convention.
 
 ---
 
-## Step 2 — Menu Wiring
+## Step 2 — Menu Placement
 
-Add a `.portal` file to register menu items:
+The model aggregator builds the menu from the specs — a `.portal` file is **only** needed for a page
+that is not a model. Every model's browse page joins the group named by `subjectTitle` (the
+capitalized subject by default), and two spec fields say where else it belongs:
 
 ```typescript
-// marine/component/marine.portal.ts
-import {handler} from '@feasibleone/blong';
+// Reference data a form picks from: one shared `Classifiers` root, one submenu per realm.
+classifier: true,
 
-export default handler(({handler: {portalMenuItem}}) => ({
-    async 'marine.portal.params'() {
-        return {
-            menu: [
-                {
-                    title: 'Marine',
-                    items: [
-                        await portalMenuItem('marine.coral.browse'),
-                        await portalMenuItem('marine.family.browse'),
-                    ],
-                },
-            ],
-        };
-    },
-}));
+// A realm with many pages splits them itself, without hand-writing the menu:
+menu: {group: 'Registry'},                        // flat group of its own
+menu: {group: 'Registry', order: 3},              // at a chosen position in it
+menu: {root: 'Reference', group: 'Sport'},        // nested two levels deep
+menu: {title: 'Athletes', icon: 'pi pi-user'},    // leaf label and icon
+menu: {hidden: true},                             // no entry (reachable by method)
 ```
+
+- **`subjectTitle`** renames the subject's group (`Translations` for the two core dictionary
+  models).
+- **`classifier: true`** is the flag for dropdown sources (`sport`, `discipline`, `area`, …). All
+  realms' classifiers share the `Classifiers` menubar group, each under its own submenu, which keeps
+  a realm's own group to the pages people open all day. The root is listed last.
+- **A group title is the merge key.** Two realms that both declare `Registry` get one group holding
+  both sets of pages; group ids are slugs of the title, so they are unique and language-independent.
+- **`order` is the page's position inside its group** — lowest first, and the pages that name none
+  follow alphabetically by their English label. A group where nothing is ordered is simply sorted,
+  so alphabetical is what a realm gets by doing nothing.
+- **A hand-written menubar** is `ui.portal.portal.menu` (it _adds_ to the generated groups) plus
+  `menuMode: 'replace'` when it should be the whole menubar instead.
+
+A realm that genuinely writes its pages by hand answers `portalConfigGet` itself, as `blong-realm`
+does; the helper `portalMenuItem(method)` resolves a page to a menu leaf.
 
 ---
 

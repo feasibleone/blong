@@ -1,5 +1,12 @@
 role:
   Admin: organizationView,organizationEdit,organizationDelete,personView,personEdit,personDelete,unitView,unitEdit,unitDelete,consentView,consentEdit,consentDelete
+  # Party's own roles (`@@D-778`): the three capabilities per object collapse into
+  # the usual ladder — Admin changes and deletes, Manager changes, Customer and
+  # Guest read. `loginCapability` is the login gate, not a party grant.
+  Party Admin: organizationView,organizationEdit,organizationDelete,personView,personEdit,personDelete,unitView,unitEdit,unitDelete,consentView,consentEdit,consentDelete,loginCapability
+  Party Manager: organizationView,organizationEdit,personView,personEdit,unitView,unitEdit,consentView,consentEdit,loginCapability
+  Party Customer: organizationView,personView,unitView,consentView,loginCapability
+  Party Guest: organizationView,personView,unitView,consentView,loginCapability
 capability:
   organizationView: party.organization.find,party.organization.get
   organizationEdit: party.organization.edit,party.organization.add

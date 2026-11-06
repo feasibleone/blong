@@ -28,6 +28,12 @@ role:
   Manager: agentMaintain
   Customer: agentView
   Guest: agentView
+  # This realm's own roles (`@@D-778`): the same ladder scoped to the agent
+  # pages, plus the realm-independent login gate.
+  Agent Admin: agentManage,loginCapability
+  Agent Manager: agentMaintain,loginCapability
+  Agent Customer: agentView,loginCapability
+  Agent Guest: agentView,loginCapability
 capability:
   agentManage: agentSessionGet,agentSessionRun,agentTicketClaim,agentTicketRelease,agentAnswerReceive,agentRecoveryScan
   agentMaintain: agentSessionGet,agentTicketClaim,agentTicketRelease,agentAnswerReceive

@@ -83,6 +83,27 @@ user:
 Realm-specific grants belong in the owning realm's own merge file (same handler, same format); both
 files are additive and idempotent.
 
+### Realm-scoped roles
+
+A deployment loads several realms, so the shared `Admin` role is the wrong grant for "may use the
+sport pages": it carries every other realm's capabilities as well. Each realm therefore also
+declares four roles of its own, named after the realm with a space:
+
+```yaml
+# realm/blong-sport/meta/db/accessAuthorizationMerge.yaml
+role:
+    Admin: sportManage # the deployment-wide role this realm still merges into
+    Sport Admin: sportManage,loginCapability
+    Sport Manager: sportMaintain,loginCapability
+    Sport Customer: sportView,loginCapability
+    Sport Guest: sportView,loginCapability
+```
+
+The capability names are the realm's own; `loginCapability` is not a realm grant but the login gate,
+and a role without it exists and can do nothing. `blong-kopi` scaffolds the four lines, and kukum's
+`seed` primitive creates them in a seed that predates them, so a realm gains the roles when it
+scaffolds its next entity.
+
 ## 4. Role bits
 
 | Situation                                | Behaviour                                                                       | Error               |

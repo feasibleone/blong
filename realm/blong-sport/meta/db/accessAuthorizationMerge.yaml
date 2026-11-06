@@ -1,7 +1,9 @@
 # RBAC production seed — grants the `sport` capabilities to the realm's roles.
 #
-# The roles are production (`Admin`, `Manager`, `Customer`, `Guest`); only the accounts that hold
-# them in a test run live in `meta/dbTest`.
+# Two sets of roles are granted below. `Admin`, `Manager`, `Customer` and `Guest` are the
+# deployment-wide roles every realm merges into; `Sport Admin` … are this realm's own, so a
+# deployment can hand out the sport pages without handing out every other realm's capabilities
+# (`@@D-778`). Only the accounts that hold a role in a test run live in `meta/dbTest`.
 #
 # A capability lists the **dotted method names** the caller invokes
 # (`sport.athlete.find`), not the handler names (`sportAthleteFind`) — the
@@ -41,6 +43,14 @@ role:
   Manager: sportMaintain
   Customer: sportView
   Guest: sportView
+  # This realm's own roles: the same capability ladder, but scoped to the sport
+  # pages. A deployment loads several realms, so "may run the register" and "may
+  # do anything anywhere" are different grants. `loginCapability` is not a sport
+  # grant — it is the login gate — but a role without it cannot open the portal.
+  Sport Admin: sportManage,loginCapability
+  Sport Manager: sportMaintain,loginCapability
+  Sport Customer: sportView,loginCapability
+  Sport Guest: sportView,loginCapability
 capability:
   sportView: sport.athlete.find,sport.athlete.get,sport.coach.find,sport.coach.get,sport.specialist.find,sport.specialist.get,sport.federation.find,sport.federation.get,sport.club.find,sport.club.get,sport.sport.find,sport.sport.get,sport.discipline.find,sport.discipline.get,sport.category.find,sport.category.get,sport.cycle.find,sport.cycle.get,sport.area.find,sport.area.get,sport.competition.find,sport.competition.get,sport.edition.find,sport.edition.get,sport.participation.find,sport.participation.get,sport.result.find,sport.result.get,sport.campaign.find,sport.campaign.get,sport.qualification.find,sport.qualification.get,sport.document.find,sport.document.get,sport.attachment.find,sport.attachment.get,sport.award.find,sport.award.get,sport.conferral.find,sport.conferral.get,sport.coaching.find,sport.coaching.get,sport.support.find,sport.support.get,sport.affiliation.find,sport.affiliation.get,sport.dropdown.list,sport.portal.params,subject.object.schema,party.dropdown.list
   sportMaintain: sport.athlete.find,sport.athlete.get,sport.coach.find,sport.coach.get,sport.specialist.find,sport.specialist.get,sport.federation.find,sport.federation.get,sport.club.find,sport.club.get,sport.sport.find,sport.sport.get,sport.discipline.find,sport.discipline.get,sport.category.find,sport.category.get,sport.cycle.find,sport.cycle.get,sport.area.find,sport.area.get,sport.competition.find,sport.competition.get,sport.edition.find,sport.edition.get,sport.participation.find,sport.participation.get,sport.result.find,sport.result.get,sport.campaign.find,sport.campaign.get,sport.qualification.find,sport.qualification.get,sport.document.find,sport.document.get,sport.attachment.find,sport.attachment.get,sport.award.find,sport.award.get,sport.conferral.find,sport.conferral.get,sport.coaching.find,sport.coaching.get,sport.support.find,sport.support.get,sport.affiliation.find,sport.affiliation.get,sport.dropdown.list,sport.portal.params,subject.object.schema,sport.athlete.add,sport.athlete.edit,sport.coach.add,sport.coach.edit,sport.specialist.add,sport.specialist.edit,sport.federation.add,sport.federation.edit,sport.club.add,sport.club.edit,sport.sport.add,sport.sport.edit,sport.discipline.add,sport.discipline.edit,sport.category.add,sport.category.edit,sport.cycle.add,sport.cycle.edit,sport.area.add,sport.area.edit,sport.competition.add,sport.competition.edit,sport.edition.add,sport.edition.edit,sport.participation.add,sport.participation.edit,sport.result.add,sport.result.edit,sport.campaign.add,sport.campaign.edit,sport.qualification.add,sport.qualification.edit,sport.document.add,sport.document.edit,sport.attachment.add,sport.attachment.edit,sport.award.add,sport.award.edit,sport.conferral.add,sport.conferral.edit,sport.coaching.add,sport.coaching.edit,sport.support.add,sport.support.edit,sport.affiliation.add,sport.affiliation.edit

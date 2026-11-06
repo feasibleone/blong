@@ -16,16 +16,15 @@ import './Portal.css';
 import {useQueryClient} from '@tanstack/react-query';
 import React, {Suspense, useCallback} from 'react';
 import {useBlong} from '../../context/BlongContext.js';
-import {invalidateDropdowns} from '../../model/dropdownRegistry.js';
 import {feedbackAttributes, portalFeedbackId} from '../../feedback/ids.js';
 import {useFeedbackActive} from '../../feedback/useFeedbackTarget.js';
 import {usePortal} from '../../hooks/usePortal.js';
 import {useTranslate} from '../../hooks/useText.js';
 import testid from '../../lib/testid.js';
+import {invalidateDropdowns} from '../../model/dropdownRegistry.js';
 import {useAppStore} from '../../state/appStore.js';
 import type {IMenuItem, IPortalBrand, IPortalConfig} from '../../types/portal.js';
 import {Button} from '../Button/Button.js';
-import {ErrorDialog} from '../Error/Error.js';
 import {Hint} from '../Hint/Hint.js';
 import {Loader} from '../Loader/Loader.js';
 import {Text} from '../Text/Text.js';
@@ -61,6 +60,20 @@ class TabErrorBoundary extends React.Component<
 
 // ── Menu helpers ───────────────────────────────────────────────────────────
 
+/**
+ * Whether the caller may see an entry that names `permission`.
+ *
+ * A page declares the action it needs in the slice it answers with
+ * (`permission`), so the menubar can leave out what the session cannot use. It
+ * used to list every page of every realm and let each one answer 403 on open,
+ * which showed an administrator's menu to a role scoped to one realm and turned
+ * a missing grant into an error dialog after a click.
+ */
+type IAllowed = (permission: string | undefined) => boolean;
+
+/** The method id the gateway authorizes: lower case, dots removed. */
+const normalizeMethodId = (name: string): string => name.toLowerCase().replaceAll('.', '');
+
 async function buildMenuModel(
     items: IMenuItem[] | undefined,
     command: MenuItem['command'],
@@ -73,12 +86,14 @@ async function buildMenuModel(
               label?: string,
           ) => Record<string, string> | undefined)
         | undefined,
+    allowed: IAllowed,
 ): Promise<MenuItem[] | undefined> {
     if (!items) return undefined;
-    return Promise.all(
-        items.map(async item => {
+    const built = await Promise.all(
+        items.map(async (item): Promise<MenuItem | undefined> => {
             const action = typeof item === 'string' ? {method: item} : item;
             if ('items' in action) {
+                if (!allowed(action.permission)) return undefined;
                 // Derive a stable, language-independent group id from the first child method name.
                 // e.g. items=['marine.coral.browse', ...] → groupId='marine'
                 const firstChild = action.items?.find(
@@ -89,10 +104,20 @@ async function buildMenuModel(
                 const firstMethod =
                     typeof firstChild === 'string' ? firstChild : (firstChild?.method ?? '');
                 const groupId = action.id ?? firstMethod.split('.')[0] ?? '';
+                const children = await buildMenuModel(
+                    action.items,
+                    command,
+                    handler,
+                    t,
+                    feedback,
+                    allowed,
+                );
+                // A group whose pages are all out of reach has nothing to open.
+                if (!children?.length) return undefined;
                 return {
                     label: t(action.title),
                     icon: action.icon,
-                    items: await buildMenuModel(action.items, command, handler, t, feedback),
+                    items: children,
                     ...(groupId && {
                         template: (
                             item: MenuItem,
@@ -130,6 +155,9 @@ async function buildMenuModel(
                     component: React.ComponentType;
                 };
                 const menuId = (action.method ?? '').replace(/\./g, '-');
+                // A page the session cannot use is not offered: the slice names the
+                // action its first read calls, and the session holds the granted ones.
+                if (!allowed(permission)) return undefined;
                 return {
                     label: t(title),
                     icon,
@@ -164,6 +192,7 @@ async function buildMenuModel(
             } else return {label: action.title, icon: action.icon};
         }),
     );
+    return built.filter((item): item is MenuItem => item !== undefined);
 }
 
 export interface IPortalProps {
@@ -181,7 +210,36 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
     // translated when the menu model is built (`D-625`).
     const t = useTranslate();
     const openTab = useAppStore(s => s.openTab);
+    const permissions = useAppStore(s => s.auth.permissions);
     const queryClient = useQueryClient();
+
+    /**
+     * The actions the session holds, in the form the gateway compares them.
+     *
+     * A capability lists the method the caller invokes, and realms spell it two
+     * ways: `sport.athlete.find` and `accessUserFind` are the same action to
+     * `access.authorization.list` (it strips dots and case), so the menu compares
+     * the same way — or a page granted through the camelCase spelling would be
+     * filtered out while the server lets its calls through.
+     */
+    const granted = React.useMemo(() => {
+        if (typeof permissions === 'boolean') return undefined;
+        return new Set(
+            Object.entries(permissions)
+                .filter(([, value]) => value === true)
+                .map(([name]) => normalizeMethodId(name)),
+        );
+    }, [permissions]);
+
+    /** The action a page needs, as the session holds it (`true` for every page in a test). */
+    const allowed = useCallback<IAllowed>(
+        permission => {
+            if (!permission) return true;
+            if (!granted) return permissions === true;
+            return granted.has(normalizeMethodId(permission));
+        },
+        [granted, permissions],
+    );
 
     const command = useCallback(
         ({
@@ -201,7 +259,17 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
                     // always gave the fresh answer; opening a page is the same moment, so it
                     // asks again (`@@D-748`).
                     invalidateDropdowns();
-                    void queryClient.invalidateQueries();
+                    // Only the opened page's own reads: invalidating every query
+                    // refreshed the tabs standing behind it too, so a page whose
+                    // grants are missing answered 403 again on every menu click and
+                    // the dialog the reader had just dismissed came back with it.
+                    const namespace = action.split('.').slice(0, -1).join('.');
+                    void queryClient.invalidateQueries({
+                        predicate: query =>
+                            namespace === '' ||
+                            (typeof query.queryKey[0] === 'string' &&
+                                (query.queryKey[0] as string).startsWith(`${namespace}.`)),
+                    });
                     openTab({
                         id: `${action}?${JSON.stringify(params)}`,
                         actionName: action,
@@ -230,8 +298,10 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
         [feedbackActive],
     );
     React.useEffect(() => {
-        buildMenuModel(portalConfig?.menu, command, handler, t, feedbackTarget).then(setMenu);
-    }, [portalConfig?.menu, command, handler, t, feedbackTarget]);
+        buildMenuModel(portalConfig?.menu, command, handler, t, feedbackTarget, allowed).then(
+            setMenu,
+        );
+    }, [portalConfig?.menu, command, handler, t, feedbackTarget, allowed]);
 
     const brand = brandOf(portalConfig);
     const start =
@@ -252,7 +322,6 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
         <div className={`blong-portal ${className}`}>
             <Loader />
             <Hint />
-            <ErrorDialog />
 
             <Menubar
                 start={start}

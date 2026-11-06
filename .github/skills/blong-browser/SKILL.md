@@ -532,6 +532,20 @@ Navigation uses the **action system** — clicking a menu item calls `openTab({a
 { name, title, home, menu: [{title, action, icon, items?}] }
 ```
 
+The menu a realm gets is generated from its models: each browse page joins the group named by
+`IModelSpec.subjectTitle`, `classifier: true` sends reference data to a shared `Classifiers` root
+with one submenu per realm, and `IModelSpec.menu` ({group, root, title, icon, hidden, order})
+overrides the placement per page (`@@D-777`). Inside a group, `order` puts a page at a chosen
+position and everything else follows alphabetically. Group titles are the merge key across realms;
+group ids are slugs of the title and reach the DOM as `data-testid="portal-menu-<id>"`, which is
+what a Playwright spec should assert on rather than a translated label. A realm that hand-writes the
+whole menubar sets `ui.portal.portal.menu` and `menuMode: 'replace'`.
+
+The shell **hides what the session cannot open**: a page slice declares the action it needs in
+`permission` (a model page answers with its `find` action), and the menubar leaves out an entry —
+and a group left with no entries — whose name the session does not hold (`@@D-781`). The comparison
+normalizes dots and case, because a capability may be seeded as `accessUserFind`.
+
 ---
 
 ## Adapters and orchestrators
@@ -684,8 +698,8 @@ a batch of element-anchored comments to render as prose for a coding agent. The 
 `blong-browser`; the reports are stored by a realm (`realm/blong-feedback`), named through config so
 the browser package depends on neither.
 
-- **Configuration** — `ui.portal.portal.feedback` in the suite's `index.browser.ts`:
-  `enabled`, `shortcut` (`F2`), `submit`, `permission`, `find`, `get`, `shot`, `prose`, `update`,
+- **Configuration** — `ui.portal.portal.feedback` in the suite's `index.browser.ts`: `enabled`,
+  `shortcut` (`F2`), `submit`, `permission`, `find`, `get`, `shot`, `prose`, `update`,
   `maxShotBytes`. `useFeedbackConfig` reads the **static** portal config first and the composed
   document second (`@@D-666`).
 - **Addressing** — a component spreads `useFeedbackTarget(kind, name, label)` (a leaf) or
@@ -700,21 +714,22 @@ the browser package depends on neither.
   click does not run a menu command, a table does not page and a hover tooltip does not vanish;
   `useFeedbackFreeze` holds `ActionHint`'s lifetime. Events inside `[data-feedback-ui]` pass.
 - **Geometry** (`placement.ts`) — `placeCallout`, `borderPoint`, `connectorOf`, `moveBox`,
-  `resizeBox`, `MIN_CALLOUT`, `toFraction`, `arrowHeadPoints`. A box is stored as a **fraction of the
-  cropped region**, never in pixels. `moveBox`, `resizeBox`, `MIN_CALLOUT` and `arrowHeadPoints` are
-  exported, so a page that draws the same boxes again (the feedback realm's review page) clamps and
-  points them by the same rules instead of re-deriving them — draw the connectors in the picture's
-  own pixel `viewBox`, or the arrowhead is stretched into an ellipse.
+  `resizeBox`, `MIN_CALLOUT`, `toFraction`, `arrowHeadPoints`. A box is stored as a **fraction of
+  the cropped region**, never in pixels. `moveBox`, `resizeBox`, `MIN_CALLOUT` and `arrowHeadPoints`
+  are exported, so a page that draws the same boxes again (the feedback realm's review page) clamps
+  and points them by the same rules instead of re-deriving them — draw the connectors in the
+  picture's own pixel `viewBox`, or the arrowhead is stretched into an ellipse.
 - **Capture** (`capture.ts`) — `getDisplayMedia` → canvas → data URL, cropped to the chosen region
   and scaled to the 700 000-byte ceiling. Needs a secure context and a picker, so `denied` and
   `unavailable` are normal outcomes.
 - **The off path is free** (`@@D-667`) — `App` publishes one activity boolean; every hook answers
-  `undefined` when it is off, and a call site writes `{...target}` or `target?.('button', …)`
-  rather than calling a factory and a translator up front. No provider, no attribute, no store
+  `undefined` when it is off, and a call site writes `{...target}` or `target?.('button', …)` rather
+  than calling a factory and a translator up front. No provider, no attribute, no store
   subscription. Keep it that way in new annotations.
 
 Concept: [feedback](../../../docs/blong/docs/concepts/feedback.md). Pattern — configuration, the
-realm, the RBAC grants, the review page, the tests: [feedback](../../../docs/blong/docs/patterns/feedback.md).
+realm, the RBAC grants, the review page, the tests:
+[feedback](../../../docs/blong/docs/patterns/feedback.md).
 
 ---
 

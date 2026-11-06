@@ -9,6 +9,9 @@ export default model(
                 object: 'sport',
                 objectTitle: 'Sport',
                 public: true,
+                // Reference data a form picks from: the page belongs under the
+                // shared Classifiers menu, not in the realm's own group. @@D-780
+                classifier: true,
                 nameField: 'sport.sportName',
                 schema: {
                     properties: {

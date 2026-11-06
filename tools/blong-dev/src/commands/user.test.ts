@@ -23,9 +23,14 @@ import {
     type IUserClient,
 } from './user.ts';
 
-test('parseRoleNames splits, trims and de-duplicates', t => {
+test('parseRoleNames splits on commas, so a realm role keeps its space', t => {
     t.same(parseRoleNames('Admin, Manager'), ['Admin', 'Manager'], 'comma separated');
-    t.same(parseRoleNames('Admin Manager'), ['Admin', 'Manager'], 'whitespace separated');
+    t.same(parseRoleNames('Sport Admin'), ['Sport Admin'], 'a name with a space stays whole');
+    t.same(
+        parseRoleNames('Sport Admin,Test Guest'),
+        ['Sport Admin', 'Test Guest'],
+        'several realm roles',
+    );
     t.same(parseRoleNames(' Admin ,, Admin ,Customer '), ['Admin', 'Customer'], 'duplicates drop');
     t.same(parseRoleNames(undefined), [], 'absent means no roles');
     t.same(parseRoleNames(''), [], 'empty means no roles');

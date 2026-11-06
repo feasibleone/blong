@@ -9,6 +9,7 @@ export default model(
                 object: 'area',
                 objectTitle: 'Expert Area',
                 public: true,
+                classifier: true,
                 nameField: 'area.areaName',
                 schema: {
                     properties: {

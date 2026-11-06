@@ -11,6 +11,16 @@ role:
   # No `login` capability → the user cannot establish/renew a session
   # (the login-eligibility gate is always on).
   NoLogin: guestBasic
+  # The access realm's own roles (`@@D-778`). The four above are the
+  # deployment-wide ones every realm merges into; these scope the same ladder to
+  # the access pages, so an administrator can be given the user/role/capability
+  # screens without also holding every other realm's capabilities. The dictionary
+  # (`translationManage`) stays with the shared `Admin`: it is a cross-cutting
+  # privilege, not part of administering users.
+  Access Admin: accessModelAdmin,loginCapability
+  Access Manager: accessModelMaintain,loginCapability
+  Access Customer: accessModelView,loginCapability
+  Access Guest: guestBasic,loginCapability
 
 capability:
   guestBasic: accessTestGuest,access.profile.get
@@ -72,6 +82,26 @@ capability:
     accessActionFind,accessPolicyFind,accessFlowFind,accessAccessFind,
     accessSessionFind,accessSessionClose,accessAuditFind,
     accessAclFind,accessAclGet,accessAclAdd,accessAclEdit,accessAclRemove,accessAclList,
+    accessDropdownList,subject.object.schema
+  # The same access pages without the destructive half: read + create/edit, which
+  # is what `Access Manager` holds. `accessPolicy`/`accessFlow`/`accessAccess` are
+  # read-only entities in the UI and stay reads here too.
+  accessModelMaintain: >-
+    accessUserFind,accessUserGet,accessUserAdd,accessUserEdit,
+    accessRoleFind,accessRoleGet,accessRoleAdd,accessRoleEdit,
+    accessCapabilityFind,accessCapabilityGet,accessCapabilityAdd,accessCapabilityEdit,
+    accessActionFind,accessPolicyFind,accessFlowFind,accessAccessFind,
+    accessSessionFind,accessAuditFind,
+    accessAclFind,accessAclGet,accessAclAdd,accessAclEdit,accessAclList,
+    accessDropdownList,subject.object.schema
+  # Read-only: what `Access Customer` holds. The pages still render — browse and
+  # open are reads, and the dropdown and schema reads are what they load.
+  accessModelView: >-
+    accessUserFind,accessUserGet,accessRoleFind,accessRoleGet,
+    accessCapabilityFind,accessCapabilityGet,
+    accessActionFind,accessPolicyFind,accessFlowFind,accessAccessFind,
+    accessSessionFind,accessAuditFind,
+    accessAclFind,accessAclGet,accessAclList,
     accessDropdownList,subject.object.schema
 policy:
   password:

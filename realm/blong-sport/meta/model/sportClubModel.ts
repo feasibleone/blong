@@ -9,6 +9,7 @@ export default model(
                 object: 'club',
                 objectTitle: 'Sports Club',
                 public: true,
+                menu: {group: 'Registry', order: 2},
                 nameField: 'club.legalName',
                 schema: {
                     properties: {

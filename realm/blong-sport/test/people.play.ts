@@ -25,6 +25,26 @@ test.describe('People', () => {
         removeMethod: 'sport.athlete.remove',
     });
 
+    /**
+     * The coach and the specialist this spec creates, removed by their own
+     * prefixes. Without these the file added one of each per run and never took
+     * them away: the counts grew with every local suite, and a later cleanup's
+     * confirmation picture then showed twelve rows where the baseline has one.
+     */
+    cleanupModel(test, expect, {
+        subject: 'sport',
+        object: 'coach',
+        search: 'ENT-PLAY-002',
+        removeMethod: 'sport.coach.remove',
+    });
+
+    cleanupModel(test, expect, {
+        subject: 'sport',
+        object: 'specialist',
+        search: 'ENT-PLAY-003',
+        removeMethod: 'sport.specialist.remove',
+    });
+
     browseModel(test, expect, {
         subject: 'sport',
         object: 'athlete',

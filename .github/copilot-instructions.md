@@ -725,6 +725,15 @@ repository's own configuration files:
   `--output json` is the agent-friendly default for non-TTY. Implemented in
   `tools/blong-dev/src/commands/sql.ts`. Example: `blong-dev sql "SELECT * FROM access_role"`.
 
+- **`blong-dev db`** — database housekeeping for the dev stack. `backup` dumps one database (or
+  `--all`) through the same connection as `sql`, with no `mysqldump` and no `kubectl exec`, and
+  writes it as one `.zip` into a predefined host folder — `--output`, else `$BLONG_BACKUP_DIR`, else
+  `.blong_devrc` `backup.path`, else `dev/backup` beside `rush.json` (git-ignored, and the folder a
+  k3d node can mount as a local-path volume). Take one before a schema change or a seed re-run:
+  `blong-dev db backup --database blong-sport`. `list` prints the databases on the server. The dump
+  is tables, views and rows — no routines, triggers or events. Implemented in
+  `tools/blong-dev/src/commands/db.ts` on `src/db/dump.ts` and `src/db/zip.ts` (`@@D-779`).
+
 - **`blong-dev user`** — create an access user straight in a database, which is how a first login is
   bootstrapped when no gateway is reachable:
   `blong-dev user add admin --password change-me --role Admin` writes the `core_resource` (the login

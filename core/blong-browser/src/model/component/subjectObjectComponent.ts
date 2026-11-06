@@ -2,17 +2,21 @@ import type {IAdapter, IComponent, IHandlerProxy, IModelSpec} from '@feasibleone
 import {withDefaults} from '@feasibleone/blong-mock';
 import type {IPortalConfig} from '../../index.js';
 import {mergePortalConfigs} from '../../portalConfig.js';
+import {addMenuEntry, menuGroups, type IMenuNode} from '../menu.js';
 import {subjectObjectBrowse} from './subjectObjectBrowse.js';
 import {subjectObjectNew} from './subjectObjectNew.js';
 import {subjectObjectOpen} from './subjectObjectOpen.js';
 import {subjectObjectReport} from './subjectObjectReport.js';
 
+/** The portal slice this aggregator reads: the portal config, read before it is composed. */
+type ModelPortalConfig = Partial<IPortalConfig>;
+
 export default async function component(
     this: IAdapter<
         {
-            portal?: IPortalConfig;
+            portal?: ModelPortalConfig;
             context?: {
-                menus?: Record<string, unknown[]>;
+                menus?: Record<string, IMenuNode[]>;
             };
         },
         object
@@ -25,7 +29,7 @@ export default async function component(
     this.config!.context.menus ||= {};
     for (const rawModel of models) {
         const model = withDefaults(rawModel);
-        const {subject, object, subjectTitle} = model;
+        const {subject, object} = model;
         components[`${subject}.${object}.browse`] = await subjectObjectBrowse(model, blong);
         components[`${subject}.${object}.new`] = await subjectObjectNew(model, blong);
         components[`${subject}.${object}.open`] = await subjectObjectOpen(model, blong);
@@ -41,19 +45,22 @@ export default async function component(
                 );
             }
         }
-        this.config!.context.menus[`${subjectTitle}`] ||= [];
-        this.config!.context.menus[`${subjectTitle}`].push(`${subject}.${object}.browse`);
+        // Where the page sits is the model's decision (`classifier`, `menu`), not
+        // the aggregator's: twenty pages in one group overflow a menubar.
+        addMenuEntry(this.config!.context.menus, model);
     }
 
     components.portalConfigGet = async () => {
-        const portal = (this.config!.portal ?? {}) as Partial<IPortalConfig>;
-        const generatedMenu = Object.entries(this.config!.context?.menus || {}).map(
-            ([subject, items]) => ({title: subject, items}),
-        );
+        const portal: ModelPortalConfig = this.config!.portal ?? {};
+        const generatedMenu = menuGroups(this.config!.context?.menus ?? {});
         // The suite's `ui.portal.portal.menu` adds groups to the menu the models
         // generate; it must not replace it. `merge` shallow-copies arrays, so a
-        // suite that adds `Test` used to hide every model page.
-        const {menu} = mergePortalConfigs([{menu: generatedMenu}, portal]);
+        // suite that adds `Test` used to hide every model page. `menuMode:
+        // 'replace'` is the explicit opt-out for a realm with a hand-written menu.
+        const {menu} =
+            portal.menuMode === 'replace'
+                ? {menu: portal.menu}
+                : mergePortalConfigs([{menu: generatedMenu}, portal]);
         return {
             ...portal,
             name: portal.name ?? 'blong-portal',
