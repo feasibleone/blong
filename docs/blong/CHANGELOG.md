@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.43.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.42.0...blong-docs-v1.43.0) (2026-11-06)
+
+
+### Features
+
+* feedback speech ([3bb4792](https://github.com/feasibleone/blong/commit/3bb4792611012bba1d7f97b9be6a765c6dfc0657))
+* improve menu handling ([a12eb93](https://github.com/feasibleone/blong/commit/a12eb93a0c0b3fc2f37167a0c4ceaebb21faa54f))
+
+
+### Bug Fixes
+
+* improve DB handling ([241ed9d](https://github.com/feasibleone/blong/commit/241ed9de42d23982a1ebd7678737e563daf03125))
+
 ## [1.42.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.41.1...blong-docs-v1.42.0) (2026-11-04)
 
 

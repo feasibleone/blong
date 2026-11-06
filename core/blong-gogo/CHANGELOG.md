@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.49.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.49.0...blong-gogo-v1.49.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* improve DB handling ([241ed9d](https://github.com/feasibleone/blong/commit/241ed9de42d23982a1ebd7678737e563daf03125))
+
 ## [1.49.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.48.0...blong-gogo-v1.49.0) (2026-11-04)
 
 

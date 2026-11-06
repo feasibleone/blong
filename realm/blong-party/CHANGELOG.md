@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.0](https://github.com/feasibleone/blong/compare/blong-party-v1.14.1...blong-party-v1.15.0) (2026-11-06)
+
+
+### Features
+
+* improve menu handling ([a12eb93](https://github.com/feasibleone/blong/commit/a12eb93a0c0b3fc2f37167a0c4ceaebb21faa54f))
+
+
+### Bug Fixes
+
+* ci test failures ([710bb82](https://github.com/feasibleone/blong/commit/710bb8246107295530e7a08c9b1e8dd81b0dba7a))
+
 ## [1.14.1](https://github.com/feasibleone/blong/compare/blong-party-v1.14.0...blong-party-v1.14.1) (2026-11-03)
 
 
