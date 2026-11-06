@@ -35,13 +35,16 @@ import {
     toFraction,
     type IFeedbackRect,
 } from './placement.js';
+import {appendSpeech, speechSupported} from './speech.js';
 import {useFeedbackConfig} from './useFeedbackConfig.js';
+import {useFeedbackSpeech} from './useFeedbackSpeech.js';
 
 /** The size a new callout starts at; the person is free to change it. */
 // Small on purpose: a callout that covers the element it is about hides the
 // problem from the person looking at it (`@@T-494`). A person who wants more room
-// drags the corner.
-const CALLOUT_SIZE = {width: 212, height: 128};
+// drags the corner. It is wide enough for the input-sized text the box now reads
+// at (`D-768`).
+const CALLOUT_SIZE = {width: 244, height: 156};
 
 /** The distance a new callout keeps from its element, so the arrow has a length. */
 const CALLOUT_GAP = 22;
@@ -119,6 +122,30 @@ export function FeedbackLayer() {
     const activate = useAppStore(state => state.feedbackActivate);
     const {handler} = useBlong();
     const t = useTranslate();
+
+    // Dictation (`@@D-758`). The finished phrases land in the draft like typed
+    // ones; the phrase still being recognised is drawn by the callout and never
+    // written here.
+    const speech = useFeedbackSpeech((targetId, transcript) => {
+        const state = useAppStore.getState();
+        const existing = state.feedback.items[targetId];
+        if (!existing) return;
+        state.feedbackUpdate(targetId, {
+            commentText: appendSpeech(existing.commentText ?? '', transcript),
+        });
+    });
+    const {start: startSpeech, toggle: toggleSpeech, stop: stopSpeech} = speech;
+    const listeningTargetId = speech.listeningTargetId;
+    // Both halves are needed: a suite that declared no speech block gets no
+    // microphone even where the browser has one, because the switch would
+    // otherwise appear in every portal (`@@D-758`).
+    const speechConfig = feedbackConfig?.speech;
+    const speechAvailable = Boolean(speechConfig) && speechSupported(speechConfig?.engine);
+
+    // Read through a ref: the guard below is installed once per mode switch, and
+    // a configuration object whose identity changes must not reinstall it.
+    const speechConfigRef = useRef(speechConfig);
+    speechConfigRef.current = speechConfig;
 
     const [hovered, setHovered] = useState<{
         id: string;
@@ -253,9 +280,19 @@ export function FeedbackLayer() {
                     commentText: existing?.commentText ?? '',
                     itemIndex: existing?.itemIndex ?? Object.keys(state.feedback.items).length,
                 } satisfies IFeedbackItem);
+                // A new box starts listening on its own, which is what lets a
+                // person dictate a whole review without touching the mic. It
+                // stays silent unless the microphone is already granted.
+                void startSpeech(target.targetId, speechConfigRef.current, {auto: true});
             },
         });
-    }, [active, cropping, add]);
+    }, [active, cropping, add, startSpeech]);
+
+    // Dictation follows the draft: a box that was removed, or a mode that closed,
+    // must not leave the microphone open.
+    useEffect(() => {
+        if (!active || (listeningTargetId && !items[listeningTargetId])) stopSpeech();
+    }, [active, items, listeningTargetId, stopSpeech]);
 
     const onSubmit = useCallback(async () => {
         const state = useAppStore.getState();
@@ -263,6 +300,8 @@ export function FeedbackLayer() {
             (item.commentText ?? '').trim(),
         );
         if (!comments.length) return;
+        // The microphone has no business being open while the screenshot is taken.
+        stopSpeech();
         const method = feedbackConfig?.submit ?? 'feedback.session.add';
         const first = pageOf(comments[0].targetId);
         // Both boxes become fractions of what the picture will keep, so the review
@@ -308,7 +347,7 @@ export function FeedbackLayer() {
         } finally {
             setBusy(false);
         }
-    }, [activate, boxes, crop, feedbackConfig, handler, rects, reset, t]);
+    }, [activate, boxes, crop, feedbackConfig, handler, rects, reset, t, stopSpeech]);
 
     const onCrop = useCallback(() => {
         setCropping(previous => {
@@ -319,11 +358,12 @@ export function FeedbackLayer() {
     }, [boxes, rects]);
 
     const onDiscard = useCallback(() => {
+        stopSpeech();
         reset();
         setBoxes({});
         setCrop(null);
         setCropping(false);
-    }, [reset]);
+    }, [reset, stopSpeech]);
 
     if (!active) return null;
 
@@ -385,6 +425,29 @@ export function FeedbackLayer() {
                             comment={item.commentText ?? ''}
                             onChange={value => update(id, {commentText: value})}
                             onRemove={() => remove(id)}
+                            speechAvailable={speechAvailable}
+                            listening={listeningTargetId === id}
+                            interimText={listeningTargetId === id ? speech.interimText : undefined}
+                            level={listeningTargetId === id ? speech.level : 'silence'}
+                            waitMs={listeningTargetId === id ? speech.waitMs : 0}
+                            idle={listeningTargetId === id ? speech.idle : 0}
+                            speechError={speech.error}
+                            speechEngine={speechConfigRef.current?.engine}
+                            onListen={() =>
+                                void startSpeech(id, speechConfigRef.current, {auto: true})
+                            }
+                            onToggleListen={() => void toggleSpeech(id, speechConfigRef.current)}
+                            // Taken as spoken, without the punctuation the finished
+                            // phrases get: a phrase cut in half is not a sentence
+                            // (`D-764`).
+                            onAcceptInterim={() => {
+                                const taken = speech.acceptInterim();
+                                if (!taken) return;
+                                const current =
+                                    useAppStore.getState().feedback.items[id]?.commentText ?? '';
+                                update(id, {commentText: appendSpeech(current, taken)});
+                            }}
+                            onClearInterim={() => speech.clearInterim()}
                             onMove={(dx, dy) =>
                                 setBoxes(previous => ({
                                     ...previous,

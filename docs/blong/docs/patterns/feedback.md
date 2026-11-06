@@ -53,10 +53,140 @@ dependency on the realm that stores the reports, and a suite may point the mode 
 | `prose`        | `feedback.prose.render`   | Method that renders the Markdown for a batch                            |
 | `update`       | `feedback.session.update` | Method that marks a batch processed                                     |
 | `maxShotBytes` | `700 000`                 | Byte ceiling for the captured data URL — the gateway body limit is 1 MB |
+| `speech`       | —                         | Dictation in a callout; see below                                       |
 
 The block reaches the mode through the **static** portal configuration (`config.portal.feedback`),
 with the composed portal document as a fallback, so a deployment that ships it from a realm's own
 `portalConfigGet` works too.
+
+## Dictate a comment
+
+A person can speak their comment instead of typing it. Dictation is a second opt-in, because a
+microphone that appears unbidden is a surprise: without a `speech` block the callout shows no mic
+button and nothing listens.
+
+```typescript
+feedback: {
+    enabled: true,
+    speech: {engine: 'webSpeech'},
+},
+```
+
+| Field        | Default               | What it does                                             |
+| ------------ | --------------------- | -------------------------------------------------------- |
+| `engine`     | `webSpeech`           | `webSpeech` or `sherpa`                                  |
+| `language`   | the portal's language | BCP-47 tag; only a fallback, see below                   |
+| `autoListen` | `true`                | Listen when a callout is created, or its text is focused |
+| `sherpa`     | —                     | The four model URLs; required by the `sherpa` engine     |
+
+**Dictation is in the portal's language.** The engine is handed the language the application is
+being read in, so a person working on a Bulgarian screen dictates in Bulgarian without configuring
+anything, and a switch of language mid-session is followed by the next phrase. `speech.language` is
+the fallback for a page that has no language of its own, and the English switch on the callout is
+the one thing that overrides both.
+
+**Two engines, one contract.** `webSpeech` wraps the browser's own recogniser: nothing to download,
+and in Chrome the audio is transcribed by a cloud service. `sherpa` runs a streaming Zipformer model
+in the page through WebAssembly, so no audio leaves it — at the cost of a model download and a
+runtime module:
+
+```typescript
+speech: {
+    engine: 'sherpa',
+    sherpa: {
+        // A module name, or a URL when the runtime is fetched by the page.
+        module: '/speech/sherpawAdapter.js',
+        encoder: '/speech/encoder.int8.onnx',
+        decoder: '/speech/decoder.onnx',
+        joiner: '/speech/joiner.onnx',
+        tokens: '/speech/tokens.txt',
+    },
+},
+```
+
+The runtime is configuration for a reason: the npm `sherpa-onnx` package is the **Node** build and
+refuses to start in a browser (`NODERAWFS is currently only supported on Node.js environment`). A
+browser needs a WebAssembly build that takes the model files from its own filesystem, wrapped in a
+module that exports `createOnlineRecognizer(config)` and answers with `createStream`, `isReady`,
+`decode`, `isEndpoint`, `reset` and `getResult`. `blong-browser` ships such a wrapper for
+[the published Bulgarian Zipformer](https://huggingface.co/preslaff/bulgarian-asr-zipformer) at
+`core/blong-browser/public/speech/sherpawAdapter.js`; Storybook serves it, and the
+`Components/Feedback/Sherpa` story runs the whole path against the real 73.6 MB model, with a button
+that checks the model files are reachable first.
+
+**Starting is silent unless the microphone is already granted.** Creating a callout, or focusing its
+text, starts listening on its own only when `navigator.permissions` already reports the microphone
+as `granted`. An automatic start that raised a prompt would ambush a person who just clicked a card,
+and a prompt they dismiss poisons the origin for the rest of the session. The mic button in the
+callout's bevel is the one place a prompt is allowed, because clicking it is consent.
+
+**What was heard is never what was typed.** A finished phrase is appended to the comment; the phrase
+still being recognised is drawn as a caption under the text area, so a partial result that then
+changes cannot overwrite a word the person wrote. One box listens at a time, and removing the box,
+discarding the draft, submitting or closing the mode closes the microphone.
+
+**The pause is measured in tiers.** Recognition is not instant — a service has to be reached or a
+model loaded, and the first use of a page is the slowest — so a flat four seconds from the moment
+the box opens cuts the microphone off in the middle of a sentence the recogniser is still working
+on. The clock therefore starts from what the session has actually achieved: fifteen seconds before a
+voice is heard at all, ten between a voice and its first word, and **eight** once words are coming
+back, which is the only state where a pause means what it says. Eight rather than four because the
+pause and the engine's own finalisation of a phrase are close together: at four seconds the box
+often closed on a phrase that was about to be finalised, and the words arrived as the unfinished
+interim instead. Every result, speech start and speech end restarts the clock, and a session that
+reaches its wait closes the microphone the way the switch does — no error. A phrase that arrives
+once the session has closed is dropped: a recogniser reports what it heard a moment after it was
+stopped, and a late phrase must not make the box read as listening again with no microphone behind
+it.
+
+**The caption says what is in the microphone, and how long is left.** A dot beside the words is dim
+while the room is quiet, still and amber when something that is not a voice is in it, and filled and
+pulsing while someone speaks — three states rather than two, because a room is rarely silent and an
+indicator that calls a fan a voice teaches a person to ignore it. Under the caption a thin strip
+drains over the wait the engine is counting down, so how much time is left is visible rather than
+inferred. Both are reported by the engine, which is the only thing that knows which tier its clock
+is in: a Web Speech recogniser from its own sound and speech events with a short hold so the dot
+does not blink between phrases, sherpa from the loudness of each captured frame.
+
+**What was already recognised survives the close.** The pause is the most common way a phrase ends,
+and a person who has just spoken expects the words on screen to be in the comment, not back in the
+microphone: whatever the caption holds when the session closes is written as it stands, without
+punctuation, because it is a phrase the engine had not finished. The microphone button keeps it the
+same way.
+
+**A phrase under way can be settled before the engine settles it.** The caption carries two small
+buttons: a tick takes the words into the comment, a cross drops them. Either way the words are
+remembered, so the phrase the engine finishes with adds only what is left and the sentence is never
+written twice. The caption grows with the phrase — it is the whole sentence the person is about to
+own — and scrolls once it has used about half the box.
+
+**Three switches sit under the caption**, remembered until the page is reloaded and never persisted,
+and drawn on the box the person is using — the one being dictated into or the one with focus —
+rather than on every callout at once:
+
+| Pill          | Default | What it does                                                 |
+| ------------- | ------- | ------------------------------------------------------------ |
+| `Local`       | on      | Recognise on the device where the browser has the model      |
+| `Punctuation` | on      | Write the punctuation a speaker leaves out                   |
+| `English`     | off     | Dictate in English over a portal that is in another language |
+
+`Local` is drawn only where the browser offers on-device recognition and is not drawn at all for
+`sherpa`, which is always local; `English` is not drawn for `sherpa` either, because its model is
+fixed. A session falls back to the service in every doubtful case — a language whose model would
+have to be downloaded, a recogniser that refuses the flag outright, or a model that hears a voice
+and produces no word before its wait expires — and a session that falls back turns the switch off,
+so the next box does not spend the same wait finding out again. Punctuation is written here rather
+than by the service — neither engine produces any — so it is a capital after a sentence and a full
+stop at the end, and nothing cleverer than that. A phrase a person took part of is mid-sentence by
+definition, so the rest of it is left exactly as it was spoken.
+
+**A switch pressed while a box is listening starts that dictation again.** The recogniser reads its
+language and its on-device flag only when it starts, so the new setting would otherwise wait for the
+next box — and the seconds spent pressing a pill would run down the pause budget. The restart also
+gives the box a fresh wait.
+
+**The callout is written at the size of a form input** (1rem), not at caption size: its wording is
+what the person is composing, and the box starts large enough to hold a sentence of it.
 
 ## Make a component addressable
 
@@ -155,8 +285,8 @@ The methods, by layer:
 - `feedback.session.add` — the one write a person makes: the session, its items, its `core_resource`
   and its picture in one transaction.
 - `feedback.session.list` / `.items` / `feedback.shot.get` — the reviewer's reads.
-- `feedback.item.edit` — the reviewer's edit of one comment: its wording (`refinedText`), the box
-  it sits in (`callout`) or closing it (`removed`). The gateway's params schema names all three: a
+- `feedback.item.edit` — the reviewer's edit of one comment: its wording (`refinedText`), the box it
+  sits in (`callout`) or closing it (`removed`). The gateway's params schema names all three: a
   field the schema does not declare is stripped before the adapter sees it, so the call answers
   `{updated: 0}` and the reviewer's move is lost without an error (`@@F-632`).
 - `feedback.session.update` — the bulk act that marks a batch processed.
@@ -208,13 +338,13 @@ prefix the portal resolves a menu entry through. A provider of the portal config
 `browser/orchestrator/portal/`, where the portal namespace exposes it as a bare name.
 
 The page is two panes: the queue (newest first, one checkbox per row, narrow so the picture gets the
-room) and the session — its picture with every recorded anchor outlined and every callout drawn where
-the person left it. The callouts **are** the editor: a reviewer rewrites the words in the box, drags
-its bevel, pulls its corner, or closes it with the ×, and each of those acts is a `feedback.item.edit`
-call — the geometry goes back as fractions, so the shape survives the next reader's window. A closed
-comment is kept (`removedAt`), leaves the picture and the document, and is listed under the pane so
-it can be restored. Below the panes, the two acts that make the workflow: render the document for the
-selection and copy it out, then mark that same selection processed.
+room) and the session — its picture with every recorded anchor outlined and every callout drawn
+where the person left it. The callouts **are** the editor: a reviewer rewrites the words in the box,
+drags its bevel, pulls its corner, or closes it with the ×, and each of those acts is a
+`feedback.item.edit` call — the geometry goes back as fractions, so the shape survives the next
+reader's window. A closed comment is kept (`removedAt`), leaves the picture and the document, and is
+listed under the pane so it can be restored. Below the panes, the two acts that make the workflow:
+render the document for the selection and copy it out, then mark that same selection processed.
 
 Both panes scroll, and the row that holds them refuses to shrink, so a short window scrolls the page
 rather than letting the picture paint over the prose panel.
@@ -229,16 +359,20 @@ rather than letting the picture paint over the prose panel.
   realm the review story runs on: an edit made in the story has to reach the document, or the story
   is demonstrating something the page does not do.
 - **The mode itself** — `core/blong-browser/src/feedback/feedback.test.tsx` covers the draft, the
-  grammar, the placement solver, the guard, the capture's failures and the hooks' inertness.
+  grammar, the placement solver, the guard, the capture's failures, the hooks' inertness and the
+  callout's dictation chrome.
+- **Dictation on its own** — `core/blong-browser/src/feedback/speech.test.ts` drives both engines
+  through fakes: the restart, the four-second close, the on-device fallback, the switches, the
+  punctuation, and a phrase taken or dropped before the engine finishes it.
 - **The end-to-end walk** — `realm/blong-sport/test/feedback.play.ts` switches the mode on a real
   page, comments on a field and a column, drags and resizes a box, crops the picture, submits, opens
   the review page from its menu, rewrites a comment and drags its callout, reads both back through
   the handler and again by re-opening the session, renders the document (which quotes the new
   wording), closes a comment and sees it leave the picture and the document, restores it, and marks
   the session processed. It is the only test that sees the gateway's schema, so it is the one that
-  catches a field the schema forgets (`@@F-632`). The picture capture is
-  a stub (`getDisplayMedia` needs a picker and a secure context), so the code under test still
-  draws, crops and encodes a frame.
+  catches a field the schema forgets (`@@F-632`). The picture capture is a stub (`getDisplayMedia`
+  needs a picker and a secure context), so the code under test still draws, crops and encodes a
+  frame.
 - **The stories** — `core/blong-browser/src/feedback/Feedback.stories.tsx` shows the chrome on its
   own, and `realm/blong-sport/src/stories/Feedback.stories.tsx` shows the mode over real model
   pages, commenting through a real click so the guard is exercised.

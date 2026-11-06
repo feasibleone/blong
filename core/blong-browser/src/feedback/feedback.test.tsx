@@ -7,7 +7,7 @@
  * gain while the mode is on (`@@T-461` `@@T-462` `@@T-464` `@@T-465` `@@T-466`).
  */
 
-import {act, render, screen} from '@testing-library/react';
+import {act, fireEvent, render, screen} from '@testing-library/react';
 import {type ReactNode, useState} from 'react';
 import {beforeEach, describe, expect, test, vi} from 'vitest';
 
@@ -37,6 +37,7 @@ import {
     resizeBox,
     toFraction,
 } from './placement.js';
+import {installSpeechEnvironment, resetSpeechPreferences, speechPreferences} from './speech.js';
 import {
     FeedbackActiveContext,
     FeedbackPath,
@@ -60,6 +61,8 @@ function resetStore(): void {
 
 beforeEach(() => {
     useAppStore.setState({feedback: {active: false, items: {}}});
+    resetSpeechPreferences();
+    installSpeechEnvironment(undefined);
 });
 
 describe('the draft', () => {
@@ -486,6 +489,153 @@ describe('the callout', () => {
         const box = document.querySelector('.blong-feedback-callout') as HTMLElement;
         expect(box.style.width).toBe('200px');
         expect(box.style.height).toBe('100px');
+    });
+
+    test('offers the microphone and keeps the phrase under way out of the text', () => {
+        const toggled: number[] = [];
+        render(
+            <FeedbackCallout
+                targetId="sport.club.browse/table:clubs/column:legalName"
+                box={{x: 10, y: 10, width: 200, height: 100}}
+                comment="the total is"
+                onChange={() => undefined}
+                onRemove={() => undefined}
+                onMove={() => undefined}
+                onResize={() => undefined}
+                speechAvailable={true}
+                listening={true}
+                interimText="wrong again"
+                onToggleListen={() => toggled.push(1)}
+            />,
+        );
+        const mic = document.querySelector('.blong-feedback-callout__mic') as HTMLElement;
+        expect(mic.getAttribute('aria-pressed')).toBe('true');
+        expect(mic.getAttribute('data-feedback-speech')).toBe('listening');
+        // What the person typed stays theirs; the phrase being recognised is a
+        // caption beside it (@@D-758).
+        expect(screen.getByDisplayValue('the total is')).toBeTruthy();
+        expect(document.querySelector('[data-feedback-interim]')?.textContent).toBe('wrong again');
+        fireEvent.click(mic);
+        expect(toggled).toHaveLength(1);
+    });
+
+    test('shows no microphone in a portal that declared no dictation', () => {
+        render(
+            <FeedbackCallout
+                targetId="sport.club.browse/table:clubs/column:legalName"
+                box={{x: 10, y: 10, width: 200, height: 100}}
+                comment=""
+                onChange={() => undefined}
+                onRemove={() => undefined}
+                onMove={() => undefined}
+                onResize={() => undefined}
+            />,
+        );
+        expect(document.querySelector('.blong-feedback-callout__mic')).toBeNull();
+        expect(document.querySelector('[data-feedback-interim]')).toBeNull();
+    });
+
+    test('offers the phrase under way to be kept or dropped', () => {
+        const taken: number[] = [];
+        const dropped: number[] = [];
+        render(
+            <FeedbackCallout
+                targetId="sport.club.browse/table:clubs/column:legalName"
+                box={{x: 10, y: 10, width: 200, height: 100}}
+                comment=""
+                onChange={() => undefined}
+                onRemove={() => undefined}
+                onMove={() => undefined}
+                onResize={() => undefined}
+                speechAvailable={true}
+                listening={true}
+                interimText="the total is wrong"
+                level="speech"
+                waitMs={8000}
+                idle={3}
+                onAcceptInterim={() => taken.push(1)}
+                onClearInterim={() => dropped.push(1)}
+            />,
+        );
+        // A voice is in the microphone and the words are still on their way: the
+        // dot is the only thing that answers that question (`D-774`).
+        expect(
+            document.querySelector('[data-feedback-interim]')?.getAttribute('data-feedback-level'),
+        ).toBe('speech');
+        expect(document.querySelector('.blong-feedback-callout__dot--speech')).toBeTruthy();
+        // The time left is drawn, not guessed (`D-775`).
+        const drain = document.querySelector('.blong-feedback-callout__drain') as HTMLElement;
+        expect(drain.style.animationDuration).toBe('8000ms');
+
+        const keep = document.querySelector('[data-feedback-interim-take]') as HTMLElement;
+        const drop = document.querySelector('[data-feedback-interim-drop]') as HTMLElement;
+        expect(keep.hasAttribute('disabled')).toBe(false);
+        fireEvent.click(keep);
+        fireEvent.click(drop);
+        expect(taken).toHaveLength(1);
+        expect(dropped).toHaveLength(1);
+    });
+
+    test('cannot keep a phrase nothing has been heard for', () => {
+        render(
+            <FeedbackCallout
+                targetId="sport.club.browse/table:clubs/column:legalName"
+                box={{x: 10, y: 10, width: 200, height: 100}}
+                comment=""
+                onChange={() => undefined}
+                onRemove={() => undefined}
+                onMove={() => undefined}
+                onResize={() => undefined}
+                speechAvailable={true}
+                listening={true}
+            />,
+        );
+        const keep = document.querySelector('[data-feedback-interim-take]') as HTMLElement;
+        expect(keep.hasAttribute('disabled')).toBe(true);
+    });
+
+    test('draws the switches dictation obeys, and hides the ones it cannot use', () => {
+        // A recogniser that can run on the device, which is when the local
+        // switch means anything.
+        installSpeechEnvironment({
+            recognition: Object.assign(class {}, {
+                available: () => Promise.resolve('available'),
+            }) as never,
+        });
+        const callout = (engine: 'webSpeech' | 'sherpa') => (
+            <FeedbackCallout
+                targetId="sport.club.browse/table:clubs/column:legalName"
+                box={{x: 10, y: 10, width: 200, height: 100}}
+                comment=""
+                onChange={() => undefined}
+                onRemove={() => undefined}
+                onMove={() => undefined}
+                onResize={() => undefined}
+                speechAvailable={true}
+                speechEngine={engine}
+            />
+        );
+        const pill = (name: string) =>
+            document.querySelector(`[data-feedback-speech-pill="${name}"]`) as HTMLElement | null;
+
+        const {unmount} = render(callout('webSpeech'));
+        // Local and punctuation are on by default, English is the exception.
+        expect(pill('onDevice')?.getAttribute('aria-pressed')).toBe('true');
+        expect(pill('punctuation')?.getAttribute('aria-pressed')).toBe('true');
+        expect(pill('english')?.getAttribute('aria-pressed')).toBe('false');
+
+        fireEvent.click(pill('punctuation') as HTMLElement);
+        expect(speechPreferences().punctuation).toBe(false);
+        expect(pill('punctuation')?.getAttribute('aria-pressed')).toBe('false');
+        unmount();
+
+        // sherpa is always local and its model is fixed, so neither switch says
+        // anything there.
+        const sherpa = render(callout('sherpa'));
+        expect(pill('onDevice')).toBeNull();
+        expect(pill('english')).toBeNull();
+        expect(pill('punctuation')).not.toBeNull();
+        sherpa.unmount();
     });
 
     test('reports a drag on the bevel and a drag on the corner separately', () => {

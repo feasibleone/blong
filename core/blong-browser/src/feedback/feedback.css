@@ -89,18 +89,14 @@
     flex-direction: column;
     border-radius: 6px;
     overflow: hidden;
-    font-size: 0.72rem;
+    /* The size a form input is written at, not a caption's: the wording here is the
+       thing the person is composing, and reading it back at two thirds of the size
+       of the field it describes was the wrong way round (`D-768`). */
+    font-size: 1rem;
     /* The theme's own family: a callout is a note about the page, not a different
        kind of page. The fallback is the theme's stack, because `inherit` would pass
        on a serif a host never replaced. */
-    font-family: var(
-        --font-family,
-        system-ui,
-        -apple-system,
-        'Segoe UI',
-        Roboto,
-        sans-serif
-    );
+    font-family: var(--font-family, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
     color: var(--text-color, #111827);
     background: color-mix(in srgb, var(--surface-card, #ffffff) 94%, transparent);
     border: 1px solid var(--callout-color);
@@ -117,7 +113,7 @@
     align-items: center;
     gap: 6px;
     flex: none;
-    height: 26px;
+    height: 30px;
     padding: 0 4px 0 8px;
     cursor: grab;
     touch-action: none;
@@ -133,7 +129,7 @@
     flex: 1 1 auto;
     min-width: 0;
     font-family: ui-monospace, monospace;
-    font-size: 0.68rem;
+    font-size: 0.8rem;
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -153,6 +149,201 @@
 
 .blong-feedback-callout__remove:hover {
     opacity: 1;
+}
+
+/*
+ * Dictation (`@@D-758`): the microphone sits in the bevel, left of the close
+ * button, and pulses while it is hearing words. The pulse is what carries the
+ * state — a colour alone would be invisible to a person whose eyes are on the page
+ * they are describing.
+ */
+.blong-feedback-callout__mic {
+    flex: none;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.6;
+}
+
+.blong-feedback-callout__mic:hover {
+    opacity: 1;
+}
+
+.blong-feedback-callout__mic--listening {
+    opacity: 1;
+    color: var(--red-500, #dc2626);
+}
+
+.blong-feedback-callout__mic--listening .pi {
+    animation: blong-feedback-hearing 1.2s ease-in-out infinite;
+}
+
+@keyframes blong-feedback-hearing {
+    50% {
+        opacity: 0.35;
+    }
+}
+
+/*
+ * The phrase still being recognised, kept out of the text area on purpose
+ * (`@@D-758`).
+ *
+ * It grows with the phrase instead of clipping it (`D-764`): a person speaking a
+ * whole sentence needs to see the whole sentence before deciding whether to keep
+ * it. The cap is a share of the box rather than a fixed height, so a taller box
+ * shows more, and past it the phrase scrolls rather than pushing the text area
+ * out of existence. The two buttons sit beside it, never over it.
+ */
+.blong-feedback-callout__interim {
+    position: relative;
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    flex: 0 1 auto;
+    max-height: 45%;
+    overflow-y: auto;
+    padding: 2px 4px 6px 8px;
+    font-style: italic;
+    opacity: 0.75;
+    border-top: 1px dashed color-mix(in srgb, var(--callout-color) 60%, transparent);
+}
+
+.blong-feedback-callout__interimText {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/*
+ * Whether the microphone is picking up a voice (`D-774`). Dim while the room is
+ * quiet, a still amber while something that is not a voice is in it, and filled
+ * and pulsing while someone speaks — the answer to "is it working?" while the
+ * words are still being worked out.
+ */
+.blong-feedback-callout__dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    margin-top: 0.45em;
+    border-radius: 50%;
+    background: currentcolor;
+    opacity: 0.25;
+}
+
+.blong-feedback-callout__dot--sound {
+    opacity: 0.75;
+    background: var(--yellow-500, #d97706);
+}
+
+.blong-feedback-callout__dot--speech {
+    opacity: 1;
+    background: var(--red-500, #dc2626);
+    animation: blong-feedback-dot 0.9s ease-in-out infinite;
+}
+
+@keyframes blong-feedback-dot {
+    50% {
+        transform: scale(1.45);
+        opacity: 0.55;
+    }
+}
+
+/*
+ * The time left on the engine's clock (`D-775`). A thin strip along the bottom of
+ * the caption, draining to the left, so the person can see how long a pause the
+ * box will wait through instead of being closed by surprise.
+ */
+.blong-feedback-callout__drain {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--primary-color, #6366f1);
+    opacity: 0.55;
+    transform-origin: left;
+    animation-name: blong-feedback-drain;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+}
+
+@keyframes blong-feedback-drain {
+    from {
+        transform: scaleX(1);
+    }
+
+    to {
+        transform: scaleX(0);
+    }
+}
+
+.blong-feedback-callout__interimActions {
+    display: flex;
+    flex: none;
+    gap: 2px;
+}
+
+.blong-feedback-callout__interimAction {
+    padding: 0 3px;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    font-size: 0.85rem;
+}
+
+.blong-feedback-callout__interimAction:hover:not(:disabled) {
+    opacity: 1;
+}
+
+.blong-feedback-callout__interimAction:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+/*
+ * The pills under the phrase say how the next phrase will be recognised
+ * (`D-763`). Smaller than the text they sit under, because they are a setting and
+ * not a statement, and pressed is the only state worth drawing: all three are on
+ * by default except English.
+ *
+ * They belong to the box the person is using and to no other (`D-776`): a page
+ * with six comments would otherwise carry eighteen pills, and the one setting a
+ * person changes while dictating is drawn on the box they are dictating into.
+ */
+.blong-feedback-callout__pills {
+    display: none;
+    flex: none;
+    gap: 4px;
+    padding: 0 8px 6px;
+}
+
+.blong-feedback-callout:focus-within .blong-feedback-callout__pills,
+.blong-feedback-callout--listening .blong-feedback-callout__pills {
+    display: flex;
+}
+
+.blong-feedback-callout__pill {
+    padding: 1px 8px;
+    font: inherit;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--callout-color) 55%, transparent);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.blong-feedback-callout__pill[aria-pressed='true'] {
+    opacity: 1;
+    border-color: var(--callout-color);
+    background: color-mix(in srgb, var(--primary-color, #6366f1) 18%, transparent);
 }
 
 .blong-feedback-callout__text {

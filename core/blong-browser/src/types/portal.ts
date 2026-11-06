@@ -147,7 +147,79 @@ export interface IPortalFeedbackConfig {
     update?: string;
     /** Byte ceiling for the captured data URL; default 700 000. */
     maxShotBytes?: number;
+    /**
+     * Dictation inside a callout (`D-758`).
+     *
+     * Absent means no microphone: the callout shows no mic button and a new box
+     * never starts listening on its own. Naming an engine here is what a suite
+     * does when its people dictate their comments instead of typing them.
+     */
+    speech?: IFeedbackSpeechConfig;
 }
+
+/** The engines the mode can dictate through (`D-758`). */
+export type FeedbackSpeechEngine = 'webSpeech' | 'sherpa';
+
+/** The files of a streaming Zipformer model, as URLs (`D-758`). */
+export interface ISherpaSpeechConfig {
+    /**
+     * The module that exports `createOnlineRecognizer`; default
+     * `sherpa-onnx`.
+     *
+     * It is configuration rather than an import because the package is optional:
+     * `blong-browser` must install, type-check and run without it, and the
+     * deployment decides whether a 73 MB model is worth its bandwidth.
+     *
+     * A **URL** works too, and a browser needs one: the npm package is the Node
+     * build (it reads model files through `fs` and refuses to start outside
+     * Node). `blong-browser` ships an adapter for a browser WASM build at
+     * `public/speech/sherpawAdapter.js`, which the Storybook serves — see the
+     * `Components/Feedback/Sherpa` story (`T-612`).
+     */
+    module?: string;
+    /** Encoder of the transducer, usually the int8 quantisation. */
+    encoder: string;
+    decoder: string;
+    joiner: string;
+    tokens: string;
+    /** Decoding threads; default 1, which is what a browser main thread wants. */
+    numThreads?: number;
+}
+
+/** What a suite declares under `portal.feedback.speech` (`D-758`). */
+interface ISpeechCommon {
+    /**
+     * BCP-47 tag the engine is handed, as a **fallback** only (`D-761`).
+     *
+     * Dictation is in the language the portal is being read in, because a person
+     * describes a page in the language it is written in; this field answers for a
+     * page that has no language of its own, and the English switch on the callout
+     * overrides both.
+     */
+    language?: string;
+    /** Listen when a callout is created or focused; default true. */
+    autoListen?: boolean;
+}
+
+/** Dictation through the browser's own recogniser, which needs no download. */
+export interface IWebSpeechConfig extends ISpeechCommon {
+    engine?: 'webSpeech';
+}
+
+/** Dictation through a model that runs in the page, so no audio leaves it. */
+export interface ISherpaSpeechConfigEntry extends ISpeechCommon {
+    engine: 'sherpa';
+    sherpa: ISherpaSpeechConfig;
+}
+
+/**
+ * The dictation block.
+ *
+ * A union rather than one interface with an optional `sherpa`: the sherpa engine
+ * cannot run without its four model URLs, and the type is the first place that
+ * says so.
+ */
+export type IFeedbackSpeechConfig = IWebSpeechConfig | ISherpaSpeechConfigEntry;
 
 /** Portal tab state managed by Zustand */
 export interface IPortalState {

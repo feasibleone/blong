@@ -136,6 +136,7 @@ words:
   - EEST
   - elkhorn
   - emptymessage
+  - emscripten
   - endregion
   - ENOENT
   - ENOTFOUND
@@ -272,6 +273,7 @@ words:
   - networkpolicies
   - node-rdkafka
   - nodedir
+  - NODERAWFS
   - nohup
   - nomic
   - nosniff
@@ -283,6 +285,7 @@ words:
   - Octopus
   - oidc
   - ollama
+  - onnx
   - onnxruntime
   - onprem
   - onsessioninitialized
@@ -387,6 +390,7 @@ words:
   - serialisable
   - serviceaccount
   - servicelb
+  - sherpaw
   - shutil
   - Siderastreidae
   - SIGALRM
@@ -396,6 +400,8 @@ words:
   - SMPP
   - softwaregroup
   - spanid
+  - speechend
+  - speechstart
   - Speedscope
   - splendidus
   - sqlitemadd
@@ -486,6 +492,7 @@ words:
   - xyflow
   - YHHHHCC
   - ZCMK
+  - Zipformer
   - zoomin
   - zstd
   - Zustand

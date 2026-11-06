@@ -120,6 +120,13 @@ export default browser(blong => ({
                             shot: 'feedback.shot.get',
                             prose: 'feedback.prose.render',
                             update: 'feedback.session.update',
+                            // Dictation in a callout (`@@D-758`): the browser's
+                            // own recogniser, so nothing is bundled and nothing
+                            // is downloaded. `language` is left out on purpose —
+                            // the engine follows the browser's locale, and the
+                            // Bulgarian dictionary this suite ships is not the
+                            // same thing as the person's microphone language.
+                            speech: {engine: 'webSpeech'},
                         },
                     },
                 },

@@ -381,3 +381,152 @@ test('feedback mode captures comments and the review page hands them over', asyn
     await portal.page.getByRole('button', {name: 'Mark processed'}).click();
     await expect(portal.page.locator(`[data-feedback-queue-row="${sessionId}"]`)).toHaveCount(0);
 });
+
+/**
+ * The recogniser this spec drives, as the page holds it (`D-758`, `D-759`).
+ *
+ * Headless Chromium has no speech service, so the browser's own recogniser is
+ * replaced before the mode is switched on: what is under test is the mode — that
+ * a granted microphone starts listening by itself, that the phrase under way is a
+ * caption and not the comment, and that a finished phrase reaches the comment.
+ * Whether a real service transcribes real speech is not something a test can
+ * answer.
+ */
+interface IDictation {
+    lang: string;
+    continuous: boolean;
+    interimResults: boolean;
+    onresult: ((event: unknown) => void) | null;
+    onerror: ((event: {error: string}) => void) | null;
+    onend: (() => void) | null;
+    starts: number;
+    stops: number;
+}
+
+interface IDictationWindow {
+    SpeechRecognition?: new () => IDictation;
+    webkitSpeechRecognition?: new () => IDictation;
+    __dictation?: IDictation;
+}
+
+/** Give the page a recogniser the spec can speak into, and a granted microphone. */
+async function stubDictation(page: import('@playwright/test').Page): Promise<void> {
+    await page.evaluate(() => {
+        const scope = window as unknown as IDictationWindow;
+        class FakeRecognition implements IDictation {
+            lang = '';
+            continuous = false;
+            interimResults = false;
+            onresult: ((event: unknown) => void) | null = null;
+            onerror: ((event: {error: string}) => void) | null = null;
+            onend: (() => void) | null = null;
+            starts = 0;
+            stops = 0;
+
+            constructor() {
+                scope.__dictation = this;
+            }
+
+            start(): void {
+                this.starts += 1;
+            }
+
+            stop(): void {
+                this.stops += 1;
+            }
+
+            abort(): void {
+                this.stops += 1;
+            }
+        }
+        // Both names: the engine asks for the unprefixed one first, and a
+        // browser that has it would answer with the real, silent recogniser.
+        scope.SpeechRecognition = FakeRecognition;
+        scope.webkitSpeechRecognition = FakeRecognition;
+        Object.defineProperty(navigator, 'permissions', {
+            configurable: true,
+            value: {query: () => Promise.resolve({state: 'granted'})},
+        });
+    });
+}
+
+/** One result event, as the recogniser would raise it. */
+async function hear(
+    page: import('@playwright/test').Page,
+    transcript: string,
+    isFinal: boolean,
+): Promise<void> {
+    await page.evaluate(
+        event => {
+            const dictation = (window as unknown as IDictationWindow).__dictation;
+            dictation?.onresult?.({resultIndex: 0, results: [event]});
+        },
+        {isFinal, length: 1, 0: {transcript}},
+    );
+}
+
+test('dictation fills the comment it was started from', async ({portal}) => {
+    await portal.menuClick('sport.club.browse');
+    await portal.waitForTableData();
+    await stubDictation(portal.page);
+
+    const toggle = portal.page.locator('[data-feedback-ui="toggle"]');
+    await toggle.click();
+
+    // A click on a target opens a box, and with the microphone already granted
+    // the box starts listening without a second click (`D-758`).
+    await portal.page.locator('[data-feedback-kind="field"]').first().click();
+    const callout = portal.page.locator('[data-feedback-ui="callout"]').first();
+    const mic = callout.locator('.blong-feedback-callout__mic');
+    await expect(mic).toHaveAttribute('aria-pressed', 'true');
+    expect(
+        await portal.page.evaluate(
+            () => (window as unknown as IDictationWindow).__dictation?.starts,
+        ),
+    ).toBe(1);
+
+    // What the engine has not finished hearing is a caption. The comment itself
+    // stays empty, so a refinement cannot overwrite a word the person typed.
+    await hear(portal.page, 'общата сума', false);
+    await expect(callout.locator('[data-feedback-interim]')).toHaveText('общата сума');
+    await expect(callout.locator('textarea')).toHaveValue('');
+
+    // A finished phrase is appended to the comment, punctuated as a sentence
+    // because unspoken punctuation is on by default (`D-762`), and the caption
+    // falls back to the placeholder it shows between phrases rather than keeping
+    // words the person now owns.
+    await hear(portal.page, 'общата сума е грешна', true);
+    await expect(callout.locator('textarea')).toHaveValue('Общата сума е грешна.');
+    await expect(callout.locator('[data-feedback-interim]')).toHaveText('Listening…');
+
+    // The button is the other half of the switch: it closes the microphone the
+    // automatic start opened, and the caption goes with it.
+    await mic.click();
+    await expect(mic).toHaveAttribute('aria-pressed', 'false');
+    await expect(callout.locator('[data-feedback-interim]')).toHaveCount(0);
+    expect(
+        await portal.page.evaluate(
+            () => (window as unknown as IDictationWindow).__dictation?.stops,
+        ),
+    ).toBeGreaterThan(0);
+
+    // Leaving an empty draft needs no confirmation, so the mode closes cleanly
+    // for the tests after this one.
+    await portal.page
+        .locator('[data-feedback-ui="bar"]')
+        .getByRole('button', {name: 'Discard'})
+        .click();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    // The page outlives the test (the session is shared per worker), so the stub
+    // goes with it: a spec that runs after this one must see a browser without a
+    // recogniser, or its captures would gain a microphone they never asked for.
+    await portal.page.evaluate(() => {
+        const scope = window as unknown as IDictationWindow;
+        delete scope.SpeechRecognition;
+        delete scope.webkitSpeechRecognition;
+        delete scope.__dictation;
+        delete (navigator as unknown as {permissions?: unknown}).permissions;
+    });
+});
