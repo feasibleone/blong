@@ -264,22 +264,32 @@ export class Portal {
      * For grouped menus, first opens the parent group.
      *
      * The group a page sits in is the model's own decision (`classifier`,
-     * `menu.group`, `menu.root` — `@@D-777`), so it is read from the composed
-     * menu rather than guessed from the method's subject: a page whose subject is
-     * `sport` may be under `Registry` or inside the shared
-     * `Classifiers` root, and clicking `portal-menu-sport` would open the wrong
-     * submenu and then wait on a leaf that is not rendered.
+     * `menu.group`, `menu.root` — `@@D-777`), so it is never guessed from the
+     * method's subject: a page whose subject is `sport` may sit under `Registry`
+     * or inside the shared `Classifiers` root, and a group's `data-testid` is the
+     * id the menu builder gave it — `menuGroupId('$Subject')` is `subject`, not
+     * `$subject`. Clicking the wrong id opens nothing and leaves the leaf hidden.
+     *
+     * The chain comes from the rendered menu instead of from a parallel copy of
+     * it: the leaf is in the DOM even while its submenu is collapsed, so the
+     * anchors above it are the ids a click needs, whatever the menu was composed
+     * from and whether or not the deployment exposes the test store.
      *
      * @param method - semantic triple, e.g. 'marine.coral.browse'
      */
     async menuClick(method: string): Promise<void> {
         const menuId = method.replace(/\./g, '-');
-        // The groups that contain the page, outermost first. A menu without a
-        // test hook (or a page it does not carry) falls back to the subject group,
-        // which is what a flat, single-group menu needs.
-        const path = await this.#menuPath(method);
-        const groups = path.length ? path : [method.split('.')[0]!];
         const item = this.page.getByTestId(`portal-menu-${menuId}`);
+
+        // The menubar paints before the composed menu lands in it: the shell renders an
+        // empty bar and fills it once `portalConfigMerge` answers, so a click taken at
+        // the wrong moment finds no item at all — not even the group it would open. Any
+        // menu item arriving is what says the menu has been rendered.
+        await this.page
+            .locator('[data-testid^="portal-menu-"]')
+            .first()
+            .waitFor({state: 'attached', timeout: BLONG_ELEMENT_TIMEOUT})
+            .catch(() => undefined);
 
         // Opening a group is a toggle and the submenu it opens renders a moment
         // later, so a group click that lands while the previous submenu is still
@@ -289,6 +299,7 @@ export class Portal {
         // actually visible, which is also what reopens a group that a click closed.
         for (let attempt = 0; attempt < 3; attempt++) {
             if (await item.isVisible().catch(() => false)) break;
+            const groups = await this.#menuGroups(menuId, method);
             for (const [index, groupId] of groups.entries()) {
                 const group = this.page.getByTestId(`portal-menu-${groupId}`).first();
                 if (!(await group.count())) continue;
@@ -309,6 +320,53 @@ export class Portal {
 
         // Click the specific menu item
         await this.#guard(item.click({timeout: BLONG_ELEMENT_TIMEOUT}));
+    }
+
+    /**
+     * The group ids holding the leaf, outermost first.
+     *
+     * Three answers, in order of how much they can be trusted: the anchors above
+     * the leaf in the rendered menu (the ids a click needs, by construction); the
+     * composed config's own `id`s, for a menu that has not rendered the leaf yet;
+     * and the method's subject, which is what a flat single-group menu needs and
+     * is only reached when neither of the others knows the page.
+     */
+    async #menuGroups(menuId: string, method: string): Promise<string[]> {
+        const rendered = await this.#menuAncestors(menuId);
+        if (rendered.length) return rendered;
+        const composed = await this.#menuPath(method);
+        if (composed.length) return composed;
+        return [method.split('.')[0]!];
+    }
+
+    /**
+     * The ids of the group anchors enclosing the leaf, outermost first.
+     *
+     * Read from the DOM the menubar actually rendered: the leaf sits inside the
+     * `<li>` of each group that must be opened, whose own anchor carries the id the
+     * template gave it. No ancestors means the leaf is not in the DOM at all.
+     */
+    async #menuAncestors(menuId: string): Promise<string[]> {
+        return this.page.evaluate(id => {
+            const leaf = document.querySelector(`[data-testid="portal-menu-${id}"]`);
+            if (!leaf) return [];
+            const chain: string[] = [];
+            let node: Element | null = leaf.parentElement;
+            while (node) {
+                // Only the anchor a node *owns* counts. A plain `querySelector` in
+                // the subtree returns the first anchor anywhere below it, so every
+                // ancestor reported the same top-level group — and the last one even
+                // the leaf. PrimeReact puts the anchor under `.p-menuitem-content`,
+                // beside the submenu `<ul>` rather than inside it.
+                const anchor = node.querySelector(
+                    ':scope > a[data-testid^="portal-menu-"], :scope > .p-menuitem-content > a[data-testid^="portal-menu-"]',
+                );
+                const testid = anchor?.getAttribute('data-testid');
+                if (testid && anchor !== leaf) chain.unshift(testid.slice('portal-menu-'.length));
+                node = node.parentElement;
+            }
+            return chain;
+        }, menuId);
     }
 
     /**

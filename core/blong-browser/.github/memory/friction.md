@@ -36,7 +36,7 @@ open (21)
 - `F-254` · core/blong-browser — A "race" that was two different baselines and a 1% tolerance
 - `F-679` · core/blong-browser — Profile fetch before a session raised a binding error dialog
 
-resolved (31)
+resolved (32)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -77,6 +77,7 @@ resolved (31)
 - `F-680` · core/blong-browser — A realm's screenshots are shared with every suite that composes it
 - `F-690` · core/blong-browser — menuClick assumed one menubar group per subject
 - `F-694` · core/blong-browser — A menu chain opened without a wait leaves the leaf hidden
+- `F-695` · core/blong-browser — A menu group id comes from the renderer, never from the method
 
 <!-- /memory:index -->
 
@@ -842,3 +843,24 @@ opened its parent already took effect.
 
 Fixed in playwright.ts: menuClick walks the group chain until the leaf is visible, waiting for the
 next target after each group click.
+
+### F-695 — A menu group id comes from the renderer, never from the method
+
+> _2026-11-06 · core/blong-browser · resolved_
+
+`menuClick` derived a page's group from the composed config's `id`, and the ids are not the method's
+parts: a group is titled `Explore` or `$Subject` while its `data-testid` is `menuGroupId(title)`
+(`explore`, `subject`) or, for a group with no `id`, the first child method's subject. Guessing
+`portal-menu-<subject>` opened nothing: the leaf stayed hidden and the click timed out on an element
+that was in the DOM. Two suites also never render the composed menu until a moment after the menubar
+paints, and the kopi/realm apps do not expose the test store at all, so a path read from the store
+was empty for them.
+
+The lesson is that a test helper must read the ids the renderer actually produced. The chain now
+comes from the DOM: the leaf exists even while its submenu is closed, so each ancestor's own anchor
+(`:scope > .p-menuitem-content > a[data-testid]`, not a plain subtree query, which returns the same
+top-level group for every ancestor) names a group to open. The store path and the subject fallback
+stay for the case where the leaf has not rendered yet, behind a wait for any menu item to appear.
+
+Fixed: menuClick reads the group chain from the rendered DOM, waits for the menu to render, and
+keeps the store path only as a fallback.

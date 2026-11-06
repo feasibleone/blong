@@ -34,14 +34,17 @@ test.describe('Access Role', () => {
         object: 'role',
         fields: {
             'role.roleName': 'ACC-PLAY-Role',
-            // Just above the six seeded roles (0-5).  A bit is a position in a
-            // token's permission mask, so the allocator never hands a freed value
-            // out again and it hands out `max(high-water mark, MAX(roleBit)) + 1`:
-            // a pin at 999 lifts that mark to 1000 the moment anything allocates
-            // while the row exists, which burns the space down to the 1023 ceiling
-            // in a few runs (F-298).  This one costs nothing the seeds have not
-            // already spent, and the role is deleted by the cleanup below.
-            'role.roleBit': 6,
+            // A pinned bit comes from the band reserved for fixtures (500+), never
+            // from the low range the seeds allocate: every realm contributes four
+            // roles of its own, so 6 — which used to be just above the seeded 0-5 —
+            // became `Access Admin` and the create failed on `role.bitTaken`
+            // (`@@D-778`).  The pin is what keeps this spec's capture
+            // deterministic, and a high one is what F-298 warns against (a pin
+            // lifts the allocator's high-water mark, so an ever-higher one burns
+            // the space down to the 1023 ceiling) — 500 is above anything the
+            // seeds reach and far below the ceiling.  The role is deleted by the
+            // cleanup above, and its bit is not re-issued.
+            'role.roleBit': 500,
             'role.description': 'ACC-PLAY role',
         },
         editFields: {

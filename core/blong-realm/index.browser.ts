@@ -36,5 +36,19 @@ export default browser(blong => ({
             login: {},
             blong: {},
         },
+        // TEST-ONLY: the `integration` intent (active in a browser run) exposes the
+        // wrapped handler as `window.__blongHandler` and the store as
+        // `window.__blongStore`, which a Playwright spec reads to see what the pages
+        // do not print — the denial of a method the session does not hold, here. A
+        // deployment runs `release`, never `integration`.
+        integration: {
+            ui: {
+                portal: {
+                    portal: {
+                        testHook: true,
+                    },
+                },
+            },
+        } as never,
     },
 }));

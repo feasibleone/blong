@@ -241,27 +241,47 @@ test('every run of a kind is drawn together', async ({portal}) => {
 // calling `portal.login` again looks for a login form a logged-in portal no longer
 // shows — which is what a first attempt at this test did.
 test.describe('a role without the capability', () => {
-    // The refusal is this spec's subject, so the two lines the browser reports for it —
-    // the 403 on the request and the console mirror of the denial — are declared
-    // expected: they stay in `portal.browserErrors` (which the assertion below reads)
-    // without being echoed as if they were news.
+    // The refusal is this spec's subject, so the line the browser reports for the
+    // direct call below are declared expected: it stays in `portal.browserErrors`
+    // without being echoed as if it were news.
     test.use({
         blongUsername: 'testViewer',
         blongPassword: 'testPassword',
-        blongExpectedBrowserErrors: ['rpc/blong/flow/find', 'Authorization denied'],
+        blongExpectedBrowserErrors: ['Authorization denied'],
     });
 
-    test('is refused, not shown an empty page', async ({portal}) => {
-        await portal.menuClick('blong.flow.browse');
+    test('is not offered, and is refused when called', async ({portal}) => {
+        // The menubar offers only what the session can use, so a role holding none of
+        // this realm's grants is offered none of its pages: the refusal happens
+        // before the click (`@@D-781`), and an administrator's menu no longer
+        // appears to a role scoped to one realm.
+        await expect(portal.page.getByTestId('portal-menu-blong-flow-browse')).toHaveCount(0);
         await expect(portal.page).toHaveScreenshot('blong-refused.png');
-        // The *reason* matters as much as the refusal: an unrouted method answers
-        // "Not Found", which looks identical in a screenshot. This realm passed
-        // this test for a while with its entire API missing from the gateway.
-        // Polled rather than read once: the console error carrying the reason
-        // arrives after the click that caused it, so a single read races the browser
-        // — and an empty list is indistinguishable from a call that was never made.
-        await expect
-            .poll(() => portal.browserErrors.join('\n'), {timeout: 10_000})
-            .toMatch(/Authorization denied.*blong\.flow\.find/);
+        // A page is still reachable without the menu — a restored tab, a deep link, an
+        // action inside another page — so the gateway's own refusal is what must hold,
+        // and the *reason* matters as much as the refusal: an unrouted method answers
+        // "Not Found", which a screenshot cannot tell apart from a denial. This realm
+        // passed a weaker version of this test for a while with its entire API
+        // missing from the gateway.
+        const denial = await portal.page.evaluate(async () => {
+            const handler = (
+                window as unknown as {
+                    __blongHandler?: Record<
+                        string,
+                        (params: unknown, meta: unknown) => Promise<unknown>
+                    >;
+                }
+            ).__blongHandler;
+            if (!handler) return 'no test hook';
+            try {
+                await handler['blong.flow.find']?.({}, {});
+                return 'allowed';
+            } catch (error) {
+                return String((error as Error)?.message ?? error);
+            }
+        });
+        expect(denial, 'the gateway denies the method the session does not hold').toMatch(
+            /Authorization denied.*blong\.flow\.find/,
+        );
     });
 });

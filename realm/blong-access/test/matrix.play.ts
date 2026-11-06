@@ -39,11 +39,12 @@ test.describe('Access Role · Record Access matrix', () => {
             // `access_role.roleBit` is UNIQUE and the default 0 is already taken
             // by a seeded role: the insert would be silently ignored (MySQL
             // `INSERT IGNORE`) and the role row would never exist — a resource
-            // without a role, which the browse cannot even show.  The role spec
-            // pins 6, so the matrix takes the next one: both stay next to the
-            // seeded 0-5 instead of lifting the allocator's high-water mark
-            // towards the 1023 ceiling (F-298).
-            'role.roleBit': 7,
+            // without a role, which the browse cannot even show.  The bit comes
+            // from the band the fixtures reserve (500+), one above `role.play.ts`,
+            // because the seeds allocate from 0 and keep growing as realms add
+            // their own roles (`@@D-778`); a low pin collides the moment the seed
+            // passes it.
+            'role.roleBit': 501,
             'role.description': 'ACC-PLAY matrix role',
         },
         editFields: {

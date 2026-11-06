@@ -67,14 +67,14 @@ export default handler(
                         {
                             role: {
                                 roleName: `MODEL-TEST-ROLE-${Date.now()}`,
-                                // A pin next to the seeded 0-5 rather than one at
-                                // 998: the allocation below starts from
-                                // `max(high-water mark, MAX(roleBit)) + 1`, so a high
-                                // pin lifts the mark to 999+ and the space walks to
-                                // the 1023 ceiling (F-298).  This one is above the
-                                // specs' pins (6 and 7) and below what this file
-                                // allocates (9 onwards), so the two never collide.
-                                roleBit: 8,
+                                // Pinned in the band the fixtures reserve (500+), above
+                                // the two Playwright specs, because the seeds allocate
+                                // from 0 and grow with every realm role (`@@D-778`):
+                                // the bit this used to take, 8, is `Access Customer`
+                                // now.  Kept well below the 1023 ceiling for the
+                                // reason F-298 gives — a pin lifts the allocator's
+                                // high-water mark, and a high one burns the space.
+                                roleBit: 502,
                                 description: 'model flow test role',
                             },
                         },

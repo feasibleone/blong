@@ -114,8 +114,13 @@ this command replaced.
   leg was missing, or if a call had to be made that the command should have made, record it —
   [Self-improvement](#self-improvement) says where it belongs and what to do with it. That is how
   this command came to exist.
-- **The site keeps fifteen runs** (`keep-reports: '15'`). A comparison older than that is not
-  available, and `ci history` says nothing rather than guessing.
+- **The site keeps fifteen runs of summaries** (`keep-reports: '{"default": 15, "coverage": 2}'`),
+  and within them only the newest two keep their heavy artefacts (`keep-heavy: '2'`): the trace
+  archives and the rendered page are pruned from older runs, which keep their JSON and a stub page
+  that links to it. A comparison older than fifteen runs is not available, and `ci history` reads
+  `package-summary.json` rather than the page precisely so that a stripped run still answers. A
+  trace link on an older run's page answers 404, and `--full` reads the artifact instead of the
+  site's copy.
 
 ## Extending the tool
 
