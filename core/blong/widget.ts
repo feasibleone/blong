@@ -434,13 +434,54 @@ export interface IEnrichedSchema {
     name?: string;
 }
 
+/**
+ * How a delete request resolves.
+ *
+ * - `prompt` — ask the operator before taking the referring records with it
+ *   (the default).
+ * - `cascade` — take them, without asking.
+ * - `block` — refuse, naming how many of what still refer to the record.
+ * - `deactivate` — hide the record instead of deleting it.
+ */
+export type TDeletionMode = 'prompt' | 'cascade' | 'block' | 'deactivate';
+
+/** One table that still refers to the record, as the server counted it. */
+export interface IDependantKind {
+    table: string;
+    column: string;
+    /** The kind in the operator's terms — `conferral`, `participation`. */
+    label: string;
+    count: number;
+}
+
+/** What a delete does, per model. `@@D-784` */
+export interface IDeletionSpec {
+    /** Resolution mode. Defaults to `prompt`. */
+    mode?: TDeletionMode;
+    /**
+     * Action that reports what still refers to the record. Defaults to the object's
+     * own `<subject>.<object>.scan`, which every public model has a route for; a
+     * realm that answers differently names its action here. `@@D-784`
+     */
+    scan?: string;
+    /** `deactivate`: the column that hides the record, and the value it takes. */
+    flag?: {field: string; value?: unknown};
+    /** The removal param that takes dependants with it. Defaults to `cascade`. */
+    cascadeParam?: string;
+    /** Filled by the model aggregator: the entity, its key column, its edit method. */
+    entity?: string;
+    keyField?: string;
+    edit?: string;
+    /** Read before an edit, so a mode that changes one column sends a whole record. */
+    get?: string;
+}
+
 /** Toolbar button configuration */
 export interface IToolbarButton {
     label?: string;
     icon?: string;
     /** Tooltip / aria title for icon-only buttons */
-    title?: string;
-    /** Action name (string) or extended ref */
+    title?: string; /** Action name (string) or extended ref */
     action?: IAction;
     /** Direct RPC method name (bypass action registry) */
     method?: string;
@@ -468,6 +509,12 @@ export interface IToolbarButton {
      * `marine.coral.get`). Useful for delete/remove toolbar actions on browse pages.
      */
     refresh?: boolean;
+    /**
+     * How this button deletes. A button whose method is the model's `remove` gets the
+     * model's `deletion` spec attached by the model aggregator, so the mode is
+     * configured once on the model. `@@D-784`
+     */
+    deletion?: IDeletionSpec;
 }
 
 export type LayoutRow = string | (string | string[])[];

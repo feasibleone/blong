@@ -14,6 +14,7 @@
  *   {subject}.dropdown.list({name: 'marine.species'}) → [{value, label}]
  */
 import type {IDropdownOption} from '@feasibleone/blong';
+import {useSyncExternalStore} from 'react';
 
 type LoaderFn = (name: string) => Promise<IDropdownOption[]>;
 type BatchLoaderFn = (names: string[]) => Promise<Record<string, IDropdownOption[]>>;
@@ -21,6 +22,14 @@ type BatchLoaderFn = (names: string[]) => Promise<Record<string, IDropdownOption
 class DropdownRegistry {
     private cache = new Map<string, IDropdownOption[]>();
     private pending = new Map<string, Promise<IDropdownOption[]>>();
+    /**
+     * Bumped whenever the cache is emptied, so a widget that already renders an
+     * option list reads it again. A widget mounts once and keeps its list in state;
+     * without this, adding a classifier in one tab left the picker in another tab
+     * offering the old list until it was reopened.
+     */
+    private version = 0;
+    private listeners = new Set<() => void>();
 
     /**
      * Get a dropdown by name, loading it via the provided loader if not cached.
@@ -90,10 +99,28 @@ class DropdownRegistry {
         return this.cache.has(name);
     }
 
+    /** The current generation of the cache — read by `useDropdownVersion`. */
+    getVersion = (): number => this.version;
+
+    /** Subscribe to a cache generation change; returns the unsubscribe function. */
+    subscribe = (listener: () => void): (() => void) => {
+        this.listeners.add(listener);
+        return () => {
+            this.listeners.delete(listener);
+        };
+    };
+
+    /** Empty the cache and tell the mounted widgets that the answer moved. */
+    private bump(): void {
+        this.version += 1;
+        for (const listener of [...this.listeners]) listener();
+    }
+
     /** Clear the cache (useful in tests) */
     clear(): void {
         this.cache.clear();
         this.pending.clear();
+        this.bump();
     }
 }
 
@@ -110,4 +137,19 @@ export const dropdownRegistry = new DropdownRegistry();
  */
 export function invalidateDropdowns(): void {
     dropdownRegistry.clear();
+}
+
+/**
+ * The cache generation, as a render-visible value.
+ *
+ * A widget that lists options puts the value in its load effect's dependencies: when
+ * a write empties the cache, the effect runs again and the list the picker offers is
+ * the one the server now answers (`@@D-784`).
+ */
+export function useDropdownVersion(): number {
+    return useSyncExternalStore(
+        dropdownRegistry.subscribe,
+        dropdownRegistry.getVersion,
+        dropdownRegistry.getVersion,
+    );
 }

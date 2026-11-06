@@ -6,7 +6,7 @@ import {useWatch, type Control} from 'react-hook-form';
 import {useBlongForm} from '../components/Form/FormContext.js';
 import {useBlong} from '../context/BlongContext.js';
 import {useOptionLabel} from '../hooks/useText.js';
-import {dropdownRegistry} from '../model/dropdownRegistry.js';
+import {dropdownRegistry, useDropdownVersion} from '../model/dropdownRegistry.js';
 
 type SelectOption = IDropdownOption;
 
@@ -53,6 +53,8 @@ function DropdownCore({
     const [options, setOptions] = useState<SelectOption[]>(() =>
         staticOptions ? toOptions(staticOptions) : [],
     );
+    // Re-read the list when a write empties the cache.
+    const dropdownVersion = useDropdownVersion();
 
     // Clear this widget's value when the parent selection changes
     const prevParentValueRef = useRef<unknown>(parentValue);
@@ -107,7 +109,7 @@ function DropdownCore({
             cancelled = true;
         };
         // eslint-disable-next-line @eslint-react/exhaustive-deps -- parent and staticOptions intentionally omitted
-    }, [fetchAction, dropdownKey, handler, parentValue]);
+    }, [fetchAction, dropdownKey, handler, parentValue, dropdownVersion]);
 
     // Filter options by parent value (client-side cascade).
     // Supports both named-key format ({continent: 1}) and generic parent key ({parent: 1}).

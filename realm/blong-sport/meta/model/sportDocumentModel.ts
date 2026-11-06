@@ -14,6 +14,8 @@ export default model(
                 object: 'document',
                 objectTitle: 'Document',
                 public: true,
+                // Deletion: reference data other records point at: refuse and name what still uses it.
+                deletion: {mode: 'block'},
                 classifier: true,
                 nameField: 'document.documentTitle',
                 schema: {

@@ -153,9 +153,9 @@ menu: {title: 'Athletes', icon: 'pi pi-user'},    // leaf label and icon
 menu: {hidden: true},                             // no entry; still reachable by method
 ```
 
-`classifier: true` is the flag for dropdown sources — sport, discipline, area, category, cycle. Every
-realm's classifiers land in one `Classifiers` group with a submenu per realm, so the list a form
-picks from is found in one place and the realm's own group holds the pages people open all day.
+`classifier: true` is the flag for dropdown sources — sport, discipline, area, category, cycle.
+Every realm's classifiers land in one `Classifiers` group with a submenu per realm, so the list a
+form picks from is found in one place and the realm's own group holds the pages people open all day.
 
 A group title is the merge key: two realms that both declare `Registry` contribute to one group, and
 the ids the portal derives from the titles stay language independent. `subjectTitle` renames a
@@ -165,7 +165,7 @@ subject's group (`Translations` for the core dictionary pages).
 the ordered ones, alphabetically, so a group where nothing is ordered is simply sorted by label; the
 comparison uses the English label, because that is what the model declares.
 
-A realm whose menu is written by hand configures `ui.portal.portal.menu`, which *adds* groups to the
+A realm whose menu is written by hand configures `ui.portal.portal.menu`, which _adds_ groups to the
 generated ones, and sets `menuMode: 'replace'` when it should be the whole menubar.
 
 ---
@@ -311,6 +311,22 @@ opens, live:
 The images are written by `demo/blong-marine/test/docs.play.ts`, which opens each page and captures
 it only under `BLONG_CAPTURE_DOCS=1`; the `blong-docs` skill documents the conventions for
 publishing one.
+
+---
+
+## Deletion
+
+`deletion` configures what the browse page's Delete button does — `prompt` (the default), `cascade`,
+`block` or `deactivate` — and the generated toolbar carries it, so nothing is repeated per button:
+
+```typescript
+deletion: {mode: 'block'},          // refuse, naming the records that still refer to this one
+deletion: {mode: 'cascade'},        // take them with it, without asking
+deletion: {mode: 'deactivate', flag: {field: 'areaStatus', value: 'inactive'}},
+```
+
+See the [deletion pattern](deletion.md) for the full reference, what a cascade does to the foreign
+keys and how to test each mode.
 
 ---
 

@@ -29,7 +29,7 @@ open (20)
 - `T-250` · core/blong-gogo — An unreachable database can kill a process by event
 - `T-216` · core/blong-gogo — Fix the adapter's remaining error calls to use params
 
-done (32)
+done (33)
 
 - `T-341` · core/blong-gogo — Validate a config reload and reject an invalid snapshot
 - `T-217` · core/blong-gogo — Warn when a CLI config key matches no realm, port or framework key
@@ -63,6 +63,7 @@ done (32)
 - `T-552` · core/blong-gogo — Group 3: Realm instance adapter/workspace.ts with the activation
 - `T-553` · core/blong-gogo — Group 3 verify: gogo tests and lint
 - `T-593` · core/blong-gogo — Build thunk: lazy prototypes with their handler groups
+- `T-614` · core/blong-gogo — Give the adapter scan operation a gateway route
 
 <!-- /memory:index -->
 
@@ -730,5 +731,21 @@ it has an answer of its own. built and flipped: thunk registers a resolver per `
 registry.thunks, AdapterBase resolves extends from ports then thunks, and the adapter realm declares
 thunk: `['./server']`; proved by a probe that kafka.ts is never evaluated in a full agent run, and
 by no adapter.\* port starting
+
+### T-614 — Give the adapter scan operation a gateway route
+
+> _2026-11-06 · core/blong-gogo · done_
+
+The adapter answers subject.object.scan, but only through super.exec: the gateway has no route for
+it, because routes are built from the validation map. Give the operation a first-class route the way
+GET paths are generated, so a realm that wants deletion modes does not have to add a
+subject.deletion.scan handler and its validation. Until then the realm-side handler in
+realm/blong-sport is the pattern to copy.
+
+subject.object.scan is now declared by the validation generator for every public model, so it has a
+gateway route; the adapter answers it and the route is authorized as the object's remove through the
+new GatewaySchema.authorizeAs, so no capability has to be seeded. The realm-side handler, its
+validation and its capability line were removed from realm/blong-sport and the scan routes verified
+against the dev database.
 
 ## Retired

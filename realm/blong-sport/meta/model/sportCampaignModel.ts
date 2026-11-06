@@ -9,6 +9,8 @@ export default model(
                 object: 'campaign',
                 objectTitle: 'Olympic Campaign',
                 public: true,
+                // Deletion: rows that belong to a parent record: take them with it, without asking.
+                deletion: {mode: 'cascade'},
                 nameField: 'campaign.olympicStatus',
                 schema: {
                     properties: {

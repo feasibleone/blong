@@ -1291,6 +1291,17 @@ export type GatewaySchema = (
      * token's own `ses` claim, so no cross-user action is possible.
      */
     skipAuthorize?: boolean;
+    /**
+     * The action this route is authorized by, when it is not its own method name.
+     *
+     * A companion operation that answers a question about a record — the scan that
+     * counts what still refers to it before a delete — is not a capability of its
+     * own: whoever may remove the record may ask that question, and a realm should
+     * not have to seed a new action for every such read. The check compares this
+     * name against the caller's granted actions while the call itself, the log and
+     * the access audit keep naming the method that was asked for. `@@D-784`
+     */
+    authorizeAs?: string;
 };
 
 export type SchemaObject = OpenAPIV3_1.SchemaObject | OpenAPIV2.SchemaObject;

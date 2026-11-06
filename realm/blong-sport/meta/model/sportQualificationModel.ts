@@ -15,6 +15,8 @@ export default model(
                 object: 'qualification',
                 objectTitle: 'Qualification',
                 public: true,
+                // Deletion: rows that belong to a parent record: take them with it, without asking.
+                deletion: {mode: 'cascade'},
                 nameField: 'qualification.qualificationKind',
                 schema: {
                     properties: {

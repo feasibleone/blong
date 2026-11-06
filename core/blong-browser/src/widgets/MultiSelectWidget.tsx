@@ -3,7 +3,7 @@ import {MultiSelect} from '../primereact/index.js';
 import type {IDropdownOption, IWidgetProps} from '@feasibleone/blong';
 import {useEffect, useState} from 'react';
 import {useBlong} from '../context/BlongContext.js';
-import {dropdownRegistry} from '../model/dropdownRegistry.js';
+import {dropdownRegistry, useDropdownVersion} from '../model/dropdownRegistry.js';
 
 type SelectOption = IDropdownOption;
 
@@ -36,6 +36,9 @@ export function MultiSelectWidget({
     const [options, setOptions] = useState<SelectOption[]>(() =>
         staticOptions ? toOptions(staticOptions) : [],
     );
+
+    // Re-read the list when a write empties the cache.
+    const dropdownVersion = useDropdownVersion();
 
     useEffect(() => {
         let cancelled = false;
@@ -72,7 +75,7 @@ export function MultiSelectWidget({
         return () => {
             cancelled = true;
         };
-    }, [fetchAction, dropdownKey, handler, staticOptions]);
+    }, [fetchAction, dropdownKey, handler, staticOptions, dropdownVersion]);
 
     const arrValue: unknown[] = Array.isArray(value) ? value : value != null ? [value] : [];
 

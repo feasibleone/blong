@@ -205,6 +205,8 @@ export type {
 export type {
     IAction,
     ICardConfig,
+    IDeletionSpec,
+    IDependantKind,
     IEnrichedFieldSchema,
     IEnrichedSchema,
     IFieldConfig,
@@ -212,6 +214,7 @@ export type {
     IWidgetConfig,
     IWidgetProps,
     IWidgetRegistry,
+    TDeletionMode,
     WidgetType,
 } from '@feasibleone/blong';
 

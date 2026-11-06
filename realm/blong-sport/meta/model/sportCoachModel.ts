@@ -9,6 +9,8 @@ export default model(
                 object: 'coach',
                 objectTitle: 'Coach',
                 public: true,
+                // Deletion: a delete asks first, naming the records that go with it.
+                deletion: {mode: 'prompt'},
                 menu: {group: 'Registry', order: 4},
                 nameField: 'coach.personName',
                 schema: {

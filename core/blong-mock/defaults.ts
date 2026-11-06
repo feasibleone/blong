@@ -211,6 +211,8 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                 },
             },
             reports: {},
+            // A delete asks before it takes anything with it. `@@D-784`
+            deletion: {mode: 'prompt'},
             methods: {
                 find: `${subject}.${object}.find`,
                 get: `${subject}.${object}.get`,

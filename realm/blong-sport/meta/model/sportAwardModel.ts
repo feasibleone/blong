@@ -9,6 +9,8 @@ export default model(
                 object: 'award',
                 objectTitle: 'Award',
                 public: true,
+                // Deletion: reference data other records point at: refuse and name what still uses it.
+                deletion: {mode: 'block'},
                 classifier: true,
                 nameField: 'award.awardName',
                 schema: {

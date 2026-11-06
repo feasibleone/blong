@@ -1,4 +1,4 @@
-import type {ICardConfig, IToolbarButton, LayoutConfig} from './widget.ts';
+import type {ICardConfig, IDeletionSpec, IToolbarButton, LayoutConfig} from './widget.ts';
 /**
  * Model system types.
  *
@@ -288,6 +288,12 @@ export interface IModelSpec {
     openLayout?: string;
     /** Method name overrides */
     methods?: IMethodsConfig;
+    /**
+     * How a delete of one of this model's records resolves: `prompt` (the default),
+     * `cascade`, `block` or `deactivate`. The browse page's delete button carries it,
+     * so the four behaviours are configured once per model instead of per toolbar. `@@D-784`
+     */
+    deletion?: IDeletionSpec;
     /**
      * Mark this model as part of the "public API" — its standard CRUD operations
      * get gateway validations by default (via the `subject.validation`

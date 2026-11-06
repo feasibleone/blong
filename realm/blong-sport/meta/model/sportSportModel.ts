@@ -9,6 +9,8 @@ export default model(
                 object: 'sport',
                 objectTitle: 'Sport',
                 public: true,
+                // Deletion: reference data other records point at: refuse and name what still uses it.
+                deletion: {mode: 'block'},
                 // Reference data a form picks from: the page belongs under the
                 // shared Classifiers menu, not in the realm's own group. @@D-780
                 classifier: true,

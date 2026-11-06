@@ -939,32 +939,44 @@ export function cleanupModel(test: ITestFn, expect: Expect, options: ICleanupMod
             const del = portal.page.getByTestId(removeTestId);
             if ((await del.count()) === 0) break;
             await del.first().click();
-            // PrimeReact ConfirmDialog — screenshot the confirmation step, then
-            // accept ("Yes") the deletion.
-            await portal.page
-                .locator('.p-confirm-dialog-accept')
-                .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
-            if (deleted === 0) {
-                await capture(
-                    portal.page,
-                    `${subject}-${object}-cleanup-confirm.png`,
-                    'cleanupConfirm',
-                );
+            // The confirmation step depends on the model's deletion mode: `prompt` and
+            // `block` open the PrimeReact ConfirmDialog, while `cascade` deletes
+            // straight away. Wait briefly for the dialog, accept it when it is there,
+            // and carry on when the deletion already happened (`@@D-784`).
+            const confirm = portal.page.locator('.p-confirm-dialog-accept');
+            const dialogOpen = await confirm
+                .waitFor({state: 'visible', timeout: 2_000})
+                .then(() => true)
+                .catch(() => false);
+            if (dialogOpen) {
+                if (deleted === 0) {
+                    await capture(
+                        portal.page,
+                        `${subject}-${object}-cleanup-confirm.png`,
+                        'cleanupConfirm',
+                    );
+                }
+                await confirm.click();
             }
-            await portal.page.locator('.p-confirm-dialog-accept').click();
             deleted++;
             // Wait for the delete to take effect and the table to refresh: the
             // visible data-row count must drop below the count before the delete.
-            await portal.page.waitForFunction(
-                expected => {
-                    const rows = Array.from(
-                        document.querySelectorAll('.p-datatable-tbody tr'),
-                    ).filter(tr => !tr.classList.contains('p-datatable-emptymessage'));
-                    return rows.length < expected;
-                },
-                count,
-                {timeout: 10_000},
-            );
+            // A refused delete (a `block` model with dependants left behind) leaves
+            // the count where it was, so the loop stops instead of spinning.
+            const dropped = await portal.page
+                .waitForFunction(
+                    expected => {
+                        const rows = Array.from(
+                            document.querySelectorAll('.p-datatable-tbody tr'),
+                        ).filter(tr => !tr.classList.contains('p-datatable-emptymessage'));
+                        return rows.length < expected;
+                    },
+                    count,
+                    {timeout: 10_000},
+                )
+                .then(() => true)
+                .catch(() => false);
+            if (!dropped) break;
         }
     });
 }

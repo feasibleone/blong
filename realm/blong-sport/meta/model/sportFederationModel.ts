@@ -9,6 +9,8 @@ export default model(
                 object: 'federation',
                 objectTitle: 'National Sports Federation',
                 public: true,
+                // Deletion: a delete asks first, naming the records that go with it.
+                deletion: {mode: 'prompt'},
                 // The registry order is federations, clubs, athletes, coaches,
                 // specialists, affiliations — not alphabetical. @@D-780
                 menu: {group: 'Registry', order: 1},

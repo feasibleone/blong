@@ -1,7 +1,7 @@
 import type {IWidgetProps} from '@feasibleone/blong';
 import {useEffect, useState} from 'react';
 import {useBlong} from '../context/BlongContext.js';
-import {dropdownRegistry} from '../model/dropdownRegistry.js';
+import {dropdownRegistry, useDropdownVersion} from '../model/dropdownRegistry.js';
 import {Column, TreeTable, type TreeNode} from '../primereact/index.js';
 
 export function MultiSelectTreeTableWidget({
@@ -17,6 +17,9 @@ export function MultiSelectTreeTableWidget({
     const {fetch: fetchAction, options: staticOptions, dropdown: dropdownKey} = schema.widget ?? {};
     const {handler} = useBlong();
     const [options, setOptions] = useState<unknown[]>(staticOptions ?? []);
+
+    // Re-read the list when a write empties the cache.
+    const dropdownVersion = useDropdownVersion();
 
     useEffect(() => {
         if (staticOptions) return;
@@ -49,7 +52,7 @@ export function MultiSelectTreeTableWidget({
         return () => {
             cancelled = true;
         };
-    }, [fetchAction, dropdownKey, handler, staticOptions]);
+    }, [fetchAction, dropdownKey, handler, staticOptions, dropdownVersion]);
 
     return (
         <TreeTable

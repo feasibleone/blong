@@ -474,6 +474,7 @@ export default class Gateway extends Internal implements IGateway {
                     ...(value.meter !== undefined && {meter: value.meter}),
                     ...(value.audit !== undefined && {audit: value.audit}),
                     ...(value.skipAuthorize && {skipAuthorize: true}),
+                    ...(value.authorizeAs !== undefined && {authorizeAs: value.authorizeAs}),
                 },
                 schema: Type && {
                     ...('body' in value

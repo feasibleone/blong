@@ -26,6 +26,7 @@ import {useAction} from '../../hooks/useAction.js';
 import {type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import {useTranslate} from '../../hooks/useText.js';
 import type {IToolbarButton} from '../../index.js';
+import {invalidateDropdowns} from '../../model/dropdownRegistry.js';
 import {useAppStore} from '../../state/appStore.js';
 import type {IBlongError} from '../../types/action.js';
 import {ActionButton} from '../ActionButton/ActionButton.js';
@@ -522,6 +523,10 @@ export function Editor({
                 void queryClient.invalidateQueries({queryKey: [ns + '.find']});
                 void queryClient.invalidateQueries({queryKey: [ns + '.get']});
             }
+            // A classifier created here is one another open form must be able to
+            // pick: the option lists are cached for the life of the page, so a
+            // write empties them and the mounted pickers read them again.
+            invalidateDropdowns();
         } catch (err: unknown) {
             const blongErr = err as Partial<IBlongError>;
             if (Array.isArray(blongErr?.validation)) {

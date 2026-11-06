@@ -1,10 +1,39 @@
-import type {IEnrichedSchema, IHandlerProxy, IResolvedModelSpec} from '@feasibleone/blong';
+import type {
+    IEnrichedSchema,
+    IHandlerProxy,
+    IResolvedModelSpec,
+    IToolbarButton,
+} from '@feasibleone/blong';
 
 export async function subjectObjectBrowse(
     model: IResolvedModelSpec,
     blong: IHandlerProxy<unknown>,
 ) {
-    const {subject, object, browser, cards, layouts} = model;
+    const {subject, object, browser, cards, layouts, keyField, methods, deletion} = model;
+
+    /**
+     * The model's own delete button carries the model's deletion mode — the four
+     * behaviours are configured once on the model rather than repeated on a toolbar.
+     *
+     * The scan action defaults to the object's own `scan`, which the validation
+     * generator declares for every public model: a realm that configures a deletion
+     * mode writes no handler for it. `@@D-784`
+     */
+    const withDeletion = (button: IToolbarButton): IToolbarButton =>
+        button.method === methods.remove
+            ? {
+                  ...button,
+                  deletion: {
+                      ...deletion,
+                      mode: deletion?.mode ?? 'prompt',
+                      entity: `${subject}.${object}`,
+                      keyField,
+                      edit: methods.edit,
+                      get: methods.get,
+                      scan: deletion?.scan ?? `${subject}.${object}.scan`,
+                  },
+              }
+            : button;
 
     return async () => ({
         title: browser.title,
@@ -22,7 +51,7 @@ export async function subjectObjectBrowse(
                     schema,
                     toolbar: [
                         {label: '', icon: 'pi pi-refresh', action: '__refresh__', title: 'Refresh'},
-                        ...(browser.toolbar ?? []),
+                        ...(browser.toolbar ?? []).map(withDeletion),
                     ],
                     cards,
                     layouts,

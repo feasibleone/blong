@@ -9,6 +9,8 @@ export default model(
                 object: 'result',
                 objectTitle: 'Sports Result',
                 public: true,
+                // Deletion: rows that belong to a parent record: take them with it, without asking.
+                deletion: {mode: 'cascade'},
                 nameField: 'result.resultValue',
                 schema: {
                     properties: {

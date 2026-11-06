@@ -3,7 +3,7 @@ import {Column, DataTable, type DataTableSelectionChangeParams} from '../primere
 import type {IDropdownOption, IWidgetProps} from '@feasibleone/blong';
 import {useEffect, useState} from 'react';
 import {useBlong} from '../context/BlongContext.js';
-import {dropdownRegistry} from '../model/dropdownRegistry.js';
+import {dropdownRegistry, useDropdownVersion} from '../model/dropdownRegistry.js';
 
 type Row = IDropdownOption & Record<string, unknown>;
 
@@ -41,6 +41,9 @@ export function SelectTableWidget({
     const {handler} = useBlong();
     const [rows, setRows] = useState<Row[]>(() => staticOptions ? toOptions(staticOptions) : []);
 
+    // Re-read the list when a write empties the cache.
+    const dropdownVersion = useDropdownVersion();
+
     useEffect(() => {
         if (staticOptions) return;
         let cancelled = false;
@@ -72,7 +75,7 @@ export function SelectTableWidget({
         return () => {
             cancelled = true;
         };
-    }, [fetchAction, dropdownKey, handler, staticOptions]);
+    }, [fetchAction, dropdownKey, handler, staticOptions, dropdownVersion]);
 
     const isSingle = selectionMode === 'single';
 

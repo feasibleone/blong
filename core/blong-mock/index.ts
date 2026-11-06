@@ -355,6 +355,19 @@ export function validation(models: IModelSpec[]): Record<string, ValidationFn> {
                 result: Type.Awaited(Type.Unknown()),
                 description: `Remove ${object} by key`,
             }),
+            /**
+             * The question a delete asks first: which records still refer to this
+             * one, counted per kind. It is a route of its own so the browse page can
+             * ask it without a realm handler, and it is authorized by the `remove`
+             * action — whoever may delete the record may learn what a delete would
+             * take with it, so no capability has to be seeded for it. `@@D-784`
+             */
+            [`${subject}.${object}.scan`]: () => ({
+                params: Type.Unknown(),
+                result: Type.Awaited(Type.Unknown()),
+                description: `Count the records that refer to one ${object}`,
+                authorizeAs: `${subject}.${object}.remove`,
+            }),
             [`${subject}.dropdown.list`]: () => ({
                 params: Type.Unknown(),
                 result: Type.Awaited(Type.Unknown()),

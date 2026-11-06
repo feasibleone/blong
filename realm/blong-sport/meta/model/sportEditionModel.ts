@@ -9,6 +9,8 @@ export default model(
                 object: 'edition',
                 objectTitle: 'Competition Edition',
                 public: true,
+                // Deletion: rows that belong to a parent record: take them with it, without asking.
+                deletion: {mode: 'cascade'},
                 nameField: 'edition.editionName',
                 schema: {
                     properties: {

@@ -37,8 +37,19 @@ import {
     strToBinary,
 } from '../schema/knex/binary.ts';
 import {ensureDatabase} from '../schema/knex/database.ts';
+import {
+    discoverDateColumns,
+    prepareDateParams,
+    type DateColumnMap,
+} from '../schema/knex/datetime.ts';
 import {wrapKnex} from '../schema/knex/json.ts';
 import {normalizeOrderBy} from '../schema/knex/order.ts';
+import {
+    cascadeDelete,
+    countDependants,
+    discoverRelations,
+    type IRelationIndex,
+} from '../schema/knex/relations.ts';
 import {
     bindSyntheticHandlers,
     schemaProcedureBindImpl,
@@ -58,12 +69,12 @@ import {
     type ITableConstraints,
 } from '../schema/knex/types.ts';
 import {
-    type IColumnSchema,
     methodId,
     propDefault,
     propType,
     readSqlFiles,
     snakeToCamel,
+    type IColumnSchema,
 } from '../schema/knex/utils.ts';
 
 // Helpers to access the binary-column map stored on the adapter context.
@@ -74,6 +85,65 @@ function getBinaryCols(ctx: object): Map<string, Set<string>> | undefined {
 }
 function setBinaryCols(ctx: object, map: Map<string, Set<string>>): void {
     (ctx as Record<string, unknown>).binaryColumns = map;
+}
+
+// Helpers to access the date-column map stored on the adapter context.
+function getDateCols(ctx: object): DateColumnMap | undefined {
+    return (ctx as Record<string, unknown>).dateColumns as DateColumnMap | undefined;
+}
+function setDateCols(ctx: object, map: DateColumnMap): void {
+    (ctx as Record<string, unknown>).dateColumns = map;
+}
+
+/**
+ * The params a statement binds for `table`: binary columns as Buffers, date
+ * columns as the literals MySQL parses. Every write and every `where` goes
+ * through here, so a handler that bypasses the schema codec (a permissive
+ * validation override, a raw knex call in a realm) still stores a valid date
+ * (@@F-697).
+ */
+function prepareParams(
+    ctx: object,
+    table: string,
+    params: Record<string, unknown>,
+): Record<string, unknown> {
+    return prepareDateParams(
+        prepareInputParams(params, getBinaryCols(ctx), table),
+        getDateCols(ctx),
+        table,
+    );
+}
+
+// The foreign-key index, discovered once per connection.
+function getRelations(ctx: object): IRelationIndex | undefined {
+    return (ctx as Record<string, unknown>).relations as IRelationIndex | undefined;
+}
+function setRelations(ctx: object, index: IRelationIndex): void {
+    (ctx as Record<string, unknown>).relations = index;
+}
+
+/** Whether a `core_resource` row exists for `id` — a shared PK may be one. */
+async function existingResource(qb: Knex, id: Buffer): Promise<unknown> {
+    const row = (await qb('core_resource').where('resourceId', id).first('resourceId')) as
+        | {resourceId?: unknown}
+        | undefined;
+    return row?.resourceId;
+}
+
+/**
+ * How a referring table reads in a message: `sport_conferral` in the `sport`
+ * subject is a "conferral", `party_person` a "person".
+ */
+function dependantLabel(subject: string, table: string): string {
+    const prefix = `${subject}_`;
+    const name = table.startsWith(prefix) ? table.slice(prefix.length) : table;
+    return name.replace(/_/g, ' ');
+}
+
+/** ER_ROW_IS_REFERENCED_2 — a parent row a foreign key still points at. */
+function isForeignKeyRefusal(error: unknown): boolean {
+    const {errno, code} = (error ?? {}) as {errno?: unknown; code?: unknown};
+    return errno === 1451 || code === 'ER_ROW_IS_REFERENCED_2';
 }
 
 /** The shared rebuild coordinator this connection's edge writers defer through. */
@@ -116,6 +186,9 @@ export const errorMap: IErrorMap = {
     'knex.exists': 'Knex Exists',
     'knex.unique': 'Knex Unique',
     'knex.missingKey': 'Missing key value for {key}',
+    // A delete that a foreign key refuses: the caller needs to know what still
+    // points at the record, not the constraint name MySQL reported (`@@D-784`).
+    'knex.referenced': 'Cannot delete this {object}: {references} still refer to it',
     // Record-level (ACL) refusals from the generic CRUD — the same `acl.*` family
     // the access realm declares, so a caller sees one error name wherever the
     // check runs (adapter or realm handler).
@@ -486,9 +559,13 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 if (pathRefresh) await pathRefresh.drain(knex);
             }
 
-            // Discover binary(16) columns for Buffer <-> string conversion.
+            // Discover binary(16) columns for Buffer <-> string conversion, the
+            // date columns whose ISO values MySQL will not parse as-is, and the
+            // foreign keys a scan or a cascade walks.
             if (knex && connecting) {
                 setBinaryCols(this.config.context, await discoverBinaryColumns(knex));
+                setDateCols(this.config.context, await discoverDateColumns(knex));
+                setRelations(this.config.context, await discoverRelations(knex));
             }
 
             return super.ready();
@@ -1095,8 +1172,9 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         // Record-level ACL: `add` has no record key yet, so the scope
                         // declared by `addScope` decides whether it may be created.
                         await aclCheckAdd(opts, cols, rest);
-                        // Convert any string values for binary columns to Buffer
-                        const insertCols = prepareInputParams(cols, binaryCols, table);
+                        // Convert any string values for binary columns to Buffer,
+                        // and ISO date strings to the literals MySQL stores.
+                        const insertCols = prepareParams(this.config.context, table, cols);
                         const inserted = await qb(table).insert(insertCols);
                         // Select the inserted row back by the PK. Prefer the explicit
                         // key value (post-conversion) when the caller supplied one
@@ -1120,17 +1198,12 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                                 d => d.table === `${subject}_${detailName}`,
                             );
                             if (!detail) continue;
-                            const detailBinaryCols = getBinaryCols(this.config.context);
                             for (const detailRow of detailRows) {
                                 await qb(detail.table).insert(
-                                    prepareInputParams(
-                                        {
-                                            ...(detailRow as Record<string, unknown>),
-                                            [detail.fkColumn]: masterKey,
-                                        },
-                                        detailBinaryCols,
-                                        detail.table,
-                                    ),
+                                    prepareParams(this.config.context, detail.table, {
+                                        ...(detailRow as Record<string, unknown>),
+                                        [detail.fkColumn]: masterKey,
+                                    }),
                                 );
                             }
                             const createdRows = (await qb(detail.table).where({
@@ -1138,7 +1211,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             })) as Record<string, unknown>[];
                             result[detailName] = prepareResultRows(
                                 createdRows,
-                                detailBinaryCols,
+                                getBinaryCols(this.config.context),
                                 detail.table,
                             );
                         }
@@ -1223,8 +1296,9 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             isBinaryKey ? strToBinary(key) : undefined,
                         );
                         // Convert any string values for binary columns to Buffer (the
-                        // form round-trips them as base64 strings returned by `get`).
-                        const preparedUpdate = prepareInputParams(update, binaryCols, table);
+                        // form round-trips them as base64 strings returned by `get`),
+                        // and ISO date strings to the literals MySQL stores.
+                        const preparedUpdate = prepareParams(this.config.context, table, update);
                         // Update using Buffer for binary keys
                         if (isBinaryKey) {
                             await qb(table).where(keyName, strToBinary(key)).update(preparedUpdate);
@@ -1260,20 +1334,15 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                                 d => d.table === `${subject}_${detailName}`,
                             );
                             if (!detail) continue;
-                            const detailBinaryCols = getBinaryCols(this.config.context);
                             await qb(detail.table)
                                 .where({[detail.fkColumn]: detailKey})
                                 .del();
                             for (const detailRow of detailRows) {
                                 await qb(detail.table).insert(
-                                    prepareInputParams(
-                                        {
-                                            ...(detailRow as Record<string, unknown>),
-                                            [detail.fkColumn]: detailKey,
-                                        },
-                                        detailBinaryCols,
-                                        detail.table,
-                                    ),
+                                    prepareParams(this.config.context, detail.table, {
+                                        ...(detailRow as Record<string, unknown>),
+                                        [detail.fkColumn]: detailKey,
+                                    }),
                                 );
                             }
                         }
@@ -1316,6 +1385,45 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         return result;
                     });
                 }
+                case 'scan': {
+                    // `{subject}.{object}.scan` — what still refers to this record.
+                    // The delete modes a model offers are built on this answer:
+                    // `block` reports it as a refusal, `prompt` asks for it before a
+                    // cascade, and both name the kinds in the operator's terms
+                    // (`@@D-784`).
+                    const {key: keyName = `${object}Id`, [keyName]: key} = params;
+                    if (!(keyName in params)) {
+                        throw this.error(
+                            _errors['knex.missingKey']({params: {key: keyName}}),
+                            $meta,
+                        );
+                    }
+                    const binaryCols = getBinaryCols(this.config.context);
+                    const isBinaryKey =
+                        isBinaryColumn(binaryCols, table, keyName) && typeof key === 'string';
+                    const masterKey = isBinaryKey ? strToBinary(key as string) : key;
+                    const relations = getRelations(this.config.context);
+                    const qb = this.config.context.queryBuilder!;
+                    if (!relations || masterKey === undefined || masterKey === null) {
+                        return {dependants: [], total: 0};
+                    }
+                    const resourceId = Buffer.isBuffer(masterKey)
+                        ? await existingResource(qb, masterKey)
+                        : undefined;
+                    const dependants = await countDependants(qb, relations, {
+                        table,
+                        key: keyName,
+                        value: masterKey,
+                        resourceId,
+                    });
+                    return {
+                        dependants: dependants.map(entry => ({
+                            ...entry,
+                            label: dependantLabel(subject, entry.table),
+                        })),
+                        total: dependants.reduce((sum, entry) => sum + entry.count, 0),
+                    };
+                }
                 case 'remove': {
                     const {key: keyName = `${object}Id`, [keyName]: key} = params;
                     if (!(keyName in params)) {
@@ -1337,6 +1445,10 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             $meta,
                         );
                     }
+                    // `cascade` is the caller's answer to the question `scan`
+                    // answers: it takes the referring rows with it instead of
+                    // refusing the delete.
+                    const cascade = params.cascade === true;
                     const qb = this.config.context.queryBuilder!;
                     // Record-level ACL: refuse to delete a record the caller may
                     // not act on before anything is touched.
@@ -1354,61 +1466,134 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     // entity row and the resource row disagreeing about whether the
                     // record exists, with nothing recording the difference.
                     return await qb.transaction(async trx => {
-                        // Release the rules that reference the record first, before the
-                        // entity row is deleted (see `aclReleaseResource`).
-                        if (Buffer.isBuffer(masterKey)) {
-                            await aclReleaseResource(opts, masterKey, trx);
-                        }
-                        // Master-detail: delete each FK-constrained detail table's
-                        // rows for this master BEFORE deleting the master row, so a
-                        // non-cascading FK does not block the delete.
-                        for (const detail of detailTables(subject, object, keyName)) {
-                            await trx(detail.table)
-                                .where({[detail.fkColumn]: masterKey})
-                                .del();
-                        }
-                        // Graph edges: delete the subject's own edges and (when the
-                        // binding declares `reverse`) the edges pointing AT it.
-                        if (Buffer.isBuffer(masterKey)) {
-                            const subjectBuf = masterKey as Buffer;
-                            for (const binding of opts.edges) {
-                                await trx('core_triple')
-                                    .where('subjectId', subjectBuf)
-                                    .where('predicateName', binding.predicate)
-                                    .del();
-                                if (binding.reverse) {
-                                    await trx('core_triple')
-                                        .where('objectId', subjectBuf)
-                                        .where('predicateName', binding.predicate)
-                                        .del();
+                        try {
+                            // Release the rules that reference the record first, before the
+                            // entity row is deleted (see `aclReleaseResource`).
+                            if (Buffer.isBuffer(masterKey)) {
+                                await aclReleaseResource(opts, masterKey, trx);
+                            }
+                            // Cascade: the caller answered `scan` and asked for the
+                            // referring rows to go too. The walk deletes them deepest
+                            // first, so the entity row below is not blocked by a
+                            // constraint the caller has already agreed to break.
+                            if (cascade) {
+                                const relations = getRelations(this.config.context);
+                                if (relations) {
+                                    const roots = [{table, column: keyName, value: masterKey}];
+                                    if (
+                                        Buffer.isBuffer(masterKey) &&
+                                        params.cascadeResource !== false &&
+                                        (await existingResource(trx, masterKey))
+                                    ) {
+                                        roots.push({
+                                            table: 'core_resource',
+                                            column: 'resourceId',
+                                            value: masterKey,
+                                        });
+                                    }
+                                    const result = await cascadeDelete(trx, relations, roots);
+                                    // A cascaded child that was resource-backed left its
+                                    // resource row behind; drop it once nothing points at
+                                    // it any more. A resource another row still needs is
+                                    // left alone rather than failing the delete.
+                                    for (const resourceId of result.resources) {
+                                        try {
+                                            await trx('core_resource')
+                                                .where('resourceId', resourceId as never)
+                                                .del();
+                                        } catch {
+                                            // Still referenced: keep it.
+                                        }
+                                    }
                                 }
                             }
-                            // The rebuild follows the edge deletes, and it has to run
-                            // before the resource row goes: `core_path` holds a
-                            // foreign key to `core_resource`, and the rebuild is what
-                            // drops the paths that pointed at this record.
-                            if (opts.edges.length) {
-                                await trx.raw('CALL access_pathRefresh()');
+                            // Master-detail: delete each FK-constrained detail table's
+                            // rows for this master before the master row, so a
+                            // non-cascading FK does not block the delete. A cascade has
+                            // already removed them — and it had to run first, because a
+                            // detail that has children of its own (an edition with a
+                            // participation) cannot be deleted before them: this delete
+                            // alone is refused by the grandchild (@@F-699).
+                            for (const detail of detailTables(subject, object, keyName)) {
+                                await trx(detail.table)
+                                    .where({[detail.fkColumn]: masterKey})
+                                    .del();
                             }
+                            // Graph edges: delete the subject's own edges and (when the
+                            // binding declares `reverse`) the edges pointing AT it.
+                            if (Buffer.isBuffer(masterKey)) {
+                                const subjectBuf = masterKey as Buffer;
+                                for (const binding of opts.edges) {
+                                    await trx('core_triple')
+                                        .where('subjectId', subjectBuf)
+                                        .where('predicateName', binding.predicate)
+                                        .del();
+                                    if (binding.reverse) {
+                                        await trx('core_triple')
+                                            .where('objectId', subjectBuf)
+                                            .where('predicateName', binding.predicate)
+                                            .del();
+                                    }
+                                }
+                                // The rebuild follows the edge deletes, and it has to run
+                                // before the resource row goes: `core_path` holds a
+                                // foreign key to `core_resource`, and the rebuild is what
+                                // drops the paths that pointed at this record.
+                                if (opts.edges.length) {
+                                    await trx.raw('CALL access_pathRefresh()');
+                                }
+                            }
+                            // Entity row first — its PK is a FK to `core_resource`, so
+                            // the resource row must be deleted only after the entity row.
+                            const removed = isBinaryKey
+                                ? await trx(table).where(keyName, masterKey).del()
+                                : await trx(table)
+                                      .where({[keyName]: key})
+                                      .del();
+                            // Resource-backed: delete the `core_resource` row last.
+                            if (Buffer.isBuffer(masterKey) && opts.resource) {
+                                await trx('core_resource').where('resourceId', masterKey).del();
+                            }
+                            return removed;
+                        } catch (error) {
+                            // MySQL names a constraint, not a kind of record. `scan`
+                            // knows which tables still point here, so a refused delete
+                            // is answered in the caller's vocabulary — wherever in the
+                            // transaction the refusal came from (`@@D-784`).
+                            if (!isForeignKeyRefusal(error)) throw error;
+                            const relations = getRelations(this.config.context);
+                            const dependants = relations
+                                ? await countDependants(trx, relations, {
+                                      table,
+                                      key: keyName,
+                                      value: masterKey,
+                                      resourceId: Buffer.isBuffer(masterKey)
+                                          ? await existingResource(trx, masterKey)
+                                          : undefined,
+                                  })
+                                : [];
+                            throw this.error(
+                                _errors['knex.referenced']({
+                                    params: {
+                                        object,
+                                        references: dependants.length
+                                            ? dependants
+                                                  .map(
+                                                      entry =>
+                                                          `${entry.count} ${dependantLabel(subject, entry.table)}`,
+                                                  )
+                                                  .join(', ')
+                                            : 'other records',
+                                    },
+                                }),
+                                $meta,
+                            );
                         }
-                        // Entity row first — its PK is a FK to `core_resource`, so
-                        // the resource row must be deleted only after the entity row.
-                        const removed = isBinaryKey
-                            ? await trx(table).where(keyName, masterKey).del()
-                            : await trx(table)
-                                  .where({[keyName]: key})
-                                  .del();
-                        // Resource-backed: delete the `core_resource` row last.
-                        if (Buffer.isBuffer(masterKey) && opts.resource) {
-                            await trx('core_resource').where('resourceId', masterKey).del();
-                        }
-                        return removed;
                     });
                 }
                 case 'merge': {
                     const {key = `${object}Id`, [object]: objectRows, resourceType} = params;
                     let rows = objectRows as Array<{[key]: string}>;
-                    const binaryCols = getBinaryCols(this.config.context);
                     // One transaction, for the same reason the add and edit cases
                     // have one: the resources this merge creates and the rows it
                     // writes commit together or not at all.
@@ -1469,30 +1654,31 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         }
                         // Convert string values for binary columns to Buffer before insert
                         const preparedRows = rows.map(row =>
-                            prepareInputParams(row, binaryCols, table),
+                            prepareParams(this.config.context, table, row),
                         );
                         return qb(table).insert(preparedRows).onConflict(key).merge();
                     });
                 }
                 case 'insert': {
-                    const binaryCols = getBinaryCols(this.config.context);
                     return this.config.context.queryBuilder!(table).insert(
-                        prepareInputParams(params, binaryCols, table),
+                        prepareParams(this.config.context, table, params),
                     );
                 }
                 case 'update': {
                     const {select: _select, ...where} = params;
-                    const binaryCols = getBinaryCols(this.config.context);
                     return this.config.context.queryBuilder!(table)
                         .where(
-                            prepareInputParams(where as Record<string, unknown>, binaryCols, table),
+                            prepareParams(
+                                this.config.context,
+                                table,
+                                where as Record<string, unknown>,
+                            ),
                         )
                         .update(_select);
                 }
                 case 'delete': {
-                    const binaryCols = getBinaryCols(this.config.context);
                     return this.config.context.queryBuilder!(table)
-                        .where(prepareInputParams(params, binaryCols, table))
+                        .where(prepareParams(this.config.context, table, params))
                         .del();
                 }
             }
@@ -1735,7 +1921,14 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         query = query.whereRaw(filter.sql, filter.bindings as never[]);
                     }
                 }
-                const rows = (await query) as Array<{resourceId: Buffer; label: string}>;
+                // Alphabetical unless a realm overrides the list with an order of its
+                // own: MySQL returns rows in no particular order, so a picker built
+                // from this map listed the classifiers as the storage engine felt like
+                // it (`@@D-784`).
+                const rows = (await query.orderBy('label', 'asc')) as Array<{
+                    resourceId: Buffer;
+                    label: string;
+                }>;
                 result[`${s}.${object}`] = rows.map(r => ({
                     value: r.resourceId.toString('base64'),
                     label: r.label,

@@ -15,16 +15,12 @@ renders them against fixture data (`cd suite/blong-suite && npm run storybook`) 
 The conventions for running one are in the
 [Storybook pattern](../patterns/blong-browser.md#storybook-pattern).
 
-The Coral browse page, live from that Storybook: the portal menu and tab are the real ones, the
-rows come from the realm's fixture, and nothing in the frame was written for this page.
+The Coral browse page, live from that Storybook: the portal menu and tab are the real ones, the rows
+come from the realm's fixture, and nothing in the frame was written for this page.
 
-<StorybookStory
-    site="suite"
-    id="marine-coral--browse"
-    title="The generated Coral browse page, running from the realm fixture"
-    height="620px"
-    poster={require('../patterns/img/marine-coral-browse.png').default}
-/>
+<StorybookStory site="suite" id="marine-coral--browse" title="The generated Coral browse page,
+running from the realm fixture" height="620px"
+poster={require('../patterns/img/marine-coral-browse.png').default} />
 
 ---
 
@@ -113,6 +109,13 @@ in the overlay receive server-schema defaults.
 - **`report`** — report page title and permission key.
 - **`methods`** — override the inferred API method names (`${subject}.${object}.find`, `.get`,
   `.add`, `.edit`, `.remove`, `.report`).
+
+### 4. Deletion
+
+`deletion` says what deleting one of the model's records does — ask first (the default), cascade,
+refuse or deactivate — and the browse page's Delete button obeys it. The records a delete would take
+are counted from the database's own foreign keys, so the model declares the behaviour and not the
+relationships. See [Deletion](deletion.md).
 
 ---
 

@@ -9,6 +9,9 @@ export default model(
                 object: 'area',
                 objectTitle: 'Expert Area',
                 public: true,
+                // Deletion: an area a specialist may hold is retired rather than
+                // removed — hiding it keeps the history that points at it readable.
+                deletion: {mode: 'deactivate', flag: {field: 'areaStatus', value: 'inactive'}},
                 classifier: true,
                 nameField: 'area.areaName',
                 schema: {

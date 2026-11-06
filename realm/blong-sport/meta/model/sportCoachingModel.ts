@@ -9,6 +9,8 @@ export default model(
                 object: 'coaching',
                 objectTitle: 'Coaching Period',
                 public: true,
+                // Deletion: rows that belong to a parent record: take them with it, without asking.
+                deletion: {mode: 'cascade'},
                 nameField: 'coaching.coachRole',
                 schema: {
                     properties: {

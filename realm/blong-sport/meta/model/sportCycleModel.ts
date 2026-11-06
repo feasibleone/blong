@@ -9,6 +9,8 @@ export default model(
                 object: 'cycle',
                 objectTitle: 'Olympic Cycle',
                 public: true,
+                // Deletion: reference data other records point at: refuse and name what still uses it.
+                deletion: {mode: 'block'},
                 classifier: true,
                 nameField: 'cycle.cycleName',
                 schema: {

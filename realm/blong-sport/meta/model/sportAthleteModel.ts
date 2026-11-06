@@ -19,6 +19,8 @@ export default model(
                 object: 'athlete',
                 objectTitle: 'Athlete',
                 public: true,
+                // Deletion: a delete asks first, naming the records that go with it.
+                deletion: {mode: 'prompt'},
                 // The registry pages sit in their own group: the realm's own holds
                 // the competition side, and the order is the register's. @@D-780
                 menu: {group: 'Registry', order: 3},

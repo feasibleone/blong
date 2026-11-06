@@ -32,6 +32,8 @@ declare module 'fastify' {
     }
     interface FastifyContextConfig {
         methodName?: string;
+        /** The action the RBAC check compares against, when it is not `methodName`. */
+        authorizeAs?: string;
         audit?: boolean;
         skipAuthorize?: boolean;
     }
@@ -299,7 +301,12 @@ export default fp<{
                 if (!methodName) {
                     return; // no method configured — allow (backward compat)
                 }
-                const requestedId = methodId(methodName);
+                // A companion operation may be authorized by the action of the
+                // operation it serves — the delete scan by the remove, so a realm
+                // needs no capability of its own for a question it can already
+                // answer by attempting the delete.
+                const authorizeAs = request.routeOptions.config.authorizeAs;
+                const requestedId = methodId(authorizeAs ?? methodName);
                 const allowed = credentials.actions.includes(requestedId);
                 // Record the access decision along with the access check — applies to
                 // every operation controlled through it.  Best-effort (an audit failure

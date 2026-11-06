@@ -9,6 +9,8 @@ export default model(
                 object: 'affiliation',
                 objectTitle: 'Affiliation Period',
                 public: true,
+                // Deletion: rows that belong to a parent record: take them with it, without asking.
+                deletion: {mode: 'cascade'},
                 menu: {group: 'Registry', order: 6},
                 nameField: 'affiliation.affiliationKind',
                 schema: {

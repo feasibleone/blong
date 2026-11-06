@@ -158,6 +158,25 @@ function asBinary(value: unknown): unknown {
         : value;
 }
 
+/**
+ * The profile half's `date` columns. The datepicker sends an ISO instant
+ * (`2015-01-01T00:00:00.000Z`), which MySQL refuses for a `DATE` column; the day
+ * is what the column stores, so the instant is reduced to its UTC calendar day.
+ *
+ * The generic CRUD gets this from the adapter's date-column map, but the profile
+ * write is a raw knex statement and never reaches it (@@F-697).
+ */
+const DATE_COLUMNS = new Set(['careerStartDate', 'careerEndDate', 'certificationValidUntil']);
+
+function asDateLiteral(value: unknown): unknown {
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? value : value.toISOString().slice(0, 10);
+    }
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(value)) return value;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString().slice(0, 10);
+}
+
 /** The spec for a profile object; throws when the object is not a profile. */
 function profileSpec(object: string): IProfileSpec {
     const spec = SPECS[object];
@@ -230,10 +249,7 @@ async function profileFind(
 
     for (const [column, value] of Object.entries({...filterBy, ...where})) {
         if (value === undefined || value === null) continue;
-        query = query.where(
-            `${carrierOf(spec, column)}.${column}`,
-            asBinary(value) as never,
-        );
+        query = query.where(`${carrierOf(spec, column)}.${column}`, asBinary(value) as never);
     }
 
     if (search) {
@@ -338,7 +354,9 @@ function personNameOf(party: Record<string, unknown>): string | undefined {
  */
 function toBinaryRecord(row: Record<string, unknown>): Record<string, unknown> {
     const out: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(row)) out[key] = asBinary(value);
+    for (const [key, value] of Object.entries(row)) {
+        out[key] = DATE_COLUMNS.has(key) ? asDateLiteral(value) : asBinary(value);
+    }
     return out;
 }
 
@@ -423,6 +441,17 @@ async function profileUpdate(
  * The PK is shared: one person may hold two profiles (a coach who is also a
  * specialist), so the party row is only removed once no other profile table
  * still holds the id — otherwise the second role would lose its name.
+ *
+ * The profile row is deleted through the generic `remove` (`super.exec`), not with a
+ * raw statement: rows of the realm that point at it (a participation, a campaign, a
+ * qualification) are foreign keys, and the generic path is what cascades them when
+ * the caller asked for it (`cascade`). The party row is deleted the same way once no
+ * sibling profile holds the id, so the conferrals, attachments and affiliations that
+ * hang off its `core_resource` row go with it — the orphans T-613 describes.
+ *
+ * `cascadeResource: false` on the profile step keeps the person's own resource out of
+ * the profile cascade: while a sibling profile still holds the id, the conferrals a
+ * person carries belong to the person, not to the role being removed.
  */
 async function profileRemove(
     qb: KnexQb,
@@ -430,14 +459,16 @@ async function profileRemove(
     params: Record<string, unknown>,
     partyRemove: (params: unknown, meta: Meta) => Promise<unknown>,
     $meta: Meta,
+    selfRemove: (params: unknown, meta: Meta) => Promise<unknown>,
 ): Promise<unknown> {
     const spec = profileSpec(object);
     const payload = (params[spec.object] ?? params) as Record<string, unknown>;
     const id = payload[spec.key] ?? params[spec.key];
     if (!id) throw new Error(`${spec.key} is required`);
 
+    const cascade = params.cascade === true;
     const key = asBinary(id);
-    await qb(spec.table).where(spec.key, key).del();
+    await selfRemove({[spec.key]: id, cascade, cascadeResource: false}, $meta as never);
 
     // Each profile table has its own key column, so the sibling check asks each
     // spec for its own.
@@ -450,7 +481,7 @@ async function profileRemove(
 
     // `remove` reads the key at the top level of the payload, not nested under
     // the object — a `{person: {personId}}` call is refused as a missing key.
-    await partyRemove({[spec.partyKey]: id}, $meta);
+    await partyRemove({[spec.partyKey]: id, cascade}, $meta);
     return {[spec.object]: {...payload, [spec.key]: id}};
 }
 

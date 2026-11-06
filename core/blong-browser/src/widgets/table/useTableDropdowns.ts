@@ -12,7 +12,7 @@
  */
 import type {IDropdownOption} from '@feasibleone/blong';
 import {useEffect, useMemo, useState} from 'react';
-import {dropdownRegistry} from '../../model/dropdownRegistry.js';
+import {dropdownRegistry, useDropdownVersion} from '../../model/dropdownRegistry.js';
 import type {Row} from './model.js';
 
 export interface ITableDropdownsOptions {
@@ -43,6 +43,8 @@ export function useTableDropdowns({
     );
 
     const [loaded, setLoaded] = useState<Record<string, unknown[]>>({});
+    // Re-read the labels when a write empties the cache.
+    const dropdownVersion = useDropdownVersion();
     useEffect(() => {
         const missing = columnDropdownKeys.filter(key => !dropdowns?.[key] && !loaded[key]);
         if (!missing.length || !load) return;
@@ -61,7 +63,7 @@ export function useTableDropdowns({
         return () => {
             cancelled = true;
         };
-    }, [columnDropdownKeys, dropdowns, loaded, load]);
+    }, [columnDropdownKeys, dropdowns, loaded, load, dropdownVersion]);
 
     /** The caller's map wins; the loaded one fills the gaps. */
     const resolvedDropdowns = useMemo(() => ({...loaded, ...dropdowns}), [loaded, dropdowns]);
@@ -108,7 +110,7 @@ export function useTableDropdowns({
         return () => {
             cancelled = true;
         };
-    }, [pivotDropdown, dropdowns, load]);
+    }, [pivotDropdown, dropdowns, load, dropdownVersion]);
 
     return {resolvedDropdowns, signature, labelFields, pivotOptions};
 }

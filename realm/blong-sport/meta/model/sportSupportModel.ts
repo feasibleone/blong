@@ -9,6 +9,8 @@ export default model(
                 object: 'support',
                 objectTitle: 'Support Period',
                 public: true,
+                // Deletion: rows that belong to a parent record: take them with it, without asking.
+                deletion: {mode: 'cascade'},
                 nameField: 'support.expertRole',
                 schema: {
                     properties: {

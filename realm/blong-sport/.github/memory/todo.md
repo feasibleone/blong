@@ -24,7 +24,7 @@ open (15)
 - `T-400` · realm/blong-sport — Assert one resource row and a person with two roles
 - `T-598` · realm/blong-sport — Swap the sport logo for an approved Olympic asset
 
-done (25)
+done (27)
 
 - `T-374` · realm/blong-sport — sport P1 scaffold and boot
 - `T-376` · realm/blong-sport — sport P3 schema and seeds
@@ -51,6 +51,8 @@ done (25)
 - `T-601` · realm/blong-sport — Sport feedback flow asserts a label target it no longer captures
 - `T-604` · realm/blong-sport — The feedback spec races its own list read before the capture
 - `T-606` · realm/blong-sport — Sport's login screen loads the whole CRUD and test UI
+- `T-613` · realm/blong-sport — Sport athlete and club removal leaves party and resource rows behind
+- `T-615` · realm/blong-sport — Cover the four deletion modes with a Playwright spec
 
 <!-- /memory:index -->
 
@@ -516,3 +518,43 @@ its `groupSize` remains the answer there.
 
 Closed with the boot fixed (D-747), the session caches fixed and the shared signed-in portal in use
 across blong-sport (D-748); the citations were retargeted to those two entries first.
+
+### T-613 — Sport athlete and club removal leaves party and resource rows behind
+
+> _2026-11-06 · realm/blong-sport · done_
+
+Removing an athlete or a club does not remove the party and resource rows behind it:
+`sport.athlete.remove` and `sport.club.remove` delete the domain row, while `party_person` /
+`party_organization` and `core_resource` stay. The browse page joins the domain table, so those
+orphans are invisible to it and no `cleanupModel` can reach them — they accumulate, visible only to
+a duplicate-name query on `core_resource`.
+
+Eleven local suite runs left three `ENT-PLAY-RC Athlete` and three `ENT-PLAY-RL Club` resources with
+no `sport_athlete` / `sport_club` row; they were removed by hand from the dev database, children
+first and then `core_resource`. Two consequences worth fixing in the realm. The remove handlers
+should cascade to the party contribution and to the resource, because a delete that leaves half an
+object behind is a defect of the handler and not of the test. Until they do, every suite run leaks
+one orphan pair per created athlete and club, so look for repeated `ENT-PLAY` names on
+`core_resource` before trusting a capture that lists persons or organisations.
+
+profileRemove now runs both halves through the generic remove with cascade, so the profile row, its
+dependent sport rows, the party row and the resource row go together; verified in the dev database
+that athlete, party_person, core_resource and the athlete's conferrals are all gone after one
+delete.
+
+### T-615 — Cover the four deletion modes with a Playwright spec
+
+> _2026-11-06 · realm/blong-sport · done_
+
+The four deletion modes have no automated coverage. Add a Playwright spec next to
+realm/blong-sport/test that creates an athlete with a conferral and exercises prompt (dialog names
+the conferral, accept cascades), block on a classifier with dependants (refusal message), cascade on
+a participation with a result, and deactivate on an expert area (status becomes inactive, row
+stays). The scan answer is the assertion that does not depend on the theme.
+
+realm/blong-sport/test/deletion.play.ts covers the four modes: the prompt dialog naming the
+conferral and the cascade it accepts, the block refusal on a classifier with dependants, a
+participation with a result going in one delete, and an expert area turning inactive while its row
+stays. Fixtures are created through the page's handler proxy and purged first; the assertions are
+the scan answer and the rendered text, so there are no baselines. Verified 4 passed, and
+people/athleteTabs/records still pass.
