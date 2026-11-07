@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.7.1...blong-gateway-v1.8.0) (2026-11-06)
+
+
+### Features
+
+* improve menu handling ([a12eb93](https://github.com/feasibleone/blong/commit/a12eb93a0c0b3fc2f37167a0c4ceaebb21faa54f))
+
+
+### Bug Fixes
+
+* move capture ([fb73de3](https://github.com/feasibleone/blong/commit/fb73de3fdfff5a9a356b8f67889c716ee58847b1))
+
 ## [1.7.1](https://github.com/feasibleone/blong/compare/blong-gateway-v1.7.0...blong-gateway-v1.7.1) (2026-11-03)
 
 

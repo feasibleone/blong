@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.0](https://github.com/feasibleone/blong/compare/blong-test-v1.12.0...blong-test-v1.13.0) (2026-11-06)
+
+
+### Features
+
+* improve menu handling ([a12eb93](https://github.com/feasibleone/blong/commit/a12eb93a0c0b3fc2f37167a0c4ceaebb21faa54f))
+
 ## [1.12.0](https://github.com/feasibleone/blong/compare/blong-test-v1.11.0...blong-test-v1.12.0) (2026-10-30)
 
 

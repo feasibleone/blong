@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0](https://github.com/feasibleone/blong/compare/blong-mock-v1.5.0...blong-mock-v1.6.0) (2026-11-06)
+
+
+### Features
+
+* improve menu handling ([a12eb93](https://github.com/feasibleone/blong/commit/a12eb93a0c0b3fc2f37167a0c4ceaebb21faa54f))
+
+
+### Bug Fixes
+
+* improve DB handling ([241ed9d](https://github.com/feasibleone/blong/commit/241ed9de42d23982a1ebd7678737e563daf03125))
+
 ## [1.5.0](https://github.com/feasibleone/blong/compare/blong-mock-v1.4.0...blong-mock-v1.5.0) (2026-10-26)
 
 

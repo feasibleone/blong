@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.34.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.33.1...blong-browser-v1.34.0) (2026-11-06)
+
+
+### Features
+
+* feedback speech ([3bb4792](https://github.com/feasibleone/blong/commit/3bb4792611012bba1d7f97b9be6a765c6dfc0657))
+* improve menu handling ([a12eb93](https://github.com/feasibleone/blong/commit/a12eb93a0c0b3fc2f37167a0c4ceaebb21faa54f))
+
+
+### Bug Fixes
+
+* ci test failures ([710bb82](https://github.com/feasibleone/blong/commit/710bb8246107295530e7a08c9b1e8dd81b0dba7a))
+* improve DB handling ([241ed9d](https://github.com/feasibleone/blong/commit/241ed9de42d23982a1ebd7678737e563daf03125))
+
 ## [1.33.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.33.0...blong-browser-v1.33.1) (2026-11-03)
 
 

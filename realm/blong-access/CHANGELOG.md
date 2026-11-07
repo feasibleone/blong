@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.18.0](https://github.com/feasibleone/blong/compare/blong-access-v1.17.0...blong-access-v1.18.0) (2026-11-06)
+
+
+### Features
+
+* improve menu handling ([a12eb93](https://github.com/feasibleone/blong/commit/a12eb93a0c0b3fc2f37167a0c4ceaebb21faa54f))
+
+
+### Bug Fixes
+
+* ci test failures ([55f499f](https://github.com/feasibleone/blong/commit/55f499f8fd75644e8486fbdd5b00926f3a84049e))
+* ci test failures ([ae34e5b](https://github.com/feasibleone/blong/commit/ae34e5bf586fcbe3b0ee8a267fefac4d046fbcfd))
+* ci test failures ([710bb82](https://github.com/feasibleone/blong/commit/710bb8246107295530e7a08c9b1e8dd81b0dba7a))
+
 ## [1.17.0](https://github.com/feasibleone/blong/compare/blong-access-v1.16.0...blong-access-v1.17.0) (2026-11-03)
 
 

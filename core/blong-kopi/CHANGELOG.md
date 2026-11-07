@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.25.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.24.0...blong-kopi-v1.25.0) (2026-11-06)
+
+
+### Features
+
+* improve menu handling ([a12eb93](https://github.com/feasibleone/blong/commit/a12eb93a0c0b3fc2f37167a0c4ceaebb21faa54f))
+
 ## [1.24.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.23.0...blong-kopi-v1.24.0) (2026-11-01)
 
 
