@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.7.0...blong-sport-v0.8.0) (2026-11-07)
+
+
+### Features
+
+* sport seeds ([3f070ca](https://github.com/feasibleone/blong/commit/3f070caa06b74ca24b642ebd4d4b97154065485c))
+
 ## [0.7.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.6.0...blong-sport-v0.7.0) (2026-11-06)
 
 
