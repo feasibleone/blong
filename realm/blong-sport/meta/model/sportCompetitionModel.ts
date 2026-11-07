@@ -67,7 +67,11 @@ export default model(
                                 },
                                 disciplineId: {
                                     title: 'Discipline',
-                                    widget: {dropdown: 'sport.discipline'},
+                                    // One sport, one discipline list. @@D-789
+                                    widget: {
+                                        dropdown: 'sport.discipline',
+                                        parent: 'sportId',
+                                    },
                                 },
                                 organiserPartyId: {
                                     title: 'Organiser',

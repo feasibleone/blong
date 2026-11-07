@@ -32,6 +32,17 @@ export default model(
                                         ],
                                     },
                                 },
+                                sportSex: {
+                                    title: 'Sex',
+                                    // Empty means both sexes compete — the normal
+                                    // case; the field names the exception.
+                                    widget: {
+                                        options: [
+                                            {value: 'male', label: 'Male only'},
+                                            {value: 'female', label: 'Female only'},
+                                        ],
+                                    },
+                                },
                                 sportStatus: {
                                     title: 'Status',
                                     required: true,
@@ -60,6 +71,7 @@ export default model(
                             'sport.sportIntlName',
                             'sport.sportCode',
                             'sport.sportKind',
+                            'sport.sportSex',
                             'sport.sportStatus',
                             'sport.inclusionDate',
                             'sport.sourceName',

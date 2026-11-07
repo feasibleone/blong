@@ -43,11 +43,11 @@ export default model(
                                 },
                                 disciplineId: {
                                     title: 'Discipline',
-                                    widget: {dropdown: 'sport.discipline'},
-                                },
-                                categoryId: {
-                                    title: 'Category',
-                                    widget: {dropdown: 'sport.category'},
+                                    // The discipline of the sport picked above. @@D-789
+                                    widget: {
+                                        dropdown: 'sport.discipline',
+                                        parent: 'sportId',
+                                    },
                                 },
                                 qualificationKind: {
                                     title: 'Kind',
@@ -129,7 +129,6 @@ export default model(
                             'qualification.editionId',
                             'qualification.sportId',
                             'qualification.disciplineId',
-                            'qualification.categoryId',
                             'qualification.qualificationKind',
                             'qualification.qualificationStatus',
                             'qualification.acquiredDate',

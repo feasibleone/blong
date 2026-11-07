@@ -4,9 +4,9 @@
  * The model aggregator builds the menubar, and the realm's pages are split three
  * ways (`@@D-777`): `Registry` holds the profiles in register order — federations,
  * clubs, athletes, coaches, specialists, affiliations — `Sport` the competition
- * side, and every classifier — sport, discipline, area, category, cycle, document,
+ * side, and every classifier — sport, discipline, area, cycle, document,
  * award — sits under the shared `Classifiers` root in a `Sport` submenu.
- * Twenty-three pages in one group did not fit a laptop screen.
+ * Twenty-two pages in one group did not fit a laptop screen.
  *
  * The groups are found by their `data-testid`, not their label: the portal
  * translates a group title, and this suite's test database has the Bulgarian

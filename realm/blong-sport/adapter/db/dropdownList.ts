@@ -105,6 +105,46 @@ function profileList(
         .then((rows: Array<{value: unknown; label: unknown}>) => rows.map(wireOption));
 }
 
+/** A `binary(16)` key as the base64 text a dropdown option carries. */
+function wireKey(value: unknown): string {
+    return Buffer.isBuffer(value) ? value.toString('base64') : String(value ?? '');
+}
+
+/**
+ * The parent keys of every row of a table, by the option value a picker uses.
+ *
+ * Read in one statement rather than joined onto the list: the labels come from
+ * `core_resource` (and its translation), and the parent ids live in the table
+ * the resource names.
+ */
+async function parentKeys(
+    qb: KnexQb,
+    table: string,
+    key: string,
+    parents: string[],
+): Promise<Map<string, Record<string, string>>> {
+    const rows = (await qb(table).select(key, ...parents)) as Array<Record<string, unknown>>;
+    const byKey = new Map<string, Record<string, string>>();
+    for (const row of rows) {
+        const entry: Record<string, string> = {};
+        for (const parent of parents) entry[parent] = wireKey(row[parent]);
+        byKey.set(wireKey(row[key]), entry);
+    }
+    return byKey;
+}
+
+/**
+ * Attach the parent keys to the options the base list produced, keeping the
+ * label as it arrived. An option whose row is missing keeps no key, which
+ * leaves it out of a narrowed list rather than showing it everywhere.
+ */
+function attachParents(
+    options: IOption[] | undefined,
+    byKey: Map<string, Record<string, string>>,
+): Array<IOption & Record<string, string>> {
+    return (options ?? []).map(option => ({...option, ...(byKey.get(option.value) ?? {})}));
+}
+
 export default handler(() => ({
     async sportDropdownList(
         params: Record<string, unknown>,
@@ -158,6 +198,15 @@ export default handler(() => ({
                 .select('organizationId as value', 'legalName as label')
                 .orderBy('legalName')) as Array<{value: unknown; label: unknown}>
         ).map(wireOption);
+
+        // The pickers cascade: a discipline list narrows to the chosen sport.
+        // The base list already holds the label (translated in the caller's
+        // language) and the record-level ACL filter, so the parent key is
+        // attached to it rather than the list being rebuilt here. @@D-789
+        lists['sport.discipline'] = attachParents(
+            base['sport.discipline'] as IOption[] | undefined,
+            await parentKeys(qb, 'sport_discipline', 'disciplineId', ['sportId']),
+        );
 
         return {...base, ...lists};
     },

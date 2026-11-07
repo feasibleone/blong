@@ -19,9 +19,6 @@ export const DisciplineBrowse = page('sport.discipline.browse');
 export const DisciplineNew = page('sport.discipline.new');
 export const DisciplineOpen = page('sport.discipline.open', {disciplineId: 'd1'});
 
-export const CategoryBrowse = page('sport.category.browse');
-export const CategoryNew = page('sport.category.new');
-
 export const CycleBrowse = page('sport.cycle.browse');
 export const CycleNew = page('sport.cycle.new');
 

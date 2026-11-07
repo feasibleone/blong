@@ -1539,3 +1539,4 @@ setup-node in the release workflow now builds on every release so that artifact 
 ## Retired
 
 - D-684 — renumbered to D-694 (2026-10-30)
+- D-790 — retired 2026-11-07 — wrong file: it belongs to realm/blong-sport

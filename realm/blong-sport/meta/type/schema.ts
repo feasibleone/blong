@@ -9,7 +9,7 @@ import {schema} from '@feasibleone/blong';
  *    `federation`, `club`) share the party PK: `athleteId` is a FK to
  *    `party.person.personId`, so one human is one `core.resource` no matter how
  *    many roles they hold. @@D-595 @@D-596
- *  - **named classifiers and records** (`sport`, `discipline`, `category`,
+ *  - **named classifiers and records** (`sport`, `discipline`, `cycle`, `area`,
  *    `cycle`, `area`, `competition`, `document`, `award`) are resources: a
  *    `uuid()` PK with a FK to `core.resource.resourceId`, and the readable name
  *    lives in the `<object>Name` column that `meta/db/db.ts` points
@@ -160,6 +160,13 @@ export default schema(async ({lib: {type}}) => ({
             sportIntlName: type.stringNull({maxLength: 100}),
             sportCode: type.stringNull({maxLength: 20}),
             sportKind: type.stringNotNull({maxLength: 20}),
+            /**
+             * The sex a *single-sex sport* admits: `male` or `female`. Empty is
+             * the normal case — both sexes compete, in separate or in mixed
+             * events. A sport whose programme is one sex only says so here, so a
+             * reader does not have to derive it from its disciplines.
+             */
+            sportSex: type.stringNull({maxLength: 20}),
             sportStatus: type.stringNotNull({maxLength: 20}),
             inclusionDate: type.dateNull(),
             sourceName: type.stringNull({maxLength: 100}),
@@ -179,6 +186,15 @@ export default schema(async ({lib: {type}}) => ({
             disciplineIntlName: type.stringNull({maxLength: 100}),
             disciplineCode: type.stringNull({maxLength: 20}),
             disciplineKind: type.stringNotNull({maxLength: 20}),
+            /**
+             * The sex a discipline admits. Empty means both sexes contest it, each
+             * in its own events — the ordinary case. `male` or `female` names an
+             * event only one sex contests (a weight class, an apparatus), and
+             * `mixed` an event men and women contest together, which is a case of
+             * its own. A name that states the sex is how a seed says which.
+             * @@D-787
+             */
+            disciplineSex: type.stringNull({maxLength: 20}),
             disciplineStatus: type.stringNotNull({maxLength: 20}),
             inclusionDate: type.dateNull(),
             sportId: type.uidNotNull(),
@@ -190,28 +206,6 @@ export default schema(async ({lib: {type}}) => ({
                 foreign: {
                     disciplineId: 'core.resource.resourceId',
                     sportId: 'sport.sport.sportId',
-                },
-            },
-        },
-    ),
-
-    category: type.Object(
-        {
-            categoryId: type.uuid(),
-            categoryName: type.stringNotNull({maxLength: 100}),
-            categoryKind: type.stringNotNull({maxLength: 20}),
-            categoryStatus: type.stringNotNull({maxLength: 20}),
-            sportId: type.uidNotNull(),
-            disciplineId: type.uidNull(),
-            sourceName: type.stringNull({maxLength: 100}),
-        },
-        {
-            constraints: {
-                primaryKey: 'categoryId',
-                foreign: {
-                    categoryId: 'core.resource.resourceId',
-                    sportId: 'sport.sport.sportId',
-                    disciplineId: 'sport.discipline.disciplineId',
                 },
             },
         },
@@ -314,7 +308,6 @@ export default schema(async ({lib: {type}}) => ({
             athleteId: type.uidNotNull(),
             sportId: type.uidNotNull(),
             disciplineId: type.uidNull(),
-            categoryId: type.uidNull(),
             participationFormat: type.stringNotNull({maxLength: 20}),
             participationStatus: type.stringNotNull({maxLength: 20}),
             teamName: type.stringNull({maxLength: 100}),
@@ -328,7 +321,6 @@ export default schema(async ({lib: {type}}) => ({
                     athleteId: 'sport.athlete.athleteId',
                     sportId: 'sport.sport.sportId',
                     disciplineId: 'sport.discipline.disciplineId',
-                    categoryId: 'sport.category.categoryId',
                 },
                 index: {editionId: {}, athleteId: {}},
             },
@@ -399,7 +391,6 @@ export default schema(async ({lib: {type}}) => ({
             editionId: type.uidNull(),
             sportId: type.uidNotNull(),
             disciplineId: type.uidNull(),
-            categoryId: type.uidNull(),
             qualificationKind: type.stringNotNull({maxLength: 30}),
             qualificationStatus: type.stringNotNull({maxLength: 20}),
             acquiredDate: type.dateNull(),
@@ -418,7 +409,6 @@ export default schema(async ({lib: {type}}) => ({
                     editionId: 'sport.edition.editionId',
                     sportId: 'sport.sport.sportId',
                     disciplineId: 'sport.discipline.disciplineId',
-                    categoryId: 'sport.category.categoryId',
                     decisionDocumentId: 'sport.document.documentId',
                 },
                 index: {athleteId: {}, cycleId: {}},

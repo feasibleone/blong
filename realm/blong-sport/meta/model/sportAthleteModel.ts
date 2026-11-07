@@ -71,7 +71,12 @@ export default model(
                                 },
                                 primaryDisciplineId: {
                                     title: 'Main Discipline',
-                                    widget: {dropdown: 'sport.discipline'},
+                                    // A discipline belongs to one sport, so the list
+                                    // narrows to the sport chosen above. @@D-789
+                                    widget: {
+                                        dropdown: 'sport.discipline',
+                                        parent: 'primarySportId',
+                                    },
                                 },
                                 currentFederationId: {
                                     title: 'Federation',

@@ -69,6 +69,7 @@ export default handler(
                         disciplineName: '100 m Sprint',
                         sportId: 's1',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -76,6 +77,7 @@ export default handler(
                         disciplineName: 'Marathon',
                         sportId: 's1',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -83,6 +85,7 @@ export default handler(
                         disciplineName: 'Long Jump',
                         sportId: 's1',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -90,6 +93,7 @@ export default handler(
                         disciplineName: 'Javelin Throw',
                         sportId: 's1',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -97,6 +101,7 @@ export default handler(
                         disciplineName: '100 m Freestyle',
                         sportId: 's2',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -104,6 +109,7 @@ export default handler(
                         disciplineName: '200 m Butterfly',
                         sportId: 's2',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -111,6 +117,7 @@ export default handler(
                         disciplineName: '200 m Backstroke',
                         sportId: 's2',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -118,6 +125,7 @@ export default handler(
                         disciplineName: 'Artistic All-Around',
                         sportId: 's3',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -125,6 +133,7 @@ export default handler(
                         disciplineName: 'Floor Exercise',
                         sportId: 's3',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -132,6 +141,7 @@ export default handler(
                         disciplineName: 'Rhythmic Hoop',
                         sportId: 's3',
                         disciplineKind: 'individual',
+                        disciplineSex: 'female',
                         disciplineStatus: 'active',
                     },
                     {
@@ -139,6 +149,7 @@ export default handler(
                         disciplineName: 'Single Sculls',
                         sportId: 's4',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -146,6 +157,7 @@ export default handler(
                         disciplineName: 'Coxless Pair',
                         sportId: 's4',
                         disciplineKind: 'team',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -153,6 +165,7 @@ export default handler(
                         disciplineName: 'Eight',
                         sportId: 's4',
                         disciplineKind: 'team',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -160,6 +173,7 @@ export default handler(
                         disciplineName: 'Half-Middleweight',
                         sportId: 's5',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
                     },
                     {
@@ -167,30 +181,8 @@ export default handler(
                         disciplineName: 'Open Category',
                         sportId: 's5',
                         disciplineKind: 'individual',
+                        disciplineSex: 'mixed',
                         disciplineStatus: 'active',
-                    },
-                ],
-                'sport.category': [
-                    {
-                        categoryId: 'c1',
-                        categoryName: 'Senior',
-                        categoryKind: 'level',
-                        categoryStatus: 'active',
-                        sportId: 's1',
-                    },
-                    {
-                        categoryId: 'c2',
-                        categoryName: 'Under 20',
-                        categoryKind: 'age',
-                        categoryStatus: 'active',
-                        sportId: 's1',
-                    },
-                    {
-                        categoryId: 'c3',
-                        categoryName: 'Under 73 kg',
-                        categoryKind: 'weight',
-                        categoryStatus: 'active',
-                        sportId: 's5',
                     },
                 ],
                 'sport.cycle': [
@@ -460,7 +452,6 @@ export default handler(
                         athleteId: 'p1',
                         sportId: 's1',
                         disciplineId: 'd1',
-                        categoryId: 'c1',
                         participationFormat: 'individual',
                         participationStatus: 'confirmed',
                     },
@@ -470,7 +461,6 @@ export default handler(
                         athleteId: 'p2',
                         sportId: 's2',
                         disciplineId: 'd5',
-                        categoryId: 'c1',
                         participationFormat: 'individual',
                         participationStatus: 'planned',
                     },
@@ -480,7 +470,6 @@ export default handler(
                         athleteId: 'p1',
                         sportId: 's1',
                         disciplineId: 'd1',
-                        categoryId: 'c1',
                         participationFormat: 'individual',
                         participationStatus: 'confirmed',
                     },

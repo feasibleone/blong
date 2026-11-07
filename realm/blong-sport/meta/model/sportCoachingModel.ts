@@ -33,7 +33,11 @@ export default model(
                                 },
                                 disciplineId: {
                                     title: 'Discipline',
-                                    widget: {dropdown: 'sport.discipline'},
+                                    // Follows the sport of the link. @@D-789
+                                    widget: {
+                                        dropdown: 'sport.discipline',
+                                        parent: 'sportId',
+                                    },
                                 },
                                 cycleId: {
                                     title: 'Olympic Cycle',

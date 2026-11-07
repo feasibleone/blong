@@ -5,7 +5,6 @@ key: typeAlias
 type:
     - typeAlias: sport.sport
     - typeAlias: sport.discipline
-    - typeAlias: sport.category
     - typeAlias: sport.cycle
     - typeAlias: sport.area
     - typeAlias: sport.competition

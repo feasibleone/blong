@@ -8,10 +8,10 @@
  * and a baseline here would only be a picture of a filter row.
  *
  * The club it filters is created here, and the file cleans its own rows first.
- * Nothing seeds a club — a fresh database has none — and reading `No rows.` on an
- * empty table would pass whether or not the filter ran, which is how this spec first
- * passed in dev: the clubs it saw had been made by `organisations` and
- * `relationships` in the same database, and CI has no such history.
+ * The production register seed now fills `sport.club` with the real Bulgarian
+ * clubs, so the created row is no longer alone on the page: the spec proves the
+ * filter narrows *a* list, and it finds its own row through the filter rather
+ * than expecting it on the first page. @@D-788
  */
 import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
 import {cleanupModel, createAndEditModel, quiet} from './sportPlay.js';
@@ -48,14 +48,14 @@ test('the Legal Name filter narrows the club list', async ({portal}) => {
     await portal.waitForTableData();
 
     const table = portal.page.locator('.p-datatable-tbody');
-    // The row the file created above: an empty table here is a broken precondition,
-    // not a passing filter.
-    await expect(table).toContainText(CLUB);
+    // An empty table here is a broken precondition, not a passing filter.
+    await expect(table).not.toContainText('No rows.');
 
     const filter = portal.page.locator('[data-testid$="-filter-legalName"]');
     await expect(filter).toBeVisible();
 
-    // The answer to a filter on the joined column is the matching row, not a dialog.
+    // The answer to a filter on the joined column is the matching row, not a
+    // dialog — and the row is found by the filter, not by its page position.
     await filter.fill(CLUB);
     await expect(table).toContainText(CLUB);
     await expect(table).not.toContainText('No rows.');
@@ -68,5 +68,5 @@ test('the Legal Name filter narrows the club list', async ({portal}) => {
 
     // Cleared, the list is back — the filter narrowed it rather than broke it.
     await filter.fill('');
-    await expect(table).toContainText(CLUB);
+    await expect(table).not.toContainText('No rows.');
 });

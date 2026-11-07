@@ -27,7 +27,6 @@ export default handler(() => ({
                 // because the constraint pass walks the tables in this order.
                 'sport.sport': {order: 410, resource: {nameColumn: 'sportName'}},
                 'sport.discipline': {order: 411, resource: {nameColumn: 'disciplineName'}},
-                'sport.category': {order: 412, resource: {nameColumn: 'categoryName'}},
                 'sport.cycle': {order: 413, resource: {nameColumn: 'cycleName'}},
                 'sport.area': {order: 414, resource: {nameColumn: 'areaName'}},
                 'sport.document': {order: 415, resource: {nameColumn: 'documentTitle'}},

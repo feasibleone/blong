@@ -1,11 +1,7 @@
 version: "0.2"
 language: en-GB
-# A `semlog://` reference is an identifier rather than prose: its tail is a ULID, and cspell splits
-# it into fragments that read as misspellings (`AQWM`, `HNGDJG`, `JQFP`). `plans/**` is excluded from
-# the check, so this bites where an id is quoted beside the sentence explaining it — the memory files
-# — and the useful reaction is to stop reading ids as words rather than to teach the dictionary their
-# fragments.
-ignoreRegExpList: [ semlog://\S+ ]
+ignoreRegExpList:
+  - semlog://\S+
 words:
   - Abyssal
   - acked
@@ -173,6 +169,7 @@ words:
   - googleusercontent
   - Gorgoniidae
   - grayscale
+  - Greco
   - greppable
   - Groq
   - gtag
@@ -216,6 +213,7 @@ words:
   - kcadm
   - KCSU
   - keepalive
+  - Keirin
   - keyblock
   - Kinesiotherapy
   - knex
@@ -288,6 +286,7 @@ words:
   - Octopus
   - oidc
   - ollama
+  - Omnium
   - onnx
   - onnxruntime
   - onprem
@@ -426,6 +425,7 @@ words:
   - tabmenu
   - tabmenuitem
   - tabview
+  - Taekwondo
   - tapjs
   - teardown
   - testrealm
@@ -499,9 +499,14 @@ words:
   - zoomin
   - zstd
   - Zustand
+  - Épée
   - Активен
+  - Бащино
   - биология
+  - бокс
+  - Българска
   - Български
+  - Българско
   - Видове
   - График
   - Група
@@ -534,6 +539,7 @@ words:
   - Продукт
   - Профил
   - Профилът
+  - Регистър
   - резултати
   - роли
   - Роля
@@ -541,13 +547,20 @@ words:
   - Сметка
   - Смяна
   - Собствено
+  - Спортист
+  - спортните
   - Справки
   - статичен
   - съвпадат
   - Табло
   - Текуща
   - тест
+  - Треньор
+  - треньор
   - Фамилия
+  - федерации
+  - федерация
+  - Член
 ignorePaths:
   - "**/*.json"
   - "**/*.play.ts"
@@ -562,8 +575,6 @@ ignorePaths:
   - "**/~.schema.ts"
   - .git
   - common/temp/**
-  # The kukum end-to-end fixture is generated output, committed so its Playwright
-  # baselines live in git.
   - core/blong-kukum/test/fixture/**
   - node_modules
   - package-lock.json

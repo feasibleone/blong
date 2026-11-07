@@ -34,7 +34,6 @@ const models = [
     'attachment',
     'award',
     'campaign',
-    'category',
     'club',
     'coach',
     'coaching',

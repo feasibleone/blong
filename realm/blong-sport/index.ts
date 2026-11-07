@@ -152,19 +152,19 @@ export default server(() => ({
             testRealm: {
                 // Only this realm's server group may be started from the Test
                 // runs console; the runner refuses every other method.
-                testRun: {serverGroups: ['test.athlete']},
+                testRun: {serverGroups: ['test.athlete', 'test.nomenclature']},
             },
         },
         integration: {
             watch: {
-                test: ['test.athlete'],
+                test: ['test.athlete', 'test.nomenclature'],
             },
             gateway: {},
             party: {},
             sport: {},
             feedback: {},
             testRealm: {
-                testRun: {serverGroups: ['test.athlete']},
+                testRun: {serverGroups: ['test.athlete', 'test.nomenclature']},
             },
         },
         // Playwright drives the UI; the server does not need to run every test

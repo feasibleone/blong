@@ -33,11 +33,11 @@ export default model(
                                 },
                                 disciplineId: {
                                     title: 'Discipline',
-                                    widget: {dropdown: 'sport.discipline'},
-                                },
-                                categoryId: {
-                                    title: 'Category',
-                                    widget: {dropdown: 'sport.category'},
+                                    // The discipline of the sport picked above. @@D-789
+                                    widget: {
+                                        dropdown: 'sport.discipline',
+                                        parent: 'sportId',
+                                    },
                                 },
                                 participationFormat: {
                                     title: 'Format',
@@ -92,7 +92,6 @@ export default model(
                         widgets: [
                             'participation.sportId',
                             'participation.disciplineId',
-                            'participation.categoryId',
                             'participation.teamName',
                             'participation.partnerName',
                             'participation.participationNote',

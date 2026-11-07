@@ -1,7 +1,7 @@
 /**
  * Reference pages — the classifier tables every other page points at.
  *
- * `sport`, `discipline`, `category`, `cycle` and `area` are resource-backed, so
+ * `sport`, `discipline`, `cycle` and `area` are resource-backed, so
  * each carries its readable name in `core_resource` and the browse shows the
  * `col-12 xl:col-6` two-card layout. @@D-608
  */
@@ -52,6 +52,7 @@ test.describe('Reference', () => {
         fields: {
             'discipline.disciplineName': 'ENT-PLAY-DI-01 Discipline',
             'discipline.disciplineKind': {widget: 'select', value: 'Individual'},
+            'discipline.disciplineSex': {widget: 'select', value: 'Mixed'},
             'discipline.disciplineStatus': {widget: 'select', value: 'Active'},
             'discipline.sportId': {widget: 'dropdown', value: 'Athletics'},
         },
@@ -59,28 +60,6 @@ test.describe('Reference', () => {
             'discipline.disciplineCode': 'DI01',
         },
         search: 'ENT-PLAY-DI-01',
-    });
-
-    cleanupModel(test, expect, {
-        subject: 'sport',
-        object: 'category',
-        search: 'ENT-PLAY-CA',
-        removeMethod: 'sport.category.remove',
-    });
-
-    createAndEditModel(test, expect, {
-        subject: 'sport',
-        object: 'category',
-        fields: {
-            'category.categoryName': 'ENT-PLAY-CA-01 Category',
-            'category.categoryKind': {widget: 'select', value: 'Age'},
-            'category.categoryStatus': {widget: 'select', value: 'Active'},
-            'category.sportId': {widget: 'dropdown', value: 'Athletics'},
-        },
-        editFields: {
-            'category.categoryName': 'ENT-PLAY-CA-01 Category Edited',
-        },
-        search: 'ENT-PLAY-CA-01',
     });
 
     cleanupModel(test, expect, {

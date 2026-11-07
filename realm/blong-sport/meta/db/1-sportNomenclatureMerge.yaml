@@ -1,0 +1,320 @@
+# Sport and discipline classifiers — the LA28 programme.
+#
+# One discipline per event. Events both sexes contest are ONE discipline with
+# sex `mixed`; a shape that differs by sex (a weight class, an apparatus, a
+# distance) is a discipline of its own and names its sex.
+#
+# The handler derives what the file does not say: `sportName` and the
+# international name from the name, `kind` (olympic/individual), the status,
+# and the sex from the name of a discipline. Only exceptions are written.
+#
+# Source: the official programme of the Olympic Games Los Angeles 2028, with
+# the 2024 weight classes where the LA28 classes are not published yet.
+
+sport: |
+    | name              | code |
+    | ----------------- | --- |
+    | Aquatics          | AQU |
+    | Archery           | ARC |
+    | Athletics         | ATH |
+    | Badminton         | BAD |
+    | Baseball/Softball | BSB |
+    | Basketball        | BAS |
+    | Boxing            | BOX |
+    | Canoeing          | CAN |
+    | Cricket           | CRI |
+    | Cycling           | CYC |
+    | Equestrian        | EQP |
+    | Fencing           | FEN |
+    | Field Hockey      | HOC |
+    | Flag Football     | AFF |
+    | Football          | FBL |
+    | Golf              | GOL |
+    | Gymnastics        | GYM |
+    | Handball          | HBL |
+    | Judo              | JUD |
+    | Lacrosse          | LAX |
+    | Modern Pentathlon | MPN |
+    | Rowing            | ROW |
+    | Rugby Sevens      | RUG |
+    | Sailing           | SAL |
+    | Shooting          | SHO |
+    | Skateboarding     | SKB |
+    | Sport Climbing    | CLB |
+    | Squash            | SQU |
+    | Surfing           | SUR |
+    | Table Tennis      | TTN |
+    | Taekwondo         | TKW |
+    | Tennis            | TEN |
+    | Triathlon         | TRI |
+    | Volleyball        | VVO |
+    | Weightlifting     | WLF |
+    | Wrestling         | WRE |
+
+discipline:
+    Aquatics: |
+        50 m Freestyle
+        100 m Freestyle
+        200 m Freestyle
+        400 m Freestyle
+        800 m Freestyle
+        1500 m Freestyle
+        50 m Backstroke
+        100 m Backstroke
+        200 m Backstroke
+        50 m Breaststroke
+        100 m Breaststroke
+        200 m Breaststroke
+        50 m Butterfly
+        100 m Butterfly
+        200 m Butterfly
+        200 m Individual Medley
+        400 m Individual Medley
+        4 × 100 m Freestyle Relay, kind: team
+        4 × 200 m Freestyle Relay, kind: team
+        4 × 100 m Medley Relay, kind: team
+        Mixed 4 × 100 m Medley Relay, kind: team
+        10 km Open Water
+        3 m Springboard
+        10 m Platform
+        3 m Synchronised Springboard
+        10 m Synchronised Platform
+        Women Artistic Duet
+        Mixed Artistic Team, kind: team
+        Water Polo, kind: team
+    Archery: |
+        Recurve Individual
+        Recurve Team, kind: team
+        Mixed Recurve Team, kind: team
+        Mixed Compound Team, kind: team
+    Athletics: |
+        100 m
+        200 m
+        400 m
+        800 m
+        1500 m
+        5000 m
+        10000 m
+        Marathon
+        3000 m Steeplechase
+        400 m Hurdles
+        Men 110 m Hurdles
+        Women 100 m Hurdles
+        4 × 100 m Relay, kind: team
+        4 × 400 m Relay, kind: team
+        20 km Race Walk
+        Mixed 4 × 100 m Relay, kind: team
+        Mixed 4 × 400 m Relay, kind: team
+        High Jump
+        Pole Vault
+        Long Jump
+        Triple Jump
+        Shot Put
+        Discus Throw
+        Hammer Throw
+        Javelin Throw
+        Men Decathlon
+        Women Heptathlon
+    Badminton: |
+        Badminton Singles
+        Badminton Doubles
+        Badminton Mixed Doubles
+    Baseball/Softball: |
+        Men Baseball
+        Women Softball
+    Basketball: |
+        Basketball, kind: team
+        3x3 Basketball, kind: team
+    Boxing: |
+        Men 51 kg
+        Men 57 kg
+        Men 63.5 kg
+        Men 71 kg
+        Men 80 kg
+        Men 92 kg
+        Men +92 kg
+        Women 50 kg
+        Women 54 kg
+        Women 57 kg
+        Women 60 kg
+        Women 66 kg
+        Women 75 kg
+    Canoeing: |
+        C1 1000 m
+        C2 500 m
+        K1 1000 m
+        K2 500 m
+        K4 500 m
+        Men C1 200 m
+        Women K1 500 m
+        C1 Slalom
+        K1 Slalom
+        Kayak Cross
+    Cricket: |
+        Cricket, kind: team
+    Cycling: |
+        Road Race
+        Time Trial
+        Sprint
+        Team Sprint, kind: team
+        Keirin
+        Team Pursuit, kind: team
+        Omnium
+        Madison, kind: team
+        BMX Racing
+        BMX Freestyle Park
+        Cross-country
+    Equestrian: |
+        Mixed Dressage Individual
+        Mixed Dressage Team, kind: team
+        Mixed Eventing Individual
+        Mixed Eventing Team, kind: team
+        Mixed Jumping Individual
+        Mixed Jumping Team, kind: team
+    Fencing: |
+        Foil Individual
+        Épée Individual
+        Sabre Individual
+        Foil Team, kind: team
+        Épée Team, kind: team
+        Sabre Team, kind: team
+    Field Hockey: |
+        Field Hockey, kind: team
+    Flag Football: |
+        Flag Football, kind: team
+    Football: |
+        Football, kind: team
+    Golf: |
+        Individual Stroke Play
+        Mixed Golf Team, kind: team
+    Gymnastics: |
+        Floor Exercise
+        Men Pommel Horse
+        Men Rings
+        Vault
+        Men Parallel Bars
+        Men Horizontal Bar
+        Women Uneven Bars
+        Women Balance Beam
+        All-Around
+        Gymnastics Team, kind: team
+        Mixed Gymnastics Team, kind: team
+        Women Rhythmic All-Around
+        Women Rhythmic Group All-Around
+        Trampoline
+    Handball: |
+        Handball, kind: team
+    Judo: |
+        Men -60 kg
+        Men -66 kg
+        Men -73 kg
+        Men -81 kg
+        Men -90 kg
+        Men -100 kg
+        Men +100 kg
+        Women -48 kg
+        Women -52 kg
+        Judo Women -57 kg
+        Women -63 kg
+        Women -70 kg
+        Women -78 kg
+        Women +78 kg
+        Mixed Judo Team, kind: team
+    Lacrosse: |
+        Lacrosse Sixes, kind: team
+    Modern Pentathlon: |
+        Modern Pentathlon
+    Rowing: |
+        Single Sculls
+        Pair, kind: team
+        Double Sculls, kind: team
+        Four, kind: team
+        Quadruple Sculls, kind: team
+        Eight, kind: team
+        Beach Sprint Solo
+        Beach Sprint Double Sculls, kind: team
+        Mixed Beach Sprint Double Sculls, kind: team
+    Rugby Sevens: |
+        Rugby Sevens, kind: team
+    Sailing: |
+        Windsurfing
+        Dinghy
+        Skiff
+        Mixed Multihull
+        Kiteboarding
+    Shooting: |
+        10 m Air Rifle
+        50 m Rifle Three Positions
+        10 m Air Pistol
+        25 m Pistol
+        25 m Rapid Fire Pistol
+        Trap
+        Skeet
+        Mixed 10 m Air Rifle Team, kind: team
+        Mixed Skeet Team, kind: team
+        Mixed Trap Team, kind: team
+    Skateboarding: |
+        Park
+        Street
+    Sport Climbing: |
+        Boulder
+        Lead
+        Speed
+    Squash: |
+        Squash Singles
+    Surfing: |
+        Shortboard
+    Table Tennis: |
+        Table Tennis Singles
+        Table Tennis Doubles
+        Table Tennis Mixed Doubles
+        Table Tennis Team, kind: team
+    Taekwondo: |
+        Men -58 kg
+        Men -68 kg
+        Men -80 kg
+        Men +80 kg
+        Women -49 kg
+        Taekwondo Women -57 kg
+        Women -67 kg
+        Women +67 kg
+    Tennis: |
+        Tennis Singles
+        Tennis Doubles
+        Tennis Mixed Doubles
+    Triathlon: |
+        Individual
+        Relay, kind: team
+    Volleyball: |
+        Volleyball, kind: team
+        Beach Volleyball, kind: team
+    Weightlifting: |
+        Men 61 kg
+        Men 73 kg
+        Men 89 kg
+        Men 102 kg
+        Men +102 kg
+        Women 49 kg
+        Women 59 kg
+        Women 71 kg
+        Women 81 kg
+        Women +81 kg
+    Wrestling: |
+        Men Freestyle 57 kg
+        Men Freestyle 65 kg
+        Men Freestyle 74 kg
+        Men Freestyle 86 kg
+        Men Freestyle 97 kg
+        Men Freestyle 125 kg
+        Women Freestyle 50 kg
+        Women Freestyle 53 kg
+        Women Freestyle 57 kg
+        Women Freestyle 62 kg
+        Women Freestyle 68 kg
+        Women Freestyle 76 kg
+        Men Greco-Roman 60 kg
+        Men Greco-Roman 67 kg
+        Men Greco-Roman 77 kg
+        Men Greco-Roman 87 kg
+        Men Greco-Roman 97 kg
+        Men Greco-Roman 130 kg

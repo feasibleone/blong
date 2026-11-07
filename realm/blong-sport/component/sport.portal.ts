@@ -109,7 +109,6 @@ export default handler(() => ({
                             method: 'sport.discipline.browse',
                             icon: 'pi pi-sitemap',
                         },
-                        {title: 'Categories', method: 'sport.category.browse', icon: 'pi pi-tags'},
                         {
                             title: 'Olympic Cycles',
                             method: 'sport.cycle.browse',
