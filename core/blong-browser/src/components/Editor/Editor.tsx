@@ -5,7 +5,7 @@
  * and manages edit/read-only toggling. Designed to edit a single entity.
  */
 import {confirmPopup, OverlayPanel, Toolbar} from '../../primereact/index.js';
-
+import './Editor.css';
 import type {ICardConfig, IEnrichedSchema} from '@feasibleone/blong';
 import {useQueryClient} from '@tanstack/react-query';
 import {useCallback, useEffect, useId, useRef, useState} from 'react';
@@ -754,7 +754,12 @@ export function Editor({
 
     const editorContent = (
         <div
-            className={className}
+            // `blong-editor` is the page itself — a column whose toolbar keeps
+            // its height and whose form takes the rest (`Editor.css`). A caller
+            // that already names it does not get it twice.
+            className={[...new Set(['blong-editor', ...(className ?? '').split(' ')])]
+                .filter(Boolean)
+                .join(' ')}
             data-testid="blong-browser-test"
             {...page?.attributes}
         >

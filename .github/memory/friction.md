@@ -484,8 +484,8 @@ which keeps the local side.
 > _2026-10-07 · ci · open_
 
 Running `rush update --full` to repair the store passes `--no-prefer-frozen-lockfile` and
-`--config.resolutionMode=highest`, so pnpm re-resolves every range: typebox went from 1.1.8 to
-1.3.36, which no longer exports `Type.Awaited`. That run then failed on the native build of
+`--config.resolutionMode=highest`, so pnpm re-resolves every range: typebox went from 1.1.8
+to 1.3.36, which no longer exports `Type.Awaited`. That run then failed on the native build of
 node-rdkafka and left the rewritten lockfile in place. Image and artifacts are built from that
 lockfile, so every tenant pod of the suite started, logged its adapters as ready and died inside
 `Registry._validations` with `TypeError: Type.Awaited is not a function` at
@@ -835,8 +835,8 @@ Node takes the default condition of the exports map and loads core/blong/dist/ty
 runtime export added to types.ts therefore works locally and fails only in CI. The Build #629
 failure read SyntaxError: The requested module '@feasibleone/blong' does not provide an export named
 'handlerGroup' at realm/blong-core/adapter/db/handlerGroup.ts:1. Prove the CI path before concluding
-anything about a local pass: run the probe with NODE_OPTIONS cleared, e.g. env -u NODE_OPTIONS node
---input-type=module -e "console.log(import.meta.resolve('@feasibleone/blong'))".
+anything about a local pass: run the probe with NODE_OPTIONS cleared, e.g. env -u NODE_OPTIONS
+node --input-type=module -e "console.log(import.meta.resolve('@feasibleone/blong'))".
 
 ### F-575 — Docs check needs Kafka for an unrelated artefact
 
@@ -1406,9 +1406,9 @@ is obvious while editing. The fix for the alignment rule is to run the repo's pr
 (rush-prettier, installed under common/temp) with --write on the file, so the order is: edit,
 prettier, then lint.
 
-blong-dev lint --fix now runs prettier (the pinned rush-prettier autoinstaller), then markdownlint
---fix, then prettier again, so the edit-prettier-lint order is one command; the memory pattern page
-was rewritten with it and the diff stayed at 44 insertions with no unrelated rewraps
+blong-dev lint --fix now runs prettier (the pinned rush-prettier autoinstaller), then
+markdownlint --fix, then prettier again, so the edit-prettier-lint order is one command; the memory
+pattern page was rewritten with it and the diff stayed at 44 insertions with no unrelated rewraps
 
 ### F-467 — A mask hides a wrong shot; redaction showed one
 

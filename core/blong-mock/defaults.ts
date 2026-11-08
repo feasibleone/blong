@@ -106,6 +106,11 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                             selectionMode: 'single',
                             columns: [nameField.split('.').pop()!],
                             parent: '$.selected.navigator',
+                            // The browse table is a page of its own: it takes the
+                            // height the split panel leaves it and scrolls its rows,
+                            // so the paginator stays on screen and the header stays
+                            // put while the reader scrolls.
+                            scrollHeight: 'flex',
                         },
                     },
                     // Detail arrays are SIBLINGS of the master object — the

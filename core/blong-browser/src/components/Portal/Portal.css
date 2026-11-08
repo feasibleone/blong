@@ -48,6 +48,9 @@
     justify-content: center;
     min-height: 0;
     padding: 2rem;
+    /* A suite may name a logo height taller than the window (`brand.logoHeight`);
+       the brand then scrolls rather than being cut off at both ends. */
+    overflow: auto;
 }
 
 .blong-portal-welcome__brand {
@@ -57,12 +60,17 @@
     gap: 1rem;
     text-align: center;
     opacity: 0.9;
+    /* Auto margins centre the brand while it fits and collapse to zero when it
+       does not, which is what makes the top of a tall logo reachable. */
+    margin: auto;
 }
 
 .blong-portal-welcome__logo {
     display: block;
     /* A square mark reads as a mark at this size; the caps keep a landscape
-       file (a wordmark, say) from taking over the empty state. */
+       file (a wordmark, say) from taking over the empty state. A suite whose
+       logo is portrait names `brand.logoHeight` and the caps step aside — see
+       `PortalWelcome`. */
     height: 8rem;
     width: auto;
     max-width: min(40vw, 320px);
@@ -162,9 +170,36 @@
     min-height: 0;
 }
 
+/* The tab body is the area below the tab strip, and it takes all of it: the page
+   is stretched to the panel and its content is bounded by that height rather
+   than by its own length. `overflow: auto` is the scroller the area shows when a
+   page still does not fit — without it the page grew past the panel and the
+   window clipped it with no bar to reach the rest. */
 .p-tabview .p-tabview-panel {
     flex-grow: 1;
     min-height: 0;
+    /* Sideways is clipped: PrimeFlex's `.grid` is a gutter wider than its panel
+       (negative margins on both sides), which is enough to turn the tab body
+       into a horizontal scroller with nothing to reach. The rows of a table that
+       can be wider than the panel scroll in their own wrapper. */
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* Only the selected panel is laid out: an inactive one carries PrimeReact's
+   `p-hidden`, and a bare `display` here would out-specify it and stack every
+   open tab on screen. */
+.p-tabview .p-tabview-panel:not(.p-hidden) {
+    display: flex;
+    flex-direction: column;
+}
+
+/* A page fills the panel; the page's own column (its toolbar above its body) is
+   what turns that height into room for the table. */
+.p-tabview .p-tabview-panel>* {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
 }
 
 /* MenuBar resets */

@@ -16,7 +16,10 @@ style.textContent = `
         padding: 0;
         height: 100%;
         overflow: hidden;
-        font-family: 'Roboto';
+        /* The theme's stack with a generic fallback — a bare Roboto falls back
+           to the browser default, which is a serif, wherever Roboto is not
+           installed (browser.css carries the same rule and the reason). */
+        font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
         color: var(--text-color);
         background-color: var(--surface-0);
     }

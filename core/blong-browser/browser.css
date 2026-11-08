@@ -4,7 +4,23 @@ body {
     padding: 0;
     height: 100%;
     overflow: hidden;
-    font-family: 'Roboto';
+    /* The theme's stack, which PrimeReact declares as `--font-family` on `:root`.
+       A bare `'Roboto'` was a family name with no generic fallback: on a machine
+       that has no Roboto installed the browser falls back to its default font,
+       which is a serif — so every element outside a `p-component` (the portal's
+       welcome title, prose in a page) rendered serif while the widgets around it
+       did not. The fallback here is the same stack PrimeReact ships, so the app
+       still has a sans-serif before the theme lands. */
+    font-family: var(
+        --font-family,
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif
+    );
     color: var(--text-color);
     background-color: var(--surface-0);
 }

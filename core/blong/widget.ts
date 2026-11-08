@@ -239,6 +239,16 @@ export interface IWidgetConfig {
     /** Initial rows per page for listAction mode (default 25) */
     pageSize?: number;
     /**
+     * Scroll the rows inside a bounded height instead of growing the table.
+     *
+     * `'flex'` takes whatever height the card leaves it, which needs the page
+     * to be a column that hands the table the space below its toolbar and the
+     * card title (the generated Browse page is). Any other CSS length caps the
+     * rows at that height. Unset, the table grows with its rows — what a detail
+     * array inside a form wants, where the form itself scrolls.
+     */
+    scrollHeight?: string;
+    /**
      * Primary key field name in row data — used for template resolution (`${id}`)
      * and for the DataTable `dataKey`. Defaults to `'id'`.
      */

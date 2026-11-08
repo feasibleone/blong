@@ -55,6 +55,34 @@ export type IMenuItem =
 export interface IPortalBrand {
     /** Product logo — an image URL, drawn in the menubar and in the empty state. */
     logoUrl?: string;
+    /**
+     * The menubar's mark, when the logo is not a mark.
+     *
+     * The bar is 28px tall, so a portrait lockup — a crest above a wordmark, an
+     * emblem the title sits under — is 16px wide there and reads as a smudge.
+     * Naming the emblem on its own keeps the full logo for the places that have
+     * the room and puts the part that still reads in the toolbar. Falls back to
+     * `logoUrl`.
+     */
+    markUrl?: string;
+    /**
+     * The menubar mark's height, as a CSS length (`2rem`).
+     *
+     * The bar's height is its content's, so this is also how tall the bar is:
+     * the default (`--blong-portal-brand-height`, 1.75rem) is what a mark that
+     * speaks for itself needs, and a suite that wants a bigger one says so.
+     */
+    markHeight?: string;
+    /**
+     * The logo's height in the portal's empty state, as a CSS length (`24rem`).
+     *
+     * The default 8rem suits a square mark. A portrait lockup — a crest above a
+     * wordmark — is only a third as wide at the same height, so it reads small
+     * in the whitespace and the suite is the only one that knows how much room
+     * its own logo wants. Setting this also lifts the 40vh cap the default
+     * carries, because a suite that names a height has done the arithmetic.
+     */
+    logoHeight?: string;
     /** PrimeIcons class used when `logoUrl` is absent (`pi pi-bolt`). */
     logoIcon?: string;
     /** Organisation line under the title in the portal's empty state. */

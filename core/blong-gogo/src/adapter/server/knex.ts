@@ -1034,6 +1034,22 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     const aclFilter = await aclReadFilter(opts);
                     if (aclFilter)
                         query = query.whereRaw(aclFilter.sql, aclFilter.bindings as never[]);
+                    // The caller may ask for the size of the whole result as well as
+                    // the page (`paging.count`). A paginator cannot open its forward
+                    // arrows without it: a full page says nothing about what follows,
+                    // so every page looked like the last one. Counted on the same
+                    // statement — filters, search, joins and ACL all still apply — but
+                    // before `limit`/`offset` and without the page's ordering.
+                    let recordsTotal: number | undefined;
+                    if ((paging as {count?: boolean} | undefined)?.count) {
+                        const counted = (await query
+                            .clone()
+                            .clearSelect()
+                            .clearOrder()
+                            .count({total: '*'})
+                            .first()) as {total?: number | string} | undefined;
+                        recordsTotal = Number(counted?.total ?? 0);
+                    }
                     if (limit) query = query.limit(limit);
                     if (offset) query = query.offset(offset);
                     const rows = (await (joinSelections.length
@@ -1042,7 +1058,14 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                               ...joinSelections,
                           ])
                         : query.select(select))) as Record<string, unknown>[];
-                    return prepareResultRows(rows, binaryCols, table);
+                    const page = prepareResultRows(rows, binaryCols, table);
+                    // Two shapes, chosen by the caller: a bare page, which is what
+                    // every caller that did not ask for a count reads, and the page
+                    // with its total under the key the list widgets default to
+                    // (`resultSet`).
+                    return recordsTotal === undefined
+                        ? page
+                        : {items: page, pagination: {recordsTotal}};
                 }
                 case 'add': {
                     const {

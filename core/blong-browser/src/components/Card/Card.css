@@ -1,11 +1,11 @@
 /* Remove PrimeReact's default content padding so field grids fill the card */
-.p-card .p-card-body > .p-card-content {
+.p-card .p-card-body>.p-card-content {
     padding-top: 0;
     padding-bottom: 0;
 }
 
 /* Standard gap between card title and content */
-.p-card .p-card-body > .p-card-title {
+.p-card .p-card-body>.p-card-title {
     margin-bottom: 1.5rem;
 }
 
@@ -32,4 +32,72 @@
 .blong-required::after {
     content: ' *';
     color: var(--red-500, #ef4444);
+}
+
+/* A card that holds a table of bounded height hands the panel's height down.
+
+   PrimeReact's `scrollHeight="flex"` asks the table for `height: 100%`, which
+   only means something when every box between the panel and the table has a
+   height of its own. Card, card body, card content, the card body and the field
+   row PrimeReact's grid wraps the widget in are all made flex columns with a
+   zero minimum, so the height reaches the table and the table — not the page —
+   is what scrolls. Scoped with `:has()` to the cards that actually carry such a
+   table: a form card keeps the layout it had. */
+.p-splitter-panel>.p-card:has(.p-datatable-flex-scrollable) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.p-splitter-panel>.p-card:has(.p-datatable-flex-scrollable)>.p-card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.p-splitter-panel>.p-card:has(.p-datatable-flex-scrollable)>.p-card-body>.p-card-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.p-splitter-panel>.p-card:has(.p-datatable-flex-scrollable)>.p-card-body>.p-card-content>.blong-card__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* The field row the grid gives a table: one field, the whole height below the
+   card title. `.grid` wraps, and a wrapping line is as tall as its tallest item
+   — which is the table — so the line would grow the card back to the table's
+   content height. One column, no wrap, and the row is the height the card
+   leaves. `align-items: stretch` is what lets the widget fill it: the row
+   centres its content for every other widget. */
+.blong-card__body>.field.grid:has(.p-datatable-flex-scrollable) {
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-wrap: nowrap;
+}
+
+.blong-card__body>.field.grid:has(.p-datatable-flex-scrollable)>div {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* The row carries PrimeFlex's `align-items-center`, an `!important` utility, so
+   the widget takes the row's height instead of being centred in it. `height:
+   100%` of an auto-height row is auto, which leaves an unbounded table alone. */
+.blong-card__body>.field.grid:has(.p-datatable-flex-scrollable)>div>.blong-table-widget {
+    height: 100%;
+}
+
+/* The table takes the height the field row gave it, so its wrapper scrolls and
+   its header stays above the rows. A zero basis is what makes it take the space
+   that is left instead of the height its rows would like. */
+.blong-table-widget>.p-datatable-flex-scrollable {
+    flex: 1 1 0;
+    min-height: 0;
 }

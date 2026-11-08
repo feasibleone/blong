@@ -28,7 +28,6 @@ active (27)
 - `D-637` · realm/blong-sport — The sport deployment entry is the existing index.ts
 - `D-638` · realm/blong-sport — Sport runs as a monolith against the dev cluster external MySQL
 - `D-674` · realm/blong-sport — The story leaves its callouts where the solver put them
-- `D-735` · realm/blong-sport — Sport's logo is a neutral torch mark, not the Olympic rings
 - `D-780` · realm/blong-sport — The sport menu is split classifiers, registry, competition
 - `D-786` · realm/blong-sport — Profile removal cascades the profile row and the party row
 - `D-788` · realm/blong-sport — The classifier and register seeds are handler-backed and resolve
@@ -36,6 +35,12 @@ active (27)
 - `D-789` · realm/blong-sport — The pickers cascade through parent keys on the dropdown answer
 - `D-787` · realm/blong-sport — disciplineSex: empty means both sexes, mixed one event
 - `D-791` · realm/blong-sport — Seeds are short tables and the handler derives the rest
+- `D-792` · realm/blong-sport — Sport's logo is the committee's own lockup, with a separate toolbar
+  mark
+
+superseded (1)
+
+- `D-735` · realm/blong-sport — Sport's logo is a neutral torch mark, not the Olympic rings
 
 <!-- /memory:index -->
 
@@ -259,17 +264,6 @@ half-tuned. What did survive: a callout now carries data-feedback-target, and us
 synthetic pointer whose capture cannot be taken, both of which let a story or a test take hold of
 one box.
 
-### D-735 — Sport's logo is a neutral torch mark, not the Olympic rings
-
-> _2026-11-02 · realm/blong-sport · active_
-
-The brief asked for the Olympic rings as the sport suite's logo, and the mark shipped is a neutral
-one instead: a flame flanked by two laurel branches in `realm/blong-sport/public/sport-logo.svg`.
-The rings are a protected mark (IOC/NOC territory) and a repository that redistributes the file in
-every deployment artifact is the wrong place to test that. The colouring keeps the Olympic palette
-so the suite still reads as sport. Swap the file, and nothing else, when an approved asset exists:
-`ui.portal.portal.brand.logoUrl` names it by path and no code knows what the mark is.
-
 ### D-780 — The sport menu is split classifiers, registry, competition
 
 > _2026-11-06 · realm/blong-sport · active_
@@ -381,4 +375,57 @@ every column of these tables is two words, so a key without a capital after its 
 an input the handler has already spent. profile() is what enforces it, and it is also what stops eik
 leaking into a profile insert as an unknown column.
 
+### D-792 — Sport's logo is the committee's own lockup, with a separate toolbar mark
+
+> _2026-11-07 · realm/blong-sport · active_
+
+The sport suite's mark is now the Bulgarian Olympic Committee's own lockup, extracted from
+`plans/sport/Logo BOC_BG.pdf` (Adobe Illustrator, one page, 98.603 x 175.058 pt) into
+`realm/blong-sport/public/sport-logo.svg`. The PDF carries no text object and no raster: the lion,
+the bowl, the rings and the committee's name are all outlined paths filled from two separations
+(PANTONE 426 CVC at tint 1, which the tint function resolves to CMYK 0/0/0/1, and Gold, CMYK
+0/0.2/0.6/0.2) plus four CMYK ring colours. The conversion walks the content stream — m, l, c, h, f,
+k, cs, scn, q, Q over a FlateDecode stream of about 29 KB — and writes one path per fill, with the
+colours sampled from a 4x render rather than converted naively: `#D1AB66` gold, and the Olympic
+palette `#0080C8`, `#EE324E`, `#00A550`, `#FBB130`. That is why the file is not redrawn by hand: a
+re-export from the source vector is the only thing that keeps the crest right at any size.
+
+Black is written `#000000`, not the `#221F1F` a renderer produces for CMYK 0/0/0/1. The sampled
+value was a colour-management artefact — a rich black that reads as warm dark grey — and it made the
+bowl, the black ring and the wordmark look muddy beside the pure black of the app's own text. The
+logo is drawn on a dark surface, and a mark that is not the same black as the type around it looks
+like a printing error rather than a shadow.
+
+The logo carries the committee's name under the emblem, and the menubar's brand slot is 28px tall,
+so the lockup is 16px wide there and the name is a smudge. The brand therefore names two files:
+`logoUrl` is the whole lockup, drawn on the login screen and in the portal's empty state, and
+`markUrl` — the same file with the two wordmark paths dropped, viewBox `0 0 98.603 155.058` — is
+what the menubar draws. `IPortalBrand.markUrl` exists for exactly this: a logo that is not a mark.
+
+A portrait lockup also needs a height of its own: at the empty state's default 8rem this one is
+189px wide against the 320px a square mark would take, so the crest reads small in whitespace built
+to hold it. `IPortalBrand.logoHeight` (and `markHeight` for the bar) lets the suite answer with a
+length, and the sport realm asks for `24rem` — three times the default. Naming a height also lifts
+the 40vh guard the default carries, because a suite that has done the arithmetic should not be
+overruled by a cap meant for an unbounded file.
+
+This supersedes the earlier decision to ship a neutral torch instead of the rings, which was taken
+because the rings are a protected mark and the file had no owner; the committee's own artwork now
+does, so the placeholder goes.
+
 ## Superseded
+
+### D-735 — Sport's logo is a neutral torch mark, not the Olympic rings
+
+> _2026-11-02 · realm/blong-sport · superseded_
+
+The brief asked for the Olympic rings as the sport suite's logo, and the mark shipped is a neutral
+one instead: a flame flanked by two laurel branches in `realm/blong-sport/public/sport-logo.svg`.
+The rings are a protected mark (IOC/NOC territory) and a repository that redistributes the file in
+every deployment artifact is the wrong place to test that. The colouring keeps the Olympic palette
+so the suite still reads as sport. Swap the file, and nothing else, when an approved asset exists:
+`ui.portal.portal.brand.logoUrl` names it by path and no code knows what the mark is.
+
+Superseded by `D-792`.
+
+The committee's own artwork is now the source, and the mark is a separate file.

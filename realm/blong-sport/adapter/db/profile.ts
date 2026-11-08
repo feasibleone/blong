@@ -231,7 +231,7 @@ async function profileFind(
     qb: KnexQb,
     object: string,
     params: Record<string, unknown> = {},
-): Promise<Record<string, unknown>[]> {
+): Promise<Record<string, unknown>[] | Record<string, unknown>> {
     const spec = profileSpec(object);
     const {
         select: _select,
@@ -279,11 +279,27 @@ async function profileFind(
 
     const pageOffset =
         offset ?? (paging ? ((paging.pageNumber ?? 1) - 1) * (limit ?? 0) : undefined);
+    // The browser's paginator asks for the size of the whole register with the
+    // page (`paging.count`), because a full page says nothing about what follows
+    // it and its forward arrows would stay disabled. Counted on the same join and
+    // the same filters, before `limit`/`offset`.
+    let recordsTotal: number | undefined;
+    if ((paging as {count?: boolean} | undefined)?.count) {
+        const counted = (await query
+            .clone()
+            .clearSelect()
+            .clearOrder()
+            .count({total: '*'})
+            .first()) as {total?: number | string} | undefined;
+        recordsTotal = Number(counted?.total ?? 0);
+    }
     if (limit) query = query.limit(limit);
     if (pageOffset) query = query.offset(pageOffset);
 
-    const rows = (await query) as Array<Record<string, unknown>>;
-    return rows.map(wireRow);
+    const rows = ((await query) as Array<Record<string, unknown>>).map(wireRow);
+    // The page alone, or the page with its total under the key the list widget
+    // reads (`resultSet`, `items` by default).
+    return recordsTotal === undefined ? rows : {items: rows, pagination: {recordsTotal}};
 }
 
 /**

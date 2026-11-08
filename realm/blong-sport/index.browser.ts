@@ -86,9 +86,21 @@ export default browser(blong => ({
                         // is what turns the default globe-and-"Blong Portal" into
                         // something a deployment belongs to.
                         brand: {
-                            logoUrl: `${assetBase}sport-logo.svg`,
+                            // The committee's lockup, extracted from the approved
+                            // PDF (`@@D-792`): the lion above the bowl, the rings
+                            // and the committee's name. The name is a smudge in
+                            // the 28px menubar slot, so the toolbar draws the
+                            // emblem alone and the login screen and the empty
+                            // state get the whole mark. It is a portrait lockup —
+                            // 98 x 175 — so the default 8rem welcome height draws
+                            // it a third as wide as a square mark would be; the
+                            // empty state is where it is meant to be read, so it
+                            // is named at three times that.
+                            logoUrl: `${assetBase}sport-logo-mark.svg`,
+                            logoHeight: '24rem',
+                            markUrl: `${assetBase}sport-logo-mark.svg`,
                             orgTitle: 'Bulgarian Olympic Committee',
-                            orgIcon: 'pi pi-building',
+                            // orgIcon: 'pi pi-building',
                         },
                         // The self-service profile page, opened from the top-right
                         // account menu. `page` is the component method, `get` the read the

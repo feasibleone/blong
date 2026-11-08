@@ -65,6 +65,7 @@ words:
   - centered
   - cervicornis
   - cfg
+  - cgroup
   - chdir
   - checkpointed
   - Chelonia
@@ -76,6 +77,7 @@ words:
   - clusterrolebinding
   - clusterrolebindings
   - clusterroles
+  - CMYK
   - codegen
   - commitish
   - configmap
@@ -148,6 +150,7 @@ words:
   - Faviidae
   - feasibleone
   - Fiber
+  - Flate
   - fontobject
   - franca
   - frontmatter
@@ -194,6 +197,7 @@ words:
   - Indo
   - infitx
   - ingressclass
+  - Inno
   - INOUT
   - inputmask
   - inputnumber
@@ -234,6 +238,7 @@ words:
   - linted
   - Liquibase
   - LM
+  - lockup
   - logviewer
   - LONGTEXT
   - Mandarinfish
@@ -267,6 +272,7 @@ words:
   - myapp
   - mydas
   - mysqladmin
+  - mysqld
   - mysqldump
   - namespaceable
   - nematocysts
@@ -298,6 +304,7 @@ words:
   - OpenRouter
   - overlaypanel
   - panelmenu
+  - PANTONE
   - paperclip
   - Paracanthurus
   - parentspanid
@@ -312,6 +319,8 @@ words:
   - persistentvolumeclaims
   - persistentvolumes
   - Petrova
+  - pgscan
+  - pgsteal
   - pickpersona
   - pino
   - pkce
@@ -472,6 +481,7 @@ words:
   - unserved
   - unstate
   - Upserted
+  - usec
   - userinfo
   - userpass
   - varbinary
@@ -486,6 +496,7 @@ words:
   - wcmp
   - webcamera
   - WHATWG
+  - wordmark
   - worldtimeapi
   - Wrasse
   - writable

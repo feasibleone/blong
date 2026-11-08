@@ -1,0 +1,44 @@
+/**
+ * The page a form is.
+ *
+ * A page is a column: the toolbar keeps its natural height and everything below
+ * it takes the rest of the tab body. Without that column the page grew with its
+ * content — a browse table of twenty-five rows made the page 300px taller than
+ * the panel and neither the tab area nor the table had anything to scroll.
+ *
+ * The chain matters more than the rules: the split layout, the card inside it
+ * and the table inside that each need `min-height: 0`, or a flex item refuses to
+ * shrink below its content and the height never reaches the rows.
+ */
+.blong-editor {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+}
+
+/* The form is a flex *item* of the page, not a container: its height comes from
+   the page, which is what a `height: 100%` splitter inside it resolves against.
+   It must stay a block. As a column flex container it turned the deck's own
+   `align-self-start` — a PrimeFlex utility meant to stop the grid stretching in
+   a row — into "shrink to content", and every card in a form was as wide as its
+   longest label. */
+.blong-editor>.blong-form {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* Design mode's inspector sits beside the form in the same row. */
+.blong-editor>.blong-form-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.blong-editor>.blong-form-layout>.blong-form {
+    flex: 1 1 auto;
+    min-height: 0;
+}

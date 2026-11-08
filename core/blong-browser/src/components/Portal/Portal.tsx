@@ -422,13 +422,16 @@ const brandOf = (portalConfig: IPortalConfig | null | undefined): IPortalBrand |
  * fallback is a glyph, which costs nothing when a suite names neither.
  */
 function BrandMark({brand}: {brand?: IPortalBrand}) {
-    if (brand?.logoUrl) {
+    // The mark first: a bar-height slot fits an emblem, not a lockup (`markUrl`).
+    const url = brand?.markUrl ?? brand?.logoUrl;
+    if (url) {
         return (
             <img
                 className="blong-portal-brand-logo"
-                src={brand.logoUrl}
+                src={url}
                 alt=""
                 aria-hidden="true"
+                style={brand?.markHeight ? {height: brand.markHeight} : undefined}
             />
         );
     }
@@ -456,6 +459,13 @@ function PortalWelcome({brand, title}: {brand?: IPortalBrand; title?: string}) {
                         src={brand.logoUrl}
                         alt=""
                         aria-hidden="true"
+                        // A suite that named a height has decided how big its own
+                        // logo reads; the 40vh cap is the guard for the default.
+                        style={
+                            brand.logoHeight
+                                ? {height: brand.logoHeight, maxHeight: 'none'}
+                                : undefined
+                        }
                     />
                 ) : brand?.logoIcon ? (
                     <i className={`blong-portal-welcome__icon ${brand.logoIcon}`} />

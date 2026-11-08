@@ -74,6 +74,15 @@ export function useTableList({
             paging: {
                 pageSize: listPageSize,
                 pageNumber: Math.floor(first / listPageSize) + 1,
+                /**
+                 * Ask the server for the size of the whole result, not just the
+                 * page. The paginator's arrows need it: without a total the
+                 * widget only knows the rows it was handed, so every page looked
+                 * like the last one and the forward arrows stayed disabled.
+                 * A read that ignores the flag answers rows alone, which the
+                 * paginator still handles by asking whether the page is full.
+                 */
+                count: true,
             },
         };
     }, [
@@ -107,11 +116,23 @@ export function useTableList({
         return Array.isArray(data) ? (data as Row[]) : [];
     }, [data, resultSet]);
 
-    const total: number = useMemo(() => {
-        if (!data) return 0;
+    /**
+     * How many rows the whole result holds, when the server reported it.
+     *
+     * `undefined` means the read answers a bare page — the generic `find`
+     * before it learned `paging.count`, or a realm's own projection. The page
+     * is then judged by whether it was full (`hasMore`), so the arrows still
+     * move rather than locking on the first page.
+     */
+    const total: number | undefined = useMemo(() => {
+        if (!data) return undefined;
         const pagination = (data as {pagination?: {recordsTotal?: number}}).pagination;
-        return typeof pagination?.recordsTotal === 'number' ? pagination.recordsTotal : rows.length;
-    }, [data, rows.length]);
+        return typeof pagination?.recordsTotal === 'number' ? pagination.recordsTotal : undefined;
+    }, [data]);
+
+    /** Whether a further page exists — known exactly when `total` is. */
+    const hasMore =
+        total === undefined ? rows.length >= listPageSize : first + listPageSize < total;
 
     const onSearchChange = useCallback((value: string) => {
         setSearchInput(value);
@@ -145,6 +166,7 @@ export function useTableList({
         isListMode,
         rows,
         total,
+        hasMore,
         loading,
         params,
         searchInput,

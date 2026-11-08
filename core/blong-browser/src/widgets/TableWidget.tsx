@@ -83,6 +83,11 @@ export function TableWidget({
     const initialPageSize = schema.widget?.pageSize ?? 25;
     const widgetToolbar = schema.widget?.toolbar ?? [];
     const widgetToolbarRight = schema.widget?.toolbarRight ?? [];
+    // A table that names a height scrolls its own rows and keeps the header in
+    // place, instead of growing until the page has no bottom (`scrollHeight:
+    // 'flex'` takes whatever the card leaves it). An unset height keeps the
+    // table growing with its rows — what a detail array inside a form wants.
+    const scrollHeight = schema.widget?.scrollHeight;
     const isListMode = !!listAction;
 
     const {handler} = useBlong();
@@ -575,6 +580,8 @@ export function TableWidget({
                     emptyMessage="No rows."
                     loading={isListMode ? list.loading : undefined}
                     lazy={isListMode}
+                    scrollable={!!scrollHeight}
+                    scrollHeight={scrollHeight}
                     rowClassName={rowClass}
                     selection={isSingleSelect ? singleSelected : selected}
                     onSelectionChange={(e: DataTableSelectionChangeParams) => {
@@ -886,11 +893,12 @@ export function TableWidget({
                     </DataTable>
                 </FeedbackRegion>
             </RowDraftContext>
-            {isListMode && list.total > 0 && (
+            {isListMode && (list.total ?? list.rows.length) > 0 && (
                 <TablePaginator
                     first={list.first}
                     pageSize={list.pageSize}
                     total={list.total}
+                    hasMore={list.hasMore}
                     onFirstChange={list.setFirst}
                     onPageSizeChange={list.setPageSize}
                 />
