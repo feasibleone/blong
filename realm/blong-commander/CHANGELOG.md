@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/feasibleone/blong/compare/blong-commander-v1.6.0...blong-commander-v1.6.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* update screenshots ([99e62de](https://github.com/feasibleone/blong/commit/99e62de0116b80b99b7cc2e9f6eddeec81c44bc4))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-commander-v1.5.0...blong-commander-v1.6.0) (2026-11-06)
 
 

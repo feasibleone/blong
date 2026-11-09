@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/feasibleone/blong/compare/blong-mock-v1.6.0...blong-mock-v1.6.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* UI improvements ([ca9d3c8](https://github.com/feasibleone/blong/commit/ca9d3c837fe5243092453bd4687d68c785ca81c3))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-mock-v1.5.0...blong-mock-v1.6.0) (2026-11-06)
 
 

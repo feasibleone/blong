@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.1](https://github.com/feasibleone/blong/compare/blong-gateway-v1.8.0...blong-gateway-v1.8.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* UI improvements ([995fe70](https://github.com/feasibleone/blong/commit/995fe707d0cf6f0c01a74b8261c9e0788e7f6d48))
+* update screenshots ([99e62de](https://github.com/feasibleone/blong/commit/99e62de0116b80b99b7cc2e9f6eddeec81c44bc4))
+
 ## [1.8.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.7.1...blong-gateway-v1.8.0) (2026-11-06)
 
 

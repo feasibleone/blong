@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.1](https://github.com/feasibleone/blong/compare/blong-suite-v1.18.0...blong-suite-v1.18.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* UI improvements ([995fe70](https://github.com/feasibleone/blong/commit/995fe707d0cf6f0c01a74b8261c9e0788e7f6d48))
+
 ## [1.18.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.17.0...blong-suite-v1.18.0) (2026-11-04)
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.34.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.34.0...blong-browser-v1.34.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* UI improvements ([995fe70](https://github.com/feasibleone/blong/commit/995fe707d0cf6f0c01a74b8261c9e0788e7f6d48))
+* UI improvements ([ca9d3c8](https://github.com/feasibleone/blong/commit/ca9d3c837fe5243092453bd4687d68c785ca81c3))
+
 ## [1.34.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.33.1...blong-browser-v1.34.0) (2026-11-06)
 
 
