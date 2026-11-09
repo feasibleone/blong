@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
-    app.kubernetes.io/version: 1.17.0
-    blong.feasible.one/spec-hash: e948822e2e7510e1
+    app.kubernetes.io/version: 1.18.0
+    blong.feasible.one/spec-hash: 6b651b73030daba5
   name: blong-suite
   namespace: blong-suite
 spec:
@@ -29,18 +29,13 @@ spec:
         secretName: marine-tls
   profile: realm
   services:
-    mysql:
-      credentials:
-        generate: true
-      databases:
-        - blong-integration
+    mysql: false
   servicesNamespace: blong-services
   suiteVolume:
     artifact:
-      digest: 9d848fb9e063baa34dd6f5f74af906d3d21eff67016f2e1030db2edda01620a1
       source: url
       url: http://blong-artifact.default.svc.cluster.local/suite.zip
     attemptRetention: 5
     backend: nodeLocal
     retention: 3
-  version: 1.17.0
+  version: 1.18.0

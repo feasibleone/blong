@@ -143,7 +143,7 @@ export default handler(
                     );
                     assert.ok(athlete?.athleteId, 'the athlete is readable');
                     assert.equal(athlete.firstName, 'Тест', 'the name was split');
-                    assert.equal(athlete.primarySportId, sportId, 'the sport was resolved');
+                    assert.equal(athlete.primarySportId, sportId, `the sport ${sport} was resolved`);
                     assert.ok(athlete.primaryDisciplineId, 'the discipline was resolved');
 
                     // The profile's key *is* the person's: the register seed writes the

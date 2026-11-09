@@ -58,5 +58,14 @@ export default browser(blong => ({
                 test: ['test.meter.http.flow'],
             },
         },
+        'test-ui': {
+            testClient: {
+                backend: {
+                    namespace: ['meterprobe', 'gateway', 'login'],
+                },
+            },
+            login: {},
+            gateway: {},
+        },
     },
 }));

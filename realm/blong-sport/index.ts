@@ -174,7 +174,7 @@ export default server(() => ({
         },
         'test-ui': {
             testRealm: {
-                testRun: {serverGroups: ['test.athlete']},
+                testRun: {serverGroups: ['test.athlete', 'test.nomenclature']},
             },
         },
     },

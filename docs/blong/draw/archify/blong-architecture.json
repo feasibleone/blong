@@ -428,6 +428,12 @@
             "variant": "security"
         },
         {
+            "id": "device",
+            "from": "device",
+            "to": "streamAdapter",
+            "variant": "security"
+        },
+        {
             "id": "partner",
             "from": "partnerApp",
             "to": "gatewayPartner",

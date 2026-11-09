@@ -35,9 +35,9 @@ open (23)
   package is built
 - `F-254` · core/blong-browser — A "race" that was two different baselines and a 1% tolerance
 - `F-679` · core/blong-browser — Profile fetch before a session raised a binding error dialog
+- `F-706` · core/blong-browser — A font-family with no generic fallback is a serif
 - `F-704` · core/blong-browser — Filling a tab with a scrolling table is a CSS height chain, not a
   prop
-- `F-706` · core/blong-browser — A font-family with no generic fallback is a serif
 
 resolved (32)
 
@@ -355,37 +355,6 @@ gateway broker, which exists only once the MLE client does, so an unauthenticate
 answered `remote.bindingFailed` and raised an error dialog in front of the login screen. The effect
 is now gated on `auth.isAuthenticated` and a render test pins it.
 
-### F-704 — Filling a tab with a scrolling table is a CSS height chain, not a prop
-
-> _2026-11-07 · core/blong-browser · open_
-
-Making a table fill its tab and scroll its own rows cost most of the session, and every trap was in
-the CSS rather than the component. The height only reaches a DataTable with `scrollHeight: 'flex'`
-if every box between the split panel and the table has a height of its own, so the card, the
-PrimeReact card body and content, the card body, the field row and the row's wrapper all become flex
-columns with `min-height: 0`. Three things then bite. `.grid` is a wrapping flex container, and a
-wrapping line is as tall as its tallest item, so the table grew the line and overflowed the card
-until the row was made `flex-wrap: nowrap`. The field row carries PrimeFlex's `align-items-center`,
-which is `!important`, so the widget could not be stretched by its parent and needed `height: 100%`
-instead. And `.p-tabview .p-tabview-panel { display: flex }` out-specifies the `p-hidden` class
-PrimeReact puts on an inactive panel, which stacked every open tab on screen; the rule is scoped to
-`:not(.p-hidden)`.
-
-The costliest trap came back as a width bug after the first fix looked done: every card in every
-form shrank to its longest label. Making the form itself a column flex container is what did it. The
-deck inside a form is `grid col align-self-start max-w-screen`, and `align-self-start` — harmless in
-a block parent, where it does nothing — means "do not stretch" across the _width_ of a column flex
-container, so the grid collapsed to content and took the cards with it. The form has to stay a block
-that is only a flex _item_ of the page (`flex: 1 1 auto; min-height: 0`); a `height: 100%` splitter
-inside it still resolves against the item's used height, and a page taller than its panel overflows
-into the tab body's scroller. Do not turn `.blong-form` into a flex container to get the height
-down.
-
-The last trap was quieter: PrimeFlex's `.grid` has a negative margin on each side, so the page is
-one gutter wider than its panel, and `overflow: auto` on the tab body turned that into a horizontal
-scrollbar with nothing to reach. The panel now clips sideways and scrolls downwards. Everything is
-scoped with `:has(.p-datatable-flex-scrollable)` so a form card keeps the layout it had.
-
 ### F-706 — A font-family with no generic fallback is a serif
 
 > _2026-11-07 · core/blong-browser · open_
@@ -404,6 +373,38 @@ Helvetica, Arial, `sans-serif`). The variable is what the active theme declares 
 app follows the theme and still has a sans-serif before the theme's stylesheet lands. Two copies of
 the same reset live in the Storybook canvas (`.storybook/preview.tsx` and `storybook.tsx`) and were
 fixed with it — a font stack is worth grepping for rather than retyping.
+
+### F-704 — Filling a tab with a scrolling table is a CSS height chain, not a prop
+
+> _2026-11-07 · core/blong-browser · open_
+
+Making a table fill its tab and scroll its own rows cost most of the session, and every trap was in
+the CSS rather than the component. The height only reaches a DataTable with `scrollHeight: 'flex'`
+if every box between the split panel and the table has a height of its own, so the card, the
+PrimeReact card body and content, the card body, the field row and the row's wrapper all become flex
+columns with `min-height: 0`. Three things then bite. `.grid` is a wrapping flex container, and a
+wrapping line is as tall as its tallest item, so the table grew the line and overflowed the card
+until the row was made `flex-wrap: nowrap`. The field row carries PrimeFlex's `align-items-center`,
+which is `!important`, so the widget could not be stretched by its parent and needed `height: 100%`
+instead. And `.p-tabview .p-tabview-panel { display: flex }` out-specifies the `p-hidden` class
+PrimeReact puts on an inactive panel, which stacked every open tab on screen.
+
+The width bug that followed had the same cause one level up, and it is the reason the tab body is no
+longer a flex container at all. A page root is written as `grid col align-self-start max-w-screen`,
+and `align-self-start` is inert in a block but means "do not stretch" across the _width_ inside a
+column flex container: the page collapsed to its content and every card with it, in every realm —
+the access profile page as much as a generated sport page. Making the form a block fixed only the
+generated pages, because it left the page root itself a flex item. The rule that holds for all pages
+is that the panel stays a block and a page gets its height from `height: 100%`; the panel's
+`overflow-y: auto` still reaches a page that overflows, because an overflowing descendant is part of
+a scroll container's scrollable overflow. So: never put a page root (or the form inside one) into a
+column flex container to hand down a height — give it `height: 100%` and keep the formatting context
+a block.
+
+The last trap was quieter: PrimeFlex's `.grid` has a negative margin on each side, so the page is
+one gutter wider than its panel, and `overflow: auto` on the tab body turned that into a horizontal
+scrollbar with nothing to reach. The panel now clips sideways and scrolls downwards. Everything is
+scoped with `:has(.p-datatable-flex-scrollable)` so a form card keeps the layout it had.
 
 ## Resolved
 

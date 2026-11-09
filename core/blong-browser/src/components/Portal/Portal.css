@@ -170,11 +170,9 @@
     min-height: 0;
 }
 
-/* The tab body is the area below the tab strip, and it takes all of it: the page
-   is stretched to the panel and its content is bounded by that height rather
-   than by its own length. `overflow: auto` is the scroller the area shows when a
-   page still does not fit — without it the page grew past the panel and the
-   window clipped it with no bar to reach the rest. */
+/* The tab body is the area below the tab strip, and it takes all of it: its
+   height is the room a page is given, and `overflow-y` is the scroller it shows
+   when a page still does not fit. */
 .p-tabview .p-tabview-panel {
     flex-grow: 1;
     min-height: 0;
@@ -186,18 +184,18 @@
     overflow-y: auto;
 }
 
-/* Only the selected panel is laid out: an inactive one carries PrimeReact's
-   `p-hidden`, and a bare `display` here would out-specify it and stack every
-   open tab on screen. */
-.p-tabview .p-tabview-panel:not(.p-hidden) {
-    display: flex;
-    flex-direction: column;
-}
+/* A page is as tall as the tab body, and it stays a *block*.
 
-/* A page fills the panel; the page's own column (its toolbar above its body) is
-   what turns that height into room for the table. */
+   A page root carries PrimeFlex's `align-self-start` (`grid col align-self-start`,
+   the deck every generated page starts with). In a block it means nothing, which
+   is what every page was written against; inside a column flex container it means
+   "do not stretch" across the *width*, and the page collapsed to its content —
+   every card in every form as wide as its longest label. So the height comes from
+   `height: 100%` and never from being a flex item. The scroller above still reaches
+   a page that overflows, because an overflowing descendant is part of the panel's
+   scrollable overflow. */
 .p-tabview .p-tabview-panel>* {
-    flex: 1 1 auto;
+    height: 100%;
     min-height: 0;
     min-width: 0;
 }

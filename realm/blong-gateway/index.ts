@@ -22,6 +22,10 @@ export default server(() => ({
         async function gateway() {
             return import('./server.ts');
         },
+        /** Server-hosted test runner (test intents only) */
+        async function testRealm() {
+            return import('@feasibleone/blong-test/server.ts');
+        },
     ],
     config: {
         default: {
@@ -43,10 +47,21 @@ export default server(() => ({
             // This suite is the one that demonstrates them — `test/observedMergeFlow.play.ts` draws
             // the merge's notes and the alternative it did not take — so it is where the mode is on.
             registry: {checkpointMode: 'debug'},
+            testRealm: {
+                testRun: {serverGroups: ['test.meter.flow']},
+            },
         },
         integration: {
             watch: {
                 test: ['test.meter.flow'],
+            },
+            testRealm: {
+                testRun: {serverGroups: ['test.meter.flow']},
+            },
+        },
+        'test-ui': {
+            testRealm: {
+                testRun: {serverGroups: ['test.meter.flow']},
             },
         },
     },

@@ -8,5 +8,5 @@ metadata:
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: fde1dbdf177c1c42
+    blong.feasible.one/spec-hash: ee254a00248aa370
   name: fill-script
