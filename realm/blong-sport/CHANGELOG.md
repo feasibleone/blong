@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.1](https://github.com/feasibleone/blong/compare/blong-sport-v0.8.0...blong-sport-v0.8.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* UI improvements ([995fe70](https://github.com/feasibleone/blong/commit/995fe707d0cf6f0c01a74b8261c9e0788e7f6d48))
+* UI improvements ([ca9d3c8](https://github.com/feasibleone/blong/commit/ca9d3c837fe5243092453bd4687d68c785ca81c3))
+
 ## [0.8.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.7.0...blong-sport-v0.8.0) (2026-11-07)
 
 

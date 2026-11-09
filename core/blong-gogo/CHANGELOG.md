@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.49.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.49.1...blong-gogo-v1.49.2) (2026-11-09)
+
+
+### Bug Fixes
+
+* UI improvements ([ca9d3c8](https://github.com/feasibleone/blong/commit/ca9d3c837fe5243092453bd4687d68c785ca81c3))
+
 ## [1.49.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.49.0...blong-gogo-v1.49.1) (2026-11-06)
 
 
