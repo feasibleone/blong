@@ -704,6 +704,24 @@ repository's own configuration files:
     `tools/blong-dev/src/commands/proxy.ts` on top of `@feasibleone/blong-mle`
     (`core/blong-mle/src/client.ts`).
 
+- **`blong-dev call`** — one call to a gateway, printed instead of proxied. Do not add a bespoke CLI
+  for a single API call: this is the way in, and business logic stays in the orchestrators.
+
+    ```bash
+    blong-dev call chat.prompt.ask '{conversationId: C0ABCDEF, kind: text, text: Which one?}'
+    blong-dev call access.user.find '{paging: {}}' --payload.paging.pageSize=10
+    blong-dev call chatPromptAsk --payload.text='Which one?' --dry-run
+    ```
+
+    The payload is JSON or YAML; `--payload.<path>=<value>` overrides one property and keeps its JSON
+    type; `--dry-run` prints the method, server and payload it would send. `call` and `proxy` share
+    one file, `.blong_callrc` (found upwards, gitignored):
+    `server.<alias>.{url,username,password}`, `route` (method prefix → alias), `payload` (defaults by
+    prefix or exact name), `default.server`, and `plain` (prefixes of routes the gateway serves
+    without auth, whose params must travel as plain JSON because the MLE hook only decodes a route
+    that requires auth — `F-710`). Implemented in `tools/blong-dev/src/commands/call.ts` on
+    `tools/blong-dev/src/callRc.ts`.
+
 - **`blong-dev trace`** — inspect a `trace.zip` bundle (client actions, failed requests, console
   output). Implemented in `tools/blong-dev/src/commands/trace.ts`.
 

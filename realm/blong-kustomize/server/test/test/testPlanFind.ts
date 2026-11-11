@@ -695,8 +695,111 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 );
                 assert.deepEqual(
                     plan.deployments[0]?.ports,
-                    [{name: 'chatSlack', port: 8095}],
-                    'while the port itself is opened in that process',
+                    [{name: 'chat-slack', port: 8095}],
+                    'while the port itself is opened in that process, under the DNS label Kubernetes accepts',
+                );
+            },
+
+            async function theAddressOfAWebhookIsTheDeploymentsToName(assert: IAssert) {
+                // A realm owns the path and the process; the address is a DNS record and a
+                // certificate somebody owns, so it arrives from the declaration — a CR for a
+                // deployment, the rc file of a local run — and never from the source tree (`@@D-800`).
+                const view = {
+                    realms: ['chat'],
+                    groups: [{name: 'chat.chatDispatch', handlerCount: 1, layer: 'orchestrator'}],
+                    ports: [
+                        {id: 'chat.chatDispatch', type: 'dispatch', namespace: 'chat'},
+                        {
+                            id: 'chat.slack',
+                            type: 'slack',
+                            namespace: 'slack',
+                            k8s: {
+                                k8sPorts: {chatSlack: {port: 8095}},
+                                k8sIngresses: {
+                                    chatSlack: {
+                                        path: '/chat/slack',
+                                        servicePort: 8095,
+                                        annotations: {'blong.example/policy': 'shared'},
+                                    },
+                                },
+                            },
+                        },
+                    ],
+                    roles: {},
+                } as IRegistryView;
+                const plan = planFromRegistry(view, {
+                    suiteName: 'demo',
+                    frameworkImage: 'image',
+                    profile: 'monolith',
+                    nodes: NODES,
+                    ingresses: {
+                        chatSlack: {
+                            host: 'hooks.demo.example',
+                            tls: {secretName: 'hook-tls'},
+                            annotations: {'cert-manager.io/cluster-issuer': 'letsencrypt-prod'},
+                        },
+                    },
+                });
+
+                const [ingress] = plan.ingresses;
+                assert.equal(
+                    ingress?.host,
+                    'hooks.demo.example',
+                    'the host the declaration names is the one the plan carries',
+                );
+                assert.deepEqual(
+                    ingress?.tls,
+                    {secretName: 'hook-tls'},
+                    'as is the certificate beside it',
+                );
+                assert.deepEqual(
+                    ingress?.annotations,
+                    {
+                        // Merged by key, because a host's annotations are the controller's and the two
+                        // sides each name what they own.
+                        'blong.example/policy': 'shared',
+                        'cert-manager.io/cluster-issuer': 'letsencrypt-prod',
+                    },
+                    'and the issuer joins what the contribution already said about the host',
+                );
+                assert.equal(
+                    ingress?.path,
+                    '/chat/slack',
+                    'while the path stays the realm’s, which is the half it owns',
+                );
+
+                // The same declaration, with nothing said about the address: a plan still describes
+                // the ingresses with no host on them — which is why a deployment has to name one.
+                const bare = planFromRegistry(view, {
+                    suiteName: 'demo',
+                    frameworkImage: 'image',
+                    profile: 'monolith',
+                    nodes: NODES,
+                });
+                assert.equal(
+                    bare.ingresses[0]?.host,
+                    undefined,
+                    'an undeclared address stays undeclared rather than being invented',
+                );
+                assert.deepEqual(
+                    bare.ingresses[0]?.annotations,
+                    {'blong.example/policy': 'shared'},
+                    'and the contribution’s own annotations survive it',
+                );
+
+                // Both ways in reach the same field: a tenant's CR, and a local run's rc file.
+                assert.deepEqual(
+                    planOptionsFromSpec({ingresses: {chatSlack: {host: 'a.example'}}}).ingresses,
+                    {chatSlack: {host: 'a.example'}},
+                    'the CR is one way in',
+                );
+                assert.deepEqual(
+                    planOptionsOf({
+                        suite: {name: 'x'},
+                        ingresses: {chatSlack: {host: 'b.example'}},
+                    }).ingresses,
+                    {chatSlack: {host: 'b.example'}},
+                    'and the realm’s own config is the other',
                 );
             },
 

@@ -581,6 +581,6 @@ export function formatDiagnostic(diagnostic: Diagnostic): string {
                   diagnostic.column == null ? '' : `:${diagnostic.column}`
               }  `;
     const rule = diagnostic.rule ? ` [${diagnostic.rule}]` : '';
-    const mark = diagnostic.severity === 'warning' ? '⚠' : '✖';
+    const mark = diagnostic.severity === 'warning' ? '⚠️' : '❌';
     return `  ${mark} ${location}${diagnostic.tool}${rule}: ${diagnostic.message}`;
 }

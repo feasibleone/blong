@@ -32,6 +32,9 @@ switch (command) {
     case 'proxy':
         await (await import('./commands/proxy.ts')).proxy(args);
         break;
+    case 'call':
+        await (await import('./commands/call.ts')).call(args);
+        break;
     case 'trace':
         await (await import('./commands/trace.ts')).trace(args);
         break;

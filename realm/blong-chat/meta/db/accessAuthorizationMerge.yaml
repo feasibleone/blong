@@ -1,0 +1,27 @@
+# RBAC seed — grants the chat realm's capabilities to the deployment's roles.
+#
+# A capability lists the dotted method names the caller invokes (`chat.account.find`), not the
+# handler names: the gateway authorizes the route it serves, so a capability written in handler
+# names grants nothing and the page answers 403.
+#
+# The account page is an administrator's: it shows the credentials a bot posts with, so only the
+# managing capability reaches the writes and the reads together. A viewer role is deliberately not
+# granted `chat.account.get` — the record is the credential. The pair is workspace-scoped, which is
+# why `chat.workspace.*` sits beside `chat.account.*` (`@@D-797`).
+#
+# The file name is `accessAuthorizationMerge.yaml` because the seed method is derived from it: the
+# content carries the chat names, the method is blong-access's shared `access.authorization.merge`.
+#
+# Writing into a conversation — asking a question, sending a message, taking the answer — is the
+# managing capability's: each of those routes makes the bot speak or records what somebody said.
+# Reading the queue is a weaker authority, so `chat.prompt.find` sits in `chatView` as well — a
+# viewer may see what is waiting without answering it. An administrator holds both: whoever may ask
+# is the one who has to be able to see what never got answered.
+replace: true
+role:
+  Admin: chatManage,loginCapability
+  Chat Admin: chatManage,loginCapability
+  Chat Viewer: chatView,loginCapability
+capability:
+  chatView: chat.account.find,chat.account.get,chat.workspace.find,chat.workspace.get,chat.prompt.find,subject.object.schema
+  chatManage: chat.account.find,chat.account.get,chat.account.add,chat.account.edit,chat.account.remove,chat.workspace.find,chat.workspace.get,chat.workspace.add,chat.workspace.edit,chat.workspace.remove,chat.prompt.ask,chat.prompt.find,chat.out.messageSend,chat.in.answerReceive,subject.object.schema

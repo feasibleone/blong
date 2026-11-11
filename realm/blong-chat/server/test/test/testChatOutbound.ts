@@ -272,6 +272,7 @@ export default handler(
                     assert: IAssert,
                     {$meta}: {$meta: IMeta},
                 ) {
+                    simReset();
                     await assert.rejects(
                         async () =>
                             chatPromptAsk(
@@ -287,6 +288,29 @@ export default handler(
                             ),
                         /was not answered within/,
                         'a question nobody answered fails as a timeout instead of holding the request',
+                    );
+                    // The controls go with the question. Left behind, they look live, and a click on
+                    // one resolves nothing — which reads to a person as a broken button (`@@T-524`).
+                    const closed = await waitFor(() =>
+                        simRequests('slack').find(entry => entry.path.endsWith('chat.update')),
+                    );
+                    assert.ok(closed, 'the question\u2019s message is rewritten, not left as it was');
+                    const body = closed.body as {ts?: string; blocks?: unknown[]; text?: string};
+                    assert.equal(
+                        body.ts,
+                        '1700000000.000100',
+                        'addressing the message the question was posted as',
+                    );
+                    const closedBlocks = JSON.stringify(body.blocks);
+                    assert.match(
+                        closedBlocks,
+                        /No answer within/,
+                        'and saying why it can no longer be answered',
+                    );
+                    assert.doesNotMatch(
+                        closedBlocks,
+                        /"type":"actions"/,
+                        'with nothing interactive left to press',
                     );
                 },
 

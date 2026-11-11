@@ -216,6 +216,29 @@ const settledLine = (
     return `🗨️ ${who} answered${detail ? `: ${detail}` : ''}`;
 };
 
+/**
+ * The question as it reads once nobody answered: the options still there, every control gone.
+ *
+ * The answered shape keeps what was chosen, and an expired one has nothing to keep — so the options
+ * are listed unmarked and a line says why the question closed. What matters is that nothing
+ * interactive survives: a live submit on a question nobody is waiting for is a control that answers
+ * into the void (`@@T-524`).
+ */
+export const slackPromptExpiredBlocks = (prompt: IChatPrompt, notice: string): unknown[] => {
+    const options = prompt.options ?? [];
+    const blocks: unknown[] = [{type: 'section', text: {type: 'mrkdwn', text: prompt.text}}];
+    if (options.length)
+        blocks.push({
+            type: 'section',
+            text: {
+                type: 'mrkdwn',
+                text: options.map(option => `• ${option.label}`).join('\n'),
+            },
+        });
+    blocks.push({type: 'context', elements: [{type: 'mrkdwn', text: notice}]});
+    return blocks;
+};
+
 /** One modal input block: the control, its label and whether an empty answer is allowed. */
 const inputBlock = (
     blockId: string,
@@ -296,4 +319,9 @@ export const slackPromptView = (prompt: IChatPrompt, conversationId: string): un
     };
 };
 
-export default library(() => ({slackPromptBlocks, slackPromptView, slackPromptAnsweredBlocks}));
+export default library(() => ({
+    slackPromptBlocks,
+    slackPromptView,
+    slackPromptAnsweredBlocks,
+    slackPromptExpiredBlocks,
+}));

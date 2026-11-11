@@ -175,6 +175,10 @@ function splitListItem(line: string): {prefix: string; text: string; indent: str
  * Consecutive plain lines form one paragraph, which is what lets the legacy
  * prose in these files (already wrapped, with hanging indents) collapse back into
  * a canonical shape.
+ *
+ * A list item is not a plain line, and two of them in a row are two items rather than one paragraph:
+ * joining them is how a format pass turned the `## Retired` ledger into a single bullet it then
+ * re-wrapped (F-709). A table row is the same shape and is left exactly as it was written.
  */
 export function formatLines(lines: readonly string[], width = MAX_LINE_LENGTH): string[] {
     const out: string[] = [];
@@ -222,6 +226,10 @@ export function formatLines(lines: readonly string[], width = MAX_LINE_LENGTH): 
             out.push('');
             continue;
         }
+
+        // A bullet opens an item of its own even when the line above it was the previous item's
+        // wrapped second line, so the paragraph has to be closed before this one starts.
+        if (paragraph.length > 0 && splitListItem(line)) flush();
 
         if (paragraph.length === 0) {
             const item = splitListItem(line);

@@ -21,9 +21,9 @@
 # Event Subscriptions and Interactivity share that one URL, which is why the path has no verb in it.
 # You do not have to write it anywhere: the port asks the ngrok agent (`127.0.0.1:4040` by default)
 # which tunnel forwards its own listening port, and rewrites both Slack request URLs on every start —
-# after checking that the tunnel answers. All that step needs from you is a configuration token
-# (`xoxe-1-…`, from `Your Apps → App Config Tokens`); an account that names its own `url` (a
-# simulator) is never repointed.
+# after checking that the tunnel answers. All that step needs from you is the workspace's
+# configuration-token pair (`xoxe…`, from `Your Apps → App Config Tokens`); an account that names its
+# own `url` (a simulator) is never repointed.
 #
 # Viber is told its address the same way: the discovered tunnel plus the port's own path, registered
 # with `set_webhook` on start. `webhookUrl` or `ngrokUrl` override that when the tunnel is not the
@@ -32,6 +32,19 @@
 
 chat:
     slack:
+        # The configuration token pair is the **workspace's**, not the bot's: one pair authorizes app
+        # management for every account of that workspace, and the port renews it once per workspace
+        # (`@@D-797`). An account names its workspace by alias; the ordinary case of one workspace
+        # and one account needs no alias at all.
+        workspaces:
+            feasible:
+                # `Your Apps → App Config Tokens`. With this set the apps' Event Subscriptions and
+                # Interactivity follow the tunnel, and a due pair is renewed with the refresh token.
+                configToken: xoxe.xoxp-1-your-app-configuration-token
+                configRefreshToken: xoxe-1-your-refresh-token
+                # Epoch seconds, as the rotation answered them. Unset means the port leaves the pair
+                # alone: it cannot know when the token dies.
+                # configTokenExpiresAt: 1794355866
         accounts:
             demo:
                 # `Basic Information → App Credentials`, and `OAuth & Permissions → Bot User OAuth
@@ -41,8 +54,8 @@ chat:
                 clientId: T1
                 botToken: xoxb-your-bot-token
                 signingSecret: your-signing-secret
-                # With this set the app's Event Subscriptions and Interactivity follow the tunnel.
-                configToken: xoxe-1-your-app-configuration-token
+                # Which workspace's configuration token maintains this account's app.
+                workspace: feasible
                 # Optional: the API this account calls. Unset means `https://slack.com/api/` (or the
                 # port's `url`), which is what a simulator account overrides in a test run.
                 # url: http://127.0.0.1:18085/api/

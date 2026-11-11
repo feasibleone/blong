@@ -34,7 +34,7 @@ const ENTRY = /^--+\[ (FAILURE|WARNING|SUCCESS WITH WARNINGS): (\S+) \]-+\[ (.*?
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z ?/;
 
 /** Lines worth keeping from an operation's block, with the noise around them dropped. */
-const INTERESTING = /^(?:✖|#|Tests|Test Suites|Snapshots|Failed|Error)/;
+const INTERESTING = /^(?:❌|✖|#|Tests|Test Suites|Snapshots|Failed|Error)/;
 
 /** Longest detail line kept; a storybook failure dumps its whole log under one of them. */
 const MAX_DETAIL_CHARS = 240;

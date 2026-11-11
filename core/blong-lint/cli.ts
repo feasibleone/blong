@@ -49,14 +49,14 @@ export async function lintCli(argv: string[], options: LintCliOptions = {}): Pro
     const {files, fix, problems} = parseLintArgs(argv);
 
     if (problems.length > 0) {
-        for (const problem of problems) console.log(`  ✖ ${problem}`);
+        for (const problem of problems) console.log(`  ❌ ${problem}`);
         console.log('  nothing was checked — correct the arguments and run again');
         process.exit(1);
     }
 
     const missing = missingFiles(cwd, files);
     if (missing.length > 0) {
-        for (const file of missing) console.log(`  ✖ ${file}: no such file`);
+        for (const file of missing) console.log(`  ❌ ${file}: no such file`);
         console.log(
             `  ${missing.length} of ${files.length} path(s) do not exist — nothing was checked`,
         );
@@ -98,7 +98,7 @@ export async function lintCli(argv: string[], options: LintCliOptions = {}): Pro
     }
 
     if (staged && ran.length === 0) {
-        console.log('  ✖ nothing was checked — no tool reads the named path(s)');
+        console.log('  ❌ nothing was checked — no tool reads the named path(s)');
         process.exit(1);
     }
 

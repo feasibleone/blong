@@ -194,5 +194,5 @@ export function checkDoc(doc: IMemoryDoc, context: ICheckContext): IProblem[] {
 /** Format a problem for the console. */
 export function describeProblem(problem: IProblem): string {
     const where = problem.line > 0 ? `${problem.file}:${problem.line}` : problem.file;
-    return `${problem.severity === 'error' ? '✖' : '⚠'} ${where}  ${problem.message}`;
+    return `${problem.severity === 'error' ? '❌' : '⚠️'} ${where}  ${problem.message}`;
 }

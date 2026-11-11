@@ -135,3 +135,38 @@ test('renderLines collapses blank runs outside fences only', async t => {
     );
     t.end();
 });
+
+test('two list items are two items, not one paragraph', async t => {
+    // The `## Retired` ledger is the case: joining its lines produced one 200-character bullet the
+    // wrapper then re-wrapped, so a format pass corrupted a record nothing had asked it to touch
+    // (F-709).
+    const ledger = [
+        '## Retired',
+        '',
+        '- D-684 — renumbered to D-694 (2026-10-30)',
+        '- D-790 — retired 2026-11-07 — wrong file: it belongs to realm/blong-sport',
+    ];
+    t.same(formatLines(ledger), ledger, 'each item stays the line it was');
+    t.end();
+});
+
+test('a wrapped item keeps its own hanging indent and does not swallow the next item', async t => {
+    const input = [
+        '- D-790 — retired 2026-11-07 — wrong file: it belongs to realm/blong-sport and is recorded',
+        '  here rather than being deleted',
+        '- D-791 — a short one',
+    ];
+    const output = formatLines(input);
+    t.equal(output.length, 3, 'still three lines');
+    t.ok(output[0]?.startsWith('- D-790'), 'the first item keeps its marker');
+    t.ok(output[1]?.startsWith('  '), 'its second line is still hanging');
+    t.ok(output[2]?.startsWith('- D-791'), 'and the next item is not folded into it');
+    for (const line of output) t.ok(line.length <= 100, `within 100 columns: ${line.length}`);
+    t.end();
+});
+
+test('a table row is never joined to its neighbour', async t => {
+    const table = ['| a | b |', '| - | - |', '| 1 | 2 |'];
+    t.same(formatLines(table), table, 'rows are verbatim lines');
+    t.end();
+});

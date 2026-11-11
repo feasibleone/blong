@@ -185,6 +185,54 @@ export default handler(context => {
                     );
                 },
 
+                async function anUnmatchedAnswerReachesTheConsumer(assert: IAssert) {
+                    resetForwarded();
+                    // A click that arrives after the ask gave up: the realm holds no promise for this
+                    // prompt any more, and only the consumer can decide what a late answer means — it
+                    // may be a session that is still open somewhere this process does not know about
+                    // (`@@D-702`). The click is mapped by the port and forwarded by the realm, which
+                    // is the seam this asserts (`@@T-567`).
+                    const late = JSON.stringify({
+                        type: 'block_actions',
+                        trigger_id: 'trigger-late',
+                        channel: {id: 'D9'},
+                        user: {id: 'U1'},
+                        actions: [{action_id: 'chatPrompt:late-prompt:b', value: 'b'}],
+                    });
+                    const answer = await slackPost(
+                        `payload=${encodeURIComponent(late)}`,
+                        'application/x-www-form-urlencoded',
+                    );
+                    assert.equal(answer.status, 200, 'the interaction is acknowledged as usual');
+                    const recorded = await waitFor(() =>
+                        forwardedMessages().find(
+                            message => message.answer?.promptId === 'late-prompt',
+                        ),
+                    );
+                    assert.equal(recorded.kind, 'answer', 'and the consumer is given an answer');
+                    assert.equal(recorded.answer?.value, 'b', 'carrying what the person picked');
+                    assert.equal(recorded.conversationId, 'D9', 'where it was clicked');
+
+                    // The same click from the account no `forward` entry names: there is nobody to
+                    // hand it to, so it is acknowledged and dropped — a caller cannot un-timeout a
+                    // question, and refusing it would only tell Slack something it cannot act on.
+                    const other = await slackPost(
+                        `payload=${encodeURIComponent(late)}`,
+                        'application/x-www-form-urlencoded',
+                        undefined,
+                        SLACK_OTHER_URL,
+                    );
+                    assert.equal(other.status, 200, 'an account with no consumer is acknowledged');
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    assert.equal(
+                        forwardedMessages().filter(
+                            message => message.answer?.promptId === 'late-prompt',
+                        ).length,
+                        1,
+                        'and it reaches nobody, so the mapped consumer still holds one',
+                    );
+                },
+
                 async function aWaitGivesUpInsteadOfHanging(assert: IAssert) {
                     await assert.rejects(
                         async () => waitFor(() => undefined, 25),

@@ -46,7 +46,53 @@ export interface IChatAccount {
     webhookUrl?: string;
     /** Slack app configuration token (`xoxe-1-…`), which may re-point the app's own URLs. */
     configToken?: string;
+    /**
+     * The refresh token that renews {@link configToken}.
+     *
+     * A Slack app configuration token expires and rotating it returns a new pair, so the token is a
+     * pair rather than a value. It is **workspace-scoped**, not account-scoped: one pair authorizes
+     * app management for every bot account of the workspace, so it is stored once in
+     * {@link IChatWorkspace} and carried here resolved, for a port to read (`@@D-797`).
+     */
+    configRefreshToken?: string;
+    /**
+     * When {@link configToken} stops working, as the rotation answered it.
+     *
+     * Epoch seconds or an ISO string, because the rotation answers seconds while a database column
+     * is a timestamp. Absent means nobody knows, and the port then leaves the pair alone: rotating a
+     * token whose lifetime is unknown spends a rotation every start.
+     */
+    configTokenExpiresAt?: number | string;
+    /**
+     * The workspace whose configuration token maintains this account's app.
+     *
+     * The alias is what a renewed pair is stored under. An account without one may still name its own
+     * token (a configured account), but nothing can keep the replacement (`@@D-797`).
+     */
+    workspace?: string;
+    /**
+     * The fixed public base this account is reachable at, when a deployment provides one.
+     *
+     * A tunnel address changes between starts and is discovered; a deployed host does not, and a
+     * process behind an Ingress has no agent to ask (`@@D-796`).
+     */
+    publicUrl?: string;
 }
+
+/**
+ * One Slack workspace's app-configuration credentials, by the alias an account names it with.
+ *
+ * A configuration token authorizes app management in a workspace rather than for one bot, so one pair
+ * serves every account of that workspace and a rotation stores it once (`@@D-797`).
+ */
+export interface IChatWorkspace {
+    configToken?: string;
+    configRefreshToken?: string;
+    configTokenExpiresAt?: number | string;
+}
+
+/** The workspaces a port instance carries, by alias. */
+export type IChatWorkspaceMap = Record<string, IChatWorkspace>;
 
 /** The accounts a port instance carries, by alias. A map, so a suite and an rc file can both add one. */
 export type IChatAccountMap = Record<string, IChatAccount>;
@@ -211,4 +257,17 @@ export interface IChatPromptSettleParams extends IChatPromptParams {
      * (`@@D-693`). A platform whose message has no blocks to mark writes this out instead.
      */
     answerText: string;
+}
+
+/**
+ * What closing a question nobody answered needs: where its message is, and what to say instead.
+ *
+ * An expired question leaves its controls live, and a click on one resolves nothing — the interaction
+ * arrives, finds no pending entry, and reads to the person as a broken button. The notice is the
+ * caller's words because only the caller knows what it asked and how long it waited (`@@T-524`).
+ */
+export interface IChatPromptCloseParams extends IChatPromptParams {
+    messageId?: string;
+    /** What the message says in place of the controls, already phrased by the caller. */
+    notice: string;
 }

@@ -433,6 +433,16 @@ export interface IComponentK8sIngress {
     serviceName?: string;
     servicePort?: number;
     tls?: {secretName?: string};
+    /**
+     * Ingress-controller annotations for the host this path lands on.
+     *
+     * Annotations belong to the Ingress rather than to a path, which is why a webhook served from a
+     * host of its own still needs them: `cert-manager.io/cluster-issuer` is what asks for the
+     * certificate the TLS secret names, and a host nothing signs answers no TLS handshake at all
+     * (`@@D-799`). A portal declares its annotations in the CR, because a tenant names the host; a
+     * webhook host is the suite's, so its annotations are the suite's too.
+     */
+    annotations?: Record<string, string>;
 }
 
 /**
@@ -1086,6 +1096,7 @@ export interface ITypedError extends Error {
     method?: string | string[];
     params?: object;
     code?: string;
+    statusCode?: number;
     silent?: boolean;
     req?: {
         httpVersion: string;

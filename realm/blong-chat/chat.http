@@ -1,4 +1,8 @@
 @host = http://localhost:8080
+// Every gateway route below requires a bearer. The login is MLE-encrypted, so this file cannot
+// mint one: get a token from `blong-dev proxy --no-login` (POST login/token/create through it) or
+// run the call with `blong-dev call <method> '{...}'`, which logs in for you, and paste it here.
+@token = paste-an-access-token
 // @slack = http://localhost:8095/chat/slack/A1/T1
 @slack = {{$shared blong-chat-slack}}
 @viber = http://localhost:8096/chat/viber/pa1/C1
@@ -13,6 +17,7 @@
 
 POST {{host}}/rpc/chat/prompt/find
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 { "jsonrpc": "2.0", "method": "chat.prompt.find", "params": {}, "id": 1 }
 
@@ -20,6 +25,7 @@ Content-Type: application/json
 
 POST {{host}}/rpc/chat/out/messageSend
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
     "jsonrpc": "2.0",
@@ -43,6 +49,7 @@ Content-Type: application/json
 
 POST {{host}}/rpc/chat/prompt/ask
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
     "jsonrpc": "2.0",
@@ -71,6 +78,7 @@ Content-Type: application/json
 
 POST {{host}}/rpc/chat/prompt/ask
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
     "jsonrpc": "2.0",
@@ -101,6 +109,7 @@ Content-Type: application/json
 
 POST {{host}}/rpc/chat/prompt/ask
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
     "jsonrpc": "2.0",
@@ -130,6 +139,7 @@ Content-Type: application/json
 
 POST {{host}}/rpc/chat/prompt/ask
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
     "jsonrpc": "2.0",
@@ -154,10 +164,11 @@ Content-Type: application/json
 
 POST {{host}}/rpc/chat/in/answerReceive
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
     "jsonrpc": "2.0",
-    "method": "chat.in.answer.receive",
+    "method": "chat.in.answerReceive",
     "params": {
         "platform": "slack",
         "account": "{{account}}",

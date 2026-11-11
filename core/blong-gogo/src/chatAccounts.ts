@@ -35,6 +35,22 @@ export const chatAccountName = (
 };
 
 /**
+ * The account map inside what a realm answered when a port asked it for one.
+ *
+ * A dispatched answer arrives as the value the handler returned, sometimes wrapped in the array a
+ * transport carries, so both shapes are read here. An empty map answers `undefined` rather than `{}`:
+ * that is what lets a port fall back to its own configured accounts when the store holds none,
+ * while a store that holds accounts replaces them (`@@D-797`).
+ */
+export const chatAccountsFromDispatch = (value: unknown): IChatAccountMap | undefined => {
+    const answer = Array.isArray(value) ? value[0] : value;
+    if (!answer || typeof answer !== 'object') return undefined;
+    const accounts = (answer as {accounts?: unknown}).accounts;
+    if (!accounts || typeof accounts !== 'object' || Array.isArray(accounts)) return undefined;
+    return Object.keys(accounts).length ? (accounts as IChatAccountMap) : undefined;
+};
+
+/**
  * The API base a call for one account is made against.
  *
  * An account may name its own — a test account calls the simulator while the same process posts to a

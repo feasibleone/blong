@@ -7,12 +7,18 @@ import {validation} from '@feasibleone/blong';
  * uses when it wants the answer rather than a notification (`@@D-678`). The controls are the four the
  * vocabulary names; which of them a platform can render is the port's decision, and a refusal comes
  * back as a typed error rather than as a differently-shaped question.
+ *
+ * Authenticated, like every route of a realm that has the access realm beside it: asking is a message
+ * posted into a conversation, so it answers to the same authority as sending one. The first pass left
+ * it open because the realm carried no users and no schema to grant them in — a caller's identity was
+ * nobody's question then and is the question now (`@@D-802`). The action is granted by the realm's own
+ * seed, so a deployment needs nothing extra; a test that cannot afford the access schema replaces it
+ * with `blong-access-mock` rather than leaving the route open.
  */
 export default validation(
     async ({lib: {type}}) =>
         function chatPromptAsk() {
             return {
-                auth: false as const,
                 params: type.Object({
                     platform: type.Union([type.Literal('slack'), type.Literal('viber')]),
                     account: type.Optional(type.String()),

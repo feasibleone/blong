@@ -132,6 +132,9 @@ startup, optionally logs in, then forwards each request encrypted and returns th
 as plain JSON.
 
 ```bash
+# A server the shared file describes (see the next section)
+blong-dev proxy --server local --port 8099
+
 # Pre-authenticated: log in on startup (or from MLE_USERNAME / MLE_PASSWORD)
 blong-dev proxy --port 8099 --target http://localhost:8080 \
     --username testAdmin --password testPassword
@@ -149,6 +152,59 @@ The method comes from the path (`/rpc/gateway/bundle/find` → `gateway.bundle.f
 curl -s -X POST http://localhost:8099/gateway/bundle/find \
      -H 'content-type: application/json' -d '{"params":{"paging":{}}}'
 ```
+
+## One call, without the loop
+
+A single call does not need a server in front of it. `blong-dev call` performs the same MLE session
+as the proxy and prints the result instead of forwarding it:
+
+```bash
+blong-dev call chat.prompt.ask '{conversationId: C0ABCDEF, kind: text, text: Which one?}'
+blong-dev call access.user.find '{paging: {}}' --payload.paging.pageSize=10
+blong-dev call chatPromptAsk --payload.text='Which one?' --dry-run
+```
+
+The payload is JSON or YAML — a JSON document is read as JSON, anything else as YAML, so a hand-written
+`{platform: slack}` needs no quoted keys and a generated payload keeps its numbers. `--payload.<path>=<value>`
+sets or overrides one property at a dotted path and its value keeps its JSON type (`10` is a number,
+`true` a boolean), which is what makes a paging argument reach the server as a number rather than a
+string. `--dry-run` prints the method, the server, the config file it came from and the payload it
+would send, and touches no network — the first thing to reach for when a call goes somewhere
+unexpected.
+
+Both commands read one file, `.blong_callrc`, found upwards from the working directory and gitignored
+because it holds a credential:
+
+```yaml
+server:
+    local: {url: 'http://localhost:8080', username: testAdmin, password: testPassword}
+    chat: {url: 'https://chat.example', username: testAdmin, password: testPassword}
+route: # method prefix → server alias; the longest match wins, an exact name beats a prefix
+    chat: chat
+    access: local
+default: {server: chat} # a method no route covers
+payload: # what a method starts from, by prefix or by exact name
+    chat: {platform: slack, account: blong-bot}
+plain: # routes a realm serves without auth (`auth: false`): their params travel as JSON
+    - demo.public
+```
+
+The resolution order is a flag, the file, the environment: `--server`/`--target`/`--username`/
+`--password` override the file, the file falls back to `MLE_USERNAME`/`MLE_PASSWORD`, and a method
+with no route falls to `default.server`, then to the file's `target`, then to the one server the file
+declares. A call that cannot tell says so and names the servers it could have picked, rather than
+guessing.
+
+`plain` exists because the gateway decodes MLE only on a route that requires auth: an encrypted body
+on a public route arrives at the handler as an opaque string, and the validation failure then blames
+the caller for properties the payload carried (@@F-710). A method listed there is sent as JSON
+instead, with the session's bearer token when one was obtained — `--plain` forces it for one call.
+The list is the exception, not the rule: a realm whose routes all require auth needs nothing here,
+and a route that answers for itself is worth revisiting rather than listing.
+
+Two things `call` deliberately does not do: it does not hold business logic (the orchestrators and
+adapters do, and the CLI is only a way in, like the gateway), and it does not load a realm into the
+process — calling a loaded suite in-process is a separate extension (@@T-627).
 
 ## Traces and logs
 

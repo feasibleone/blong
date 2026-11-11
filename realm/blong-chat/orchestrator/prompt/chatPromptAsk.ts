@@ -71,9 +71,15 @@ export interface IChatAskParams {
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 
+/** How long the caller waited, in the words a person reading the channel understands. */
+const timeoutLabel = (timeoutMs: number): string =>
+    timeoutMs >= 60_000
+        ? `${Math.round(timeoutMs / 60_000)} minute${Math.round(timeoutMs / 60_000) === 1 ? '' : 's'}`
+        : `${Math.round(timeoutMs / 1000)} seconds`;
+
 export default handler(
     ({
-        handler: {chatOutMessageSend, chatOutPromptSettle},
+        handler: {chatOutMessageSend, chatOutPromptSettle, chatOutPromptClose},
         lib: {chatAnswerFormat, chatReplyMessageId},
         errors: {errorChatPromptTimeout},
     }) => {
@@ -133,6 +139,30 @@ export default handler(
                     }
                 };
                 const timeoutMs = params.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+                /**
+                 * Take the controls away when the question closes itself.
+                 *
+                 * The ask has failed by then, so this cannot be the error the caller sees: the close
+                 * is best-effort cleanup on a message nobody is waiting behind, and a platform that
+                 * refuses the edit leaves a stale message rather than a second failure (`@@T-524`).
+                 */
+                const closeQuestion = async (prompt: IChatPrompt): Promise<void> => {
+                    try {
+                        await chatOutPromptClose(
+                            {
+                                platform: params.platform,
+                                account: params.account,
+                                conversationId: params.conversationId,
+                                messageId,
+                                prompt,
+                                notice: `_No answer within ${timeoutLabel(timeoutMs)} — the question is closed._`,
+                            },
+                            $meta,
+                        );
+                    } catch (error) {
+                        port.log?.warn?.(error);
+                    }
+                };
                 const prompt: IChatPrompt = {
                     promptId: params.promptId ?? randomUUID(),
                     kind: params.kind,
@@ -148,9 +178,13 @@ export default handler(
                     prompt,
                 };
                 const key = pendingKey(prompt.promptId, parked);
+                // Declared before the timer because the timer is what needs it: a question that
+                // expires rewrites the message the send reply named (`@@T-524`).
+                let messageId: string | undefined;
                 const answered = new Promise<IChatAnswer>((resolve, reject) => {
                     const timer = setTimeout(() => {
                         pendingTake(key);
+                        void closeQuestion(prompt);
                         reject(
                             errorChatPromptTimeout(
                                 {params: {promptId: prompt.promptId, timeoutMs}},
@@ -162,7 +196,6 @@ export default handler(
                     timer.unref();
                     pendingAdd({key, params: parked, resolve, reject, timer});
                 });
-                let messageId: string | undefined;
                 try {
                     const sent = await chatOutMessageSend(parked, $meta);
                     const refused = sendFailure(sent);

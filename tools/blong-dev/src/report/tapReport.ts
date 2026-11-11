@@ -391,11 +391,11 @@ export function renderTapConsole(run: IRunReport, pkg: string): string {
     for (const test of problems.slice(0, MAX_CONSOLE_DETAILS)) {
         const location = test.file ? `${test.file}${test.line ? `:${test.line}` : ''}` : '';
         const message = test.message?.split('\n')[0]?.slice(0, MAX_MESSAGE_CHARS) ?? '';
-        lines.push(`✖ ${test.name}${location ? `  (${location})` : ''}`);
+        lines.push(`❌ ${test.name}${location ? `  (${location})` : ''}`);
         if (message) lines.push(`    ${message}`);
     }
     if (problems.length > MAX_CONSOLE_DETAILS) {
-        lines.push(`✖ … ${problems.length - MAX_CONSOLE_DETAILS} more failure(s), see the report`);
+        lines.push(`❌ … ${problems.length - MAX_CONSOLE_DETAILS} more failure(s), see the report`);
     }
 
     lines.push(

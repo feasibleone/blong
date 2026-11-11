@@ -14,6 +14,10 @@ open (4)
 - `T-194` · realm/blong-party — Make the matrix fixture authoritative for role capabilities
 - `T-439` · realm/blong-party — Removing a person with graph edges fails on a foreign key
 
+done (1)
+
+- `T-631` · realm/blong-party — The ACL matrix leaves gateway applications with git client secrets
+
 <!-- /memory:index -->
 
 ## Open
@@ -65,3 +69,22 @@ Either the handler must retract the triples (and any other edge tables) before t
 FK needs ON DELETE CASCADE; check the other party objects and the sport realm for the same pattern.
 Until then, no spec that deletes a person can clean up after itself, and a user removing a person
 with links sees an error.
+
+## Done
+
+### T-631 — The ACL matrix leaves gateway applications with git client secrets
+
+> _2026-11-10 · realm/blong-party · done_
+
+blong-sport still holds eight gateway.application resources (axis-app, axis-hq-app, north-app,
+south-app, beta-app, east-app, any-app, none-app) whose clientSecret credentials come from the
+dbTest seeds, 48 rows in total. They mint OAuth tokens through the client_credentials grant and
+carry the fixture roles and scopes, so they are the same class of exposure as the fixture accounts
+and were left alone only because the request named accounts. Delete the access_credential rows, the
+hasRole edges and the applications themselves, or decide that the ACL matrix runs only against a
+database that is thrown away.
+
+Eight fixture gateway applications deleted from blong-sport and blong-sport-kalin with their 48 and
+320 clientSecret credentials, seven subscriptions each, hasRole edges and paths; demo-app stays
+because it holds no credential. Verified: zero client secrets in every schema, admin still
+authenticates, axis-app answers User not found.

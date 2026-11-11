@@ -25,6 +25,7 @@
     "core/blong-mock": "1.6.1",
     "realm/blong-party": "1.15.0",
     "realm/blong-sport": "0.8.1",
+    "realm/blong-chat": "0.1.0",
     "core/blong-server": "1.8.0",
     "demo/marine-data": "1.0.1",
     "realm/blong-gateway": "1.8.1",

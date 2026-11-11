@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-chat
+    app.kubernetes.io/part-of: blong-chat
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: 652b844e0697107f
+  name: blong-chat-auth-review
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: auth-review
+subjects:
+  - kind: ServiceAccount
+    name: blong
+    namespace: blong-chat

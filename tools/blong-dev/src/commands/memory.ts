@@ -1953,7 +1953,12 @@ function refs(root: string, args: string[], options: Options, flags: Set<string>
     // called a broken citation an error while `refs --dangling` did not see it at all (`@@F-661`).
     const bodies = memoryIdTrouble(root, options);
     for (const item of bodies.dangling) {
-        errors.push({file: item.file, line: item.line, raw: item.id, message: 'no entry holds this id'});
+        errors.push({
+            file: item.file,
+            line: item.line,
+            raw: item.id,
+            message: 'no entry holds this id',
+        });
     }
     for (const item of bodies.ambiguous) {
         errors.push({
@@ -1992,11 +1997,11 @@ function refs(root: string, args: string[], options: Options, flags: Set<string>
         );
     } else {
         for (const item of errors) {
-            process.stderr.write(`✖ ${item.file}:${item.line}  ${item.raw}  ${item.message}\n`);
+            process.stderr.write(`❌ ${item.file}:${item.line}  ${item.raw}  ${item.message}\n`);
         }
         for (const site of [...retired, ...superseded]) {
             process.stdout.write(
-                `⚠ ${site.file}:${site.line}  ${site.raw}  ${site.resolution.message}\n`,
+                `⚠️ ${site.file}:${site.line}  ${site.raw}  ${site.resolution.message}\n`,
             );
         }
     }
@@ -2244,7 +2249,7 @@ function comply(root: string, options: Options, flags: Set<string>): void {
         for (const row of rows) {
             const where = row.change.status ? ` (${row.change.status})` : '';
             process.stdout.write(
-                `${row.severity === 'error' ? '✖' : '⚠'} ${row.file}:${row.line}  ${row.raw}  ` +
+                `${row.severity === 'error' ? '❌' : '⚠️'} ${row.file}:${row.line}  ${row.raw}  ` +
                     `— ${row.change.id} ${row.change.how}${where}, re-read it\n`,
             );
         }

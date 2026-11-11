@@ -7,6 +7,7 @@ import {
     chatAccountBase,
     chatAccountFind,
     chatAccountName,
+    chatAccountsFromDispatch,
     chatPublicUrl,
 } from '../../chatAccounts.ts';
 import {
@@ -17,7 +18,19 @@ import {
     chatPromptSubmitActionId,
 } from '../../chatActions.ts';
 import {ngrokPublicUrl} from '../impl/ngrokTunnels.ts';
-import {slackPromptAnsweredBlocks, slackPromptBlocks, slackPromptView} from './slack/blocks.ts';
+import {
+    slackAppPatch,
+    slackManifestDraft,
+    slackRotationPatch,
+    slackTokenExpiring,
+    slackTokenExpiry,
+} from '../impl/slackConfigToken.ts';
+import {
+    slackPromptAnsweredBlocks,
+    slackPromptBlocks,
+    slackPromptExpiredBlocks,
+    slackPromptView,
+} from './slack/blocks.ts';
 import {slackAcknowledgeGet} from './slack/acknowledge.ts';
 import {slackSignatureMatches} from './slack/signature.ts';
 import {slackManifestPointsAt, slackManifestRepoint, slackRequestUrl} from '../impl/slackManifest.ts';
@@ -330,6 +343,36 @@ test('an answered question keeps its options and loses its controls', t => {
     t.end();
 });
 
+test('an expired question keeps its text and loses its controls', t => {
+    type Block = {type?: string; elements?: Array<{text?: string}>; text?: {text?: string}};
+    const notice = '_No answer within 5 minutes — the question is closed._';
+    const blocks = slackPromptExpiredBlocks(prompt({}), notice) as Block[];
+    t.same(
+        blocks.map(block => block.type),
+        ['section', 'section', 'context'],
+        'the question, its options and why it closed',
+    );
+    t.equal(
+        blocks[1]?.text?.text,
+        '• Alpha\n• Beta',
+        'the options stay readable, with nothing marked because nothing was picked',
+    );
+    t.equal(blocks[2]?.elements?.[0]?.text, notice, 'and the line says what the caller waited for');
+    t.equal(
+        /actions|radio_buttons|checkboxes|plain_text_input|button/.test(JSON.stringify(blocks)),
+        false,
+        'with nothing left to press, which is the whole point of closing it',
+    );
+
+    const noOptions = slackPromptExpiredBlocks(
+        prompt({kind: 'text', options: undefined}),
+        notice,
+    ) as Block[];
+    t.equal(noOptions.length, 2, 'a free-text question has no options to keep');
+    t.equal(noOptions[1]?.elements?.[0]?.text, notice, 'so it keeps only the reason it closed');
+    t.end();
+});
+
 test('the Slack form carries the control the question asked for', t => {
     type Block = {
         block_id?: string;
@@ -606,5 +649,95 @@ test('each account decides which API its calls reach, and where it is published'
         false,
         'and a matching address with interactivity switched off is switched on rather than skipped',
     );
+    t.end();
+});
+
+test('a configuration token is renewed before it dies, and only when its expiry is known', t => {
+    const now = 1_800_000_000;
+    t.equal(slackTokenExpiry(now), now, 'seconds since the epoch are read as they are');
+    t.equal(
+        slackTokenExpiry(new Date(now * 1000).toISOString()),
+        now,
+        'a timestamp column is turned into the same seconds',
+    );
+    t.equal(slackTokenExpiry(undefined), undefined, 'an absent expiry is unknown');
+    t.equal(slackTokenExpiry('not a date'), undefined, 'and an unreadable one is unknown too');
+    t.equal(
+        slackTokenExpiring(now + 60, now),
+        true,
+        'a token inside the skew is renewed now rather than on the call that needed it',
+    );
+    t.equal(slackTokenExpiring(now + 3600, now), false, 'one with an hour left is left alone');
+    t.equal(
+        slackTokenExpiring(undefined, now),
+        false,
+        'an unknown expiry is never due: rotating it on every start would spend a pair each time',
+    );
+    t.same(
+        slackRotationPatch({ok: false, error: 'invalid_refresh_token'}),
+        {},
+        'a refused rotation produces no fields to store',
+    );
+    t.same(
+        slackRotationPatch({ok: true, token: 'xoxe.xoxp-1-new', refresh_token: 'xoxe-1-new', exp: now}),
+        {
+            configToken: 'xoxe.xoxp-1-new',
+            configRefreshToken: 'xoxe-1-new',
+            configTokenExpiresAt: now,
+        },
+        'the pair and its expiry travel together, because the old refresh token is spent',
+    );
+    t.end();
+});
+
+test('an app is created bare and read back with the ids Slack gave it', t => {
+    const manifest = slackManifestDraft('blong-bot') as {
+        display_information: {name: string};
+        features: {bot_user: {display_name: string}};
+        oauth_config: {scopes: {bot: string[]}};
+        settings: Record<string, unknown>;
+    };
+    t.equal(manifest.display_information.name, 'blong-bot', 'the app takes the alias as its name');
+    t.equal(
+        manifest.features.bot_user.display_name,
+        'blong-bot',
+        'and so does the bot user',
+    );
+    t.ok(manifest.oauth_config.scopes.bot.includes('chat:write'), 'it may post');
+    t.notOk(
+        'event_subscriptions' in manifest.settings,
+        'no request URL is named before Slack has answered the ids the address carries',
+    );
+    t.same(
+        slackAppPatch({
+            app_id: 'A9',
+            credentials: {client_id: 'C9', signing_secret: 's9', client_secret: 'secret'},
+        }),
+        {appId: 'A9', clientId: 'C9', signingSecret: 's9'},
+        'the ids and the signing secret are what the inbound half needs',
+    );
+    t.same(slackAppPatch({credentials: {client_id: 'C9'}}), {clientId: 'C9'}, 'a partial answer keeps what it has');
+    t.end();
+});
+
+test('a realm answers the account map a port runs with', t => {
+    const accounts = {demo: {appId: 'A1', clientId: 'T1'}};
+    t.same(
+        chatAccountsFromDispatch({accounts}),
+        accounts,
+        'the map the store answered is the map the port uses',
+    );
+    t.same(
+        chatAccountsFromDispatch([{accounts}]),
+        accounts,
+        'a transport that wraps the answer in a list is read the same way',
+    );
+    t.equal(
+        chatAccountsFromDispatch({accounts: {}}),
+        undefined,
+        'an empty store falls back to the configured accounts instead of erasing them',
+    );
+    t.equal(chatAccountsFromDispatch(undefined), undefined, 'and so does a store that answered nothing');
+    t.equal(chatAccountsFromDispatch({accounts: []}), undefined, 'a list is not a map');
     t.end();
 });

@@ -23,7 +23,10 @@ export default adapter<
     activation: {
         default: {
             namespace: 'slack',
-            // Credentials only: an account is added by the rc file or by a mounted Secret.
+            // Credentials only: an account is added by the rc file, a mounted Secret, or the account
+            // table the realm serves — a stored map replaces this one rather than merging (`@@D-797`).
+            // The suite entry turns the store on (`accountsMethod` / `accountsSaveMethod`), because a
+            // realm's own test entry has no database to read.
             accounts: {},
             server: {port: 8095},
             k8sPorts: {chatSlack: {port: 8095}},

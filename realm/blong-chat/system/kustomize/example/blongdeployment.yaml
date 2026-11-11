@@ -1,0 +1,56 @@
+apiVersion: blong.feasible.one/v1alpha1
+kind: BlongDeployment
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-chat
+    app.kubernetes.io/part-of: blong-chat
+    app.kubernetes.io/version: 0.1.0
+    blong.feasible.one/spec-hash: 1358f39ffcbb0d44
+  name: blong-chat
+  namespace: blong-chat
+spec:
+  entry: /opt/deploy/suite/realm/blong-chat/index.ts
+  externalServices:
+    db:
+      externalName: mysql.blong-integration.svc.cluster.local
+      ports:
+        - name: mysql
+          port: 3306
+  frameworkImage: docker.io/library/blong-gogo
+  ingresses:
+    chatSlack:
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      host: PLACEHOLDER
+      path: /chat/slack
+      pathType: Prefix
+      servicePort: 8095
+      tls:
+        secretName: chat-hook-tls
+    chatViber:
+      host: PLACEHOLDER
+      path: /chat/viber
+      pathType: Prefix
+      servicePort: 8096
+      tls:
+        secretName: chat-hook-tls
+  minFrameworkVersion: "1"
+  portal:
+    web:
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      host: PLACEHOLDER
+      tls:
+        secretName: chat-tls
+  profile: monolith
+  servicesNamespace: blong-services
+  suiteVolume:
+    artifact:
+      digest: 9e72415e877b5a35cdc060522868aecf190a4ac3b397a222c326ce7000f6dd9e
+      source: url
+      url: http://blong-artifact.default.svc.cluster.local/chat.zip
+    attemptRetention: 5
+    backend: nodeLocal
+    retention: 3
+  version: 0.1.0

@@ -31,6 +31,16 @@ const HEADING = /^(#{1,6})\s/;
 const BULLET = /^\s*[-*+]\s/;
 const ORDERED = /^\s*\d+[.)]\s/;
 const TABLE = /^\s*\|/;
+/**
+ * A line that belongs to the list or table above it rather than following it.
+ *
+ * A wrapped item continues on an indented line — the wrapper every memory body goes through produces
+ * exactly that — and markdown reads it as part of the same item, so a list needs no blank line
+ * between its own item and that item's second line. This checker used to read it as content after the
+ * list and report MD031 on a file that markdownlint accepts, while the blank line it then asked for
+ * was MD012 to markdownlint: no ending satisfied both (F-709).
+ */
+const CONTINUATION = /^\s{2,}\S/;
 const HTML = /<\/?[a-zA-Z][^>]*>/;
 const EMPHASIS_ONLY = /^\s*(?:\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)\s*$/;
 const CODE_SPAN = /`[^`]*`/g;
@@ -123,18 +133,22 @@ export function checkMarkdown(
         }
 
         // Lists, fences and tables need air around them, but only when they are
-        // the first or last line of their block.
+        // the first or last line of their block. A wrapped item's continuation is
+        // part of the block, so it neither ends the list above nor begins a new
+        // item below (F-709).
         if (!fenced && !owned) {
             const blockStart =
                 (BULLET.test(line) || ORDERED.test(line) || TABLE.test(line)) &&
                 !BULLET.test(before) &&
                 !ORDERED.test(before) &&
-                !TABLE.test(before);
+                !TABLE.test(before) &&
+                !CONTINUATION.test(before);
             const blockEnd =
                 (BULLET.test(line) || ORDERED.test(line) || TABLE.test(line)) &&
                 !BULLET.test(next) &&
                 !ORDERED.test(next) &&
-                !TABLE.test(next);
+                !TABLE.test(next) &&
+                !CONTINUATION.test(next);
             if (blockStart && before.trim() !== '')
                 report(index, 'MD032', 'list or table needs a blank line above it');
             if (blockEnd && next.trim() !== '')

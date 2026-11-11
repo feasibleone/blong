@@ -78,6 +78,12 @@ export interface IComponentIngress {
     /** Defaults to 8080. */
     servicePort?: number;
     tls?: {secretName?: string};
+    /**
+     * Ingress-controller annotations for the host the path lands on — the issuer that signs its
+     * certificate, typically (`@@D-799`). Ingress annotations are the host's, so a contribution that
+     * declares none inherits whatever another entry on that host declared.
+     */
+    annotations?: Record<string, string>;
 }
 
 /**
@@ -332,6 +338,25 @@ const mergeNamed = <T extends {name: string}>(
     );
 
 /**
+ * A contributed port name as Kubernetes accepts it.
+ *
+ * A container port and a Service port are both an IANA service name: at most fifteen characters,
+ * lower case alphanumerics and `-`, starting and ending with one. The map keys a component writes are
+ * camelCase by the repository's convention (`chatSlack`), so the translation happens once, in the
+ * plan, where the container and the Service both read it (`@@D-798`).
+ */
+export const k8sPortName = (name: string): string => {
+    const kebab = name
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+    return kebab.slice(0, 15).replace(/-$/, '');
+};
+
+/**
  * Turn a declared map into the list the generator renders, refusing a shape it cannot mean.
  *
  * The counterpart of `resolveExternalServices` for the collections a name identifies on its own. Both
@@ -383,6 +408,27 @@ export const resolveNamedEntries = <T extends {name: string}>(
  */
 export type IExternalServiceMap = Record<string, Omit<IExternalService, 'name'>>;
 
+/**
+ * What a tenant may say about one ingress a realm contributed.
+ *
+ * A contribution owns the *path* and the process behind it — that is the realm's knowledge — while
+ * the address is a DNS record and a certificate somebody owns, which is why a host is configuration
+ * rather than a value in a source tree. A portal's address travels this way already; a webhook's had
+ * nowhere to go, so a suite that wanted one had to commit it (`@@D-800`).
+ */
+export interface IIngressOverride {
+    host?: string;
+    path?: string;
+    pathType?: 'Prefix' | 'Exact' | 'ImplementationSpecific';
+    servicePort?: number;
+    tls?: {secretName?: string};
+    /** The host's annotations, merged over the contribution's by key (the issuer, typically). */
+    annotations?: Record<string, string>;
+}
+
+/** The overrides a declaration carries, keyed by the name the contribution uses. */
+export type IIngressOverrideMap = Record<string, IIngressOverride>;
+
 /** A resolved ingress rule (a component contribution bound to a Service). */
 export interface IIngress {
     name: string;
@@ -393,6 +439,7 @@ export interface IIngress {
     serviceName: string;
     servicePort: number;
     tls?: {secretName?: string};
+    annotations?: Record<string, string>;
 }
 
 /** Where the deployer fetches the suite artifact from (Phase 6). */
@@ -816,6 +863,14 @@ export interface IPlanOptions {
     suiteVolume?: ISuiteVolumeRequest;
     /** Every portal the suite publishes, by alias. Empty is ordinary: a realm-only suite has no UI. */
     portal?: ISuitePortalMap;
+    /**
+     * Addresses for the ingresses the realms contribute, by the name each contribution carries.
+     *
+     * A realm declares the path and the port; the address is the deployment's, so a tenant (or the rc
+     * file of a local run) names the host, the certificate and the issuer here rather than the source
+     * tree naming them (`@@D-800`).
+     */
+    ingresses?: IIngressOverrideMap;
     /** The process that serves the browser bundle, and the policy its headers carry. */
     assetServer?: IAssetServerRequest;
     operator?: ISuiteOperatorRequest;
@@ -1218,11 +1273,14 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
             },
         );
         // A port that two realms of one process declare is one port, which is what the map is for:
-        // they are the same container, so a name is the whole identity there is to compare.
+        // they are the same container, so a name is the whole identity there is to compare. The name
+        // is also what a Service publishes and a container declares, and Kubernetes accepts only a
+        // lower-case DNS label there — a contributed key is camelCase by the repository's convention,
+        // so it is translated at the one point both renderers read (`@@D-798`).
         const ports = resolveNamedEntries<IComponentPort>(
             mergeNamed(contributions.map(contribution => contribution.k8sPorts)),
             'k8sPorts',
-        );
+        ).map(port => ({...port, name: k8sPortName(port.name)}));
         const env = contributions.flatMap(contribution => contribution.k8sEnv ?? []);
         // A realm that declared a volume gets it in the process that carries that realm, and the tree
         // emits the claim beside the Deployment (`@@T-317`). Merged by name because two realms of one
@@ -1351,20 +1409,33 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         // deployment of the realm whose port declared it, so a name two realms both use is two
         // rules for a suite to resolve rather than one silently replaced.
         resolveNamedEntries<IComponentIngress>(port.k8s?.k8sIngresses, 'k8sIngresses').map(
-            ingress => ({
-                name: ingress.name,
-                namespace,
-                host: ingress.host,
-                path: ingress.path,
-                pathType: ingress.pathType ?? 'Prefix',
-                serviceName:
-                    ingress.serviceName ??
-                    deploymentForRealm(port.id.split('.')[0] ?? '') ??
-                    deployments[0]?.name ??
-                    '',
-                servicePort: ingress.servicePort ?? 8080,
-                tls: ingress.tls,
-            }),
+            ingress => {
+                // What the deployment says about this address, by the name the contribution carries:
+                // the realm owns the path and the process, and whoever runs the deployment owns the
+                // host, its certificate and the issuer that signs it (`@@D-800`). An override names
+                // only what it decides — an absent field keeps the contribution's answer, and its
+                // annotations merge by key, so a tenant naming the issuer does not erase what a
+                // contribution said about the host it shares.
+                const override = options.install ? undefined : options.ingresses?.[ingress.name];
+                return {
+                    name: ingress.name,
+                    namespace,
+                    host: override?.host ?? ingress.host,
+                    path: override?.path ?? ingress.path,
+                    pathType: override?.pathType ?? ingress.pathType ?? 'Prefix',
+                    serviceName:
+                        ingress.serviceName ??
+                        deploymentForRealm(port.id.split('.')[0] ?? '') ??
+                        deployments[0]?.name ??
+                        '',
+                    servicePort: override?.servicePort ?? ingress.servicePort ?? 8080,
+                    tls: override?.tls ?? ingress.tls,
+                    annotations:
+                        override?.annotations || ingress.annotations
+                            ? {...ingress.annotations, ...override?.annotations}
+                            : undefined,
+                };
+            },
         ),
     );
 
@@ -1514,6 +1585,8 @@ export interface IPlanConfig {
     suiteVolume?: ISuiteVolumeRequest;
     /** Every portal this suite publishes, by alias, named by address rather than by content. */
     portal?: ISuitePortalMap;
+    /** Addresses for the ingresses the realms contribute, by contribution name (`@@D-800`). */
+    ingresses?: IIngressOverrideMap;
     /** The process that serves the browser bundle, and the policy its headers carry. */
     assetServer?: IAssetServerRequest;
     /** The realm's own operator: its Deployment and the loop it runs. */
@@ -1589,6 +1662,14 @@ export interface IBlongDeploymentSpec {
     storageClassName?: string;
     /** The portals this suite publishes; a tenant may name their `host` and nothing else. */
     portal?: ISuitePortalMap;
+    /**
+     * The address of an ingress a realm contributes, by the name the contribution carries.
+     *
+     * A realm knows the path and the process; the host, its certificate and the issuer that signs it
+     * belong to whoever runs the deployment, so they are declared here rather than committed beside
+     * the port (`@@D-800`).
+     */
+    ingresses?: IIngressOverrideMap;
     /** The process that serves the browser bundle, when a tenant wants one of its own. */
     assetServer?: IAssetServerRequest;
     /**
@@ -1626,6 +1707,7 @@ export const planOptionsFromSpec = (spec: IBlongDeploymentSpec = {}): Partial<IP
     if (spec.storageClassName !== undefined) options.storageClassName = spec.storageClassName;
     if (spec.suiteVolume !== undefined) options.suiteVolume = spec.suiteVolume;
     if (spec.portal !== undefined) options.portal = spec.portal;
+    if (spec.ingresses !== undefined) options.ingresses = spec.ingresses;
     if (spec.assetServer !== undefined) options.assetServer = spec.assetServer;
     if (spec.nodeSource !== undefined) options.nodeSource = spec.nodeSource;
     return options;
@@ -1652,6 +1734,7 @@ export const planOptionsOf = (config: IPlanConfig | undefined): IPlanOptions => 
     nodeSource: config?.nodes,
     suiteVolume: config?.suiteVolume,
     portal: config?.portal,
+    ingresses: config?.ingresses,
     assetServer: config?.assetServer,
     operator: config?.operator,
     secrets: config?.secrets,

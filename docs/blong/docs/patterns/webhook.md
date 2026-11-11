@@ -129,8 +129,45 @@ k8sIngresses: {chatSlack: {path: '/chat/slack', servicePort: 8095}},
 
 `@feasibleone/blong-kustomize` turns that into an Ingress and appends the port to the owning
 deployment's Service beside `rpc` and `http`, so an Ingress has endpoints without a second
-declaration. The host is a deployment's decision, not the source tree's, and the `k8s` intent's rc
-file names it.
+declaration.
+
+### A webhook wants a host of its own
+
+Ingress annotations belong to the **host**, not to a path: the controller has no per-path
+annotations. So a webhook path on a portal's host inherits the portal's authentication — an `oauth2`
+portal would ask a machine for a browser login, a `basic` one for a password that exists so a human
+can read a page. The tree refuses that combination rather than writing a webhook nobody can call, and
+names both sides when it does.
+
+A webhook therefore lands on its own host, and one host carries every path the deployment serves
+there:
+
+```ts
+k8sIngresses: {
+    chatSlack: {
+        path: '/chat/slack',
+        host: 'chat-hook.example',
+        servicePort: 8095,
+        tls: {secretName: 'chat-hook-tls'},
+        // The host's annotations, which is why a second path on it needs none.
+        annotations: {'cert-manager.io/cluster-issuer': 'letsencrypt-prod'},
+    },
+},
+```
+
+Two fields are load-bearing and are easy to leave out:
+
+- `host` — a contributed path with no host lands on the host of whatever else is published, which is
+  the portal and its authentication.
+- `annotations` — an Ingress naming a TLS secret is not an Ingress with a certificate. Nothing asks
+  cert-manager for it, no handshake completes, and the platform's own request URL answers nothing.
+  The annotations are the host's, so one entry beside the certificate is enough for every path there.
+
+A portal's host and annotations come from the deployment rather than the source tree — the `k8s`
+intent's rc file and the CR name them. A contributed webhook host is the same: the realm contributes
+the path, the port and what the host's annotations must say, and the deployment names the address in
+`kustomize.deploy.ingresses` (a local run) or `spec.ingresses` (a CR), keyed by the contribution's
+alias.
 
 ## Testing it
 

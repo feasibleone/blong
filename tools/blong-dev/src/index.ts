@@ -1,4 +1,6 @@
 // Public API for programmatic usage of blong-dev
+export * from './callRc.ts';
+export {call} from './commands/call.ts';
 export {ciReport} from './commands/ciReport.ts';
 export {cspell} from './commands/cspell.ts';
 export {glossary} from './commands/glossary.ts';
@@ -39,4 +41,9 @@ export {
     writeRun,
 } from './report/reportWrite.ts';
 export {buildTapRun, parseTapJson, renderTapConsole} from './report/tapReport.ts';
-export {buildJestShapedRun, buildVitestRun, readVitestJson, VITEST_JSON} from './report/vitestReport.ts';
+export {
+    buildJestShapedRun,
+    buildVitestRun,
+    readVitestJson,
+    VITEST_JSON,
+} from './report/vitestReport.ts';

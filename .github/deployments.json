@@ -10,6 +10,17 @@
         "entry": "./index.ts",
         "profile": "monolith"
     },
+    "chat": {
+        "release": "blong-chat",
+        "package": "@feasibleone/blong-chat",
+        "packagePath": "realm/blong-chat",
+        "scenario": "chat",
+        "artifact": "chat.zip",
+        "namespace": "blong-chat",
+        "suite": "blong-chat",
+        "entry": "./index.ts",
+        "profile": "monolith"
+    },
     "suite": {
         "release": "blong-suite",
         "package": "@feasibleone/blong-suite",

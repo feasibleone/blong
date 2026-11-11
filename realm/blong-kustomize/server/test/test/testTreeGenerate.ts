@@ -1591,6 +1591,57 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 );
             },
 
+            async function aContributionCarriesItsHostAnnotations(assert: IAssert) {
+                // A webhook host belongs to the suite rather than to a tenant, so the issuer that
+                // signs its certificate is the suite's to name. Without it the Ingress names a TLS
+                // secret nothing issues: the handshake fails, and Slack could not open the request
+                // URL the port had just written into its app (`@@D-799`).
+                const tree = buildKustomizeTree(
+                    lib.suitePlan({
+                        profile: 'monolith',
+                        ingresses: [
+                            {
+                                name: 'webhook',
+                                namespace: 'shop-suite',
+                                host: 'hooks.shop.example',
+                                path: '/hook',
+                                pathType: 'Prefix',
+                                serviceName: 'shop',
+                                servicePort: 8080,
+                                tls: {secretName: 'hook-tls'},
+                                annotations: {
+                                    'cert-manager.io/cluster-issuer': 'letsencrypt-prod',
+                                },
+                            },
+                            // A second path on the same host names none: annotations are the host's,
+                            // so the certificate the first entry asked for covers both.
+                            {
+                                name: 'webhook-beside',
+                                namespace: 'shop-suite',
+                                host: 'hooks.shop.example',
+                                path: '/beside',
+                                pathType: 'Prefix',
+                                serviceName: 'shop',
+                                servicePort: 8080,
+                            },
+                        ],
+                    }) as never,
+                );
+                const ingress = tree.get('ingresses/hooks-shop-example.yaml') as
+                    | {metadata?: {annotations?: Record<string, string>}; spec?: {tls?: unknown}}
+                    | undefined;
+                assert.deepEqual(
+                    ingress?.metadata?.annotations,
+                    {'cert-manager.io/cluster-issuer': 'letsencrypt-prod'},
+                    'the contributed annotations reach the Ingress of the host they belong to',
+                );
+                assert.deepEqual(
+                    ingress?.spec?.tls,
+                    [{hosts: ['hooks.shop.example'], secretName: 'hook-tls'}],
+                    'and the certificate is the one the contribution named',
+                );
+            },
+
             async function aServicePublishesThePortsItsProcessOpens(assert: IAssert) {
                 // An Ingress can only reach a port a Service publishes. A realm that opens a webhook
                 // port contributed it to the Deployment and to nothing else, so the path had a backend

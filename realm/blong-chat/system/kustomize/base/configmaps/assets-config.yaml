@@ -1,0 +1,16 @@
+apiVersion: v1
+data:
+  config.json: |-
+    {
+      "base": "/s/",
+      "headers": {}
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-chat
+    app.kubernetes.io/part-of: blong-chat
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: 8164dedf5921c1b0
+  name: assets-config

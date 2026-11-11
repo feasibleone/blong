@@ -71,6 +71,13 @@ export interface IMleClient {
     call(method: string, params: unknown, options?: IMleCallOptions): Promise<unknown>;
 }
 
+/** A value as text, for a message that has to be readable: JSON when it is not. */
+const textOf = (value: unknown): string | undefined => {
+    if (typeof value === 'string') return value.length ? value : undefined;
+    if (value === undefined || value === null) return undefined;
+    return JSON.stringify(value, null, 2);
+};
+
 const asJwk = (k: unknown): JWK | undefined => {
     if (k == null) return undefined;
     return typeof k === 'string' ? (JSON.parse(k) as JWK) : (k as JWK);
@@ -176,16 +183,26 @@ export async function createMleClient(options: IMleClientOptions): Promise<IMleC
             const json = (await res.json()) as {result?: unknown; error?: unknown};
             if (json.error) {
                 // Errors are also MLE-encrypted — decrypt (fall back to raw on failure).
-                let err: {message?: string; print?: string} = {message: String(json.error)};
+                // The gateway answers some refusals (an unknown route, a validation
+                // failure) with a JSON-RPC error object in the clear, so the fallback is
+                // JSON rather than `String(...)` — which prints `[object Object]`.
+                let err: {message?: unknown; print?: unknown} = {
+                    message: typeof json.error === 'string' ? json.error : JSON.stringify(json.error, null, 2),
+                };
                 try {
                     err = (await crypto.decryptVerify(json.error as string, useSign)) as {
-                        message?: string;
-                        print?: string;
+                        message?: unknown;
+                        print?: unknown;
                     };
                 } catch {
                     // keep the raw error string as the message
                 }
-                throw new Error(err.print ?? err.message ?? JSON.stringify(json.error));
+                // A gateway error usually arrives as text (`print` is the formatted
+                // dialog), but a validation failure arrives as an object, and
+                // `new Error(object)` degenerates to `[object Object]` — losing the
+                // one thing the caller needs. Anything that is not text is shown as
+                // JSON.
+                throw new Error(textOf(err.print) ?? textOf(err.message) ?? JSON.stringify(json.error));
             }
             if (json.result === undefined) return undefined;
             return crypto.decryptVerify(json.result as string, useSign);

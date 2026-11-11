@@ -2,7 +2,7 @@ import {resolveKeySpec} from '@feasibleone/blong-mle';
 import fastify from 'fastify';
 import {test} from 'tap';
 
-import mlePlugin, {type IConfig} from './mle.ts';
+import mlePlugin, {looksMleEncrypted, mleUndecoded, routeDecodesMle, type IConfig} from './mle.ts';
 
 /**
  * `/rpc/login/.well-known/mle` is the one route that publishes the process's key material, and the
@@ -121,4 +121,112 @@ test('the write-back repoints the config property and leaves the material it rep
 
     await app.close();
     t.end();
+});
+
+/**
+ * The refusal an encrypted body earns on a route that does not decode MLE.
+ *
+ * The behaviour this replaces was worse than a refusal: the body was left as an
+ * encrypted string, the handler's schema cast it to the params it wanted, and the
+ * caller was told that required properties were missing for a payload that carried
+ * every one of them (`@@F-710 @@D-803`).
+ */
+const registered = async () => {
+    const app = fastify();
+    const config = {
+        sign: {generate: {alg: 'ES384', crv: 'P-384', use: 'sig'}},
+        encrypt: {generate: {alg: 'ECDH-ES+A256KW', crv: 'P-384', use: 'enc'}},
+        public: {sign: {}, encrypt: {}},
+    } as unknown as IConfig;
+    await app.register(mlePlugin, config);
+    // A route the gateway serves without auth, and one it guards: both are
+    // registered after the plugin, which is what applies its hooks to them.
+    app.post('/rpc/chat/prompt/ask', {config: {auth: false}}, async request => ({
+        seen: request.body,
+    }));
+    app.post('/rpc/chat/account/find', {config: {auth: true}}, async request => ({
+        seen: request.body,
+    }));
+    return app;
+};
+
+test('a route that does not decode MLE refuses a body that is encrypted', async t => {
+    const app = await registered();
+    const answer = await app.inject({
+        method: 'POST',
+        url: '/rpc/chat/prompt/ask',
+        headers: {'content-type': 'application/json'},
+        payload: {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'chat.prompt.ask',
+            params: 'eyJhbGciOiJFQ0RILUVTK0EyNTZLVyJ9.aaaa.bbbb.cccc.dddd',
+        },
+    });
+
+    t.equal(answer.statusCode, 400, 'the body is refused rather than passed through');
+    const body = answer.json() as {message?: string};
+    t.match(body.message, /chat\.prompt\.ask/, 'the refusal names the method it was asked for');
+    t.match(body.message, /requires auth/, 'and the cause');
+    t.match(body.message, /Send plain JSON/, 'and what a caller can do about it');
+
+    await app.close();
+    t.end();
+});
+
+test('the same route still serves the plain JSON a public route is called with', async t => {
+    const app = await registered();
+    const answer = await app.inject({
+        method: 'POST',
+        url: '/rpc/chat/prompt/ask',
+        headers: {'content-type': 'application/json'},
+        payload: {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'chat.prompt.ask',
+            params: {platform: 'slack', kind: 'text', conversationId: 'C1', text: 'hi'},
+        },
+    });
+
+    t.equal(answer.statusCode, 200, 'a public route keeps working with plain params');
+    const body = answer.json() as {seen?: {params?: {text?: string}}};
+    t.equal(body.seen?.params?.text, 'hi', 'and the handler receives them untouched');
+
+    await app.close();
+    t.end();
+});
+
+test('a guarded route leaves a plain body alone and would decode an encrypted one', async t => {
+    const app = await registered();
+    const answer = await app.inject({
+        method: 'POST',
+        url: '/rpc/chat/account/find',
+        headers: {'content-type': 'application/json'},
+        payload: {jsonrpc: '2.0', id: 1, method: 'chat.account.find', params: {paging: {}}},
+    });
+
+    t.equal(answer.statusCode, 200, 'plain JSON on an authenticated route is served');
+    const body = answer.json() as {seen?: {params?: {paging?: unknown}}};
+    t.same(body.seen?.params, {paging: {}}, 'and reaches the handler as it was sent');
+
+    await app.close();
+    t.end();
+});
+
+test('the decision and the refusal read on their own', async t => {
+    t.equal(routeDecodesMle({auth: true}), true, 'an authenticated route decodes');
+    t.equal(routeDecodesMle({auth: 'login'}), true, 'a login route decodes, carrying its own keys');
+    t.equal(routeDecodesMle({auth: false}), false, 'a public route does not');
+    t.equal(routeDecodesMle({}), false, 'a route with no auth does not');
+    t.equal(routeDecodesMle({auth: true, mle: false}), false, 'nor one whose body is not MLE');
+
+    t.equal(looksMleEncrypted('a.b.c.d.e'), true, 'five segments are a compact JWE');
+    t.equal(looksMleEncrypted('hello from curl'), false, 'a string body is not');
+    t.equal(looksMleEncrypted({recipients: []}), true, 'a general JWE is');
+    t.equal(looksMleEncrypted({platform: 'slack'}), false, 'an ordinary payload is not');
+
+    const error = mleUndecoded('chat.prompt.ask', '/rpc/chat/prompt/ask');
+    t.equal(error.type, 'gateway.mleUndecoded', 'the refusal carries a type a caller can expect');
+    t.equal(error.statusCode, 400, 'and a status of its own');
+    t.match(error.message, /require auth on the route/, 'and names the second fix');
 });

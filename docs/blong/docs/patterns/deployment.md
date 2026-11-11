@@ -192,6 +192,41 @@ the portal — `realm/blong-sport/.blong_k8src` — because the alias is the sui
 would hand one suite's host to the next. `rc` takes the closest file, so a package's copy shadows the
 repository's for runs started in it.
 
+### A host a realm contributes
+
+A webhook is the other address a suite publishes, and it is not in that block: the realm contributes
+the path and the port, and the deployment names the host, its certificate and the issuer. The
+container is `ingresses`, keyed by the name the contribution carries — the alias in the adapter's
+`k8sIngresses`:
+
+```yaml
+chat:
+    slack:
+        k8sIngresses:
+            chatSlack:
+                host: <the webhook host>
+kustomize:
+    deploy:
+        # Every path this host serves, by the name each contribution uses.
+        ingresses:
+            chatSlack:
+                host: <the webhook host>
+                tls: {secretName: chat-hook-tls}
+                annotations:
+                    cert-manager.io/cluster-issuer: letsencrypt-prod
+```
+
+This is the one field that has to exist in both places. A local run reads it from `.blong_k8src`; a
+deployment reads it from the CR's `spec.ingresses`, which is where the operator takes its plan
+from — and the tree writes the addresses it planned with into the CR it ships, so the two do not
+drift. The CRD declares the field as a map, `tls` and `annotations` are merged over what the
+contribution said (annotations by key), and the sample beside the committed base writes
+`PLACEHOLDER` where the host goes.
+
+A suite whose webhook host lived in its own `index.ts` could not be deployed by a tenant who wanted
+a different host — and the operator, regenerating the tree from a CR that could not state one,
+dropped the Ingress it had on the next pass.
+
 `cert-manager.io/cluster-issuer` is the switch between the two ClusterIssuers: `letsencrypt-staging`
 issues quickly and untrusted — a browser warns and `curl` needs `-k` — while `letsencrypt-prod`
 issues a publicly trusted certificate and counts against Let's Encrypt's rate limit. Changing the

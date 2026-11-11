@@ -40,3 +40,8 @@ ci:
   label: CI
   permalink: /ci
   description: The pipeline that gates and releases the framework.
+
+chat:
+  label: Chat
+  permalink: /chat
+  description: Bots on Slack and Viber, and the port that carries both halves of a conversation.

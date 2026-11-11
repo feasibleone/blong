@@ -40,4 +40,8 @@ export default {
         message: 'Sending to {platformName} failed: {reason}',
         statusCode: 502,
     },
+    'chat.storeUnavailable': {
+        message: 'The chat account store cannot be read: {reason}',
+        statusCode: 503,
+    },
 };

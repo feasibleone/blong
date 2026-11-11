@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 987684c2005e2568
+    blong.feasible.one/spec-hash: 0d449bf2608bf6db
   name: blongdeployments.blong.feasible.one
 spec:
   group: blong.feasible.one
@@ -142,6 +142,32 @@ spec:
                     items:
                       type: string
                     type: array
+                  type: object
+                ingresses:
+                  additionalProperties:
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      host:
+                        type: string
+                      path:
+                        type: string
+                      pathType:
+                        enum:
+                          - Prefix
+                          - Exact
+                          - ImplementationSpecific
+                        type: string
+                      servicePort:
+                        type: integer
+                      tls:
+                        properties:
+                          secretName:
+                            type: string
+                        type: object
+                    type: object
                   type: object
                 intents:
                   default:

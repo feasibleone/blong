@@ -774,6 +774,32 @@ const portalRequests = (plan: IDeploymentPlan): ISuitePortalMap =>
     );
 
 /**
+ * The addresses of the ingresses the realms contributed, as the CR carries them.
+ *
+ * The operator regenerates the tree from the declaration, and a realm's contribution carries only the
+ * path and the port: a host the CR cannot state is a webhook that comes back with no host on the next pass,
+ * which is what made a suite commit one. Writing them here is what makes the rc file of a local run and
+ * a tenant's CR the same declaration (`@@D-800`).
+ */
+const ingressRequests = (plan: IDeploymentPlan): Record<string, object> | undefined => {
+    const named = plan.ingresses.filter(ingress => ingress.host !== undefined);
+    if (!named.length) return undefined;
+    return Object.fromEntries(
+        named.map(ingress => [
+            ingress.name,
+            {
+                host: ingress.host,
+                ...(ingress.path ? {path: ingress.path} : {}),
+                ...(ingress.pathType ? {pathType: ingress.pathType} : {}),
+                ...(ingress.servicePort ? {servicePort: ingress.servicePort} : {}),
+                ...(ingress.tls ? {tls: ingress.tls} : {}),
+                ...(ingress.annotations ? {annotations: ingress.annotations} : {}),
+            },
+        ]),
+    );
+};
+
+/**
  * The gateway Service a portal's Ingress points at: the portal's own name, on port 8080.
  *
  * The alias is the name because it is the one a person chose: it survives a profile change, which a
@@ -2098,6 +2124,40 @@ const crdResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
                                             },
                                         },
                                     },
+                                    ingresses: {
+                                        // The addresses of the ingresses the realms contribute — a
+                                        // webhook's host, typically — keyed by the name the
+                                        // contribution carries. The realm owns the path and the
+                                        // process, and the tenant owns the address: a host is a DNS
+                                        // record and a certificate somebody owns, so a suite that
+                                        // had to commit one could not be deployed by a tenant at
+                                        // all.
+                                        type: 'object',
+                                        additionalProperties: {
+                                            type: 'object',
+                                            properties: {
+                                                host: {type: 'string'},
+                                                path: {type: 'string'},
+                                                pathType: {
+                                                    type: 'string',
+                                                    enum: [
+                                                        'Prefix',
+                                                        'Exact',
+                                                        'ImplementationSpecific',
+                                                    ],
+                                                },
+                                                servicePort: {type: 'integer'},
+                                                tls: {
+                                                    type: 'object',
+                                                    properties: {secretName: {type: 'string'}},
+                                                },
+                                                annotations: {
+                                                    type: 'object',
+                                                    additionalProperties: {type: 'string'},
+                                                },
+                                            },
+                                        },
+                                    },
                                     assetServer: {
                                         // The process that serves the browser bundle. Declared
                                         // because the operator regenerates the tree from this
@@ -2294,6 +2354,10 @@ const blongDeploymentResource = (plan: IDeploymentPlan): Record<string, unknown>
         // the operator has to make for itself — and the CRD declares no such field, so the API
         // server would prune it on the way in.
         portal: portalRequests(plan),
+        // The addresses of what the realms contribute, for the same reason: the operator's pass reads
+        // them from here, so a webhook's host survives a reconcile (`@@D-800`). Omitted when nothing
+        // named one, because a field the CR omits falls back to the artifact's own config.
+        ...(ingressRequests(plan) ? {ingresses: ingressRequests(plan)} : {}),
         // The static half of the same declaration: the policy the bundle's server applies. Written
         // only when the suite declared one, because a field it omits falls back to the artifact's
         // own config on the operator's pass.
@@ -2852,6 +2916,14 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
             servicePort: ingress.servicePort,
         });
         if (ingress.tls && !tlsByHost.has(ingress.host)) tlsByHost.set(ingress.host, ingress.tls);
+        // A contribution's annotations are the host's, so they merge per key like a portal's: one
+        // entry naming the issuer is enough for every path beside it (`@@D-799`).
+        if (ingress.annotations) {
+            annotationsByHost.set(ingress.host, {
+                ...annotationsByHost.get(ingress.host),
+                ...ingress.annotations,
+            });
+        }
     }
     for (const [name, entry] of Object.entries(plan.portal)) {
         // A webhook must not land on a portal's host . The annotations belong to the *host* —
@@ -3151,18 +3223,39 @@ type TreePlacement = 'base' | 'instantiated';
  * host is the one field it cannot show, because the sample is committed and a domain in it would be a
  * domain in the repository @@D-645. `PLACEHOLDER` is the same token the base uses for everything the
  * deploy owns: a reader sees at a glance which values are theirs to fill in.
+ *
+ * The same is true of a webhook's address, which is the field a tenant most needs to learn about: a realm
+ * contributes the path and the port, and the host, its certificate and the issuer that signs it are the
+ * deployment's (`@@D-800`). The sample therefore carries an entry per contributed ingress with its host
+ * replaced, so what a tenant has to write is visible rather than implied.
  */
 const exampleDeclaration = (resource: KustomizeResource): KustomizeResource => {
     if (typeof resource === 'string') return resource;
-    const spec = (resource as {spec?: {portal?: Record<string, {host?: string}>}}).spec;
-    if (!spec?.portal) return resource;
-    const portal = Object.fromEntries(
-        Object.entries(spec.portal).map(([alias, entry]) => [
-            alias,
-            entry.host === undefined ? entry : {...entry, host: PLACEHOLDER},
-        ]),
-    );
-    return {...resource, spec: {...spec, portal}} as KustomizeResource;
+    const spec = (
+        resource as {
+            spec?: {
+                portal?: Record<string, {host?: string}>;
+                ingresses?: Record<string, {host?: string}>;
+            };
+        }
+    ).spec;
+    if (!spec) return resource;
+    const replaced = <T extends {host?: string}>(entries: Record<string, T> | undefined) =>
+        entries === undefined
+            ? undefined
+            : Object.fromEntries(
+                  Object.entries(entries).map(([alias, entry]) => [
+                      alias,
+                      entry.host === undefined ? entry : {...entry, host: PLACEHOLDER},
+                  ]),
+              );
+    const portal = replaced(spec.portal);
+    const ingresses = replaced(spec.ingresses);
+    if (!portal && !ingresses) return resource;
+    return {
+        ...resource,
+        spec: {...spec, ...(portal && {portal}), ...(ingresses && {ingresses})},
+    } as KustomizeResource;
 };
 
 /**

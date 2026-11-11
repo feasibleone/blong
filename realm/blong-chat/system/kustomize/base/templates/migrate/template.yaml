@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app.kubernetes.io/instance: blong-chat-migrate
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-chat
+    app.kubernetes.io/part-of: blong-chat
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/attempt-retention: "5"
+    blong.feasible.one/spec-hash: e93c8197d77d1417
+    blong.feasible.one/suite-version: PLACEHOLDER
+    blong.feasible.one/volume-identity: PLACEHOLDER
+  name: blong-chat-migrate
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: blong-chat-migrate-PLACEHOLDER-898ab54d
+        app.kubernetes.io/managed-by: blong-kustomize
+        app.kubernetes.io/name: blong-chat
+        app.kubernetes.io/part-of: blong-chat
+        app.kubernetes.io/version: PLACEHOLDER
+    spec:
+      containers:
+        - args:
+            - /opt/deploy/suite/realm/blong-chat/index.ts
+            - upgrade
+            - release
+            - --remote.canSkipSocket=true
+          image: PLACEHOLDER
+          name: migrate
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          volumeMounts:
+            - mountPath: /opt/deploy/suite
+              name: suite
+              readOnly: true
+            - mountPath: /home/node/.blong_releaserc
+              name: releaserc-home
+              readOnly: true
+              subPath: .blong_releaserc
+            - mountPath: /etc/blong_releaserc
+              name: releaserc-site
+              readOnly: true
+              subPath: blong_releaserc
+      restartPolicy: Never
+      serviceAccountName: blong
+      volumes:
+        - hostPath:
+            path: /var/lib/blong/suites/blong-chat/PLACEHOLDER
+            type: Directory
+          name: suite
+        - name: releaserc-home
+          secret:
+            items:
+              - key: .blong_releaserc
+                path: .blong_releaserc
+            optional: true
+            secretName: blong-releaserc
+        - name: releaserc-site
+          secret:
+            items:
+              - key: blong_releaserc
+                path: blong_releaserc
+            optional: true
+            secretName: blong-releaserc-etc

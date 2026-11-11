@@ -109,7 +109,7 @@ function packageBlock(pkg: ICiPackage, index: number, options: {full?: boolean})
             : 'published no report — see the operation summary';
     lines.push(
         `[${index}] ${pkg.package}${pkg.path ? ` (${pkg.path})` : ''}` +
-            `  ✖ ${verdict?.kind ?? 'failed'}`,
+            `  ❌ ${verdict?.kind ?? 'failed'}`,
     );
     lines.push(
         `    legs     ${pkg.runners.join(', ') || '—'}` +

@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: assets
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-chat
+    app.kubernetes.io/part-of: blong-chat
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: 88322791d3b57e6a
+  name: assets
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: assets
+      app.kubernetes.io/part-of: blong-chat
+  template:
+    metadata:
+      annotations:
+        blong.feasible.one/asset-config: ac2232edfac3dbb7
+      labels:
+        app.kubernetes.io/instance: assets
+        app.kubernetes.io/managed-by: blong-kustomize
+        app.kubernetes.io/name: blong-chat
+        app.kubernetes.io/part-of: blong-chat
+        app.kubernetes.io/version: PLACEHOLDER
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - --root=/opt/deploy/suite/realm/blong-chat/dist
+            - --config=/etc/blong-asset/config.json
+            - --host=0.0.0.0
+            - --port=8080
+          command:
+            - node
+            - /opt/blong/common/deploy/core/blong-asset/bin/blongAsset.ts
+          env:
+            - name: NODE_ENV
+              value: production
+          image: PLACEHOLDER
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          name: asset
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /opt/deploy/suite
+              name: suite
+              readOnly: true
+            - mountPath: /etc/blong-asset
+              name: asset-config
+              readOnly: true
+            - mountPath: /tmp
+              name: tmp
+      securityContext:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - hostPath:
+            path: /opt/deploy/suite
+            type: Directory
+          name: suite
+        - configMap:
+            name: assets-config
+          name: asset-config
+        - emptyDir:
+            sizeLimit: 16Mi
+          name: tmp

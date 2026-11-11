@@ -115,20 +115,27 @@ its body, not from its address.
 5. **Interactivity & Shortcuts → Interactivity → Request URL**: the same URL. Buttons and modal
    submissions arrive there as `payload=<json>`, and sharing one path is why the path has no verb in
    it — the body says what it is.
-6. Put the values in the realm's `.blong_devrc` (see `blong_devrc.example` in this folder). Adding a
-   `configToken` lets the port rewrite steps 4 and 5 by itself on every start, and it finds the
-   address without being told:
+6. Put the values in the realm's `.blong_devrc` (see `blong_devrc.example` in this folder). Adding
+   the workspace's configuration-token pair lets the port rewrite steps 4 and 5 by itself on every
+   start, and it finds the address without being told:
 
 ```yaml
 chat:
     slack:
+        # A Slack configuration token authorizes app management in a *workspace*, so one pair serves
+        # every bot account of it and is renewed once per workspace.
+        workspaces:
+            feasible:
+                configToken: xoxe.xoxp-1-your-app-configuration-token
+                configRefreshToken: xoxe-1-your-refresh-token
+                configTokenExpiresAt: 1794355866
         accounts:
             demo:
                 appId: A1
                 clientId: T1
                 botToken: xoxb-your-bot-token
                 signingSecret: your-signing-secret
-                configToken: xoxe-1-your-app-configuration-token
+                workspace: feasible
 ```
 
 ## The tunnel configures itself
@@ -142,35 +149,56 @@ either:
    whose `config.addr` names _its own_ listening port — 8095 for Slack, 8096 for Viber — preferring
    `https`. A machine running two tunnels therefore publishes both listeners correctly, and a tunnel
    for another port is ignored.
-2. **Rewrite the app.** For every account with a `configToken`, it probes the tunnel, exports the
-   manifest with `apps.manifest.export`, writes the request URL into
+2. **Rewrite the app.** For every account whose workspace carries a configuration token, it probes
+   the tunnel, exports the manifest with `apps.manifest.export`, writes the request URL into
    `settings.interactivity.request_url` and `settings.event_subscriptions.request_url`, and sends it
    back with `apps.manifest.update`. The URL is the port's own path with that account's ids —
    `https://<host>/chat/slack/<appId>/<clientId>` — one address for Events and Interactivity.
 3. **Register the bot.** Viber needs no manifest: the port appends its path to the same discovered
    address and calls `set_webhook`.
 
-A configuration token starts with `xoxe-1-` and comes from **Your Apps → App Config Tokens** — it is
-the only thing the manifest step needs from you. Everything else is a warning and never a throw: a
+A configuration token pair comes from **Your Apps → App Config Tokens**: the access token is
+`xoxe.xoxp-1-…` and its refresh token `xoxe-1-…`, and the rotation answers both again. It is the
+only thing the manifest step needs from you. Everything else is a warning and never a throw: a
 process started before the app exists, or before the tunnel is up, still serves what it can, and the
 next restart retries. The event subscriptions themselves are left exactly as they are — this
 re-points the app, it does not decide what it listens to.
 
 Naming an address is still possible, for an agent on another port or a fixed hostname:
-`chat.slack.ngrokAgentUrl` (default `http://127.0.0.1:4040/api/tunnels`) or, per account,
-`ngrokUrl`. An account that names its own `url` — a simulator, a proxy — is never repointed.
+`chat.slack.ngrokAgentUrl` (default `http://127.0.0.1:4040/api/tunnels`) or, per account, `ngrokUrl`
+/ `publicUrl`. An account that names its own `url` — a simulator, a proxy — is never repointed.
 
 ## One port, several accounts
 
 An account is not only a token. It carries where its calls go and where its messages are delivered
 to:
 
-| Setting       | What it decides                                                                            |
-| ------------- | ------------------------------------------------------------------------------------------ |
-| `url`         | The API base this account posts to. Unset means the port's own (`https://slack.com/api/`). |
-| `configToken` | Slack app configuration token; with it, the app's request URLs follow the tunnel.          |
-| `ngrokUrl`    | Optional public base, for an agent elsewhere or a fixed hostname; default is discovered.   |
-| `webhookUrl`  | Viber's registration address outright, when the tunnel is not how it is reached.           |
+| Setting      | What it decides                                                                               |
+| ------------ | --------------------------------------------------------------------------------------------- |
+| `url`        | The API base this account posts to. Unset means the port's own (`https://slack.com/api/`).    |
+| `workspace`  | The workspace whose configuration token maintains this account's app; see below.              |
+| `ngrokUrl`   | Optional public base, for an agent elsewhere or a fixed hostname; default is discovered.      |
+| `publicUrl`  | Optional fixed public base, for a deployment behind an Ingress; wins over the discovered one. |
+| `webhookUrl` | Viber's registration address outright, when the tunnel is not how it is reached.              |
+
+### The configuration token belongs to the workspace
+
+A Slack app configuration token authorizes app management in a workspace, not for one bot, so the
+pair is stored **once per workspace** and every account of it shares it:
+
+- `chat.slack.workspaces.<alias>` carries the pair in a rc file; the `chat_workspace` table carries
+  it in a deployment, and the accounts page and the workspaces page manage both.
+- The port reads the pair resolved onto each account, renews it **once per workspace** — a second
+  account renewing in the same pass would send a refresh token the first one had already spent — and
+  writes the replacement back to the workspace row.
+- A pair with nowhere to store its replacement is left alone, because rotating it would invalidate
+  the token the next start reads.
+- When no account names a workspace and the configuration names exactly one, that one serves them
+  all — the ordinary local case of one bot and one pair in the rc file.
+
+An app that a workspace's token may create is created from a bare manifest and re-pointed as soon as
+Slack answers the ids the request URL carries; the signing secret it is born with is stored beside
+them, so a new app needs no dashboard visit beyond installing it.
 
 `chat.slack.ngrokAgentUrl` / `chat.viber.ngrokAgentUrl` name the agent's status API when it is not
 on the default port (a second `ngrok` process uses 4041).
@@ -189,6 +217,48 @@ chat:
             demo: myRealm.myHandler.receive
             '*': chat.in.message.ignore
 ```
+
+## Deployment
+
+`realm/blong-chat` is also a **suite entry**: `index.ts` is the deployable process, and its
+`default` block carries the `kustomize.deploy` settings, the portal and the database. It is deployed
+the same way any other suite is — a plan, a generated kustomize tree, an artifact and the operator.
+
+- **Artifact** — `chat.zip`, from `rush deploy --scenario chat`
+  (`common/config/rush/deploy-chat.json`).
+- **Entry in the artifact** — `/opt/deploy/suite/realm/blong-chat/index.ts`.
+- **Browser bundle** — `/opt/deploy/suite/realm/blong-chat/dist` (`npm run build` → `vite build`).
+- **Namespace and suite** — `blong-chat`, profile `monolith` (one process).
+- **Portal** — the host named by `kustomize.deploy.portal.web.host` in `.blong_k8src` (and by the
+  CR), certificate `chat-tls`.
+- **Webhooks** — the host carrying `/chat/slack` and `/chat/viber`. Two hosts rather than one
+  because the tree refuses a webhook path on a portal's host: ingress annotations belong to the
+  host, so the webhook would inherit the portal's authentication. The realm contributes only the
+  paths and the ports; the **address is the deployment's** — `kustomize.deploy.ingresses.chatSlack`
+  in `.blong_k8src` for a local run, `spec.ingresses.chatSlack` in the CR for a release, and the
+  generated example writes `PLACEHOLDER` where it goes. The contribution carries the issuer
+  (`cert-manager.io/cluster-issuer`), because an Ingress with a TLS secret nothing signs answers no
+  handshake at all — the certificate `chat-hook-tls` is issued only because the issuer is named
+  beside the secret.
+- **Database** — the dev cluster's MySQL, through the `db` ExternalName alias, schema `blong-chat`.
+- **Release trigger** — `https://<operator host>/rpc/kustomize/release/approve`.
+
+A cycle run ships two things from two places: the suite files come from the artifact volume
+(`/opt/deploy/suite`), while the runtime that reads them is baked into the framework image
+(`/opt/blong`). A change in `core/blong-gogo` — the ports themselves are there — therefore needs
+`BUILD_IMAGE=1`; a `BUILD_IMAGE=0` run reports `done` and keeps running the previous runtime.
+
+The accounts and their workspaces are managed on the portal's two pages, which is why the realm now
+keeps state: `add` in the portal plus a workspace's configuration pair is all a new bot needs, and
+the port creates its app and points it at the webhook host on the next maintenance pass.
+
+Two things about those pages are worth knowing before changing them. The CRUD is the **shared
+subject port's**, not this realm's: the dispatch port names `db` as its destination, so a model
+method it does not hold is forwarded to the adapter that writes the table from the schema — the
+realm overrides only `find` (which masks the credentials a list would otherwise print), `add` (which
+stamps the identity and the timestamps a form does not send) and `edit` (which drops a mask sent
+back, rather than writing dots over a working token). Nothing else about a row reaches this realm,
+so a column added to the schema appears on the page without a handler beside it.
 
 ## Create the Viber bot
 
