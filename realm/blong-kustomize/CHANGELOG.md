@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.6.1...blong-kustomize-v0.7.0) (2026-11-12)
+
+
+### Features
+
+* chat accounts schema, UI and cli ([6fb7174](https://github.com/feasibleone/blong/commit/6fb7174e56edca19bed8162a31aeba8c99607298))
+
 ## [0.6.1](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.6.0...blong-kustomize-v0.6.1) (2026-11-09)
 
 

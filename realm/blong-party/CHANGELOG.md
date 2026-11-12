@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/feasibleone/blong/compare/blong-party-v1.15.0...blong-party-v1.16.0) (2026-11-12)
+
+
+### Features
+
+* chat accounts schema, UI and cli ([6fb7174](https://github.com/feasibleone/blong/commit/6fb7174e56edca19bed8162a31aeba8c99607298))
+
 ## [1.15.0](https://github.com/feasibleone/blong/compare/blong-party-v1.14.1...blong-party-v1.15.0) (2026-11-06)
 
 
