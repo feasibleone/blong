@@ -163,11 +163,59 @@ jobs:
               with:
                   node-version: 24
 
+            # The install is this job's largest cost and it buys the framework's dev dependency
+            # tree rather than anything the artifact runs: 197 s measured on 2026-11-12 (run
+            # 43207810220), most of it node-rdkafka's native build inside `blong-gogo`, which the
+            # zip does not carry at all — the deploy tree is the scenario's twelve production
+            # packages. The store the shared CI workflow publishes is what a warm install needs,
+            # so this job restores it and leaves the writing to CI's `setup` (@@D-546 @@D-830).
+            #
+            # The `*/.rush` trees are deliberately not restored: they carry the build cache, and a
+            # hit there against a checkout with no `dist` reports every project as already built —
+            # the stale output of @@F-555 arriving in an artifact instead of in a test.
+            - name: Restore the pnpm store
+              uses: actions/cache/restore@v5
+              with:
+                  path: common/temp/deps.tar.zst
+                  key: ${{ runner.os }}-pnpm-${{ hashFiles('common/config/rush/pnpm-lock.yaml') }}
+                  restore-keys: ${{ runner.os }}-pnpm-
+
+            - name: Unpack the pnpm store
+              run: |
+                  set -euo pipefail
+                  if [ -f common/temp/deps.tar.zst ]; then
+                      zstd -dc common/temp/deps.tar.zst | tar -xf - -C .
+                  else
+                      echo 'No deps.tar.zst in the restored archive; the install builds the store.'
+                  fi
+
             - name: Install
               run: node common/scripts/install-run-rush.js install
 
-            - name: Build the package
-              run: node common/scripts/install-run-rush.js build --to ${{ needs.resolve.outputs.package }}
+            # The first deploy answers what the zip carries — its project list is
+            # `extractor-metadata.json` — and costs two seconds; the second one, after the build,
+            # is what puts the fresh `dist` trees in it (@@D-830).
+            - name: Deploy the scenario, to read what it carries
+              run: |
+                  node common/scripts/install-run-rush.js deploy \
+                      --scenario ${{ needs.resolve.outputs.scenario }} \
+                      --target-folder "$RUNNER_TEMP/deploy" \
+                      --overwrite
+
+            # `--to <package>` follows the realm's devDependencies, so it built 27 projects for an
+            # artifact of 12 — the tap, storybook and browser tooling among them (@@D-830). The
+            # scenario's list is the set whose output the artifact can use: build that.
+            - name: Build what the artifact carries
+              env:
+                  # No deployed process reads the framework's declaration bundle (@@D-831).
+                  BLONG_SKIP_DTS: 1
+              run: |
+                  set -euo pipefail
+                  mapfile -t projects < <(jq -r '.projects[].projectName' "$RUNNER_TEMP/deploy/extractor-metadata.json")
+                  args=()
+                  for project in "${projects[@]}"; do args+=("--only=$project"); done
+                  echo "building ${#projects[@]} project(s): ${projects[*]}"
+                  node common/scripts/install-run-rush.js build "${args[@]}"
 
             - name: Deploy the scenario
               run: |
@@ -217,6 +265,27 @@ jobs:
               with:
                   node-version: 24
 
+            # Same store cache as the tenant artifact job, and for the same reason: the operator's
+            # artifact is `blong-kustomize` and its production dependencies, while the install
+            # pays for the framework's whole dev tree (175 s in run 43207804416) (@@D-546 @@D-830).
+            # Only CI's `setup` writes this key, and its `*/.rush` trees stay out of the restore so
+            # that this checkout cannot inherit a build cache with no `dist` behind it (@@F-555).
+            - name: Restore the pnpm store
+              uses: actions/cache/restore@v5
+              with:
+                  path: common/temp/deps.tar.zst
+                  key: ${{ runner.os }}-pnpm-${{ hashFiles('common/config/rush/pnpm-lock.yaml') }}
+                  restore-keys: ${{ runner.os }}-pnpm-
+
+            - name: Unpack the pnpm store
+              run: |
+                  set -euo pipefail
+                  if [ -f common/temp/deps.tar.zst ]; then
+                      zstd -dc common/temp/deps.tar.zst | tar -xf - -C .
+                  else
+                      echo 'No deps.tar.zst in the restored archive; the install builds the store.'
+                  fi
+
             - name: Install
               run: node common/scripts/install-run-rush.js install
 
@@ -245,8 +314,29 @@ jobs:
                   echo "versioned=$(jq -r '.artifact' <<<"$entry" | sed "s/\.zip$/-$version.zip/")" >> "$GITHUB_OUTPUT"
                   echo "alias=$(jq -r '.artifact' <<<"$entry")" >> "$GITHUB_OUTPUT"
 
+            # The first deploy answers what the artifact carries — `extractor-metadata.json`
+            # lists the projects the operator scenario ships — and costs a second; the second one,
+            # after the build, is what puts the fresh `dist` trees in it (@@D-830).
+            - name: Deploy the operator scenario, to read what it carries
+              run: |
+                  node common/scripts/install-run-rush.js deploy \
+                      --scenario ${{ steps.record.outputs.scenario }} \
+                      --target-folder "$RUNNER_TEMP/deploy-operator" \
+                      --overwrite
+
+            # `--to <package>` follows the realm's devDependencies, so it built the test and
+            # storybook tooling the operator never runs (@@D-830). Build what the artifact carries,
+            # and skip the framework's declaration bundle — no deployed process reads it (@@D-831).
             - name: Build the realm
-              run: node common/scripts/install-run-rush.js build --to ${{ steps.record.outputs.package }}
+              env:
+                  BLONG_SKIP_DTS: 1
+              run: |
+                  set -euo pipefail
+                  mapfile -t projects < <(jq -r '.projects[].projectName' "$RUNNER_TEMP/deploy-operator/extractor-metadata.json")
+                  args=()
+                  for project in "${projects[@]}"; do args+=("--only=$project"); done
+                  echo "building ${#projects[@]} project(s): ${projects[*]}"
+                  node common/scripts/install-run-rush.js build "${args[@]}"
 
             - name: Deploy the operator scenario
               run: |

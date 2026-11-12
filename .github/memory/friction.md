@@ -76,7 +76,7 @@ open (64)
 - `F-696` · cross-cutting — The reports site publishes every Playwright trace three times
 - `F-703` · cross-cutting — A dropped table leaves its foreign keys behind
 
-resolved (43)
+resolved (44)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -123,6 +123,7 @@ resolved (43)
 - `F-376` · cross-cutting — Rush deploy honours .npmignore, a deployment is not a publish
 - `F-676` · docs — A 3200px poster PNG never paints on first load
 - `F-555` · ci — CI tests run against a dist cached under a lockfile-only key
+- `F-724` · ci — Measuring what a deploy job pays for takes three readings
 
 <!-- /memory:index -->
 
@@ -1742,6 +1743,29 @@ common/temp/build.tar.zst and uploads it as the build artifact of the run, which
 the tree downloads and unpacks. Verified by rebuilding core/blong/dist locally and running the
 blong-access and blong-gateway suites with NODE_OPTIONS cleared: 70/70 and 21/21 through the same
 resolution CI uses.
+
+### F-724 — Measuring what a deploy job pays for takes three readings
+
+> _2026-11-12 · ci · resolved_
+
+Attributing the release jobs' time cost several rounds. What made it answerable:
+`gh run view <id> --json jobs` prints every step's start and end, which separated install (197 s)
+from build (238 s) from deploy (2 s); the build step's own log ends with a per-project table, which
+named the projects that dominate; and `rush list --to <realm>` shows that the closure includes the
+realm's devDependencies transitively, so the 27 projects built for a 12-project artifact are visible
+before any timing is needed.
+
+Two traps in the local reproduction. `blong-gogo`'s `build` is `true`, so "it builds blong-gogo" is
+never the cost — its dependency tree in `rush install` is, node-rdkafka's native build included. And
+a local `.rush` build cache reports a project "already up to date" even when its `dist` is empty,
+which is why the deploy workflow restores the pnpm store and not the `.rush` trees; the filtered
+build is only meaningful on a checkout where every `dist` is built by that run.
+
+The shipped set needs no hand-written list: `rush deploy` writes it into `extractor-metadata.json`,
+which is also the cheapest way to ask which projects an artifact can run (@@D-830).
+
+Both release jobs now restore the pnpm store and build the deploy scenario's own project list
+(D-830).
 
 ## Retired
 

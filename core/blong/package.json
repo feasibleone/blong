@@ -20,7 +20,7 @@
         "./types": "./types.ts"
     },
     "scripts": {
-        "build": "heft build --clean;dts-bundle-generator --config dts-gen.config.json",
+        "build": "heft build --clean && node scripts/buildDeclarations.mjs",
         "ci-lint": "blong-dev lint",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
     },

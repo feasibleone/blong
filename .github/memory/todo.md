@@ -77,7 +77,7 @@ open (68)
 - `T-619` · cross-cutting — Schema sync drops constraints the schema no longer declares
 - `T-622` · cross-cutting — The dev MySQL is pinned at its 768Mi limit, which stalls every query
 
-done (21)
+done (22)
 
 - `T-188` · ci — The Storybook leg produces no .ci-report slice
 - `T-352` · ci — Publish a package's non-tap leg failure in the bundle
@@ -100,6 +100,7 @@ done (21)
 - `T-342` · ci — Decide the cache payload shape before landing step 2
 - `T-365` · ci — Carry \*/dist as a per-run artifact in the shared Rush workflow
 - `T-616` · docs — Document the deletion modes
+- `T-641` · ci — Skip the declaration bundle when not publishing
 
 <!-- /memory:index -->
 
@@ -1301,6 +1302,24 @@ patterns/deletion.md (the spec field table, the four behaviours, the scan and it
 the cascade order with a diagram, deactivate, a mode-per-entity table, the testing pattern and a
 file map), linked from both model pages. docs build passes (links resolve) and blong-dev docs verify
 renders every diagram on 106 pages.
+
+### T-641 — Skip the declaration bundle when not publishing
+
+> _2026-11-12 · ci · done_
+
+The framework's build is `heft build --clean; dts-bundle-generator --config dts-gen.config.json` and
+it is the long pole of both deploy jobs: 98.9 s of the artifact job's 238 s build on 2026-11-12
+(run 43207810220). The declaration bundle is 34.7 s of that, measured locally, and nothing in a
+deployed artifact reads it — `dist/types.js` is what the `default` export condition resolves, and
+the `.d.ts` bundle is for npm consumers only.
+
+An artifact build could skip it with a flag the build script honours (an environment variable read
+in a small script rather than `;`-chained in package.json), which saves the same ~35 s twice per
+release. The publish path must keep producing it, so the gate has to default to bundling and the
+deploy workflow set it — and `rush publish`/release-please's own build must not set it.
+
+Deploy jobs set BLONG_SKIP_DTS (build: 40.2 s -> 4.7 s for the framework); the bundle still runs by
+default for the publish pipeline (D-831).
 
 ## Retired
 
