@@ -22,7 +22,13 @@ import type {IPageSource} from './hindsight/hindsightPage.ts';
 import {discoverPages} from './hindsight/hindsightSources.ts';
 import {parseDoc, readDoc} from './memoryParse.ts';
 import {listMemoryFiles} from './memoryPaths.ts';
-import {KIND_BY_PREFIX, REFERENCE, RETIRED_SECTION, type MemoryKind} from './memoryTypes.ts';
+import {
+    ID_PREFIXES,
+    KIND_BY_PREFIX,
+    REFERENCE,
+    RETIRED_SECTION,
+    type MemoryKind,
+} from './memoryTypes.ts';
 
 /** What a reference token names. */
 export type ReferenceTarget =
@@ -321,10 +327,11 @@ function retiredLines(lines: readonly string[]): Array<{text: string; line: numb
     const structure = parseDoc(lines);
     const section = structure.sections.find(candidate => candidate.heading === RETIRED_SECTION);
     if (!section) return [];
+    const ledgerBullet = new RegExp(String.raw`^-\s*[${ID_PREFIXES}]-\d{3}\b`);
     const found: Array<{text: string; line: number}> = [];
     for (let line = section.start + 1; line <= section.end; line += 1) {
         const text = lines[line];
-        if (text !== undefined && /^-\s*[FTD]-\d{3}\b/.test(text.trim())) {
+        if (text !== undefined && ledgerBullet.test(text.trim())) {
             found.push({text: text.trim(), line: line + 1});
         }
     }
@@ -333,11 +340,14 @@ function retiredLines(lines: readonly string[]): Array<{text: string; line: numb
 
 /** `- F-101 — superseded by F-090 (2026-08-01)` → a ledger record. */
 function parseRetiredLine(line: string, file: string, lineNumber: number): IReferenceLedger | null {
-    const match = /^-\s*(?<id>[FTD]-\d{3})\s*—\s*(?<fate>.+)$/.exec(line);
+    const match = new RegExp(
+        String.raw`^-\s*(?<id>[${ID_PREFIXES}]-\d{3})\s*—\s*(?<fate>.+)$`,
+    ).exec(line);
     if (!match?.groups) return null;
     const id = match.groups['id']!;
     const fate = match.groups['fate']!.trim();
-    const successor = /\b(?<id>[FTD]-\d{3})\b/.exec(fate)?.groups?.['id'];
+    const successor = new RegExp(String.raw`\b(?<id>[${ID_PREFIXES}]-\d{3})\b`).exec(fate)
+        ?.groups?.['id'];
     return {id, fate, file, line: lineNumber, ...(successor ? {successor} : {})};
 }
 
@@ -609,7 +619,9 @@ export function isMemoryId(id: string): boolean {
  * why the caller has to handle its absence rather than assume a successor.
  */
 export function successorOf(body: string): string | undefined {
-    return /superseded by `?([FTD]-\d{3})`?/i.exec(body)?.[1];
+    return new RegExp(String.raw`superseded by \`?([${ID_PREFIXES}]-\d{3})\`?`, 'i').exec(
+        body,
+    )?.[1];
 }
 
 /** Levenshtein distance, for telling a renamed anchor from an unrelated one. */

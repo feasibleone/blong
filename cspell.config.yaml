@@ -211,6 +211,7 @@ words:
   - introspects
   - ioredis
   - ivac
+  - Jaccard
   - jobtriger
   - Jost
   - jsonPath

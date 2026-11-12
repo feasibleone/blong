@@ -11,10 +11,26 @@ Memory is kept in markdown files that agents write **through `blong-dev memory`*
 the command owns the ids, the section an entry belongs in, the 100-column wrapping and the generated
 index, and `check` (pre-commit hook and CI) fails on anything it would have to fix.
 
-- **Cross-cutting entries** → `.github/memory/{friction,todo,decision}.md`.
+- **Cross-cutting entries** → `.github/memory/{friction,todo,decision,faq}.md`.
 - **Anything specific to one package** → `<package>/.github/memory/`, with
   `--area <category>/<pkg>`. Choose the package you are working in: if the entry only makes sense
   there, it belongs there. Reserved root areas are `cross-cutting`, `ci`, `docs` and `skills`.
+- **A semantic search is a question, and it is recorded.** `blong-dev memory search "<question>"`
+  writes the text and the identifiers the bank returned into an `faq` entry (`Q-…`), filed under the
+  area its best hit points at, else `cross-cutting`; `--no-record` skips the recording. Once the
+  hits are read, set the answer with
+  `blong-dev memory answer <Q-id> --answer "<prose>" --certainty <0..1|low|medium|high>`: the prose
+  cites `@@F-…` / `@@doc:…` and points at the entry or page that holds the reasoning instead of
+  repeating it, and the certainty says how much the evidence supports. A question asked again
+  updates the entry it matches (`Asked: … ×2`); `memory audit` names the pairs that ask nearly the
+  same thing and `memory merge <keep> <dup>` folds them together.
+- **An FAQ answer is a lead, never the result.** It records what the evidence pointed at, not a fact
+  anything checked, so it must not be reported as settled or used as the top answer of a search.
+  Confirm it with the follow-up effort — read the cited entry, grep the code, run the test — then
+  `blong-dev memory confirm <Q-id> --note "<what checked it>"`; when the check happened while
+  writing, pass `--confirmed "<what checked it>"` to `memory answer`. Otherwise the entry says
+  `Confirmed: no — …` and `memory audit` keeps listing it. If it cannot be confirmed, say so in that
+  note rather than dropping the question, so the next reader knows what would settle it.
 - **Some sessions track the work through a plan.md, not a private checklist.** A plan lives in
   `plans/<slug>/plan.md` (gitignored). Before approval it carries the task detail beside each
   `- [ ] <title> · area: <area>` line; `blong-dev plan init <slug>` then creates one memory todo per
@@ -36,10 +52,11 @@ the same one a bare `memory show <id>` resolves to the package you run it from a
 anywhere else: qualify it as `<id>@<project-folder>` (`@root` for the repository root) to name one.
 When you do not know the words an entry uses, ask for it by meaning:
 `blong-dev memory search "<question>"` — a write also pushes the entries it touched into the local
-Hindsight index, and `blong-dev memory index --semantic` refills it. The `## Manual` section of the
-root `todo.md` is the user's own list: agents never add to it, edit it or tidy it up. If you
-encounter markdown lint issues when using `blong-dev memory`, add blong-dev memory todo to address
-it permanently either by better instructions or improved tooling.
+Hindsight index, and `blong-dev memory index --semantic` refills it. The question itself is recorded
+as an `faq` entry, so answer it once you have read the hits (see above) rather than leaving it open.
+The `## Manual` section of the root `todo.md` is the user's own list: agents never add to it, edit it
+or tidy it up. If you encounter markdown lint issues when using `blong-dev memory`, add blong-dev
+memory todo to address it permanently either by better instructions or improved tooling.
 
 - **Output todo metrics explicitly**. Emit the marker **immediately after the switch/pivot**, before
   during reasoning and right before starting the next task from the list. Emit at least once per

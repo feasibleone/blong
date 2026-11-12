@@ -11,30 +11,42 @@
  * directory, never the entry: root entries carry their own area in the meta line.
  */
 
-/** The three kinds, one file each per scope. */
-export type MemoryKind = 'friction' | 'todo' | 'decision';
+/** The kinds, one file each per scope. */
+export type MemoryKind = 'friction' | 'todo' | 'decision' | 'faq';
 
 /** File name inside `.github/memory/`, per kind. */
 export const KIND_FILE: Record<MemoryKind, string> = {
     friction: 'friction.md',
     todo: 'todo.md',
     decision: 'decision.md',
+    faq: 'faq.md',
 };
 
-/** Id prefix per kind: `F-001`, `T-001`, `D-001`. */
+/** Id prefix per kind: `F-001`, `T-001`, `D-001`, `Q-001`. */
 export const KIND_PREFIX: Record<MemoryKind, string> = {
     friction: 'F',
     todo: 'T',
     decision: 'D',
+    faq: 'Q',
 };
 
-export const MEMORY_KINDS: readonly MemoryKind[] = ['friction', 'todo', 'decision'];
+export const MEMORY_KINDS: readonly MemoryKind[] = ['friction', 'todo', 'decision', 'faq'];
+
+/**
+ * The id prefixes, as one character class: every kind's prefix, in kind order.
+ *
+ * Every pattern that recognises an id — anywhere in the tree, in prose or in the
+ * ledger — is built from this, so a new kind reaches the parser, the scanner and the
+ * linter at once instead of being relearned in six places.
+ */
+export const ID_PREFIXES = Object.values(KIND_PREFIX).join('');
 
 /** Statuses a kind may use, in the order an index lists them. */
 export const KIND_STATUSES: Record<MemoryKind, readonly string[]> = {
     friction: ['open', 'resolved'],
     todo: ['open', 'done'],
     decision: ['active', 'superseded'],
+    faq: ['open', 'answered'],
 };
 
 /**
@@ -48,7 +60,7 @@ export const KIND_STATUSES: Record<MemoryKind, readonly string[]> = {
 export const RETIRED_SECTION = 'Retired';
 
 /** A `## Retired` ledger line: `- F-101 — superseded by F-090 (2026-08-01)`. */
-export const LEDGER_LINE = /^-\s*(?<id>[FTD]-\d{3})\s*—\s*\S/;
+export const LEDGER_LINE = new RegExp(String.raw`^-\s*(?<id>[${ID_PREFIXES}]-\d{3})\s*—\s*\S`);
 
 /** The id a ledger line records, or `null` when the line is not one. */
 export function ledgerIdOf(line: string): string | null {
@@ -60,6 +72,7 @@ export const KIND_SECTIONS: Record<MemoryKind, readonly string[]> = {
     friction: ['Open', 'Resolved', RETIRED_SECTION],
     todo: ['Manual', 'Open', 'Done', RETIRED_SECTION],
     decision: ['Active', 'Superseded', RETIRED_SECTION],
+    faq: ['Open', 'Answered', RETIRED_SECTION],
 };
 
 /** Sections a freshly created file starts with. */
@@ -67,6 +80,7 @@ export const SKELETON_SECTIONS: Record<MemoryKind, readonly string[]> = {
     friction: ['Open', 'Resolved'],
     todo: ['Open'],
     decision: ['Active', 'Superseded'],
+    faq: ['Open', 'Answered'],
 };
 
 /** The section a status belongs in. */
@@ -76,6 +90,7 @@ export const SECTION_FOR_STATUS: Record<string, string> = {
     done: 'Done',
     active: 'Active',
     superseded: 'Superseded',
+    answered: 'Answered',
 };
 
 /** The status a section implies. */
@@ -85,6 +100,7 @@ export const STATUS_FOR_SECTION: Record<string, string> = {
     Done: 'done',
     Active: 'active',
     Superseded: 'superseded',
+    Answered: 'answered',
 };
 
 /** The default status a new entry gets. */
@@ -92,6 +108,7 @@ export const DEFAULT_STATUS: Record<MemoryKind, string> = {
     friction: 'open',
     todo: 'open',
     decision: 'active',
+    faq: 'open',
 };
 
 /** H1 of a scope's file, per kind. */
@@ -99,6 +116,7 @@ export const KIND_TITLE: Record<MemoryKind, string> = {
     friction: 'Frictions',
     todo: 'Todo',
     decision: 'Decisions',
+    faq: 'FAQ',
 };
 
 /** The sentence that opens a fresh file. */
@@ -107,18 +125,11 @@ export const KIND_PURPOSE: Record<MemoryKind, string> = {
         'Things that took unexpected effort to implement or fix, and the lesson that came out of them.',
     todo: 'Work that is deferred, unfinished, or spotted and not done yet.',
     decision: 'Decisions that were taken, with the reasoning the code does not show.',
+    faq: 'Questions asked of the semantic index, the answer found and the evidence behind it.',
 };
 
 /** Cross-cutting areas that live in the root files. */
 export const RESERVED_AREAS: readonly string[] = ['cross-cutting', 'ci', 'docs', 'skills'];
-
-/**
- * The section that records a closed or pruned id so its number is never reused.
- *
- * A `## Retired` bullet (`- F-101 — superseded by F-090 (2026-08-01)`) keeps the id
- * resolvable after its entry is gone: a stale reference is a warning that names its
- * successor, not a mystery. Ids are allocated from the highest number in the entries
- * *and* the ledger, so a closed entry's number does not come back.
 
 /** Prose is hard-wrapped here, matching the repository's prettier `printWidth`. */
 export const MAX_LINE_LENGTH = 100;
@@ -141,10 +152,11 @@ export const KIND_BY_PREFIX: Record<string, MemoryKind> = {
     F: 'friction',
     T: 'todo',
     D: 'decision',
+    Q: 'faq',
 };
 
 /** Any memory id mentioned in prose. */
-export const ID_REFERENCE = /\b[FTD]-\d{3}\b/g;
+export const ID_REFERENCE = new RegExp(String.raw`\b[${ID_PREFIXES}]-\d{3}\b`, 'g');
 
 /**
  * A cross-reference token written outside a memory file: `@@F-014`, an entry id;
@@ -157,11 +169,13 @@ export const ID_REFERENCE = /\b[FTD]-\d{3}\b/g;
  * (`@@F-014@root`) is not part of a reference — that form is the CLI's own addressing; an id that
  * two files hold is an error a `memory renumber` fixes.
  */
-export const REFERENCE =
-    /@@(?:(?<id>[FTD]-\d{3})|doc:(?<docTier>[a-z0-9-]+)\/(?<docName>[a-z0-9.-]+)(?:#(?<docAnchor>[a-z0-9-]+))?|skill:(?<skillName>[a-z0-9-]+)(?:#(?<skillAnchor>[a-z0-9-]+))?)/g;
+export const REFERENCE = new RegExp(
+    String.raw`@@(?:(?<id>[${ID_PREFIXES}]-\d{3})|doc:(?<docTier>[a-z0-9-]+)\/(?<docName>[a-z0-9.-]+)(?:#(?<docAnchor>[a-z0-9-]+))?|skill:(?<skillName>[a-z0-9-]+)(?:#(?<skillAnchor>[a-z0-9-]+))?)`,
+    'g',
+);
 
 /** A line-number reference to a memory file — forbidden, they rot. */
-export const LINE_REFERENCE = /\b(?:friction|todo|decision)\.md\s+(?:line\s+)?L\d+\b/i;
+export const LINE_REFERENCE = /\b(?:friction|todo|decision|faq)\.md\s+(?:line\s+)?L\d+\b/i;
 
 /** An entry as stored in a file. */
 export interface IMemoryEntry {

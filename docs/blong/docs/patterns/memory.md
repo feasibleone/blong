@@ -1,7 +1,7 @@
 # Memory files
 
-How to add, correct, find and verify the repository's frictions, todos and decisions. For what they
-are, see the [concept overview](../concepts/memory).
+How to add, correct, find and verify the repository's frictions, todos, decisions and questions. For
+what they are, see the [concept overview](../concepts/memory).
 
 ## Where the files live
 
@@ -10,9 +10,9 @@ are, see the [concept overview](../concepts/memory).
 | Root (cross-cutting, `ci`, `docs`, `skills`) | `<repo>/.github/memory/<kind>.md`                 |
 | Package                                      | `<repo>/<projectFolder>/.github/memory/<kind>.md` |
 
-`<kind>` is `friction`, `todo` or `decision`. A package file starts with the entries that belong to
-that package; anything cross-cutting belongs in the root file, and `memory check` warns when a root
-file holds a package entry.
+`<kind>` is `friction`, `todo`, `decision` or `faq`. A package file starts with the entries that
+belong to that package; anything cross-cutting belongs in the root file, and `memory check` warns
+when a root file holds a package entry.
 
 ## The shape of an entry
 
@@ -56,10 +56,11 @@ defaults (today, and the first status of the kind).
 `move` is how an entry reaches the package that owns it: `--area realm/blong-agent` writes it into
 that package's file, removes it from the one that held it, refreshes both indexes and pushes it back
 into the Hindsight index — and the id travels with the entry, so a reference in the source keeps
-resolving. The ids are a comma list, because misfiled entries arrive in batches: a plan imported into
-the root scope leaves thirty there at once, and a package that grew out of the root is named by every
-entry about it. One id that does not resolve is reported and the rest still move, and the run exits
-non-zero, so a partial move is visible rather than an all-or-nothing run that stops on the first typo.
+resolving. The ids are a comma list, because misfiled entries arrive in batches: a plan imported
+into the root scope leaves thirty there at once, and a package that grew out of the root is named by
+every entry about it. One id that does not resolve is reported and the rest still move, and the run
+exits non-zero, so a partial move is visible rather than an all-or-nothing run that stops on the
+first typo.
 
 `close` keeps the entry, whatever the kind: the reasoning outlives the status, and the id is never
 reused. A friction becomes `resolved`, a todo `done`, a decision `superseded` by the successor its
@@ -192,6 +193,101 @@ anyone re-measuring; the numbers are in `plans/memory-index/embedding-model-comp
 One bank means one embedding model for everything in it: the entries, the documentation pages and
 the skills are chunked and embedded by the same settings, so a query compares them on equal terms.
 The width is fixed by the first write, which is why the model is chosen once, at the script.
+
+## Questions and answers
+
+A semantic search is a question, and the answer to it is the expensive part: someone reads the hits
+and decides what they mean. `search` therefore records the question it asked — the text, the
+identifiers the bank returned, and the area its best hit points at — as an entry in `faq.md`, so the
+same question is answered once rather than from scratch every week.
+
+```bash
+blong-dev memory search "why does the index go stale after a move"
+# question Q-012 · core/blong-browser — recorded in core/blong-browser/.github/memory/faq.md
+blong-dev memory answer Q-012 --answer "See @@doc:patterns/memory#adding-and-correcting-entries." \
+    --certainty high
+blong-dev memory search "…" --no-record      # a lookup that should leave no trace
+```
+
+A question is filed under the area its best hit names, else `cross-cutting`. Asking the same thing
+again — including a rephrasing, since `move`, `moves` and `moving` compare as one word — updates the
+entry it matches instead of adding a second one: the `Asked:` line counts how often it was asked at
+the latest date, and the new result set is folded into the evidence. The answer already on an entry
+is never touched by a later search.
+
+The answer is prose that **points at** its evidence, plus the certainty it is held with:
+
+```markdown
+### Q-012 — Why does the index go stale after a move?
+
+> _2026-11-12 · core/blong-browser · answered_
+
+Asked: 2026-11-13 ×2 — "why does the index go stale after a move"
+
+Answer: The index block is derived from the parsed lines, so a move that splices them leaves the old
+block in place; see @@doc:patterns/memory#adding-and-correcting-entries.
+
+Evidence: @@F-316 (0.742) @@doc:patterns/memory (0.611)
+
+Certainty: 0.85 — the entry and the page agree; the fix itself is untested
+
+Confirmed: no — not checked yet by analysis or a run
+```
+
+- The `Evidence:` line is what the bank returned: entry ids as `@@F-…`, pages as `@@doc:…`, skills
+  as `@@skill:…`. Those are references like any other, so `refs --dangling` fails when a question
+  points at an entry that was pruned or renumbered.
+- The answer may not merely repeat what it cites: `check` refuses an answered question whose answer
+  carries no `@@` reference, and warns past 120 words. A question no search recorded has no
+  `Evidence:` line — `memory add faq --title "…"` writes one — and may be answered freely.
+- `--certainty` takes `0`–`1`, or `low` (0.3), `medium` (0.6) and `high` (0.85); `--note` is what
+  the score rests on. `close` does not apply to a question: it is `answered`, or `retire`d when it
+  will not be.
+
+### An answer is a lead, not a verdict
+
+An FAQ answer must **never** be treated as the authoritative result of a search. The bank ranks a
+`Q-…` entry like any other document, so it will surface as a top hit — but a question that was
+answered is the record of what someone concluded from a result set, not a fact the repository
+checked. Read it as the first thing to verify.
+
+Most answers therefore need a second pass: open the entry or page the answer cites, grep the code
+that the conclusion is about, or run the test that would fail if it were wrong. Only that pass turns
+an answer into something a later reader can rely on:
+
+```bash
+blong-dev memory answer Q-012 --answer "…" --certainty high    # written as a lead
+# …the check happens: the entry is read, the command is run…
+blong-dev memory confirm Q-012 --note "reproduced with blong-dev memory index; the block is derived"
+```
+
+Until then the entry says so itself. Every answered question carries a `Confirmed:` line, and
+`memory answer` writes `no` unless `--confirmed` says the check already happened — so a reader who
+finds an answer in a search sees, in the entry, that nothing has checked it. `audit` lists every
+answered-but-unconfirmed question with the `confirm` command that closes it, and `check` refuses an
+answered question with no `Confirmed:` line at all.
+
+An answer that could not be confirmed is left that way rather than deleted: it still records what
+the evidence pointed to, and the `Confirmed: no — …` note says what would settle it. The
+`--confirmed` value on `memory answer`, or the note on `memory confirm`, is where the method goes —
+"confirmed" with no method is one more claim nobody can weigh.
+
+### Merging duplicates
+
+Two questions that ask the same thing are one answer written twice, and the second drifts from the
+first. `audit` names the pairs whose wording overlaps enough to be one question, with the command
+that settles it, and `check` warns on a duplicate inside one file:
+
+```bash
+blong-dev memory audit
+# Q-004 and Q-011 ask nearly the same question (0.71) — merge them: blong-dev memory merge Q-004 Q-011
+blong-dev memory merge Q-004 Q-011 --reason "asked twice in one session"
+```
+
+The kept entry absorbs the others' `Asked:` lines and evidence, and takes an answer from a duplicate
+when it has none of its own. Each duplicate leaves its id in its file's `## Retired` ledger, naming
+the survivor as its successor — so a citation of the merged id becomes a warning that says where the
+reasoning went.
 
 ## Writing a batch (migration, or an agent's work)
 

@@ -20,7 +20,7 @@
  * fallback.
  *
  * Usage:
- *   blong-dev memory add <friction|todo|decision> --title <title> [--area <area>]
+ *   blong-dev memory add <friction|todo|decision|faq> --title <title> [--area <area>]
  *                        [--body <text> | --body-file <file>] [--status <status>] [--id <id>]
  *                        [--plan <file|slug>]
  *   blong-dev memory list [--kind <kind>] [--area <area>] [--status <status>] [--search <text>] [--json]
@@ -33,7 +33,11 @@
  *   blong-dev memory index [--check] [--files a.md,b.md] [--semantic] [--dry-run]
  *                        [--sources entry,docs,skill] [--stats] [--prune]
  *   blong-dev memory search <query> [--source entry|docs|skill] [--kind <kind>] [--area <area>]
- *                             [--status <status>] [--limit <n>] [--json]
+ *                             [--status <status>] [--limit <n>] [--no-record] [--json]
+ *   blong-dev memory answer <id|id@scope> --answer <text>|--answer-file <file> --certainty <n|low|medium|high>
+ *                             [--note <text>] [--confirmed [<what checked it>]]
+ *   blong-dev memory confirm <id|id@scope> [--note <what confirmed it>]
+ *   blong-dev memory merge <keep> <id|id@scope>[,<id>…] [--reason <text>]
  *   blong-dev memory format [--check] [--files a.md,b.md]
  *   blong-dev memory check [--files a.md,b.md] [--json] [--no-spell]
  *   blong-dev memory manual <list|add <text>|done <n|text>>
@@ -69,6 +73,7 @@ import {
     BACKFILL_BATCH_SIZE,
     BACKFILL_TIMEOUT_MS,
     type IHindsightDocumentRef,
+    type IHindsightHit,
     type IHindsightStore,
 } from '../memory/hindsight/hindsightStore.ts';
 import {addMemoryEntry, migrationProblem} from '../memory/memoryAdd.ts';
@@ -98,6 +103,18 @@ import {
     skeleton,
     writeDoc,
 } from '../memory/memoryEdit.ts';
+import {
+    DUPLICATE_SIMILARITY,
+    answerQuestion,
+    confirmQuestion,
+    mergeFaqEntries,
+    parseFaqBody,
+    questionBody,
+    questionSimilarity,
+    recordQuestion,
+    type IEntryLocation,
+    type IRecordedQuestion,
+} from '../memory/memoryFaq.ts';
 import {formatLines, renderLines, wrapText} from '../memory/memoryFormat.ts';
 import {duplicateEntries, mergePlans, parseImport} from '../memory/memoryImport.ts';
 import {
@@ -129,6 +146,8 @@ import {
 import {parseId, resolveId, scopeForCwd, type IIdHit} from '../memory/memoryResolve.ts';
 import {
     ENTRY_HEADING,
+    ID_PREFIXES,
+    ID_REFERENCE,
     KIND_PREFIX,
     KIND_STATUSES,
     LEDGER_LINE,
@@ -150,7 +169,7 @@ import {parseArgs} from './log.ts';
 import {resolvePlanFile} from './plan.ts';
 
 const USAGE = [
-    'blong-dev memory add <friction|todo|decision> --title <title> [--area <area>] [--body <text>]',
+    'blong-dev memory add <friction|todo|decision|faq> --title <title> [--area <area>] [--body <text>]',
     '                        [--plan <file|slug>]   (decision and friction only; lists it on the plan)',
     'blong-dev memory list [--kind <kind>] [--area <area>] [--status <status>] [--search <text>] [--json]',
     'blong-dev memory show <id|id@scope> [--json]',
@@ -163,7 +182,10 @@ const USAGE = [
     'blong-dev memory move <id> --area <area>',
     'blong-dev memory index|format|check [--files a.md,b.md]',
     'blong-dev memory index --semantic [--sources entry,docs,skill] [--dry-run] [--stats] [--prune]',
-    'blong-dev memory search <query> [--source entry|docs|skill] [--kind <kind>] [--area <area>] [--limit <n>] [--json]',
+    'blong-dev memory search <query> [--source entry|docs|skill] [--kind <kind>] [--area <area>] [--limit <n>] [--no-record] [--json]',
+    'blong-dev memory answer <id|id@scope> --answer <text> [--answer-file <file>] [--certainty <n|low|medium|high>] [--note <text>] [--confirmed [<what checked it>]]',
+    'blong-dev memory confirm <id|id@scope> [--note <what confirmed it>]',
+    'blong-dev memory merge <keep> <id|id@scope>[,<id>…] [--reason <text>]',
     'blong-dev memory manual <list|add <text>|done <n|text>>',
     'blong-dev memory audit [--json]',
     'blong-dev memory refs [<id|doc:page|skill:name>…] [--dangling] [--sites] [--changed] [--fix-anchors] [--fix-superseded] [--summary] [--json]',
@@ -183,6 +205,8 @@ const KIND_ALIAS: Record<string, MemoryKind> = {
     todo: 'todo',
     d: 'decision',
     decision: 'decision',
+    q: 'faq',
+    faq: 'faq',
 };
 
 /** Legacy topic prefixes that name a reserved area or a package, not a title. */
@@ -449,27 +473,41 @@ function tickPlan(root: string, id: string, checked: boolean, plan?: string): vo
 
 async function add(root: string, args: string[], options: Options): Promise<void> {
     const kind = kindOf(args[0]);
-    if (!kind) fail('memory add needs a kind: friction, todo or decision');
+    if (!kind) fail('memory add needs a kind: friction, todo, decision or faq');
     const planArgument = options.get('plan')?.trim();
     // The work breakdown is where a todo belongs, and `plan tasks`/`plan adopt` are what write one
-    // there; a todo listed beside the decisions would be work the board does not tick.
+    // there; a todo listed beside the decisions would be work the board does not tick. A question is
+    // not work at all, so it belongs on no plan either.
     if (planArgument && kind === 'todo') {
         fail('a todo is not listed on a plan — put it in the work breakdown (`plan adopt`)');
+    }
+    if (planArgument && kind === 'faq') {
+        fail('a question is not listed on a plan — only a decision or a friction is');
     }
 
     const title = (options.get('title') ?? args.slice(1).join(' ')).trim();
     if (!title) fail('memory add needs --title <title>');
+    const date = options.get('date')?.trim() || today();
+    const supplied = bodyFromOptions(options);
+    // A question is asked, not authored: an faq entry gets the recorded shape, so the
+    // file never holds two shapes of the same entry and `check` accepts what `add` wrote.
+    const body = supplied.length > 0 || kind !== 'faq' ? supplied : questionBody(title, date);
     const result = await addMemoryEntry(root, {
         kind,
         title,
         area: options.get('area'),
         status: options.get('status'),
         id: options.get('id'),
-        date: options.get('date'),
-        body: bodyFromOptions(options),
+        date,
+        body,
     });
     process.stdout.write(`# ${result.id} ${result.status} · ${result.area}\n`);
     process.stdout.write(`# ${result.path}\n`);
+    if (kind === 'faq' && result.status === 'open') {
+        process.stdout.write(
+            `# answer it with: blong-dev memory answer ${result.id} --answer "…" --certainty 0.7\n`,
+        );
+    }
     if (planArgument) {
         listOnPlan(root, planArgument, {
             id: result.id,
@@ -613,6 +651,14 @@ async function close(
     const {doc, entry} = found;
     const note = options.get('note');
     assertMigrated(doc);
+    if (doc.kind === 'faq') {
+        // A question has two ends and neither is "done": it is `answered` with the prose and
+        // certainty the command asks for, or `retired` when it will not be answered.
+        fail(
+            'a question is closed by `memory answer <id> --answer <text> --certainty <n>` — ' +
+                'or retired with `memory retire <id>` when it will not be answered',
+        );
+    }
 
     const additions: Array<readonly string[]> = [];
     let status = doc.kind === 'friction' ? 'resolved' : 'done';
@@ -1058,7 +1104,12 @@ function describeOrphan(orphan: IHindsightDocumentRef): string {
  * fails loudly: an unreachable server is an error naming the URL and how to start
  * it, never an empty result set that reads as "nothing matched".
  */
-async function search(args: string[], options: Options, flags: Set<string>): Promise<void> {
+async function search(
+    root: string,
+    args: string[],
+    options: Options,
+    flags: Set<string>,
+): Promise<void> {
     const query = args.join(' ').trim();
     if (!query) {
         fail(
@@ -1129,10 +1180,22 @@ async function search(args: string[], options: Options, flags: Set<string>): Pro
         return;
     }
 
+    // A search is a question, and the answer to it is the expensive part: recording it means
+    // the next reader finds what the bank returned here, and the answer written against it.
+    const recorded = flags.has('no-record')
+        ? null
+        : await recordSearch(root, query, outcome.hits, options.get('area'));
+
     if (flags.has('json')) {
         process.stdout.write(
             `${JSON.stringify(
-                {query, bank: config.bank, url: config.url, results: outcome.hits},
+                {
+                    query,
+                    bank: config.bank,
+                    url: config.url,
+                    question: recorded,
+                    results: outcome.hits,
+                },
                 null,
                 2,
             )}\n`,
@@ -1145,6 +1208,185 @@ async function search(args: string[], options: Options, flags: Set<string>): Pro
         url: config.url,
     });
     process.stdout.write(`${lines.join('\n')}\n`);
+    if (recorded) process.stdout.write(recordedQuestionLines(recorded));
+}
+
+/**
+ * Record the question a search asked, without letting the record fail the search.
+ *
+ * The recall already succeeded, so the results are printed whatever happens here; a
+ * question that could not be written says why on stderr, which is the same rule the
+ * semantic write hook follows.
+ */
+async function recordSearch(
+    root: string,
+    query: string,
+    hits: readonly IHindsightHit[],
+    area: string | undefined,
+): Promise<IRecordedQuestion | null> {
+    try {
+        return await recordQuestion(root, {query, hits, ...(area ? {area} : {}), date: today()});
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`blong-dev: the question was not recorded — ${reason}\n`);
+        return null;
+    }
+}
+
+/** What a search recorded, in the form the next command can be copied from. */
+function recordedQuestionLines(question: IRecordedQuestion): string {
+    const what = question.created
+        ? `recorded in ${question.path}`
+        : `already asked ${question.asked} times — evidence refreshed`;
+    const lines = [`# question ${question.id} · ${question.area} — ${what}`];
+    lines.push(
+        question.status === 'open'
+            ? `# answer it with: blong-dev memory answer ${question.id} --answer "…" --certainty 0.7\n`
+            : `# it is ${question.status} — read it with: blong-dev memory show ${question.id}\n`,
+    );
+    return lines.join('\n');
+}
+
+/** A certainty word as the score it stands for, or `null` when the value is neither. */
+function certaintyOf(value: string | undefined): number | null {
+    if (!value?.trim()) return null;
+    const words: Record<string, number> = {low: 0.3, medium: 0.6, high: 0.85};
+    const word = words[value.trim().toLowerCase()];
+    if (word !== undefined) return word;
+    const score = Number(value);
+    return Number.isFinite(score) && score >= 0 && score <= 1 ? score : null;
+}
+
+/** Where a located entry lives, for the FAQ module, which re-reads it from disk. */
+function locationOf(found: {doc: IMemoryDoc; entry: IMemoryEntry}): IEntryLocation {
+    return {path: found.doc.path, kind: found.doc.kind, scope: found.doc.scope, id: found.entry.id};
+}
+
+/**
+ * Set the answer of a recorded question.
+ *
+ * The answer is a pointer, not a copy: it names the entries and pages that hold the
+ * reasoning, and says how much certainty the reader should place in it. `--certainty`
+ * takes a number between 0 and 1, or `low`/`medium`/`high` for the three scores most
+ * answers actually are; `--note` is what the score rests on.
+ *
+ * The answer is written **unconfirmed** unless `--confirmed` says the follow-up work has
+ * already happened. A conclusion read out of a result set is a lead, so the entry says so until
+ * something checks it — `memory confirm` records that, with what did the checking.
+ */
+async function answer(
+    root: string,
+    id: string | undefined,
+    options: Options,
+    flags: Set<string>,
+): Promise<void> {
+    if (!id) {
+        fail(
+            'memory answer <id> --answer <text>|--answer-file <file> ' +
+                '--certainty <0..1|low|medium|high>',
+        );
+    }
+    const found = findEntry(root, id);
+    if (!found) fail(`no entry with id ${id}`);
+    if (found.doc.kind !== 'faq') {
+        fail(`${found.entry.id} is a ${found.doc.kind} entry — only a question is answered`);
+    }
+
+    const file = options.get('answer-file');
+    const text = file ? readFileSync(resolve(file.trim()), 'utf8') : options.get('answer');
+    if (!text?.trim()) fail('memory answer needs --answer <text> or --answer-file <file>');
+    const certainty = certaintyOf(options.get('certainty'));
+    if (certainty === null) {
+        fail('memory answer needs --certainty <0..1>, or low, medium, high');
+    }
+
+    // `--confirmed` alone says the answer was checked; `--confirmed "what checked it"` also records
+    // the method, which is the part a later reader can weigh.
+    const confirmedBy = options.get('confirmed');
+    const confirmed = flags.has('confirmed') || confirmedBy !== undefined;
+
+    const result = await answerQuestion(root, locationOf(found), {
+        answer: bodyLines(text),
+        certainty,
+        rationale: bodyLines(options.get('note') ?? ''),
+        confirmed,
+        ...(confirmedBy ? {confirmation: bodyLines(confirmedBy)} : {}),
+    });
+    process.stdout.write(
+        `# ${result.id} answered · certainty ${certainty.toFixed(2)} · ` +
+            `${result.confirmed ? 'confirmed' : 'not confirmed'} · ${result.path}\n`,
+    );
+    if (result.citations === 0) {
+        process.stdout.write(
+            '# the answer cites nothing — point it at the entry or page that holds the reasoning\n',
+        );
+    }
+    if (!result.confirmed) {
+        process.stdout.write(
+            '# it is a lead until something checks it — read the evidence or run it, then:\n' +
+                `#   blong-dev memory confirm ${result.id} --note "what confirmed it"\n`,
+        );
+    }
+}
+
+/**
+ * Record that follow-up work confirmed an answer.
+ *
+ * An answer is a lead, and the entry says `Confirmed: no` until something checks it — the cited
+ * entry read, the code grepped, the test run. This is that record, and `--note` is what did the
+ * checking: "confirmed" with no method is one more claim nobody can weigh.
+ */
+async function confirm(root: string, id: string | undefined, options: Options): Promise<void> {
+    if (!id) fail('memory confirm <Q-id> [--note <what confirmed it>]');
+    const found = findEntry(root, id);
+    if (!found) fail(`no entry with id ${id}`);
+    if (found.doc.kind !== 'faq') {
+        fail(`${found.entry.id} is a ${found.doc.kind} entry — only a question is confirmed`);
+    }
+
+    const result = await confirmQuestion(
+        root,
+        locationOf(found),
+        bodyLines(options.get('note') ?? ''),
+    );
+    process.stdout.write(
+        result.already
+            ? `# ${result.id} was already confirmed · ${result.path}\n`
+            : `# ${result.id} confirmed · ${result.path}\n`,
+    );
+}
+
+/**
+ * Fold duplicate questions into one entry.
+ *
+ * Duplicates arrive from two directions: the same person asking in different words, and
+ * an agent rephrasing a question it did not see an entry for. `audit` names the pairs it
+ * suspects; this is what acts on them, keeping one entry and leaving the others' ids in
+ * the ledger pointing at it.
+ */
+async function merge(root: string, args: string[], options: Options): Promise<void> {
+    const keepId = args[0];
+    const others = args
+        .slice(1)
+        .flatMap(value => value.split(','))
+        .map(value => value.trim())
+        .filter(Boolean);
+    if (!keepId || others.length === 0) fail('memory merge <keep> <id|id@scope>[,<id>…]');
+    const keep = findEntry(root, keepId);
+    if (!keep) fail(`no entry with id ${keepId}`);
+    const duplicates = others.map(value => {
+        const found = findEntry(root, value);
+        if (!found) fail(`no entry with id ${value}`);
+        return found;
+    });
+
+    const result = await mergeFaqEntries(root, locationOf(keep), duplicates.map(locationOf), {
+        date: today(),
+        ...(options.get('reason') ? {reason: options.get('reason')!} : {}),
+    });
+    process.stdout.write(
+        `# ${result.merged.join(', ')} merged into ${result.keepId} · ${result.path}\n`,
+    );
 }
 
 function format(root: string, options: Options, flags: Set<string>): void {
@@ -1463,6 +1705,9 @@ function migrate(root: string, args: string[], options: Options, flags: Set<stri
     if (!existsSync(path)) fail(`no such file: ${path}`);
     const kind = options.get('kind') ? kindOf(options.get('kind')) : null;
     if (!kind) fail('memory migrate needs --kind friction|todo|decision');
+    if (kind === 'faq') {
+        fail('faq entries are recorded by `memory search` — there is no legacy shape to migrate');
+    }
 
     const described = describeFile(root, path);
     const scope = described?.scope ?? 'root';
@@ -1588,7 +1833,9 @@ function migrate(root: string, args: string[], options: Options, flags: Set<stri
 async function renumber(root: string, id: string | undefined, options: Options): Promise<void> {
     if (!id) fail('memory renumber <id|id@scope> --to <id>');
     const to = options.get('to')?.trim().toUpperCase();
-    if (!to || !/^[FTD]-\d{3}$/.test(to)) fail('memory renumber needs --to <F-000>-style id');
+    if (!to || !new RegExp(String.raw`^[${ID_PREFIXES}]-\d{3}$`).test(to)) {
+        fail('memory renumber needs --to <F-000>-style id');
+    }
     const found = findEntry(root, id);
     if (!found) fail(`no entry with id ${id}`);
     const {doc, entry} = found;
@@ -2382,7 +2629,7 @@ function memoryIdTrouble(
             if (fenced) return;
             if (ENTRY_HEADING.test(line) || LEDGER_LINE.test(trimmed)) return;
             const prose = line.replace(/`[^`]*`/g, match => ' '.repeat(match.length));
-            for (const match of prose.matchAll(/\b[FTD]-\d{3}\b/g)) {
+            for (const match of prose.matchAll(ID_REFERENCE)) {
                 if (!known.has(match[0]))
                     dangling.push({file: relative(root, doc.path), line: index + 1, id: match[0]});
             }
@@ -2406,9 +2653,42 @@ function audit(root: string, options: Options, flags: Set<string>): void {
         .filter(({entry}) => entry.meta?.status === 'open' && daysSince(entry.meta.date) > 90)
         .map(({entry}) => ({id: entry.id, date: entry.meta!.date, title: entry.title}));
 
+    // A question asked twice in different words is two entries answering the same thing, and the
+    // second answer drifts from the first. `merge` is the one command that settles it, so the pair
+    // is reported with the command that resolves it rather than as a count.
+    const questions = entries.filter(({doc}) => doc.kind === 'faq');
+    const nearDuplicates: Array<{ids: string[]; similarity: number}> = [];
+    for (let left = 0; left < questions.length; left += 1) {
+        for (let right = left + 1; right < questions.length; right += 1) {
+            const similarity = questionSimilarity(
+                questions[left]!.entry.title,
+                questions[right]!.entry.title,
+            );
+            if (similarity >= DUPLICATE_SIMILARITY) {
+                nearDuplicates.push({
+                    ids: [questions[left]!.entry.id, questions[right]!.entry.id],
+                    similarity,
+                });
+            }
+        }
+    }
+    const unanswered = questions
+        .filter(({entry}) => entry.meta?.status === 'open')
+        .map(({entry}) => ({id: entry.id, title: entry.title}));
+    // An answer is a lead until follow-up work confirms it, and the entry says which. Those still
+    // unconfirmed are the conclusions a reader may be relying on without anything behind them.
+    const unconfirmed = questions
+        .filter(({entry}) => entry.meta?.status === 'answered')
+        .filter(({entry}) => parseFaqBody(entry.body).confirmed !== true)
+        .map(({entry}) => ({id: entry.id, title: entry.title}));
+
     if (flags.has('json')) {
         process.stdout.write(
-            `${JSON.stringify({dangling, ambiguous, duplicates, stale}, null, 2)}\n`,
+            `${JSON.stringify(
+                {dangling, ambiguous, duplicates, stale, unanswered, unconfirmed, nearDuplicates},
+                null,
+                2,
+            )}\n`,
         );
         return;
     }
@@ -2428,9 +2708,27 @@ function audit(root: string, options: Options, flags: Set<string>): void {
             `# ${item.id} open for ${daysSince(item.date)} days — ${item.title}\n`,
         );
     }
+    for (const item of unanswered) {
+        process.stdout.write(`# ${item.id} is unanswered — ${item.title}\n`);
+    }
+    for (const item of unconfirmed) {
+        process.stdout.write(
+            `# ${item.id} is answered but unconfirmed — ${item.title} — check it, then: ` +
+                `blong-dev memory confirm ${item.id} --note "what confirmed it"\n`,
+        );
+    }
+    for (const item of nearDuplicates) {
+        process.stdout.write(
+            `# ${item.ids[0]} and ${item.ids[1]} ask nearly the same question ` +
+                `(${item.similarity.toFixed(2)}) — merge them: ` +
+                `blong-dev memory merge ${item.ids[0]} ${item.ids[1]}\n`,
+        );
+    }
     process.stdout.write(
         `# memory audit: ${dangling.length} dangling reference(s), ${ambiguous.length} ambiguous id(s), ` +
-            `${duplicates.length} duplicate title(s), ${stale.length} open older than 90 days\n`,
+            `${duplicates.length} duplicate title(s), ${stale.length} open older than 90 days, ` +
+            `${unanswered.length} unanswered question(s), ${unconfirmed.length} unconfirmed answer(s), ` +
+            `${nearDuplicates.length} near-duplicate pair(s)\n`,
     );
     // A citation nothing resolves is a broken promise, not a note: the entry it points at was
     // renamed, pruned or never written, and a reader who follows it learns nothing.
@@ -2473,7 +2771,13 @@ export async function memory(args: string[]): Promise<void> {
             case 'index':
                 return await index(root, options, flags);
             case 'search':
-                return await search(positionals.slice(1), options, flags);
+                return await search(root, positionals.slice(1), options, flags);
+            case 'answer':
+                return await answer(root, positionals[1], options, flags);
+            case 'confirm':
+                return await confirm(root, positionals[1], options);
+            case 'merge':
+                return await merge(root, positionals.slice(1), options);
             case 'format':
                 return format(root, options, flags);
             case 'check':

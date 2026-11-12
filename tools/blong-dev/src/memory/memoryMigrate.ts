@@ -37,6 +37,7 @@ const DEFAULT_STATUS: Record<MemoryKind, string> = {
     friction: 'open',
     todo: 'open',
     decision: 'active',
+    faq: 'open',
 };
 
 /** Legacy section headings that already name a status, most specific first. */

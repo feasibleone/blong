@@ -146,6 +146,14 @@ export function parseImport(source: string, text: string, options: IImportOption
             `${source}: "manual" only applies to todo batches (this one is ${plan.kind})`,
         );
     }
+    // A question is recorded, not authored: its body carries the search text, the evidence and the
+    // certainty that `memory search` and `memory answer` own, and a batch that wrote plain prose
+    // would produce an entry the checker refuses.
+    if (plan.kind === 'faq') {
+        plan.problems.push(
+            `${source}: faq entries are recorded by \`memory search\` — a batch cannot write one`,
+        );
+    }
     return plan;
 }
 
@@ -212,7 +220,9 @@ export function duplicateEntries(
         const key = entryKey(entry.title, entry.body);
         const first = seen.get(key);
         if (first !== undefined) {
-            problems.push(`entry ${index + 1}: repeats entry ${first + 1} of this batch — "${entry.title}"`);
+            problems.push(
+                `entry ${index + 1}: repeats entry ${first + 1} of this batch — "${entry.title}"`,
+            );
             return;
         }
         seen.set(key, index);

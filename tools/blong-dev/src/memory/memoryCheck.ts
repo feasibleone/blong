@@ -7,6 +7,7 @@
  * wrapper can fix. Spelling is checked separately, by cspell, from the command.
  */
 
+import {DUPLICATE_SIMILARITY, citationsIn, parseFaqBody, questionSimilarity} from './memoryFaq.ts';
 import {indexIsCurrent} from './memoryIndex.ts';
 import {checkMarkdown} from './memoryMarkdown.ts';
 import {parseDoc} from './memoryParse.ts';
@@ -23,6 +24,7 @@ import {
     SECTION_FOR_STATUS,
     ledgerIdOf,
     type IMemoryDoc,
+    type IMemoryStructure,
 } from './memoryTypes.ts';
 
 export interface IProblem {
@@ -41,6 +43,9 @@ export interface ICheckContext {
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Longest answer, in words, before it is a copy of the evidence rather than a pointer to it. */
+const MAX_ANSWER_WORDS = 120;
 
 /** True when the line must stay on one line: fences, tables, headings, comments. */
 function mustStayOnOneLine(line: string): boolean {
@@ -127,6 +132,8 @@ export function checkDoc(doc: IMemoryDoc, context: ICheckContext): IProblem[] {
         }
     }
 
+    if (doc.kind === 'faq') reportQuestions(structure, report);
+
     // The retired ledger: each line names an id once, and no id is both an entry and a
     // retired id in the same file — a number either belongs to an entry or it does not.
     const ledger = new Map<string, number>();
@@ -189,6 +196,99 @@ export function checkDoc(doc: IMemoryDoc, context: ICheckContext): IProblem[] {
     }
 
     return problems;
+}
+
+/**
+ * The rules a question has beyond the entry format.
+ *
+ * An FAQ entry is written by two different authors: the search records what was asked
+ * and what it found, and a person or an agent writes the answer against that evidence.
+ * The checks follow the split — an entry with no `Asked:` line was not recorded by the
+ * command, an answered question with no citation is an answer that will drift from the
+ * entry it was meant to summarise, and an answer with no `Confirmed:` line is one whose
+ * reader cannot tell a lead from a conclusion.
+ */
+function reportQuestions(
+    structure: IMemoryStructure,
+    report: (line: number, message: string, severity?: IProblem['severity']) => void,
+): void {
+    for (const entry of structure.entries) {
+        const line = entry.start + 1;
+        const body = parseFaqBody(entry.body);
+        if (body.asked.length === 0) {
+            report(line, 'a question needs an `Asked:` line — `memory search` writes one');
+        }
+        if (body.certainty !== null && (body.certainty < 0 || body.certainty > 1)) {
+            report(line, `certainty ${body.certainty} is outside 0–1`);
+        }
+
+        const status = entry.meta?.status;
+        if (status === 'answered') {
+            if (body.answer.length === 0) {
+                report(line, 'an answered question needs an `Answer:` paragraph');
+            } else {
+                const answer = body.answer.join(' ');
+                if (citationsIn(answer) === 0) {
+                    report(
+                        line,
+                        'the answer cites nothing — point at the entry or page that holds it ' +
+                            '(`@@F-316`, `@@doc:patterns/memory`)',
+                    );
+                }
+                const words = answer.split(/\s+/).filter(Boolean).length;
+                if (words > MAX_ANSWER_WORDS) {
+                    report(
+                        line,
+                        `the answer is ${words} words — it points at its evidence instead of ` +
+                            'restating it',
+                        'warning',
+                    );
+                }
+            }
+            if (body.certainty === null) {
+                report(line, 'an answered question needs a `Certainty:` line between 0 and 1');
+            }
+            if (body.confirmed === null) {
+                report(
+                    line,
+                    'an answered question needs a `Confirmed: yes` or `Confirmed: no` line — ' +
+                        'an answer is a lead until analysis or a run checks it ' +
+                        '(`memory confirm` records that)',
+                );
+            }
+        }
+        if (status === 'open' && body.answer.length > 0) {
+            report(
+                line,
+                'an answered question belongs in "## Answered" — run `memory answer`',
+                'warning',
+            );
+        }
+        if (status === 'open' && body.confirmed !== null) {
+            report(
+                line,
+                'a `Confirmed:` line belongs to an answered question — run `memory answer` first',
+                'warning',
+            );
+        }
+    }
+
+    // Two entries asking the same thing are one answer written twice, and the second drifts from
+    // the first. The pair is reported with the command that settles it, because that is the work.
+    for (let left = 0; left < structure.entries.length; left += 1) {
+        for (let right = left + 1; right < structure.entries.length; right += 1) {
+            const one = structure.entries[left]!;
+            const other = structure.entries[right]!;
+            const similarity = questionSimilarity(one.title, other.title);
+            if (similarity < DUPLICATE_SIMILARITY) continue;
+            report(
+                other.start + 1,
+                `${one.id} asks nearly the same question (${similarity.toFixed(2)}) — ` +
+                    `merge them: \`memory merge ${one.id} ${other.id}\``,
+                'warning',
+            );
+        }
+    }
 }
 
 /** Format a problem for the console. */

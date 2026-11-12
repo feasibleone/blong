@@ -1,19 +1,20 @@
 # Memory files
 
-The repository keeps three kinds of working note — **frictions**, **todos** and **decisions** — as
-markdown files under `.github/memory/`, one file per kind at the repository root and one per
-package:
+The repository keeps four kinds of working note — **frictions**, **todos**, **decisions** and
+**questions** — as markdown files under `.github/memory/`, one file per kind at the repository root
+and one per package:
 
-| Kind     | File          | Statuses               | Holds                                                                     |
-| -------- | ------------- | ---------------------- | ------------------------------------------------------------------------- |
-| Friction | `friction.md` | `open`, `resolved`     | something that took unexpected effort, and the lesson that came out of it |
-| Todo     | `todo.md`     | `open`, `done`         | work that is deferred, unfinished or spotted and not done                 |
-| Decision | `decision.md` | `active`, `superseded` | a choice that was made, with the reasoning the code does not show         |
+| Kind     | File          | Statuses               | Holds                                                                           |
+| -------- | ------------- | ---------------------- | ------------------------------------------------------------------------------- |
+| Friction | `friction.md` | `open`, `resolved`     | something that took unexpected effort, and the lesson that came out of it       |
+| Todo     | `todo.md`     | `open`, `done`         | work that is deferred, unfinished or spotted and not done                       |
+| Decision | `decision.md` | `active`, `superseded` | a choice that was made, with the reasoning the code does not show               |
+| FAQ      | `faq.md`      | `open`, `answered`     | a question asked of the semantic index, its answer and whether it was confirmed |
 
 Everything goes through `blong-dev memory` — the files are never written by hand, because the same
 command owns the ids, the date/area/status line, the 100-column wrapping and the generated index.
-Each entry has a stable id (`F-014`, `T-003`, `D-081`), so a note can cite another one without a
-line number that rots.
+Each entry has a stable id (`F-014`, `T-003`, `D-081`, `Q-012`), so a note can cite another one
+without a line number that rots.
 
 Each entry is also pushed into a local **semantic index** as it is written, so the notes can be
 searched by meaning rather than by the words an entry happens to use. That index is derived and
@@ -21,6 +22,12 @@ disposable: the markdown stays the source of truth, an unreachable server never 
 `blong-dev memory index --semantic` rebuilds the whole thing. The same bank also holds the published
 documentation pages and the agent skills, each keyed by its path so an edit replaces rather than
 duplicates — a search asks for the entries unless it names another stream.
+
+A question in `faq.md` is recorded by `memory search` and answered afterwards, and its answer is a
+**lead, not a verdict**: it says what the result set pointed at, and the entry records whether the
+follow-up work — reading the cited entry, grepping the code, running the test — confirmed it. An
+unconfirmed answer is left saying so in the file. A search never promotes one into a result to rely
+on, so a `Q-…` hit is the first thing to check, not the last word on the question.
 
 Entries are filed by **area**: a package folder from `rush.json` (`core/blong-browser`) or one of
 the reserved cross-cutting labels `cross-cutting`, `ci`, `docs`, `skills`. A package's entries live
@@ -32,10 +39,10 @@ in that package's own file; the root file keeps only what concerns the workspace
 
 ```mermaid
 flowchart LR
-    cli["blong-dev memory"] --> kinds["three kinds of file,<br/>one per package and at the root"]
+    cli["blong-dev memory"] --> kinds["four kinds of file,<br/>one per package and at the root"]
     cli --> own["the command owns the id,<br/>the date/area/status line,<br/>the 100-column wrapping<br/>and the generated index"]
     cli --> area["filed by area:<br/>a rush.json package folder,<br/>or cross-cutting / ci / docs / skills"]
-    kinds --> statuses["friction: open → resolved<br/>todo: open → done<br/>decision: active → superseded"]
+    kinds --> statuses["friction: open → resolved<br/>todo: open → done<br/>decision: active → superseded<br/>faq: open → answered"]
 ```
 
 ## Cross-references

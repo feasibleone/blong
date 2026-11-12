@@ -25,6 +25,7 @@ import type {IHindsightDocument} from '../memory/hindsight/hindsightDocument.ts'
 import {setHindsightStoreFactory} from '../memory/hindsight/hindsightRuntime.ts';
 import type {
     IHindsightDocumentRef,
+    IHindsightHit,
     IHindsightStore,
     IRecallOptions,
 } from '../memory/hindsight/hindsightStore.ts';
@@ -44,6 +45,8 @@ interface IFakeBehaviour {
     listFail?: string;
     /** What the bank holds. */
     documents?: IHindsightDocumentRef[];
+    /** What a search answers with. */
+    hits?: IHindsightHit[];
 }
 
 /** A store that records instead of talking, and fails on demand. */
@@ -57,7 +60,9 @@ function fakeStore(calls: IStoreCalls, behaviour: IFakeBehaviour = {}): IHindsig
         },
         recall: async (query, options) => {
             calls.recalled.push({query, options});
-            return behaviour.fail ? {ok: false, reason: behaviour.fail} : {ok: true, hits: []};
+            return behaviour.fail
+                ? {ok: false, reason: behaviour.fail}
+                : {ok: true, hits: behaviour.hits ?? []};
         },
         list: async () => {
             const reason = behaviour.listFail ?? behaviour.fail;
@@ -79,6 +84,19 @@ function bankDocument(
     updatedAt = '2026-09-15T00:00:00Z',
 ): IHindsightDocumentRef {
     return {id, tags, updatedAt, metadata: null};
+}
+
+/** One search hit, as the bank reports it. */
+function searchHit(tags: string[], similarity: number | null): IHindsightHit {
+    return {
+        text: 'A memory entry.',
+        score: null,
+        similarity,
+        documentId: null,
+        tags,
+        context: null,
+        type: null,
+    };
 }
 
 /** A throwaway repository: `rush.json` is what makes the temp directory the root. */
@@ -948,6 +966,225 @@ t.test('the memory command layer', async t => {
         t.match(out, /# T-001 is held by 2 files — /, 'an id in two files is named');
         t.match(out, /app\/one\/\.github\/memory\/todo\.md/, 'with the files that hold it');
         t.match(out, /1 ambiguous id\(s\)/, 'and the summary counts it');
+        t.end();
+    });
+
+    await t.test('a search records the question, and an answer may not ignore it', async t => {
+        // A search is a question and the answer to it is the expensive part. The record keeps the
+        // text that was asked and the identifiers the bank returned, so the answer is written
+        // against the evidence rather than beside it.
+        const calls: IStoreCalls = {retained: [], recalled: [], removed: []};
+        const repo = tempRepo(['core/x']);
+        t.teardown(repo.restore);
+        setHindsightStoreFactory(() =>
+            fakeStore(calls, {
+                hits: [searchHit(['memory', 'kind:friction', 'id:F-316', 'area:core/x'], 0.7)],
+            }),
+        );
+
+        const searched = await capture(() =>
+            memory(['search', 'why does the index go stale after a move']),
+        );
+
+        t.equal(searched.code, undefined, 'the search succeeded');
+        t.match(
+            searched.out,
+            /# question Q-001 · core\/x — recorded in core\/x\/\.github\/memory\/faq\.md/,
+            'and says what it recorded, and where',
+        );
+        t.match(
+            searched.out,
+            /memory answer Q-001 --answer/,
+            'naming the command that answers the question it just wrote',
+        );
+
+        const faqPath = join(repo.dir, 'core/x/.github/memory/faq.md');
+        const recorded = readFileSync(faqPath, 'utf8');
+        t.match(
+            recorded,
+            /### Q-001 — Why does the index go stale after a move\?/,
+            'the question is the title',
+        );
+        t.match(recorded, /· core\/x · open_/, 'and the question is open until answered');
+        t.match(recorded, /Evidence: @@F-316 \(0\.700\)/, 'with the hit as its evidence');
+
+        const refused = await capture(() =>
+            memory([
+                'answer',
+                'Q-001',
+                '--answer',
+                'The index is rebuilt on every write.',
+                '--certainty',
+                '0.7',
+            ]),
+        );
+        t.equal(refused.code, 1, 'an answer that cites nothing is refused');
+        t.match(
+            refused.err,
+            /cites no @@ reference/,
+            'because it would drift from what it repeats',
+        );
+
+        const answered = await capture(() =>
+            memory([
+                'answer',
+                'Q-001',
+                '--answer',
+                'The index is derived from the parsed lines; see @@doc:patterns/memory.',
+                '--certainty',
+                'high',
+                '--note',
+                'the entry and the page agree',
+            ]),
+        );
+
+        t.equal(answered.code, undefined, 'an answer that points at its evidence is accepted');
+        t.match(
+            answered.out,
+            /Q-001 answered · certainty 0\.85 · not confirmed/,
+            'the word becomes a score, and the answer is written as a lead',
+        );
+        t.match(answered.out, /memory confirm Q-001/, 'with the command that confirms it');
+        const written = readFileSync(faqPath, 'utf8');
+        t.match(written, /## Answered/, 'the entry moves to the section its status declares');
+        t.match(written, /· core\/x · answered_/, 'and says it is answered');
+        t.match(
+            written,
+            /Answer: The index is derived from the parsed lines; see @@doc:patterns\/memory\./,
+            'with the answer as it was given',
+        );
+        t.match(
+            written,
+            /Certainty: 0\.85 — the entry and the page agree/,
+            'and the score beside what it rests on',
+        );
+        t.match(
+            written,
+            /Confirmed: no — not checked yet by analysis or a run/,
+            'and says in the file itself that nothing checked it',
+        );
+
+        const audited = await capture(() => memory(['audit']));
+        t.match(audited.out, /Q-001 is answered but unconfirmed/, 'audit lists it as a lead');
+        t.match(audited.out, /1 unconfirmed answer\(s\)/, 'and counts it');
+
+        const confirmed = await capture(() =>
+            memory(['confirm', 'Q-001', '--note', 'ran blong-dev memory index and reproduced it']),
+        );
+
+        t.equal(confirmed.code, undefined, 'confirming succeeds');
+        t.match(confirmed.out, /Q-001 confirmed/, 'and says so');
+        t.match(
+            readFileSync(faqPath, 'utf8'),
+            /Confirmed: yes — ran blong-dev memory index and reproduced it/,
+            'the entry records what did the checking',
+        );
+        const rechecked = await capture(() => memory(['audit']));
+        t.notMatch(rechecked.out, /answered but unconfirmed/, 'and the audit is quiet again');
+
+        const checked = await capture(() => memory(['check']));
+        t.equal(checked.code, undefined, 'the file the two commands wrote passes the gate');
+        t.end();
+    });
+
+    await t.test('a question asked twice is one entry, and --no-record writes none', async t => {
+        const calls: IStoreCalls = {retained: [], recalled: [], removed: []};
+        const repo = tempRepo(['core/x']);
+        t.teardown(repo.restore);
+        setHindsightStoreFactory(() =>
+            fakeStore(calls, {
+                hits: [searchHit(['memory', 'kind:friction', 'id:F-316', 'area:core/x'], 0.7)],
+            }),
+        );
+
+        await capture(() => memory(['search', 'why does the index go stale']));
+        const again = await capture(() => memory(['search', 'Why does the index go stale?']));
+
+        t.match(again.out, /already asked 2 times/, 'a repeat is reported as a repeat');
+        const faqPath = join(repo.dir, 'core/x/.github/memory/faq.md');
+        const written = readFileSync(faqPath, 'utf8');
+        t.notMatch(written, /### Q-002/, 'and no second entry is written');
+        t.match(written, /Asked: \d{4}-\d{2}-\d{2} ×2/, 'the entry counts the askings');
+
+        const skipped = await capture(() =>
+            memory(['search', 'how do handlers resolve their config', '--no-record']),
+        );
+        t.notMatch(skipped.out, /# question/, '--no-record records nothing');
+        t.notMatch(
+            readFileSync(faqPath, 'utf8'),
+            /how do handlers resolve their config/,
+            'so the file is untouched',
+        );
+        t.end();
+    });
+
+    await t.test('merge folds a duplicate question into the entry that keeps it', async t => {
+        const repo = tempRepo(['core/x']);
+        t.teardown(repo.restore);
+        setHindsightStoreFactory(null);
+
+        await capture(() =>
+            memory([
+                'add',
+                'faq',
+                '--title',
+                'Why is the generated index out of date?',
+                '--area',
+                'core/x',
+            ]),
+        );
+        await capture(() =>
+            memory([
+                'add',
+                'faq',
+                '--title',
+                'Why is the generated index out of date after a move?',
+                '--area',
+                'core/x',
+            ]),
+        );
+        await capture(() =>
+            memory([
+                'answer',
+                'Q-001',
+                '--answer',
+                'It is derived; see @@doc:patterns/memory.',
+                '--certainty',
+                'medium',
+            ]),
+        );
+
+        const before = await capture(() => memory(['audit']));
+        t.match(
+            before.out,
+            /Q-00[12] and Q-00[12] ask nearly the same question/,
+            'audit names the pair it suspects',
+        );
+        t.match(before.out, /memory merge Q-00[12] Q-00[12]/, 'with the command that settles it');
+
+        const merged = await capture(() =>
+            memory(['merge', 'Q-001', 'Q-002', '--reason', 'the same question twice']),
+        );
+
+        t.equal(merged.code, undefined, 'the merge succeeded');
+        t.match(merged.out, /Q-002 merged into Q-001/, 'and says what it folded in');
+        const faqPath = join(repo.dir, 'core/x/.github/memory/faq.md');
+        const written = readFileSync(faqPath, 'utf8');
+        t.notMatch(written, /### Q-002/, 'the duplicate is gone');
+        t.match(
+            written,
+            /- Q-002 — merged into Q-001 \(\d{4}-\d{2}-\d{2}\) — the same question twice/,
+            'its id stays in the ledger, naming the survivor as its successor',
+        );
+        t.match(written, /### Q-001/, 'the survivor stays');
+        t.match(
+            written,
+            /Answer: It is derived; see @@doc:patterns\/memory\./,
+            'and keeps the answer it had',
+        );
+
+        const after = await capture(() => memory(['audit']));
+        t.notMatch(after.out, /ask nearly the same question/, 'the audit is quiet again');
         t.end();
     });
 });

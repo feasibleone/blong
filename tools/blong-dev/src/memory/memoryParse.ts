@@ -10,6 +10,7 @@ import {readFileSync} from 'node:fs';
 
 import {
     ENTRY_HEADING,
+    ID_REFERENCE,
     INDEX_END,
     INDEX_START,
     SECTION_HEADING,
@@ -192,7 +193,7 @@ export function parseDoc(lines: readonly string[]): IMemoryStructure {
 export function referencedIds(lines: readonly string[]): string[] {
     const found = new Set<string>();
     for (const line of lines) {
-        for (const match of line.matchAll(/\b[FTD]-\d{3}\b/g)) found.add(match[0]);
+        for (const match of line.matchAll(ID_REFERENCE)) found.add(match[0]);
     }
     return Array.from(found);
 }

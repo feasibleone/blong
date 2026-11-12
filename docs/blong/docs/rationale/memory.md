@@ -1,7 +1,8 @@
 # Memory files
 
-Why the repository keeps its working notes — the frictions, todos and decisions of an implementation
-— as files the repository itself validates, rather than as prose documents or an external tracker.
+Why the repository keeps its working notes — the frictions, todos, decisions and answered questions
+of an implementation — as files the repository itself validates, rather than as prose documents or
+an external tracker.
 
 ## The problem
 

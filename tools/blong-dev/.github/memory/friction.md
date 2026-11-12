@@ -51,7 +51,7 @@ open (38)
 - `F-714` · tools/blong-dev — a plan request was answered with an intention, not a file
 - `F-716` · tools/blong-dev — a waiting call died at undici's five-minute header deadline
 
-resolved (12)
+resolved (13)
 
 - `F-080` · tools/blong-dev — `blong-dev` CLI not built
 - `F-090` · tools/blong-dev — `blong-dev` was not built, so `npm run ci-lint` could not find it
@@ -65,6 +65,7 @@ resolved (12)
 - `F-661` · tools/blong-dev — refs --dangling and audit disagree about which references resolve
 - `F-691` · tools/blong-dev — user --role split a role name on its space
 - `F-709` · tools/blong-dev — A memory file's last list cannot satisfy both linters
+- `F-721` · tools/blong-dev — An optional field with two meanings claimed a search that never ran
 
 <!-- /memory:index -->
 
@@ -747,3 +748,17 @@ checkMarkdown treats an indented continuation line as part of the list above it 
 formatLines closes a paragraph before a bullet so two items are never joined: memory check and
 markdownlint now accept the same file ending, and memory format is idempotent across the tree (0 of
 100 reformatted)
+
+### F-721 — An optional field with two meanings claimed a search that never ran
+
+> _2026-11-12 · tools/blong-dev · resolved_
+
+IFaqBody.evidence was typed IFaqEvidence[], so a question with no Evidence line and one whose search
+found nothing were the same value. Rewriting a hand-written question on memory answer therefore
+added "Evidence: none — the search matched nothing" to it, claiming a search that never ran.
+
+The type is now IFaqEvidence[] | null: null means the line is absent, an empty array means it is
+present and empty. A field that carries two meanings needs a tri-state, and only a manual run of the
+whole workflow showed it — the unit tests exercised a body that already had evidence.
+
+fixed in memoryFaq.ts: evidence is null when the line is absent and [] when it is present and empty
