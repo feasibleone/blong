@@ -122,7 +122,6 @@ export default model(
                     },
                 },
                 browser: {
-                    navigator: false,
                     title: 'Support Periods',
                     icon: 'pi pi-heart',
                     toolbar: [

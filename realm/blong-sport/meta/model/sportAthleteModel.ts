@@ -336,7 +336,6 @@ export default model(
                 },
 
                 browser: {
-                    navigator: false,
                     title: 'Athletes',
                     icon: 'pi pi-user',
                     permission: {

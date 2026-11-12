@@ -28,7 +28,7 @@ For using the model in realm development, use the **blong-model** skill.
 
 ## File Map
 
-```
+```text
 core/blong-browser/src/model/
   defaults.ts             ← withDefaults() + deepMerge() — fills in standard values for partial specs
   dropdownRegistry.ts     ← On-demand dropdown load + deduplication + cache
@@ -66,6 +66,7 @@ interface IModelSpec {
     subjectTitle?: string; // menubar group; defaults to capital(subject)
     classifier?: boolean; // reference data — shared `Classifiers` root, one submenu per realm
     menu?: IModelMenu; // {hidden, root, group, title, icon, order} — placement override
+    parent?: IModelParent | string; // the object these rows hang beneath — derives the navigator
     keyField?: string; // defaults to '${object}Id'
     nameField?: string; // defaults to '${object}.${object}Name'
     schema?: ISchemaOverlay;
@@ -121,9 +122,33 @@ Fills in standard values for every optional field. Key defaults:
 | `browser.icon`         | `'pi pi-list'`                               |
 | `browser.permission.*` | `find`/`add`/`edit`/`remove` of the entity   |
 
-The browse gate is the `find` action — the one the page actually calls. The portal hides a menu
-entry whose `permission` the session does not hold, so a gate naming a method nobody is granted
-would hide the page from everybody.
+### The derivation rules
+
+`withDefaults()` fills two things by _inference_ rather than by a literal default, and both are
+worth reading before changing the model system (`defaults.ts`):
+
+- **Navigator from `parent`.** `resolveParent()` turns one declaration into the navigator widget
+  (`listAction`, `keyField`, `labelField`, and `parentField` when a tree was declared) and the
+  browse table's `master` cascade. `browser.navigator` follows from it: a model with a parent — or
+  with a navigator widget it configured itself — gets the panel, everything else is a full-width
+  table. The panel used to be on by default, which put an empty `No available options` tree beside
+  every page that had no hierarchy.
+- **Order from the declared `nameField`.** A paged table must be ordered, so the browse table gets
+  `listParams.orderBy` from the model's `nameField` column, and `useTableList` starts its sort state
+  from it so the header shows the arrow. The fallback is only the **declared** field:
+  `${object}Name` is a guess that may not exist as a column, and an order the server cannot resolve
+  fails the whole read (the gateway's `applicationName` was one).
+
+`modelWarnings(model)` reports the two silences an author otherwise meets on screen: a paged table
+with no determinable order, and a navigator with nothing to list. The aggregator logs them once, as
+the pages are built.
+
+> **The navigator never orders its own read.** Its rows come from another model's table and the
+> label may live in `core_resource` with no column of its own, so `NavigatorWidget` sorts the nodes
+> it received by label and selects the first — which is also the node at the top of the list. The
+> browse gate is the `find` action — the one the page actually calls. The portal hides a menu entry
+> whose `permission` the session does not hold, so a gate naming a method nobody is granted would
+> hide the page from everybody.
 
 The `deepMerge()` helper in `defaults.ts` deeply merges plain objects, overwriting arrays and
 primitives. It is also exported for use elsewhere in the model system.
@@ -221,7 +246,8 @@ export async function subjectObjectBrowse(
   starts with `{subject}.{object}.` (forces the browse table to refetch)
 - `refreshNamespace: '{subject}.{object}'` is passed to `Editor` to wire up the `__refresh__`
   handler
-- `cards` and `layouts` from model (default `browse` layout has 3-panel split with navigator)
+- `cards` and `layouts` from model (default `browse` layout has a 3-panel split with the navigator
+  when the model derives one, else 2 panels)
 
 **`subjectObjectNew`** — `Editor` with:
 

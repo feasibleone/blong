@@ -2,7 +2,7 @@ import type {IAdapter, IHandlerProxy, IModelSpec, ValidationFn} from '@feasibleo
 import {Type} from 'typebox';
 import {withDefaults} from './defaults.ts';
 
-export {withDefaults} from './defaults.ts';
+export {modelWarnings, withDefaults} from './defaults.ts';
 
 export async function mock(
     this: IAdapter<
@@ -318,9 +318,7 @@ export function validation(models: IModelSpec[]): Record<string, ValidationFn> {
                 ...Object.fromEntries(
                     (model.details ?? []).map(detail => [
                         detail.object,
-                        Type.Optional(
-                            model.schema?.properties?.[detail.object] ?? Type.Unknown(),
-                        ),
+                        Type.Optional(model.schema?.properties?.[detail.object] ?? Type.Unknown()),
                     ]),
                 ),
             });

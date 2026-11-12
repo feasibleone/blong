@@ -15,6 +15,11 @@ test.describe('Organisations', () => {
         object: 'federation',
         search: 'ENT-PLAY-FE',
         removeMethod: 'sport.federation.remove',
+        // The confirm dialog is captured only when a previous run left a row, so
+        // the picture is of whatever that run happened to leave behind — one row or
+        // four. It is not a stable baseline, and the page it shows is covered by
+        // `browse sport federation` above.
+        screenshot: {capture: {cleanupConfirm: false}},
     });
 
     createAndEditModel(test, expect, {

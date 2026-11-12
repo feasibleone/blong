@@ -16,9 +16,10 @@
  *   widget.label        — panel title
  */
 import type {IWidgetProps} from '@feasibleone/blong';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {useBlong} from '../context/BlongContext.js';
 import {Tree, type TreeNode} from '../primereact/index.js';
+import {useAppStore} from '../state/appStore.js';
 
 type Row = Record<string, unknown>;
 
@@ -57,6 +58,14 @@ function buildTree(
 
 export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
     const {handler, log} = useBlong();
+    // The nodes are sorted by the label the reader sees, in the language they are
+    // reading: a Bulgarian page whose list mixes translated names with the stored
+    // English ones must not push every Cyrillic name below every Latin one.
+    const language = useAppStore(state => state.language);
+    const collator = useMemo(
+        () => new Intl.Collator(language ?? undefined, {sensitivity: 'base', numeric: true}),
+        [language],
+    );
 
     const widget = schema.widget;
     const listAction = widget?.listAction ?? '';
@@ -87,7 +96,18 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
     });
     const setTreeDataAndExpand = React.useCallback(
         async (items: Row[]) => {
-            const data: TreeNode[] = buildTree(items, keyField, parentField, labelField);
+            // Label order, whatever order the server answered in. A navigator is
+            // read by a person scanning for a name, and the read that fills it is a
+            // plain `find` over another table: ordering it server-side would mean
+            // naming a column this page does not own — the parent's name may live in
+            // `core_resource` with no column of its own (`Unknown column
+            // 'applicationName' in 'order clause'`). Sorting what arrived costs
+            // nothing and cannot fail, and sorting the rows also sorts each
+            // sibling group, because `buildTree` appends children in row order.
+            // `@@D-827`
+            const label = (row: Row) => String(row[labelField] ?? row[keyField] ?? '');
+            const rows = [...items].sort((a, b) => collator.compare(label(a), label(b)));
+            const data: TreeNode[] = buildTree(rows, keyField, parentField, labelField);
             setTreeData(data);
             setExpandedKeys(
                 data.reduce(
@@ -95,13 +115,14 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
                     {} as Record<string, boolean>,
                 ),
             );
-            if (items.length) {
-                const firstKey = String(items[0][keyField]);
-                setSelectedKey(firstKey);
-                onSelect?.(name, {row: items[0], index: 0});
+            if (rows.length) {
+                // The node a reader sees at the top of the list is the one that
+                // starts selected, so the tables beside it show that branch.
+                setSelectedKey(String(rows[0][keyField]));
+                onSelect?.(name, {row: rows[0], index: 0});
             }
         },
-        [keyField, parentField, labelField, name, onSelect],
+        [keyField, parentField, labelField, collator, name, onSelect],
     );
     const [loading, setLoading] = useState(false);
     const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -182,7 +203,11 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
     return (
         <div
             className="blong-navigator w-full"
-            style={{height: '100%', display: 'flex', flexDirection: 'column'}}
+            // `minHeight: 0` on both the column and the tree: a flex item refuses to
+            // shrink below its content, so without it a long list pushes the tree past
+            // the panel and the page's bottom edge — `overflow: auto` never gets a
+            // chance to scroll.
+            style={{height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column'}}
         >
             {title && <h4 className="blong-navigator__title">{title}</h4>}
             <Tree
@@ -196,7 +221,7 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
                 className="border-none p-0 blong-navigator__tree"
                 // filter # disabled due to interfering with expandedKeys state; would need to reset expandedKeys on filter change to work properly
                 filterPlaceholder="Search…"
-                style={{flex: 1, overflow: 'auto'}}
+                style={{flex: 1, minHeight: 0, overflow: 'auto'}}
             />
         </div>
     );

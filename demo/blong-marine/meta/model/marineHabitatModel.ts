@@ -76,14 +76,9 @@ export default model(
                                 // habitatDescription: {},
                             },
                         },
-                        /** Navigator showing ocean zones for filtering habitats by zone. */
-                        navigator: {
-                            widget: {
-                                listAction: 'marine.habitat.find',
-                                keyField: 'habitatId',
-                                labelField: 'habitatName',
-                            },
-                        },
+                        // No navigator: a habitat has no parent, and the panel that
+                        // used to sit here listed the habitats the table below it
+                        // already showed, filtering nothing.
                     },
                 },
 

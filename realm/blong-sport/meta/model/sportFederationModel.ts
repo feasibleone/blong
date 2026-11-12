@@ -15,6 +15,10 @@ export default model(
                 // specialists, affiliations — not alphabetical. @@D-780
                 menu: {group: 'Registry', order: 1},
                 nameField: 'federation.legalName',
+                // No navigator: a federation names its sport in its own form
+                // (`sportId`), and the registry page is the whole list a reader
+                // works through — a panel of every sport to point at one row costs
+                // more than the one column that says the same thing.
                 schema: {
                     properties: {
                         federation: {
@@ -70,7 +74,6 @@ export default model(
                 },
                 layouts: {edit: [['identity']]},
                 browser: {
-                    navigator: false,
                     title: 'Federations',
                     icon: 'pi pi-building',
                     toolbar: [

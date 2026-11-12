@@ -130,7 +130,6 @@ export default model(
                     },
                 },
                 browser: {
-                    navigator: false,
                     title: 'Award Conferrals',
                     icon: 'pi pi-star-fill',
                     toolbar: [

@@ -132,7 +132,6 @@ export default model(
                     editSplit: [['identity'], 'qualification'],
                 },
                 browser: {
-                    navigator: false,
                     title: 'Sports Specialists',
                     icon: 'pi pi-heart',
                     permission: {

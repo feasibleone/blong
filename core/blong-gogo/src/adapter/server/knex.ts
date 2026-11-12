@@ -43,7 +43,7 @@ import {
     type DateColumnMap,
 } from '../schema/knex/datetime.ts';
 import {wrapKnex} from '../schema/knex/json.ts';
-import {normalizeOrderBy} from '../schema/knex/order.ts';
+import {normalizeOrderBy, orderableTerms} from '../schema/knex/order.ts';
 import {
     cascadeDelete,
     countDependants,
@@ -1026,7 +1026,31 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     // browser sends `{field, dir}`, and knex formats a term it cannot
                     // read as the literal `undefined` — `order by `undefined`` and a
                     // MySQL error on every sorted column @@D-742.
-                    for (const term of normalizeOrderBy(order)) {
+                    //
+                    // A term may also name something this table cannot order by: a
+                    // model's display field, which the read joins in rather than
+                    // stores (`targetName` on an ACL rule is built from the target's
+                    // resource name), or a column from a schema that has moved. MySQL
+                    // fails the whole read for it — `Unknown column 'targetName' in
+                    // 'order clause'` — so an unorderable term is dropped and reported
+                    // instead, and the page shows its rows rather than an error.
+                    // @@D-828
+                    const nameAlias = opts.resource
+                        ? (opts.nameColumn ?? `${object}Name`)
+                        : undefined;
+                    const columnNames = Object.keys(
+                        objectSchema[subject]?.[object]?.properties ?? {},
+                    );
+                    const {terms, dropped} = orderableTerms(
+                        normalizeOrderBy(order),
+                        nameAlias ? [...columnNames, nameAlias] : columnNames,
+                        labelAliases,
+                    );
+                    for (const column of dropped)
+                        this.log?.warn?.(
+                            `[${subject}.${object}.find] ignoring order by "${column}": no such column on ${table}`,
+                        );
+                    for (const term of terms) {
                         query = query.orderBy(term.column, term.order);
                     }
                     // Record-level ACL: the filter is applied before paging so both

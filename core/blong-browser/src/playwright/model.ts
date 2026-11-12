@@ -102,6 +102,12 @@ export interface IBrowseModelOptions {
     /** Optional search text to type before taking the screenshot (filters table rows). */
     searchText?: string;
     /**
+     * Navigator node (its label) to select before searching, for a browse table
+     * that declares `widget.master`: the table lists only the selected node's
+     * rows, so a record in another branch is invisible to the filter.
+     */
+    navigatorNode?: string;
+    /**
      * Volatile substrings to redact (`###`) in every capture this helper takes — a minted
      * id, a wall clock, the generated tail of a name. Redaction keeps the cell, its column
      * and its header in the picture, where masking the cell would hide all three.
@@ -639,6 +645,13 @@ export function browseModel(test: ITestFn, expect: Expect, options: IBrowseModel
     test(`browse ${subject} ${object}`, async ({portal}) => {
         await portal.menuClick(method);
         await portal.waitForTableData();
+        // A cascaded table lists the navigator's branch, and the navigator
+        // auto-selects its first node — not necessarily the one the picture is
+        // about, so the branch is chosen before the search narrows inside it.
+        if (options.navigatorNode !== undefined) {
+            await selectNavigatorNode(portal.page, options.navigatorNode);
+            await portal.waitForTableData();
+        }
         if (options.searchText) {
             const search = portal.page.getByTestId('browse-search');
             await search.fill(options.searchText);
@@ -892,6 +905,19 @@ export interface ICleanupModelOptions {
     search: string;
     /** Remove method (semantic triple) whose browse-toolbar button deletes the selected row. */
     removeMethod: string;
+    /**
+     * Navigator node (its label) to select before filtering, for a browse table
+     * that declares `widget.master`: the table shows only the selected node's
+     * subtree, so search alone cannot reach a row another branch holds — and the
+     * leftover row would survive the cleanup.
+     */
+    navigatorNode?: string;
+    /**
+     * Test title. Defaults to `cleanup <subject> <object>`. A spec that sweeps up
+     * after its own create/edit tests adds a second cleanup for the same entity,
+     * and Playwright refuses two tests of one title.
+     */
+    title?: string;
     /** Volatile substrings to redact (`###`) in the confirmation capture, as in `browseModel`. */
     redact?: IRedactPattern[];
     /** Image format; the confirmation capture is the only one this helper takes. */
@@ -911,13 +937,21 @@ export interface ICleanupModelOptions {
  * deletion.
  */
 export function cleanupModel(test: ITestFn, expect: Expect, options: ICleanupModelOptions): void {
-    const {subject, object, search, removeMethod, redact, screenshot} = options;
+    const {subject, object, search, removeMethod, navigatorNode, title, redact, screenshot} =
+        options;
     const removeTestId = `action-${removeMethod.replace(/[/.]/g, '-')}`;
     const capture = captureWith(expect, redact, screenshot);
 
-    test(`cleanup ${subject} ${object}`, async ({portal}) => {
+    test(title ?? `cleanup ${subject} ${object}`, async ({portal}) => {
         await portal.menuClick(`${subject}.${object}.browse`);
         await portal.waitForTableData();
+
+        // A cascaded table only lists the selected branch, so the branch comes
+        // first and the search narrows inside it.
+        if (navigatorNode !== undefined) {
+            await selectNavigatorNode(portal.page, navigatorNode);
+            await portal.waitForTableData();
+        }
 
         // Filter to the rows we want to remove.
         await portal.page.getByTestId('browse-search').fill(search);

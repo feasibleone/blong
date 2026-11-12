@@ -175,7 +175,6 @@ export default model(
                     },
                 },
                 browser: {
-                    navigator: false,
                     title: 'Qualifications',
                     icon: 'pi pi-check-circle',
                     toolbar: [

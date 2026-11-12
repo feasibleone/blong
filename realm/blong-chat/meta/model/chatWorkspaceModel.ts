@@ -98,7 +98,6 @@ export default model(
                 },
                 layouts: {edit: [['main'], ['configuration']]},
                 browser: {
-                    navigator: false,
                     title: 'Chat workspaces',
                     icon: 'pi pi-sitemap',
                     // The generic `find` answers `{items, pagination}`.
@@ -120,7 +119,8 @@ export default model(
                             label: 'Delete',
                             icon: 'pi pi-trash',
                             enabled: 'selected',
-                            confirm: 'Delete the selected workspace? Its accounts keep their apps but lose their token.',
+                            confirm:
+                                'Delete the selected workspace? Its accounts keep their apps but lose their token.',
                             method: 'chat.workspace.remove',
                             params: {workspaceId: '${workspaceId}'},
                             refresh: true,

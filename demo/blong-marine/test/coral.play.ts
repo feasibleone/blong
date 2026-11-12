@@ -14,6 +14,7 @@ test.describe('Marine Coral', () => {
         subject: 'marine',
         object: 'coral',
         searchText: 'Staghorn',
+        navigatorNode: 'Acroporidae',
     });
 
     createAndEditModel(test, expect, {

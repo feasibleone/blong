@@ -89,6 +89,24 @@ export interface IBrowserPermissions {
     delete: string;
 }
 
+/**
+ * How a browse page orders its rows before the reader touches a header.
+ *
+ * A paged table is read page by page, so the server has to order it: without an
+ * order the database may return a row on two pages and another on none. The
+ * default is therefore the record's name column — the field that names the row,
+ * which for a resource-backed table is the column `core_resource.resourceName`
+ * mirrors — and `false` is the explicit way to say the page is unordered.
+ */
+export type IModelSort =
+    | string
+    | {
+          /** Column field name; defaults to the model's name field's last segment. */
+          field?: string;
+          /** `ASC` (default) or `DESC`. */
+          dir?: 'ASC' | 'DESC';
+      };
+
 /** Browse page configuration */
 export interface IBrowserConfig {
     title?: string;
@@ -100,7 +118,19 @@ export interface IBrowserConfig {
     resultSet?: string;
     /** Extra toolbar buttons */
     toolbar?: IToolbarButton[];
+    /**
+     * Show the navigator panel. Derived, not declared: a model that declares a
+     * `parent` (or configures a navigator widget) gets the panel, every other
+     * page is a plain table. Set it to `true` only to force the panel onto a page
+     * whose source the model does not declare.
+     */
     navigator?: boolean;
+    /**
+     * Default order of the paged table. Defaults to the model's `nameField`
+     * column; `false` leaves the page unordered (and warns — see
+     * `modelWarnings()`).
+     */
+    sort?: IModelSort | false;
 }
 
 export interface IBrowserConfigOptional {
@@ -229,6 +259,68 @@ export interface IModelMenu {
 }
 
 /**
+ * The object a model's records hang beneath — the browse page's navigator.
+ *
+ * Declaring the parent is what makes a browse page a navigator page. One
+ * declaration produces all of it: the navigator lists the parent records, the
+ * table narrows to the selected node's children, and the panel only appears
+ * because there is a relation to show. A model with no parent is a plain table,
+ * which is the right default — an empty navigator beside a full-width table
+ * spends a fifth of the page on nothing.
+ *
+ * The shorthand is the parent object's name (`parent: 'sport'`), for the common
+ * case where the field that names the parent is `<object>Id`.
+ *
+ * A hierarchy is declared with `parentField`: the navigator then builds a tree
+ * from the parent rows, so an organisational chart or a nested classifier reads
+ * as the tree it is. A model whose *own* rows form the tree names itself
+ * (`parent: {object: 'unit', field: 'parentUnitId'}`): the navigator lists units
+ * and the table shows the selected unit's children.
+ */
+export interface IModelParent {
+    /** Parent object. Defaults to the model's own object — a self-tree. */
+    object?: string;
+    /** Parent subject, when the parent lives in another realm. Defaults to the model's subject. */
+    subject?: string;
+    /**
+     * Field on *this* model's rows that names the parent record. Defaults to
+     * `<parentObject>Id`, or `parent<Object>Id` for a self-tree.
+     */
+    field?: string;
+    /** Parent's primary key. Defaults to `<parentObject>Id`. */
+    keyField?: string;
+    /**
+     * Field on the *parent* rows that names the parent of a parent. Setting it
+     * makes the navigator a tree; without it the parent list is flat.
+     */
+    parentField?: string;
+    /** Parent field shown as a node label. Defaults to `<parentObject>.<parentObject>Name`. */
+    labelField?: string;
+    /** Action that lists the parent rows. Defaults to `<subject>.<parentObject>.find`. */
+    listAction?: string;
+    /** Params the navigator sends with `listAction` (e.g. a page size that holds the whole tree). */
+    listParams?: Record<string, unknown>;
+    /**
+     * How the browse table narrows to the selected node, as `{ownField: parentKey}`.
+     * Defaults to `{[field]: keyField}`.
+     */
+    master?: Record<string, string>;
+}
+
+/** A parent declaration after defaults are filled in. */
+export interface IModelParentResolved {
+    subject: string;
+    object: string;
+    field: string;
+    keyField: string;
+    parentField?: string;
+    labelField: string;
+    listAction: string;
+    listParams?: Record<string, unknown>;
+    master: Record<string, string>;
+}
+
+/**
  * ModelSpec — the browser-side description of one "subject.object" domain entity.
  *
  * Used by modelFactory() to auto-generate Browse/New/Open/Report pages.
@@ -250,6 +342,13 @@ export interface IModelSpec {
     classifier?: boolean;
     /** Menu placement override for the generated browse page. */
     menu?: IModelMenu;
+    /**
+     * The object this model's records hang beneath — a parent classifier, an
+     * organisational unit, a self-tree. Declaring it is what gives the browse
+     * page its navigator and cascades the table; leaving it out keeps the page a
+     * plain table. Shorthand: the parent object's name.
+     */
+    parent?: IModelParent | string;
     /** Primary key field path, e.g. 'coralId'. Defaults to `${object}Id`. */
     keyField?: string;
     /** Name field path (dotted), e.g. 'coral.coralName'. Defaults to `${object}.${object}Name`. */
@@ -307,11 +406,13 @@ export interface IModelSpec {
 export type IPartialModelSpec = IModelSpec;
 
 /** Fully resolved model spec — all defaults filled in */
-export interface IResolvedModelSpec extends Required<IModelSpec> {
+export interface IResolvedModelSpec extends Required<Omit<IModelSpec, 'parent'>> {
     subjectTitle: string;
     objectTitle: string;
     keyField: string;
     nameField: string;
+    /** Filled in when the spec declares a `parent`; absent on a plain table. */
+    parent?: IModelParentResolved;
     browser: Required<IBrowserConfig> & IBrowserConfigOptional;
     editor: Required<IEditorConfig>;
     report: Required<IReportConfig>;

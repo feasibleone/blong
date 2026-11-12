@@ -118,6 +118,10 @@ export default model(
                 browser: {
                     title: 'ACL Rules',
                     icon: 'pi pi-shield',
+                    // The name field is `targetName`, which the find joins in — it
+                    // is not a column of `access_acl`, so it cannot be ordered by.
+                    // Target kind is the nearest real column that groups the list.
+                    sort: {field: 'targetKind', dir: 'ASC'},
                 },
             };
         },

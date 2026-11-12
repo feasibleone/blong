@@ -13,6 +13,7 @@ test.describe('Marine Species', () => {
         subject: 'marine',
         object: 'species',
         searchText: 'Clown',
+        navigatorNode: 'Acroporidae',
     });
 
     createAndEditModel(test, expect, {

@@ -1,5 +1,5 @@
 import type { IAdapter, IHandlerProxy, IModelSpec, ValidationFn } from '@feasibleone/blong';
-export { withDefaults } from './defaults.ts';
+export { modelWarnings, withDefaults } from './defaults.ts';
 export declare function mock(this: IAdapter<{
     context: {
         fixtureData?: Record<string, Record<string, Record<string, unknown>[]>>;

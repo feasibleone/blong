@@ -14,6 +14,16 @@ export default model(
                 object: 'subscription',
                 objectTitle: 'Subscription',
                 public: true,
+                // No navigator: a subscription hangs off an application, but an
+                // application row carries no display name of its own — the clientId
+                // is the `core_resource` name and that table is not joined here — so
+                // a navigator over it would list ids. It becomes worth one when the
+                // application page can label its rows. @@T-640
+                // A subscription has no name column either — it is an application, a
+                // bundle and two dates — so the newest is the one worth seeing
+                // first, and the order is declared rather than guessed from a
+                // `<object>Name` column that does not exist.
+                browser: {sort: {field: 'createdAt', dir: 'DESC'}},
 
                 schema: {
                     properties: {

@@ -13,6 +13,11 @@ export default model(
                 deletion: {mode: 'block'},
                 classifier: true,
                 nameField: 'discipline.disciplineName',
+                // A discipline is one of a sport's disciplines. Declaring the parent
+                // is the whole page: the navigator lists the sports, the table
+                // narrows to the selected sport, and the panel exists because there
+                // is a relation to show.
+                parent: {object: 'sport', field: 'sportId'},
                 schema: {
                     properties: {
                         discipline: {
@@ -91,7 +96,6 @@ export default model(
                 },
                 layouts: {edit: [['identity']]},
                 browser: {
-                    navigator: false,
                     title: 'Disciplines',
                     icon: 'pi pi-sitemap',
                     toolbar: [

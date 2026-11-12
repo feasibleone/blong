@@ -456,6 +456,43 @@ export class Portal {
         await this.page.getByTestId('editor-refresh').click();
     }
 
+    // ── Server ───────────────────────────────────────────────────────────────
+
+    /**
+     * One call through the page's handler proxy.
+     *
+     * A spec that has to leave the database as it found it cannot always use the
+     * page: a model whose delete button deactivates (`deletion: {mode:
+     * 'deactivate'}`) keeps its row, and a leftover under the same name is what the
+     * next run opens instead of its own record. The remove handler behind that
+     * button is a real delete, and this is how a spec reaches it. `@@D-829`
+     */
+    async call<T = unknown>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+        // The proxy is installed when the provider mounts, which the fixture's login
+        // has already waited for; asking again keeps a spec that starts with a call
+        // from racing the mount.
+        await this.page
+            .waitForFunction(
+                () => typeof (window as {__blongHandler?: unknown}).__blongHandler === 'object',
+                undefined,
+                {timeout: 15_000},
+            )
+            .catch(() => undefined);
+        return this.page.evaluate(
+            async ([name, args]) => {
+                const handler = (window as {__blongHandler?: Record<string, unknown>})
+                    .__blongHandler;
+                if (!handler) {
+                    throw new Error(
+                        'the page exposed no `__blongHandler`: the integration intent (testHook) is off',
+                    );
+                }
+                return (handler[name] as (p: unknown, m: object) => Promise<unknown>)(args, {});
+            },
+            [method, params] as [string, Record<string, unknown>],
+        ) as Promise<T>;
+    }
+
     // ── Form fields ──────────────────────────────────────────────────────────
 
     /**

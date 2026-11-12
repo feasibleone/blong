@@ -145,7 +145,6 @@ export default model(
                     },
                 },
                 browser: {
-                    navigator: false,
                     title: 'Sports Results',
                     icon: 'pi pi-flag-fill',
                     toolbar: [

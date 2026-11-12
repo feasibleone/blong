@@ -44,6 +44,10 @@ test.describe('Reference', () => {
         object: 'discipline',
         search: 'ENT-PLAY-DI',
         removeMethod: 'sport.discipline.remove',
+        // The discipline page navigates the sports and lists only the selected
+        // one's disciplines, so the leftovers are searched inside the branch the
+        // create test writes to.
+        navigatorNode: 'Athletics',
     });
 
     createAndEditModel(test, expect, {
@@ -60,6 +64,7 @@ test.describe('Reference', () => {
             'discipline.disciplineCode': 'DI01',
         },
         search: 'ENT-PLAY-DI-01',
+        navigatorNode: 'Athletics',
     });
 
     cleanupModel(test, expect, {
@@ -102,5 +107,40 @@ test.describe('Reference', () => {
             'area.areaName': 'ENT-PLAY-AR-01 Area Edited',
         },
         search: 'ENT-PLAY-AR-01',
+    });
+
+    // The created sports stay behind until the *next* run's cleanup, and the
+    // discipline page navigates them — so `bgModels` pictured this run's leftover
+    // in the tree. Removing it here leaves the database as the run found it.
+    cleanupModel(test, expect, {
+        subject: 'sport',
+        object: 'sport',
+        search: 'ENT-PLAY-SP',
+        removeMethod: 'sport.sport.remove',
+        title: 'cleanup the sport this spec created',
+        screenshot: {capture: {cleanupConfirm: false}},
+    });
+
+    /**
+     * The areas are removed through the handler, not the page.
+     *
+     * An area is deleted by *deactivating* it (`deletion: {mode: 'deactivate'}`),
+     * and a deactivated record is still a row: the cleanup above only marks the
+     * previous run's area inactive, so every run adds one more
+     * `ENT-PLAY-AR-01 Area Edited`. The edit test opens the first row its search
+     * matches, and the older, inactive record is as good a first row as the one
+     * this run made — which is how a baseline ends up picturing last run's data.
+     * The remove handler behind that button is a real delete, so the leftovers go
+     * through it.
+     */
+    test('purge the areas this spec created', async ({portal}) => {
+        const areas = await portal.call<Array<{areaId: string}>>('sport.area.find', {
+            filterBy: {areaName: 'ENT-PLAY-AR-01 Area Edited'},
+        });
+        for (const area of areas) await portal.call('sport.area.remove', {areaId: area.areaId});
+        const left = await portal.call<Array<{areaId: string}>>('sport.area.find', {
+            filterBy: {areaName: 'ENT-PLAY-AR-01 Area Edited'},
+        });
+        expect(left, 'the areas this spec created are gone').toHaveLength(0);
     });
 });

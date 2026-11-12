@@ -66,7 +66,6 @@ export default model(
                 },
                 layouts: {edit: [['attachment']]},
                 browser: {
-                    navigator: false,
                     title: 'Attachments',
                     icon: 'pi pi-paperclip',
                     toolbar: [

@@ -591,8 +591,8 @@ describe('TableWidget', () => {
         const qtyIndex = headers.findIndex(th => /qty/i.test(th.textContent ?? ''));
         expect(qtyIndex).toBeGreaterThan(0);
         fireEvent.click(headers[qtyIndex]);
-        const cells = Array.from(container.querySelectorAll('.p-datatable-tbody tr')).map(row =>
-            row.querySelector(`td:nth-child(${qtyIndex + 1})`)?.textContent,
+        const cells = Array.from(container.querySelectorAll('.p-datatable-tbody tr')).map(
+            row => row.querySelector(`td:nth-child(${qtyIndex + 1})`)?.textContent,
         );
         expect(cells.slice(0, 2)).toEqual(['1', '2']);
         expect(onChange).not.toHaveBeenCalled();
@@ -705,7 +705,11 @@ describe('TableWidget', () => {
                                 depth: {widget: {type: 'integer'}, readOnly: true},
                             },
                         },
-                        widget: {type: 'table', columns: ['speciesName', 'depth'], inlineEdit: true},
+                        widget: {
+                            type: 'table',
+                            columns: ['speciesName', 'depth'],
+                            inlineEdit: true,
+                        },
                     },
                     value: [{speciesName: 'Nerida Kelp', depth: 12}],
                     onChange,
@@ -733,7 +737,11 @@ describe('TableWidget', () => {
                         items: {
                             properties: {
                                 reefId: {
-                                    widget: {dropdown: 'reef', body: 'reefName', lookup: {id: 'reefKey'}},
+                                    widget: {
+                                        dropdown: 'reef',
+                                        body: 'reefName',
+                                        lookup: {id: 'reefKey'},
+                                    },
                                 },
                             },
                         },
@@ -1191,17 +1199,23 @@ describe('NavigatorWidget', () => {
                 disabled={false}
             />,
         );
-        // The first root node is selected on load and published to the page.
+        // The first node in label order is selected on load and published to the
+        // page — `Child` sorts before `Root`, and the list a reader sees is
+        // alphabetical whatever order the rows arrived in.
         expect(onSelect).toHaveBeenCalledTimes(1);
+        expect(onSelect).toHaveBeenCalledWith('category', {
+            row: {id: 2, parentId: 1, name: 'Child'},
+            index: 0,
+        });
         onSelect.mockClear();
 
         // Clicking that node again must not clear the selection. The tables beside a
         // navigator are filtered by it, so a cleared selection takes them off the
         // page; the node stays selected and nothing new is published.
-        fireEvent.click(screen.getByText('Root'));
+        fireEvent.click(screen.getByText('Child'));
         expect(onSelect).not.toHaveBeenCalled();
         expect(container.querySelector('.p-treenode-content.p-highlight')?.textContent).toContain(
-            'Root',
+            'Child',
         );
     });
 });

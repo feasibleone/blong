@@ -101,3 +101,45 @@
     flex: 1 1 0;
     min-height: 0;
 }
+
+/* A navigator card hands the panel's height down for the same reason: the tree is
+   what scrolls, not the page. Without the chain the cards are content-height, the
+   tree grows to fit every node it was given, and a list of sixty sports runs past
+   the bottom edge with no scrollbar — the reader cannot reach the rest of it. */
+.p-splitter-panel>.p-card:has(.blong-navigator) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.p-splitter-panel>.p-card:has(.blong-navigator)>.p-card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.p-splitter-panel>.p-card:has(.blong-navigator)>.p-card-body>.p-card-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.p-splitter-panel>.p-card:has(.blong-navigator)>.p-card-body>.p-card-content>.blong-card__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.blong-card__body>.field.grid:has(.blong-navigator) {
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-wrap: nowrap;
+}
+
+.blong-card__body>.field.grid:has(.blong-navigator)>div {
+    flex: 1 1 auto;
+    min-height: 0;
+}

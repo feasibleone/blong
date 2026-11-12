@@ -57,7 +57,6 @@ export default model(
                 },
                 layouts: {edit: [['identity']]},
                 browser: {
-                    navigator: false,
                     title: 'Clubs',
                     icon: 'pi pi-home',
                     toolbar: [

@@ -49,7 +49,7 @@ for concept/architecture see
 Add a model folder with model definitions to a realm. Models are discovered automatically by the
 portal orchestrator and mock adapter via the `.model` file suffix convention:
 
-```
+```text
 realm/
   meta/
     model/
@@ -186,6 +186,67 @@ menu: {hidden: true},                             // no entry (reachable by meth
 
 A realm that genuinely writes its pages by hand answers `portalConfigGet` itself, as `blong-realm`
 does; the helper `portalMenuItem(method)` resolves a page to a menu leaf.
+
+---
+
+## Step 2b — Parent, Navigator and Default Order
+
+A browse page is a plain table unless the model says its records hang beneath another object. That
+one declaration — `parent` — produces the navigator, the cascade and (when declared) the tree:
+
+```typescript
+// A discipline is a sport's discipline: `sportId` names the parent record.
+parent: {object: 'sport', field: 'sportId'},
+
+// Shorthand: the parent object's name, when the field is `<object>Id`.
+parent: 'sport',
+
+// A tree: the parent rows name their own parent, so the navigator renders a hierarchy.
+parent: {object: 'unit', field: 'unitId', parentField: 'parentUnitId'},
+
+// A self-tree: the navigator lists the model's own rows and the table shows the
+// selected node's children (`parent<Object>Id` is the default field).
+parent: {object: 'unit', field: 'parentUnitId'},
+```
+
+What it derives:
+
+| Derived                 | Default                                                              |
+| ----------------------- | -------------------------------------------------------------------- |
+| navigator `listAction`  | `<parentSubject>.<parentObject>.find`                                |
+| navigator `keyField`    | `<parentObject>Id`                                                   |
+| navigator `labelField`  | `<parentObject>Name` (the model's own name column for a self-tree)   |
+| navigator `parentField` | only when declared (or the declared `field`, for a self-tree)        |
+| browse table `master`   | `{[field]: keyField}` — the table shows the selected node's children |
+| `browser.navigator`     | `true` because there is something to navigate                        |
+
+- **`browser.navigator` is derived, not declared.** A model with no `parent` and no navigator widget
+  is a full-width table; there is nothing to put in a panel. Set it only to force the panel on
+  (`navigator: true`) or to keep a declared parent from showing one (`navigator: false`).
+- **No parent, no navigator.** A page whose panel would list the same rows the table does is a
+  mistake, not a design: the panel filters nothing.
+- **The parent will never be ordered server-side.** Its name column belongs to another model —
+  possibly to `core_resource`, with no column of its own — so a guessed order fails the read
+  (`Unknown column 'applicationName' in 'order clause'`). The widget sorts the nodes it received by
+  label and selects the first, which is also the node a reader sees at the top.
+- **A navigator whose parent rows carry no display name is not worth having**: the nodes render as
+  ids. Give the parent page a name column first.
+
+The **default order** of the paged table is the model's declared `nameField` column, ascending — as
+a browse table is read page by page, and an unordered page can show a row twice and lose another
+between two. Declare a different order explicitly:
+
+```typescript
+browser: {sort: {field: 'createdAt', dir: 'DESC'}},   // newest first
+browser: {sort: 'code'},                            // one column, ascending
+browser: {sort: false},                             // unordered — warns
+```
+
+- The fallback is the **declared** `nameField`, never the `${object}Name` default: a column guessed
+  from the object's name may not exist, and a read the server cannot order fails whole.
+- A model that declares neither is reported by `modelWarnings()` when the pages are built: a paged
+  table with no order is a page whose rows can repeat or vanish between pages. Declare `nameField`
+  or `browser.sort` to silence it.
 
 ---
 
@@ -503,12 +564,12 @@ A dropdown is referenced by a `'subject.name'` key:
 
 For **resource-backed** tables the knex adapter auto-binds `{subject}.dropdown.list` — the realm
 does NOT need to implement it (see
-[How the model system relates to `core.resource`](#how-the-model-system-relates-to-core-resource)
+[How the model system relates to core resources](#how-the-model-system-relates-to-core-resources)
 below). A realm only implements `{subject}.dropdown.list` itself for **non-resource** tables.
 
 ---
 
-## How the model system relates to `core.resource`
+## How the model system relates to core resources
 
 `core.resource` = universal entity registry (`resourceId` PK + `resourceName` label, typed via
 `core.type` alias `${subject}.${object}` — see **blong-core**). A **resource-backed table** has a
@@ -703,6 +764,8 @@ browser: {
         delete: 'marine.coral.remove',  // shows row delete (when implemented)
     },
     filter: {isActive: true}, // default params passed to listAction on open
+    navigator: false,        // only to override what `parent` derives (Step 2b)
+    sort: {field: 'coralName', dir: 'ASC'}, // default order of the paged table
 }
 ```
 

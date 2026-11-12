@@ -11,6 +11,30 @@ import {useQuery} from '@tanstack/react-query';
 import {useCallback, useMemo, useRef, useState} from 'react';
 import type {Row} from './model.js';
 
+/**
+ * The order a list is already read in, from the params the widget declares.
+ *
+ * A model's browse table names its default order in `listParams.orderBy`, and the
+ * header has to show it: the rows arrive ordered either way, so a table that drew
+ * the sort arrow nowhere would leave the reader unable to tell whether the order
+ * is theirs or the model's — and clicking a header would appear to do nothing
+ * until it flipped the column it was already sorted by.
+ *
+ * Both spellings the framework accepts are read: `{field, dir}` (what the browser
+ * sends) and `{column, order}` (what a knex-facing config may carry).
+ */
+export function sortFromParams(
+    listParams?: Record<string, unknown>,
+): {field: string; dir: 1 | -1} | null {
+    const terms = listParams?.orderBy;
+    const term = (Array.isArray(terms) ? terms[0] : terms) as Record<string, unknown> | undefined;
+    if (!term || typeof term !== 'object') return null;
+    const field = (term.field ?? term.column) as string | undefined;
+    if (!field) return null;
+    const order = String(term.dir ?? term.order ?? 'ASC').toLowerCase();
+    return {field, dir: order === 'desc' || order === '-1' ? -1 : 1};
+}
+
 export interface ITableListOptions {
     /** The handler that reads a page, e.g. `portal.bundle.find`. Empty when not a list. */
     listAction: string;
@@ -47,8 +71,11 @@ export function useTableList({
     const [committedSearch, setCommittedSearch] = useState('');
     const [columnFilterInputs, setColumnFilterInputs] = useState<Record<string, string>>({});
     const [committedFilters, setCommittedFilters] = useState<Record<string, string>>({});
-    const [sortField, setSortField] = useState<string | null>(null);
-    const [sortOrder, setSortOrder] = useState<1 | -1>(1);
+    // The model's own order, so the header starts out showing the sort the rows
+    // are already in (see `sortFromParams`).
+    const declaredSort = useMemo(() => sortFromParams(listParams), [listParams]);
+    const [sortField, setSortField] = useState<string | null>(declaredSort?.field ?? null);
+    const [sortOrder, setSortOrder] = useState<1 | -1>(declaredSort?.dir ?? 1);
     const [first, setFirst] = useState(0);
     const [listPageSize, setListPageSize] = useState(pageSize);
     const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);

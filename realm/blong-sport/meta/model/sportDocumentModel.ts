@@ -134,7 +134,6 @@ export default model(
                     },
                 },
                 browser: {
-                    navigator: false,
                     title: 'Documents',
                     icon: 'pi pi-file',
                     toolbar: [

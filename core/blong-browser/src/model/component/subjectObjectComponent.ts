@@ -1,5 +1,5 @@
 import type {IAdapter, IComponent, IHandlerProxy, IModelSpec} from '@feasibleone/blong';
-import {withDefaults} from '@feasibleone/blong-mock';
+import {modelWarnings, withDefaults} from '@feasibleone/blong-mock';
 import type {IPortalConfig} from '../../index.js';
 import {mergePortalConfigs} from '../../portalConfig.js';
 import {addMenuEntry, menuGroups, type IMenuNode} from '../menu.js';
@@ -30,6 +30,10 @@ export default async function component(
     for (const rawModel of models) {
         const model = withDefaults(rawModel);
         const {subject, object} = model;
+        // A model that promises something it does not state — a paged table with
+        // no order, a navigator with nothing to list — is reported once, where the
+        // pages are built, rather than discovered by whoever reads the screen.
+        for (const warning of modelWarnings(model)) this.log?.warn?.(warning);
         components[`${subject}.${object}.browse`] = await subjectObjectBrowse(model, blong);
         components[`${subject}.${object}.new`] = await subjectObjectNew(model, blong);
         components[`${subject}.${object}.open`] = await subjectObjectOpen(model, blong);

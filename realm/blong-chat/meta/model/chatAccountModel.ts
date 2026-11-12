@@ -114,7 +114,6 @@ export default model(
                 },
                 layouts: {edit: [['main'], ['app']]},
                 browser: {
-                    navigator: false,
                     title: 'Chat accounts',
                     icon: 'pi pi-comments',
                     // The generic `find` answers `{items, pagination}`, so the page takes the rows

@@ -168,7 +168,6 @@ export default model(
                     },
                 },
                 browser: {
-                    navigator: false,
                     title: 'Competitions',
                     icon: 'pi pi-calendar-plus',
                     toolbar: [

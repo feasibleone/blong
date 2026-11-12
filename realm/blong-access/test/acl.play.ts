@@ -1,8 +1,10 @@
 /**
  * `access.acl` — the ACL Rules page (Browse).
  *
- * The page lists the explicit record/scope rules of every principal, so the
- * screenshot is filtered to a single seeded action to keep it stable.
+ * The page lists the explicit record/scope rules of every principal. The
+ * screenshot is narrowed to the seeded wildcard rules: the search runs over the
+ * table's own columns, and an action name (`party.person.edit`) is joined in for
+ * display rather than stored, so searching it matches nothing.
  *
  * It deliberately has no create/edit test: an ACL row is unique per
  * (principal, action, target), a re-run would collide, and the rows it would
@@ -19,6 +21,8 @@ test.describe('Access ACL Rules', () => {
     browseModel(test, expect, {
         subject: 'access',
         object: 'acl',
-        searchText: 'party.person.edit',
+        // `targetKind` and `effect` of the seeded Admin grants — both `all`/`allow`,
+        // and `all` is the term the page can match on.
+        searchText: 'all',
     });
 });
