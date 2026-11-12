@@ -1,7 +1,7 @@
 {
     "core/blong": "1.41.0",
     "realm/blong-login": "1.14.0",
-    "docs/blong": "1.44.0",
+    "docs/blong": "1.45.0",
     "realm/blong-test": "1.13.0",
     "ext/rest-fs": "1.8.0",
     "core/blong-gogo": "1.50.0",
@@ -18,7 +18,7 @@
     "core/blong-browser": "1.34.1",
     "demo/blong-marine": "1.13.1",
     "suite/blong-suite": "1.19.0",
-    "tools/blong-dev": "1.18.0",
+    "tools/blong-dev": "1.19.0",
     "realm/blong-access": "1.19.0",
     "realm/blong-core": "1.6.0",
     "core/blong-lib": "1.9.0",

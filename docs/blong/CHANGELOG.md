@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.45.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.44.0...blong-docs-v1.45.0) (2026-11-12)
+
+
+### Features
+
+* blong-dev progressive exposure ([c30e935](https://github.com/feasibleone/blong/commit/c30e935f5e325608f67be15510a69097aa6aacff))
+* faq ([ccb5cae](https://github.com/feasibleone/blong/commit/ccb5caea605cdbb6bbfb3100c3d4c1e8add2b499))
+
 ## [1.44.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.43.1...blong-docs-v1.44.0) (2026-11-12)
 
 
