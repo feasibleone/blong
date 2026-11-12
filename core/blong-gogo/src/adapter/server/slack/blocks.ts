@@ -1,4 +1,9 @@
-import type {IChatAnswer, IChatPrompt, IChatPromptOption} from '@feasibleone/blong/types';
+import type {
+    ChatPromptPresentation,
+    IChatAnswer,
+    IChatPrompt,
+    IChatPromptOption,
+} from '@feasibleone/blong/types';
 import {library} from '@feasibleone/blong/types';
 
 import {
@@ -11,15 +16,18 @@ import {
 /**
  * The Block Kit a canonical prompt becomes.
  *
- * `inline` — the default — puts the controls in the message: radio buttons or checkboxes in an
- * `actions` block and a submit button under them, plus a line telling the person they may reply
- * instead where the question allows something typed (`@@D-691`). Slack has no text input in a
- * message, so that alternative is the conversation itself: a pending question claims the next reply.
+ * `inlineForm` — the default — is a container card in the message holding the controls and a submit,
+ * so the question never leaves the conversation and the answer arrives in one payload (`@@D-817`).
  *
- * `form` posts one button that opens a modal, which is the only place Slack renders a text input and
- * a radio group side by side. A choice with a `placeholder` is what wants one — the editor's question
- * tool offers options *and* a box to type something else — and a multiple choice gets the text input
- * beside its checkboxes there. Both presentations answer the same ask.
+ * `inline` puts the controls in the message the plain way: radio buttons or checkboxes in an
+ * `actions` block and a submit button under them, plus a line telling the person they may reply
+ * instead where the question allows something typed (`@@D-691`). Slack has no text input outside a
+ * card or a dialog, so that alternative is the conversation itself: a pending question claims the
+ * next reply.
+ *
+ * `form` posts one button that opens a modal — the override for a question that must ask several
+ * things at once. A choice with a `placeholder` is what wants a box beside the list, and a multiple
+ * choice gets one beside its checkboxes. All three presentations answer the same ask.
  *
  * Pure, because this is the assertion that the controls the requester asked for exist: a test reads
  * these blocks and the view below without a Slack workspace to look at.
@@ -41,12 +49,103 @@ const formButton = (prompt: IChatPrompt, label: string) => ({
     elements: [button(label, chatPromptFormActionId(prompt.promptId), prompt.promptId)],
 });
 
-/** What a person can pick, in the shape both `checkboxes` and `radio_buttons` take. */
+/**
+ * The question as a data-entry container: inputs and the submit, in the message.
+ *
+ * Slack's `container` block is a card that lives in a message and may hold `input` blocks, so a radio
+ * group, a checkbox list and a text box can be filled in and submitted without opening a dialog — the
+ * question never leaves the conversation, and the answer arrives in one payload rather than as a
+ * toggle followed by a reply (`@@D-817`). It is what `presentation: 'inlineForm'` renders.
+ *
+ * The block ids are the answer's fields (`choice`, `values`, `text`), exactly as in the modal, so one
+ * reader in the port turns both surfaces into the same `IChatAnswer`. An input is optional when
+ * another input of the same card could answer instead — an empty submission would otherwise settle a
+ * question with nothing.
+ */
+const containerBlock = (prompt: IChatPrompt): unknown | undefined => {
+    const freeText = Boolean(prompt.placeholder) || prompt.kind === 'text';
+    const label = truncate(
+        prompt.placeholder ?? (prompt.kind === 'text' ? 'Your answer' : 'Choose'),
+        2000,
+    );
+    const children: unknown[] = [];
+    if (prompt.kind === 'choice')
+        children.push(inputBlock('choice', label, optionControl(prompt, 'choice'), freeText));
+    if (prompt.kind === 'multiChoice')
+        children.push(inputBlock('values', label, optionControl(prompt, 'multiChoice'), freeText));
+    if (freeText)
+        children.push(
+            inputBlock(
+                'text',
+                prompt.kind === 'text' ? label : 'Something else',
+                {
+                    type: 'plain_text_input',
+                    action_id: 'value',
+                    multiline: true,
+                    ...(prompt.placeholder && {
+                        placeholder: {type: 'plain_text', text: truncate(prompt.placeholder, 150)},
+                    }),
+                },
+                prompt.kind !== 'text',
+            ),
+        );
+    children.push({
+        type: 'actions',
+        block_id: 'submit',
+        elements: [
+            button('Submit', chatPromptSubmitActionId(prompt.promptId), prompt.promptId, 'primary'),
+        ],
+    });
+    // The platform's own limit, checked here rather than discovered from a refused post.
+    if (children.length > 10) return undefined;
+    return {
+        type: 'container',
+        block_id: 'prompt',
+        title: {type: 'plain_text', text: truncate(prompt.text, 150)},
+        ...(prompt.placeholder && {
+            subtitle: {type: 'plain_text', text: truncate(prompt.placeholder, 150)},
+        }),
+        child_blocks: children,
+    };
+};
+
+/**
+ * What a person can pick, in the shape `radio_buttons`, `checkboxes` and both selects take.
+ *
+ * `plain_text`, because a select menu refuses markdown in an option label while the radios accept it,
+ * and one shape has to work in all three — the label is a name, not prose (@@F-719). Truncated to
+ * the 75 characters the platform allows, which a long option name would otherwise break.
+ */
 const choices = (options: IChatPromptOption[] | undefined) =>
     (options ?? []).map(option => ({
-        text: {type: 'mrkdwn' as const, text: option.label},
+        text: {type: 'plain_text' as const, text: truncate(option.label, 75)},
         value: option.value,
     }));
+
+/**
+ * How many options one control takes.
+ *
+ * A radio group and a checkbox list each hold ten and refuse an eleventh with `invalid_blocks`, which
+ * a caller sees as a failed post rather than as a question too long for the surface (@@F-718 @@D-819).
+ * The limit is the control's, not the card's: a card holds three controls and a dialog the same three,
+ * so a list this long is shown as a dropdown — which takes a hundred — and stays where it was asked.
+ */
+const CHOICES_PER_CONTROL = 10;
+
+/** The control a list of options is shown in, in a card, a dialog and a message alike. */
+const optionControl = (prompt: IChatPrompt, kind: 'choice' | 'multiChoice') => {
+    const options = choices(prompt.options);
+    const many = options.length > CHOICES_PER_CONTROL;
+    const type =
+        kind === 'choice'
+            ? many
+                ? 'static_select'
+                : 'radio_buttons'
+            : many
+              ? 'multi_static_select'
+              : 'checkboxes';
+    return {type, action_id: 'value', options};
+};
 
 /** The line that offers the typed alternative a message cannot show as a field. */
 const replyHint = (hint: string): unknown => ({
@@ -79,9 +178,8 @@ const inlineBlocks = (prompt: IChatPrompt): unknown[] => {
             block_id: 'pick',
             elements: [
                 {
-                    type: prompt.kind === 'choice' ? 'radio_buttons' : 'checkboxes',
+                    ...optionControl(prompt, prompt.kind),
                     action_id: chatPromptPickActionId(prompt.promptId),
-                    options: choices(prompt.options),
                 },
             ],
         });
@@ -103,10 +201,38 @@ const inlineBlocks = (prompt: IChatPrompt): unknown[] => {
     return blocks;
 };
 
+/** Whether the question accepts something typed, which is what a message cannot show by default. */
+const wantsFreeText = (prompt: IChatPrompt): boolean =>
+    Boolean(prompt.placeholder) || prompt.kind === 'text';
+
+/**
+ * The presentation a question gets when the caller names none.
+ *
+ * A card in the message is the default: the question, its controls and a Submit, all where it was
+ * asked (`@@D-817`). A confirmation is the exception — two buttons need no card around them — and a
+ * card that cannot be built falls back to a dialog when something must be typed, or to the plain
+ * inline controls when it need not be (`@@D-818`).
+ */
+export const slackPresentation = (prompt: IChatPrompt): ChatPromptPresentation => {
+    if (prompt.presentation) return prompt.presentation;
+    return prompt.kind === 'confirm' ? 'inline' : 'inlineForm';
+};
+
 /** The message a prompt is posted as, in the presentation the question asked for. */
 export const slackPromptBlocks = (prompt: IChatPrompt): unknown[] => {
+    const presentation = slackPresentation(prompt);
+    if (presentation === 'inlineForm') {
+        const card = containerBlock(prompt);
+        // A card that would exceed the ten child blocks the platform allows is not posted broken:
+        // the dialog can hold what the card cannot, and a plain pick costs nothing but the text box.
+        if (card) return [card];
+        return slackPromptBlocks({
+            ...prompt,
+            presentation: wantsFreeText(prompt) ? 'form' : 'inline',
+        });
+    }
     const section = {type: 'section', text: {type: 'mrkdwn', text: prompt.text}};
-    if ((prompt.presentation ?? 'inline') === 'inline') return inlineBlocks(prompt);
+    if (presentation === 'inline') return inlineBlocks(prompt);
     switch (prompt.kind) {
         case 'choice':
             // A placeholder asks for a typed alternative too, and a message cannot carry one.
@@ -271,23 +397,9 @@ export const slackPromptView = (prompt: IChatPrompt, conversationId: string): un
     const freeText = Boolean(prompt.placeholder) || prompt.kind === 'text';
     const blocks: unknown[] = [question];
     if (prompt.kind === 'choice')
-        blocks.push(
-            inputBlock(
-                'choice',
-                label,
-                {type: 'radio_buttons', action_id: 'value', options: choices(prompt.options)},
-                freeText,
-            ),
-        );
+        blocks.push(inputBlock('choice', label, optionControl(prompt, 'choice'), freeText));
     if (prompt.kind === 'multiChoice')
-        blocks.push(
-            inputBlock(
-                'values',
-                label,
-                {type: 'checkboxes', action_id: 'value', options: choices(prompt.options)},
-                freeText,
-            ),
-        );
+        blocks.push(inputBlock('values', label, optionControl(prompt, 'multiChoice'), freeText));
     if (freeText)
         blocks.push(
             inputBlock(

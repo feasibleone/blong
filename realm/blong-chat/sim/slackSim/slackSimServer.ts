@@ -40,6 +40,20 @@ export default handler(() => ({
         }
         if (path.endsWith('views.open')) return {code: 200, body: {ok: true}};
         if (path.endsWith('auth.test')) return {code: 200, body: {ok: true, user_id: 'U1'}};
+        // The three calls that make a channel of its own: `create` answers the id a caller stores,
+        // and the other two are accepted and recorded so a test can assert what they carried.
+        if (path.endsWith('conversations.create')) {
+            const name = (body as {name?: string} | undefined)?.name ?? 'plan-unnamed';
+            return {code: 200, body: {ok: true, channel: {id: 'C-plan', name}}};
+        }
+        if (
+            path.endsWith('conversations.setTopic') ||
+            path.endsWith('conversations.setPurpose') ||
+            path.endsWith('conversations.invite')
+        ) {
+            const channel = (body as {channel?: string} | undefined)?.channel;
+            return {code: 200, body: {ok: true, channel}};
+        }
         return {code: 200, body: {ok: false, error: 'unknown_method'}};
     },
 }));

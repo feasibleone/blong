@@ -14,9 +14,11 @@
 #
 # Writing into a conversation — asking a question, sending a message, taking the answer — is the
 # managing capability's: each of those routes makes the bot speak or records what somebody said.
-# Reading the queue is a weaker authority, so `chat.prompt.find` sits in `chatView` as well — a
-# viewer may see what is waiting without answering it. An administrator holds both: whoever may ask
-# is the one who has to be able to see what never got answered.
+# Opening a channel is the same authority for the same reason, so `chat.channel.create` sits beside
+# them; a plan's channel is one a caller asked the bot to make. Reading the queue is a weaker
+# authority, so `chat.prompt.find` sits in `chatView` as well — a viewer may see what is waiting
+# without answering it. An administrator holds both: whoever may ask is the one who has to be able
+# to see what never got answered.
 replace: true
 role:
   Admin: chatManage,loginCapability
@@ -24,4 +26,4 @@ role:
   Chat Viewer: chatView,loginCapability
 capability:
   chatView: chat.account.find,chat.account.get,chat.workspace.find,chat.workspace.get,chat.prompt.find,subject.object.schema
-  chatManage: chat.account.find,chat.account.get,chat.account.add,chat.account.edit,chat.account.remove,chat.workspace.find,chat.workspace.get,chat.workspace.add,chat.workspace.edit,chat.workspace.remove,chat.prompt.ask,chat.prompt.find,chat.out.messageSend,chat.in.answerReceive,subject.object.schema
+  chatManage: chat.account.find,chat.account.get,chat.account.add,chat.account.edit,chat.account.remove,chat.workspace.find,chat.workspace.get,chat.workspace.add,chat.workspace.edit,chat.workspace.remove,chat.prompt.ask,chat.prompt.find,chat.out.messageSend,chat.in.answerReceive,chat.channel.find,chat.channel.create,chat.channel.topic,subject.object.schema

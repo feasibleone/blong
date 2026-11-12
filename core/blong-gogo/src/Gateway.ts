@@ -42,6 +42,7 @@ import {type TypeBoxTypeProvider} from '@fastify/type-provider-typebox';
 import type {IResolution} from './Resolution.ts';
 import type {IRpcClient} from './RpcClient.ts';
 import jwt from './jwt.ts';
+import {caughtError} from './gatewayCaught.ts';
 import {isExpectedError, methodId, methodParts, snakeToCamel} from './lib.ts';
 import type {IConfig as IConfigMLE} from './mle.ts';
 import isPublic from './public.ts';
@@ -707,7 +708,12 @@ export default class Gateway extends Internal implements IGateway {
                                 }),
                             };
                         }
-                    } catch (error) {
+                    } catch (caught) {
+                        // A dispatch answers a failure as a packet, and one path rethrows the packet
+                        // rather than its first element: the gateway then read an array where it
+                        // expected an error, so a refusal that declared 400 answered 500 with an
+                        // error object a client could only render as `{}` (`@@F-720`).
+                        const error = caughtError(caught);
                         const typedError = error as {
                             statusCode?: number;
                             httpResponse?: unknown;

@@ -8,6 +8,8 @@ export {lint} from './commands/lint.ts';
 export {lintStaged} from './commands/lintStaged.ts';
 export {log} from './commands/log.ts';
 export {memory} from './commands/memory.ts';
+export {plan} from './commands/plan.ts';
+export {executeCall} from './commands/call.ts';
 export {proxy} from './commands/proxy.ts';
 export {report} from './commands/report.ts';
 export {sql} from './commands/sql.ts';

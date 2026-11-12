@@ -103,15 +103,24 @@ its body, not from its address.
 
 1. <https://api.slack.com/apps> → **Create New App → From scratch**, pick the workspace.
 2. **OAuth & Permissions → Scopes → Bot Token Scopes**: `chat:write` to post, `files:read` to read
-   what a person attaches. Nothing else is needed; the realm subscribes to nothing it does not read.
+   what a person attaches, `channels:history` and `im:history` for the messages it listens to, and
+   `groups:history` for a private channel — a plan's channel is private, and without that scope its
+   messages are not delivered at all (`@@D-820`). A realm that opens channels of its own — a plan's
+   channel is the worked example — also needs `channels:manage` (public) and `groups:write`
+   (private), because `conversations.create` and `conversations.invite` answer `fatal_error` without
+   them. Adding a scope to an app that is already installed changes nothing until the app is
+   **reinstalled**; the bot token an old install handed out keeps the old scopes.
 3. **Install to Workspace**, then copy the **Bot User OAuth Token** (`xoxb-…`) and, from **Basic
    Information → App Credentials**, the **Signing Secret**. The **App ID** and **Client ID** on the
    same page are the two segments of the webhook path.
 4. **Event Subscriptions → Enable Events**, Request URL
-   `https://<host>/chat/slack/<appId>/<clientId>`, and subscribe to the bot event
-   **`message.channels`** (and `message.im` for direct messages). Slack sends a `url_verification`
-   challenge when the URL is saved; the realm answers it from the server hook, so the URL is
-   accepted as soon as the process is up and the signing secret matches.
+   `https://<host>/chat/slack/<appId>/<clientId>`, and subscribe to the bot events
+   **`message.channels`**, **`message.groups`** and **`message.im`** — a message in a private
+   channel is a different event from one in a public channel, and a typed answer to a question asked
+   in a plan's channel is the private case (`@@D-821`). Slack sends a `url_verification` challenge
+   when the URL is saved; the realm answers it from the server hook, so the URL is accepted as soon
+   as the process is up and the signing secret matches. With a configuration token below, the port
+   writes this list and the two URLs itself on every start.
 5. **Interactivity & Shortcuts → Interactivity → Request URL**: the same URL. Buttons and modal
    submissions arrive there as `payload=<json>`, and sharing one path is why the path has no verb in
    it — the body says what it is.

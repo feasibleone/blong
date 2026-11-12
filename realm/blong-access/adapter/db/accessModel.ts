@@ -194,6 +194,27 @@ async function resourceNameFor(qb: KnexQb, resourceId: Buffer | string): Promise
 }
 
 /**
+ * The `core_resource.resourceId` a name and a type alias name, or `undefined`.
+ *
+ * The name is how a person refers to an entity — a login, a role, a capability — while
+ * every table refers to it by id. `access.user.remove` takes either, so the caller that
+ * reads a list of logins does not have to decode the ids first. The type alias is part of
+ * the question, not a filter a caller may forget: a role and a user may be named alike.
+ */
+async function resourceIdByName(
+    qb: KnexQb,
+    resourceName: string,
+    typeAlias: string,
+): Promise<Buffer | undefined> {
+    const row = (await qb('core_resource as r')
+        .join('core_type as t', 't.typeId', 'r.typeId')
+        .where('r.resourceName', resourceName)
+        .where('t.typeAlias', typeAlias)
+        .first('r.resourceId')) as {resourceId: Buffer} | undefined;
+    return row?.resourceId;
+}
+
+/**
  * Enrich rows with the resource name for their resource-backed key, e.g.
  * `{roleId, roleBit, description}` → `{..., roleName}`.
  */
@@ -846,6 +867,7 @@ export type AccessModelLib = {
     binHex: typeof binHex;
     bufToBase64: typeof bufToBase64;
     resourceNameFor: typeof resourceNameFor;
+    resourceIdByName: typeof resourceIdByName;
     joinResourceNames: typeof joinResourceNames;
     listEdgeObjectIds: typeof listEdgeObjectIds;
     edgeRowsWithNames: typeof edgeRowsWithNames;
@@ -875,6 +897,7 @@ export default library(
         binHex,
         bufToBase64,
         resourceNameFor,
+        resourceIdByName,
         joinResourceNames,
         listEdgeObjectIds,
         edgeRowsWithNames,

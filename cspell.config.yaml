@@ -102,6 +102,8 @@ words:
   - datetime
   - datetimes
   - dbaeumer
+  - dedent
+  - dedented
   - dedup
   - deepseek
   - deepwater

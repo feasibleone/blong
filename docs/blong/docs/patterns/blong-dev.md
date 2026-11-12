@@ -35,6 +35,7 @@ own configuration (`.blong_devrc`, `rush.json`, `cspell.config.yaml`, the memory
 | `cspell <verb>`     | A word list that has to be sorted by hand, and the insertion point that goes with it.         |
 | `glossary <verb>`   | A vocabulary that drifts out of order, or a link that points at a page that moved.            |
 | `memory <verb>`     | Agents hand-editing the memory format, and forgetting its index and wrapping.                 |
+| `plan <verb>`       | A plan whose tasks never became todos, or whose boxes were ticked by hand.                    |
 | `docs <verb>`       | Refreshing a generated diagram or screenshot and proving it is not stale.                     |
 
 ## Linting and tests
@@ -164,16 +165,16 @@ blong-dev call access.user.find '{paging: {}}' --payload.paging.pageSize=10
 blong-dev call chatPromptAsk --payload.text='Which one?' --dry-run
 ```
 
-The payload is JSON or YAML — a JSON document is read as JSON, anything else as YAML, so a hand-written
-`{platform: slack}` needs no quoted keys and a generated payload keeps its numbers. `--payload.<path>=<value>`
-sets or overrides one property at a dotted path and its value keeps its JSON type (`10` is a number,
-`true` a boolean), which is what makes a paging argument reach the server as a number rather than a
-string. `--dry-run` prints the method, the server, the config file it came from and the payload it
-would send, and touches no network — the first thing to reach for when a call goes somewhere
-unexpected.
+The payload is JSON or YAML — a JSON document is read as JSON, anything else as YAML, so a
+hand-written `{platform: slack}` needs no quoted keys and a generated payload keeps its numbers.
+`--payload.<path>=<value>` sets or overrides one property at a dotted path and its value keeps its
+JSON type (`10` is a number, `true` a boolean), which is what makes a paging argument reach the
+server as a number rather than a string. `--dry-run` prints the method, the server, the config file
+it came from and the payload it would send, and touches no network — the first thing to reach for
+when a call goes somewhere unexpected.
 
-Both commands read one file, `.blong_callrc`, found upwards from the working directory and gitignored
-because it holds a credential:
+Both commands read one file, `.blong_callrc`, found upwards from the working directory and
+gitignored because it holds a credential:
 
 ```yaml
 server:
@@ -191,9 +192,9 @@ plain: # routes a realm serves without auth (`auth: false`): their params travel
 
 The resolution order is a flag, the file, the environment: `--server`/`--target`/`--username`/
 `--password` override the file, the file falls back to `MLE_USERNAME`/`MLE_PASSWORD`, and a method
-with no route falls to `default.server`, then to the file's `target`, then to the one server the file
-declares. A call that cannot tell says so and names the servers it could have picked, rather than
-guessing.
+with no route falls to `default.server`, then to the file's `target`, then to the one server the
+file declares. A call that cannot tell says so and names the servers it could have picked, rather
+than guessing.
 
 `plain` exists because the gateway decodes MLE only on a route that requires auth: an encrypted body
 on a public route arrives at the handler as an opaque string, and the validation failure then blames
@@ -256,8 +257,8 @@ missing role answers "User is not allowed to log in".
 
 The login name is the resource name — `access_user` holds no user name at all — so `add admin`
 creates a login called `admin`, while the New user screen names the resource after the email address
-it submits. `--password` is the new user's secret and `--db-password` the database's; everything else
-resolves as `blong-dev sql` does, so pointing the command at a deployed database is a matter of
+it submits. `--password` is the new user's secret and `--db-password` the database's; everything
+else resolves as `blong-dev sql` does, so pointing the command at a deployed database is a matter of
 `--database`.
 
 `passwd` rotates a password the way the realm's own `access.profile.password.change` does — the
@@ -275,6 +276,7 @@ blong-dev docs list            # the register of generated artefacts
 blong-dev docs check           # regenerate, compare, restore — non-zero when stale
 blong-dev docs verify          # build/serve the site and load every page in Chromium
 blong-dev memory add friction --title "…" --area core/blong-browser --body "…"
+blong-dev memory add decision --title "…" --area core/blong-browser --plan agent
 blong-dev memory search "why do agents edit memory files by hand"
 blong-dev memory check
 ```
@@ -291,8 +293,30 @@ an entry belongs to, the wrapping and the generated index, and `check` is the ga
 into the staged-file lint, so a malformed memory file fails a commit rather than a review comment.
 Every write also pushes the entry it touched into a local Hindsight index, which is what
 `memory search` reads; the markdown stays the source of truth, so an unreachable server costs a
-warning and `memory index --semantic` rebuilds. See the
-[memory pattern](./memory#searching-by-meaning) for the settings and the backfill.
+warning and `memory index --semantic` rebuilds. `--plan <file|slug>` on a decision or a friction
+lists it in the plan's `## Decisions and frictions` section, which is how a choice taken while the
+work runs becomes visible on the board; `memory close` and `plan sync` keep those lines current. See
+the [memory pattern](./memory#searching-by-meaning) for the settings and the backfill.
+
+## Plans
+
+```bash
+blong-dev plan check agent            # parse the work breakdown; report what would not create
+blong-dev plan tasks agent --apply    # one todo per task, linked @@T-… in the plan, detail in memory
+blong-dev plan init agent --repo feasibleone/blong --invite U123
+blong-dev plan status agent           # done / open, per area, with the issue and channel links
+blong-dev plan sync agent             # tick, align titles and links, republish the issue
+blong-dev plan sync agent --channel    # also re-apply the channel's topic (the issue link)
+```
+
+A plan is a board, not a document: the work breakdown is `- [ ] <title> · area: <area>` with the
+detail indented below it, and `plan tasks` is what moves that detail into memory and leaves the
+title and a reference behind. The reference is a markdown link to the entry
+(`[@@T-531](../../realm/x/.github/memory/todo.md#t-531--…)`), so the board is navigable in the
+editor and the issue published from it rewrites the same link to a github.com URL. `memory close`
+then ticks the box through that token, and `plan init` mirrors the plan into an issue and opens a
+private Slack channel whose id, and whose link, it records. See the
+[plan tracking pattern](./planning).
 
 ## Why agents and people use the same commands
 
@@ -312,5 +336,6 @@ incantation becomes a command, so it can be tested and documented.
 - [The log](log.md) and [the log viewer](semantic-log.md) — what `log` reads.
 - [Playwright](playwright.md) — the suite `playwright` runs and `trace` explains.
 - [Memory](memory.md) — the format `memory` writes.
+- [Plan tracking](planning.md) — the grammar `plan` parses and the board it maintains.
 - [Glossary](../concepts/glossary.md) — the vocabulary `glossary` maintains.
 - [Integration tests in CI](test-int.md) — what `report` and `ci-report` produce.

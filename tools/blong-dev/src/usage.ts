@@ -27,6 +27,7 @@ export const USAGE_LINES: readonly string[] = [
     '  blong-dev publish check      Fail when a published package would omit an entry point it declares',
     '  blong-dev glossary <verb>    Add, remove, list, show, sort or check the documentation glossary',
     '  blong-dev memory <verb>      Add, list, show, close, move, format or check agent memory entries',
+    '  blong-dev plan <verb>        Check, create tasks for, publish or sync a plan (check/tasks/init/sync/status/adopt)',
     '  blong-dev docs <verb>        List, generate, check or verify the docs site generated artefacts',
 ];
 

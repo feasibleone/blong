@@ -32,6 +32,11 @@ export default {
         message: 'Prompt {promptId} was not answered within {timeoutMs} ms',
         statusCode: 408,
     },
+    'chat.promptTimeoutTooLong': {
+        message:
+            'A question cannot wait {timeoutMs} ms: a parked question waits at most {maxTimeoutMs} ms',
+        statusCode: 400,
+    },
     'chat.promptNothingPending': {
         message: 'Prompt {promptId} is not waiting for an answer',
         statusCode: 409,
@@ -43,5 +48,14 @@ export default {
     'chat.storeUnavailable': {
         message: 'The chat account store cannot be read: {reason}',
         statusCode: 503,
+    },
+    'chat.channelCreateFailed': {
+        message: 'Creating the {platformName} channel {channelName} failed: {reason}',
+        statusCode: 502,
+    },
+    'chat.channelTopicFailed': {
+        message:
+            'Setting the topic of {platformName} conversation {conversationId} failed: {reason}',
+        statusCode: 502,
     },
 };

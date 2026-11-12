@@ -80,6 +80,7 @@ export const sources: ICommanderSource[] = [
                 keyField: 'metadata.name',
                 labelField: 'metadata.name',
                 viewer: 'document',
+                exclude: ['traefik'],
                 list: {
                     method: 'k8s-dev.{resourceType}.find',
                     resultSet: 'items',
@@ -155,6 +156,7 @@ export const sources: ICommanderSource[] = [
                 keyField: 'database',
                 labelField: 'database',
                 permission: 'mongoDev.database.list',
+                exclude: ['blong-integration'],
                 list: {method: 'mongo-dev.database.list', resultSet: 'items'},
             },
             {

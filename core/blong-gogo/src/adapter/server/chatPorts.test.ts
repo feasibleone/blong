@@ -26,14 +26,19 @@ import {
     slackTokenExpiry,
 } from '../impl/slackConfigToken.ts';
 import {
+    slackManifestPointsAt,
+    slackManifestRepoint,
+    slackRequestUrl,
+} from '../impl/slackManifest.ts';
+import {slackAcknowledgeGet} from './slack/acknowledge.ts';
+import {
+    slackPresentation,
     slackPromptAnsweredBlocks,
     slackPromptBlocks,
     slackPromptExpiredBlocks,
     slackPromptView,
 } from './slack/blocks.ts';
-import {slackAcknowledgeGet} from './slack/acknowledge.ts';
 import {slackSignatureMatches} from './slack/signature.ts';
-import {slackManifestPointsAt, slackManifestRepoint, slackRequestUrl} from '../impl/slackManifest.ts';
 import {viberPromptButtons, viberPromptKeyboard} from './viber/keyboard.ts';
 import {viberSignatureMatches} from './viber/signature.ts';
 
@@ -182,8 +187,8 @@ test('Slack asks in the message itself unless the question asks for a form', t =
         elements?: Array<{type?: string; action_id?: string; text?: {text: string}}>;
         text?: {text?: string};
     };
-    // Inline is the default: the options are the message, not a button that opens a dialog.
-    const choice = slackPromptBlocks(prompt({})) as Block[];
+    // Inline is the plainest surface: the options are the message, not a card and not a dialog.
+    const choice = slackPromptBlocks(prompt({presentation: 'inline'})) as Block[];
     t.equal(choice[1]?.block_id, 'pick', 'a choice holds its controls in the message');
     t.equal(choice[1]?.elements?.[0]?.type, 'radio_buttons', 'as one radio button per option');
     t.equal(
@@ -205,10 +210,14 @@ test('Slack asks in the message itself unless the question asks for a form', t =
         'and the options say what a person reads',
     );
 
-    const multi = slackPromptBlocks(prompt({kind: 'multiChoice'})) as Block[];
+    const multi = slackPromptBlocks(
+        prompt({kind: 'multiChoice', presentation: 'inline'}),
+    ) as Block[];
     t.equal(multi[1]?.elements?.[0]?.type, 'checkboxes', 'a multiple choice is checkboxes inline');
 
-    const typed = slackPromptBlocks(prompt({kind: 'text', options: undefined, placeholder: 'v1'}));
+    const typed = slackPromptBlocks(
+        prompt({kind: 'text', options: undefined, placeholder: 'v1', presentation: 'inline'}),
+    );
     const typedBlocks = typed as Block[];
     t.equal(typedBlocks.length, 2, 'a free-text question has nothing to submit');
     t.match(
@@ -411,7 +420,9 @@ test('an option list may also accept something typed', t => {
     type Block = {block_id?: string; optional?: boolean; element?: {type?: string}};
     // A placeholder is the caller saying "or type it": the message opens the form, and the form
     // carries the radio group *and* a text box, which is the pair an editor's question tool offers.
-    const inline = slackPromptBlocks(prompt({placeholder: 'Other'})) as Array<{
+    const inline = slackPromptBlocks(
+        prompt({presentation: 'inline', placeholder: 'Other'}),
+    ) as Array<{
         block_id?: string;
         elements?: Array<{action_id?: string; text?: {text: string}}>;
     }>;
@@ -446,6 +457,192 @@ test('an option list may also accept something typed', t => {
 
     const typed = slackPromptView(prompt({kind: 'text'}), 'D1') as {blocks: Block[]};
     t.equal(typed.blocks[1]?.optional, false, 'a text-only question has to be answered');
+    t.end();
+});
+
+test('a question is a card in the message unless it says otherwise', t => {
+    t.equal(slackPresentation(prompt({})), 'inlineForm', 'a choice is a card by default');
+    t.equal(slackPresentation(prompt({kind: 'multiChoice'})), 'inlineForm');
+    t.equal(
+        slackPresentation(prompt({kind: 'text', options: undefined})),
+        'inlineForm',
+        'so is a question that only wants typing',
+    );
+    t.equal(
+        slackPresentation(prompt({kind: 'confirm', options: undefined})),
+        'inline',
+        'a confirmation is two buttons, which need no card around them',
+    );
+    t.equal(
+        slackPresentation(prompt({presentation: 'form'})),
+        'form',
+        'and a named presentation always wins',
+    );
+
+    const blocks = slackPromptBlocks(prompt({})) as Array<{
+        type?: string;
+        child_blocks?: unknown[];
+    }>;
+    t.equal(blocks.length, 1, 'the default posts one block');
+    t.equal(blocks[0]?.type, 'container');
+    t.ok(
+        (blocks[0]?.child_blocks?.length ?? 99) <= 10,
+        'and it stays inside the ten child blocks the platform allows',
+    );
+    t.end();
+});
+
+test('a question is a card in the message unless it says otherwise', t => {
+    t.equal(slackPresentation(prompt({})), 'inlineForm', 'a choice is a card by default');
+    t.equal(slackPresentation(prompt({kind: 'multiChoice'})), 'inlineForm');
+    t.equal(
+        slackPresentation(prompt({kind: 'text', options: undefined})),
+        'inlineForm',
+        'so is a question that only wants typing',
+    );
+    t.equal(
+        slackPresentation(prompt({kind: 'confirm', options: undefined})),
+        'inline',
+        'a confirmation is two buttons, which need no card around them',
+    );
+    t.equal(
+        slackPresentation(prompt({presentation: 'form'})),
+        'form',
+        'and a named presentation always wins',
+    );
+
+    const blocks = slackPromptBlocks(prompt({})) as Array<{
+        type?: string;
+        child_blocks?: unknown[];
+    }>;
+    t.equal(blocks.length, 1, 'the default posts one block');
+    t.equal(blocks[0]?.type, 'container');
+    t.ok(
+        (blocks[0]?.child_blocks?.length ?? 99) <= 10,
+        'and it stays inside the ten child blocks the platform allows',
+    );
+    t.end();
+});
+
+test('an inline form is one container the person fills in the message', t => {
+    type Child = {type?: string; block_id?: string; element?: {type?: string}};
+    type Card = {
+        type?: string;
+        title?: {text?: string};
+        subtitle?: {text?: string};
+        child_blocks?: Child[];
+    };
+
+    const blocks = slackPromptBlocks(
+        prompt({presentation: 'inlineForm', placeholder: 'Other'}),
+    ) as Card[];
+    t.equal(
+        blocks.length,
+        1,
+        'the whole question is one message block, not a button that opens a dialog',
+    );
+    t.equal(blocks[0]?.type, 'container', 'a data-entry card');
+    t.equal(blocks[0]?.title?.text, 'Which one?', 'the question is the card’s title');
+    t.equal(
+        blocks[0]?.subtitle?.text,
+        'Other',
+        'and what the caller said about typing is its subtitle',
+    );
+
+    const children = blocks[0]?.child_blocks ?? [];
+    t.same(
+        children.map(child => child.block_id),
+        ['choice', 'text', 'submit'],
+        'a radio group, a box for something else, and the submit',
+    );
+    t.same(
+        children.map(child => child.element?.type ?? child.type),
+        ['radio_buttons', 'plain_text_input', 'actions'],
+        'the two inputs are the controls the answer is read from',
+    );
+    t.same(
+        (
+            children[2] as unknown as {elements?: Array<{action_id?: string}>} | undefined
+        )?.elements?.map(element => element.action_id),
+        [chatPromptSubmitActionId('p1')],
+        'and the submit names the question it settles',
+    );
+
+    const multi = slackPromptBlocks(
+        prompt({kind: 'multiChoice', presentation: 'inlineForm', placeholder: 'Other'}),
+    ) as Card[];
+    t.equal(
+        multi[0]?.child_blocks?.[0]?.element?.type,
+        'checkboxes',
+        'a multiple choice fills the same card, with checkboxes',
+    );
+
+    const typed = slackPromptBlocks(prompt({kind: 'text', presentation: 'inlineForm'})) as Card[];
+    t.same(
+        typed[0]?.child_blocks?.map(child => child.block_id),
+        ['text', 'submit'],
+        'a free-text question is one box and the submit',
+    );
+    t.end();
+});
+
+test('a list longer than a control holds is a dropdown, in the card and in the dialog', t => {
+    type Child = {
+        element?: {type?: string; options?: Array<{value?: string; text?: {type?: string}}>};
+    };
+    type Card = {type?: string; child_blocks?: Child[]};
+    const eleven = Array.from({length: 11}, (_all, index) => ({
+        value: `n${index + 1}`,
+        label: `N${index + 1}`,
+    }));
+
+    const card = slackPromptBlocks(
+        prompt({presentation: 'inlineForm', options: eleven, placeholder: 'Other'}),
+    ) as Card[];
+    t.equal(card[0]?.type, 'container', 'the question is still the card it would have been');
+    t.equal(
+        card[0]?.child_blocks?.[0]?.element?.type,
+        'static_select',
+        'with a dropdown instead of one radio group Slack would refuse',
+    );
+    t.equal(
+        card[0]?.child_blocks?.[0]?.element?.options?.length,
+        11,
+        'holding every option the caller listed',
+    );
+    t.equal(
+        card[0]?.child_blocks?.[0]?.element?.options?.[0]?.text?.type,
+        'plain_text',
+        'labelled in the one shape a select accepts — markdown in an option is refused',
+    );
+
+    const view = slackPromptView(prompt({options: eleven, placeholder: 'Other'}), 'D1') as {
+        blocks?: Child[];
+    };
+    t.equal(
+        view.blocks?.[1]?.element?.type,
+        'static_select',
+        'and the dialog asks the same way, so the drop-down is one field either way',
+    );
+
+    const multi = slackPromptBlocks(
+        prompt({kind: 'multiChoice', presentation: 'inlineForm', options: eleven}),
+    ) as Card[];
+    t.equal(
+        multi[0]?.child_blocks?.[0]?.element?.type,
+        'multi_static_select',
+        'a multiple choice of that length takes several values from a dropdown',
+    );
+
+    const pick = slackPromptBlocks(prompt({presentation: 'inline', options: eleven})) as Array<{
+        block_id?: string;
+        elements?: Array<{type?: string}>;
+    }>;
+    t.equal(
+        pick.find(block => block.block_id === 'pick')?.elements?.[0]?.type,
+        'static_select',
+        'and the plain inline question cannot post eleven radios either',
+    );
     t.end();
 });
 
@@ -602,15 +799,14 @@ test('each account decides which API its calls reach, and where it is published'
     t.equal(repointed.settings?.interactivity?.is_enabled, true, 'with interactivity switched on');
     t.same(
         repointed.settings?.event_subscriptions?.bot_events,
-        ['message.channels'],
-        'and without deciding what the app subscribes to',
+        ['message.channels', 'message.groups', 'message.im'],
+        'and subscribing the message events it reads, which is what makes a private channel answer',
     );
     t.equal(
         manifest.settings.interactivity.request_url,
         'https://old.ngrok.app/chat/slack/A1/T1',
         'the manifest Slack sent is left as it was',
     );
-
     // A start only writes the manifest when writing changes something: the call is rate-limited, and
     // a process restarted on the same hostname would spend that budget repeating itself (`@@D-688`).
     t.equal(
@@ -621,7 +817,20 @@ test('each account decides which API its calls reach, and where it is published'
     t.equal(
         slackManifestPointsAt(repointed, url),
         true,
-        'and one already pointed there is left alone',
+        'and one already pointed there, with every message event, is left alone',
+    );
+    t.equal(
+        slackManifestPointsAt(
+            {
+                settings: {
+                    interactivity: {is_enabled: true, request_url: url},
+                    event_subscriptions: {request_url: url, bot_events: ['message.channels']},
+                },
+            },
+            url,
+        ),
+        false,
+        'an app addressed right but deaf to private channels is rewritten too',
     );
     t.equal(
         slackManifestPointsAt(
@@ -679,7 +888,12 @@ test('a configuration token is renewed before it dies, and only when its expiry 
         'a refused rotation produces no fields to store',
     );
     t.same(
-        slackRotationPatch({ok: true, token: 'xoxe.xoxp-1-new', refresh_token: 'xoxe-1-new', exp: now}),
+        slackRotationPatch({
+            ok: true,
+            token: 'xoxe.xoxp-1-new',
+            refresh_token: 'xoxe-1-new',
+            exp: now,
+        }),
         {
             configToken: 'xoxe.xoxp-1-new',
             configRefreshToken: 'xoxe-1-new',
@@ -698,12 +912,13 @@ test('an app is created bare and read back with the ids Slack gave it', t => {
         settings: Record<string, unknown>;
     };
     t.equal(manifest.display_information.name, 'blong-bot', 'the app takes the alias as its name');
-    t.equal(
-        manifest.features.bot_user.display_name,
-        'blong-bot',
-        'and so does the bot user',
-    );
+    t.equal(manifest.features.bot_user.display_name, 'blong-bot', 'and so does the bot user');
     t.ok(manifest.oauth_config.scopes.bot.includes('chat:write'), 'it may post');
+    t.ok(
+        manifest.oauth_config.scopes.bot.includes('channels:manage') &&
+            manifest.oauth_config.scopes.bot.includes('groups:write'),
+        'and may open a channel of its own, because a plan asks for one',
+    );
     t.notOk(
         'event_subscriptions' in manifest.settings,
         'no request URL is named before Slack has answered the ids the address carries',
@@ -716,7 +931,11 @@ test('an app is created bare and read back with the ids Slack gave it', t => {
         {appId: 'A9', clientId: 'C9', signingSecret: 's9'},
         'the ids and the signing secret are what the inbound half needs',
     );
-    t.same(slackAppPatch({credentials: {client_id: 'C9'}}), {clientId: 'C9'}, 'a partial answer keeps what it has');
+    t.same(
+        slackAppPatch({credentials: {client_id: 'C9'}}),
+        {clientId: 'C9'},
+        'a partial answer keeps what it has',
+    );
     t.end();
 });
 
@@ -737,7 +956,11 @@ test('a realm answers the account map a port runs with', t => {
         undefined,
         'an empty store falls back to the configured accounts instead of erasing them',
     );
-    t.equal(chatAccountsFromDispatch(undefined), undefined, 'and so does a store that answered nothing');
+    t.equal(
+        chatAccountsFromDispatch(undefined),
+        undefined,
+        'and so does a store that answered nothing',
+    );
     t.equal(chatAccountsFromDispatch({accounts: []}), undefined, 'a list is not a map');
     t.end();
 });

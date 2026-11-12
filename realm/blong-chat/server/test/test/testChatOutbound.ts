@@ -314,6 +314,38 @@ export default handler(
                     );
                 },
 
+                async function aQuestionCannotWaitPastTheTimerCeiling(
+                    assert: IAssert,
+                    {$meta}: {$meta: IMeta},
+                ) {
+                    // A `setTimeout` above 2^31-1 ms fires as soon as it is scheduled, so a caller
+                    // asking for a month would be told the question closed instantly. Three days is
+                    // the horizon a plan asks for, and it sits well below the ceiling (@@D-822).
+                    simReset();
+                    await assert.rejects(
+                        async () =>
+                            chatPromptAsk(
+                                {
+                                    platform: 'slack',
+                                    account: 'demo',
+                                    conversationId: 'D-long',
+                                    text: 'Wait a month',
+                                    kind: 'choice',
+                                    options: [{value: 'a', label: 'Alpha'}],
+                                    timeoutMs: 30 * 24 * 60 * 60 * 1000,
+                                },
+                                $meta,
+                            ),
+                        /waits at most/,
+                        'a wait longer than the timer can hold is refused, not silently shortened',
+                    );
+                    assert.equal(
+                        simRequests().length,
+                        0,
+                        'and nothing is posted, because the question could never have waited',
+                    );
+                },
+
                 async function aControlViberCannotRenderIsRefused(
                     assert: IAssert,
                     {$meta}: {$meta: IMeta},
@@ -343,8 +375,8 @@ export default handler(
                     {$meta}: {$meta: IMeta},
                 ) {
                     simReset();
-                    // No `presentation`: inline is the default, and the controls belong where the
-                    // question was asked rather than behind a button that opens a dialog.
+                    // The plain inline surface, named explicitly: the default is the card, and this
+                    // step is about the controls a message can hold on their own (`@@D-818`).
                     const asking = chatPromptAsk(
                         {
                             platform: 'slack',
@@ -352,6 +384,7 @@ export default handler(
                             conversationId: 'D5',
                             text: 'Which checks should run?',
                             kind: 'multiChoice',
+                            presentation: 'inline',
                             options: [
                                 {value: 'unit', label: 'Unit tests'},
                                 {value: 'lint', label: 'Lint'},
@@ -462,6 +495,98 @@ export default handler(
                     );
                 },
 
+                async function anInlineFormAnswersTheCardItPosted(
+                    assert: IAssert,
+                    {$meta}: {$meta: IMeta},
+                ) {
+                    simReset();
+                    // `inlineForm` is the data-entry container: the question, a radio group and a text
+                    // box in one message, submitted together — no dialog, and both fields in the answer
+                    // (`@@D-817`).
+                    const asking = chatPromptAsk(
+                        {
+                            platform: 'slack',
+                            account: 'demo',
+                            conversationId: 'D7',
+                            text: 'Which environment, or type your own?',
+                            kind: 'choice',
+                            presentation: 'inlineForm',
+                            placeholder: 'Something else',
+                            options: [
+                                {value: 'dev', label: 'Development'},
+                                {value: 'prod', label: 'Production'},
+                            ],
+                            timeoutMs: 8000,
+                        },
+                        $meta,
+                    );
+                    const parked = await waitFor(async () => {
+                        const found = (await chatPromptFind({}, $meta)) as {
+                            prompts: IParkedPrompt[];
+                        };
+                        return found.prompts.find(entry => entry.conversationId === 'D7');
+                    });
+                    const posted = await waitFor(() =>
+                        simRequests('slack').find(entry => entry.path.endsWith('chat.postMessage')),
+                    );
+                    const blocks = (posted.body as {blocks?: Array<Record<string, unknown>>})
+                        .blocks ?? [];
+                    assert.equal(blocks.length, 1, 'the whole question is one block');
+                    assert.equal(blocks[0]?.type, 'container', 'a data-entry card, not a button');
+                    const children = (blocks[0]?.child_blocks ?? []) as Array<{
+                        block_id?: string;
+                        element?: {type?: string};
+                    }>;
+                    assert.deepEqual(
+                        children.map(child => child.block_id),
+                        ['choice', 'text', 'submit'],
+                        'with a radio group, a box for something else, and the submit',
+                    );
+
+                    const submitted = await slackPost(
+                        `payload=${encodeURIComponent(
+                            JSON.stringify({
+                                type: 'block_actions',
+                                trigger_id: 'trigger-inline-form',
+                                channel: {id: 'D7'},
+                                user: {id: 'U1'},
+                                actions: [
+                                    {
+                                        action_id: `chatPromptSubmit:${parked.prompt.promptId}`,
+                                        type: 'button',
+                                        value: parked.prompt.promptId,
+                                    },
+                                ],
+                                state: {
+                                    values: {
+                                        choice: {
+                                            value: {
+                                                type: 'radio_buttons',
+                                                selected_option: {value: 'dev'},
+                                            },
+                                        },
+                                        text: {
+                                            value: {type: 'plain_text_input', value: 'a laptop'},
+                                        },
+                                    },
+                                },
+                            }),
+                        )}`,
+                        'application/x-www-form-urlencoded',
+                    );
+                    assert.equal(submitted.status, 200, 'the submit is acknowledged');
+                    assert.deepEqual(
+                        await asking,
+                        {
+                            promptId: parked.prompt.promptId,
+                            value: 'dev',
+                            text: 'a laptop',
+                            sender: {id: 'U1'},
+                        },
+                        'and one submit answers with the choice and the text together',
+                    );
+                },
+
                 async function aSubmitWithoutStateAnswersWhatWasTicked(
                     assert: IAssert,
                     {$meta}: {$meta: IMeta},
@@ -541,8 +666,9 @@ export default handler(
                     {$meta}: {$meta: IMeta},
                 ) {
                     simReset();
-                    // A message cannot hold a text box, so an inline free-text question asks for the
-                    // reply it is posted in — and a pending question claims the next one.
+                    // The reply path, named explicitly: the default is now the card with its own box,
+                    // and a message that holds no box asks for the reply it is posted in — a pending
+                    // question claims the next one (`@@D-818`).
                     const asking = chatPromptAsk(
                         {
                             platform: 'slack',
@@ -550,6 +676,7 @@ export default handler(
                             conversationId: 'D9',
                             text: 'What should the release be called?',
                             kind: 'text',
+                            presentation: 'inline',
                             placeholder: 'v1.2.0-rc.1',
                             timeoutMs: 8000,
                         },

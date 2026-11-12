@@ -65,19 +65,25 @@ const picked = (element: Record<string, unknown>): {value?: string; values?: str
 };
 
 /**
- * Every selection the message was holding when it was submitted.
+ * What the message was holding when it was submitted: the selections, and anything typed.
  *
  * Read by shape rather than by block id: the question is the only thing this port posts with a radio
- * group or a checkbox list, so whatever carries one is the pick, whatever the ids were called.
+ * group, a checkbox list or a text input, so whatever carries one is the answer, whatever the ids
+ * were called. A `plain_text_input` reports its text under `value`, which is why the typed answer is
+ * read here beside the selections — an inline form submits the two together (`@@D-817`).
  */
-const pickedFromState = (state: unknown): {value?: string; values?: string[]} => {
+const answerFromState = (state: unknown): {value?: string; values?: string[]; text?: string} => {
     const values = ((state as {values?: Record<string, Record<string, unknown>>} | undefined)
         ?.values ?? {}) as Record<string, Record<string, unknown>>;
-    let found: {value?: string; values?: string[]} = {};
+    let found: {value?: string; values?: string[]; text?: string} = {};
     for (const block of Object.values(values)) {
         for (const element of Object.values(block ?? {})) {
+            const control = element as {value?: unknown};
             const read = picked(element as Record<string, unknown>);
             if (read.value !== undefined || read.values) found = {...found, ...read};
+            else if (typeof control.value === 'string' && control.value.trim() !== '') {
+                found = {...found, text: control.value};
+            }
         }
     }
     return found;
@@ -156,13 +162,14 @@ export default handler(() => {
         }
         if (read.submit) {
             // The submit is the answer, and the selection it carries is whatever the message holds
-            // at that moment: Slack reports the state of every stateful element, keyed by block.
+            // at that moment: Slack reports the state of every stateful element, keyed by block — and
+            // on an inline form that includes the text box beside the options (`@@D-691 @@D-817`).
             return {
                 ...(base as unknown as IChatInbound),
                 kind: 'answer',
                 conversationId,
                 sender,
-                answer: {promptId: read.promptId, ...pickedFromState(payload.state), sender},
+                answer: {promptId: read.promptId, ...answerFromState(payload.state), sender},
             };
         }
         return {

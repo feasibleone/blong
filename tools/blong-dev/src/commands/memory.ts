@@ -22,9 +22,11 @@
  * Usage:
  *   blong-dev memory add <friction|todo|decision> --title <title> [--area <area>]
  *                        [--body <text> | --body-file <file>] [--status <status>] [--id <id>]
+ *                        [--plan <file|slug>]
  *   blong-dev memory list [--kind <kind>] [--area <area>] [--status <status>] [--search <text>] [--json]
  *   blong-dev memory show <id|id@scope> [--json]
  *   blong-dev memory close <id|id@scope> [--note <text>] [--by <id>] [--reason <text>]
+ *                        [--plan <file>] [--no-plan]
  *   blong-dev memory retire <id|id@scope> [--reason <text>] [--purge]
  *   blong-dev memory reopen <id|id@scope>
  *   blong-dev memory move <id|id@scope>[,<id>…] --area <area>
@@ -42,11 +44,10 @@
 
 import {execFileSync} from 'node:child_process';
 import {existsSync, readFileSync, writeFileSync} from 'node:fs';
-import {join, relative, resolve} from 'node:path';
+import {dirname, join, relative, resolve} from 'node:path';
 
 import {
     areaTag,
-    entryDocument,
     entryDocuments,
     kindTag,
     statusTag,
@@ -70,6 +71,7 @@ import {
     type IHindsightDocumentRef,
     type IHindsightStore,
 } from '../memory/hindsight/hindsightStore.ts';
+import {addMemoryEntry, migrationProblem} from '../memory/memoryAdd.ts';
 import {
     checkDoc,
     describeProblem,
@@ -81,7 +83,6 @@ import {
     applyEntries,
     bodyLines,
     canonicalise,
-    clearRetired,
     ensureDoc,
     ensureManualSection,
     entryLines,
@@ -89,7 +90,6 @@ import {
     highestId,
     insertEntry,
     manualItem,
-    nextId,
     refreshIndex,
     removeEntry,
     replaceMeta,
@@ -100,6 +100,11 @@ import {
 } from '../memory/memoryEdit.ts';
 import {formatLines, renderLines, wrapText} from '../memory/memoryFormat.ts';
 import {duplicateEntries, mergePlans, parseImport} from '../memory/memoryImport.ts';
+import {
+    forgetEntries as forget,
+    ingestEntries as ingest,
+    warnIndex,
+} from '../memory/memoryIngest.ts';
 import {migrateLegacy, parseBlameDates, parseDropList} from '../memory/memoryMigrate.ts';
 import {parseDoc, readDoc, splitLines} from '../memory/memoryParse.ts';
 import {
@@ -123,7 +128,6 @@ import {
 } from '../memory/memoryReference.ts';
 import {parseId, resolveId, scopeForCwd, type IIdHit} from '../memory/memoryResolve.ts';
 import {
-    DEFAULT_STATUS,
     ENTRY_HEADING,
     KIND_PREFIX,
     KIND_STATUSES,
@@ -134,18 +138,24 @@ import {
     type IMemoryEntry,
     type MemoryKind,
 } from '../memory/memoryTypes.ts';
+import type {IMemoryEntryView} from '../memory/memoryView.ts';
+import {planFiles, setPlanTaskChecked} from '../plan/planLink.ts';
+import {readPlan, renderPlan} from '../plan/planParse.ts';
+import {addPlanEntry, planEntryLine, refreshPlanEntries} from '../plan/planSections.ts';
 import {repoRoot} from '../report/reportPaths.ts';
 import {findUp} from '../utils/findConfig.ts';
 import {runTool} from '../utils/runTool.ts';
 import {toolEnv} from '../utils/toolPath.ts';
 import {parseArgs} from './log.ts';
+import {resolvePlanFile} from './plan.ts';
 
 const USAGE = [
     'blong-dev memory add <friction|todo|decision> --title <title> [--area <area>] [--body <text>]',
+    '                        [--plan <file|slug>]   (decision and friction only; lists it on the plan)',
     'blong-dev memory list [--kind <kind>] [--area <area>] [--status <status>] [--search <text>] [--json]',
     'blong-dev memory show <id|id@scope> [--json]',
     'blong-dev memory edit <id|id@scope> [--title <title>] [--body <text>|--body-file <file>] [--status <status>]',
-    'blong-dev memory close <id|id@scope> [--note <text>] [--by <id>] [--reason <text>]',
+    'blong-dev memory close <id|id@scope> [--note <text>] [--by <id>] [--reason <text>] [--plan <file>] [--no-plan]',
     'blong-dev memory retire <id|id@scope> [--reason <text>] [--purge]',
     'blong-dev memory renumber <id|id@scope> --to <id>',
     'blong-dev memory comply [--since <ref>] [--json]',
@@ -206,12 +216,10 @@ function today(): string {
 }
 
 /** Thrown by {@link fail} so the command stops without a stack trace. */
-class UsageError extends Error {}
+import {UsageError} from '../utils/usageError.ts';
 
 /** Report a usage error and stop the command. */
 function fail(message: string): never {
-    process.stderr.write(`blong-dev: ${message}\n${USAGE}\n`);
-    process.exitCode = 1;
     throw new UsageError(message);
 }
 
@@ -224,11 +232,8 @@ function fail(message: string): never {
  * deliberately not guarded.
  */
 function assertMigrated(doc: IMemoryDoc): void {
-    if (parseDoc(doc.lines).indexRange) return;
-    fail(
-        `${relative(repoRoot(process.cwd()), doc.path)} is not in the memory format yet ` +
-            '(no generated index block) — migrate it before `memory add`/`close`/`move` can touch it',
-    );
+    const problem = migrationProblem(doc);
+    if (problem) fail(problem);
 }
 
 /** The files a command works on, honouring `--files`, `--kind` and `--area`. */
@@ -335,46 +340,6 @@ function setStatus(
 }
 
 /**
- * Push entries a write has just changed into the semantic index.
- *
- * The file on disk is the source of truth and the index is derived, so nothing
- * here may fail the command: an unreachable server is reported once on stderr and
- * the next `memory index --semantic` repairs whatever was missed. Entries are
- * re-read from the document rather than passed in, because the lines are the only
- * description of an entry that survives a write.
- */
-async function ingest(
-    root: string,
-    touched: ReadonlyArray<{doc: IMemoryDoc; id: string}>,
-): Promise<void> {
-    const {store} = resolveHindsight();
-    if (!store || touched.length === 0) return;
-
-    const documents = touched
-        .map(({doc, id}) => {
-            const entry = parseDoc(doc.lines).entries.find(candidate => candidate.id === id);
-            return entry ? entryDocument(root, doc, entry) : null;
-        })
-        .filter((document): document is IHindsightDocument => document !== null);
-
-    const outcome = await store.retain(documents);
-    if (!outcome.ok) warnIndex(store, outcome.reason);
-}
-
-/** Drop documents whose entries are gone from disk, so a search cannot find them. */
-async function forget(ids: readonly string[]): Promise<void> {
-    const {store} = resolveHindsight();
-    if (!store || ids.length === 0) return;
-    const outcome = await store.remove(ids);
-    if (!outcome.ok) warnIndex(store, outcome.reason);
-}
-
-/** Report a skipped index update without failing the command that made it. */
-function warnIndex(store: IHindsightStore, reason: string): void {
-    process.stderr.write(`blong-dev: hindsight index skipped (${store.url}): ${reason}\n`);
-}
-
-/**
  * Append paragraphs to a body, each separated by a blank line.
  *
  * Without the blank line markdown treats the appended text as a continuation of
@@ -405,51 +370,114 @@ function bodyFromOptions(options: Options): string[] {
     return inline ? bodyLines(inline) : [];
 }
 
+/**
+ * Keep the plan's `## Decisions and frictions` line in step with an entry.
+ *
+ * The section is how a decision taken during the work becomes visible to a reader of the plan, so a
+ * closed friction says `resolved` there without anyone running `plan sync`. Only the lines that
+ * name an entry are touched; the heading and any prose around it are the author's.
+ */
+function refreshPlanLine(
+    root: string,
+    entry: Pick<IMemoryEntryView, 'id' | 'title' | 'status' | 'path'>,
+    plan?: string,
+): void {
+    const files = plan ? [plan.startsWith(root) ? plan : join(root, plan)] : planFiles(root);
+    for (const path of files) {
+        if (!existsSync(path)) continue;
+        const doc = readPlan(path);
+        const result = refreshPlanEntries(doc, root, new Map([[entry.id, entry]]));
+        if (result.refreshed.length === 0) continue;
+        writeFileSync(result.doc.path, renderPlan(result.doc), 'utf8');
+        process.stdout.write(`# ${entry.id} listed in ${relative(root, path)}\n`);
+    }
+}
+
+/**
+ * List a decision or friction on the plan it was taken under.
+ *
+ * `--plan` is what makes the section appear: the plan is the board a reader watches, and a decision
+ * taken while executing it is invisible until someone opens the memory files (`@@D-815`). The
+ * argument is a file, a folder under `plans/`, or the folder name — the same three forms `plan`
+ * itself takes.
+ */
+function listOnPlan(
+    root: string,
+    planArgument: string,
+    entry: Pick<IMemoryEntryView, 'id' | 'title' | 'status' | 'path'>,
+): void {
+    const path = resolvePlanFile(root, planArgument);
+    const doc = readPlan(path);
+    const updated = addPlanEntry(doc, entry.id, planEntryLine(root, path, entry));
+    writeFileSync(updated.path, renderPlan(updated), 'utf8');
+    process.stdout.write(`# ${entry.id} listed in ${relative(root, path)}\n`);
+}
+
+/**
+ * Tick or untick the plan task line that names an entry.
+ *
+ * A plan is the visible board and the memory entry is the detail, so the two are kept
+ * in step here rather than in a second command the person has to remember. `--plan`
+ * narrows the search to one file; `--no-plan` skips it for an entry that a plan happens
+ * to mention without owning it.
+ */
+function tickPlan(root: string, id: string, checked: boolean, plan?: string): void {
+    const {changed, seen} = setPlanTaskChecked(root, id, checked, plan);
+    for (const site of changed) {
+        process.stdout.write(
+            `# ${id} ${checked ? 'ticked' : 'unticked'} in ${site.path}:${site.line}\n`,
+        );
+    }
+    if (plan && seen.length === 0) {
+        process.stderr.write(`blong-dev: no plan task names ${id} in ${plan}\n`);
+    }
+    // A plan with an issue is republished by `plan sync`, not by this command: the tick is local
+    // and the issue is a network write, so the close says which command finishes the job.
+    for (const path of new Set(changed.map(site => join(root, site.path)))) {
+        try {
+            const doc = readPlan(path);
+            if (doc.meta.issue) {
+                process.stdout.write(
+                    `# issue #${doc.meta.issue} is stale — run \`blong-dev plan sync ${dirname(relative(root, path)).split('/').pop()}\`\n`,
+                );
+            }
+        } catch {
+            // A plan that vanished between the flip and the read is not worth failing a close for.
+        }
+    }
+}
+
 async function add(root: string, args: string[], options: Options): Promise<void> {
     const kind = kindOf(args[0]);
     if (!kind) fail('memory add needs a kind: friction, todo or decision');
+    const planArgument = options.get('plan')?.trim();
+    // The work breakdown is where a todo belongs, and `plan tasks`/`plan adopt` are what write one
+    // there; a todo listed beside the decisions would be work the board does not tick.
+    if (planArgument && kind === 'todo') {
+        fail('a todo is not listed on a plan — put it in the work breakdown (`plan adopt`)');
+    }
 
     const title = (options.get('title') ?? args.slice(1).join(' ')).trim();
     if (!title) fail('memory add needs --title <title>');
-    if (title.length > MAX_TITLE_LENGTH) {
-        fail(`title is ${title.length} characters; keep it under ${MAX_TITLE_LENGTH}`);
+    const result = await addMemoryEntry(root, {
+        kind,
+        title,
+        area: options.get('area'),
+        status: options.get('status'),
+        id: options.get('id'),
+        date: options.get('date'),
+        body: bodyFromOptions(options),
+    });
+    process.stdout.write(`# ${result.id} ${result.status} · ${result.area}\n`);
+    process.stdout.write(`# ${result.path}\n`);
+    if (planArgument) {
+        listOnPlan(root, planArgument, {
+            id: result.id,
+            title,
+            status: result.status,
+            path: result.path,
+        });
     }
-
-    const area = (options.get('area') ?? 'cross-cutting').trim();
-    if (!isKnownArea(root, area)) {
-        fail(`unknown area "${area}" — use a package folder or cross-cutting, ci, docs, skills`);
-    }
-
-    const status = (options.get('status') ?? DEFAULT_STATUS[kind]).trim();
-    if (!KIND_STATUSES[kind].includes(status)) {
-        fail(`status "${status}" is not one of ${KIND_STATUSES[kind].join(', ')}`);
-    }
-
-    const id = (options.get('id') ?? nextId(root, kind)).toUpperCase();
-    const date = (options.get('date') ?? today()).trim();
-    const body = bodyFromOptions(options);
-
-    const doc = ensureDoc(root, area, kind);
-    assertMigrated(doc);
-    // An explicit id may be one the ledger holds as retired — an entry a `close`
-    // reduced to a ledger line, being put back with a body recovered from elsewhere.
-    // `check` rejects an id that is both an entry and a retired id, so the line goes
-    // with it; the fate it recorded is reported so the caller sees what it replaced.
-    if (options.get('id')) {
-        const previous = clearRetired(doc, id);
-        if (previous) process.stdout.write(`# ${id} taken back from the ledger — ${previous}\n`);
-    }
-    insertEntry(
-        doc,
-        SECTION_FOR_STATUS[status] ?? 'Open',
-        entryLines(id, title, {date, area, status}, body),
-    );
-    refreshIndex(doc);
-    writeDoc(doc);
-
-    process.stdout.write(`# ${id} ${status} · ${area}\n`);
-    process.stdout.write(`# ${relative(root, doc.path)}\n`);
-    await ingest(root, [{doc, id}]);
 }
 
 /**
@@ -573,7 +601,12 @@ function show(root: string, id: string | undefined, flags: Set<string>): void {
  * `--note` says what the outcome was. An entry that should not be in the files at all
  * is `retire`d instead, which removes it and leaves only its id in the ledger.
  */
-async function close(root: string, id: string | undefined, options: Options): Promise<void> {
+async function close(
+    root: string,
+    id: string | undefined,
+    options: Options,
+    flags: Set<string>,
+): Promise<void> {
     if (!id) fail('memory close needs an id');
     const found = findEntry(root, id);
     if (!found) fail(`no entry with id ${id}`);
@@ -595,6 +628,17 @@ async function close(root: string, id: string | undefined, options: Options): Pr
 
     setStatus(doc, entry, status, appendParagraphs(entry.body, additions));
     process.stdout.write(`# ${entry.id} ${status}\n# ${entry.title}\n`);
+    // The plan is the board a reader watches, so a closed task is ticked there too, and a decision
+    // or friction that the plan lists says what it became. A `--no-plan` is for an entry a plan
+    // mentions without owning it.
+    if (!flags.has('no-plan')) {
+        tickPlan(root, entry.id, true, options.get('plan'));
+        refreshPlanLine(
+            root,
+            {id: entry.id, title: entry.title, status, path: relative(root, doc.path)},
+            options.get('plan'),
+        );
+    }
     await ingest(root, [{doc, id: entry.id}]);
 }
 
@@ -674,6 +718,15 @@ async function reopen(root: string, id: string | undefined): Promise<void> {
     if (body.length !== entry.body.length) {
         process.stdout.write(`# ${entry.id} no longer claims a successor\n`);
     }
+    // Reopening the work unticks the board, or the plan would show a done task beside an
+    // open entry, and a listed decision or friction goes back to saying it is open.
+    tickPlan(root, entry.id, false);
+    refreshPlanLine(root, {
+        id: entry.id,
+        title: entry.title,
+        status,
+        path: relative(root, doc.path),
+    });
     await ingest(root, [{doc, id: entry.id}]);
 }
 
@@ -2406,7 +2459,7 @@ export async function memory(args: string[]): Promise<void> {
             case 'edit':
                 return await edit(root, positionals[1], options);
             case 'close':
-                return await close(root, positionals[1], options);
+                return await close(root, positionals[1], options, flags);
             case 'retire':
                 return await retire(root, positionals[1], options, flags);
             case 'renumber':
@@ -2444,7 +2497,14 @@ export async function memory(args: string[]): Promise<void> {
                 process.exitCode = 1;
         }
     } catch (error) {
-        // Usage errors already printed their message; anything else is a bug.
-        if (!(error instanceof UsageError)) throw error;
+        // A usage error already says what to fix; the usage text is printed once, here,
+        // so a helper that does not own the text can still stop the command.
+        if (error instanceof UsageError) {
+            process.stderr.write(`blong-dev: ${error.message}\n${USAGE}\n`);
+            process.exitCode = 1;
+            return;
+        }
+        // Anything else is a bug.
+        throw error;
     }
 }

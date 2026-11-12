@@ -463,13 +463,14 @@ async function repointApp(
             return;
         }
         const requestUrl = slackRequestUrl(path, ngrokUrl, account);
-        // A restart on a hostname that has not changed has nothing to write, and `apps.manifest.update`
-        // is one of the most tightly rate-limited calls Slack has.
+        // A restart on a hostname that has not changed and an app that already reads every message
+        // event has nothing to write, and `apps.manifest.update` is one of the most tightly
+        // rate-limited calls Slack has.
         if (slackManifestPointsAt(read.manifest, requestUrl)) {
             port.log?.info?.({
                 account: name,
                 requestUrl,
-                message: 'slack app already points at its public address',
+                message: 'slack app already points at its public address and reads its messages',
             });
             return;
         }
@@ -494,7 +495,7 @@ async function repointApp(
         port.log?.info?.({
             account: name,
             requestUrl,
-            message: 'slack app points at its public address',
+            message: 'slack app points at its public address and reads its messages',
         });
     } catch (error) {
         port.log?.warn?.({account: name, message: 'the manifest update failed', error});

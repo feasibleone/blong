@@ -187,7 +187,10 @@ export async function createMleClient(options: IMleClientOptions): Promise<IMleC
                 // failure) with a JSON-RPC error object in the clear, so the fallback is
                 // JSON rather than `String(...)` — which prints `[object Object]`.
                 let err: {message?: unknown; print?: unknown} = {
-                    message: typeof json.error === 'string' ? json.error : JSON.stringify(json.error, null, 2),
+                    message:
+                        typeof json.error === 'string'
+                            ? json.error
+                            : JSON.stringify(json.error, null, 2),
                 };
                 try {
                     err = (await crypto.decryptVerify(json.error as string, useSign)) as {
@@ -202,7 +205,9 @@ export async function createMleClient(options: IMleClientOptions): Promise<IMleC
                 // `new Error(object)` degenerates to `[object Object]` — losing the
                 // one thing the caller needs. Anything that is not text is shown as
                 // JSON.
-                throw new Error(textOf(err.print) ?? textOf(err.message) ?? JSON.stringify(json.error));
+                throw new Error(
+                    textOf(err.print) ?? textOf(err.message) ?? JSON.stringify(json.error),
+                );
             }
             if (json.result === undefined) return undefined;
             return crypto.decryptVerify(json.result as string, useSign);

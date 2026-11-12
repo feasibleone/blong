@@ -46,8 +46,14 @@ export default validation(
                     echoAnswer: type.Optional(type.Boolean()),
                     // Inline unless the question asks for a form: the controls belong where the
                     // question was asked, and a dialog is the exception rather than the rule.
+                    // `inlineForm` is the third surface — a data-entry container that holds the
+                    // inputs in the message itself (`@@D-817`).
                     presentation: type.Optional(
-                        type.Union([type.Literal('inline'), type.Literal('form')]),
+                        type.Union([
+                            type.Literal('inline'),
+                            type.Literal('form'),
+                            type.Literal('inlineForm'),
+                        ]),
                     ),
                 }),
                 result: type.Object({}, {additionalProperties: true}),

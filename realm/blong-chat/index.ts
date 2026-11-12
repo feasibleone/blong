@@ -209,6 +209,7 @@ export default server(() => ({
                     'test.chat.outbound',
                     'test.chat.models',
                     'test.chat.store',
+                    'test.chat.channel',
                 ],
             },
         },

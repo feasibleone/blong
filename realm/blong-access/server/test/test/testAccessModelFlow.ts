@@ -434,7 +434,22 @@ export default handler(
                         autoRole,
                         seededRoles,
                     ]);
-                    await accessUserRemove({userId: createdUser.userId}, $meta);
+                    // The login is the email this user was created with, so the removal the
+                    // operator performs — by the name a list of accounts shows, not by a
+                    // decoded id — is the one exercised here (`@@D-814`).
+                    await accessUserRemove({userName: createdUser.emailAddress}, $meta);
+                    const remaining = await accessUserFind<Array<{userId: string}>>(
+                        {
+                            filterBy: {emailAddress: createdUser.emailAddress},
+                            paging: {pageNumber: 1, pageSize: 10},
+                        },
+                        $meta,
+                    );
+                    assert.equal(
+                        remaining.length,
+                        0,
+                        'removing a user by its login leaves no row to find',
+                    );
                     await accessRoleRemove({roleId: createdRole.roleId}, $meta);
                     await accessRoleRemove({roleId: allocatedRole.roleId}, $meta);
                     for (const seed of seeds) {

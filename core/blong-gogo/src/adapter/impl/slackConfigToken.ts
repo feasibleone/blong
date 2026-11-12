@@ -78,11 +78,23 @@ export const slackRotationPatch = (
  * Deliberately without a request URL: the addresses carry the app id and the client id in their path,
  * so neither can be written into the manifest before Slack has created the app and answered them. The
  * port reads the app back and re-points it in the same breath, which is the step it already performs
- * for an app that exists (`@@D-796`). The scopes are the ones the realm's README installs by hand.
+ * for an app that exists, and that step is also what subscribes the message events (`@@D-796`). The
+ * scopes are the ones the realm's README installs by hand; `channels:manage` and `groups:write` are
+ * there because a realm may open a channel of its own, and `conversations.create` answers `fatal_error`
+ * when the bot scope is missing (`@@D-806`); `groups:history` is there because a message in a private
+ * channel is delivered only to an app that holds it (`@@D-821`).
  */
 export const slackManifestDraft = (
     name: string,
-    scopes: string[] = ['chat:write', 'files:read', 'channels:history', 'im:history'],
+    scopes: string[] = [
+        'chat:write',
+        'files:read',
+        'channels:history',
+        'groups:history',
+        'im:history',
+        'channels:manage',
+        'groups:write',
+    ],
 ): Record<string, unknown> => ({
     display_information: {name},
     features: {bot_user: {display_name: name, always_online: false}},

@@ -15,6 +15,17 @@ index, and `check` (pre-commit hook and CI) fails on anything it would have to f
 - **Anything specific to one package** → `<package>/.github/memory/`, with
   `--area <category>/<pkg>`. Choose the package you are working in: if the entry only makes sense
   there, it belongs there. Reserved root areas are `cross-cutting`, `ci`, `docs` and `skills`.
+- **Some sessions track the work through a plan.md, not a private checklist.** A plan lives in
+  `plans/<slug>/plan.md` (gitignored). Before approval it carries the task detail beside each
+  `- [ ] <title> · area: <area>` line; `blong-dev plan init <slug>` then creates one memory todo per
+  task, trims the plan to titles plus `@@T-…` references, mirrors it into a GitHub issue and opens
+  the plan's Slack channel, whose conversation id is stored in the plan. The detail lives in the
+  memory entry from then on, and `blong-dev memory close <id>` ticks the plan's box.
+  `blong-dev plan status|sync` are the progress and repair verbs; `plan adopt` brings an existing
+  task, friction, decision or issue under a plan. **When an explicit plan was given** — or one is
+  being written — use the **blong-plan** skill: it carries the document format, the task line the
+  tooling parses, and every command that maintains the board while the work executes. The
+  `blong-planner` agent carries the planning craft on top of it.
 
 Read them the cheap way: every file opens with a generated index (one line per entry), so its first
 ~40 lines, or `blong-dev memory list --kind friction --area core/blong-browser --json`, show
@@ -248,6 +259,10 @@ Hard rules — apply first, never contradict.
   (`/rpc/kukum/{primitive}/{predicate}`), MCP tools, or the `kukum` CLI. See
   `.github/skills/_shared/conventions.md` → `[KUKUM_API]`.
 - **Verify after every change** — `get_errors`, tests, lint; never claim "complete" unverified.
+- **Away is not consent to decide alone.** When `vscode_askQuestions` answers that the user is away,
+  or the user says to ask in chat, put the question in the conversation the work belongs to — the
+  active plan's `conversationId`, else `#blong-ask` — with the **blong-ask** skill. A decision nobody
+  answered is not a decision; leave it open and say so.
 - If you must use double quotes around a command containing an exclamation mark (!), you must escape
   it with a backslash (\!) to avoid the error "bash: !: event not found"
 
@@ -403,6 +418,8 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Capturing a flow's sequence diagram        | **blong-flow-diagram**                                |
 | Writing or reviewing documentation         | **blong-docs**                                        |
 | Parties, RBAC, users, auth, resource graph | **blong-core**                                        |
+| Writing or executing an explicit plan      | **blong-plan**                                        |
+| Asking a person in chat (they are away)    | **blong-ask**                                         |
 | Diagnosing a CI build failure              | **blong-ci**                                          |
 
 ## [KEY_PATTERNS]
@@ -713,11 +730,11 @@ repository's own configuration files:
     blong-dev call chatPromptAsk --payload.text='Which one?' --dry-run
     ```
 
-    The payload is JSON or YAML; `--payload.<path>=<value>` overrides one property and keeps its JSON
-    type; `--dry-run` prints the method, server and payload it would send. `call` and `proxy` share
-    one file, `.blong_callrc` (found upwards, gitignored):
-    `server.<alias>.{url,username,password}`, `route` (method prefix → alias), `payload` (defaults by
-    prefix or exact name), `default.server`, and `plain` (prefixes of routes the gateway serves
+    The payload is JSON or YAML; `--payload.<path>=<value>` overrides one property and keeps its
+    JSON type; `--dry-run` prints the method, server and payload it would send. `call` and `proxy`
+    share one file, `.blong_callrc` (found upwards, gitignored):
+    `server.<alias>.{url,username,password}`, `route` (method prefix → alias), `payload` (defaults
+    by prefix or exact name), `default.server`, and `plain` (prefixes of routes the gateway serves
     without auth, whose params must travel as plain JSON because the MLE hook only decodes a route
     that requires auth — `F-710`). Implemented in `tools/blong-dev/src/commands/call.ts` on
     `tools/blong-dev/src/callRc.ts`.
@@ -776,6 +793,14 @@ repository's own configuration files:
   reading side. `check` fails on an unsorted or repeated term, a definition over forty words, or a
   link that does not resolve. Implemented in `tools/blong-dev/src/commands/glossary.ts` on
   `tools/blong-dev/src/glossary/glossaryDoc.ts`. Example: `blong-dev glossary add adapter`.
+
+- **`blong-dev plan`** — the plan board and its memory tasks. `check` validates the work breakdown
+  (`- [ ] <title> · area: <area>` with the detail indented below), `tasks` creates a memory todo per
+  task and trims the plan to `- [ ] @@T-531 <title>`, `init` does that plus the GitHub issue and the
+  Slack channel, `sync` aligns the plan and the issue with what the memory says, `status` prints
+  progress, and `adopt` puts an existing entry or issue under the plan. Implemented in
+  `tools/blong-dev/src/commands/plan.ts` on `tools/blong-dev/src/plan/`. Example:
+  `blong-dev plan init agent --repo feasibleone/blong`.
 
 ## Architecture & Design Documents
 

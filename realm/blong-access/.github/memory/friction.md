@@ -22,7 +22,7 @@ open (9)
 - `F-618` · realm/blong-access — A login is a resource name the user record does not hold
 - `F-312` · realm/blong-access — A pivot ticks whichever row the database happens to return first
 
-resolved (6)
+resolved (7)
 
 - `F-296` · realm/blong-access — The gateway does not read the paths the RBAC pages say it reads
 - `F-297` · realm/blong-access — The ACL documentation promised a deny that the guard can ignore
@@ -30,6 +30,7 @@ resolved (6)
 - `F-553` · realm/blong-access — The login flow test fails with credentials.mismatch on HEAD
 - `F-569` · realm/blong-access — A handler in an unactivated group folder is never loaded
 - `F-570` · realm/blong-access — The portal fixture must be requested to navigate and log in
+- `F-713` · realm/blong-access — removing a signed-in user refused the credential delete
 
 <!-- /memory:index -->
 
@@ -264,3 +265,27 @@ lazy and the extra argument is what triggers navigation and login.
 
 The access TestRun spec requests the portal fixture and uses portal.page, so navigation and login
 run.
+
+### F-713 — removing a signed-in user refused the credential delete
+
+> _2026-11-11 · realm/blong-access · resolved_
+
+The first removal of a _signed-in_ user failed with a foreign key error: `access_credential` was
+deleted before `access_session`, and every session holds a `credentialId` that points at the
+credential it was issued for. The handler had that order from the beginning and it worked for the
+test accounts because none of them had a session; the admin being removed last is the one the
+operator had just used, so it is the one that always has one.
+
+The lesson is to read the foreign keys before choosing an order rather than trusting an order that
+happened to work: `information_schema.KEY_COLUMN_USAGE` answers the whole dependency set in one
+query, and it also shows that `access_session.userId` points at `access_user` while
+`core_path.originId` and `core_path.destinationId` point at `core_resource`. The order that holds is
+triples, ACL rows, sessions, credentials, user rows, path rebuild, resource row.
+
+A second cost is the deploy: a realm handler is proved only in the deployed artifact, so a two-line
+reorder meant rebuilding the chat artifact, republishing it under the name the deployment reads (the
+runbook publishes it as `suite.zip` unless `ARTIFACT_NAME` says otherwise, which is why the file the
+tenant fetches was untouched), patching the digest on the `BlongDeployment` and restarting the pods.
+
+Sessions are now deleted before credentials; the removal of a signed-in admin succeeded on the
+redeployed artifact.

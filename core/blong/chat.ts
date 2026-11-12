@@ -169,16 +169,19 @@ export interface IChatChannel {
 }
 
 /**
- * How a question asks for its answer: in the conversation, or in a form it opens.
+ * How a question asks for its answer: in the conversation, in a form it opens, or in a form that is
+ * itself a message.
  *
- * `inline` is the default and puts the controls in the message itself — radio buttons, checkboxes and
- * a button that submits them — so the person never leaves the conversation. `form` posts one button
- * that opens the platform's own dialog, which is the only surface where some platforms allow a text
- * input at all, and is what a long question with several controls wants. A port renders the one its
- * platform can serve; where a platform has no dialog (Viber), `form` is rendered as the inline
- * controls rather than refused, because the answer is the same either way.
+ * `inlineForm` is the default where a port can render it: a Block Kit container that holds input
+ * blocks in the message, so a selection and a text box submit together without a dialog, and the
+ * question stays where it was asked (`@@D-817`). `inline` is the plain message form — buttons, radio
+ * buttons or checkboxes with a submit — for a question that takes no typing; `form` opens the
+ * platform's dialog, which is what a port falls back to when the message cannot hold every control
+ * (`@@D-818`). A port renders the one its platform can serve; where a platform has no dialog
+ * (Viber), `form` and `inlineForm` are rendered as the inline controls rather than refused, because
+ * the answer is the same either way.
  */
-export type ChatPromptPresentation = 'inline' | 'form';
+export type ChatPromptPresentation = 'inline' | 'form' | 'inlineForm';
 
 /** One selectable answer. */
 export interface IChatPromptOption {
@@ -271,3 +274,50 @@ export interface IChatPromptCloseParams extends IChatPromptParams {
     /** What the message says in place of the controls, already phrased by the caller. */
     notice: string;
 }
+
+/**
+ * What creating a channel needs: a name the platform accepts, and whether it is private.
+ *
+ * A channel is a conversation the realm did not meet through a message — it asked for it — so the
+ * three calls that make one (`conversations.create`, `conversations.setTopic`, `conversations.invite`)
+ * are the port's, and this is the first of them (`@@D-805`).
+ */
+export interface IChatChannelCreateParams {
+    account?: string;
+    /** The platform's own naming rules: Slack wants lowercase, digits, `-` and `_`. */
+    channelName: string;
+    isPrivate?: boolean;
+}
+
+/** What a channel's topic says: the issue or the plan it stands for. */
+export interface IChatChannelTopicParams {
+    account?: string;
+    conversationId: string;
+    topic: string;
+}
+
+/** The channel's readable title, which Slack keeps apart from its lowercase name. */
+export interface IChatChannelPurposeParams {
+    account?: string;
+    conversationId: string;
+    purpose: string;
+}
+
+/** Who is added to a channel the bot created; a private channel is invisible until it is. */
+export interface IChatChannelInviteParams {
+    account?: string;
+    conversationId: string;
+    /** Platform user ids — Slack's `U…` values. */
+    invite: string[];
+}
+
+/** What a created channel is called, in the words a caller stores. */
+export interface IChatChannelCreated {
+    platform: string;
+    account: string;
+    /** The id a message is addressed with: Slack's channel id. */
+    conversationId: string;
+    channelName: string;
+    topic?: string;
+}
+

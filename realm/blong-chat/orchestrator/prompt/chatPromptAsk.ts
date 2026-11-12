@@ -50,14 +50,13 @@ export interface IChatAskParams {
     placeholder?: string;
     timeoutMs?: number;
     /**
-     * Where the question asks for its answer: in the conversation (the default) or in a form the
-     * platform opens.
+     * Where the question asks for its answer: the port decides unless the caller says.
      *
-     * The default moved to the conversation because a dialog hides the question and the channel it
-     * was asked in; a form is worth asking for when the question needs what only a dialog can hold on
-     * that platform — on Slack, a text box beside the options (`@@D-691`).
+     * A port renders the surface its platform can serve, and its default is the one the vocabulary
+     * recommends — the card in the message on Slack. A caller names `inline` for a question that
+     * takes no typing, or `form` for a dialog of several answers (`@@D-691 @@D-818`).
      */
-    presentation?: 'inline' | 'form';
+    presentation?: 'inline' | 'form' | 'inlineForm';
     /**
      * Whether the answer is posted back into the conversation. On unless a question says otherwise.
      *
@@ -71,17 +70,31 @@ export interface IChatAskParams {
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 
+/**
+ * The longest a parked question can wait, which is the timer's own ceiling and not a policy.
+ *
+ * The wait is a `setTimeout` in this process, and Node saturates a delay above `2^31 - 1` ms by firing
+ * it as soon as it is scheduled — so a caller asking for a month would be told the question closed the
+ * moment it was posted. Refusing the value says what happened; a silent clamp would report a duration
+ * the caller never asked for (@@D-822).
+ */
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
 /** How long the caller waited, in the words a person reading the channel understands. */
-const timeoutLabel = (timeoutMs: number): string =>
-    timeoutMs >= 60_000
-        ? `${Math.round(timeoutMs / 60_000)} minute${Math.round(timeoutMs / 60_000) === 1 ? '' : 's'}`
-        : `${Math.round(timeoutMs / 1000)} seconds`;
+const timeoutLabel = (timeoutMs: number): string => {
+    const plural = (count: number, unit: string): string =>
+        `${count} ${unit}${count === 1 ? '' : 's'}`;
+    if (timeoutMs >= 86_400_000) return plural(Math.round(timeoutMs / 86_400_000), 'day');
+    if (timeoutMs >= 3_600_000) return plural(Math.round(timeoutMs / 3_600_000), 'hour');
+    if (timeoutMs >= 60_000) return plural(Math.round(timeoutMs / 60_000), 'minute');
+    return plural(Math.round(timeoutMs / 1000), 'second');
+};
 
 export default handler(
     ({
         handler: {chatOutMessageSend, chatOutPromptSettle, chatOutPromptClose},
         lib: {chatAnswerFormat, chatReplyMessageId},
-        errors: {errorChatPromptTimeout},
+        errors: {errorChatPromptTimeout, errorChatPromptTimeoutTooLong},
     }) => {
         return {
             async chatPromptAsk(params: IChatAskParams, $meta: IMeta): Promise<IChatAnswer> {
@@ -139,6 +152,13 @@ export default handler(
                     }
                 };
                 const timeoutMs = params.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+                // Before anything is posted: a timer that saturates would close the question in the
+                // same turn it was asked, which reads as a person ignoring it within seconds.
+                if (!Number.isFinite(timeoutMs) || timeoutMs > MAX_TIMEOUT_MS)
+                    throw errorChatPromptTimeoutTooLong(
+                        {params: {timeoutMs, maxTimeoutMs: MAX_TIMEOUT_MS}},
+                        $meta,
+                    );
                 /**
                  * Take the controls away when the question closes itself.
                  *
@@ -169,7 +189,9 @@ export default handler(
                     text: params.text,
                     ...(params.options && {options: params.options}),
                     ...(params.placeholder && {placeholder: params.placeholder}),
-                    presentation: params.presentation ?? 'inline',
+                    // Absent, not `'inline'`: the port owns the default, and a realm that filled it in
+                    // silently overrode the surface the vocabulary recommends (`@@D-818`).
+                    ...(params.presentation && {presentation: params.presentation}),
                 };
                 const parked: IParkedPrompt = {
                     platform: params.platform,

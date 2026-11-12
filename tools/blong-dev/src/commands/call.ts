@@ -35,6 +35,7 @@ import {
     type ICallRc,
     type IServerEntry,
 } from '../callRc.ts';
+import {nodeFetch} from '../utils/nodeFetch.ts';
 import {parseArgs} from './log.ts';
 
 /** What the command is about to do, printed by `--dry-run`. */
@@ -76,7 +77,8 @@ export function guardBooleans(args: string[]): string[] {
 export function planCall(args: string[], rc: ICallRc): ICallPlan {
     const parsed = parseArgs(guardBooleans(args));
     const [rawMethod, payloadText, ...rest] = parsed.positionals;
-    if (!rawMethod) throw new Error('a method name is required (`blong-dev call <method> [payload]`)');
+    if (!rawMethod)
+        throw new Error('a method name is required (`blong-dev call <method> [payload]`)');
     if (rest.length) {
         throw new Error(
             `unexpected argument "${rest[0]}" — the payload is one argument: ` +
@@ -138,7 +140,14 @@ async function callEncrypted(
     plan: ICallPlan,
     credentials: {username?: string; password?: string},
 ): Promise<unknown> {
-    const session = await createMleSession({url: plan.url, ...credentials});
+    // A route whose answer is a person's (`chat.prompt.ask`) holds the response open longer
+    // than undici's five-minute header deadline, so the session is given a fetch without one
+    // (`@@F-716`).
+    const session = await createMleSession({
+        url: plan.url,
+        ...credentials,
+        fetchImpl: nodeFetch as unknown as typeof fetch,
+    });
     if (!plan.public) await session.ensureFresh();
     return session.call(plan.method, plan.payload, {public: plan.public});
 }
@@ -156,9 +165,13 @@ async function callPlain(
     credentials: {username?: string; password?: string},
 ): Promise<unknown> {
     const url = plan.url.replace(/\/+$/, '');
-    const session = await createMleSession({url, ...credentials});
+    const session = await createMleSession({
+        url,
+        ...credentials,
+        fetchImpl: nodeFetch as unknown as typeof fetch,
+    });
     const token = session.auth?.access_token;
-    const response = await fetch(`${url}/rpc/${plan.method.replace(/\./g, '/')}`, {
+    const response = await nodeFetch(`${url}/rpc/${plan.method.replace(/\./g, '/')}`, {
         method: 'POST',
         headers: {
             'content-type': 'application/json',
@@ -174,6 +187,30 @@ async function callPlain(
     const body = (await response.json()) as {result?: unknown; error?: unknown};
     if (body.error) throw new Error(messageOf(body.error));
     return body.result;
+}
+
+/**
+ * Send one call and answer its result, throwing on failure.
+ *
+ * `call()` is the command; this is the same send without the printed report, for a
+ * command that needs the answer to carry on (`blong-dev plan init` creating a channel).
+ * `--dry-run` is honoured by returning the plan instead of sending it, because a caller
+ * that runs in a test wants the same escape hatch the command line has.
+ */
+export async function executeCall(args: string[]): Promise<unknown> {
+    const {config} = loadCallRc() ?? {config: {}};
+    const plan = planCall(args, config);
+    if (plan.dryRun) {
+        return {
+            dryRun: true,
+            method: plan.method,
+            server: plan.server,
+            url: plan.url,
+            payload: plan.payload,
+        };
+    }
+    const credentials = credentialsOf(config, plan.entry);
+    return plan.plain ? callPlain(plan, credentials) : callEncrypted(plan, credentials);
 }
 
 export async function call(args: string[]): Promise<void> {
