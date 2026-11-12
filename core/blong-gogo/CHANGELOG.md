@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.50.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.49.2...blong-gogo-v1.50.0) (2026-11-12)
+
+
+### Features
+
+* blong dev planning and execution with chat ([bad15ca](https://github.com/feasibleone/blong/commit/bad15ca0b42d6bbd6b1e81e6d29e525bd2665ffe))
+* chat accounts schema, UI and cli ([6fb7174](https://github.com/feasibleone/blong/commit/6fb7174e56edca19bed8162a31aeba8c99607298))
+
 ## [1.49.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.49.1...blong-gogo-v1.49.2) (2026-11-09)
 
 

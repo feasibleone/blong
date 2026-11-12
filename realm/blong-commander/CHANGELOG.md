@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-commander-v1.6.1...blong-commander-v1.7.0) (2026-11-12)
+
+
+### Features
+
+* blong dev planning and execution with chat ([bad15ca](https://github.com/feasibleone/blong/commit/bad15ca0b42d6bbd6b1e81e6d29e525bd2665ffe))
+
 ## [1.6.1](https://github.com/feasibleone/blong/compare/blong-commander-v1.6.0...blong-commander-v1.6.1) (2026-11-09)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.8.1...blong-sport-v0.9.0) (2026-11-12)
+
+
+### Features
+
+* blong dev planning and execution with chat ([bad15ca](https://github.com/feasibleone/blong/commit/bad15ca0b42d6bbd6b1e81e6d29e525bd2665ffe))
+
 ## [0.8.1](https://github.com/feasibleone/blong/compare/blong-sport-v0.8.0...blong-sport-v0.8.1) (2026-11-09)
 
 
