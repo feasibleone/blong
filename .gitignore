@@ -115,7 +115,6 @@ dev
 dist
 .scannerwork
 **/.docusaurus
-help
 .tap
 temp
 plans
