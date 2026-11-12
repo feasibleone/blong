@@ -1,44 +1,43 @@
 /**
- * Shared usage text for the `blong-dev` CLI.
+ * The published face of the `blong-dev` help.
  *
- * Printed to stdout on `--help` / `-h` / `help` (exit 0) and to stderr on an
- * unknown command (exit 1). Keeping the text in one module makes it testable and
- * guarantees every subcommand (including `sql`) is listed everywhere.
+ * Help is rendered from the registry in `help/commands.ts` at three levels: the
+ * command list, one command with its verbs, and one verb with its parameters. This
+ * module is what the CLI and the commands import, so a command never carries its own
+ * usage text and the text it prints cannot drift from what it parses.
+ *
+ * `USAGE_LINES` is kept for the callers that only want a one-line-per-command index.
  */
 
-export const USAGE_LINES: readonly string[] = [
-    '  blong-dev lint [files...]    Run tsc + cspell + eslint + markdownlint (--files a,b, --fix)',
-    '  blong-dev lint-staged        Lint git staged files across all affected packages',
-    '  blong-dev test               Run tap tests in current package',
-    '  blong-dev report vitest      Convert coverage/vitest.json into .ci-report/ (--input <file>)',
-    '  blong-dev report jest        Convert jest --json output into .ci-report/ (--input, --runner)',
-    '  blong-dev ci-report          Aggregate .ci-report/ into the CI report, failures bundle and metrics',
-    '  blong-dev ci <verb>          Diagnose a CI run from its published reports (failures/runs/history)',
-    '  blong-dev playwright [args]  Run Playwright tests in current package',
-    '  blong-dev browsers           Install the Playwright browsers this package launches',
-    '  blong-dev proxy [opts]       MLE proxy for curl (--server/--port/--target/--username)',
-    '  blong-dev call <method> [p]  Call one gateway method and print the result (--server/--payload.*)',
-    '  blong-dev trace <trace.zip>  Print a human-readable Playwright trace timeline',
-    '  blong-dev log [ulid] [opts]  Fetch log entries from cacache (--output/--level/--search/...)',
-    '  blong-dev sql [opts]         Run a SQL query via .blong_devrc (--output json|pretty)',
-    '  blong-dev db <verb>          Back a database up as a zip, or list the databases (backup/list)',
-    '  blong-dev user <verb>        Add, list or re-password access users in a database (add/list/passwd)',
-    '  blong-dev cspell <verb>      Add, remove, sort, check or list cspell.config.yaml entries',
-    '  blong-dev publish check      Fail when a published package would omit an entry point it declares',
-    '  blong-dev glossary <verb>    Add, remove, list, show, sort or check the documentation glossary',
-    '  blong-dev memory <verb>      Add, list, show, close, move, format or check agent memory entries',
-    '  blong-dev plan <verb>        Check, create tasks for, publish or sync a plan (check/tasks/init/sync/status/adopt)',
-    '  blong-dev docs <verb>        List, generate, check or verify the docs site generated artefacts',
-];
+import {COMMANDS} from './help/commands.ts';
+import {renderIndex} from './help/render.ts';
 
-/** Write the usage list (with a `Usage:` header) to the given stream. */
+export {
+    commandNames,
+    findCommand,
+    findVerb,
+    helpText,
+    renderCommand,
+    renderIndex,
+    renderVerb,
+    resolveHelp,
+    usageHint,
+} from './help/render.ts';
+export type {IHelpCommand, IHelpOption, IHelpVerb} from './help/types.ts';
+export {COMMANDS};
+
+/** One line per command, for a caller that wants the list without the prose. */
+export const USAGE_LINES: readonly string[] = COMMANDS.map(
+    command => `  blong-dev ${command.name}  ${command.summary}`,
+);
+
+/** Write the command list (level 1) to the given stream. */
 export function writeUsage(stream: NodeJS.WriteStream): void {
-    stream.write('Usage:\n');
-    for (const line of USAGE_LINES) stream.write(line + '\n');
+    stream.write(renderIndex());
 }
 
-/** Write the unknown-command error followed by the usage list. */
+/** Write the unknown-command error followed by the command list. */
 export function writeUnknownCommand(stream: NodeJS.WriteStream, command?: string): void {
-    stream.write(`blong-dev: Unknown command "${command ?? ''}"\n`);
-    writeUsage(stream);
+    stream.write(`blong-dev: Unknown command "${command ?? ''}"\n\n`);
+    stream.write(renderIndex());
 }

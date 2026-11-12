@@ -48,6 +48,7 @@
 import {createConnection} from 'mysql2/promise';
 import {pbkdf2Sync, randomUUID} from 'node:crypto';
 
+import {helpText, usageHint} from '../usage.ts';
 import {parseArgs} from './log.ts';
 import {
     ensureDatabase,
@@ -685,18 +686,7 @@ export async function userList(
 }
 
 function writeUserUsage(stream: NodeJS.WriteStream): void {
-    stream.write('Usage:\n');
-    stream.write(
-        '  blong-dev user add <userName> --password <secret> [--role Admin,Manager]\n' +
-            '                      [--email <address>] [--inactive] [--update] [--iterations n]\n' +
-            '  blong-dev user passwd <userName> --password <newSecret> [--iterations n] [--strict]\n' +
-            '  blong-dev user list [--role <name>]\n' +
-            '  DB connection: .blong_devrc (as `blong-dev sql`) plus\n' +
-            '    [--config key] [--database db] [--host h] [--port p] [--user dbUser]\n' +
-            '    [--db-password dbSecret] [--suite s] [--output json|pretty]\n' +
-            "  --password is the NEW user's login secret; the database password is --db-password.\n" +
-            '  A secret shorter than the active policy warns unless --strict (refuse) or --force (quiet).\n',
-    );
+    stream.write(helpText('user'));
 }
 
 /** Format one user as a line for human output. */
@@ -779,7 +769,9 @@ export async function user(args: string[]): Promise<void> {
             }
             return;
         }
-        process.stderr.write(`blong-dev user: unknown verb "${verb}"\n`);
+        process.stderr.write(
+            `blong-dev user: unknown verb "${verb}"\n${usageHint('user')}\n`,
+        );
         writeUserUsage(process.stderr);
         process.exitCode = 1;
     } catch (error) {

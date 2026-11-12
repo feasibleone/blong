@@ -1,3 +1,4 @@
+// memory-refs: ignore — the fixtures below carry reference-shaped text on purpose.
 /**
  * Unit tests for the FAQ module (`memoryFaq.ts`).
  *

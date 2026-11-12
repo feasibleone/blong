@@ -39,7 +39,7 @@ runner entry points. **Hierarchy:** suite → realm → layer.
 
 ## File Structure
 
-```
+```text
 suite-root/
 ├── server.ts           # Server-side suite entry point
 ├── browser.ts          # Browser-side suite entry point
@@ -168,7 +168,7 @@ load(browser, pkg.name, {apiSchema: false}, ['microservice', 'integration', 'dev
 </body>
 ```
 
-````
+````text
 
 ## Internal API Tests (internal.test.ts)
 
@@ -333,10 +333,10 @@ collection paths feed into the aggregation:
 Each package's `ci-test` runs `blong-dev test`, which wraps `tap` with:
 
 - `--allow-incomplete-coverage --coverage-report=none`
-- `--timeout=180` — tap's own default of 30s is smaller than the fixed cost of an integration entry
-  point, which loads both platforms before its first test (measured: 13.5s of a ~26s file), so on a
-  cold CI runner the file was reported as `✖ timeout!` with every test inside it passing. An
-  explicit `--timeout` in the invocation wins over this default.
+- A generous per-test timeout (tap's own default of 30s is smaller than the fixed cost of an
+  integration entry point, which loads both platforms before its first test — measured: 13.5s of a
+  ~26s file — so on a cold CI runner the file was reported as `✖ timeout!` with every test inside it
+  passing). `blong-dev test --help` states the default, and an explicit `--timeout` wins over it.
 - V8 coverage is saved into the package's `.tap/coverage/` directory automatically.
 
 ### Playwright collection (full-stack browser tests)
@@ -386,7 +386,8 @@ activations.
 
 The `suiteName` parameter passed to `load` determines:
 
-- **Config file name:** `.ut_<suite><env>rc` — e.g. for suite `myapp` in `dev` env: `.ut_myappdevrc`
+- **Config file name:** `.ut_<suite><env>rc` — the suite name, the environment name and `rc`, e.g.
+  `.ut_myappdevrc` for suite `myapp` in `dev`
 - **Default Kubernetes namespace** where the suite is deployed
 
 Use lowercase, no spaces.
@@ -464,3 +465,5 @@ export default server(blong => ({
 Enabled by default in `dev`; rarely needs config overrides. The `/api/sys/*` endpoint list lives in
 `copilot-instructions.md` → "Runtime Introspection". For deeper understanding or extending, see the
 source `core/blong-gogo/src/SystemDebug.ts`.
+
+<!-- cspell:ignore myappdevrc -->

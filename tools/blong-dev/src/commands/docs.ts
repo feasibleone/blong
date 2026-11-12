@@ -63,6 +63,7 @@ import {
 } from '../docs/storybookSites.ts';
 import {findBlogPages, findVisualPages} from '../docs/visualPages.ts';
 import {repoRoot} from '../report/reportPaths.ts';
+import {helpText, usageHint} from '../usage.ts';
 
 /** Repository-relative path of the register. */
 const MANIFEST = 'docs/blong/docs-artifacts.json';
@@ -1045,21 +1046,13 @@ export async function docs(args: string[]): Promise<void> {
         case '-h':
         case 'help':
             process.stdout.write(
-                'Usage:\n' +
-                    '  blong-dev docs list [--json]\n' +
-                    '  blong-dev docs generate [--only <id[,id]>] [--filter <glob>] [--dry-run]\n' +
-                    '  blong-dev docs check    [--only <id[,id]>] [--filter <glob>]\n' +
-                    '  blong-dev docs verify   [--base <url>] [--filter <glob>] [--json]\n' +
-                    '  blong-dev docs storybook [--only <name[,name]>] [--no-build] [--dry-run]\n' +
-                    '  blong-dev docs diagram [--only <slug[,slug]>] [--archify <path>] [--dry-run] [--no-posters]\n' +
-                    '  blong-dev docs serve    [--port <port>] [--dir <path>]\n' +
-                    `\nRegister: ${MANIFEST}\n` +
-                    `Storybooks: ${STORYBOOK_MANIFEST}\n` +
-                    `Diagrams: ${DIAGRAM_MANIFEST}\n`,
+                `${helpText('docs')}\nRegister: ${MANIFEST}\nStorybooks: ${STORYBOOK_MANIFEST}\nDiagrams: ${DIAGRAM_MANIFEST}\n`,
             );
             break;
         default:
-            process.stderr.write(`blong-dev docs: unknown verb "${verb}"\n`);
-            process.exit(1);
+            process.stderr.write(
+                `blong-dev docs: unknown verb "${verb}"\n${usageHint('docs')}\n`,
+            );
+            process.exitCode = 1;
     }
 }

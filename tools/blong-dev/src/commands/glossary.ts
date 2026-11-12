@@ -37,33 +37,21 @@ import {
     sortTerms,
     writeGlossary,
     type IGlossaryDoc,
-    type IGlossaryEntry,
 } from '../glossary/glossaryDoc.ts';
 import {repoRoot} from '../report/reportPaths.ts';
+import {helpText, usageHint} from '../usage.ts';
+import {UsageError} from '../utils/usageError.ts';
 import {parseArgs} from './log.ts';
 
-const USAGE = [
-    'Usage:',
-    '  blong-dev glossary add <term> --definition "<sentence>" [--file <path>]',
-    '  blong-dev glossary remove <term...>                    [--file <path>]',
-    '  blong-dev glossary list                                [--json] [--file <path>]',
-    '  blong-dev glossary show <term>                         [--json] [--file <path>]',
-    '  blong-dev glossary sort                                [--check] [--json] [--file <path>]',
-    '  blong-dev glossary check                               [--json] [--file <path>]',
-    '',
-    `Glossary: ${GLOSSARY_FILE} (found from the working directory's repository root)`,
-    'A definition is one sentence and points at the page that explains the term.\n',
-].join('\n');
-
-/** A caller mistake: the message is the whole report, and the exit code is 1. */
-class UsageError extends Error {}
+/** The verbs {@link usageHint} may name when a call fails. */
+const GLOSSARY_VERBS = new Set(['add', 'remove', 'list', 'show', 'sort', 'check']);
 
 /** `blong-dev glossary <verb> [...]` */
 export async function glossary(args: string[]): Promise<void> {
     const {positionals, options, flags} = parseArgs(args);
     const [verb, ...values] = positionals;
     if (verb === undefined || verb === 'help' || flags.has('help')) {
-        process.stdout.write(USAGE);
+        process.stdout.write(helpText('glossary', verb === 'help' ? undefined : verb));
         return;
     }
     const json = flags.has('json');
@@ -86,7 +74,10 @@ export async function glossary(args: string[]): Promise<void> {
         }
     } catch (error) {
         if (!(error instanceof UsageError)) throw error;
-        process.stderr.write(`blong-dev glossary: ${error.message}\n${USAGE}`);
+        const hintVerb = verb !== undefined && GLOSSARY_VERBS.has(verb) ? verb : undefined;
+        process.stderr.write(
+            `blong-dev glossary: ${error.message}\n${usageHint('glossary', hintVerb)}\n`,
+        );
         process.exitCode = 1;
     }
 }
@@ -147,9 +138,7 @@ function add(values: string[], options: Map<string, string>, json: boolean): voi
     sortTerms(doc);
     writeGlossary(file, doc);
     if (report({file, term, action, entries: doc.entries.length}, json)) return;
-    process.stdout.write(
-        `# glossary add: ${action} "${term}" (${doc.entries.length} entries)\n`,
-    );
+    process.stdout.write(`# glossary add: ${action} "${term}" (${doc.entries.length} entries)\n`);
 }
 
 /** Remove one or more terms. */
@@ -208,7 +197,9 @@ function sort(options: Map<string, string>, check: boolean, json: boolean): void
     const doc = loadGlossary(file);
     if (check) {
         const problems = checkGlossary(file, doc);
-        if (report({file, ok: problems.length === 0, problems, entries: doc.entries.length}, json)) {
+        if (
+            report({file, ok: problems.length === 0, problems, entries: doc.entries.length}, json)
+        ) {
             if (problems.length > 0) process.exitCode = 1;
             return;
         }
@@ -229,7 +220,8 @@ function sort(options: Map<string, string>, check: boolean, json: boolean): void
     const before = doc.entries.length;
     sortTerms(doc);
     const changed = writeGlossary(file, doc);
-    if (report({file, entries: doc.entries.length, changed, outOfOrder: order?.value}, json)) return;
+    if (report({file, entries: doc.entries.length, changed, outOfOrder: order?.value}, json))
+        return;
     if (!changed) {
         process.stdout.write(`# glossary sort: ${describe(doc)} already in order\n`);
         return;

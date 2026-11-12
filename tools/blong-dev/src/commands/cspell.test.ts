@@ -242,15 +242,26 @@ test('a caller mistake reports usage and exits non-zero', async t => {
         const result = await capture(args);
         t.equal(result.code, 1, `${args.join(' ')} exits 1`);
         t.match(result.err, message, `${args.join(' ')} is reported`);
-        t.match(result.err, /Usage:/, `${args.join(' ')} prints usage`);
+        t.match(result.err, /to see its parameters/, `${args.join(' ')} points at --help`);
     }
     t.end();
 });
 
-test('--help prints the usage list', async t => {
+test('--help describes the command and lists its verbs', async t => {
     const result = await capture(['--help']);
     t.equal(result.code, undefined, 'help is not a failure');
-    t.match(result.out, /blong-dev cspell add <word\.\.\.>/, 'lists the verbs');
-    t.match(result.out, /Sections: words, ignorePaths/, 'names the sections');
+    t.match(result.out, /blong-dev cspell — /, 'names the command and what it is for');
+    t.match(result.out, /^  add +Insert words where they belong$/m, 'lists the add verb');
+    t.match(result.out, /ignoreRegExpList/, 'names the sections');
+    t.match(result.out, /blong-dev cspell <verb> --help/, 'promotes the verb-level help');
+    t.end();
+});
+
+test('--help after a verb explains that verb', async t => {
+    const result = await capture(['add', '--help']);
+    t.equal(result.code, undefined, 'help is not a failure');
+    t.match(result.out, /^blong-dev cspell add — /m, 'names the verb');
+    t.match(result.out, /blong-dev cspell add <word\.\.\.>/, 'shows the usage line');
+    t.match(result.out, /--section <name>/, 'lists its options');
     t.end();
 });

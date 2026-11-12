@@ -27,7 +27,7 @@ description:
   3).
 - **`*JSON` columns are auto-(de)serialized** — declare as `type.stringNull()`; no manual
   parse/stringify.
-- **No `type.Optional()` needed** — the `Null`/`NotNull` suffix already implies nullability.
+- **No `type.Optional()` needed** — the `Null`/`NotNull` suffix already implies the optionality.
 - **Constraints apply in a second pass** after all tables exist (FK targets guaranteed).
 - **Don't recreate the built-in `adapter/db.ts`** — extend via `schema.tables` / `procedurePaths`.
 - **Name PKs/FKs deliberately:** `increment` (simple PK) · `ulid`/`uuid` (distributed PK) · `uid`
@@ -64,7 +64,7 @@ every startup. Ordered within one `ready()` hook:
 
 Every realm that owns database tables follows this pattern inside its `meta/` layer:
 
-```
+```text
 realmname/
 ├── meta/
 │   ├── type/
@@ -438,7 +438,7 @@ registration is needed.
 The method name is derived from the filename: the part after the **last `-`** (without extension).
 The params object is the YAML content.
 
-```
+```text
 0-coreTypeMerge.yaml       → method: coreTypeMerge
 accessRoleMerge.yaml       → method: accessRoleMerge
 marineCoralMerge.yaml      → method: marineCoralMerge
@@ -571,8 +571,8 @@ user:
 `Admin`, `Manager`, `Customer` and `Guest` are production roles, so a grant that names them is
 production provisioning and belongs to `meta/db/`; only the accounts that hold them in a test run
 belong to `meta/dbTest/`, which the shared `srv.db` adapter dispatches in its `dev` and `ci`
-activations alone. A realm must never pin `schema.dbTest` itself — that re-enables the test seeds
-in `upgrade`, where their handler groups are not loaded (F-613).
+activations alone. A realm must never pin `schema.dbTest` itself — that re-enables the test seeds in
+`upgrade`, where their handler groups are not loaded (F-613).
 
 The custom handler (`adapter/db/realmnameAuthorizationMerge.ts`) receives this YAML content as its
 params and resolves names to IDs via database lookups:
@@ -751,13 +751,14 @@ agents to inspect data. Use it instead of a MySQL CLI locally or `kubectl exec` 
 
 ```bash
 blong-dev sql "SELECT * FROM access_role"
-blong-dev sql "SELECT 1" --output json        # JSON for agents; pretty table for TTY
 blong-dev sql "UPDATE x SET y=1" --database blong-integration
 ```
 
+The output is a pretty table on a TTY and JSON otherwise, and `blong-dev sql --help` lists the
+connection flags.
+
 - Resolves the connection from `.blong_devrc` (cwd → parents → `~`), default key `srv.db`
-  (`srv.db.knex.connection`); override with `--config <dot.path>` and the CLI flags
-  `--host/--port/--user/--password/--database`.
+  (`srv.db.knex.connection`); override the key with `--config <dot.path>`.
 - When no `database` is configured it **derives the dev name** using the pattern above
   (`${suite}-${user}`, e.g. `blong-access-kalin`) — no need to guess it. `suite` comes from the
   `.blong_devrc` `suite` key, the cwd `package.json` name (scope stripped), or `--suite`.
@@ -772,7 +773,7 @@ blong-dev sql "UPDATE x SET y=1" --database blong-integration
 When `blong` runs with the `dev` intent (or `upgrade`), the framework processes schema in this exact
 order:
 
-```
+```text
 1. Connect to database (Knex pool established)
 2. For each realm (sorted by package dependency order):
    a. Create/alter tables (pass 1)         ← schemaTableSyncImpl

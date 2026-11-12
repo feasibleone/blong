@@ -6,6 +6,7 @@ import {packageName} from '../report/reportPaths.ts';
 import {countTests, statusOf, type ITestEntry} from '../report/reportTypes.ts';
 import {clearRun, writeRun} from '../report/reportWrite.ts';
 import {VITEST_JSON, buildJestShapedRun, readVitestJson} from '../report/vitestReport.ts';
+import {usageHint} from '../usage.ts';
 
 /** Default input of `report jest`: what a leg writes with `jest --json --outputFile`. */
 const JEST_JSON = join('.ci-report', 'jest.json');
@@ -47,9 +48,7 @@ export async function report(args: string[]): Promise<void> {
 
     if (runner !== 'vitest' && runner !== 'jest') {
         process.stderr.write(
-            `blong-dev: report <runner> expects "vitest" or "jest", got "${runner ?? ''}"\n` +
-                '  usage: blong-dev report vitest [--input coverage/vitest.json]\n' +
-                '         blong-dev report jest [--input .ci-report/jest.json] [--runner <name>]\n',
+            `blong-dev report: expected "vitest" or "jest", got "${runner ?? ''}"\n${usageHint('report')}\n`,
         );
         process.exitCode = 1;
         return;

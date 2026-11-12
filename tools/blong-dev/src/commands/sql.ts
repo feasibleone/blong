@@ -28,6 +28,7 @@ import {readFileSync} from 'node:fs';
 import {userInfo} from 'node:os';
 import {join} from 'node:path';
 import {findUp, getPath, parseDevRc} from '../devrc.ts';
+import {usageHint} from '../usage.ts';
 import {formatTable} from '../utils/table.ts';
 import {parseArgs} from './log.ts';
 
@@ -261,23 +262,9 @@ export async function sql(args: string[]): Promise<void> {
     const {positionals, options: o, flags} = parsed;
     const query = (positionals.join(' ') || o.get('query') || '').trim();
     if (!query) {
-        process.stderr.write('blong-dev sql: no query provided\n');
-        process.stderr.write(
-            'Usage: blong-dev sql "SELECT ..." [--config srv.db] [--output json|pretty] [--no-color]\n',
-        );
-        process.stderr.write(
-            '       [--host h] [--port p] [--user u] [--password p] [--database d] [--suite s]\n',
-        );
-        process.stderr.write(
-            '       (database falls back to the dev naming pattern {suite}-{user};\n',
-        );
-        process.stderr.write(
-            '        connection falls back to blong-admin/password @ localhost:3306)\n',
-        );
-        process.stderr.write(
-            '       (multiple `;`-separated statements run in one round-trip; all result sets are returned)\n',
-        );
-        process.exit(1);
+        process.stderr.write(`blong-dev sql: no query provided\n${usageHint('sql')}\n`);
+        process.exitCode = 1;
+        return;
     }
 
     const {connection, source, derived} = readConnection(parsed);

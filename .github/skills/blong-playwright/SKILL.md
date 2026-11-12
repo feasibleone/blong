@@ -107,8 +107,7 @@ node --run playwright
 routing problem from a rendering one in seconds:
 
 ```bash
-blong-dev proxy --port 8099 --target http://localhost:9046 \
-    --username testAdmin --password testPassword
+blong-dev proxy --target http://localhost:9046   # the rest: blong-dev proxy --help
 curl -s -X POST http://localhost:8099/blong/flow/find \
     -H 'content-type: application/json' -d '{"params":{}}'
 ```

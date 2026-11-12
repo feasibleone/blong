@@ -1,5 +1,6 @@
 // Public API for programmatic usage of blong-dev
 export * from './callRc.ts';
+export * from './usage.ts';
 export {call} from './commands/call.ts';
 export {ciReport} from './commands/ciReport.ts';
 export {cspell} from './commands/cspell.ts';

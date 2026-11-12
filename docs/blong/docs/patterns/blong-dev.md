@@ -16,6 +16,26 @@ It is a workspace package (`@feasibleone/blong-dev`, binary `blong-dev`) and not
 the commands assume they are running inside a checkout, and several of them read the repository's
 own configuration (`.blong_devrc`, `rush.json`, `cspell.config.yaml`, the memory files).
 
+## Discovering usage
+
+The CLI documents itself, so neither the instructions nor the skills carry its parameters. `--help`
+answers at whichever of the three levels the command line names:
+
+```bash
+blong-dev --help                 # every command, one line each
+blong-dev memory --help          # the command, and its verbs one line each
+blong-dev memory close --help    # the verb: usage, options, examples
+```
+
+A command that is given an incomplete argument reports what it is missing and ends with the line
+that names the help for exactly that verb — ``Run `blong-dev memory close --help` to see its
+parameters.`` — so a missing parameter is a discovery step rather than a dead end. `help <command>
+<verb>` is the same as `--help` in that position.
+
+The text is rendered from one registry, `tools/blong-dev/src/help/commands.ts`, and each command
+prints from it rather than carrying its own copy. Adding a verb or an option means adding it there;
+a level that would mention it then follows, and `USAGE_LINES` (the flat index) is derived too.
+
 ## The commands
 
 | Command             | The problem it removes                                                                        |

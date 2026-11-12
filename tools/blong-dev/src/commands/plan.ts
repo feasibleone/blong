@@ -61,23 +61,12 @@ import {
 } from '../plan/planSlack.ts';
 import {createPlanTasks, planSlug} from '../plan/planTasks.ts';
 import {repoRoot} from '../report/reportPaths.ts';
+import {usageHint} from '../usage.ts';
 import {UsageError} from '../utils/usageError.ts';
 import {parseArgs} from './log.ts';
 
-const USAGE = [
-    'blong-dev plan check <plan> [--area <default>] [--json]',
-    'blong-dev plan tasks <plan> [--apply] [--update] [--area <default>] [--slug <slug>]',
-    'blong-dev plan init <plan> [--repo <owner/name>] [--label plan] [--platform slack]',
-    '                            [--account <alias>] [--invite <userId,…>] [--server <alias>]',
-    '                            [--target <url>] [--plain] [--channel <id>] [--channel-name <name>]',
-    '                            [--draft] [--no-issue] [--no-slack] [--no-tasks] [--dry-run]',
-    'blong-dev plan sync <plan> [--no-issue] [--comment] [--channel] [--check] [--json]',
-    '                            [--server <alias>] [--target <url>] [--plain]',
-    'blong-dev plan status <plan> [--json]',
-    'blong-dev plan adopt <plan> <id…> [--issue <url|number>]',
-    '',
-    '  <plan> is a file, a folder under plans/, or the folder name (`agent`).',
-].join('\n');
+/** The verbs {@link usageHint} may name when a call fails. */
+const PLAN_VERBS = new Set(['check', 'tasks', 'init', 'sync', 'status', 'adopt']);
 
 /** Flags that take no value, so the argument after them is not theirs. */
 const BOOLEAN_FLAGS = new Set([
@@ -824,7 +813,10 @@ export async function plan(args: string[]): Promise<void> {
         }
     } catch (error) {
         if (error instanceof UsageError) {
-            process.stderr.write(`blong-dev: ${error.message}\n${USAGE}\n`);
+            const hintVerb = verb !== undefined && PLAN_VERBS.has(verb) ? verb : undefined;
+            process.stderr.write(
+                `blong-dev plan: ${error.message}\n${usageHint('plan', hintVerb)}\n`,
+            );
             process.exitCode = 1;
             return;
         }

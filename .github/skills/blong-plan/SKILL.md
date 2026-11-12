@@ -1,10 +1,10 @@
 ---
 name: blong-plan
 description:
-    Write, keep and execute a Blong implementation plan — the `plans/<slug>/plan.md` format, the task
-    line `blong-dev plan` parses, the front matter, and the tooling that turns an approved plan into
-    memory tasks, a GitHub issue and a Slack channel. Covers drafting and the approval command, then
-    working one task at a time (read the detail, close it, record decisions and frictions with
+    Write, keep and execute a Blong implementation plan — the `plans/<slug>/plan.md` format, the
+    task line `blong-dev plan` parses, the front matter, and the tooling that turns an approved plan
+    into memory tasks, a GitHub issue and a Slack channel. Covers drafting and the approval command,
+    then working one task at a time (read the detail, close it, record decisions and frictions with
     `--plan`), syncing the board and the issue, and closing the plan out. Use this skill whenever an
     explicit plan exists or is asked for — `plans/<slug>/plan.md` named in the task, a plan handed
     over to execute, a task whose detail lives in a memory entry, or any work tracked through
@@ -21,10 +21,11 @@ craft — what makes a plan reviewable — belongs to the
 
 Two moments use it:
 
-- **Writing one** — draft it from the template below, get it approved, run one command to publish it.
-- **Executing one** — `plans/<slug>/plan.md` exists and its tasks are memory entries. Read the detail
-  from the entry, close tasks as they land, record decisions and frictions on the board, and keep
-  the issue and the channel in step.
+- **Writing one** — draft it from the template below, get it approved, run one command to publish
+  it.
+- **Executing one** — `plans/<slug>/plan.md` exists and its tasks are memory entries. Read the
+  detail from the entry, close tasks as they land, record decisions and frictions on the board, and
+  keep the issue and the channel in step.
 
 ## The file layout
 
@@ -63,8 +64,8 @@ approved: 2026-11-11
 
 `conversationId` is what `chat.prompt.ask` addresses and `channelUrl` is where a person opens the
 channel; both are recorded so the plan answers "where is the conversation" without a lookup. The
-issue link leads the channel's topic, so a reader who lands in Slack can click straight to it. A plan
-whose `status` is `approved` is the active one; the newest is the one being executed.
+issue link leads the channel's topic, so a reader who lands in Slack can click straight to it. A
+plan whose `status` is `approved` is the active one; the newest is the one being executed.
 
 ## The plan document
 
@@ -204,7 +205,8 @@ It creates a memory todo per task, trims the plan to titles plus linked `@@T-…
 the plan into a GitHub issue, opens the plan's private Slack channel and records the issue, the
 conversation id and the channel link in the front matter. From then on the plan is the board and the
 memory is the detail. An issue that already exists is adopted with `--issue <url>` instead of being
-created.
+created. `blong-dev plan init --help` lists the rest — the issue label, the channel (name, target,
+account), `--draft`, and the skips (`--no-issue`, `--no-slack`, `--no-tasks`).
 
 ## Executing it: one task at a time
 
@@ -281,8 +283,8 @@ Never create a second entry for work an existing entry already describes; a dupl
   task line linked to its entry.
 - `blong-dev plan status <slug>` — the progress line the owner reads, with the issue and channel
   links.
-- `blong-dev plan sync <slug>` — the plan and its issue say what the memory says; `--channel`
-  re-applies the channel topic (the issue link) and `--comment` adds a progress comment.
+- `blong-dev plan sync <slug>` — the plan and its issue say what the memory says. `--channel`
+  re-applies the channel topic, which is the issue link a reader clicks; `--help` lists the flags.
 - `blong-dev memory check --refs` and `blong-dev memory refs --dangling` — a reference that does not
   resolve blocks the change like a failing test.
 - `blong-dev memory comply` — the plan's citations of an entry this change edited still hold.

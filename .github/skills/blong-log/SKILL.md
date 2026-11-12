@@ -67,7 +67,7 @@ Response shape:
 {
     "entries": [
         {
-            "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "id": "<ulid>",
             "time": 1707840000000,
             "level": 50,
             "levelName": "error",
@@ -196,45 +196,22 @@ even after the process has exited. The VS Code extension reads this cache when y
 with the `blong-dev log` CLI:
 
 ```bash
-# Recent entries, condensed one-liners (default — ideal for agents to grep)
-blong-dev log
-
-# Only errors from a specific service
-blong-dev log --level error --name gateway
-
-# Human-readable, colorized
-blong-dev log --output pretty
-
-# Full JSON (id/time restored) for scripting
-blong-dev log --output json
-
-# Fetch one entry by its ULID
-blong-dev log 01ARZ3NDEKTSV4RRFFQ69G5FAV
-
-# Custom cache location (default ~/.blong/log-cache, or $BLONG_LOG_CACHE)
-blong-dev log --cache-path /path/to/log-cache
+blong-dev log                                # recent entries, condensed one-liners
+blong-dev log --level error --name gateway   # filter by level and service
+blong-dev log <ulid>                         # one entry, in full (JSON)
+blong-dev log --help                         # every filter and output mode
 ```
 
-### Options
-
-| Option         | Description                                                                 |
-| -------------- | --------------------------------------------------------------------------- |
-| `--cache-path` | cacache directory (default `~/.blong/log-cache`, or `$BLONG_LOG_CACHE`)     |
-| `--output`     | `condensed` (default for lists), `pretty`, `json` (default for single ULID) |
-| `--level`      | Minimum level: `trace`, `debug`, `info`, `warn`, `error`, `fatal`           |
-| `--name`       | Filter by service name (case-insensitive substring)                         |
-| `--search`     | Free-text search across all entry properties                                |
-| `--trace-id`   | Filter by exact trace ID                                                    |
-| `--method`     | Filter by `$meta.method` (case-insensitive substring)                       |
-| `--after`      | Only entries newer than this ULID (pagination)                              |
-| `--limit`      | Max entries (default 50; `0` = all)                                         |
-| `--no-color`   | Disable ANSI colors in `pretty` output                                      |
+Output is `condensed` one-line text by default (never colorized, safe to grep), `pretty` for a
+human and `json` for a script; a single ULID prints as JSON. Filters combine (`--level`,
+`--name`, `--trace-id`, `--method`, `--search`, `--after`) and the command names each one in its
+own `--help`.
 
 ### Condensed output (for coding agents)
 
 One plain-text line per entry, never colorized, so it is trivial to grep and parse:
 
-```
+```text
 2024-02-13T16:02:00.000Z error orchestrator "Connection refused"  id=... traceId=...
 ```
 
@@ -265,7 +242,7 @@ Each log entry may contain these properties:
 
 ## Tips
 
-- **Use `jq` for readable output.** The raw JSON is dense; `jq` makes it scannable.
+- **Use `jq` for readable output.** The raw JSON is dense; `jq` makes it readable.
 - **Start with `level=error`** when debugging — narrow down before broadening.
 - **Use `search` for fuzzy matching.** It searches across all properties including nested objects.
 - **The `name` filter is a substring match**, so `name=gate` matches `gateway`, `gateway-auth`, etc.
@@ -286,8 +263,8 @@ with shell one-liners:
 
 - The command lives in `tools/blong-dev/src/commands/log.ts`, is registered as `log` in
   `tools/blong-dev/src/cli.ts`, and is exported from `tools/blong-dev/src/index.ts`.
-- Add a filter by following the existing `--level` / `--name` / `--trace-id` pattern and document it
-  in the `blong-dev log` options table above.
+- Add a filter by following the existing `--level` / `--name` / `--trace-id` pattern, and document
+  it in the help registry (`tools/blong-dev/src/help/commands.ts`) so `blong-dev log --help` shows it.
 - Keep `condensed` plain and parseable (no ANSI), keep summaries on **stderr**, and list newest
   first — agents and scripts rely on that.
 - Full internals, the on-disk storage format, and step-by-step extension guidance are in the

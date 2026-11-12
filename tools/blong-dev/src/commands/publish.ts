@@ -34,14 +34,7 @@ import {
     whitelistPatterns,
 } from '../publish/packedTarball.ts';
 import {findUp} from '../utils/findConfig.ts';
-
-const USAGE = [
-    'Usage:',
-    '  blong-dev publish check [--root <path>] [--json]',
-    '',
-    '  check: fail when a package that declares ci-publish would release a tarball without a target its',
-    '         own package.json declares and this checkout has',
-];
+import {usageHint} from '../usage.ts';
 
 /** One publishing package's answer. */
 export interface IPackageFinding {
@@ -155,7 +148,7 @@ export const publish = (args: string[]): void => {
     const rootArg = args.indexOf('--root');
     if (verb !== 'check') {
         console.error(`blong-dev publish: unknown verb "${verb}"`);
-        for (const line of USAGE) console.error(line);
+        console.error(usageHint('publish'));
         process.exitCode = 1;
         return;
     }

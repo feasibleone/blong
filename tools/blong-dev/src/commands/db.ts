@@ -35,6 +35,7 @@ import {dirname, join, resolve} from 'node:path';
 import {dumpDatabase} from '../db/dump.ts';
 import {createZip} from '../db/zip.ts';
 import {findUp, parseDevRc} from '../devrc.ts';
+import {usageHint} from '../usage.ts';
 import {parseArgs} from './log.ts';
 import {readConnection, type IConnectionInfo} from './sql.ts';
 
@@ -173,19 +174,9 @@ export async function db(args: string[]): Promise<void> {
         return;
     }
     if (subcommand !== 'backup') {
-        process.stderr.write('blong-dev db: expected `backup` or `list`\n');
-        process.stderr.write(
-            'Usage: blong-dev db backup [--database d | --all] [--output dir] [--config srv.db]\n',
-        );
-        process.stderr.write(
-            '       [--host h] [--port p] [--user u] [--password p] [--suite s]\n',
-        );
-        process.stderr.write(
-            '       (--database defaults to the dev naming pattern <suite>-<user>; the archive\n' +
-                '        lands in $BLONG_BACKUP_DIR, .blong_devrc backup.path, or <repo>/dev/backup)\n',
-        );
-        process.stderr.write('       blong-dev db list\n');
-        process.exit(1);
+        process.stderr.write(`blong-dev db: expected \`backup\` or \`list\`\n${usageHint('db')}\n`);
+        process.exitCode = 1;
+        return;
     }
 
     const parsed = parseArgs(rest);
@@ -210,9 +201,11 @@ export async function db(args: string[]): Promise<void> {
     } else {
         if (!connection.database) {
             process.stderr.write(
-                'blong-dev db backup: no database — pass --database <name> or --suite <name>\n',
+                'blong-dev db backup: no database — pass --database <name> or --suite <name>\n' +
+                    `${usageHint('db', 'backup')}\n`,
             );
-            process.exit(1);
+            process.exitCode = 1;
+            return;
         }
         databases = [connection.database];
     }

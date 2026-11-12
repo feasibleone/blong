@@ -25,7 +25,7 @@
  * Answer: The index block is derived from the parsed lines, and a move rewrites them.
  * See @@doc:patterns/memory#adding-and-correcting-entries.
  *
- * Evidence: @@F-316 (0.742) @@doc:patterns/memory#index (0.611)
+ * Evidence: @@F-316 (0.742) @@doc:patterns/memory#what-the-index-holds-and-when (0.611)
  *
  * Certainty: 0.7 — two entries agree; the fix itself is untested
  *

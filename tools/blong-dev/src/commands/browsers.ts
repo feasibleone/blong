@@ -19,17 +19,18 @@
  * workflow installs them once for the whole run, so it is off by default here.
  */
 
-import {writeUsage} from '../usage.ts';
+import {helpText, usageHint} from '../usage.ts';
 import {ensureBrowsers} from '../utils/browsers.ts';
 
 export async function browsers(args: string[]): Promise<void> {
     if (args.includes('--help') || args.includes('-h')) {
-        process.stdout.write('Usage: blong-dev browsers [--with-deps]\n');
+        process.stdout.write(helpText('browsers'));
         return;
     }
     if (args.some(arg => arg !== '--with-deps' && !arg.startsWith('-'))) {
-        process.stderr.write('blong-dev: browsers takes no arguments besides --with-deps\n');
-        writeUsage(process.stderr);
+        process.stderr.write(
+            `blong-dev browsers: no arguments besides --with-deps\n${usageHint('browsers')}\n`,
+        );
         process.exitCode = 1;
         return;
     }

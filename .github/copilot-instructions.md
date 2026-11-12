@@ -713,111 +713,41 @@ ss -tlnp | grep -E ':8180|:9092|:27017|:3306|:9000|:8200|:6379'
 
 Any port not listed in the output means that service is not yet started.
 
-### dev tooling (blong-dev ci / proxy / trace / log / sql / cspell / glossary)
+### dev tooling (`blong-dev`)
 
-The `blong-dev` CLI ships helpers for talking to a running gateway and for maintaining the
-repository's own configuration files:
+`blong-dev` is the repository's development CLI, and its own `--help` is the reference — do not
+carry its usage in instructions. With no command it lists the commands, with a command it lists the
+verbs, and with a verb it shows that verb's parameters and examples:
 
-- **`blong-dev proxy`** — curl-friendly HTTP proxy in front of a gateway's MLE-encrypted RPC
-  endpoint. Start it in the realm/suite that owns the gateway, then curl plain JSON:
+```bash
+blong-dev --help                   # the command list
+blong-dev memory --help            # the verbs of one command
+blong-dev memory close --help      # one verb: usage, options, examples
+```
 
-    ```bash
-    # Pre-authenticated (logs in on startup):
-    blong-dev proxy --port 8099 --target http://localhost:8080 \
-        --username testAdmin --password testPassword
+A command that is given an incomplete argument reports what it needs and points at its `--help`.
 
-    # Manual login (login happens through the proxy):
-    blong-dev proxy --port 8099 --target http://localhost:8080 --no-login
-    curl -s -X POST http://localhost:8099/login/token/create \
-         -H 'content-type: application/json' -d '{}'   # captures the session
-    curl -s -X POST http://localhost:8099/gateway/bundle/find \
-         -H 'content-type: application/json' -d '{"params":{"paging":{}}}'
-    ```
+- `lint` `lint-staged` `test` `playwright` `report` `ci-report` — the test-and-report loop CI runs.
+- `ci` — a red run: which operations failed, why, and whether the run before was green.
+- `call` `proxy` — a gateway call, printed or proxied.
+- `log` `trace` — the persisted log, and a Playwright trace.
+- `sql` `db` `user` — the dev database: queries, a backup, a login without a gateway.
+- `cspell` `glossary` — the dictionary and the vocabulary page.
+- `plan` `docs` — the plan board and the generated docs artefacts.
+- `publish` — a published tarball against its declared entry points.
 
-    Credentials fall back to `MLE_USERNAME` / `MLE_PASSWORD` env vars. Implemented in
-    `tools/blong-dev/src/commands/proxy.ts` on top of `@feasibleone/blong-mle`
-    (`core/blong-mle/src/client.ts`).
+Rules that `--help` does not state:
 
-- **`blong-dev call`** — one call to a gateway, printed instead of proxied. Do not add a bespoke CLI
-  for a single API call: this is the way in, and business logic stays in the orchestrators.
-
-    ```bash
-    blong-dev call chat.prompt.ask '{conversationId: C0ABCDEF, kind: text, text: Which one?}'
-    blong-dev call access.user.find '{paging: {}}' --payload.paging.pageSize=10
-    blong-dev call chatPromptAsk --payload.text='Which one?' --dry-run
-    ```
-
-    The payload is JSON or YAML; `--payload.<path>=<value>` overrides one property and keeps its
-    JSON type; `--dry-run` prints the method, server and payload it would send. `call` and `proxy`
-    share one file, `.blong_callrc` (found upwards, gitignored):
-    `server.<alias>.{url,username,password}`, `route` (method prefix → alias), `payload` (defaults
-    by prefix or exact name), `default.server`, and `plain` (prefixes of routes the gateway serves
-    without auth, whose params must travel as plain JSON because the MLE hook only decodes a route
-    that requires auth — `F-710`). Implemented in `tools/blong-dev/src/commands/call.ts` on
-    `tools/blong-dev/src/callRc.ts`.
-
-- **`blong-dev trace`** — inspect a `trace.zip` bundle (client actions, failed requests, console
-  output). Implemented in `tools/blong-dev/src/commands/trace.ts`.
-
-- **`blong-dev log`** — fetch log entries that the `pino-cacache` transport stored on disk. Pass a
-  ULID to fetch one entry. Implemented in `tools/blong-dev/src/commands/log.ts` on top of `cacache`.
-  See the **blong-log** skill for full usage.
-
-- **`blong-dev ci`** — diagnose a CI run from the documents that run published: which operations
-  failed, why (a raw TAP stream, a leg's jest log, the runner's stderr), and what the same package
-  did in the run before it, which is what separates a regression from a runner that was slow.
-  Defaults to the release-please PR; `--pr <n>`/`--run <n>` name another, `--full` reads the
-  `reports` artifact, `--json` prints the machine document. Implemented in `tools/blong-dev/src/ci/`
-  on top of the `<pkg>/.ci-report/` contract; the **blong-ci** skill carries the vocabulary it
-  prints. Example: `blong-dev ci failures --run 622`.
-
-- **`blong-dev sql`** — run SQL queries against the local dev database (use this instead of a MySQL
-  CLI locally or `kubectl exec` into a pod). Reuses `.blong_devrc` (default key `srv.db`); derives
-  the dev database name (`${suite}-${user}`, e.g. `blong-access-kalin`) when none is configured.
-  `--output json` is the agent-friendly default for non-TTY. Implemented in
-  `tools/blong-dev/src/commands/sql.ts`. Example: `blong-dev sql "SELECT * FROM access_role"`.
-
-- **`blong-dev db`** — database housekeeping for the dev stack. `backup` dumps one database (or
-  `--all`) through the same connection as `sql`, with no `mysqldump` and no `kubectl exec`, and
-  writes it as one `.zip` into a predefined host folder — `--output`, else `$BLONG_BACKUP_DIR`, else
-  `.blong_devrc` `backup.path`, else `dev/backup` beside `rush.json` (git-ignored, and the folder a
-  k3d node can mount as a local-path volume). Take one before a schema change or a seed re-run:
-  `blong-dev db backup --database blong-sport`. `list` prints the databases on the server. The dump
-  is tables, views and rows — no routines, triggers or events. Implemented in
-  `tools/blong-dev/src/commands/db.ts` on `src/db/dump.ts` and `src/db/zip.ts` (`@@D-779`).
-
-- **`blong-dev user`** — create an access user straight in a database, which is how a first login is
-  bootstrapped when no gateway is reachable:
-  `blong-dev user add admin --password change-me --role Admin` writes the `core_resource` (the login
-  name), `access_user`, the password credential, the `hasRole` edges and the `access_pathRefresh`
-  call in one transaction, then prints whether the granted roles reach the `accessLogin` action.
-  `list` shows users with their roles and that verdict, and `passwd <user> --password <new>` rotates
-  a password — the route back in when the deployment ships no page that changes one (`--strict`
-  refuses a secret below the database's `minLength`, which otherwise only warns). `--password` is
-  the new user's secret, `--db-password` the database's; the connection otherwise resolves like
-  `blong-dev sql`. Implemented in `tools/blong-dev/src/commands/user.ts` (@@D-647).
-
-- **`blong-dev cspell`** — the writer and the gate for `cspell.config.yaml`. `add <word>` and
-  `remove <word>` edit `words` (or `ignorePaths` with `--section ignorePaths`), `sort` orders an
-  already-drifted list, `check` reports a list that is not sorted, `list` prints one. Nothing else
-  in the file is touched: comments stay on their entries and a run that changes nothing writes
-  nothing. Implemented in `tools/blong-dev/src/commands/cspell.ts` on
-  `tools/blong-dev/src/cspell/cspellConfig.ts`. Example: `blong-dev cspell add kukum mxbai`.
-
-- **`blong-dev glossary`** — the writer and the gate for `docs/blong/docs/concepts/glossary.md`.
-  `add <term> --definition "<sentence>"` inserts the term in sorted position and wraps the sentence,
-  replacing the definition when the term is already present; `remove`, `list` and `show` are the
-  reading side. `check` fails on an unsorted or repeated term, a definition over forty words, or a
-  link that does not resolve. Implemented in `tools/blong-dev/src/commands/glossary.ts` on
-  `tools/blong-dev/src/glossary/glossaryDoc.ts`. Example: `blong-dev glossary add adapter`.
-
-- **`blong-dev plan`** — the plan board and its memory tasks. `check` validates the work breakdown
-  (`- [ ] <title> · area: <area>` with the detail indented below), `tasks` creates a memory todo per
-  task and trims the plan to `- [ ] @@T-531 <title>`, `init` does that plus the GitHub issue and the
-  Slack channel, `sync` aligns the plan and the issue with what the memory says, `status` prints
-  progress, and `adopt` puts an existing entry or issue under the plan. Implemented in
-  `tools/blong-dev/src/commands/plan.ts` on `tools/blong-dev/src/plan/`. Example:
-  `blong-dev plan init agent --repo feasibleone/blong`.
+- **One gateway call is `blong-dev call`** — never add a bespoke CLI for a single API call;
+  business logic stays in the orchestrators. Servers, routes and payload defaults come from
+  `.blong_callrc` (gitignored); `--dry-run` prints what would be sent.
+- **Reach the dev database with `blong-dev sql`**, not a MySQL client or `kubectl exec`; JSON is the
+  default output off a TTY. Use `blong-dev user` to bootstrap a login when no gateway is reachable.
+- **Never edit `cspell.config.yaml` or the glossary by hand** — `blong-dev cspell` and
+  `blong-dev glossary` own the sorted position, and their `check` is the gate.
+- **`blong-dev ci` diagnoses from the documents a run published**; the **blong-ci** skill carries the
+  vocabulary it prints, and [the blong-dev pattern](../docs/blong/docs/patterns/blong-dev.md) says
+  why each command exists.
 
 ## Architecture & Design Documents
 

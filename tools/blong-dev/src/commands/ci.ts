@@ -42,6 +42,7 @@ import {
 import type {IDiagnosis, IRunComparison} from '../ci/types.ts';
 import type {IFailuresJson} from '../report/failuresBundle.ts';
 import {repoRoot} from '../report/reportPaths.ts';
+import {usageHint} from '../usage.ts';
 
 /** Where a written diagnosis goes, relative to the repository root. */
 const DIAGNOSIS_FILE = 'ci-diagnosis.md';
@@ -452,7 +453,8 @@ export async function ci(args: string[]): Promise<void> {
             break;
         default:
             process.stderr.write(
-                `blong-dev: unknown \`ci\` verb "${flags.verb}" — use failures, runs or history\n`,
+                `blong-dev ci: unknown verb "${flags.verb}" — use failures, runs or history\n` +
+                    `${usageHint('ci')}\n`,
             );
             process.exitCode = 1;
     }

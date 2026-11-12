@@ -45,31 +45,17 @@ import {
     type CspellSection,
     type ISectionState,
 } from '../cspell/cspellConfig.ts';
+import {helpText, usageHint} from '../usage.ts';
 import {findUp} from '../utils/findConfig.ts';
+import {UsageError} from '../utils/usageError.ts';
 import {parseArgs} from './log.ts';
-
-const USAGE = [
-    'Usage:',
-    '  blong-dev cspell add <word...>    [--section <name>] [--file <path>]',
-    '  blong-dev cspell remove <word...> [--section <name>] [--file <path>]',
-    '  blong-dev cspell sort             [--check] [--section <name>] [--file <path>] [--json]',
-    '  blong-dev cspell check            [--section <name>] [--file <path>] [--json]',
-    '  blong-dev cspell list             [--section <name>] [--file <path>] [--json]',
-    '',
-    '  --section: words (default for add/remove), ignorePaths, ignoreRegExpList',
-    `\nSections: ${CSPELL_SECTIONS.join(', ')}`,
-    `Config: ${CSPELL_CONFIG_FILE}, found from the working directory unless --file names one\n`,
-].join('\n');
-
-/** A caller mistake: the message is the whole report, and the exit code is 1. */
-class UsageError extends Error {}
 
 /** `blong-dev cspell <verb> [...]` */
 export async function cspell(args: string[]): Promise<void> {
     const {positionals, options, flags} = parseArgs(args);
     const [verb, ...values] = positionals;
     if (verb === undefined || verb === 'help' || flags.has('help')) {
-        process.stdout.write(USAGE);
+        process.stdout.write(helpText('cspell', verb === 'help' ? undefined : verb));
         return;
     }
     const json = flags.has('json');
@@ -90,10 +76,18 @@ export async function cspell(args: string[]): Promise<void> {
         }
     } catch (error) {
         if (!(error instanceof UsageError)) throw error;
-        process.stderr.write(`blong-dev cspell: ${error.message}\n${USAGE}`);
+        // Point at the verb's own help when the mistake was inside a verb, and at the
+        // command's when the verb itself is the mistake.
+        const hintVerb = verb !== undefined && CSPELL_VERBS.has(verb) ? verb : undefined;
+        process.stderr.write(
+            `blong-dev cspell: ${error.message}\n${usageHint('cspell', hintVerb)}\n`,
+        );
         process.exitCode = 1;
     }
 }
+
+/** The verbs {@link usageHint} may name when a call fails. */
+const CSPELL_VERBS = new Set(['add', 'remove', 'sort', 'check', 'list']);
 
 /** The config to maintain: `--file`, else the nearest one up the tree. */
 function configFile(options: Map<string, string>): string {

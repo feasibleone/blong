@@ -208,9 +208,9 @@ a plain Docusaurus build. The register is
 with its destination, the package its generator runs in, and the command that regenerates it.
 
 ```bash
-blong-dev docs list                  # the register, and whether each destination exists
-blong-dev docs generate [--only id]  # run the generators and write the artefacts
-blong-dev docs check                 # regenerate, compare, restore; non-zero when stale
+blong-dev docs list      # the register, and whether each destination exists
+blong-dev docs check     # regenerate, compare, restore; non-zero when stale
+blong-dev docs --help    # the other verbs: generate, verify, storybook, diagram, serve
 ```
 
 Run `blong-dev docs check` before you call a docs change done, and commit the diff if it reports an

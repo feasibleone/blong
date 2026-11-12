@@ -1,8 +1,22 @@
 export {}; // mark as ESM module so top-level await is valid
 
-import {writeUnknownCommand, writeUsage} from './usage.ts';
+import {findCommand, helpText, renderIndex, resolveHelp} from './usage.ts';
 
 const [, , command, ...args] = process.argv;
+
+// Help is answered before a command is dispatched, at whichever of the three levels the
+// command line names: no command (the list), a command (its verbs), or a command and a
+// verb (that verb's parameters and examples).
+const requested = resolveHelp(command, args);
+if (requested !== undefined) {
+    if (requested.command !== undefined && findCommand(requested.command) === undefined) {
+        process.stderr.write(`blong-dev: Unknown command "${requested.command}"\n\n`);
+        process.stderr.write(renderIndex());
+        process.exit(1);
+    }
+    process.stdout.write(helpText(requested.command, requested.verb));
+    process.exit(0);
+}
 
 switch (command) {
     case 'lint':
@@ -68,14 +82,8 @@ switch (command) {
     case 'docs':
         await (await import('./commands/docs.ts')).docs(args);
         break;
-    case '--help':
-    case '-h':
-    case 'help':
-        // Print the command list (exit 0) so `--help` is never mistaken for a crash.
-        writeUsage(process.stdout);
-        process.exit(0);
-        break;
     default:
-        writeUnknownCommand(process.stderr, command);
-        process.exit(1);
+        process.stderr.write(`blong-dev: Unknown command "${command ?? ''}"\n\n`);
+        process.stderr.write(renderIndex());
+        process.exitCode = 1;
 }

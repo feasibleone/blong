@@ -30,13 +30,14 @@ open (18)
 - `T-627` · tools/blong-dev — Let call load a realm or suite in-process
 - `T-632` · tools/blong-dev — A user cannot be removed with the CLI
 
-done (4)
+done (5)
 
 - `T-346` · tools/blong-dev — Name the projects that ran no tests in the CI report
 - `T-358` · tools/blong-dev — Render the killing signal in the failure message
 - `T-361` · tools/blong-dev — Host one shared Allure bundle for every published report
 - `T-592` · tools/blong-dev — memory audit's dangling references are not what refs --dangling gates
   on
+- `T-638` · tools/blong-dev — Trim remaining blong-dev usage from the skills
 
 <!-- /memory:index -->
 
@@ -339,6 +340,23 @@ that every reference resolves.
 
 decided and built: a dangling body reference is an error in check --refs, refs --dangling and audit
 (D-719); what stays open is the sweep of the 89 citations already in the tree, which is T-338's work
+
+### T-638 — Trim remaining blong-dev usage from the skills
+
+> _2026-11-12 · tools/blong-dev · done_
+
+The instructions and the biggest reference blocks are trimmed, but the remaining skills still
+restate command parameters that `blong-dev <command> [<verb>] --help` now answers: blong-plan and
+blong-playwright carry command lines inside their workflows, and blong-schema, blong-adapter,
+blong-suite and blong-test-int each name a command with its flags. Sweep them the way blong-log,
+blong-ci and blong-docs were done: keep the invariant or the workflow step, and let the tool carry
+the parameters. Do not touch the memory guidance in `.github/copilot-instructions.md` - the memory
+commands are the deliberate exception, because every session uses them.
+
+Trimmed blong-plan (plan init/sync flag lists), blong-playwright (proxy flags), blong-schema (sql
+flags) and blong-suite (the stale --timeout=180 claim, now a pointer to --help); blong-adapter and
+blong-test-int only name a command and were left as they are. The four touched skills are cspell-
+and markdownlint-clean, including pre-existing fence and word findings they carried.
 
 ## Retired
 

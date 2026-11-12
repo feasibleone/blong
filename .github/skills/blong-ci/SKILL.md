@@ -29,22 +29,18 @@ reason itself lives in a raw TAP stream inside a 44MB artifact (@@F-539, @@D-561
 ## Quick Reference
 
 ```bash
-blong-dev ci failures                    # the release-please PR, its newest completed run
-blong-dev ci failures --pr 200           # another pull request
-blong-dev ci failures --run 622          # one run by number (`blong-dev ci 622` also works)
-blong-dev ci failures --sha 776c9c60     # the newest run of a commit
-blong-dev ci failures --branch main      # the newest run of a branch
-blong-dev ci failures --full             # + read the reasons out of the reports artifact
-blong-dev ci failures --json             # the machine document, for another tool or agent
-blong-dev ci failures --write            # stamp `ci-diagnosis.md` with the same answer
-blong-dev ci runs --limit 10             # recent runs and which packages failed in each
-blong-dev ci history blong-cli           # one package: pass/fail and test time, run by run
-blong-dev ci history blong-cli blong-kukum   # several at once, which is what a red run needs
+blong-dev ci                 # the release-please PR, its newest completed run
+blong-dev ci --pr 200        # another pull request (`--run`/`--sha`/`--branch` name others)
+blong-dev ci --full          # + read the reasons out of the reports artifact
+blong-dev ci runs            # recent runs and which packages failed in each
+blong-dev ci history blong-cli blong-kukum   # one package each, run by run
+blong-dev ci --help          # the verbs
 ```
 
 The default answer is read-only and cheap: the published bundle plus the run's job log. `--full`
 downloads the `reports` artifact (tens of MB) and reads the raw streams — it is what answers _why_
-for a failure the bundle only named.
+for a failure the bundle only named. `--json` prints the machine document and `--write` stamps
+`ci-diagnosis.md`; `blong-dev ci failures --help` lists the rest.
 
 ## The default target
 

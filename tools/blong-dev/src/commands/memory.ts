@@ -168,6 +168,34 @@ import {toolEnv} from '../utils/toolPath.ts';
 import {parseArgs} from './log.ts';
 import {resolvePlanFile} from './plan.ts';
 
+/** The verbs {@link usageHint} may name when a call fails. */
+const MEMORY_VERBS = new Set([
+    'add',
+    'list',
+    'show',
+    'edit',
+    'close',
+    'retire',
+    'reopen',
+    'renumber',
+    'comply',
+    'move',
+    'index',
+    'search',
+    'answer',
+    'confirm',
+    'merge',
+    'format',
+    'check',
+    'manual',
+    'audit',
+    'refs',
+    'export',
+    'migrate',
+    'import',
+    'prune',
+]);
+
 const USAGE = [
     'blong-dev memory add <friction|todo|decision|faq> --title <title> [--area <area>] [--body <text>]',
     '                        [--plan <file|slug>]   (decision and friction only; lists it on the plan)',
@@ -240,6 +268,7 @@ function today(): string {
 }
 
 /** Thrown by {@link fail} so the command stops without a stack trace. */
+import {usageHint} from '../usage.ts';
 import {UsageError} from '../utils/usageError.ts';
 
 /** Report a usage error and stop the command. */
@@ -2797,14 +2826,19 @@ export async function memory(args: string[]): Promise<void> {
             case 'prune':
                 return await prune(root, rest, options, flags);
             default:
-                process.stderr.write(`blong-dev: unknown memory verb "${verb ?? ''}"\n${USAGE}\n`);
+                process.stderr.write(
+                    `blong-dev: unknown memory verb "${verb ?? ''}"\n${USAGE}\n${usageHint('memory')}\n`,
+                );
                 process.exitCode = 1;
         }
     } catch (error) {
         // A usage error already says what to fix; the usage text is printed once, here,
         // so a helper that does not own the text can still stop the command.
         if (error instanceof UsageError) {
-            process.stderr.write(`blong-dev: ${error.message}\n${USAGE}\n`);
+            const hintVerb = verb !== undefined && MEMORY_VERBS.has(verb) ? verb : undefined;
+            process.stderr.write(
+                `blong-dev memory: ${error.message}\n${USAGE}\n${usageHint('memory', hintVerb)}\n`,
+            );
             process.exitCode = 1;
             return;
         }
