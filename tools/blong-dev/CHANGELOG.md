@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.19.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.18.0...blong-dev-v1.19.0) (2026-11-12)
+
+
+### Features
+
+* blong-dev progressive exposure ([c30e935](https://github.com/feasibleone/blong/commit/c30e935f5e325608f67be15510a69097aa6aacff))
+* faq ([ccb5cae](https://github.com/feasibleone/blong/commit/ccb5caea605cdbb6bbfb3100c3d4c1e8add2b499))
+
+
+### Bug Fixes
+
+* remove help from git ignore ([904eb91](https://github.com/feasibleone/blong/commit/904eb915b635700b2d2eca1332bb262f416a7717))
+
 ## [1.18.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.17.0...blong-dev-v1.18.0) (2026-11-12)
 
 
