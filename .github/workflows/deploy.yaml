@@ -1,13 +1,18 @@
 name: Deploy
 
-# A release is the deployment decision: release-please publishes a
-# `<component>-v<version>` release, and this workflow builds that component's
-# artifact, attaches it to the release and asks the operator to converge.
-# `workflow_dispatch` is the same path for a re-deploy or a deployment whose
-# release was published by an earlier runner.
+# A release *batch* is the deployment decision. Release-please publishes one release per changed
+# package at once, all of them tagged at the same commit, so one tag says nothing about what a
+# deployed suite is missing: `blong-gogo-v1.51.0` moved the framework image and
+# `blong-marine-v1.14.0` a realm inside it, and neither names `suite` — which is what a tenant ran
+# on for a day. This workflow therefore answers the *Release* workflow finishing, treats
+# the releases it published as one batch, and converges every deployment whose `follows` list names
+# something in it, once, from the batch's newest tag.
+# `workflow_dispatch` stays for a re-deploy, or a deployment whose release was published earlier.
 on:
-    release:
-        types: [published]
+    workflow_run:
+        workflows: [Release]
+        types: [completed]
+        branches: [main]
     workflow_dispatch:
         inputs:
             deployment:
@@ -19,11 +24,11 @@ on:
                 required: false
                 type: string
 
-# One deployment at a time per alias. The alias is not known until `resolve`
-# runs, so the release tag (or the dispatch's alias) is the key; a second run
-# waits rather than replacing the first mid-apply.
+# One batch at a time. The key is the commit the Release run built, so a second Release finishing
+# while this one converges waits rather than racing it, and the per-deployment key on the `artifact`
+# job keeps two aliases of one batch apart.
 concurrency:
-    group: deploy-${{ github.event.release.tag_name || inputs.deployment || github.run_id }}
+    group: deploy-${{ github.event.workflow_run.head_sha || inputs.deployment || github.run_id }}
     cancel-in-progress: false
 
 permissions:
@@ -48,75 +53,114 @@ env:
 
 jobs:
     resolve:
-        name: Resolve the deployment
+        name: Plan the deployments
         runs-on: ubuntu-latest
         outputs:
-            alias: ${{ steps.resolve.outputs.alias }}
-            tag: ${{ steps.resolve.outputs.tag }}
-            version: ${{ steps.resolve.outputs.version }}
-            package: ${{ steps.resolve.outputs.package }}
-            scenario: ${{ steps.resolve.outputs.scenario }}
-            artifact: ${{ steps.resolve.outputs.artifact }}
-            namespace: ${{ steps.resolve.outputs.namespace }}
-            suite: ${{ steps.resolve.outputs.suite }}
-            framework_version: ${{ steps.resolve.outputs.framework_version }}
-            framework_image: ${{ steps.resolve.outputs.framework_image }}
-            artifact_url: ${{ steps.resolve.outputs.artifact_url }}
+            tag: ${{ steps.plan.outputs.tag }}
+            count: ${{ steps.plan.outputs.count }}
+            matrix: ${{ steps.plan.outputs.matrix }}
+            operator: ${{ steps.plan.outputs.operator }}
+            framework_version: ${{ steps.plan.outputs.framework_version }}
+            framework_image: ${{ steps.plan.outputs.framework_image }}
         steps:
             - uses: actions/checkout@v4
               with:
-                  # The release's own tree for a release run, the dispatch tag when one
-                  # is named, and the default branch otherwise — the deployment map is
-                  # read from whichever tree the caller asked about.
-                  ref: ${{ inputs.tag || github.event.release.tag_name || github.ref }}
+                  # The map is read from the default branch; what to build is fetched by tag, because
+                  # a batch is a set of tags rather than one checked-out ref.
                   fetch-depth: 0
 
-            - name: Read the tag, alias and framework version
-              id: resolve
+            - name: Plan what this run deploys
+              id: plan
               env:
                   GH_TOKEN: ${{ github.token }}
-                  EVENT_TAG: ${{ github.event.release.tag_name }}
+                  EVENT_NAME: ${{ github.event_name }}
+                  BATCH_FROM: ${{ github.event.workflow_run.created_at }}
+                  BATCH_TO: ${{ github.event.workflow_run.updated_at }}
                   INPUT_DEPLOYMENT: ${{ inputs.deployment }}
                   INPUT_TAG: ${{ inputs.tag }}
               run: |
                   set -euo pipefail
-                  tag="${INPUT_TAG:-${EVENT_TAG}}"
-                  if [ -z "$tag" ]; then
-                      tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
-                  fi
-                  if [ -z "$tag" ]; then
-                      echo "::error::no release tag to deploy"
+                  map=.github/deployments.json
+                  # A matrix GitHub cannot expand is not a skipped job but a broken expression, so a
+                  # run with nothing to do carries one placeholder entry and is skipped by `count`.
+                  placeholder='[{"alias":"none","packagePath":".","scenario":"none","artifact":"none.zip","namespace":"none","suite":"none"}]'
+
+                  # A `follows` name that no release-please component answers is a list that never
+                  # fires, which is exactly how this bug looked from the outside (@@D-832): fail here
+                  # rather than leave a suite undeployed for a release nobody noticed.
+                  unknown=$(jq -r --slurpfile manifest .release-please-manifest.json \
+                      '[ to_entries[].value.follows // [] ] | add | unique
+                       - [$manifest[0] | keys[] | split("/") | last] | .[]' "$map")
+                  if [ -n "$unknown" ]; then
+                      echo "::error::follows names components release-please does not publish: $(tr '\n' ' ' <<<"$unknown")"
                       exit 1
                   fi
 
-                  alias="${INPUT_DEPLOYMENT}"
-                  if [ -z "$alias" ]; then
-                      alias=$(jq -r --arg tag "$tag" \
-                          'to_entries[]
-                           | select(.value.installer != true)
-                           | select(.value.release as $release | $tag | startswith($release + "-v"))
-                           | .key' .github/deployments.json | head -n1)
-                  fi
-                  if [ -z "$alias" ]; then
-                      # One release fires this workflow for every component release-please publishes,
-                      # and it publishes the batch at once: most of those tags name no deployment, and
-                      # their own pipelines are the ones that run. Saying so and stopping is the
-                      # difference between a green release and a red one per component nobody deploys.
-                      if [ -n "${EVENT_TAG:-}" ]; then
-                          echo "::notice::$tag names no deployment in .github/deployments.json; nothing to deploy"
-                          echo "alias=" >> "$GITHUB_OUTPUT"
+                  if [ "$EVENT_NAME" = "workflow_run" ]; then
+                      # The batch is what the Release run published: release-please creates its
+                      # releases inside that run, so the run's own window bounds them. A run that
+                      # published nothing — a metrics push, or a release step that failed — plans
+                      # nothing, which is the green-on-every-push behaviour the tag lookup gave.
+                      published=$(gh release list --limit 100 --json tagName,publishedAt \
+                          | jq -c --arg from "$BATCH_FROM" --arg to "$BATCH_TO" \
+                          '[.[] | select(.publishedAt >= $from and .publishedAt <= $to)]
+                           | sort_by(.publishedAt)')
+                      tag=$(jq -r 'last // empty | .tagName' <<<"$published")
+                      if [ -z "$tag" ]; then
+                          echo "::notice::the Release run published no release; nothing to deploy"
+                          echo 'count=0' >> "$GITHUB_OUTPUT"
+                          echo "matrix=$placeholder" >> "$GITHUB_OUTPUT"
                           exit 0
                       fi
-                      echo "::error::no deployment named and none could be resolved"
-                      exit 1
+                      # One batch, one commit: release-please tags every release of it at the same
+                      # commit, so the newest tag carries the tree the others do (@@D-832).
+                      components=$(jq -c '[.[].tagName | sub("-v[0-9].*$"; "")] | unique' <<<"$published")
+                      echo "batch $tag: $components"
+                      matrix=$(jq -c --argjson components "$components" '
+                          [ to_entries[]
+                            | select(.value.installer != true)
+                            | select(([.value.release] + (.value.follows // [])) as $mine
+                                     | any($mine[]; . as $name | $components | index($name) != null))
+                            | {alias: .key, packagePath: .value.packagePath,
+                               scenario: .value.scenario, artifact: .value.artifact,
+                               namespace: .value.namespace, suite: .value.suite} ]' "$map")
+                      if printf '%s' "$components" | jq -e 'index("blong-kustomize") != null' > /dev/null; then
+                          echo "operator=$tag" >> "$GITHUB_OUTPUT"
+                      else
+                          echo "operator=" >> "$GITHUB_OUTPUT"
+                      fi
+                  else
+                      alias="$INPUT_DEPLOYMENT"
+                      tag="$INPUT_TAG"
+                      if [ -z "$tag" ]; then
+                          tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+                      fi
+                      if [ -z "$tag" ]; then
+                          echo "::error::no release tag to deploy"
+                          exit 1
+                      fi
+                      matrix=$(jq -c --arg alias "$alias" '
+                          [ to_entries[]
+                            | select(.key == $alias)
+                            | select(.value.installer != true)
+                            | {alias: .key, packagePath: .value.packagePath,
+                               scenario: .value.scenario, artifact: .value.artifact,
+                               namespace: .value.namespace, suite: .value.suite} ]' "$map")
+                      if [ "$matrix" = "[]" ]; then
+                          echo "::error::$alias is not a tenant deployment in $map"
+                          exit 1
+                      fi
+                      echo "operator=" >> "$GITHUB_OUTPUT"
                   fi
 
-                  release=$(jq -r --arg alias "$alias" '.[$alias].release' .github/deployments.json)
-                  version="${tag#"${release}-v"}"
-                  if [ "$version" = "$tag" ]; then
-                      echo "::error::$tag is not a $release-v<version> release"
-                      exit 1
+                  count=$(jq 'length' <<<"$matrix")
+                  if [ "$count" = "0" ]; then
+                      matrix="$placeholder"
                   fi
+                  echo "count=$count" >> "$GITHUB_OUTPUT"
+                  echo "tag=$tag" >> "$GITHUB_OUTPUT"
+                  echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+                  echo "planning $tag: $count deployment(s)"
 
                   gogo=$(git show "$tag:.release-please-manifest.json" \
                       | jq -r '."core/blong-gogo"')
@@ -124,27 +168,14 @@ jobs:
                       echo "::error::$tag does not carry a core/blong-gogo version"
                       exit 1
                   fi
-
-                  artifact=$(jq -r --arg alias "$alias" '.[$alias].artifact' .github/deployments.json)
-                  {
-                      echo "alias=$alias"
-                      echo "tag=$tag"
-                      echo "version=$version"
-                      echo "package=$(jq -r --arg alias "$alias" '.[$alias].package' .github/deployments.json)"
-                      echo "scenario=$(jq -r --arg alias "$alias" '.[$alias].scenario' .github/deployments.json)"
-                      echo "artifact=$artifact"
-                      echo "namespace=$(jq -r --arg alias "$alias" '.[$alias].namespace' .github/deployments.json)"
-                      echo "suite=$(jq -r --arg alias "$alias" '.[$alias].suite' .github/deployments.json)"
-                      echo "framework_version=v$gogo"
-                      echo "framework_image=ghcr.io/feasibleone/blong-gogo"
-                      echo "artifact_url=https://github.com/${GITHUB_REPOSITORY}/releases/download/$tag/$artifact"
-                  } >> "$GITHUB_OUTPUT"
+                  echo "framework_version=v$gogo" >> "$GITHUB_OUTPUT"
+                  echo "framework_image=ghcr.io/feasibleone/blong-gogo" >> "$GITHUB_OUTPUT"
 
             - name: Wait for the framework image
-              if: steps.resolve.outputs.alias != ''
+              if: steps.plan.outputs.count != '0' || steps.plan.outputs.operator != ''
               env:
-                  FRAMEWORK_IMAGE: ${{ steps.resolve.outputs.framework_image }}
-                  FRAMEWORK_VERSION: ${{ steps.resolve.outputs.framework_version }}
+                  FRAMEWORK_IMAGE: ${{ steps.plan.outputs.framework_image }}
+                  FRAMEWORK_VERSION: ${{ steps.plan.outputs.framework_version }}
               run: |
                   set -euo pipefail
                   image="${FRAMEWORK_IMAGE}:${FRAMEWORK_VERSION}"
@@ -160,16 +191,22 @@ jobs:
                   exit 1
 
     artifact:
-        name: Build and attach the artifact
+        name: Deploy ${{ matrix.alias }}
         needs: resolve
-        # A release that names no deployment resolved an empty alias and stopped; its jobs are skipped
-        # rather than failed, which is what keeps the workflow green on every component release.
-        if: needs.resolve.outputs.alias != ''
+        # A run whose batch names no deployment carries the placeholder entry, and `count` skips the
+        # legs — the green-on-every-push behaviour of a release nobody deploys (@@D-832).
+        if: needs.resolve.outputs.count != '0'
         runs-on: ubuntu-latest
         permissions:
             contents: write
-        outputs:
-            digest: ${{ steps.zip.outputs.digest }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include: ${{ fromJSON(needs.resolve.outputs.matrix) }}
+        # Two aliases of one batch build in parallel; the same alias from two runs does not.
+        concurrency:
+            group: deploy-${{ matrix.alias }}
+            cancel-in-progress: false
         steps:
             - uses: actions/checkout@v4
               with:
@@ -225,7 +262,7 @@ jobs:
             - name: Deploy the scenario, to read what it carries
               run: |
                   node common/scripts/install-run-rush.js deploy \
-                      --scenario ${{ needs.resolve.outputs.scenario }} \
+                      --scenario ${{ matrix.scenario }} \
                       --target-folder "$RUNNER_TEMP/deploy" \
                       --overwrite
 
@@ -247,7 +284,7 @@ jobs:
             - name: Deploy the scenario
               run: |
                   node common/scripts/install-run-rush.js deploy \
-                      --scenario ${{ needs.resolve.outputs.scenario }} \
+                      --scenario ${{ matrix.scenario }} \
                       --target-folder "$RUNNER_TEMP/deploy" \
                       --overwrite
 
@@ -259,8 +296,8 @@ jobs:
                   # The artifact is the whole deployment scenario: the entry, the realms
                   # it carries and the browser bundle, because the operator mounts this
                   # directory and runs the entry inside it.
-                  zip -qr "$RUNNER_TEMP/${{ needs.resolve.outputs.artifact }}" .
-                  digest=$(sha256sum "$RUNNER_TEMP/${{ needs.resolve.outputs.artifact }}" | awk '{print $1}')
+                  zip -qr "$RUNNER_TEMP/${{ matrix.artifact }}" .
+                  digest=$(sha256sum "$RUNNER_TEMP/${{ matrix.artifact }}" | awk '{print $1}')
                   echo "digest=$digest" >> "$GITHUB_OUTPUT"
                   echo "sha256=$digest"
 
@@ -269,23 +306,102 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: |
                   gh release upload "${{ needs.resolve.outputs.tag }}" \
-                      "$RUNNER_TEMP/${{ needs.resolve.outputs.artifact }}" \
+                      "$RUNNER_TEMP/${{ matrix.artifact }}" \
                       --clobber
+
+            # The operator's gateway is the only door this workflow opens, and the deployment's own
+            # version comes from the manifest at the tag rather than from the tag's suffix: a batch
+            # may be triggered by any component, so a `blong-gogo-v1.51.0` batch deploys `suite`
+            # 1.19.0 with framework v1.51.0, and both versions travel in the body so the operator
+            # shows what moved (@@D-832, D-751).
+            - name: Ask the operator to converge
+              env:
+                  DEPLOY_ENDPOINT: ${{ secrets.DEPLOY_ENDPOINT }}
+                  DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+                  TAG: ${{ needs.resolve.outputs.tag }}
+                  SUITE: ${{ matrix.suite }}
+                  NAMESPACE: ${{ matrix.namespace }}
+                  PACKAGE_PATH: ${{ matrix.packagePath }}
+                  ARTIFACT: ${{ matrix.artifact }}
+                  ARTIFACT_DIGEST: ${{ steps.zip.outputs.digest }}
+                  FRAMEWORK_IMAGE: ${{ needs.resolve.outputs.framework_image }}
+                  FRAMEWORK_VERSION: ${{ needs.resolve.outputs.framework_version }}
+              run: |
+                  set -euo pipefail
+                  if [ -z "$DEPLOY_ENDPOINT" ] || [ -z "$DEPLOY_TOKEN" ]; then
+                      echo "::error::DEPLOY_ENDPOINT and DEPLOY_TOKEN are required repository secrets"
+                      exit 1
+                  fi
+                  version=$(git show "$TAG:.release-please-manifest.json" \
+                      | jq -r --arg path "$PACKAGE_PATH" '.[$path]')
+                  if [ -z "$version" ] || [ "$version" = "null" ]; then
+                      echo "::error::$TAG does not carry a version for $PACKAGE_PATH"
+                      exit 1
+                  fi
+                  artifact_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${ARTIFACT}"
+                  # `jq -n --arg`, never a shell-interpolated body: a token or an URL with a quote
+                  # in it must not be able to change the JSON.
+                  body=$(jq -n \
+                      --arg id "deploy-${GITHUB_RUN_ID}-${{ matrix.alias }}" \
+                      --arg token "$DEPLOY_TOKEN" \
+                      --arg suite "$SUITE" \
+                      --arg namespace "$NAMESPACE" \
+                      --arg version "$version" \
+                      --arg artifactUrl "$artifact_url" \
+                      --arg artifactDigest "$ARTIFACT_DIGEST" \
+                      --arg frameworkImage "$FRAMEWORK_IMAGE" \
+                      --arg frameworkVersion "$FRAMEWORK_VERSION" \
+                      '{jsonrpc: "2.0",
+                        id: $id,
+                        method: "kustomize.release.approve",
+                        params: {
+                          token: $token,
+                          suite: $suite,
+                          namespace: $namespace,
+                          version: $version,
+                          artifactUrl: $artifactUrl,
+                          artifactDigest: $artifactDigest,
+                          frameworkImage: $frameworkImage,
+                          frameworkVersion: $frameworkVersion
+                      }}')
+                  set +e
+                  http=$(curl -sS --fail-with-body \
+                      -o "$RUNNER_TEMP/answer.json" \
+                      -w '%{http_code}' \
+                      -X POST "$DEPLOY_ENDPOINT" \
+                      -H 'content-type: application/json' \
+                      -d "$body")
+                  status=$?
+                  set -e
+                  cat "$RUNNER_TEMP/answer.json" 2>/dev/null || true
+                  echo
+                  echo "HTTP $http"
+                  # The operator builds the summary, so a job page, a chat channel and the log all
+                  # say the same thing about the same release (D-751). Written before the exit so
+                  # the summary exists even when the call failed: a refused release is exactly the
+                  # one a reader needs the page for. An `if`, not `a && b`, so an answer with no
+                  # markdown cannot replace the status this step reports.
+                  if summary=$(jq -er '.result.markdown // empty' "$RUNNER_TEMP/answer.json" 2>/dev/null); then
+                      printf '%s\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
+                  fi
+                  exit "$status"
 
     operator-artifact:
         name: Build and attach the operator artifact
+        needs: resolve
         # The deployment realm is not a tenant's suite: its own release publishes the artifact the
-        # operator runs *itself* from, so the job answers the realm's tag and nothing else — a
-        # `blong-kustomize-v<version>` release is what an installer points `OPERATOR_ARTIFACT_URL`
-        # at, and what `realm/blong-kustomize/deploy.sh` resolves in its release form (@@D-654).
-        if: startsWith(github.event.release.tag_name, 'blong-kustomize-v')
+        # operator runs *itself* from, so the job answers the batch that contains a
+        # `blong-kustomize-v<version>` release — what an installer points `OPERATOR_ARTIFACT_URL`
+        # at, and what `realm/blong-kustomize/deploy.sh` resolves in its release form (@@D-654). It
+        # builds from the batch's tag like every other job, because a batch is one commit (@@D-832).
+        if: needs.resolve.outputs.operator != ''
         runs-on: ubuntu-latest
         permissions:
             contents: write
         steps:
             - uses: actions/checkout@v4
               with:
-                  ref: ${{ github.event.release.tag_name }}
+                  ref: ${{ needs.resolve.outputs.tag }}
                   fetch-depth: 0
 
             - uses: actions/setup-node@v4
@@ -332,17 +448,20 @@ jobs:
             # the two cannot disagree about the release prefix or the artifact's name.
             - name: Read the installer record
               id: record
+              env:
+                  TAG: ${{ needs.resolve.outputs.tag }}
               run: |
                   set -euo pipefail
-                  tag="${{ github.event.release.tag_name }}"
                   entry=$(jq -c '.operator' .github/deployments.json)
-                  release=$(jq -r '.release' <<<"$entry")
-                  version="${tag#"${release}-v"}"
-                  if [ "$version" = "$tag" ]; then
-                      echo "::error::$tag is not a $release-v<version> release"
+                  # The version is the operator's own, read from the manifest at the batch's tag: the
+                  # batch may have been published by any component, so the tag's suffix says nothing
+                  # about `blong-kustomize` (@@D-832).
+                  version=$(git show "$TAG:.release-please-manifest.json" \
+                      | jq -r --arg path "$(jq -r '.packagePath' <<<"$entry")" '.[$path]')
+                  if [ -z "$version" ] || [ "$version" = "null" ]; then
+                      echo "::error::$TAG does not carry a version for the operator's package path"
                       exit 1
                   fi
-                  echo "package=$(jq -r '.package' <<<"$entry")" >> "$GITHUB_OUTPUT"
                   echo "scenario=$(jq -r '.scenario' <<<"$entry")" >> "$GITHUB_OUTPUT"
                   echo "version=$version" >> "$GITHUB_OUTPUT"
                   # Two names for one file, because they answer two questions: the versioned one is
@@ -408,7 +527,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  gh release upload "${{ github.event.release.tag_name }}" \
+                  gh release upload "${{ needs.resolve.outputs.tag }}" \
                       "$RUNNER_TEMP/${{ steps.record.outputs.versioned }}" \
                       "$RUNNER_TEMP/${{ steps.record.outputs.versioned }}.sha256" \
                       "$RUNNER_TEMP/${{ steps.record.outputs.alias }}" \
@@ -425,22 +544,19 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
                   DEPLOY_ENDPOINT: ${{ secrets.DEPLOY_ENDPOINT }}
                   DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+                  TAG: ${{ needs.resolve.outputs.tag }}
                   VERSION: ${{ steps.record.outputs.version }}
                   DIGEST: ${{ steps.zip.outputs.digest }}
                   VERSIONED: ${{ steps.record.outputs.versioned }}
-                  FRAMEWORK_IMAGE: ghcr.io/feasibleone/blong-gogo
+                  FRAMEWORK_IMAGE: ${{ needs.resolve.outputs.framework_image }}
+                  FRAMEWORK_VERSION: ${{ needs.resolve.outputs.framework_version }}
               run: |
                   set -euo pipefail
                   if [ -z "$DEPLOY_ENDPOINT" ] || [ -z "$DEPLOY_TOKEN" ]; then
                       echo "::error::DEPLOY_ENDPOINT and DEPLOY_TOKEN are required repository secrets"
                       exit 1
                   fi
-                  tag="${{ github.event.release.tag_name }}"
-                  gogo=$(git show "$tag:.release-please-manifest.json" | jq -r '."core/blong-gogo"')
-                  if [ -z "$gogo" ] || [ "$gogo" = "null" ]; then
-                      echo "::error::$tag does not carry a core/blong-gogo version"
-                      exit 1
-                  fi
+                  tag="$TAG"
                   artifact_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${VERSIONED}"
                   body=$(jq -n \
                       --arg id "operator-${GITHUB_RUN_ID}" \
@@ -449,7 +565,7 @@ jobs:
                       --arg artifactUrl "$artifact_url" \
                       --arg artifactDigest "$DIGEST" \
                       --arg frameworkImage "$FRAMEWORK_IMAGE" \
-                      --arg frameworkVersion "v$gogo" \
+                      --arg frameworkVersion "$FRAMEWORK_VERSION" \
                       '{jsonrpc: "2.0",
                         id: $id,
                         method: "kustomize.release.approve",
@@ -477,76 +593,6 @@ jobs:
                   # The same summary the tenant path writes: the operator's own release describes
                   # itself in the same words, because it is the same document (D-751).
                   if summary=$(jq -er '.result.markdown // empty' "$RUNNER_TEMP/operator-answer.json" 2>/dev/null); then
-                      printf '%s\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
-                  fi
-                  exit "$status"
-
-    deploy:
-        name: Ask the operator
-        needs: [resolve, artifact]
-        if: needs.resolve.outputs.alias != ''
-        runs-on: ubuntu-latest
-        steps:
-            - name: Call the token-gated release route
-              env:
-                  DEPLOY_ENDPOINT: ${{ secrets.DEPLOY_ENDPOINT }}
-                  DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
-                  SUITE: ${{ needs.resolve.outputs.suite }}
-                  NAMESPACE: ${{ needs.resolve.outputs.namespace }}
-                  VERSION: ${{ needs.resolve.outputs.version }}
-                  ARTIFACT_URL: ${{ needs.resolve.outputs.artifact_url }}
-                  ARTIFACT_DIGEST: ${{ needs.artifact.outputs.digest }}
-                  FRAMEWORK_IMAGE: ${{ needs.resolve.outputs.framework_image }}
-                  FRAMEWORK_VERSION: ${{ needs.resolve.outputs.framework_version }}
-              run: |
-                  set -euo pipefail
-                  if [ -z "$DEPLOY_ENDPOINT" ] || [ -z "$DEPLOY_TOKEN" ]; then
-                      echo "::error::DEPLOY_ENDPOINT and DEPLOY_TOKEN are required repository secrets"
-                      exit 1
-                  fi
-                  # `jq -n --arg`, never a shell-interpolated body: a token or an URL
-                  # with a quote in it must not be able to change the JSON.
-                  body=$(jq -n \
-                      --arg id "deploy-${GITHUB_RUN_ID}" \
-                      --arg token "$DEPLOY_TOKEN" \
-                      --arg suite "$SUITE" \
-                      --arg namespace "$NAMESPACE" \
-                      --arg version "$VERSION" \
-                      --arg artifactUrl "$ARTIFACT_URL" \
-                      --arg artifactDigest "$ARTIFACT_DIGEST" \
-                      --arg frameworkImage "$FRAMEWORK_IMAGE" \
-                      --arg frameworkVersion "$FRAMEWORK_VERSION" \
-                      '{jsonrpc: "2.0",
-                        id: $id,
-                        method: "kustomize.release.approve",
-                        params: {
-                          token: $token,
-                          suite: $suite,
-                          namespace: $namespace,
-                          version: $version,
-                          artifactUrl: $artifactUrl,
-                          artifactDigest: $artifactDigest,
-                          frameworkImage: $frameworkImage,
-                          frameworkVersion: $frameworkVersion
-                      }}')
-                  set +e
-                  http=$(curl -sS --fail-with-body \
-                      -o "$RUNNER_TEMP/answer.json" \
-                      -w '%{http_code}' \
-                      -X POST "$DEPLOY_ENDPOINT" \
-                      -H 'content-type: application/json' \
-                      -d "$body")
-                  status=$?
-                  set -e
-                  cat "$RUNNER_TEMP/answer.json" 2>/dev/null || true
-                  echo
-                  echo "HTTP $http"
-                  # The operator builds the summary, so a job page, a chat channel and the log all
-                  # say the same thing about the same release (D-751). Written before the exit so
-                  # the summary exists even when the call failed: a refused release is exactly the
-                  # one a reader needs the page for. An `if`, not `a && b`, so an answer with no
-                  # markdown cannot replace the status this step reports.
-                  if summary=$(jq -er '.result.markdown // empty' "$RUNNER_TEMP/answer.json" 2>/dev/null); then
                       printf '%s\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
                   fi
                   exit "$status"

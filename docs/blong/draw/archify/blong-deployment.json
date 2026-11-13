@@ -20,7 +20,7 @@
                     "reconcile",
                     "ready"
                 ],
-                "note": "A merged commit reaches a running suite without a human touching the cluster."
+                "note": "A merged commit reaches every suite that carries it, without a human touching the cluster."
             },
             {
                 "id": "refused",
@@ -108,7 +108,7 @@
             "col": 1,
             "type": "backend",
             "label": "release-please",
-            "sublabel": "one tag per component",
+            "sublabel": "the batch, one tag each",
             "tag": "<component>-v<version>",
             "width": 128,
             "icon": "briefcase",
@@ -120,8 +120,8 @@
             "col": 2,
             "type": "backend",
             "label": "resolve",
-            "sublabel": "tag to alias, version",
-            "tag": "waits for the image",
+            "sublabel": "batch to a matrix",
+            "tag": "follows lists",
             "width": 128,
             "icon": "decision"
         },
@@ -130,8 +130,8 @@
             "lane": "workflow",
             "col": 3,
             "type": "backend",
-            "label": "artifact",
-            "sublabel": "rush deploy, then zip",
+            "label": "deploy <alias>",
+            "sublabel": "rush deploy, zip, ask",
             "tag": "sha256",
             "width": 128,
             "icon": "neutral"
@@ -152,8 +152,8 @@
             "lane": "workflow",
             "col": 4,
             "type": "security",
-            "label": "deploy",
-            "sublabel": "posts an approval",
+            "label": "approve",
+            "sublabel": "same leg as the build",
             "tag": "token, not a session",
             "width": 128,
             "icon": "security"
@@ -229,14 +229,14 @@
             "id": "published",
             "from": "release",
             "to": "resolve",
-            "label": "release: published",
+            "label": "Release run completes",
             "variant": "emphasis"
         },
         {
             "id": "build",
             "from": "resolve",
             "to": "artifact",
-            "label": "the alias's scenario",
+            "label": "one per deployment",
             "variant": "default"
         },
         {
@@ -306,16 +306,18 @@
             "title": "The deployment map",
             "items": [
                 ".github/deployments.json is the only place a suite is named",
-                "An alias maps to the release component, the rush deploy scenario, the artifact name, the namespace and the profile",
-                "The entry marked installer is the operator's own install, and resolve skips it"
+                "An alias names its release component, its rush deploy scenario, the artifact, the namespace and the profile",
+                "Its follows list says which other components' releases re-deploy it, because a realm or framework release publishes no release of the suite",
+                "The entry marked installer is the operator's own install, and resolve keeps it out of the matrix"
             ]
         },
         {
             "dot": "amber",
-            "title": "Why a release often deploys nothing",
+            "title": "One batch, one commit",
             "items": [
-                "release-please publishes the whole batch at once, one release per changed package",
-                "Only a tag the map names runs a build and a call; the rest report a notice and stop",
+                "release-please publishes the whole batch at once and tags every release of it at the same commit",
+                "The newest tag of the batch builds every artifact, so a gogo release and a marine release carry the same tree",
+                "A batch that names nothing a deployment follows plans an empty run and reports a notice",
                 "A release is not a promise that its framework image is pullable yet, so resolve waits for it"
             ]
         },

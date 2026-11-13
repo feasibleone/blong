@@ -8,7 +8,21 @@
         "namespace": "blong-sport",
         "suite": "blong-sport",
         "entry": "./index.ts",
-        "profile": "monolith"
+        "profile": "monolith",
+        "follows": [
+            "blong",
+            "blong-access",
+            "blong-browser",
+            "blong-core",
+            "blong-gateway",
+            "blong-gogo",
+            "blong-kustomize",
+            "blong-lib",
+            "blong-login",
+            "blong-mock",
+            "blong-party",
+            "blong-server"
+        ]
     },
     "chat": {
         "release": "blong-chat",
@@ -19,7 +33,20 @@
         "namespace": "blong-chat",
         "suite": "blong-chat",
         "entry": "./index.ts",
-        "profile": "monolith"
+        "profile": "monolith",
+        "follows": [
+            "blong",
+            "blong-access",
+            "blong-browser",
+            "blong-core",
+            "blong-gateway",
+            "blong-gogo",
+            "blong-kustomize",
+            "blong-lib",
+            "blong-login",
+            "blong-mock",
+            "blong-server"
+        ]
     },
     "suite": {
         "release": "blong-suite",
@@ -30,7 +57,22 @@
         "namespace": "blong-suite",
         "suite": "blong-suite",
         "entry": "./index.ts",
-        "profile": "realm"
+        "profile": "realm",
+        "follows": [
+            "blong",
+            "blong-access",
+            "blong-browser",
+            "blong-chain",
+            "blong-core",
+            "blong-gogo",
+            "blong-kustomize",
+            "blong-lib",
+            "blong-login",
+            "blong-marine",
+            "blong-mock",
+            "blong-server",
+            "marine-data"
+        ]
     },
     "operator": {
         "installer": true,

@@ -32,10 +32,12 @@ cd realm/blong-sport
 blong ./index.ts k8s --kustomize.deploy.layout=base
 ```
 
-The `release-please` component is `realm/blong-sport`, so a `blong-sport-v<version>` release is what
-the deployment workflow follows. `.github/deployments.json` names the package, scenario, artifact
-and namespace; the workflow builds the zip from the release tag, attaches it to the release and
-calls the operator with its URL and sha256.
+The `release-please` component is `realm/blong-sport`, so a `blong-sport-v<version>` release is one
+of the ones the deployment workflow follows — the others are the components the deployment's
+`follows` list names in `.github/deployments.json`, which is what makes a framework or realm release
+redeploy it. That file also names the package, scenario, artifact and namespace; the workflow builds
+the zip from the release batch's tag, attaches it to the release and calls the operator with its URL
+and sha256.
 
 ### Local deploy
 

@@ -6,13 +6,9 @@ door the workflow opens. `realm/blong-sport` is the worked example; the mechanis
 
 The whole path, from the merged commit to a pod that mounts the suite's version volume:
 
-<ArchifyDiagram
-    slug="blong-deployment"
-    title="From a merged commit to a running suite"
-    height="760px"
-    posterLight={require('../concepts/img/diagrams/blong-deployment-light.png').default}
-    posterDark={require('../concepts/img/diagrams/blong-deployment-dark.png').default}
-/>
+<ArchifyDiagram slug="blong-deployment" title="From a merged commit to a running suite"
+height="760px" posterLight={require('../concepts/img/diagrams/blong-deployment-light.png').default}
+posterDark={require('../concepts/img/diagrams/blong-deployment-dark.png').default} />
 
 ## The three halves
 
@@ -25,8 +21,8 @@ The whole path, from the merged commit to a pod that mounts the suite's version 
 
 The suite's tree never carries the operator: it carries the CR, and the bindings the operator needs
 in the suite's namespaces. The operator's own install tree carries the CRD, its RBAC, the
-`BLONG_RELEASE_TOKEN` reference and the ingress. The two are applied from
-`system/operator/local` and the suite's `system/kustomize/local` respectively.
+`BLONG_RELEASE_TOKEN` reference and the ingress. The two are applied from `system/operator/local`
+and the suite's `system/kustomize/local` respectively.
 
 ## `.github/deployments.json`
 
@@ -44,15 +40,38 @@ its fields are what the workflow reads:
         "namespace": "blong-sport",
         "suite": "blong-sport",
         "entry": "./index.ts",
-        "profile": "monolith"
+        "profile": "monolith",
+        "follows": [
+            "blong",
+            "blong-access",
+            "blong-browser",
+            "blong-core",
+            "blong-gateway",
+            "blong-gogo",
+            "blong-kustomize",
+            "blong-lib",
+            "blong-login",
+            "blong-mock",
+            "blong-party",
+            "blong-server"
+        ]
     }
 }
 ```
 
-`release` is the release-please component, so the release tag is `<release>-v<version>`.
-`scenario` names both `common/config/rush/deploy-<scenario>.json` and the kustomize deploy scenario;
-`artifact` is the name the zip is published under; `suite` and `namespace` are the CR's name and
-tenant. A second suite is a second key plus its scenario file — the workflow does not change.
+`release` is the release-please component, so the release tag is `<release>-v<version>`. `scenario`
+names both `common/config/rush/deploy-<scenario>.json` and the kustomize deploy scenario; `artifact`
+is the name the zip is published under; `suite` and `namespace` are the CR's name and tenant. A
+second suite is a second key plus its scenario file — the workflow does not change.
+
+`follows` is the list of release-please components whose release re-deploys this deployment, and it
+is what makes a batch reach the suites it changed: a release of a realm inside a suite publishes no
+release of the suite, so without the list the running suite keeps the version it already had. Each
+list is the deployment's production dependency closure — what the artifact carries, restricted to
+the components release-please publishes — plus `core/blong-gogo`, whose version keys the framework
+image, and `core/blong-browser`, which the portal bundle is built from. The deployment's own
+`release` is always a trigger and is not repeated in the list, and a name that no component answers
+fails the run instead of waiting for a release that will never come.
 
 The two tenant deployments are `sport` (one process, the `monolith` profile) and `suite` — the
 framework's own full-stack suite, deployed with the default `realm` profile, so each realm that
@@ -69,7 +88,22 @@ serves something is a process of its own:
         "namespace": "blong-suite",
         "suite": "blong-suite",
         "entry": "./index.ts",
-        "profile": "realm"
+        "profile": "realm",
+        "follows": [
+            "blong",
+            "blong-access",
+            "blong-browser",
+            "blong-chain",
+            "blong-core",
+            "blong-gogo",
+            "blong-kustomize",
+            "blong-lib",
+            "blong-login",
+            "blong-marine",
+            "blong-mock",
+            "blong-server",
+            "marine-data"
+        ]
     }
 }
 ```
@@ -104,47 +138,56 @@ No address is in the map: a host belongs to the machine that deploys, so the ope
 
 The workflow has one trigger that matters for releases and one for people:
 
-- `release: types: [published]` — release-please has merged the version pull request and published
-  the component's release.
+- `workflow_run` of the `Release` workflow, `completed`, on `main` — a release-please _batch_. The
+  releases that run published are the batch: release-please creates them inside it, so the run's own
+  window bounds them, and every release of one batch is tagged at the same commit.
 - `workflow_dispatch` with `deployment` and `tag` — a re-deploy, or a deployment whose release was
   published earlier.
 
-A release that names no deployment is not a failure. Release-please publishes its batch at once —
-one release per changed package — and most of those tags belong to components nobody deploys, so
-`resolve` reports an empty alias and both later jobs are skipped. Only a tag the map names runs a
-build and a call.
+A batch that names nothing a deployment follows is not a failure: `resolve` plans an empty matrix
+and the jobs are skipped. Because a batch is one commit, the newest tag of it builds every artifact
+— a `blong-gogo` release and a `blong-marine` release of the same batch carry the same tree.
 
-`resolve` turns the tag into the alias, the suite version and the framework version. The framework
-version is read from `.release-please-manifest.json` at the tag (`core/blong-gogo`), and the job
-waits for `ghcr.io/feasibleone/blong-gogo:v<gogoVersion>` to exist — a release is not a promise that
-its image is pullable yet.
+`resolve` turns the batch into a matrix: one entry per deployment whose `follows` list names a
+component in the batch, plus the operator when `blong-kustomize` is one of them. The framework
+version is read from `.release-please-manifest.json` at the batch's tag (`core/blong-gogo`), and the
+job waits for `ghcr.io/feasibleone/blong-gogo:v<gogoVersion>` to exist — a release is not a promise
+that its image is pullable yet.
 
-`artifact` checks out the tag, installs, builds `--to <package>`, runs `rush deploy --scenario
-<scenario>`, zips the target folder, hashes it and attaches it to the release with `gh release
-upload`. The URL the operator receives is the public release asset URL; the digest is the sha256 of
-the bytes that were uploaded.
+`artifact` is one job per matrix entry, named and serialised by its alias: it checks out the batch's
+tag, restores the pnpm store CI cached, installs, builds what the deploy scenario carries, runs
+`rush deploy --scenario <scenario>`, zips the target folder, hashes it, attaches it to the release
+with `gh release upload`, and asks the operator to converge — in the same leg, so the digest it
+reports is the bytes it just uploaded. The URL the operator receives is the release asset URL of the
+batch's tag.
 
-`operator-artifact` is the same work for the installer rather than for a tenant: it answers a
-`blong-kustomize-v<version>` release and attaches three assets — `blong-kustomize-<version>.zip`, its
-`.sha256`, and `blong-kustomize.zip` as a stable alias for `releases/latest/download/`, which is the
-name the install tree falls back to. The versioned name is what a version installs and the next
-release cannot overwrite; the digest is an asset rather than a sentence in the release notes because
-it is a script that reads it, and what it names is the directory the artifact lands in.
+The deployment's own version travels with that call, read from the manifest at the tag rather than
+from the tag's suffix: a batch triggered by `blong-gogo` deploys `suite` 1.19.0 with framework
+v1.51.0, and the operator shows both, so a reader can tell what actually moved.
+
+`operator-artifact` is the same work for the installer rather than for a tenant: it answers a batch
+that contains a `blong-kustomize-v<version>` release and attaches three assets —
+`blong-kustomize-<version>.zip`, its `.sha256`, and `blong-kustomize.zip` as a stable alias for
+`releases/latest/download/`, which is the name the install tree falls back to. The versioned name is
+what a version installs and the next release cannot overwrite; the digest is an asset rather than a
+sentence in the release notes because it is a script that reads it, and what it names is the
+directory the artifact lands in.
 
 The same job then deploys what it published, and the caller is the operator's own release route:
-`suite: blong-operator` tells the operator the announcement is about its own install tree, so instead
-of patching a `BlongDeployment` — which it does not have — it runs the registry pass that plans that
-tree, with the release's version and artifact laid over its own configuration. The pass
+`suite: blong-operator` tells the operator the announcement is about its own install tree, so
+instead of patching a `BlongDeployment` — which it does not have — it runs the registry pass that
+plans that tree, with the release's version and artifact laid over its own configuration. The pass
 applies the fill Jobs for the new artifact identity first and waits for them, then the Deployment
-that runs the operator, so an artifact nothing can fetch leaves the running process where it was. The
-install-owned kinds — the namespace, the CRD, the ServiceAccount and the RBAC objects — are skipped
-by name, so a release can never widen the rights the operator runs under; a tag that changes one of
-them still needs `npm run deploy` from a checkout (or `kubectl apply -k system/operator/local`).
+that runs the operator, so an artifact nothing can fetch leaves the running process where it was.
+The install-owned kinds — the namespace, the CRD, the ServiceAccount and the RBAC objects — are
+skipped by name, so a release can never widen the rights the operator runs under; a tag that changes
+one of them still needs `npm run deploy` from a checkout (or
+`kubectl apply -k system/operator/local`).
 
-`deploy` builds the JSON-RPC body with `jq -n --arg` — never shell interpolation, because the token
-and the URL are data — and posts it to `secrets.DEPLOY_ENDPOINT` with
-`secrets.DEPLOY_TOKEN`. The route is plain JSON-RPC over HTTPS: the gate is the token, not a bearer
-or an MLE handshake, and the ingress certificate protects it in transit.
+The call builds the JSON-RPC body with `jq -n --arg` — never shell interpolation, because the token
+and the URL are data — and posts it to `secrets.DEPLOY_ENDPOINT` with `secrets.DEPLOY_TOKEN`. The
+route is plain JSON-RPC over HTTPS: the gate is the token, not a bearer or an MLE handshake, and the
+ingress certificate protects it in transit.
 
 ```bash
 # The route the operator's ingress serves, and the token the operator reads from its Secret.
@@ -165,9 +208,9 @@ never describe one release differently.
 
 ## Where an address comes from
 
-A host is a DNS record and a certificate somebody owns, so it is configuration rather than a value in
-a source tree: no realm, workflow or committed manifest names one. The framework reads the file of
-the `k8s` intent — `.blong_k8src`, found from the working directory upwards — and its
+A host is a DNS record and a certificate somebody owns, so it is configuration rather than a value
+in a source tree: no realm, workflow or committed manifest names one. The framework reads the file
+of the `k8s` intent — `.blong_k8src`, found from the working directory upwards — and its
 `kustomize.deploy` block supplies the addresses of both halves:
 
 ```yaml
@@ -186,11 +229,11 @@ kustomize:
                     cert-manager.io/cluster-issuer: letsencrypt-prod
 ```
 
-The file is ignored (`.blong_*`) and local to the machine. The repository's copy names the operator's
-address, which every `k8s` run reads; a suite's portal address lives beside the suite that declares
-the portal — `realm/blong-sport/.blong_k8src` — because the alias is the suite's own and a shared file
-would hand one suite's host to the next. `rc` takes the closest file, so a package's copy shadows the
-repository's for runs started in it.
+The file is ignored (`.blong_*`) and local to the machine. The repository's copy names the
+operator's address, which every `k8s` run reads; a suite's portal address lives beside the suite
+that declares the portal — `realm/blong-sport/.blong_k8src` — because the alias is the suite's own
+and a shared file would hand one suite's host to the next. `rc` takes the closest file, so a
+package's copy shadows the repository's for runs started in it.
 
 ### A host a realm contributes
 
@@ -217,11 +260,11 @@ kustomize:
 ```
 
 This is the one field that has to exist in both places. A local run reads it from `.blong_k8src`; a
-deployment reads it from the CR's `spec.ingresses`, which is where the operator takes its plan
-from — and the tree writes the addresses it planned with into the CR it ships, so the two do not
-drift. The CRD declares the field as a map, `tls` and `annotations` are merged over what the
-contribution said (annotations by key), and the sample beside the committed base writes
-`PLACEHOLDER` where the host goes.
+deployment reads it from the CR's `spec.ingresses`, which is where the operator takes its plan from
+— and the tree writes the addresses it planned with into the CR it ships, so the two do not drift.
+The CRD declares the field as a map, `tls` and `annotations` are merged over what the contribution
+said (annotations by key), and the sample beside the committed base writes `PLACEHOLDER` where the
+host goes.
 
 A suite whose webhook host lived in its own `index.ts` could not be deployed by a tenant who wanted
 a different host — and the operator, regenerating the tree from a CR that could not state one,
@@ -237,8 +280,8 @@ What a deployment publishes stays out of the repository's generated half. A spli
 Ingress in `local/`, which is not committed, for the same reason it keeps the artifact's digest and
 the node names there; the base every deployment of the suite shares carries no address at all. The
 declaration follows the same rule: `local/declaration/blongdeployment.yaml` is the CR a run applies,
-with the real host, and `example/blongdeployment.yaml` beside the base is the sample a tenant copies,
-with the host written as `PLACEHOLDER`.
+with the real host, and `example/blongdeployment.yaml` beside the base is the sample a tenant
+copies, with the host written as `PLACEHOLDER`.
 
 ## The cluster prerequisites
 
@@ -247,9 +290,10 @@ with the host written as `PLACEHOLDER`.
   ingress controller the hostnames answer nothing, and without cert-manager the secrets never exist.
   cert-manager itself is a chart, not a vendored manifest: `test/integration/cert-manager` declares
   `helmCharts:` (name, repo and a pinned `version`) and the Namespace the chart does not create, so
-  the install is applied as `kubectl kustomize --enable-helm test/integration/cert-manager | kubectl
-  apply -f -`. `apply -k` cannot read `helmCharts` — the inflator is a flag on `kustomize build`,
-  it needs a `helm` binary on PATH, and it pulls the chart at build time.
+  the install is applied as
+  `kubectl kustomize --enable-helm test/integration/cert-manager | kubectl apply -f -`. `apply -k`
+  cannot read `helmCharts` — the inflator is a flag on `kustomize build`, it needs a `helm` binary
+  on PATH, and it pulls the chart at build time.
 - **Host ports.** Rootless Podman cannot bind privileged ports, so the k3d load balancer publishes
   host `8080`/`8443` and forwards them to Traefik's `80`/`443`; the router does the public half.
 - **ServiceLB.** Traefik is a `LoadBalancer`, so k3d's ServiceLB has to stay enabled; disabling it
@@ -261,8 +305,8 @@ with the host written as `PLACEHOLDER`.
 ## Proving it locally
 
 `test/blong-int-kustomize` is the same cycle without GitHub: its `machine prepare` builds and
-publishes the operator and suite zips to a file server in the cluster, and its `suite deploy` applies
-the generated trees, waits for the migration Job, checks the portal and logs in. `realm/blong-sport`
-is deployed with `SUITE_SCENARIO=sport ARTIFACT_NAME=sport.zip`; see its README for the command. The
-runbook and the workflow differ in where the artifact comes from, not in what a correct deployment
-is.
+publishes the operator and suite zips to a file server in the cluster, and its `suite deploy`
+applies the generated trees, waits for the migration Job, checks the portal and logs in.
+`realm/blong-sport` is deployed with `SUITE_SCENARIO=sport ARTIFACT_NAME=sport.zip`; see its README
+for the command. The runbook and the workflow differ in where the artifact comes from, not in what a
+correct deployment is.
