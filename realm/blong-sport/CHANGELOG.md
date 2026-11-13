@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.9.0...blong-sport-v0.10.0) (2026-11-13)
+
+
+### Features
+
+* improve navigator handling ([fb53f00](https://github.com/feasibleone/blong/commit/fb53f00eb5f1a35e1cf319544f7e11a8f2dc831d))
+
 ## [0.9.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.8.1...blong-sport-v0.9.0) (2026-11-12)
 
 

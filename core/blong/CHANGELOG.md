@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.42.0](https://github.com/feasibleone/blong/compare/blong-v1.41.0...blong-v1.42.0) (2026-11-13)
+
+
+### Features
+
+* improve navigator handling ([fb53f00](https://github.com/feasibleone/blong/commit/fb53f00eb5f1a35e1cf319544f7e11a8f2dc831d))
+
+
+### Bug Fixes
+
+* optimize the deployment workflows ([17d9a57](https://github.com/feasibleone/blong/commit/17d9a575d5c136d7a736845fa7922295d77d11eb))
+
 ## [1.41.0](https://github.com/feasibleone/blong/compare/blong-v1.40.1...blong-v1.41.0) (2026-11-12)
 
 

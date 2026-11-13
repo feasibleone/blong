@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.14.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.13.1...blong-marine-v1.14.0) (2026-11-13)
+
+
+### Features
+
+* improve navigator handling ([fb53f00](https://github.com/feasibleone/blong/commit/fb53f00eb5f1a35e1cf319544f7e11a8f2dc831d))
+
+
+### Bug Fixes
+
+* update navigator snapshots ([1484d00](https://github.com/feasibleone/blong/commit/1484d00fd1d036aac7121aa44e98dad3aa5d3311))
+
 ## [1.13.1](https://github.com/feasibleone/blong/compare/blong-marine-v1.13.0...blong-marine-v1.13.1) (2026-11-09)
 
 

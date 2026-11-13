@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.35.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.34.1...blong-browser-v1.35.0) (2026-11-13)
+
+
+### Features
+
+* improve navigator handling ([fb53f00](https://github.com/feasibleone/blong/commit/fb53f00eb5f1a35e1cf319544f7e11a8f2dc831d))
+
 ## [1.34.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.34.0...blong-browser-v1.34.1) (2026-11-09)
 
 

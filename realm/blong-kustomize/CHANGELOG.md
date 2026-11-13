@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.7.0...blong-kustomize-v0.8.0) (2026-11-13)
+
+
+### Features
+
+* improve navigator handling ([fb53f00](https://github.com/feasibleone/blong/commit/fb53f00eb5f1a35e1cf319544f7e11a8f2dc831d))
+
 ## [0.7.0](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.6.1...blong-kustomize-v0.7.0) (2026-11-12)
 
 
