@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.25.1](https://github.com/feasibleone/blong/compare/blong-kopi-v1.25.0...blong-kopi-v1.25.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* update navigator snapshots ([1484d00](https://github.com/feasibleone/blong/commit/1484d00fd1d036aac7121aa44e98dad3aa5d3311))
+
 ## [1.25.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.24.0...blong-kopi-v1.25.0) (2026-11-06)
 
 
