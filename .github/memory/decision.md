@@ -101,8 +101,8 @@ active (90)
 - `D-793` · cross-cutting — A list read reports its total only when asked (paging.count)
 - `D-823` · skills — Asking in chat is a skill, and the channel follows the work
 - `D-824` · skills — Plan format and tooling are a skill, planning is an agent
-- `D-830` · ci — The deploy workflow builds the artifact's own project list
 - `D-831` · ci — The framework build skips its declaration bundle
+- `D-830` · ci — The deploy workflow builds the artifact's own project list
 
 superseded (7)
 
@@ -1462,34 +1462,6 @@ third of its size and says only what planning has to do plus the craft that make
 the repository router points at the same skill whenever an explicit plan was given, so a session
 that merely inherits one finds the format without loading the planner.
 
-### D-830 — The deploy workflow builds the artifact's own project list
-
-> _2026-11-12 · ci · active_
-
-Two jobs of `.github/workflows/deploy.yaml` pay for the whole monorepo twice. Run 43207810220
-(blong-sport-v0.9.0, 2026-11-12) measured it: `Install` 197 s, `Build the package` 238 s, and the
-`Deploy the scenario` and `Zip it` steps 2 s and 3 s. The install is the framework's dev dependency
-tree — `blong-gogo`'s, where node-rdkafka's native build is the bulk — and the artifact holds none
-of it: the deploy tree of the sport scenario carries twelve production packages.
-
-The build is broad for the same reason: `rush build --to <realm>` follows the realm's
-devDependencies transitively, so it built 27 projects for an artifact of 12. Per-project times from
-that run: blong-browser 13.2 s, blong-test 9.2 s, blong-chain 7.4 s, blong-allure 6.7 s and
-blong-template 4.9 s are dev-only and produce nothing the zip can run, while blong-gogo's own
-`build` is `true` — its 0.01 s is not the cost anybody sees, the install of its tree is.
-
-So the workflow restores the pnpm store from the cache the shared CI workflow publishes
-(`common/temp/deps.tar.zst`, restore only, never written here) and builds the deploy scenario's own
-project list, which `rush deploy` answers in `extractor-metadata.json`. Measured locally: the
-filtered build of the twelve projects took 104 s, against 238 s in CI, and a store-only install of
-this repository is 9.5 s (@@D-551).
-
-The `*/.rush` trees stay out of that restore on purpose: they carry the build cache, and a hit there
-against a checkout with no dist reports every project as already built, so the stale output of
-@@F-555 would arrive in an artifact rather than in a test. The two-pass deploy looks odd and is the
-cheapest way to stay correct: a deploy is two seconds, and the shipped set read from Rush beats a
-list in the workflow that the next realm to grow a build would outgrow.
-
 ### D-831 — The framework build skips its declaration bundle
 
 > _2026-11-12 · ci · active_
@@ -1513,6 +1485,36 @@ The `;` that joined the two halves became `&&` in the same change. With `;` the 
 was the build's, so a failed `heft build` — a type error, most likely — could still report a
 successful build. Nothing in CI was hiding behind it at the time (the bundler reads the same
 sources), which is why the correction is safe rather than a second change to argue about.
+
+### D-830 — The deploy workflow builds the artifact's own project list
+
+> _2026-11-12 · ci · active_
+
+Two jobs of `.github/workflows/deploy.yaml` pay for the whole monorepo twice. Run 43207810220
+(blong-sport-v0.9.0, 2026-11-12) measured it: `Install` 197 s, `Build the package` 238 s, and the
+`Deploy the scenario` and `Zip it` steps 2 s and 3 s. The install is the framework's dev dependency
+tree — `blong-gogo`'s, where node-rdkafka's native build is the bulk — and the artifact holds none
+of it: the deploy tree of the sport scenario carries twelve production packages.
+
+The build is broad for the same reason: `rush build --to <realm>` follows the realm's
+devDependencies transitively, so it built 27 projects for an artifact of 12. Per-project times from
+that run: blong-browser 13.2 s, blong-test 9.2 s, blong-chain 7.4 s, blong-allure 6.7 s and
+blong-template 4.9 s are dev-only and produce nothing the zip can run, while blong-gogo's own
+`build` is `true` — its 0.01 s is not the cost anybody sees, the install of its tree is.
+
+So the workflow restores the pnpm store from the cache the shared CI workflow publishes (restore
+only, never written here) and builds the deploy scenario's own project list, which `rush deploy`
+answers in `extractor-metadata.json`. Measured locally: the filtered build of the twelve projects
+took 104 s, against 238 s in CI, and a store-only install of this repository is 9.5 s (@@D-551).
+
+The restore names CI's whole path list rather than the one file this job uses, because the action
+hashes that list into the cache version: a narrower restore misses an archive that exists, which is
+how the first release run after this change installed cold (@@F-725). The `*/.rush` trees the
+archive carries are then deleted before the install — they hold the build cache, and a hit there
+against a checkout with no dist reports every project as already built, so the stale output of
+@@F-555 would arrive in an artifact rather than in a test. The two-pass deploy looks odd and is the
+cheapest way to stay correct: a deploy is two seconds, and the shipped set read from Rush beats a
+list in the workflow that the next realm to grow a build would outgrow.
 
 ## Superseded
 

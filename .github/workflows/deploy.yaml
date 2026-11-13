@@ -29,6 +29,23 @@ concurrency:
 permissions:
     contents: read
 
+# What the dependency cache carries, in one place, because a cache is identified by its key *and*
+# its version — and the version is a hash of this list (@@F-725). It has to stay identical to the
+# one the CI workflows save with (`feasibleone/actions`: `rush.yaml`, `release-docker.yaml`).
+env:
+    CACHE_PATHS: |
+        common/temp/deps.tar.zst
+        app/*/.rush
+        core/*/.rush
+        realm/*/.rush
+        suite/*/.rush
+        demo/*/.rush
+        test/*/.rush
+        tools/*/.rush
+        ext/*/.rush
+        library/*/.rush
+        docs/*/.rush
+
 jobs:
     resolve:
         name: Resolve the deployment
@@ -167,27 +184,37 @@ jobs:
             # tree rather than anything the artifact runs: 197 s measured on 2026-11-12 (run
             # 43207810220), most of it node-rdkafka's native build inside `blong-gogo`, which the
             # zip does not carry at all — the deploy tree is the scenario's twelve production
-            # packages. The store the shared CI workflow publishes is what a warm install needs,
-            # so this job restores it and leaves the writing to CI's `setup` (@@D-546 @@D-830).
+            # packages. The store CI publishes is what a warm install needs, so this job restores
+            # it and leaves the writing to CI (@@D-546 @@D-830).
             #
-            # The `*/.rush` trees are deliberately not restored: they carry the build cache, and a
-            # hit there against a checkout with no `dist` reports every project as already built —
-            # the stale output of @@F-555 arriving in an artifact instead of in a test.
+            # `path` is CI's whole list rather than the one file this job uses, because the action
+            # hashes the list into the cache *version* and matches on key and version both: naming
+            # less reports a miss for an archive that exists (@@F-725).
             - name: Restore the pnpm store
               uses: actions/cache/restore@v5
               with:
-                  path: common/temp/deps.tar.zst
+                  path: ${{ env.CACHE_PATHS }}
                   key: ${{ runner.os }}-pnpm-${{ hashFiles('common/config/rush/pnpm-lock.yaml') }}
                   restore-keys: ${{ runner.os }}-pnpm-
 
-            - name: Unpack the pnpm store
+            - name: Unpack the pnpm store and drop CI's build state
+              # The archive holds the store as one `deps.tar.zst` and CI's project `.rush` trees
+              # beside it. The store is what the install needs; the trees are removed because their
+              # build cache describes a run whose `dist` this checkout does not have, so a hit would
+              # report every project up to date — the stale output of @@F-555 arriving in an
+              # artifact instead of in a test. The install writes its own state.
               run: |
                   set -euo pipefail
+                  shopt -s nullglob
                   if [ -f common/temp/deps.tar.zst ]; then
                       zstd -dc common/temp/deps.tar.zst | tar -xf - -C .
                   else
                       echo 'No deps.tar.zst in the restored archive; the install builds the store.'
+                      echo '::notice::no pnpm store in the cache, so this install is cold'
                   fi
+                  for category in app core realm suite demo test tools ext library docs; do
+                      for tree in "$category"/*/.rush; do rm -rf "$tree"; done
+                  done
 
             - name: Install
               run: node common/scripts/install-run-rush.js install
@@ -268,23 +295,34 @@ jobs:
             # Same store cache as the tenant artifact job, and for the same reason: the operator's
             # artifact is `blong-kustomize` and its production dependencies, while the install
             # pays for the framework's whole dev tree (175 s in run 43207804416) (@@D-546 @@D-830).
-            # Only CI's `setup` writes this key, and its `*/.rush` trees stay out of the restore so
-            # that this checkout cannot inherit a build cache with no `dist` behind it (@@F-555).
+            # `path` names CI's whole list because the action hashes it into the cache version
+            # (@@F-725), and the build state that arrives with it is dropped before the build
+            # (@@F-555).
             - name: Restore the pnpm store
               uses: actions/cache/restore@v5
               with:
-                  path: common/temp/deps.tar.zst
+                  path: ${{ env.CACHE_PATHS }}
                   key: ${{ runner.os }}-pnpm-${{ hashFiles('common/config/rush/pnpm-lock.yaml') }}
                   restore-keys: ${{ runner.os }}-pnpm-
 
-            - name: Unpack the pnpm store
+            - name: Unpack the pnpm store and drop CI's build state
+              # The archive holds the store as one `deps.tar.zst` and CI's project `.rush` trees
+              # beside it. The store is what the install needs; the trees are removed because their
+              # build cache describes a run whose `dist` this checkout does not have, so a hit would
+              # report every project up to date — the stale output of @@F-555 arriving in an
+              # artifact instead of in a test. The install writes its own state.
               run: |
                   set -euo pipefail
+                  shopt -s nullglob
                   if [ -f common/temp/deps.tar.zst ]; then
                       zstd -dc common/temp/deps.tar.zst | tar -xf - -C .
                   else
                       echo 'No deps.tar.zst in the restored archive; the install builds the store.'
+                      echo '::notice::no pnpm store in the cache, so this install is cold'
                   fi
+                  for category in app core realm suite demo test tools ext library docs; do
+                      for tree in "$category"/*/.rush; do rm -rf "$tree"; done
+                  done
 
             - name: Install
               run: node common/scripts/install-run-rush.js install

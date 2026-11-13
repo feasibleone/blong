@@ -76,7 +76,7 @@ open (64)
 - `F-696` · cross-cutting — The reports site publishes every Playwright trace three times
 - `F-703` · cross-cutting — A dropped table leaves its foreign keys behind
 
-resolved (44)
+resolved (45)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -124,6 +124,7 @@ resolved (44)
 - `F-676` · docs — A 3200px poster PNG never paints on first load
 - `F-555` · ci — CI tests run against a dist cached under a lockfile-only key
 - `F-724` · ci — Measuring what a deploy job pays for takes three readings
+- `F-725` · ci — A cache restore must name the paths the save named
 
 <!-- /memory:index -->
 
@@ -1766,6 +1767,32 @@ which is also the cheapest way to ask which projects an artifact can run (@@D-83
 
 Both release jobs now restore the pnpm store and build the deploy scenario's own project list
 (D-830).
+
+### F-725 — A cache restore must name the paths the save named
+
+> _2026-11-13 · ci · resolved_
+
+The deploy run 43404113031 asked for `Linux-pnpm-80fa1d90...`, the exact key of an archive sitting
+on `refs/heads/main`, and the restore answered "Cache not found for input keys" — then installed
+cold for 169 s, node-rdkafka's native build included.
+
+It is not a race. The cache was written by the release run 43404036297, whose `setup-node` job
+finished at 09:53:21, three minutes before the deploy's restore at 09:56:27.
+
+The restore step named `path: common/temp/deps.tar.zst` and nothing else, where the saving workflows
+name the whole `CACHE_PATHS` list — the archive plus every `*/.rush` tree. `actions/cache` hashes
+the path list into the cache _version_ (`getCacheVersion`: the paths, the compression method and the
+cross-OS flag, joined and sha256'd) and matches on key _and_ version, so a restore that names fewer
+paths can never find an archive that was saved with more. The scoping rules were never the problem:
+a tag run does fall back to the default branch.
+
+The lesson is that a cache's identity is the pair, not the key: copy the list from the saving
+workflow verbatim, and narrow what is _used_ after the restore instead. Here the `*/.rush` trees
+that arrive with it are removed before the install, because their build cache describes a run whose
+`dist` this checkout does not have (@@F-555).
+
+The deploy jobs restore with CI's CACHE_PATHS list and delete the .rush trees that arrive with it;
+verified against the toolkit's version hash and the 2026-11-13 release run.
 
 ## Retired
 
