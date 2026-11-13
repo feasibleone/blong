@@ -21,7 +21,6 @@ export default model(
                 schema: {
                     properties: {
                         label: {
-                            title: 'Labels',
                             browser: {
                                 title: 'Labels',
                                 icon: 'pi pi-language',

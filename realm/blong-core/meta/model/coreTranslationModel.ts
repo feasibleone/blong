@@ -21,7 +21,6 @@ export default model(
                 schema: {
                     properties: {
                         translation: {
-                            title: 'Resource names',
                             browser: {
                                 title: 'Resource names',
                                 icon: 'pi pi-tag',
@@ -54,12 +53,7 @@ export default model(
                                 editedAt: {title: 'Edited'},
                             },
                             widget: {
-                                columns: [
-                                    'resourceId',
-                                    'languageCode',
-                                    'translatedName',
-                                    'editedAt',
-                                ],
+                                columns: ['translatedName', 'languageCode', 'editedAt'],
                             },
                         },
                     },
