@@ -7,7 +7,6 @@ labels:
       app.kubernetes.io/name: blong-operator
       app.kubernetes.io/part-of: blong-operator
 resources:
-  - configmaps/fill-script.yaml
   - crd/blongdeployment-crd.yaml
   - deployments/blong-operator.yaml
   - rbac/blong-operator-clusterrole.yaml

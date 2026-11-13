@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/part-of: blong-chat
     app.kubernetes.io/version: PLACEHOLDER
     blong.feasible.one/attempt-retention: "5"
-    blong.feasible.one/spec-hash: e93c8197d77d1417
+    blong.feasible.one/spec-hash: 916e5f3d72b9ed64
     blong.feasible.one/suite-version: PLACEHOLDER
     blong.feasible.one/volume-identity: PLACEHOLDER
   name: blong-chat-migrate
@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/instance: blong-chat-migrate-PLACEHOLDER-898ab54d
+        app.kubernetes.io/instance: blong-chat-migrate-PLACEHOLDER-abe200c3
         app.kubernetes.io/managed-by: blong-kustomize
         app.kubernetes.io/name: blong-chat
         app.kubernetes.io/part-of: blong-chat

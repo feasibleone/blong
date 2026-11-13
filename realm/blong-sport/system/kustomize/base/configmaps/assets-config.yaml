@@ -12,5 +12,5 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: e088c2abdd607873
+    blong.feasible.one/spec-hash: deb295977b148a9d
   name: assets-config

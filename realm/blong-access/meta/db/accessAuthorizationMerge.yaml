@@ -79,8 +79,11 @@ capability:
     accessUserFind,accessUserGet,accessUserAdd,accessUserEdit,accessUserRemove,
     accessRoleFind,accessRoleGet,accessRoleAdd,accessRoleEdit,accessRoleRemove,
     accessCapabilityFind,accessCapabilityGet,accessCapabilityAdd,accessCapabilityEdit,accessCapabilityRemove,
-    accessActionFind,accessPolicyFind,accessFlowFind,accessAccessFind,
-    accessSessionFind,accessSessionClose,accessAuditFind,
+    accessActionFind,accessActionGet,
+    accessPolicyFind,accessPolicyGet,accessPolicyAdd,accessPolicyEdit,accessPolicyRemove,
+    accessFlowFind,accessAccessFind,
+    accessSessionFind,accessSessionGet,accessSessionClose,
+    accessAuditFind,
     accessAclFind,accessAclGet,accessAclAdd,accessAclEdit,accessAclRemove,accessAclList,
     accessDropdownList,subject.object.schema
   # The same access pages without the destructive half: read + create/edit, which
@@ -90,8 +93,11 @@ capability:
     accessUserFind,accessUserGet,accessUserAdd,accessUserEdit,
     accessRoleFind,accessRoleGet,accessRoleAdd,accessRoleEdit,
     accessCapabilityFind,accessCapabilityGet,accessCapabilityAdd,accessCapabilityEdit,
-    accessActionFind,accessPolicyFind,accessFlowFind,accessAccessFind,
-    accessSessionFind,accessAuditFind,
+    accessActionFind,accessActionGet,
+    accessPolicyFind,accessPolicyGet,accessPolicyAdd,accessPolicyEdit,
+    accessFlowFind,accessAccessFind,
+    accessSessionFind,accessSessionGet
+    accessAuditFind,
     accessAclFind,accessAclGet,accessAclAdd,accessAclEdit,accessAclList,
     accessDropdownList,subject.object.schema
   # Read-only: what `Access Customer` holds. The pages still render — browse and
@@ -99,7 +105,9 @@ capability:
   accessModelView: >-
     accessUserFind,accessUserGet,accessRoleFind,accessRoleGet,
     accessCapabilityFind,accessCapabilityGet,
-    accessActionFind,accessPolicyFind,accessFlowFind,accessAccessFind,
+    accessActionFind,accessActionGet,
+    accessPolicyFind,accessPolicyGet,
+    accessFlowFind,accessAccessFind,
     accessSessionFind,accessAuditFind,
     accessAclFind,accessAclGet,accessAclList,
     accessDropdownList,subject.object.schema

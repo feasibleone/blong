@@ -37,13 +37,25 @@ export type DeploymentProfile = 'namespace' | 'realm' | 'group' | 'monolith';
  * for; a **companion** is carried by every process — a library realm whose private API has to be
  * reachable in-process, or infrastructure every microservice repeats (the DB adapter and subject
  * orchestrator pair) — and owns none, so it publishes no Service; **both** is a companion that also
- * owns a process, which is how an in-process library realm offers a public API of its own; **none**
- * is not deployed at all (a dev-only utility realm, the deployment realm itself).
+ * owns a process, which is how an in-process library realm offers a public API of its own;
+ * **attached** is carried by the process that carries the realm it names (`k8sRealmAttachedTo`,
+ * `core` when it names none) and owns none, which is how a small read API that belongs beside the
+ * library realms reaches a Service without a process of its own (@@D-833); **none** is not
+ * deployed at all (a dev-only utility realm, the deployment realm itself).
  *
  * Declared by the realm in its own `activation.k8s` block, so a component keeps saying how it
  * deploys, with a suite-config override for realms that do not declare one yet.
  */
-export type RealmRole = 'service' | 'companion' | 'both' | 'none';
+export type RealmRole = 'service' | 'companion' | 'both' | 'attached' | 'none';
+
+/**
+ * The realm an attached realm rides with when it names none.
+ *
+ * `core` because it is the process every suite has and the one that already carries the library
+ * realms, so a realm that says only that it is attached lands where its readers already are
+ * (@@D-833).
+ */
+export const DEFAULT_ATTACHED_TO = 'core';
 
 /** How the artifact the processes run from is stored and shared. */
 export type SuiteVolumeBackend = 'shared' | 'nodeLocal';
@@ -214,6 +226,13 @@ export interface IRegistryView {
     ports: IRegistryPort[];
     /** What each realm is in a deployment, when it declared a role. */
     roles: Record<string, RealmRole>;
+    /**
+     * The realm each `attached` realm rides with, by realm name.
+     *
+     * Absent for every realm that is not attached, and for one that attached itself to the default:
+     * the realm's own `k8sRealmAttachedTo`, read where the role is read (@@D-833).
+     */
+    attachedTo?: Record<string, string>;
     /** The package the loaded suite is: the source of its version when the config names none. */
     pkg?: {name?: string; version?: string};
 }
@@ -894,12 +913,16 @@ const NON_RUNTIME_LAYERS = new Set(['meta', 'error', 'test', 'api', 'init', 'sim
 /**
  * Framework realms whose namespaces are plumbing, not application services.
  *
- * `adapter` is here as well: `core/blong-gogo`'s adapter realm now carries the chat ports' handler
+ * `adapter` is here because `core/blong-gogo`'s adapter realm now carries the chat ports' handler
  * groups, and a group is what makes a realm look deployable — yet its adapters are carried by
  * whichever realm instantiates them, and it cannot declare `k8sRealmRole: none` in its own config
  * because `k8s` there is the switch that enables the Kubernetes adapter (`@@D-680`).
+ *
+ * `blong` is deliberately **not** here any more: it used to be, which is why its layers reached no
+ * process and its namespace was filtered out of the plan — the Observe pages were drawn and
+ * unserved. It is an ordinary realm now, attached to the process that carries `core` (@@D-833).
  */
-const INTERNAL_REALMS = new Set(['blong', 'adapter']);
+const INTERNAL_REALMS = new Set(['adapter']);
 
 /** Port groups that exist only for tests. */
 const INTERNAL_GROUPS = new Set(['testDispatch']);
@@ -955,7 +978,14 @@ export const resolveSuiteVolume = (request?: ISuiteVolumeRequest): ISuiteVolume 
     };
 };
 
-const internalNS = /^subject$|^blong$/;
+/**
+ * The namespaces that are plumbing rather than an address the browser reaches.
+ *
+ * `subject` is carried by every process and answered in-process, so it publishes no Service of its
+ * own and has no address to route; `blong` used to be listed beside it and is not any more — the
+ * Observe pages call it through the gateway (@@D-833).
+ */
+const internalNS = /^subject$/;
 
 /** Normalise `string | string[] | undefined` to a list. */
 export const namespaceList = (namespace?: string | string[]): string[] =>
@@ -1062,12 +1092,20 @@ export const registryView = (registry?: IDescribeCapable): IRegistryView => {
     // that owns none — `core` and `access`, whose handlers live in the shared `srv.db` adapter — could
     // not state it at all (@@D-437).
     const roles: Record<string, RealmRole> = {};
+    // The realm an `attached` realm rides with, from the same block: the role says a realm has no
+    // process of its own, and this says whose it borrows (@@D-833).
+    const attachedTo: Record<string, string> = {};
     for (const [name, config] of Object.entries(described.realmConfig ?? {})) {
-        const declared = (config as {k8s?: {k8sRealmRole?: RealmRole}} | undefined)?.k8s
-            ?.k8sRealmRole;
-        if (declared) roles[name] = declared;
+        const k8s = (config as {k8s?: {k8sRealmRole?: RealmRole; k8sRealmAttachedTo?: string}})
+            ?.k8s;
+        if (k8s?.k8sRealmRole) roles[name] = k8s.k8sRealmRole;
+        // Only for a realm whose role is `attached`: the host of a role that is not attached is a
+        // setting nothing reads, and carrying it into the view would invite a reader to use it.
+        if (k8s?.k8sRealmRole === 'attached' && k8s.k8sRealmAttachedTo) {
+            attachedTo[name] = k8s.k8sRealmAttachedTo;
+        }
     }
-    return {realms: described.realms ?? [], groups, ports, roles, pkg: described.pkg};
+    return {realms: described.realms ?? [], groups, ports, roles, attachedTo, pkg: described.pkg};
 };
 
 /** The runtime layer of a group, or `undefined` for layers that never run. */
@@ -1228,12 +1266,54 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         roleOf(realm) === 'companion' || roleOf(realm) === 'both';
     const selectors = layerSelectors(view).filter(selector => roleOf(realmOf(selector)) !== 'none');
     const companions = selectors.filter(selector => companion(realmOf(selector)));
+
+    /**
+     * Where an attached realm's selectors go, and why the answer can be "every process".
+     *
+     * An attached realm owns no process: it is carried by the process that carries the realm it
+     * names, so a suite keeps one fewer pod and the namespace it publishes still has an answer
+     * (@@D-833). The monolith needs no case of its own — its one process carries `core`, so it
+     * carries the realm the same way — and neither does `namespace`, which names the host's process
+     * after the host's namespace.
+     *
+     * A host the profile leaves out (a `group` map that names no `core`, or a suite that does not
+     * load it) falls back to every process rather than dropping the realm: a namespace the browser
+     * draws pages for that no process answers is the silent failure this replaced, and every process
+     * answering it is what a companion already does.
+     */
+    const hostOf = (realm: string): string | undefined =>
+        roleOf(realm) === 'attached'
+            ? (view.attachedTo?.[realm] ?? DEFAULT_ATTACHED_TO)
+            : undefined;
+    /** The attached realms' selectors, by the realm each rides with. */
+    const riding = new Map<string, string[]>();
+    for (const realm of new Set(selectors.map(selector => realmOf(selector)))) {
+        const host = hostOf(realm);
+        if (host === undefined) continue;
+        riding.set(host, [
+            ...(riding.get(host) ?? []),
+            ...selectors.filter(selector => realmOf(selector) === realm),
+        ]);
+    }
+
     const byName = deploymentNames(
         view,
         selectors.filter(selector => deployable(realmOf(selector))),
         profile,
         options,
     );
+
+    // The realms this split gives a process to. An attached realm whose host is not among them rides
+    // every process instead — a `group` map that names no `core`, or a suite that does not load it —
+    // rather than vanishing: a namespace the browser draws pages for that no process answers is the
+    // silent failure this replaced, and every process answering it is what a companion already does.
+    const hostedSomewhere = new Set([...byName.values()].flat().map(realmOf));
+    const ridesEverywhere = [...riding.entries()]
+        .filter(([host]) => !hostedSomewhere.has(host))
+        .flatMap(([, attached]) => attached);
+    /** The attached realms a process of this split carries, by the realms its own selectors name. */
+    const ridingWith = (own: string[]): string[] =>
+        [...new Set(own.map(realmOf))].flatMap(host => riding.get(host) ?? []);
 
     const namespacesOf = (realm: string): string[] =>
         view.ports
@@ -1258,7 +1338,13 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         // Every process also carries the companions, so a call into `srv.subject` or `core.*`
         // resolves in-process wherever it is made. Deduplicated because a `both` realm is already in
         // its own process's list.
-        const carried = [...new Set([...own, ...companions])];
+        //
+        // An attached realm joins the process that carries its host, and the host is found by the
+        // selectors this deployment was built from rather than by its name: `core` is a `both` realm,
+        // so it is in every process's list, and the one that rides with it is the one the profile
+        // built *from* it (@@D-833).
+        const attached = ridingWith(own);
+        const carried = [...new Set([...own, ...companions, ...ridesEverywhere, ...attached])];
         const realms = [...new Set(carried.map(selector => selector.split('.')[0]))];
         const contributions = realms.flatMap(contributionFor);
         const replicas = contributions

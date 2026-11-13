@@ -1840,7 +1840,9 @@ const volumeFillJobs = (tree: KustomizeTree, plan: IDeploymentPlan, namespace: s
     // The module once for the tree, in the namespace this tree's Jobs run in: the same file for every node
     // and every artifact, because the four values it works from arrive in its environment (@@D-518 @@D-477).
     // It is written here rather than by `artifact.ts` so that it carries the labels every other object of
-    // a tree carries — a ConfigMap of the module is an object like any other.
+    // a tree carries — a ConfigMap of the module is an object like any other. A *split* then keeps it out
+    // of the committed base and writes it into the overlay, because the bytes are the deploying realm's
+    // code rather than the suite's (`@@D-834`).
     tree.set('configmaps/fill-script.yaml', {
         apiVersion: 'v1',
         kind: 'ConfigMap',
@@ -2908,6 +2910,22 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
         paths.push(entry);
         pathsByHost.set(host, paths);
     };
+    /**
+     * The namespaces this host can reach a Service by — the answer to "what has a `/rpc/` path".
+     *
+     * A namespace is served by a Service: one named after the realm that owns it, or the one the
+     * tree publishes for a namespace no realm is named after (`unservedNamespaces`). Reading the
+     * paths off those rather than off the deployment *named* after a namespace is what lets a realm
+     * carried by another realm's process (`attached`) be routed at all — it has no deployment to be
+     * named after it, and its call fell to the catch-all below, which reached the portal's pod and
+     * was answered `Not Found` there (@@D-833).
+     */
+    const served = new Set([
+        ...plan.services.map(service => service.name),
+        ...unservedNamespaces(plan),
+    ]);
+    /** The namespaces this host already has a path for, so two deployments answering one is one rule. */
+    const routed = new Set<string>();
     for (const ingress of plan.ingresses) {
         addPath(ingress.host, {
             path: ingress.path,
@@ -2990,24 +3008,26 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
                 servicePort: 8080,
             });
         }
-        // Every namespace whose own process is not the portal's goes to that process, because the
+        // Every namespace a process answers goes to the Service that answers it, because the
         // portal's Service reaches one pod and a pod answers only for the realms it carries. A split
         // deployment therefore needs a path per namespace: without them the browser's
         // `POST /rpc/marine/coral/find` reached the portal's process, which has no `marine` route and
-        // answered `Not Found` while the marine pod was up and healthy (`@@D-736`). The owner is the
-        // deployment *named* after the namespace — the realm's own process — and a namespace no
-        // deployment is named after stays on the portal, which is where the companions live. The
-        // portal's own namespace is listed too: it routes to the same pod the fallback reaches, and
-        // keeping the rule uniform means a CR that moves the portal to another process does not
-        // silently drop a path.
+        // answered `Not Found` while the marine pod was up and healthy (`@@D-736`). A namespace no
+        // Service carries stays on the portal, which is where the companions live. The portal's own
+        // namespace is listed too: it routes to the same pod the fallback reaches, and keeping the
+        // rule uniform means a CR that moves the portal to another process does not silently drop a
+        // path.
         for (const deployment of plan.deployments) {
-            if (!deployment.namespaces.includes(deployment.name)) continue;
-            addPath(entry.host, {
-                path: `${RPC_PREFIX}${deployment.name}`,
-                pathType: 'Prefix',
-                serviceName: deployment.name,
-                servicePort: 8080,
-            });
+            for (const answered of deployment.namespaces) {
+                if (!served.has(answered) || routed.has(answered)) continue;
+                routed.add(answered);
+                addPath(entry.host, {
+                    path: `${RPC_PREFIX}${answered}`,
+                    pathType: 'Prefix',
+                    serviceName: answered,
+                    servicePort: 8080,
+                });
+            }
         }
         // And one catch-all behind them, because a namespace no process is *named* after is still a
         // namespace the browser calls: `srv.subject` is a companion every process carries, so
@@ -3900,6 +3920,17 @@ const writeSplitTree = (
         // cannot carry one @@D-645. The overlay's suite child holds the Ingresses, in the namespace
         // they belong to, for the same reason it holds the aliases a CR may point elsewhere.
         if ((resource as {kind?: string}).kind === 'Ingress') {
+            suiteOwn.set(path, namespaceFree(resource));
+            continue;
+        }
+        // The fill module is the *deploying realm's* code rather than a property of the suite, and the
+        // split says so the way it says it about the image (`@@T-449`): a base is committed and shared
+        // by every deployment of a suite, so bytes there pin the script at the moment the base was
+        // generated — a later release that changes `fill.ts` would leave every tenant's fill Job
+        // running the old module while its artifact, image and volume moved on. The overlay is written
+        // by whoever deploys, out of the realm it runs, so that half always carries the module the
+        // running process imports (`@@D-834`).
+        if (path === `configmaps/${FILL_MODULE.name}.yaml`) {
             suiteOwn.set(path, namespaceFree(resource));
             continue;
         }

@@ -86,16 +86,27 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                         layerFiles: [],
                         realmConfig: {
                             srv: {k8s: {k8sRealmRole: 'companion'}},
-                            core: {k8s: {k8sRealmRole: 'both'}},
-                            blong: {k8s: {k8sRealmRole: 'none'}},
+                            core: {
+                                // A host beside a role that is not attached: the field is there, and
+                                // nothing may read it — an attachment is what makes a host mean
+                                // something (@@D-833).
+                                k8s: {k8sRealmRole: 'both', k8sRealmAttachedTo: 'srv'},
+                            },
+                            blong: {k8s: {k8sRealmRole: 'attached', k8sRealmAttachedTo: 'core'}},
                         },
                     }),
                 });
 
                 assert.deepEqual(
                     view.roles,
-                    {srv: 'companion', core: 'both', blong: 'none'},
+                    {srv: 'companion', core: 'both', blong: 'attached'},
                     'each realm is what its own config says it is',
+                );
+                assert.deepEqual(
+                    view.attachedTo,
+                    {blong: 'core'},
+                    'and an attached realm carries the realm it rides with, while a host declared ' +
+                        'beside any other role is not read',
                 );
                 assert.equal(
                     view.roles.marine,
@@ -381,6 +392,104 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                     plan.services.map(service => `${service.name}:${service.deployment}`).sort(),
                     ['core:core', 'marine:marine'],
                     'a companion owns no Service, and both owns its own',
+                );
+            },
+
+            async function anAttachedRealmRidesAnotherRealmsProcess(assert: IAssert) {
+                // A namespace can be answered without a process of its own: `blong`'s six reads are
+                // what the Observe pages draw on, and a fifth pod for them is a process to pay for
+                // and a Service to keep in step. `attached` says whose process it borrows (@@D-833),
+                // and the host is found by the selectors rather than by the deployment's name — which
+                // is why the monolith needs no case of its own, and why the realm's namespace reaches
+                // a Service without one being named after a deployment.
+                const view = {
+                    realms: ['srv', 'core', 'blong'],
+                    groups: [
+                        {name: 'srv.orchestrator', handlerCount: 1, layer: 'orchestrator'},
+                        {name: 'core.orchestrator', handlerCount: 1, layer: 'orchestrator'},
+                        {name: 'blong.adapter', handlerCount: 1, layer: 'adapter'},
+                        {name: 'blong.orchestrator', handlerCount: 1, layer: 'orchestrator'},
+                    ],
+                    ports: [
+                        {id: 'srv.subject', type: 'dispatch'},
+                        {id: 'core.subject', type: 'dispatch', namespace: 'core'},
+                        {id: 'blong.blong', type: 'dispatch', namespace: 'blong'},
+                    ],
+                    roles: {srv: 'companion', core: 'both', blong: 'attached'},
+                    attachedTo: {blong: 'core'},
+                } as IRegistryView;
+                const build = (options: Partial<IPlanOptions> = {}): IDeploymentPlan =>
+                    planFromRegistry(view, {
+                        suiteName: 'demo',
+                        frameworkImage: 'image',
+                        ...options,
+                    });
+
+                const plan = build();
+                const [core] = plan.deployments;
+                assert.deepEqual(
+                    plan.deployments.map(deployment => deployment.name),
+                    ['core'],
+                    'the attached realm has no process of its own',
+                );
+                assert.ok(
+                    core?.layers.includes('blong.orchestrator'),
+                    'the process that carries core activates its layers, so its methods are served',
+                );
+                assert.deepEqual(
+                    core?.namespaces,
+                    ['core', 'blong'],
+                    'and that process answers its namespace, which is what a Service selects',
+                );
+                assert.deepEqual(
+                    plan.services.map(service => `${service.name}:${service.deployment}`),
+                    ['core:core'],
+                    'while the namespace itself publishes no realm Service: nobody is named after it',
+                );
+
+                const monolith = build({profile: 'monolith'});
+                assert.ok(
+                    monolith.deployments[0]?.layers.includes('blong.orchestrator'),
+                    'the monolith carries it too, without a case of its own: its one process ' +
+                        'carries core',
+                );
+
+                const grouped = build({
+                    profile: 'group',
+                    groups: {platform: ['srv.orchestrator']},
+                });
+                assert.ok(
+                    grouped.deployments.every(deployment =>
+                        deployment.layers.includes('blong.orchestrator'),
+                    ),
+                    'a profile that gives the host no process carries it everywhere rather than ' +
+                        'dropping a namespace the browser draws pages for',
+                );
+
+                const none = planFromRegistry(
+                    {...view, roles: {...view.roles, blong: 'none'}, attachedTo: {}},
+                    {suiteName: 'demo', frameworkImage: 'image'},
+                );
+                assert.deepEqual(
+                    none.deployments.map(deployment => deployment.name),
+                    ['core'],
+                    'configuration still decides, and a realm that is not attached adds no layer',
+                );
+                assert.equal(
+                    none.deployments[0]?.layers.some(layer => layer.startsWith('blong.')),
+                    false,
+                    'so nothing of it reaches a process',
+                );
+
+                const own = planFromRegistry(
+                    {...view, roles: {...view.roles, blong: 'service'}},
+                    {suiteName: 'demo', frameworkImage: 'image'},
+                );
+                assert.deepEqual(
+                    own.deployments.map(deployment => deployment.name).sort(),
+                    ['blong', 'core'],
+                    'a realm that asks for a process of its own gets one, which is the other ' +
+                        'configuration that says something else',
                 );
             },
 

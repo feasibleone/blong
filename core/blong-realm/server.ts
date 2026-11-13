@@ -18,9 +18,17 @@ export default realm(() => ({
     config: {
         default: {
             blong: {},
-            // The semantic-log realm is an aid, not a workload: a deployment neither publishes it as a
-            // service nor carries it as a companion (D-433). `blong` is its name in the registry.
-            k8s: {k8sRealmRole: 'none'},
+            // The semantic-log realm is an aid rather than a workload: it is not a process of its
+            // own and is not carried by every process (`@@D-433`). `blong` is its name in the
+            // registry.
+            //
+            // `attached` is the third way and the one this realm takes: it rides in the process that
+            // carries the realm it names — `core`, the library realms' own — so a deployment keeps
+            // one fewer pod, while the namespace its pages call still reaches a Service (@@D-833).
+            // A suite that wants it otherwise has the role for it: `service` gives it a process of
+            // its own, `none` leaves it out, and `framework.realms.blong: false` does not load it at
+            // all — the plan then has no realm to place.
+            k8s: {k8sRealmRole: 'attached', k8sRealmAttachedTo: 'core'},
         },
     },
 }));

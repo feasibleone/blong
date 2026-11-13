@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 8d2b559236e7c606
+    blong.feasible.one/spec-hash: 10e8e949097c280d
   name: jobs
 rules:
   - apiGroups:

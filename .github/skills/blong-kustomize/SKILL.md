@@ -92,15 +92,23 @@ export default realm(() => ({
 ```
 
 The loader records each realm's own config under that realm's name, `describe().realmConfig`
-publishes it, and `registryView` reads the role from there. The four values are `service` (the
-default: a process of its own), `companion` (carried by every process, owning no Service), `both`
-and `none`. Write the deployment answer under the realm's `default` block: a block _beside_
-`default` is merged only while that intent is active, and the operator runs `release` — while an
-answer that holds only for a run of the realm itself (its own entry, its tests, its CLI) belongs in
-`dev` or `integration`, which is how `blong-kustomize` is `none` in a suite's tree and `service` in
-its own. Two payoffs over a suite-level list — the realm answers for itself, and one realm loaded
-under two names (`server` the framework's, `srv` its child's) keeps its answer under either, because
-the answer travels with the realm rather than with the name.
+publishes it, and `registryView` reads the role from there. The five values are `service` (the
+default: a process of its own), `companion` (carried by every process, owning no Service), `both`,
+`attached` (carried by the process that carries the realm it names — `k8sRealmAttachedTo`, `core`
+when it names none — and owning no process of its own) and `none`. Write the deployment answer under
+the realm's `default` block: a block _beside_ `default` is merged only while that intent is active,
+and the operator runs `release` — while an answer that holds only for a run of the realm itself (its
+own entry, its tests, its CLI) belongs in `dev` or `integration`, which is how `blong-kustomize` is
+`none` in a suite's tree and `service` in its own. Two payoffs over a suite-level list — the realm
+answers for itself, and one realm loaded under two names (`server` the framework's, `srv` its
+child's) keeps its answer under either, because the answer travels with the realm rather than with
+the name.
+
+`attached` is how a namespace reaches a Service without a pod of its own: `core/blong-realm`
+declares it against `core`, so the Observe pages' `blong.*` reads ride a process the suite already
+runs, that process's pod labels itself for the namespace, and the tree writes `services/blong.yaml`
+and an `/rpc/blong` path for it (T-600). A realm attached to a host the profile gives no process
+rides every process instead of vanishing, and a realm that wants a pod says `service`.
 
 The realm's own login is a namespace, not a method: the portal asks for `login.token.create`, this
 realm answers it (it does not load the framework's `login` realm), and the browser therefore needs

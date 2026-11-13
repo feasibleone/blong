@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: fffe01d762d18cb8
+    blong.feasible.one/spec-hash: c933137af7095458
   name: marine
 spec:
   ports:

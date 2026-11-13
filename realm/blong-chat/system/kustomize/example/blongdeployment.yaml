@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-chat
     app.kubernetes.io/part-of: blong-chat
-    app.kubernetes.io/version: 0.1.0
-    blong.feasible.one/spec-hash: 1358f39ffcbb0d44
+    app.kubernetes.io/version: 0.3.0
+    blong.feasible.one/spec-hash: fe9910069f292f4a
   name: blong-chat
   namespace: blong-chat
 spec:
@@ -47,10 +47,9 @@ spec:
   servicesNamespace: blong-services
   suiteVolume:
     artifact:
-      digest: 9e72415e877b5a35cdc060522868aecf190a4ac3b397a222c326ce7000f6dd9e
       source: url
       url: http://blong-artifact.default.svc.cluster.local/chat.zip
     attemptRetention: 5
     backend: nodeLocal
     retention: 3
-  version: 0.1.0
+  version: 0.3.0

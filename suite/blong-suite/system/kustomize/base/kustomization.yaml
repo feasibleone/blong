@@ -8,7 +8,6 @@ labels:
       app.kubernetes.io/part-of: blong-suite
 resources:
   - configmaps/assets-config.yaml
-  - configmaps/fill-script.yaml
   - deployments/access.yaml
   - deployments/assets.yaml
   - deployments/core.yaml
@@ -23,6 +22,7 @@ resources:
   - rbac/service-account.yaml
   - services/access.yaml
   - services/assets-http.yaml
+  - services/blong.yaml
   - services/core.yaml
   - services/login.yaml
   - services/marine.yaml

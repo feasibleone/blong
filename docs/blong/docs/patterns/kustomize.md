@@ -19,25 +19,26 @@ holds what every deploy shares, and an ignored `local/` beside it that holds wha
 this cluster own — the artifact's identity and one fill Job per node (`layout=split` writes both,
 D-475, D-490). An object whose _name_ names the artifact cannot be patched into place, so the base
 carries it as a **template** (`base/templates/<kind>/`, with `PLACEHOLDER` where the deploy's values
-go) and the overlay instantiates it once per node, appending the identity with `nameSuffix`. The
-fill Job's script travels in that template: it is the same text for every node because it reads its
-artifact, its root and its count from the environment, so it needs neither a ConfigMap nor a mount.
-Deployments and the suite's declaration stay in the base and are patched, because what they carry is
-a value rather than a name. The operator asks for `flat` instead, one directory of composed objects,
-because it reads a tree back and compares it with the cluster — and it names it rather than taking a
-default, since a pass applies what a child wrote while the default a repository wants is the half it
-cannot apply (D-490). Commit the base: the diff is the review.
+go) and the overlay instantiates it once per node, appending the identity with `nameSuffix`. A fill
+Job mounts the module it runs from a ConfigMap (D-518), and that ConfigMap is the overlay's: the
+module is the deploying realm's own program rather than a property of the suite, so a committed copy
+would pin the script at the moment the base was generated and leave a later release running the old
+one (D-834). Deployments and the suite's declaration stay in the base and are patched, because what
+they carry is a value rather than a name. The operator asks for `flat` instead, one directory of
+composed objects, because it reads a tree back and compares it with the cluster — and it names it
+rather than taking a default, since a pass applies what a child wrote while the default a repository
+wants is the half it cannot apply (D-490). Commit the base: the diff is the review.
 
 What the base may not name is any value the declaration decides, and that is a longer list than the
 volume: the image each container runs, the suite's version in `app.kubernetes.io/version` and
 `blong.feasible.one/suite-version`, and the artifact's identity. Each is a token in the base and a
 field in a patch beside it — for a workload, for the job templates, and for the objects the overlay
-otherwise applies as they stand (a Service, a Role, the fill module's ConfigMap), which get a small
-patch of their own that restores nothing but their labels. The base's label transformer drops the
-version for the same reason: a transformer runs after the patches, so a version there would
-overwrite every one of them. A base that kept these would deploy the release that generated it
-rather than the one the declaration names, and the symptom is quiet — the artifact, the migration
-and the reported version all move while the pod keeps the image the tree was generated with.
+otherwise applies as they stand (a Service, a Role), which get a small patch of their own that
+restores nothing but their labels. The base's label transformer drops the version for the same
+reason: a transformer runs after the patches, so a version there would overwrite every one of them.
+A base that kept these would deploy the release that generated it rather than the one the
+declaration names, and the symptom is quiet — the artifact, the migration and the reported version
+all move while the pod keeps the image the tree was generated with.
 
 ## Configure the suite
 
@@ -206,6 +207,13 @@ the controller's and therefore the host's: two portals on one host share them, a
 may not share a portal's host at all — the tree refuses it, because the alternative is a webhook
 behind the portal's authentication, which an `oauth2` portal would answer with a browser redirect
 and a `basic` one with a password prompt (T-241).
+
+Every namespace a process answers reaches the Service that answers it, at `/rpc/<namespace>`. The
+rule is the namespace's Service and not the deployment's name, because a realm need not own a
+process to own a namespace: `core/blong-realm` declares `k8sRealmRole: 'attached'` against `core`,
+so its `blong.*` reads ride a process the suite already runs, that pod labels itself for the
+namespace and the tree writes `services/blong.yaml` beside the path. The catch-all `/rpc/` stays
+behind those rules for a namespace no Service carries.
 
 ## The browser bundle
 

@@ -124,7 +124,6 @@ done (24)
 - tunnel
 - qwen2.5-coder:14b,phi4-mini:latest
 - log inactive layers, etc.
-- T-600
 - enhance the planning agent to use a tool to create the tasks and use deterministic formatting
 - read the rc file for each intent
 - hindsight: store explore results
@@ -1325,10 +1324,10 @@ renders every diagram on 106 pages.
 > _2026-11-12 · ci · done_
 
 The framework's build is `heft build --clean; dts-bundle-generator --config dts-gen.config.json` and
-it is the long pole of both deploy jobs: 98.9 s of the artifact job's 238 s build on 2026-11-12
-(run 43207810220). The declaration bundle is 34.7 s of that, measured locally, and nothing in a
-deployed artifact reads it — `dist/types.js` is what the `default` export condition resolves, and
-the `.d.ts` bundle is for npm consumers only.
+it is the long pole of both deploy jobs: 98.9 s of the artifact job's 238 s build on 2026-11-12 (run
+43207810220). The declaration bundle is 34.7 s of that, measured locally, and nothing in a deployed
+artifact reads it — `dist/types.js` is what the `default` export condition resolves, and the `.d.ts`
+bundle is for npm consumers only.
 
 An artifact build could skip it with a flag the build script honours (an environment variable read
 in a small script rather than `;`-chained in package.json), which saves the same ~35 s twice per

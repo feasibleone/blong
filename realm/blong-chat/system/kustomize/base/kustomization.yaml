@@ -8,7 +8,6 @@ labels:
       app.kubernetes.io/part-of: blong-chat
 resources:
   - configmaps/assets-config.yaml
-  - configmaps/fill-script.yaml
   - deployments/assets.yaml
   - deployments/blong-chat.yaml
   - rbac/auth-review-binding.yaml
@@ -21,6 +20,7 @@ resources:
   - services/access.yaml
   - services/assets-http.yaml
   - services/blong-chat.yaml
+  - services/blong.yaml
   - services/chat.yaml
   - services/core.yaml
   - services/login.yaml

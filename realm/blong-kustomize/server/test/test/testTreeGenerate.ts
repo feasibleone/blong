@@ -14,6 +14,7 @@ import {dirname, join, relative, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parse, parseAllDocuments, stringify} from 'yaml';
 import {danglingReferences, isClusterResource, sweptResourceTypes} from '../../../apply.ts';
+import {FILL_MODULE} from '../../../artifact.ts';
 import {
     type KustomizeResource,
     artifactEntry,
@@ -394,7 +395,20 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         scriptMounted: read('base/templates/fill/template.yaml').includes(
                             '/script/',
                         ),
-                        moduleInBase: baseText.includes('unpackZip'),
+                        // The module's bytes are the *deploying realm's* code, so they belong to the half
+                        // that is written at deploy time and not to the committed one: a base that carried
+                        // them pinned the script at the moment it was generated, and a release changing
+                        // `fill.ts` then left every tenant running the old module (`@@D-834`).
+                        fillModuleInBase: base.includes(`base/configmaps/${FILL_MODULE.name}.yaml`),
+                        fillModuleInOverlay: local.includes(
+                            `local/suite/configmaps/${FILL_MODULE.name}.yaml`,
+                        ),
+                        // And what the overlay's copy carries: the bytes, as the kubelet gets them —
+                        // base64 in `binaryData`, because a multi-line value would be re-wrapped by
+                        // every YAML writer on the way (@@D-518).
+                        fillModuleCarriesItsBytes: read(
+                            `local/suite/configmaps/${FILL_MODULE.name}.yaml`,
+                        ).includes('binaryData'),
                         // The overlay is small: one kustomization per instance, and one patch per object
                         // that carries a value rather than a name.
                         instanceDirs: [...instances].sort(),
@@ -1743,11 +1757,75 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     [
                         ['/', 'web-http'],
                         ['/rpc/core', 'core'],
+                        ['/rpc/subject', 'subject'],
                         ['/rpc/marine', 'marine'],
                         ['/rpc/', 'web-http'],
                     ],
-                    'every namespace a deployment is named after has a path to its own Service, ' +
-                        'and the companions land on the portal’s process',
+                    'every namespace a process answers reaches the Service the tree publishes for ' +
+                        'it — the realm’s own, or the one that selects every process carrying a ' +
+                        'companion namespace — and the catch-all stays for what has no Service',
+                );
+            },
+
+            async function anAttachedNamespaceHasAPathToItsService(assert: IAssert) {
+                // A realm carried by another realm's process (`attached`) has no deployment named
+                // after it, and its call used to fall to the `/rpc/` catch-all — which reached the
+                // portal's pod, where the realm is not loaded, and answered `Not Found` (@@D-833).
+                // The path follows the namespace's Service instead of a deployment name, so the call
+                // reaches the process that does carry it.
+                const tree = buildKustomizeTree(
+                    lib.suitePlan({
+                        profile: 'realm',
+                        deployments: [
+                            {
+                                name: 'core',
+                                realms: ['core', 'blong'],
+                                layers: ['core.orchestrator', 'blong.orchestrator'],
+                                namespaces: ['core', 'blong'],
+                                replicas: 1,
+                            },
+                            {
+                                name: 'marine',
+                                realms: ['marine', 'core'],
+                                layers: ['marine.orchestrator'],
+                                namespaces: ['marine', 'core'],
+                                replicas: 1,
+                            },
+                        ],
+                        portal: {web: {host: 'marine.example', deployment: 'marine'}},
+                    }),
+                );
+                const ingress = tree.get('ingresses/marine-example.yaml') as {
+                    spec?: {
+                        rules?: Array<{
+                            http?: {
+                                paths?: Array<{
+                                    path?: string;
+                                    backend?: {service?: {name?: string}};
+                                }>;
+                            };
+                        }>;
+                    };
+                };
+                assert.deepEqual(
+                    ingress.spec?.rules?.[0]?.http?.paths?.map(entry => [
+                        entry.path,
+                        entry.backend?.service?.name,
+                    ]),
+                    [
+                        ['/', 'web-http'],
+                        ['/rpc/core', 'core'],
+                        ['/rpc/blong', 'blong'],
+                        ['/rpc/marine', 'marine'],
+                        ['/rpc/', 'web-http'],
+                    ],
+                    'the attached namespace is routed to its own Service, which selects the ' +
+                        'process that carries the realm',
+                );
+                assert.ok(
+                    tree.has('services/blong.yaml'),
+                    'and that Service is the one the tree writes for a namespace no realm is named ' +
+                        'after',
                 );
             },
 
@@ -1909,10 +1987,12 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         ['/', 'Prefix', ASSET_SERVICE],
                         ['/documentation', 'Prefix', 'web-http'],
                         ['/rpc/core', 'Prefix', 'core'],
+                        ['/rpc/subject', 'Prefix', 'subject'],
                         ['/rpc/', 'Prefix', 'web-http'],
                     ],
                     'the bundle owns the root, the process keeps the page it alone serves, and ' +
-                        'a companion namespace reaches it through the RPC catch-all',
+                        'every namespace a process answers reaches the Service the tree publishes ' +
+                        'for it — the catch-all stays for what has none',
                 );
                 assert.ok(
                     tree.has('services/web-http.yaml'),

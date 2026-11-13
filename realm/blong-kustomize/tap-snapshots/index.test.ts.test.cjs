@@ -17,6 +17,8 @@ Object {
         "kustomize.orchestrator",
         "kustomize.gateway",
         "srv.orchestrator",
+        "blong.adapter",
+        "blong.gateway",
       ],
       "name": "kustomize",
       "namespaces": Array [
@@ -24,10 +26,12 @@ Object {
         "identity",
         "login",
         "session",
+        "blong",
       ],
       "realms": Array [
         "kustomize",
         "srv",
+        "blong",
       ],
       "replicas": 1,
       "resources": Object {
@@ -434,6 +438,9 @@ Object {
     "name: blong",
   ],
   "fillImageInTemplate": true,
+  "fillModuleCarriesItsBytes": true,
+  "fillModuleInBase": false,
+  "fillModuleInOverlay": true,
   "frameworkImageInBase": false,
   "frameworkImageInOverlay": true,
   "identityInBase": false,
@@ -444,7 +451,6 @@ Object {
     "local/suite/cache/blong-suite-fill-0.1.0-a1b2c3d4-node-a",
     "local/suite/cache/blong-suite-fill-0.1.0-a1b2c3d4-node-b",
   ],
-  "moduleInBase": false,
   "namespacesInBase": 0,
   "nodesInBase": 0,
   "nodesInLocal": 2,
@@ -581,7 +587,7 @@ Object {
 `
 
 exports[`index.test.ts > TAP > kustomize flow (server) > tree generate > objectsAreFingerprinted > generatedFileCount 1`] = `
-23
+24
 `
 
 exports[`index.test.ts > TAP > kustomize flow (server) > tree generate > objectsAreFingerprinted > generatedTree 1`] = `
@@ -776,7 +782,7 @@ Object {
         app.kubernetes.io/name: blong-suite
         app.kubernetes.io/part-of: blong-suite
         app.kubernetes.io/version: 1.0.0
-        blong.feasible.one/spec-hash: 99e2f789992e7ee4
+        blong.feasible.one/spec-hash: 5b2a9c9586256444
       name: kustomize
       namespace: blong-suite
     spec:
@@ -793,6 +799,7 @@ Object {
             app.kubernetes.io/name: blong-suite
             app.kubernetes.io/part-of: blong-suite
             app.kubernetes.io/version: 1.0.0
+            blong.feasible.one/namespace-blong: "true"
             blong.feasible.one/namespace-identity: "true"
             blong.feasible.one/namespace-kustomize: "true"
             blong.feasible.one/namespace-login: "true"
@@ -805,6 +812,8 @@ Object {
                 - --kustomize.orchestrator
                 - --kustomize.gateway
                 - --srv.orchestrator
+                - --blong.adapter
+                - --blong.gateway
               env:
                 - name: BLONG_ENV
                   value: release
@@ -1124,6 +1133,34 @@ Object {
       namespace: blong-suite
     
   ),
+  "services/blong.yaml": String(
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: blong-kustomize
+        app.kubernetes.io/name: blong-suite
+        app.kubernetes.io/part-of: blong-suite
+        app.kubernetes.io/version: 1.0.0
+        blong.feasible.one/spec-hash: 49cf8700f51275dc
+      name: blong
+      namespace: blong-suite
+    spec:
+      ports:
+        - name: rpc
+          port: 8091
+          protocol: TCP
+          targetPort: rpc
+        - name: http
+          port: 8080
+          protocol: TCP
+          targetPort: http
+      selector:
+        app.kubernetes.io/part-of: blong-suite
+        blong.feasible.one/namespace-blong: "true"
+      type: ClusterIP
+    
+  ),
   "services/identity.yaml": String(
     apiVersion: v1
     kind: Service
@@ -1156,6 +1193,7 @@ Object {
     apiVersion: kustomize.config.k8s.io/v1beta1
     kind: Kustomization
     resources:
+      - blong.yaml
       - identity.yaml
       - kustomize.yaml
       - login.yaml

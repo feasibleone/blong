@@ -10,8 +10,8 @@ active (4)
 
 - `D-148` · suite/blong-suite — The suite's Playwright run cannot resolve blong-marine's test dir
 - `D-736` · suite/blong-suite — A realm-profile deployment needs kubernetes resolution in release
-- `D-739` · suite/blong-suite — The portal realm still picks the bundle pod, not the RPC path
 - `D-794` · suite/blong-suite — This deployment switches the suite's bundled mysql off
+- `D-739` · suite/blong-suite — The portal realm still picks the bundle pod, not the RPC path
 
 <!-- /memory:index -->
 
@@ -50,19 +50,6 @@ library realms alone; behind `marine` the same gateway also serves `marine.*`. T
 settings: the Ingress paths make split routing work, the portal's realm decides which pod is the
 front door.
 
-### D-739 — The portal realm still picks the bundle pod, not the RPC path
-
-> _2026-11-02 · suite/blong-suite · active_
-
-The portal's `realm` was load-bearing while the ingress fronted one Service: the pod behind it had
-to answer every namespace the browser reached, which is why `core` answered `Not Found` for
-`marine.*`. Since the tree writes `/rpc/<namespace>` per deployment, that constraint is gone and
-`core` would front the portal as well. `marine` is kept because it is the realm the suite is about
-and the process the portal drives at steady state, and because the setting still decides the two
-things that are left: which pod serves `/` and `/s/`, and where a namespace with no process of its
-own lands, which today is `blong` (@@T-600). Reconsider only if the portal should be served by the
-smallest pod rather than the business one.
-
 ### D-794 — This deployment switches the suite's bundled mysql off
 
 > _2026-11-08 · suite/blong-suite · active_
@@ -86,5 +73,19 @@ The suite keeps declaring the service rather than dropping it from `server.ts`: 
 the bundled database still gets it, and a deployment that runs the shared one is the one that says
 false. The slow statements that started this investigation are not caused by the second instance —
 they are the shared server at its memory limit, tracked separately.
+
+### D-739 — The portal realm still picks the bundle pod, not the RPC path
+
+> _2026-11-02 · suite/blong-suite · active_
+
+The portal's `realm` was load-bearing while the ingress fronted one Service: the pod behind it had
+to answer every namespace the browser reached, which is why `core` answered `Not Found` for
+`marine.*`. Since the tree writes `/rpc/<namespace>` per Service, that constraint is gone and `core`
+would front the portal as well. `marine` is kept because it is the realm the suite is about and the
+process the portal drives at steady state, and because the setting still decides the two things that
+are left: which pod serves `/` and `/s/`, and where a namespace with no Service of its own lands —
+the companions' namespaces. `blong` is no longer one of those: it rides the `core` process and has a
+Service and a path of its own (`@@D-833`). Reconsider only if the portal should be served by the
+smallest pod rather than the business one.
 
 ## Superseded
