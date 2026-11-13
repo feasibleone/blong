@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.20.1](https://github.com/feasibleone/blong/compare/blong-access-v1.20.0...blong-access-v1.20.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* deploy blong realm ([2e6510e](https://github.com/feasibleone/blong/commit/2e6510e48b804dd7f1ff98c8bfb544ab7634497f))
+* update access snapshots ([57aa428](https://github.com/feasibleone/blong/commit/57aa428f5f26fd6bd808c87f01cb60210b101021))
+
 ## [1.20.0](https://github.com/feasibleone/blong/compare/blong-access-v1.19.0...blong-access-v1.20.0) (2026-11-13)
 
 

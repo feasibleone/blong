@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/feasibleone/blong/compare/blong-core-v1.6.0...blong-core-v1.6.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* remove extra label ([01cdbab](https://github.com/feasibleone/blong/commit/01cdbabdd415a1b37831ce470a4ba761e80ad5c9))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-core-v1.5.0...blong-core-v1.6.0) (2026-11-01)
 
 

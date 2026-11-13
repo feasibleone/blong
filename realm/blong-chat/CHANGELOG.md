@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/feasibleone/blong/compare/blong-chat-v0.3.0...blong-chat-v0.3.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* deploy blong realm ([2e6510e](https://github.com/feasibleone/blong/commit/2e6510e48b804dd7f1ff98c8bfb544ab7634497f))
+
 ## [0.3.0](https://github.com/feasibleone/blong/compare/blong-chat-v0.2.0...blong-chat-v0.3.0) (2026-11-13)
 
 
