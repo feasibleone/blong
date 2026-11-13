@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.1](https://github.com/feasibleone/blong/compare/blong-sport-v0.10.0...blong-sport-v0.10.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* deploy blong realm ([2e6510e](https://github.com/feasibleone/blong/commit/2e6510e48b804dd7f1ff98c8bfb544ab7634497f))
+* deployments ([50e2d92](https://github.com/feasibleone/blong/commit/50e2d92baabdab0fe9a277e91ce87e97ece00e18))
+
 ## [0.10.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.9.0...blong-sport-v0.10.0) (2026-11-13)
 
 
