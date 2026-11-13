@@ -4,7 +4,7 @@
  * Re-generate by setting TAP_SNAPSHOT=1 and running tests.
  * Make sure to inspect the output below.  Do not ignore changes!
  */
-'use strict';
+'use strict'
 exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > crud-reads 1`] = `
 Object {
   "getUnit": Object {
@@ -22,7 +22,7 @@ Object {
     },
   },
 }
-`;
+`
 
 exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > findUnits > findUnits 1`] = `
 Array [
@@ -32,24 +32,22 @@ Array [
     "unitName": "Widget Alpha",
   },
 ]
-`;
+`
 
-exports[
-    `mysql.test.ts > TAP > blong int-adapter > mysql CRUD > findWithOptions > findWithOptions 1`
-] = `
+exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > findWithOptions > findWithOptions 1`] = `
 Array [
+  Object {
+    "unitDescription": "Created via upsert in integration test",
+    "unitId": "<masked>",
+    "unitName": "Widget Merged",
+  },
   Object {
     "unitDescription": "First blong integration test widget",
     "unitId": "<masked>",
     "unitName": "Widget Alpha",
   },
-  Object {
-    "unitDescription": "Second blong integration test widget",
-    "unitId": "<masked>",
-    "unitName": "Widget Beta",
-  },
 ]
-`;
+`
 
 exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > getUnit > getUnit 1`] = `
 Object {
@@ -59,7 +57,7 @@ Object {
     "unitName": "Widget Alpha",
   },
 }
-`;
+`
 
 exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > verifyEdit > verifyEdit 1`] = `
 Object {
@@ -69,4 +67,4 @@ Object {
     "unitName": "Widget Alpha Updated",
   },
 }
-`;
+`
