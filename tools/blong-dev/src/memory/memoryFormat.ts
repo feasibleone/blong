@@ -188,6 +188,8 @@ export function formatLines(lines: readonly string[], width = MAX_LINE_LENGTH): 
     let paragraph: string[] = [];
     let paragraphPrefix = '';
     let paragraphIndent = '';
+    /** True when the paragraph open right now is a list item's own text. */
+    let paragraphIsItem = false;
 
     const flush = () => {
         if (paragraph.length === 0) return;
@@ -196,6 +198,7 @@ export function formatLines(lines: readonly string[], width = MAX_LINE_LENGTH): 
         paragraph = [];
         paragraphPrefix = '';
         paragraphIndent = '';
+        paragraphIsItem = false;
     };
 
     for (const line of lines) {
@@ -228,13 +231,20 @@ export function formatLines(lines: readonly string[], width = MAX_LINE_LENGTH): 
         }
 
         // A bullet opens an item of its own even when the line above it was the previous item's
-        // wrapped second line, so the paragraph has to be closed before this one starts.
-        if (paragraph.length > 0 && splitListItem(line)) flush();
+        // wrapped second line, so the paragraph has to be closed before this one starts. When the
+        // paragraph it closes was prose rather than an item, the list needs a blank line above it
+        // (MD032) — the shape a plan task leaves behind, with its `- verify:` under its detail.
+        if (paragraph.length > 0 && splitListItem(line)) {
+            const followsItem = paragraphIsItem;
+            flush();
+            if (!followsItem) out.push('');
+        }
 
         if (paragraph.length === 0) {
             const item = splitListItem(line);
             paragraphPrefix = item ? item.prefix : (line.match(/^\s*/)?.[0] ?? '');
             paragraphIndent = item ? item.indent : paragraphPrefix;
+            paragraphIsItem = item !== null;
             paragraph.push(item ? item.text : line);
         } else {
             paragraph.push(line);

@@ -346,9 +346,66 @@ export function trimTasksToLines(
         if (!id) continue;
         const line = renderTaskLine({...task, id}, links?.get(task) ?? task.link);
         if (task.body.length === 0 && lines[task.line] === line) continue;
-        lines.splice(task.line, task.end - task.line + 1, line);
+        // The detail block ends with the blank line that separated it from what follows, so
+        // replacing it with one line would glue the next heading to the task above it. The block's
+        // own trailing blank is kept — which is also what keeps a heading where a reader expects
+        // it, since `plan check` accepts either shape.
+        const block = lines.slice(task.line, task.end + 1);
+        const endedBlank = block.length > 1 && (block[block.length - 1] ?? '').trim() === '';
+        const next = lines[task.end + 1];
+        const followedByHeading = next !== undefined && /^#{1,6}\s/.test(next);
+        lines.splice(
+            task.line,
+            task.end - task.line + 1,
+            ...(endedBlank || followedByHeading ? [line, ''] : [line]),
+        );
     }
-    return {...doc, lines};
+    return {...doc, lines: collapseBlankRuns(spaceOutHeadings(lines))};
+}
+
+/**
+ * One blank line above every heading, outside fenced code.
+ *
+ * A trimmed block takes the blank that separated it from the heading below, so a plan trimmed once
+ * has its group headings glued to the task above them. Fixing it here rather than only where the
+ * block is replaced also repairs a plan that was trimmed before this rule existed — the second
+ * `plan tasks` finds every line already in its one-line form and would otherwise change nothing.
+ */
+function spaceOutHeadings(lines: readonly string[]): string[] {
+    const out: string[] = [];
+    let inFence = false;
+    for (const line of lines) {
+        const fence = /^\s*(?:```|~~~)/.test(line);
+        if (
+            !fence &&
+            !inFence &&
+            /^#{1,6}\s/.test(line) &&
+            (out[out.length - 1] ?? '').trim() !== ''
+        )
+            out.push('');
+        out.push(line);
+        if (fence) inFence = !inFence;
+    }
+    return out;
+}
+
+/**
+ * One blank line where there were several, outside fenced code.
+ *
+ * Trimming keeps a block's trailing blank, and the file may already have had one; collapsing them
+ * here is what stops a second `plan tasks` from growing a run of blanks between two groups.
+ */
+function collapseBlankRuns(lines: readonly string[]): string[] {
+    const out: string[] = [];
+    let inFence = false;
+    for (const line of lines) {
+        const fence = /^\s*(?:```|~~~)/.test(line);
+        if (!fence && !inFence && line.trim() === '' && (out[out.length - 1] ?? '').trim() === '')
+            continue;
+        out.push(line);
+        if (fence) inFence = !inFence;
+    }
+    return out;
 }
 
 /** Rewrite a plan's front matter, merging over what is there. */

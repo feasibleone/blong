@@ -70,6 +70,7 @@ words:
   - chdir
   - checkpointed
   - Chelonia
+  - cipheriv
   - cirratum
   - citest
   - cleanup
@@ -102,6 +103,7 @@ words:
   - datetime
   - datetimes
   - dbaeumer
+  - decipheriv
   - dedent
   - dedented
   - dedup
@@ -319,6 +321,7 @@ words:
   - payshield
   - payshieldport
   - payshieldsim
+  - pdftoppm
   - persistentvolume
   - persistentvolumeclaim
   - persistentvolumeclaims

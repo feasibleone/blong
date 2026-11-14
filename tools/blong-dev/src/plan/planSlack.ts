@@ -128,7 +128,7 @@ export async function createPlanChannel(input: IPlanChannelInput): Promise<IPlan
     const payload = {
         platform,
         account,
-        name: channelName,
+        channelName,
         title: input.title,
         topic: planChannelTopic({title: input.title, issueUrl: input.issueUrl}),
         isPrivate: true,
