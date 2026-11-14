@@ -10,9 +10,9 @@ export default model(
                 objectTitle: 'Affiliation Period',
                 public: true,
                 // Deletion: rows that belong to a parent record: take them with it, without asking.
-                deletion: {mode: 'cascade'},
+                deletion: {mode: 'prompt'},
                 menu: {group: 'Registry', order: 6},
-                nameField: 'affiliation.affiliationKind',
+                nameField: 'affiliation.organisationId',
                 schema: {
                     properties: {
                         affiliation: {
@@ -26,16 +26,6 @@ export default model(
                                     title: 'Organisation',
                                     required: true,
                                     widget: {dropdown: 'sport.organization'},
-                                },
-                                affiliationKind: {
-                                    title: 'Kind',
-                                    required: true,
-                                    widget: {
-                                        options: [
-                                            {value: 'club', label: 'Club'},
-                                            {value: 'federation', label: 'Federation'},
-                                        ],
-                                    },
                                 },
                                 fromDate: {title: 'From', widget: {type: 'date'}},
                                 toDate: {title: 'To', widget: {type: 'date'}},
@@ -55,7 +45,6 @@ export default model(
                                 columns: [
                                     'personResourceId',
                                     'organisationId',
-                                    'affiliationKind',
                                     'fromDate',
                                     'affiliationStatus',
                                 ],
@@ -70,7 +59,6 @@ export default model(
                         widgets: [
                             'affiliation.personResourceId',
                             'affiliation.organisationId',
-                            'affiliation.affiliationKind',
                             'affiliation.affiliationStatus',
                         ],
                     },

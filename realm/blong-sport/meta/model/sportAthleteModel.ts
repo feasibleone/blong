@@ -42,7 +42,6 @@ export default model(
                                         options: [
                                             {value: 'female', label: 'Female'},
                                             {value: 'male', label: 'Male'},
-                                            {value: 'other', label: 'Other'},
                                         ],
                                     },
                                 },
@@ -75,7 +74,7 @@ export default model(
                                     // narrows to the sport chosen above. @@D-789
                                     widget: {
                                         dropdown: 'sport.discipline',
-                                        parent: 'primarySportId',
+                                        parent: 'athlete.primarySportId',
                                     },
                                 },
                                 currentFederationId: {
@@ -134,6 +133,8 @@ export default model(
                                 type: 'table',
                                 columns: [
                                     'editionId',
+                                    'editionYear',
+                                    'disciplineId',
                                     'participationFormat',
                                     'participationStatus',
                                 ],

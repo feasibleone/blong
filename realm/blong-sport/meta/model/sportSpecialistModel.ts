@@ -29,7 +29,6 @@ export default model(
                                         options: [
                                             {value: 'female', label: 'Female'},
                                             {value: 'male', label: 'Male'},
-                                            {value: 'other', label: 'Other'},
                                         ],
                                     },
                                 },

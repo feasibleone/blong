@@ -191,7 +191,6 @@ test.describe('Relationships', () => {
                 value: `${athleteName} (athlete)`,
             },
             'affiliation.organisationId': {widget: 'dropdown', value: clubName},
-            'affiliation.affiliationKind': {widget: 'select', value: 'Club'},
             'affiliation.affiliationStatus': {widget: 'select', value: 'Active'},
         },
         editFields: {

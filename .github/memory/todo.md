@@ -113,7 +113,6 @@ done (24)
 - F-308
 - F-303
 - F-244
-- playwright webp, strict screenshot tolerance
 - T-276
 - F-490
 - doc publishing

@@ -582,7 +582,6 @@ export default schema(async ({lib: {type}}) => ({
             affiliationId: type.ulid(),
             personResourceId: type.uidNotNull(),
             organisationId: type.uidNotNull(),
-            affiliationKind: type.stringNotNull({maxLength: 20}),
             fromDate: type.dateNull(),
             toDate: type.dateNull(),
             affiliationStatus: type.stringNotNull({maxLength: 20}),

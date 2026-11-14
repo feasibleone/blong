@@ -43,10 +43,10 @@ label: |
     Career Start=Начало на кариерата
     Categories=Категории
     Category=Категория
-    Certificate=Удостоверение
-    Certification No=Номер на удостоверение
-    Certification Status=Статус на удостоверението
-    Certification Valid Until=Удостоверението е валидно до
+    Certificate=Сертификат
+    Certification No=Номер на сертификат
+    Certification Status=Статус на сертификата
+    Certification Valid Until=Сертификатът е валиден до
     Checksum=Контролна сума
     Citizenship=Гражданство
     City=Град
@@ -296,7 +296,7 @@ label: |
     Result=Резултат
     Results=Резултати
     Results and Competitions=Резултати и състезания
-    Retired=Отказал се
+    Retired=Прекратил
     Role=Роля
     Run Report=Изпълни справката
     Running=Текущ
@@ -331,7 +331,7 @@ label: |
     Submit=Изпрати
     Support Period=Период на подкрепа
     Support Periods=Периоди на подкрепа
-    Suspended=Спрян
+    Suspended=Временно неактивен
     Switch to dark mode=Премини към тъмна тема
     Switch to light mode=Премини към светла тема
     Team=Отбор

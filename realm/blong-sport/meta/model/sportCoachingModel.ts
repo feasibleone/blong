@@ -36,7 +36,7 @@ export default model(
                                     // Follows the sport of the link. @@D-789
                                     widget: {
                                         dropdown: 'sport.discipline',
-                                        parent: 'sportId',
+                                        parent: 'coaching.sportId',
                                     },
                                 },
                                 cycleId: {

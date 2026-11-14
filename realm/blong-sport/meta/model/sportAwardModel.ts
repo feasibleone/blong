@@ -56,7 +56,7 @@ export default model(
                                     widget: {
                                         options: [
                                             {value: 'active', label: 'Active'},
-                                            {value: 'retired', label: 'Retired'},
+                                            {value: 'inactive', label: 'Inactive'},
                                         ],
                                     },
                                 },

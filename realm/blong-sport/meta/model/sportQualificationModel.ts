@@ -46,7 +46,7 @@ export default model(
                                     // The discipline of the sport picked above. @@D-789
                                     widget: {
                                         dropdown: 'sport.discipline',
-                                        parent: 'sportId',
+                                        parent: 'qualification.sportId',
                                     },
                                 },
                                 qualificationKind: {
