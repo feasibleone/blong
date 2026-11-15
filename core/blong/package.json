@@ -22,6 +22,11 @@
             "blong-dev": "./blob.ts",
             "types": "./blob.ts",
             "default": "./dist/blob.js"
+        },
+        "./stream": {
+            "blong-dev": "./stream.ts",
+            "types": "./stream.ts",
+            "default": "./dist/stream.js"
         }
     },
     "scripts": {

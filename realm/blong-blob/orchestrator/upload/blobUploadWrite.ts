@@ -3,7 +3,7 @@ import {pipeline} from 'node:stream/promises';
 
 import type {IBlobMeta, IMeta} from '@feasibleone/blong';
 
-import {limitBytes} from '@feasibleone/blong-gogo/rawBody';
+import {limitBytes} from '@feasibleone/blong/stream';
 import {storageMetaMerge} from '../../adapter/storage/storageLib.ts';
 import {blobPortConfig, blobSettings} from '../../blob/blobSettings.ts';
 import {blobUploadRefusal} from '../../blob/blobUploadRules.ts';

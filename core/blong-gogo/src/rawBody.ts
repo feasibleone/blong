@@ -1,5 +1,4 @@
 import type {FastifyInstance} from 'fastify';
-import {Transform} from 'node:stream';
 
 /**
  * Accept a body no parser understands, handing the handler the request stream.
@@ -19,26 +18,10 @@ export function registerRawBody(server: FastifyInstance): void {
 /**
  * Refuse a stream once it passes `max` bytes.
  *
- * A route's `bodyLimit` does not apply to a stream parser — fastify checks it while parsing a body it
- * holds, and a stream is never held — so the ceiling is enforced here, by counting (@@F-730). The
- * error carries the status a gateway answers with, which is why it is not a bare `Error`.
+ * The implementation moved to the package a realm may import: the handler that reads a raw body is the
+ * one that must count it, and a realm importing this file failed to load in a deployment where the
+ * runtime is a binary rather than a dependency — `Cannot find package '@feasibleone/blong-gogo'`
+ * stopped the suite's migration Job and the pods beside it (`@@F-750`). One implementation, re-exported
+ * here so the runtime's own callers and its test keep their import.
  */
-export function limitBytes(max: number): Transform {
-    let seen = 0;
-    return new Transform({
-        transform(chunk: Buffer, _encoding, callback) {
-            seen += chunk.length;
-            if (seen > max) {
-                callback(
-                    Object.assign(new Error(`The body exceeds ${max} bytes`), {
-                        statusCode: 413,
-                        type: 'blob.tooLarge',
-                        params: {size: seen, limit: max},
-                    }),
-                );
-                return;
-            }
-            callback(null, chunk);
-        },
-    });
-}
+export {limitBytes} from '@feasibleone/blong/stream';
