@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.1](https://github.com/feasibleone/blong/compare/blong-sport-v0.11.0...blong-sport-v0.11.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* dependencies ([9361416](https://github.com/feasibleone/blong/commit/93614163f3d586637491e50c395f35d6b0dd2fa9))
+* PVC name ([5ec2f37](https://github.com/feasibleone/blong/commit/5ec2f3724e37159c00cad2b0f0970c59812a0781))
+
 ## [0.11.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.10.1...blong-sport-v0.11.0) (2026-11-15)
 
 

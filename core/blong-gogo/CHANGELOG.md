@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.52.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.52.0...blong-gogo-v1.52.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* remove incorrect runtime dependency ([3309992](https://github.com/feasibleone/blong/commit/33099921982a1ad194572a73b9354fc3658f78f6))
+
 ## [1.52.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.51.0...blong-gogo-v1.52.0) (2026-11-15)
 
 

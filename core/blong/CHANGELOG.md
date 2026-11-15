@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.43.1](https://github.com/feasibleone/blong/compare/blong-v1.43.0...blong-v1.43.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* PVC name ([5ec2f37](https://github.com/feasibleone/blong/commit/5ec2f3724e37159c00cad2b0f0970c59812a0781))
+* remove incorrect runtime dependency ([3309992](https://github.com/feasibleone/blong/commit/33099921982a1ad194572a73b9354fc3658f78f6))
+
 ## [1.43.0](https://github.com/feasibleone/blong/compare/blong-v1.42.0...blong-v1.43.0) (2026-11-15)
 
 
