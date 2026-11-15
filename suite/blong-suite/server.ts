@@ -21,6 +21,9 @@ export default server(() => ({
         async function access() {
             return import('@feasibleone/blong-access/server.ts');
         },
+        async function blob() {
+            return import('@feasibleone/blong-blob/server.ts');
+        },
         /** Marine biology demonstration realm */
         async function marine() {
             return import('@feasibleone/blong-marine/server.ts');
@@ -176,6 +179,9 @@ export default server(() => ({
             // `Not Found` for `marine.coral.find` while the marine pod was running, and
             // `blong.flow.find` refused the connection on `127.0.0.1:9455` (`@@D-736`).
             resolution: {impl: 'kubernetes'},
+            blob: {
+                storage: {directory: '/var/lib/blong/blob', namespaces: {party: {}}},
+            },
             gateway: {
                 static: {root: '/opt/deploy/suite/suite/blong-suite/dist'},
             },
@@ -212,19 +218,22 @@ export default server(() => ({
         // processes those realms become, so a realm missing here is a realm missing from the tree.
         // Every suite names its realms once per intent that has to know them — `dev` for a
         // developer's run, `k8s` for the tree, and the flags for a deployed process.
-        k8s: {core: {}, access: {}, marine: {}, login: {}},
+        k8s: {core: {}, access: {}, marine: {}, login: {}, blob: {}},
         // A migration names the realms here for the same reason a planning run does: bringing a
         // database up to date means *every* realm the suite declares, and no intent implies a realm
         // from another. What such a run needs of each realm is the realm's own answer — `upgrade`
         // activates `error`, `adapter` and `orchestrator` in `core/blong-lib/layers.ts`, and a realm
         // that needs more says so in its own `layer.server.ts` — so the generated Job carries no
         // `--<realm>.<layer>` selector at all (T-268).
-        upgrade: {core: {}, access: {}, marine: {}, login: {}},
+        upgrade: {core: {}, access: {}, marine: {}, login: {}, blob: {}},
         dev: {
             srv: {
                 db: {
                     // logLevel: 'debug',
                 },
+            },
+            blob: {
+                storage: {directory: '/var/lib/blong/blob', namespaces: {party: {}}},
             },
             core: {},
             access: {},
