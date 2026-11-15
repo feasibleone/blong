@@ -34,6 +34,7 @@
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
         "@feasibleone/blong-access": "workspace:^1.0.0",
+        "@feasibleone/blong-blob": "workspace:^0.1.0",
         "@feasibleone/blong-core": "workspace:^1.0.0",
         "@feasibleone/blong-feedback": "workspace:^0.1.0",
         "@feasibleone/blong-gateway": "workspace:^1.0.0",

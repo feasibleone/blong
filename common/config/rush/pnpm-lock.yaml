@@ -2158,6 +2158,9 @@ importers:
       '@feasibleone/blong-access':
         specifier: workspace:^1.0.0
         version: link:../blong-access
+      '@feasibleone/blong-blob':
+        specifier: workspace:^0.1.0
+        version: link:../blong-blob
       '@feasibleone/blong-core':
         specifier: workspace:^1.0.0
         version: link:../blong-core
@@ -2186,9 +2189,6 @@ importers:
         specifier: ^1.1.5
         version: 1.1.8
     devDependencies:
-      '@feasibleone/blong-blob':
-        specifier: workspace:^0.1.0
-        version: link:../blong-blob
       '@feasibleone/blong-browser':
         specifier: workspace:^1.0.0
         version: link:../../core/blong-browser
@@ -2292,6 +2292,9 @@ importers:
       '@feasibleone/blong-access':
         specifier: workspace:^1.0.0
         version: link:../../realm/blong-access
+      '@feasibleone/blong-blob':
+        specifier: workspace:^0.1.0
+        version: link:../../realm/blong-blob
       '@feasibleone/blong-browser':
         specifier: workspace:^1.0.0
         version: link:../../core/blong-browser
