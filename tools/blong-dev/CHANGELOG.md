@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.19.1](https://github.com/feasibleone/blong/compare/blong-dev-v1.19.0...blong-dev-v1.19.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* CI failures ([78b998a](https://github.com/feasibleone/blong/commit/78b998ad7e76f3a991d7fb90a48cc8e1c5b0a086))
+* CI handling ([9b3480c](https://github.com/feasibleone/blong/commit/9b3480cfbcd13b26ece3b69629ea4a06e703503b))
+* improve planning and linting ([f8536e1](https://github.com/feasibleone/blong/commit/f8536e13376cceb32ed43cdeee497e6884566688))
+
 ## [1.19.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.18.0...blong-dev-v1.19.0) (2026-11-12)
 
 

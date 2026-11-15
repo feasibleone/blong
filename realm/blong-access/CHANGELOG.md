@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.0](https://github.com/feasibleone/blong/compare/blong-access-v1.20.1...blong-access-v1.21.0) (2026-11-15)
+
+
+### Features
+
+* blong-blob ([66ba8d7](https://github.com/feasibleone/blong/commit/66ba8d7ec61b1f268209126361055883f00f88ab))
+
 ## [1.20.1](https://github.com/feasibleone/blong/compare/blong-access-v1.20.0...blong-access-v1.20.1) (2026-11-13)
 
 

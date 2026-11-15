@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.43.0](https://github.com/feasibleone/blong/compare/blong-v1.42.0...blong-v1.43.0) (2026-11-15)
+
+
+### Features
+
+* blong-blob ([66ba8d7](https://github.com/feasibleone/blong/commit/66ba8d7ec61b1f268209126361055883f00f88ab))
+
+
+### Bug Fixes
+
+* improve planning and linting ([f8536e1](https://github.com/feasibleone/blong/commit/f8536e13376cceb32ed43cdeee497e6884566688))
+* trimmed question in Slack ([537257e](https://github.com/feasibleone/blong/commit/537257e3abd8ff2835b1eac1b3a7e4eb39d058d3))
+
 ## [1.42.0](https://github.com/feasibleone/blong/compare/blong-v1.41.0...blong-v1.42.0) (2026-11-13)
 
 

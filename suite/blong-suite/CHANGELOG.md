@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.19.1...blong-suite-v1.20.0) (2026-11-15)
+
+
+### Features
+
+* blong-blob ([66ba8d7](https://github.com/feasibleone/blong/commit/66ba8d7ec61b1f268209126361055883f00f88ab))
+
 ## [1.19.1](https://github.com/feasibleone/blong/compare/blong-suite-v1.19.0...blong-suite-v1.19.1) (2026-11-13)
 
 

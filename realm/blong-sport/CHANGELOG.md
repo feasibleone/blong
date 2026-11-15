@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.11.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.10.1...blong-sport-v0.11.0) (2026-11-15)
+
+
+### Features
+
+* blong-blob ([66ba8d7](https://github.com/feasibleone/blong/commit/66ba8d7ec61b1f268209126361055883f00f88ab))
+
+
+### Bug Fixes
+
+* address feedback ([b37db20](https://github.com/feasibleone/blong/commit/b37db205c4ff29ce913066137848ff128c361e30))
+
 ## [0.10.1](https://github.com/feasibleone/blong/compare/blong-sport-v0.10.0...blong-sport-v0.10.1) (2026-11-13)
 
 
