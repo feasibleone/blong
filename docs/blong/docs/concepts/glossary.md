@@ -13,8 +13,17 @@ protocol it speaks. See [adapter](./adapter.md) and the [adapter pattern](../pat
 source of truth for validation and docs. See [API](./api.md) and [OpenAPI](./openapi.md).
 
 **asset server** — The process that serves a suite's browser bundle under /s/, with the security and
-cache headers a page needs; it is not a realm, and it runs beside the suite's processes. See the
-[kustomize pattern](../patterns/kustomize.md).
+cache headers a page needs; not a realm, and not the blob store, which serves the files people put in
+it. See [kustomize](../patterns/kustomize.md) and [blob](./blob.md).
+
+**blob** — Content the framework stores for a realm under a generated key, held as bytes plus the
+record that says what it is; see [blob](./blob.md).
+
+**blob reference** — The string a record holds for a stored blob — `blob://<namespace>/<key>` —
+which survives a form and a JSON call; see [blob](./blob.md).
+
+**blob store** — The realm that keeps blobs and serves them at a route a browser element can read;
+see the [blob pattern](../patterns/blob.md).
 
 **callout** — The box a feedback comment is typed in, drawn beside its element and joined to it by
 an arrow, and stored as a fraction of the picture rather than in pixels. See the
@@ -101,6 +110,9 @@ the Retired ledger, so a stale reference warns with its successor. See
 
 **schema sync** — The declarative database management that reconciles tables, constraints and
 procedures from TypeScript and YAML. See [schema sync](./schema-sync.md).
+
+**scope cookie** — The signed, path-scoped cookie that authorizes a browser element's read of a
+stored file, carrying the reader's scopes; see [blob](./blob.md).
 
 **semantic log** — Logging that mints an id per record, so the full detail is reached on demand
 instead of grepped. See [semantic log](./semantic-log.md).

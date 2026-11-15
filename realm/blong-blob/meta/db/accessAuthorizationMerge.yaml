@@ -1,0 +1,33 @@
+# RBAC seed — grants the methods the portal and the pages call.
+#
+# A stored file is read from a plain `<img>` or `<a>`, so the read is a route (`GET /a/:namespace/:key`)
+# that carries `auth: false` and is authorised by the scope cookie instead: there is nothing for the
+# authorization list to decide there. What a session needs is the right to *mint* that cookie
+# (`blob.scope.issue`, which the shell calls once per session, @@D-836) and to read a blob's record
+# (`blob.blob.get`, which is how a page learns what a stored file is). Both belong to whoever can see
+# the page the file is on, so they ride with the four deployment-wide roles rather than a new ladder.
+#
+# Filling a form with a file is the same authority as seeing the form: `blobWrite` carries the three
+# calls an upload is (`blob.upload.prepare`, `.commit`, `.discard`, @@D-840). Without them the widget
+# draws its picker and every choice is refused — the page looks broken rather than forbidden — which is
+# how this grant came to be written (@@F-740).
+#
+# The capability lists the dotted method names the caller invokes, not the handler names: the gateway
+# authorizes the route it serves, so a list of handler names grants nothing and every image is refused.
+#
+# The file name is `accessAuthorizationMerge.yaml` because the seed method is derived from it: the
+# content carries the blob names, the method is blong-access's shared `access.authorization.merge`.
+role:
+  Guest: blobScope,blobWrite
+  Customer: blobScope,blobWrite
+  Manager: blobScope,blobWrite
+  # The store's own operations — what it is, what it holds, and the sweep of what expired — are an
+  # administrator's: they answer for the whole process rather than for one reader's files.
+  Admin: blobScope,blobWrite,blobAdmin
+capability:
+  blobScope: blob.scope.issue,blob.blob.get
+  # The four calls one upload is: the three RPCs, and the raw route the bytes themselves go to — a
+  # route is authorised by the method name it carries too, so leaving it out refuses the `PUT` that
+  # the other three exist to reach (`@@D-841`).
+  blobWrite: blob.upload.prepare,blob.upload.write,blob.upload.commit,blob.upload.discard
+  blobAdmin: blob.storage.info,blob.blob.find,blob.temp.cleanup

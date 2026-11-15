@@ -17,6 +17,7 @@ export default server(blong => ({
         './redis',
         './http',
         './s3',
+        './blob',
         './kafka',
         './vault',
         './keycloak',
@@ -65,7 +66,17 @@ export default server(blong => ({
         },
         'adapter.s3': {
             s3: {},
-            watch: {test: ['test.s3.objectPut', 'test.s3.objectCrud', 'test.s3.bucketList']},
+            watch: {
+                test: [
+                    'test.s3.objectPut',
+                    'test.s3.objectCrud',
+                    'test.s3.bucketList',
+                ],
+            },
+        },
+        'adapter.blob': {
+            blob: {},
+            watch: {test: ['test.blobStorageS3']},
         },
         'adapter.kafka': {
             kafka: {},

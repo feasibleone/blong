@@ -8,6 +8,7 @@ import {describe, expect, it, vi} from 'vitest';
 import {FormStateContext} from '../components/Form/FormContext.js';
 import {act, fireEvent, render, screen} from '../test/render.js';
 
+import {AssetWidget} from './AssetWidget.js';
 import {BooleanWidget} from './BooleanWidget.js';
 import {CurrencyWidget} from './CurrencyWidget.js';
 import {DateTimeWidget} from './DateTimeWidget.js';
@@ -54,6 +55,32 @@ function mkProps(overrides: WidgetProps = {}) {
         ...overrides,
     } as IWidgetProps;
 }
+
+describe('AssetWidget', () => {
+    it('renders empty', () => {
+        const {container} = render(<AssetWidget {...mkProps()} />);
+        expect(container).toMatchSnapshot();
+    });
+    it('renders a link a reader pasted', () => {
+        // A `data:` value is left alone by the resolver, so the preview needs no store: the
+        // picture is the value itself (@@D-842).
+        const {container} = render(
+            <AssetWidget
+                {...mkProps({
+                    value: 'data:image/png;base64,iVBORw0KGgo=',
+                    schema: {widget: {type: 'asset', accept: 'image/*'}},
+                })}
+            />,
+        );
+        expect(container).toMatchSnapshot();
+    });
+    it('renders readOnly', () => {
+        const {container} = render(
+            <AssetWidget {...mkProps({readOnly: true, value: 'https://example.test/a.png'})} />,
+        );
+        expect(container).toMatchSnapshot();
+    });
+});
 
 describe('TextWidget', () => {
     it('renders', () => {

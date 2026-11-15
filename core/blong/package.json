@@ -17,12 +17,18 @@
             "types": "./types.ts",
             "default": "./dist/types.js"
         },
-        "./types": "./types.ts"
+        "./types": "./types.ts",
+        "./blob": {
+            "blong-dev": "./blob.ts",
+            "types": "./blob.ts",
+            "default": "./dist/blob.js"
+        }
     },
     "scripts": {
         "build": "heft build --clean && node scripts/buildDeclarations.mjs",
         "ci-lint": "blong-dev lint",
-        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
+        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
+        "ci-test": "blong-dev test"
     },
     "dependencies": {
         "openapi-types": "^12.1.3",
@@ -50,6 +56,7 @@
         "node-vault": "^0.10.10",
         "openapi-types": "^12.1.3",
         "react": "^19.1.0",
+        "tap": "^21.6.3",
         "tarn": "^3.0.2",
         "typescript": "^6.0.3"
     }

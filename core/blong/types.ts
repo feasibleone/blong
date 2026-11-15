@@ -51,6 +51,7 @@ export type * from 'mongodb';
 export type {IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1} from 'openapi-types';
 // export type {Level, LogFn, Logger as PinoLogger} from 'pino';
 export type * from './agent.ts';
+export type * from './blob.ts';
 export type * from './chat.ts';
 export type * from './feedback.ts';
 export type {Knex} from './knex.js';
@@ -1283,6 +1284,23 @@ export type GatewaySchema = (
     security?: true;
     basePath?: string;
     subject?: string;
+    /**
+     * The largest body this route accepts, in bytes.
+     *
+     * A streamed route names its own ceiling, because fastify's 1 MiB default is the size of a JSON
+     * call and not of a file (@@D-841).
+     */
+    bodyLimit?: number;
+    /**
+     * Take the body as a stream, whatever its content type.
+     *
+     * Fastify answers `415` for a content type nobody parses, and an upload arrives as `image/png`.
+     * The route that wants the bytes declares this, and the gateway registers the parser for **that
+     * route alone**, in an encapsulated context, so no other route of the process starts accepting
+     * bodies it cannot read (`@@D-860`). A route that declares it reads the stream from
+     * `params.body`.
+     */
+    rawBody?: boolean;
     destination?: string;
     operation?: OpenAPIV3_1.OperationObject | OpenAPIV2.OperationObject;
     /** Metering metadata threaded into the Fastify route config by Gateway.ts. */

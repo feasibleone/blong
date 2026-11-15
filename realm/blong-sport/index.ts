@@ -1,4 +1,5 @@
 import {server} from '@feasibleone/blong';
+import {join} from 'node:path';
 
 /**
  * index.ts — standalone server bootstrap for `sport` integration tests.
@@ -29,6 +30,15 @@ export default server(() => ({
         async function party() {
             return import('@feasibleone/blong-party/server.ts');
         },
+        /**
+         * The store a document's file lives in (`@@D-845`).
+         *
+         * A companion: no process of its own, no Service — it stores for whichever process carries it,
+         * and the namespace it writes to is `sport`'s, named in the config below.
+         */
+        async function blob() {
+            return import('@feasibleone/blong-blob/server.ts');
+        },
         /** `sport` management realm */
         async function sport() {
             return import('./server.ts');
@@ -51,7 +61,8 @@ export default server(() => ({
     config: {
         default: {
             // Enforce RBAC on the gateway — resolves allowed actions for the
-            // authenticated user (access realm), 403 when not authorized.
+            // authenticated user (access realm), 403 when not authorized. The stream body the upload
+            // route needs is that route's own declaration, not this block's (`@@D-860`).
             gateway: {authorize: 'access.authorization.list'},
             // Explicit children need a config block to load. `testRealm` deliberately has none
             // here: the loader skips a child whose block is absent, so the test runner does not
@@ -112,6 +123,11 @@ export default server(() => ({
             // `Cannot read properties of undefined (reading 'map')`. The test fixtures are for the
             // dev and integration intents; a released process does not need them.
             party: {schema: {dbTest: false}},
+            // A released process carries the store: without the child there is no directory to mount
+            // and every upload answers that no namespace is configured (`@@D-854`).
+            blob: {
+                storage: {directory: '/var/lib/blong/blob', namespaces: {sport: {}}},
+            },
             gateway: {
                 static: {root: '/opt/deploy/suite/realm/blong-sport/dist'},
             },
@@ -121,8 +137,12 @@ export default server(() => ({
                         connection: {
                             host: 'db',
                             port: 3306,
-                            user: 'blong-sport',
-                            password: 'password',
+                            // No credential in a source tree (`@@D-857`): not the password and not the
+                            // user, because the pair is one thing and a tree that names half of it is a
+                            // tree that has a credential in it. A credential somebody sets by hand
+                            // belongs in the tenant's own file — Secret `blong-releaserc-etc`, mounted at
+                            // `/etc/blong_releaserc` and read by `rc` — not in `blong-secrets`, which the
+                            // operator owns and fills with what it generates (`@@D-855`).
                             database: 'blong-sport',
                         },
                     },
@@ -130,7 +150,17 @@ export default server(() => ({
             },
         },
         // A planning run and the migration Job each need every realm the suite can deploy.
-        k8s: {sport: {}, login: {}, core: {}, access: {}, gateway: {}, party: {}},
+        // A child with no block does not load, and a deployment that does not load the store has no
+        // claim to mount: the generated tree reads its volumes from the ports that are loaded (`@@D-854`).
+        k8s: {
+            sport: {},
+            login: {},
+            core: {},
+            access: {},
+            gateway: {},
+            party: {},
+            blob: {},
+        },
         upgrade: {
             sport: {},
             login: {},
@@ -139,6 +169,9 @@ export default server(() => ({
             gateway: {},
             party: {},
             feedback: {},
+            // The store loads under `upgrade` too: its port is what a deployment mounts, and the
+            // migration job reads the same tree as the process it migrates for (`@@D-854`).
+            blob: {},
         },
         dev: {
             srv: {},
@@ -146,25 +179,34 @@ export default server(() => ({
             access: {},
             gateway: {},
             party: {},
+            // The documents this realm stores. `dev/blob` is gitignored, so a run leaves its files
+            // where a person can look at them without committing anything (`@@D-845`). The key and the
+            // cookie secret come from the realm's own `dev` block.
+            blob: {
+                storage: {directory: join('dev', 'blob'), namespaces: {sport: {}}},
+            },
             sport: {},
             feedback: {},
             login: {},
             testRealm: {
                 // Only this realm's server group may be started from the Test
                 // runs console; the runner refuses every other method.
-                testRun: {serverGroups: ['test.athlete', 'test.nomenclature']},
+                testRun: {serverGroups: ['test.athlete', 'test.nomenclature', 'test.scope']},
             },
         },
         integration: {
             watch: {
-                test: ['test.athlete', 'test.nomenclature'],
+                test: ['test.athlete', 'test.nomenclature', 'test.scope'],
             },
             gateway: {},
             party: {},
+            blob: {
+                storage: {directory: join('dev', 'blob'), namespaces: {sport: {}}},
+            },
             sport: {},
             feedback: {},
             testRealm: {
-                testRun: {serverGroups: ['test.athlete', 'test.nomenclature']},
+                testRun: {serverGroups: ['test.athlete', 'test.nomenclature', 'test.scope']},
             },
         },
         // Playwright drives the UI; the server does not need to run every test
@@ -174,7 +216,7 @@ export default server(() => ({
         },
         'test-ui': {
             testRealm: {
-                testRun: {serverGroups: ['test.athlete', 'test.nomenclature']},
+                testRun: {serverGroups: ['test.athlete', 'test.nomenclature', 'test.scope']},
             },
         },
     },

@@ -1,7 +1,8 @@
 import {handler, type IMeta} from '@feasibleone/blong';
 import {
-    GATEWAY_KEYS_LABEL,
     GENERATED_CREDENTIALS_LABEL,
+    SUITE_SECRETS_LABEL,
+    SUITE_SECRETS_LEGACY_LABEL,
     INSTANCE_LABEL,
     PART_OF_LABEL,
     RESOURCE_TYPE_BY_KIND,
@@ -281,10 +282,13 @@ export const prunableByObsolescence = (obsolete: IClusterObject[]): IClusterObje
     obsolete.filter(
         object =>
             !hasRetentionLabel(object) &&
-            // The gateway key pair is written by a pass rather than by the tree, so a listing that can
-            // see it does not make it obsolete: it is held while its declaration exists and removed
-            // with it, which is what its owner reference is for .
-            object.metadata?.labels?.[GATEWAY_KEYS_LABEL] === undefined,
+            // The suite's secret configuration is written by a pass rather than by the tree, so a
+            // listing that can see it does not make it obsolete: it is held while its declaration
+            // exists and removed with it, which is what its owner reference is for (`@@D-855`). The
+            // label it carried before the rename counts too, or the first pass after the change would
+            // prune the very Secret it is about to fill in.
+            object.metadata?.labels?.[SUITE_SECRETS_LABEL] === undefined &&
+            object.metadata?.labels?.[SUITE_SECRETS_LEGACY_LABEL] === undefined,
     );
 
 const timestampOf = (object: IClusterObject): string =>
@@ -884,18 +888,18 @@ export default handler(({handler}) => {
         const readOnly = !params.apply;
 
         /**
-         * The suite's keys, before the processes that read them.
+         * The suite's secret configuration, before the processes that read it.
          *
-         * The tree cannot carry them — a regenerated tree must be byte-identical, which the
-         * realm's tests pin — so the deployment creates them, and it has to create them *before*
+         * The tree cannot carry it — a regenerated tree must be byte-identical, which the
+         * realm's tests pin — so the deployment writes it, and it has to be written *before*
          * the Deployments: a pod that comes up in this same pass would otherwise hold only the
          * framework's per-process fallback, and the browser session opened against it would
-         * belong to that one replica until it restarts . A read-only pass creates nothing,
-         * the same rule pruning follows.
+         * belong to that one replica until it restarts (and a blob written under no key is a file
+         * nobody reads back). A read-only pass writes nothing, the same rule pruning follows.
          */
-        let keys: {name: string; created: boolean; reason?: string} | undefined;
+        let keys: {name: string; created: boolean; updated?: boolean; reason?: string} | undefined;
         if (!readOnly) {
-            const ensure = call('kustomizeGatewayKeysEnsure') as unknown as
+            const ensure = call('kustomizeSecretsEnsure') as unknown as
                 | ((
                       params: {
                           namespace: string;

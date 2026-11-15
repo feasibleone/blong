@@ -1,5 +1,179 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`AssetWidget > renders a link a reader pasted 1`] = `
+<div>
+  <div
+    class="blong-asset "
+    data-testid="testField"
+  >
+    <div
+      class="blong-asset__current"
+    >
+      <img
+        alt=""
+        class="blong-blob-image blong-blob-image--circle"
+        src="data:image/png;base64,iVBORw0KGgo="
+        style="width: 64px; height: 64px; object-fit: cover;"
+      />
+      <a
+        class="blong-asset__name blong-asset__link"
+        download="image/png"
+        href="data:image/png;base64,iVBORw0KGgo="
+      >
+        image/png
+      </a>
+      <button
+        aria-label="Remove"
+        class="p-button p-component p-button-icon-only p-button-text p-button-rounded"
+        data-pc-name="button"
+        data-pc-section="root"
+        type="button"
+      >
+        <span
+          class="p-button-icon p-c pi pi-times"
+          data-pc-section="icon"
+        />
+        <span
+          class="p-button-label p-c"
+          data-pc-section="label"
+        >
+           
+        </span>
+      </button>
+    </div>
+    <div
+      class="blong-asset__pick"
+    >
+      <div
+        class="blong-asset__upload p-fileupload p-fileupload-basic p-component"
+        data-pc-name="fileupload"
+        data-pc-section="root"
+      >
+        <div
+          data-pc-name="messages"
+          data-pc-section="root"
+        >
+          <div />
+        </div>
+        <span
+          class="p-button p-component p-fileupload-choose"
+          data-pc-section="basicbutton"
+          tabindex="0"
+        >
+          <span
+            class="p-button-icon p-button-icon-left pi pi-upload"
+            data-pc-section="chooseicon"
+          />
+          <span
+            class="p-button-label p-clickable"
+            data-pc-section="label"
+          >
+            Choose a file
+          </span>
+          <input
+            accept="image/*"
+            data-pc-section="input"
+            type="file"
+          />
+        </span>
+      </div>
+      <span
+        class="blong-asset__or"
+      >
+        or paste a link
+      </span>
+      <input
+        class="blong-asset__url p-inputtext p-component"
+        data-pc-name="inputtext"
+        data-pc-section="root"
+        placeholder="https://…"
+        value=""
+      />
+    </div>
+  </div>
+</div>
+`;
+
+exports[`AssetWidget > renders empty 1`] = `
+<div>
+  <div
+    class="blong-asset "
+    data-testid="testField"
+  >
+    <div
+      class="blong-asset__pick"
+    >
+      <div
+        class="blong-asset__upload p-fileupload p-fileupload-basic p-component"
+        data-pc-name="fileupload"
+        data-pc-section="root"
+      >
+        <div
+          data-pc-name="messages"
+          data-pc-section="root"
+        >
+          <div />
+        </div>
+        <span
+          class="p-button p-component p-fileupload-choose"
+          data-pc-section="basicbutton"
+          tabindex="0"
+        >
+          <span
+            class="p-button-icon p-button-icon-left pi pi-upload"
+            data-pc-section="chooseicon"
+          />
+          <span
+            class="p-button-label p-clickable"
+            data-pc-section="label"
+          >
+            Choose a file
+          </span>
+          <input
+            data-pc-section="input"
+            type="file"
+          />
+        </span>
+      </div>
+      <span
+        class="blong-asset__or"
+      >
+        or paste a link
+      </span>
+      <input
+        class="blong-asset__url p-inputtext p-component"
+        data-pc-name="inputtext"
+        data-pc-section="root"
+        placeholder="https://…"
+        value=""
+      />
+    </div>
+  </div>
+</div>
+`;
+
+exports[`AssetWidget > renders readOnly 1`] = `
+<div>
+  <div
+    class="blong-asset"
+    data-testid="testField"
+  >
+    <a
+      class="blong-asset__icon blong-asset__link"
+      download="a.png"
+      href="https://example.test/a.png"
+    >
+      <i
+        aria-hidden="true"
+        class="pi pi-file"
+      />
+       
+      a.png
+    </a>
+  </div>
+</div>
+`;
+
 exports[`BooleanWidget > renders checked 1`] = `
 <div>
   <div

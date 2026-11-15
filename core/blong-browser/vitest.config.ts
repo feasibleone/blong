@@ -37,6 +37,8 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': resolve(__dirname, 'src'),
+            // The blob contract, from source — the same file the browser build aliases.
+            '@feasibleone/blong/blob': resolve(__dirname, '../blong/blob.ts'),
         },
     },
 });

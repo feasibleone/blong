@@ -3,9 +3,11 @@ import './AccountMenu.css';
 import React, {useEffect, useMemo, useRef} from 'react';
 import {useBlong} from '../../context/BlongContext.js';
 import {useText} from '../../hooks/useText.js';
+import {deriveInitials} from '../../lib/initials.js';
 import type {MenuItem} from '../../primereact/shell.js';
 import {Avatar, Menu} from '../../primereact/shell.js';
 import {useAppStore} from '../../state/appStore.js';
+import {BlobImage} from '../BlobImage/BlobImage.js';
 
 /**
  * AccountMenu — the top-right account element in the portal menubar.
@@ -28,13 +30,8 @@ export interface IAccountMenuProps {
     profileGet?: string;
 }
 
-function deriveInitials(name: string | undefined): string | undefined {
-    if (!name) return undefined;
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    if (parts[0]?.length >= 2) return parts[0].slice(0, 2).toUpperCase();
-    return parts[0]?.[0]?.toUpperCase();
-}
+/** The menubar avatar's box, in pixels — the photograph and the initials fill the same circle. */
+const AVATAR_SIZE = 32;
 
 /** A raw profile-get result — shaped loosely so both access-profile and IUserProfile shapes work. */
 interface IProfileData {
@@ -48,7 +45,9 @@ interface IProfileData {
     language?: string;
     preferredLanguage?: string;
     /** access.profile.get nests the personal-name fields under `person`. */
-    person?: {firstName?: string; lastName?: string};
+    person?: {firstName?: string; lastName?: string; photoUrl?: string | null};
+    /** The photograph itself: a `blob://` reference or an external URL (`@@D-842`). */
+    photoUrl?: string | null;
 }
 
 /** The runtime handler proxy — any method key, called with (params, $meta). */
@@ -99,6 +98,9 @@ export function AccountMenu({profilePage, profileGet}: IAccountMenuProps) {
                     name: name || undefined,
                     initials: data.initials ?? undefined,
                     language: data.language ?? data.preferredLanguage ?? undefined,
+                    // The profile page calls `setProfile` after a save, so a replaced
+                    // photograph reaches this avatar without a reload (`@@D-842`).
+                    photoUrl: data.person?.photoUrl ?? data.photoUrl ?? undefined,
                 });
             } catch {
                 // Profile fetch is best-effort — the avatar falls back to the
@@ -156,14 +158,31 @@ export function AccountMenu({profilePage, profileGet}: IAccountMenuProps) {
 
     return (
         <div className="blong-account-menu">
-            <Avatar
-                label={initials}
-                icon={initials ? undefined : 'pi pi-user'}
-                shape="circle"
-                className="blong-account-menu__avatar"
-                onClick={e => menuRef.current?.toggle(e)}
-                title={profile?.name}
-            />
+            {profile?.photoUrl ? (
+                // A person who has a photograph gets it; the initials are the fallback for one who
+                // has not chosen one, and the picture's own error path falls back to them too
+                // (`@@D-842`).
+                <span
+                    className="blong-account-menu__avatar blong-account-menu__photo"
+                    onClick={e => menuRef.current?.toggle(e)}
+                    title={typeof profile?.name === 'string' ? profile.name : undefined}
+                >
+                    <BlobImage
+                        value={profile.photoUrl}
+                        name={typeof profile.name === 'string' ? profile.name : undefined}
+                        size={AVATAR_SIZE}
+                    />
+                </span>
+            ) : (
+                <Avatar
+                    label={initials}
+                    icon={initials ? undefined : 'pi pi-user'}
+                    shape="circle"
+                    className="blong-account-menu__avatar"
+                    onClick={e => menuRef.current?.toggle(e)}
+                    title={profile?.name}
+                />
+            )}
             <Menu
                 model={model}
                 popup

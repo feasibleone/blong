@@ -56,6 +56,7 @@ export type WidgetType =
     | 'file'
     | 'image'
     | 'imageUpload'
+    | 'asset'
     | 'autocomplete'
     | 'table'
     | 'navigator'
@@ -81,6 +82,29 @@ export interface ICycleCellState {
 /** Base widget configuration (stored in schema x-widget) */
 export interface IWidgetConfig {
     type: WidgetType;
+    /**
+     * The namespace an `asset` field writes to — the one the owning realm claimed (@@D-845).
+     *
+     * A blob store is addressed per namespace, and the realm that owns the record is the one that knows
+     * which: a photograph of a person belongs to `party`, a document of a club to `sport`. The widget
+     * never guesses, because a wrong namespace is a file served under somebody else's route.
+     */
+    namespace?: string;
+    /** The scopes an `asset` is written with — what a reader must hold to fetch it (@@D-836). */
+    scopes?: string[];
+    /** The variant an `asset` shows — `thumb` unless the field asks for the original. */
+    variant?: string;
+    /**
+     * Sibling fields an `asset` fills from the record it stored, keyed by the field's own name.
+     *
+     * A stored file arrives with a type, a size and a digest, and a model often has columns for
+     * exactly those — a document's format and checksum, a picture's dimensions. Asking a reader to
+     * type them is asking for a copy of what the store already knows, so the field publishes them
+     * when the upload commits: the value is the piece of the record (`contentType`, `size`, `digest`,
+     * `extension`, `filename`) and the key is the field that receives it, as the model names it
+     * (`document.documentFormat`) (@@D-852).
+     */
+    fill?: Record<string, 'contentType' | 'size' | 'digest' | 'extension' | 'filename'>;
     /** For dropdown/multiSelect — action name to fetch options */
     fetch?: string;
     /** Named dropdown key — loads options via portalDropdownList */
@@ -135,9 +159,10 @@ export interface IWidgetConfig {
      */
     compare?: string;
     /**
-     * Render a `file` cell as a link that downloads the file. The url is the item's
-     * own (`objectURL` / `url`) or, failing that, `basePath` + the row's `pathField`.
-     * Without it the cell lists the file names, which is all a reader can act on.
+     * Render a `file` cell as a link that downloads the file — and, for an `asset`, whether its link
+     * downloads rather than opens (@@D-842). The url is the item's own (`objectURL` / `url`) or,
+     * failing that, `basePath` + the row's `pathField`. Without it the cell lists the file names,
+     * which is all a reader can act on.
      */
     download?: boolean;
     /** Row field holding the stored path of a file (default `hash`). */
@@ -211,9 +236,9 @@ export interface IWidgetConfig {
     };
     /** Whether to show the inline editor directly inside the cell (boolean/dropdown) */
     inlineEdit?: boolean;
-    /** Accepted file types (file/imageUpload widgets) */
+    /** Accepted file types (file/imageUpload/asset widgets) */
     accept?: string;
-    /** Maximum file size in bytes (file/image widgets) */
+    /** Maximum file size in bytes (file/image/asset widgets; the serving route enforces its own too) */
     maxSize?: number;
     /** Base URL prefix for image display (image/imageUpload widgets) */
     basePath?: string;
@@ -382,6 +407,14 @@ export interface IWidgetProps {
     /** Dropdown option maps — keyed by dropdown name, each value is the options array.
      *  Passed to TableWidget so column-level dropdown schemas can resolve their options. */
     dropdowns?: Record<string, unknown[]>;
+    /**
+     * Writes a sibling field a widget derives from its own value.
+     *
+     * Passed only to a widget whose configuration declares `fill`, and only by a form that can write
+     * another field — the widget never reaches for the form itself, so a widget rendered outside one
+     * keeps working and simply fills nothing (@@D-852).
+     */
+    onFill?: (field: string, value: unknown) => void;
 }
 
 /** Widget registry interface */

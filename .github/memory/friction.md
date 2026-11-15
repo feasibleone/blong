@@ -76,7 +76,7 @@ open (64)
 - `F-696` · cross-cutting — The reports site publishes every Playwright trace three times
 - `F-703` · cross-cutting — A dropped table leaves its foreign keys behind
 
-resolved (45)
+resolved (47)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -125,6 +125,9 @@ resolved (45)
 - `F-555` · ci — CI tests run against a dist cached under a lockfile-only key
 - `F-724` · ci — Measuring what a deploy job pays for takes three readings
 - `F-725` · ci — A cache restore must name the paths the save named
+- `F-728` · cross-cutting — The blob realm's tap entry hangs after both platforms start
+- `F-731` · cross-cutting — An orchestrator group answers nothing until a dispatch orchestrator
+  serves it
 
 <!-- /memory:index -->
 
@@ -1793,6 +1796,44 @@ that arrive with it are removed before the install, because their build cache de
 
 The deploy jobs restore with CI's CACHE_PATHS list and delete the .rush trees that arrive with it;
 verified against the toolkit's version hash and the 2026-11-13 release run.
+
+### F-728 — The blob realm's tap entry hangs after both platforms start
+
+> _2026-11-14 · cross-cutting · resolved_
+
+The realm's tap entry never completes. Both platforms start — the log reaches `gateway listening`
+and every adapter reports ready — and then `serverPlatform.test(test)` answers nothing until tap's
+30 second alarm, with the watch list empty as well as with a group in it. What was ruled out: a
+missing `@feasibleone/blong` import (the broken `export * from './blob.js'` in `types.ts` was one
+real cause of an earlier failure and is fixed), an unregistered test group, a server-only run
+(loading both platforms as `blong-sport` does changed nothing), and missing infrastructure (MySQL on
+3306 and Keycloak on 8180 are up). The working theory is the manifest handshake between the two
+platforms in a realm whose browser side carries no test group. The store itself is proven by
+`adapter/storage/storageCache.test.ts`, which needs no loaded suite, and the package's test script
+runs that file until the tap-groups task wires the entry.
+
+Resolved: a plain adapter never called super.connect(), so the platform never became ready, and the
+adapter did not name its handler group in activation.imports, so the group loaded and answered
+nothing. Both fixed in adapter/store.ts; the realm's server group now runs under blong-dev test (151
+assertions)
+
+### F-731 — An orchestrator group answers nothing until a dispatch orchestrator serves it
+
+> _2026-11-14 · cross-cutting · resolved_
+
+A realm whose handlers live in `orchestrator/<group>/` is not reachable from another port until a
+dispatch orchestrator serves the namespace. Without one the call falls through to the gateway, asks
+for `/rpc/ports/<ns>/request`, and that route exists only when some port registered the namespace,
+so the answer is a 404 from the rpc server. The realm needs an `orchestrator/<ns>Dispatch.ts` with
+`extends: 'orchestrator.dispatch'` and `activation.default.imports` naming its groups (blong-chat
+`chatDispatch`, blong-agent `agentDispatch`); the port is then `<realm>.<ns>Dispatch`, which is also
+the config key a deployment addresses. Two things make the mistake expensive to see: the handler
+proxy answers `undefined` for a method nobody registered rather than throwing, so it reads like a
+wrong method name; and a suite's own `server/test/` group is dispatched by the auto-provisioned
+`testDispatch` port, which is why the test group answers while the orchestrator handler it calls
+does not.
+
+recorded
 
 ## Retired
 

@@ -38,6 +38,13 @@ export default handler(
                 gender: string | null;
                 nationality: string | null;
                 occupation: string | null;
+                /**
+                 * The photograph: a `blob://` reference or an external URL (`@@D-842`).
+                 *
+                 * The account menu draws it, so the payload is where it has to be — the avatar would
+                 * otherwise need a second call for one field.
+                 */
+                photoUrl: string | null;
             } | null;
         }> {
             const qb: KnexQb = this.config?.context?.queryBuilder;
@@ -84,6 +91,7 @@ export default handler(
                         'p.gender',
                         'p.nationality',
                         'p.occupation',
+                        'p.photoUrl',
                     )
                     .from('core_triple as t')
                     .join('party_person as p', 'p.personId', 't.objectId')
@@ -100,6 +108,7 @@ export default handler(
                         gender: row.gender ?? null,
                         nationality: row.nationality ?? null,
                         occupation: row.occupation ?? null,
+                        photoUrl: row.photoUrl ?? null,
                     };
                 }
             } catch {

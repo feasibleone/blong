@@ -260,6 +260,7 @@ words:
   - Milleporidae
   - Millis
   - Millisec
+  - Minipass
   - Mistral
   - mkac
   - mlek
@@ -274,6 +275,7 @@ words:
   - mousedown
   - MPVV
   - MSISDN
+  - msword
   - mtid
   - mxbai
   - myapp
@@ -297,6 +299,7 @@ words:
   - Nunito
   - ocellaris
   - Octopus
+  - officedocument
   - oidc
   - ollama
   - Omnium
@@ -309,6 +312,7 @@ words:
   - openAPIV3Schema
   - openebs
   - OpenRouter
+  - openxmlformats
   - overlaypanel
   - panelmenu
   - PANTONE
@@ -407,6 +411,7 @@ words:
   - Semlog
   - SEPA
   - serialisable
+  - servable
   - serviceaccount
   - servicelb
   - sherpaw
@@ -423,6 +428,7 @@ words:
   - speechstart
   - Speedscope
   - splendidus
+  - spreadsheetml
   - sqlitemadd
   - sqlitemlistactive
   - staghorn
@@ -445,6 +451,7 @@ words:
   - Taekwondo
   - tapjs
   - teardown
+  - testids
   - testrealm
   - testrun
   - thumbindex
@@ -506,6 +513,7 @@ words:
   - webcamera
   - WHATWG
   - wordmark
+  - wordprocessingml
   - worldtimeapi
   - Wrasse
   - writable

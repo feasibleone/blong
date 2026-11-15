@@ -43,7 +43,7 @@ open (25)
 - `T-639` · realm/blong-kustomize — Regenerate the kustomize operator deployments baseline
 - `T-645` · realm/blong-kustomize — A deployment still has no semantic-log service to read
 
-done (16)
+done (17)
 
 - `T-279` · realm/blong-kustomize — The operator reports obsolete objects and never deletes them
 - `T-277` · realm/blong-kustomize — The plan resolves no databases, so the init script creates none
@@ -64,6 +64,7 @@ done (16)
 - `T-317` · realm/blong-kustomize — k8sVolumes is declared but read by nothing
 - `T-608` · realm/blong-kustomize — regenerate the suite tree and run the k8s cycle for the asset
   server
+- `T-686` · realm/blong-kustomize — One generated secret for the suite
 
 <!-- /memory:index -->
 
@@ -647,6 +648,41 @@ Deployment becomes Available, /s/ answers through assets-http, and the login leg
 
 Ran the cycle on the restarted dev-cluster, verified the assets Deployment, fixed the root Prefix
 and the companion RPC catch-all it exposed, and exercised the live UI.
+
+### T-686 — One generated secret for the suite
+
+> _2026-11-14 · realm/blong-kustomize · done_
+
+The user's finding: the Secret the operator fills was named for one consumer (`gateway-keys`) and
+only ever carried the gateway pair, so a released blob realm had no key at all, and a suite's
+database password sat in source. One Secret, generated where it is missing and merged where it
+exists, now carries everything a process needs and a tree must not: the gateway pair,
+`remote.client.*`, `kustomize.login.session.key`, and the blob key and cookie secret (`@@D-855`
+`@@D-856`). Credentials the operator does not own — an external database's password — are supplied
+by the tenant in `blong-releaserc`, because a password it invents is one the server never learned
+(`@@D-857`).
+
+Done: `orchestrator/controller/kustomizeSecretsEnsure.ts` replaces `kustomizeGatewayKeysEnsure`
+(wire name `kustomize.secrets.ensure`, called by the reconcile pass before the Deployments), the
+Secret is `blong-secrets` labelled `blong.feasible.one/suite-secrets` with the volume named
+`secrets`, the older name and label are still read so an existing deployment is filled rather than
+duplicated, the blob port no longer declares an env pair, and `realm/blong-sport/index.ts` carries
+no password. `test.secrets` (formerly `test.gateway.keys`) asserts the document's blob paths, that a
+merge adds only what an older document lacks and keeps the pair it holds, and that an unreadable
+document is left alone.
+
+- verify: `blong-dev test` in `realm/blong-kustomize` (143/143), the blob realm's groups (256/256),
+  and the sport tree mounting `secrets` → `blong-secrets` at the rc directory.
+
+Shipped as described: the kind generalises the Secret rather than adding a second one, and nothing
+rotates. Files: kustomizeSecretsEnsure.ts (new; merge + generators for the pair, the blob key and
+the cookie secret), generator.ts (SUITE_SECRETS_SECRET, volume 'secrets'), apply.ts
+(SUITE_SECRETS_LABEL + legacy), kustomizeReconcileRun.ts (calls kustomize.secrets.ensure, treats the
+legacy label as held), bin/kustomizeCommand.ts, the operator manifest,
+realm/blong-blob/orchestrator/blobDispatch.ts (env pair gone), realm/blong-sport/index.ts (no
+password, no blobSecrets entry). Green: kustomize 143/143 with its tree snapshots re-pinned, blob
+256/256 both backends, party 85/85, sport 17/17, all ci-lint clean, memory check 0 errors / 955
+refs.
 
 ## Retired
 

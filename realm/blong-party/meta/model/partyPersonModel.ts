@@ -21,7 +21,15 @@ export default model(
                                 internationalName: {title: 'International Spelling'},
                                 birthDate: {title: 'Date of Birth'},
                                 citizenship: {title: 'Citizenship'},
-                                photoUrl: {title: 'Photograph URL'},
+                                photoUrl: {
+                                    title: 'Photograph',
+                                    widget: {
+                                        type: 'asset',
+                                        namespace: 'party',
+                                        accept: 'image/*',
+                                        variant: 'thumb',
+                                    },
+                                },
                                 gender: {
                                     title: 'Gender',
                                     widget: {

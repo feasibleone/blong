@@ -65,6 +65,16 @@ export default browser(blong => ({
             return import('./browser.ts');
         },
         /**
+         * The store the profile page and the document editor upload to (`@@D-845`).
+         *
+         * The browser platform stores nothing itself — it calls the server's `blob.upload.*` — so what
+         * the child gives the page is the namespace it may write to (`@@D-854`). The portal also mints
+         * the read cookie from the method the realm publishes, which is why the child is here at all.
+         */
+        async function blob() {
+            return import('@feasibleone/blong-blob/browser.ts');
+        },
+        /**
          * Feedback capture and its review page.
          *
          * The browser half is generic — the toggle, the callouts and the document
@@ -193,6 +203,7 @@ export default browser(blong => ({
             blong: {},
             login: {},
             sport: {},
+            blob: {},
         } as never,
     },
 }));

@@ -782,7 +782,7 @@ Object {
         app.kubernetes.io/name: blong-suite
         app.kubernetes.io/part-of: blong-suite
         app.kubernetes.io/version: 1.0.0
-        blong.feasible.one/spec-hash: 5b2a9c9586256444
+        blong.feasible.one/spec-hash: e149e12453115ace
       name: kustomize
       namespace: blong-suite
     spec:
@@ -856,7 +856,7 @@ Object {
                   readOnly: true
                   subPath: blong_releaserc
                 - mountPath: /home/node/.config/blong_release/
-                  name: gateway-keys
+                  name: secrets
                   readOnly: true
           serviceAccountName: blong
           volumes:
@@ -878,13 +878,13 @@ Object {
                     path: blong_releaserc
                 optional: true
                 secretName: blong-releaserc-etc
-            - name: gateway-keys
+            - name: secrets
               secret:
                 items:
                   - key: config
                     path: config
                 optional: true
-                secretName: gateway-keys
+                secretName: blong-secrets
     
   ),
   "kustomization.yaml": String(
@@ -1450,7 +1450,7 @@ Object {
         Object {
           "mountPath": "/home/node/.config/blong_release/",
           "optional": true,
-          "secretName": "gateway-keys",
+          "secretName": "blong-secrets",
         },
       ],
     },
@@ -1646,7 +1646,7 @@ Object {
       },
     },
     Object {
-      "name": "gateway-keys",
+      "name": "secrets",
       "secret": Object {
         "items": Array [
           Object {
@@ -1655,7 +1655,7 @@ Object {
           },
         ],
         "optional": true,
-        "secretName": "gateway-keys",
+        "secretName": "blong-secrets",
       },
     },
   ],
@@ -1684,7 +1684,7 @@ Object {
       },
       Object {
         "mountPath": "/home/node/.config/blong_release/",
-        "name": "gateway-keys",
+        "name": "secrets",
         "readOnly": true,
       },
     ],

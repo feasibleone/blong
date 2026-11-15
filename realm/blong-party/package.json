@@ -1,7 +1,7 @@
 {
     "name": "@feasibleone/blong-party",
     "version": "1.17.0",
-    "description": "Party management realm — persons, organizations, units, contacts, addresses, and identifiers",
+    "description": "Party management realm \u2014 persons, organizations, units, contacts, addresses, and identifiers",
     "type": "module",
     "exports": {
         "./server.ts": "./server.ts",
@@ -31,6 +31,7 @@
     },
     "devDependencies": {
         "@feasibleone/blong-access": "workspace:^1.0.0",
+        "@feasibleone/blong-blob": "workspace:^0.1.0",
         "@feasibleone/blong-browser": "workspace:^1.0.0",
         "@feasibleone/blong-core": "workspace:^1.0.0",
         "@feasibleone/blong-cucumber": "workspace:^1.0.0",

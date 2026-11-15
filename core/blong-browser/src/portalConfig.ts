@@ -103,6 +103,8 @@ export function mergePortalConfigs(
     if (home !== undefined) config.home = home;
     const profile = firstSet(providers, 'profile');
     if (profile !== undefined) config.profile = profile;
+    const blob = firstSet(providers, 'blob');
+    if (blob !== undefined) config.blob = blob;
     const languages = firstSet(providers, 'languages');
     if (languages !== undefined) config.languages = languages;
     const translations = firstSet(providers, 'translations');

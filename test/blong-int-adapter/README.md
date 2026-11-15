@@ -2,23 +2,25 @@
 
 Integration test suite for all `blong-gogo` adapter types.
 
-Each adapter realm is **opt-in**: it only activates when its dedicated config name is passed via `BLONG_ENV`. This prevents all adapters from requiring all backends simultaneously.
+Each adapter realm is **opt-in**: it only activates when its dedicated config name is passed via
+`BLONG_ENV`. This prevents all adapters from requiring all backends simultaneously.
 
 ## Adapter Realms
 
-| Realm | Adapter Type | CI Backend | NodePort |
-|-------|-------------|-----------|---------|
-| `mysql/` | `adapter.knex` (MySQL) | MySQL | 30006 |
-| `mongodb/` | `adapter.mongodb` | MongoDB | 30017 |
-| `redis/` | `adapter.redis` | Redis | 30063 |
-| `http/` | `adapter.http` | In-process Node.js echo server | 30088 |
-| `s3/` | `adapter.s3` | MinIO | 30009 |
-| `kafka/` | `adapter.kafka` | Kafka KRaft | 30092 |
-| `vault/` | `adapter.vault` | Vault dev mode | 30002 |
-| `keycloak/` | `adapter.keycloak` | Keycloak | 30080 |
-| `k8s/` | `adapter.k8s` | k3d cluster (kubeconfig default) | — |
-| `slack/` | `adapter.slack` | Manual only — requires Slack token | — |
-| `github/` | `adapter.github` | Manual only — requires GitHub token | — |
+| Realm       | Adapter Type                               | CI Backend                          | NodePort |
+| ----------- | ------------------------------------------ | ----------------------------------- | -------- |
+| `mysql/`    | `adapter.knex` (MySQL)                     | MySQL                               | 30006    |
+| `mongodb/`  | `adapter.mongodb`                          | MongoDB                             | 30017    |
+| `redis/`    | `adapter.redis`                            | Redis                               | 30063    |
+| `http/`     | `adapter.http`                             | In-process Node.js echo server      | 30088    |
+| `s3/`       | `adapter.s3`                               | MinIO                               | 30009    |
+| `blob/`     | `adapter.blob` (the blob realm's S3 store) | MinIO                               | 30009    |
+| `kafka/`    | `adapter.kafka`                            | Kafka KRaft                         | 30092    |
+| `vault/`    | `adapter.vault`                            | Vault dev mode                      | 30002    |
+| `keycloak/` | `adapter.keycloak`                         | Keycloak                            | 30080    |
+| `k8s/`      | `adapter.k8s`                              | k3d cluster (kubeconfig default)    | —        |
+| `slack/`    | `adapter.slack`                            | Manual only — requires Slack token  | —        |
+| `github/`   | `adapter.github`                           | Manual only — requires GitHub token | —        |
 
 ## Running Tests
 
@@ -46,21 +48,21 @@ config: {
 }
 ```
 
-The `testDispatch` orchestrator is **auto-provisioned** by the framework when a realm's
-`test/` folder has no `testDispatch.ts` — no boilerplate needed.
+The `testDispatch` orchestrator is **auto-provisioned** by the framework when a realm's `test/`
+folder has no `testDispatch.ts` — no boilerplate needed.
 
 ## CI Backends
 
 Backends are provisioned in `test/integration/`:
 
-| Backend | File | NodePort |
-|---------|------|---------|
-| MySQL | `mysql-deployment.yaml` | 30006 |
-| MongoDB | `mongodb-deployment.yaml` | 30017 |
-| Redis | `redis-deployment.yaml` | 30063 |
-| Keycloak | `keycloak-deployment.yaml` | 30080 |
-| MinIO | `minio-deployment.yaml` | 30009 |
-| Kafka (KRaft) | `kafka-deployment.yaml` | 30092 |
-| Vault (dev) | `vault-deployment.yaml` | 30002 |
+| Backend       | File                       | NodePort |
+| ------------- | -------------------------- | -------- |
+| MySQL         | `mysql-deployment.yaml`    | 30006    |
+| MongoDB       | `mongodb-deployment.yaml`  | 30017    |
+| Redis         | `redis-deployment.yaml`    | 30063    |
+| Keycloak      | `keycloak-deployment.yaml` | 30080    |
+| MinIO         | `minio-deployment.yaml`    | 30009    |
+| Kafka (KRaft) | `kafka-deployment.yaml`    | 30092    |
+| Vault (dev)   | `vault-deployment.yaml`    | 30002    |
 
 K8s adapter tests use the k3d cluster already available in the GitHub Actions runner.

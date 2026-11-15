@@ -2,7 +2,7 @@ import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 import {createPublicKey, createVerify, type JsonWebKey} from 'node:crypto';
 
 import {rememberMleHandshake} from '../../../mleHandshake.ts';
-import {generateGatewayKeys} from '../../../orchestrator/controller/kustomizeGatewayKeysEnsure.ts';
+import {generateGatewayKeys} from '../../../orchestrator/controller/kustomizeSecretsEnsure.ts';
 import sessionHandlerFile from '../../../orchestrator/identity/identityCheckInternal.ts';
 import sessionTokenMintFile from '../../../orchestrator/login/sessionTokenMint.ts';
 import sessionConfigurationFile from '../../../orchestrator/session/sessionOidcGetConfiguration.ts';

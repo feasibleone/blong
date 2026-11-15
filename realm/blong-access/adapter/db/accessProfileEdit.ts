@@ -10,7 +10,7 @@ type KnexQb = any;
  * Supported fields (all optional — only provided ones are changed):
  * - `emailAddress` → the `access_user` row
  * - `preferredLanguage` → the `core.property` key `preferredLanguage`
- * - `firstName` / `middleName` / `lastName` → the linked `party.person` row
+ * - `firstName` / `middleName` / `lastName` / `photoUrl` → the linked `party.person` row
  *   (best-effort: only when the user actually has a `hasProfile` edge and the
  *   `party_person` table exists — otherwise these are silently ignored, which
  *   is the documented fallback for suites without the party realm)
@@ -22,6 +22,8 @@ export default handler(
                 firstName?: string | null;
                 middleName?: string | null;
                 lastName?: string | null;
+                /** The photograph: a `blob://` reference or an external URL (`@@D-842`). */
+                photoUrl?: string | null;
                 emailAddress?: string | null;
                 preferredLanguage?: string | null;
             },
@@ -51,11 +53,12 @@ export default handler(
                     .merge({propertyValue: params.preferredLanguage});
             }
 
-            const namePatch: Record<string, string | null> = {};
-            if (params.firstName !== undefined) namePatch.firstName = params.firstName;
-            if (params.middleName !== undefined) namePatch.middleName = params.middleName;
-            if (params.lastName !== undefined) namePatch.lastName = params.lastName;
-            if (Object.keys(namePatch).length) {
+            const personPatch: Record<string, string | null> = {};
+            if (params.firstName !== undefined) personPatch.firstName = params.firstName;
+            if (params.middleName !== undefined) personPatch.middleName = params.middleName;
+            if (params.lastName !== undefined) personPatch.lastName = params.lastName;
+            if (params.photoUrl !== undefined) personPatch.photoUrl = params.photoUrl;
+            if (Object.keys(personPatch).length) {
                 try {
                     const person = await qb
                         .select('t.objectId')
@@ -66,7 +69,7 @@ export default handler(
                     if (person) {
                         await qb('party_person')
                             .where('personId', person.objectId)
-                            .update(namePatch);
+                            .update(personPatch);
                     }
                 } catch {
                     // party_person table is not present — name fields cannot be

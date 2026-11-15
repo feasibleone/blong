@@ -24,10 +24,11 @@ declare -A WAIT_SERVICE=(
     [mongodb]=mongodb
     [mysql]=mysql
     [s3]=minio
+    [blob]=minio
     [vault]=vault
 )
 
-ALL_ADAPTERS=(k8s http mongodb mysql s3 keycloak vault kafka)
+ALL_ADAPTERS=(k8s http mongodb mysql s3 blob keycloak vault kafka)
 
 generate_report() {
     echo ""

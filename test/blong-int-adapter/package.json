@@ -16,6 +16,7 @@
         "typebox": "^1.1.5"
     },
     "devDependencies": {
+        "@feasibleone/blong-blob": "workspace:^0.1.0",
         "@feasibleone/blong-dev": "workspace:*",
         "@rushstack/heft": "^1.2.6",
         "@rushstack/heft-lint-plugin": "^1.2.6",

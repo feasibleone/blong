@@ -170,6 +170,11 @@ export function defineBlongViteConfig({
         server: {
             proxy: {
                 '/rpc': rpcTarget,
+                // A stored file is served from its own path, not from `/rpc` — one place per blob,
+                // under the read cookie (`@@D-836`). Without this line every image on every page is a
+                // 404 in dev while the same app works behind the gateway's own port, which is what a
+                // Playwright run found and no server test could (`@@F-740`).
+                '/a': rpcTarget,
             },
             /**
              * What the watcher must not look at: the artifacts the run itself
@@ -237,6 +242,8 @@ export function defineBlongViteConfig({
         preview: {
             proxy: {
                 '/rpc': rpcTarget,
+                /** The served blob path, for the reason the dev proxy carries it (`@@D-836`). */
+                '/a': rpcTarget,
             },
         },
         resolve: {
@@ -249,6 +256,15 @@ export function defineBlongViteConfig({
                 {
                     find: '@feasibleone/blong/types',
                     replacement: new URL(import.meta.resolve('@feasibleone/blong/types')).href,
+                },
+                {
+                    // The blob contract a realm stores references with (@@D-842): `blob://` and its
+                    // parser live in one file both sides import, so a reference is never spelled twice.
+                    find: '@feasibleone/blong/blob',
+                    replacement: new URL(
+                        './blob.ts',
+                        import.meta.resolve('@feasibleone/blong/types'),
+                    ).href,
                 },
                 {
                     find: '@feasibleone/blong',

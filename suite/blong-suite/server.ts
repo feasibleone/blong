@@ -196,8 +196,12 @@ export default server(() => ({
                             // deployment (F-414).
                             host: 'db',
                             port: 3306,
-                            user: 'blong-test',
-                            password: 'password',
+                            // The pair comes from the tenant's own file, not from a source tree
+                            // (`@@D-857`): Secret `blong-releaserc-etc`, mounted at
+                            // `/etc/blong_releaserc` and merged by `rc`. `blong-secrets` is the
+                            // operator's and carries only what it generates (`@@D-855`). A database the
+                            // tree brings along still creates its own users from its own Secret, which is
+                            // why the `mysql` service below asks for `credentials.generate`.
                             database: 'blong-integration',
                         },
                     },

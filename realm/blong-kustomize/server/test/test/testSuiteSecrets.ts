@@ -1,15 +1,18 @@
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
-import {GATEWAY_KEYS_LABEL, PART_OF_LABEL} from '../../../apply.ts';
+import {PART_OF_LABEL, SUITE_SECRETS_LABEL} from '../../../apply.ts';
 import {realmCommand} from '../../../bin/kustomizeCommand.ts';
-import {GATEWAY_KEYS_SECRET} from '../../../generator.ts';
+import {SUITE_SECRETS_SECRET} from '../../../generator.ts';
 import {
-    gatewayKeysConfig,
-    gatewayKeysSecret,
+    generateBlobKey,
+    generateCookieSecret,
     generateGatewayKeys,
-} from '../../../orchestrator/controller/kustomizeGatewayKeysEnsure.ts';
+    mergeSuiteSecrets,
+    suiteSecretsConfig,
+    suiteSecretsSecret,
+} from '../../../orchestrator/controller/kustomizeSecretsEnsure.ts';
 
 /**
- * server/test/test/testGatewayKeys.ts — the suite's gateway keys.
+ * server/test/test/testSuiteSecrets.ts — the Secret the suite's secret configuration lives in.
  *
  * The realm does not *hold* the keys, it names them: the tree is deterministic and a regenerated tree
  * must stay byte-identical, so the pair cannot be written into it, and a pair generated into git is
@@ -18,18 +21,22 @@ import {
  * the gateway reads, and that the CLI asks for it by the right name — while the creation itself is
  * exercised where a cluster is.
  *
- * Registered as the `test.gateway.keys` group (`integration.watch.test` in `index.ts`).
+ * What is new beside the pair is the *merge*: a Secret written by an earlier pass has to gain the
+ * values it could not have known — the blob key — without rotating anything it already holds, because
+ * a rotated key is a session every browser is holding and a blob nobody can read (`@@D-856`).
+ *
+ * Registered as the `test.secrets` group (`integration.watch.test` in `index.ts`).
  */
-export default handler(({lib: {group}, handler: {kustomizeGatewayKeysEnsure}}) => ({
-    testGatewayKeys: ({name = 'gateway keys'}: {name?: string} = {}) =>
+export default handler(({lib: {group}, handler: {kustomizeSecretsEnsure}}) => ({
+    testSecrets: ({name = 'suite secrets'}: {name?: string} = {}) =>
         group(name)([
             async function thePairIsWrittenWhereASweepCanFindIt(assert: IAssert) {
-                const secret = gatewayKeysSecret({
-                    name: GATEWAY_KEYS_SECRET,
+                const secret = suiteSecretsSecret({
+                    name: SUITE_SECRETS_SECRET,
                     namespace: 'shop',
                     suite: 'shop',
                     owner: {name: 'shop', uid: '9f1c2a'},
-                    keys: generateGatewayKeys(),
+                    config: '{"gateway":{}}',
                 });
                 const metadata = secret.metadata as {
                     labels?: Record<string, string>;
@@ -41,7 +48,7 @@ export default handler(({lib: {group}, handler: {kustomizeGatewayKeysEnsure}}) =
                     'the pair carries the label a pass selects its objects by',
                 );
                 assert.equal(
-                    metadata.labels?.[GATEWAY_KEYS_LABEL],
+                    metadata.labels?.[SUITE_SECRETS_LABEL],
                     'true',
                     'and the one that keeps a sweep from retiring it while the declaration exists',
                 );
@@ -62,10 +69,10 @@ export default handler(({lib: {group}, handler: {kustomizeGatewayKeysEnsure}}) =
                 );
                 // A registry pass reads no CR — the process *is* the suite — so there is no owner to
                 // name, and the pair lives as long as the deployment does.
-                const unowned = gatewayKeysSecret({
-                    name: GATEWAY_KEYS_SECRET,
+                const unowned = suiteSecretsSecret({
+                    name: SUITE_SECRETS_SECRET,
                     namespace: 'shop',
-                    keys: generateGatewayKeys(),
+                    config: '{"gateway":{}}',
                 });
                 assert.equal(
                     (unowned.metadata as {ownerReferences?: unknown}).ownerReferences,
@@ -111,7 +118,13 @@ export default handler(({lib: {group}, handler: {kustomizeGatewayKeysEnsure}}) =
                 // namespace enough: a browser's session survives a restart and a second replica, and
                 // a peer verifies with the key the gateway would have signed with (@@D-441).
                 const keys = generateGatewayKeys();
-                const document = JSON.parse(gatewayKeysConfig(keys)) as {
+                const document = JSON.parse(
+                    suiteSecretsConfig({
+                        gateway: keys,
+                        blobKey: generateBlobKey(),
+                        cookieSecret: generateCookieSecret(),
+                    }),
+                ) as {
                     gateway: {sign: unknown; encrypt: unknown};
                     remote: {client: {sign: unknown; encrypt: unknown}};
                 };
@@ -133,13 +146,96 @@ export default handler(({lib: {group}, handler: {kustomizeGatewayKeysEnsure}}) =
                 );
             },
 
+            async function theBlobKeyTravelsTheSameWay(assert: IAssert) {
+                // A released process needs two more values, and it needs them from the same document:
+                // the key its store encrypts with and the secret its read cookie is signed with
+                // (`@@D-856`). Neither is an environment variable any more — one channel, one mount.
+                const blobKey = generateBlobKey();
+                const cookieSecret = generateCookieSecret();
+                const document = JSON.parse(
+                    suiteSecretsConfig({
+                        gateway: generateGatewayKeys(),
+                        blobKey,
+                        cookieSecret,
+                    }),
+                ) as {
+                    blob: {
+                        blobDispatch: {crypto: {key: string}; cookie: {secret: string}};
+                    };
+                };
+                assert.equal(
+                    document.blob.blobDispatch.crypto.key,
+                    blobKey,
+                    'the store key is the one that was generated',
+                );
+                assert.equal(
+                    blobKey.length,
+                    64,
+                    'and it is 32 bytes of hex, which is what aes-256-cbc takes',
+                );
+                assert.equal(
+                    document.blob.blobDispatch.cookie.secret,
+                    cookieSecret,
+                    'the cookie secret travels beside it',
+                );
+                assert.ok(cookieSecret.length >= 22, 'and is long enough to sign with');
+                return {done: true};
+            },
+
+            async function anOlderDocumentGainsOnlyWhatItLacks(assert: IAssert) {
+                // The pass that ran before this change wrote the gateway pair and nothing else. Filling
+                // in the blob key is the whole point of the merge; replacing the pair would log every
+                // browser out, and a rotated blob key would make every stored file unreadable
+                // (`@@D-856`).
+                const gateway = generateGatewayKeys();
+                const older = JSON.stringify({gateway: {sign: gateway.sign, encrypt: gateway.encrypt}});
+                const {config, added} = mergeSuiteSecrets(older, {
+                    ...(JSON.parse(
+                        suiteSecretsConfig({
+                            gateway: generateGatewayKeys(),
+                            blobKey: generateBlobKey(),
+                            cookieSecret: generateCookieSecret(),
+                        }),
+                    ) as Record<string, unknown>),
+                });
+                const document = JSON.parse(config) as Record<string, unknown>;
+                assert.deepEqual(
+                    (document.gateway as {sign: unknown}).sign,
+                    gateway.sign,
+                    'the pair that was already there is kept',
+                );
+                assert.ok(
+                    added.some(path => path.startsWith('blob.blobDispatch.crypto.key')),
+                    'and the store key is added, named in the report',
+                );
+                assert.ok(
+                    added.some(path => path.startsWith('blob.blobDispatch.cookie.secret')),
+                    'with the cookie secret beside it',
+                );
+                assert.ok(
+                    added.every(path => !path.startsWith('gateway.')),
+                    'while nothing under the gateway pair is reported as added',
+                );
+                return {done: true};
+            },
+
+            async function aDocumentNobodyCanReadIsNotOverwritten(assert: IAssert) {
+                // The Secret may be the deployment's own: a document this realm cannot parse is
+                // reported rather than replaced, because replacing it would delete credentials this
+                // realm never wrote.
+                const {config, added} = mergeSuiteSecrets('not json at all', {gateway: {sign: {}}});
+                assert.equal(config, 'not json at all', 'the document is left exactly as it was');
+                assert.deepEqual(added, [], 'and nothing is claimed to have been added');
+                return {done: true};
+            },
+
             async function theRealmCliAsksForTheKeys(assert: IAssert) {
                 const args = (positionals: string[], argv: Record<string, unknown> = {}) =>
                     realmCommand({argv: argv as never, positionals});
 
                 assert.equal(
                     args(['keys-ensure'], {namespace: 'shop'})?.method,
-                    'kustomizeGatewayKeysEnsure',
+                    'kustomizeSecretsEnsure',
                     'the keys command names the ensure handler',
                 );
                 assert.deepEqual(
@@ -161,14 +257,14 @@ export default handler(({lib: {group}, handler: {kustomizeGatewayKeysEnsure}}) =
                 // A call that cannot make the keys answers rather than throws, and says which part
                 // was missing: the caller that ignores the answer is the one that leaves a suite
                 // without them. Nothing is configured here, so the namespace is the missing part.
-                const nothingToWrite = (await kustomizeGatewayKeysEnsure({}, $meta)) as {
+                const nothingToWrite = (await kustomizeSecretsEnsure({}, $meta)) as {
                     name: string;
                     created: boolean;
                     reason?: string;
                 };
                 assert.equal(
                     nothingToWrite.name,
-                    GATEWAY_KEYS_SECRET,
+                    SUITE_SECRETS_SECRET,
                     'the Secret the generators mount is the one the handler writes',
                 );
                 assert.equal(nothingToWrite.created, false, 'and no key is claimed to be made');

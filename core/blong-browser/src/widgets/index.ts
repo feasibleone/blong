@@ -4,6 +4,7 @@
  */
 import type {IWidgetProps, IWidgetRegistry, WidgetType} from '@feasibleone/blong';
 import type React from 'react';
+import {AssetWidget} from './AssetWidget.js';
 import {AutoCompleteWidget} from './AutoCompleteWidget.js';
 import {BigIntWidget} from './BigIntWidget.js';
 import {BooleanWidget} from './BooleanWidget.js';
@@ -86,6 +87,8 @@ const builtins: Array<[WidgetType, React.ComponentType<IWidgetProps>]> = [
     ['file', FileWidget as React.ComponentType<IWidgetProps>],
     ['image', ImageWidget as React.ComponentType<IWidgetProps>],
     ['imageUpload', ImageUploadWidget as React.ComponentType<IWidgetProps>],
+    // The blob-backed field: the file is uploaded and the field holds a `blob://` reference (@@D-842).
+    ['asset', AssetWidget as React.ComponentType<IWidgetProps>],
     ['component', ComponentWidget as React.ComponentType<IWidgetProps>],
 ];
 

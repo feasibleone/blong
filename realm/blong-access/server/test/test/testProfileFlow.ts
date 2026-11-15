@@ -55,17 +55,17 @@ export default handler(
                 ) {
                     const token = await login;
                     const actorId = decodeJwtSub(token.access_token);
-                    assert.ok(typeof actorId === 'string' && actorId.length > 0, 'actor id decoded');
+                    assert.ok(
+                        typeof actorId === 'string' && actorId.length > 0,
+                        'actor id decoded',
+                    );
                     return actorId;
                 },
 
                 // 3. Read the profile — account shape + roles.
                 async function getProfile(
                     assert: IAssert,
-                    {
-                        $meta,
-                        getActor: actor,
-                    }: {$meta: IMeta; getActor: Promise<string>},
+                    {$meta, getActor: actor}: {$meta: IMeta; getActor: Promise<string>},
                 ) {
                     const actorId = await actor;
                     const profile = await accessProfileGet<{
@@ -101,17 +101,27 @@ export default handler(
                 ) {
                     const original = await p;
                     const email = `profile-test-${Date.now()}@example.com`;
+                    // The photograph travels with the other fields. This suite has no
+                    // `party_person` table, so the documented fallback applies: the call
+                    // succeeds and the person stays absent — the round trip is asserted
+                    // in `realm/blong-party`, where the person exists (`@@D-842`).
                     const result = await accessProfileEdit<{success: boolean}>(
-                        {emailAddress: email, preferredLanguage: 'bg'},
+                        {
+                            emailAddress: email,
+                            preferredLanguage: 'bg',
+                            photoUrl: 'blob://party/01j8zk-photograph',
+                        },
                         {...$meta, auth: {actorId: original.userId}},
                     );
                     assert.equal(result.success, true, 'profile edit succeeds');
                     const after = await accessProfileGet<{
                         emailAddress: string | null;
                         preferredLanguage: string | null;
+                        person: unknown;
                     }>({}, {...$meta, auth: {actorId: original.userId}});
                     assert.equal(after.emailAddress, email, 'email is persisted');
                     assert.equal(after.preferredLanguage, 'bg', 'preferred language is persisted');
+                    assert.equal(after.person, null, 'a photograph without a person is ignored');
                     return {actorId: original.userId, email, original};
                 },
 
@@ -197,10 +207,7 @@ export default handler(
                 },
 
                 // 8. The new password actually logs the user in.
-                async function loginWithNew(
-                    assert: IAssert,
-                    {$meta}: {$meta: IMeta},
-                ) {
+                async function loginWithNew(assert: IAssert, {$meta}: {$meta: IMeta}) {
                     const result = await loginTokenCreate<{access_token: string}>(
                         {username: 'testAdmin', password: 'NewPass123!'},
                         $meta,

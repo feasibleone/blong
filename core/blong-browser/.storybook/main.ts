@@ -35,6 +35,13 @@ const config: StorybookConfig = {
             resolve: {
                 ...config.resolve,
                 dedupe: ['react', 'react-dom'],
+                alias: {
+                    ...config.resolve?.alias,
+                    // The blob contract, from source — the same alias `src/vite.ts` and
+                    // `vitest.config.ts` carry, since the subpath's `default` condition points at a
+                    // build artefact a storybook run does not have (@@D-842).
+                    '@feasibleone/blong/blob': resolve(__dirname, '../../blong/blob.ts'),
+                },
             },
             server: {
                 ...config.server,

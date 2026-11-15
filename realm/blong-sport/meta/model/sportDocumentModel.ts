@@ -14,8 +14,11 @@ export default model(
                 object: 'document',
                 objectTitle: 'Document',
                 public: true,
-                // Deletion: reference data other records point at: refuse and name what still uses it.
-                deletion: {mode: 'block'},
+                // Deletion: the usual prompted removal. A document is pointed at by the attachments
+                // filed against it, so the dialog is where the operator learns what still refers to it
+                // before answering — `block` never asks and leaves the register impossible to tidy
+                // (`@@D-784`).
+                deletion: {mode: 'prompt'},
                 classifier: true,
                 nameField: 'document.documentTitle',
                 schema: {
@@ -60,7 +63,22 @@ export default model(
                                 },
                                 documentFormat: {title: 'Format'},
                                 sourceName: {title: 'Source'},
-                                referenceUrl: {title: 'Reference URL'},
+                                referenceUrl: {
+                                    title: 'File or Reference URL',
+                                    widget: {
+                                        type: 'asset',
+                                        namespace: 'sport',
+                                        accept: '.pdf,.doc,.docx,.xls,.xlsx,.xml,.json,.txt,.png,.jpg,.jpeg,.webp,.mp4,.mp3,.webm,.avi,.mkv',
+                                        // The store already knows both: the format is the file's
+                                        // own extension and the checksum is the digest it recorded,
+                                        // so an upload fills them rather than asking for them twice
+                                        // (@@D-852).
+                                        fill: {
+                                            'document.documentFormat': 'extension',
+                                            'document.checksumValue': 'digest',
+                                        },
+                                    },
+                                },
                                 checksumValue: {title: 'Checksum'},
                                 documentNote: {title: 'Notes', widget: {type: 'textArea'}},
                             },

@@ -1,4 +1,6 @@
 import {
+    AssetWidget,
+    BlobImage,
     Button,
     Card,
     Dropdown,
@@ -11,6 +13,9 @@ import {
 import React, {useCallback, useEffect, useState} from 'react';
 import './accessUserProfilePage.css';
 
+/** The namespace a person's photograph is stored in: the person's own record carries it. */
+const PARTY_NAMESPACE = 'party';
+
 /** Available UI languages shown in the Preferences dropdown. */
 const LANGUAGES = [
     {value: 'en', label: 'English'},
@@ -22,6 +27,8 @@ interface IProfilePerson {
     firstName: string;
     middleName: string | null;
     lastName: string;
+    /** The photograph: a `blob://` reference or an external URL (`@@D-842`). */
+    photoUrl?: string | null;
 }
 
 interface IProfile {
@@ -55,6 +62,7 @@ export function AccessUserProfilePage() {
     // Editable personal-details form state.
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [photoUrl, setPhotoUrl] = useState<string | null>(null);
     const [emailAddress, setEmailAddress] = useState('');
     const [preferredLanguage, setPreferredLanguage] = useState('en');
     const [saving, setSaving] = useState(false);
@@ -80,6 +88,7 @@ export function AccessUserProfilePage() {
                 setProfileState(data);
                 setFirstName(data.person?.firstName ?? '');
                 setLastName(data.person?.lastName ?? '');
+                setPhotoUrl(data.person?.photoUrl ?? null);
                 setEmailAddress(data.emailAddress ?? '');
                 setPreferredLanguage(data.preferredLanguage ?? 'en');
             } catch (error) {
@@ -102,6 +111,7 @@ export function AccessUserProfilePage() {
                 {
                     firstName: hasPerson ? (firstName || null) : undefined,
                     lastName: hasPerson ? (lastName || null) : undefined,
+                    photoUrl: hasPerson ? photoUrl : undefined,
                     emailAddress: emailAddress || null,
                     preferredLanguage,
                 },
@@ -125,6 +135,9 @@ export function AccessUserProfilePage() {
                 name,
                 initials,
                 language: preferredLanguage,
+                // The menubar avatar draws this, so a replaced photograph shows up there without a
+                // reload (`@@D-842`).
+                photoUrl: photoUrl ?? undefined,
             });
         } catch (error) {
             setSaveError((error as {message?: string}).message ?? 'Failed to save profile');
@@ -136,6 +149,7 @@ export function AccessUserProfilePage() {
         hasPerson,
         firstName,
         lastName,
+        photoUrl,
         emailAddress,
         preferredLanguage,
         setProfile,
@@ -185,6 +199,40 @@ export function AccessUserProfilePage() {
                                 <span className="access-profile__inactive">{tr('Inactive')}</span>
                             )}
                         </p>
+                    )}
+
+                    {hasPerson && (
+                        // The photograph, above the details: the picture as the store keeps it —
+                        // a derived thumbnail when there is one — and the widget that replaces it
+                        // (`@@D-842`). Without one the initials stand in, which is what the menubar
+                        // does too.
+                        <div className="access-profile__avatar">
+                            <BlobImage
+                                value={photoUrl}
+                                name={[firstName, lastName].filter(Boolean).join(' ')}
+                                size={96}
+                            />
+                            <AssetWidget
+                                id="access-profile-photo"
+                                name="photoUrl"
+                                schema={
+                                    {
+                                        title: 'Photograph',
+                                        widget: {
+                                            type: 'asset',
+                                            namespace: PARTY_NAMESPACE,
+                                            accept: 'image/*',
+                                            variant: 'thumb',
+                                        },
+                                    } as never
+                                }
+                                value={photoUrl}
+                                onChange={value => setPhotoUrl(value ? String(value) : null)}
+                                // The field is saved with the form, not on its own: a photograph
+                                // chosen and then abandoned is discarded by the widget itself.
+                                onBlur={() => undefined}
+                            />
+                        </div>
                     )}
 
                     <form

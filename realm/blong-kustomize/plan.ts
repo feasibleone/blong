@@ -1634,7 +1634,7 @@ export interface ISessionConfig {
      * cannot be read out of configuration by a diagnostic or a realm (@@D-448). The framework's own
      * login realm is given its key the same way, as its own config, and this deployment writes this one
      * into the same rc document as the pair — generated per suite, never in git
-     * (`kustomizeGatewayKeysEnsure`, `gatewayKeysConfig`).
+     * (`kustomizeSecretsEnsure`, `suiteSecretsConfig`).
      */
     key?: Record<string, unknown>;
 }

@@ -17,6 +17,18 @@
     background: var(--surface-400, #d1d5db);
 }
 
+/* The photograph sits in the same circle as the initials: the wrapper owns the box and the
+   picture fills it, so the menubar's height does not change when a person sets one. */
+.blong-account-menu__photo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
 .blong-account-menu__menu {
     min-width: 14rem;
 }

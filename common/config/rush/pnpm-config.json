@@ -261,6 +261,9 @@
         "esbuild": true,
         "node-rdkafka": true,
         "oracledb": false,
+        // `sharp` builds a native image library. The realm uses it to derive a thumbnail from a
+        // photograph at commit time (@@D-844), and its prebuilt binary needs the install script.
+        "sharp": true,
         "unrs-resolver": false
     }
 }

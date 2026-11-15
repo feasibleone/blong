@@ -20,6 +20,10 @@ Usage:
   blong grant <capability>       Mint a short-lived capability token
                                  (e.g. blong grant calls --ttl=15m)
 
+A target is a positional spelled as a path — it carries a separator: ./server.ts,
+dev/, ../suite. A bare word is always an intent, even when a folder of that name
+exists: blong dev runs the dev intent, whatever this folder holds.
+
 Well-known intents:
   dev            Development features only — introspection, error detail, dev keys
   microservice   Run a realm on its own — its adapters, orchestrators, listeners

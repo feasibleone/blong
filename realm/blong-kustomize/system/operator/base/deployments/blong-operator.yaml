@@ -82,7 +82,7 @@ spec:
               readOnly: true
               subPath: blong_releaserc
             - mountPath: /home/node/.config/blong_release/
-              name: gateway-keys
+              name: secrets
               readOnly: true
       serviceAccountName: blong-operator
       volumes:
@@ -107,10 +107,10 @@ spec:
                 path: blong_releaserc
             optional: true
             secretName: blong-releaserc-etc
-        - name: gateway-keys
+        - name: secrets
           secret:
             items:
               - key: config
                 path: config
             optional: true
-            secretName: gateway-keys
+            secretName: blong-secrets

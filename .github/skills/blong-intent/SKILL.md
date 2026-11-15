@@ -24,6 +24,11 @@ blong ./server.ts db          # load specific file with db intent
 blong integration microservice
 ```
 
+A **target** (a file or folder to run) is only recognised when it is spelled as a path — it carries a
+separator, as in `./server.ts`, `dev/` or `/opt/deploy/suite`. A bare word is *always* an intent, even
+when a folder of that name exists, because a realm that stores files in `dev/blob` grows a `dev/`
+directory and `blong dev` must still mean the intent. To run that folder, write `./dev`.
+
 Intents flow through the entire framework:
 
 1. CLI parses them from `process.argv` (the `_` property after `minimist`)

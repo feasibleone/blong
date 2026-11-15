@@ -134,10 +134,13 @@ export default handler(
                     assert.equal(result.athlete, 1, 'the athlete was written');
                     assert.equal(result.coach, 1, 'the coach was written');
 
+                    // The row this run wrote, not merely one with the same surname: every run of this
+                    // group leaves a `Спортист` behind, and a find that took the first of them compared
+                    // an older athlete's sport with the one just seeded (F-732).
                     const [athlete] = await sportAthleteFind<Array<Record<string, any>>>(
                         {
                             paging: {pageNumber: 1, pageSize: 10},
-                            filterBy: {athleteId: undefined, lastName: `Спортист`},
+                            filterBy: {middleName: stamp, lastName: `Спортист`},
                         },
                         $meta,
                     );

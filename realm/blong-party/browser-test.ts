@@ -78,7 +78,9 @@ export default browser(blong => ({
                     // `party` carries the ACL matrix probes, which must reach the
                     // gateway so its RBAC check runs, and `core` the unguarded-table
                     // matrix, which reads the same records through `core.resource`.
-                    namespace: ['access', 'login', 'party'],
+                    // `blob` carries the scope cookie the portal mints: the call has to reach the
+                    // server's gateway, because the authorization list is what decides it (`@@D-845`).
+                    namespace: ['access', 'login', 'party', 'blob'],
                 },
             },
             login: {},
@@ -95,6 +97,8 @@ export default browser(blong => ({
                     // The failure contract of the two helpers above: a red run has
                     // to mark the cell it failed on (see the feature for why).
                     'test.acl.diagnostics',
+                    // The photograph's store: the gateway grants the mint and the cookie answers.
+                    'test.photo',
                 ],
             },
         },

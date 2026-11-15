@@ -1,0 +1,63 @@
+/*
+ * `AssetWidget` — the file it holds, what it is, and the two ways to change it.
+ *
+ * The preview box is the same size whatever the file is, so a form does not reflow when a picture
+ * replaces a document: the icon and the picture occupy one box (@@D-842).
+ */
+.blong-asset {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.blong-asset__current {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.blong-asset__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 6px;
+    background: var(--surface-200, #e9ecef);
+    color: var(--text-color-secondary, #6c757d);
+    font-size: 1.5rem;
+    flex: 0 0 auto;
+}
+
+.blong-asset__name {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+}
+
+.blong-asset__pick {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.blong-asset__or {
+    color: var(--text-color-secondary, #6c757d);
+    font-size: 0.85rem;
+}
+
+.blong-asset__url {
+    flex: 1 1 12rem;
+    min-width: 8rem;
+}
+
+.blong-asset__failure {
+    color: var(--red-500, #ef4444);
+}
+
+.blong-asset__empty {
+    color: var(--text-color-secondary, #6c757d);
+}

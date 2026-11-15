@@ -1,4 +1,5 @@
 import {server} from '@feasibleone/blong';
+import {join} from 'node:path';
 
 export default server(() => ({
     url: import.meta.url,
@@ -28,6 +29,16 @@ export default server(() => ({
         async function gateway() {
             return import('@feasibleone/blong-gateway/server.ts');
         },
+        /**
+         * The blob store a person's photograph lives in (`@@D-845`).
+         *
+         * A companion: it owns no process and publishes no Service, so it sits beside `srv` and
+         * `access` and stores whatever this process is told to. The claim it writes to is `party`'s,
+         * named below — the realm that owns the record is the one that names the namespace.
+         */
+        async function blob() {
+            return import('@feasibleone/blong-blob/server.ts');
+        },
         /** Party management realm */
         async function party() {
             return import('./server.ts');
@@ -44,12 +55,18 @@ export default server(() => ({
             core: {},
             access: {},
             gateway: {},
+            // The photographs this realm writes. `dev/blob` is gitignored, so a run leaves its files
+            // where a person can look at them without committing anything (`@@D-845`). The key and the
+            // cookie secret come from the realm's own `dev` block.
+            blob: {
+                storage: {directory: join('dev', 'blob'), namespaces: {party: {}}},
+            },
             party: {},
             login: {},
         },
         integration: {
             watch: {
-                test: ['test.registration.flow', 'test.acl.flow'],
+                test: ['test.registration.flow', 'test.acl.flow', 'test.scope'],
             },
         },
     },

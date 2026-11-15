@@ -50,6 +50,14 @@ export default handler(({handler: {}}) => ({
                 lastName: string;
                 /** Membership → `person --belongsTo--> unit`. */
                 unit?: string;
+                /**
+                 * The `access.user` this person is the profile of → `user --hasProfile--> person`.
+                 *
+                 * The graph links the account to its human half, and a scope walk starts there, so a
+                 * fixture that wants a caller with a position in the hierarchy has to say which
+                 * account it is (@@D-836).
+                 */
+                user?: string;
             }>;
             consents?: Array<{
                 /** Resource name (the display label). */
@@ -144,6 +152,18 @@ export default handler(({handler: {}}) => ({
                     objectId: idOf('party.unit', person.unit),
                 });
             }
+            if (person.user) {
+                const user = (await qb('core_resource as r')
+                    .select('r.resourceId')
+                    .join('core_type as t', 't.typeId', 'r.typeId')
+                    .where('t.typeAlias', 'access.user')
+                    .where('r.resourceName', person.user)
+                    .first()) as {resourceId: Buffer} | undefined;
+                if (!user) throw new Error(`ACL seed references an unknown user "${person.user}"`);
+                const userId = Buffer.from(user.resourceId).toString('hex');
+                ids.set(key('access.user', person.user), userId);
+                triples.push({subjectId: userId, predicateName: 'hasProfile', objectId: personId});
+            }
         }
 
         // Consents last: their `belongsTo` edge names a person ensured above.
@@ -176,7 +196,7 @@ export default handler(({handler: {}}) => ({
         if (subjectIds.length) {
             await qb('core_triple')
                 .whereIn('subjectId', subjectIds)
-                .whereIn('predicateName', ['belongsTo', 'isPartOf'])
+                .whereIn('predicateName', ['belongsTo', 'isPartOf', 'hasProfile'])
                 .del();
         }
 

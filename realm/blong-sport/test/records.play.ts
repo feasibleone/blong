@@ -63,13 +63,19 @@ test.describe('Documents and awards', () => {
         search: athleteName,
     });
 
+    // The row this removes is the spec's own fixture, and what a delete *looks* like depends on how
+    // many rows and attachments a previous run left — a picture that is not repaintable. The dialog is
+    // captured by `documentFile.play.ts`, which creates the record it deletes and therefore always has
+    // one to ask about (`@@T-683`).
     cleanupModel(test, expect, {
+        ...quiet,
         subject: 'sport',
         object: 'document',
         search: documentTitle,
         removeMethod: 'sport.document.remove',
     });
 
+    // The cleanup above has just emptied the register, so an empty one is the state this capture is of.
     browseModel(test, expect, {
         subject: 'sport',
         object: 'document',

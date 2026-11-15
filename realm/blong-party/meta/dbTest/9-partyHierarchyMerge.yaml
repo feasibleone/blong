@@ -28,6 +28,10 @@ persons:
     firstName: John
     lastName: Doe
     unit: Retail Branch
+    # The account this person is the profile of.  `party.scope.grant` starts at the caller's
+    # `hasProfile` edge, so a fixture that wants a caller with a position in the hierarchy says
+    # which account it is.
+    user: testViewer
   - name: Jane Smith
     firstName: Jane
     lastName: Smith

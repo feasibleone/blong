@@ -28,6 +28,16 @@ export default browser(blong => ({
         async function access() {
             return import('@feasibleone/blong-access/browser.ts');
         },
+        /**
+         * The store a person's photograph lives in (`@@D-845`).
+         *
+         * The page uploads through the server's `blob.upload.*`, so the child contributes the
+         * namespace and the method the portal mints its read cookie with — without it every
+         * photograph on the page is refused before it is drawn (`@@D-854`).
+         */
+        async function blob() {
+            return import('@feasibleone/blong-blob/browser.ts');
+        },
     ],
     config: {
         default: {
@@ -68,6 +78,8 @@ export default browser(blong => ({
             login: {},
             party: {},
             access: {},
+            // The photograph's store, in the process the page talks to (`@@D-854`).
+            blob: {},
         },
         // TEST-ONLY: the `integration` intent (active for dev/test/Playwright
         // — the browser entry `index.html.ts` hardcodes `microservice

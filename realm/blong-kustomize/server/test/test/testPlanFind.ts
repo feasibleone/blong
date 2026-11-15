@@ -709,6 +709,77 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 );
             },
 
+            async function aCompanionsCredentialsReachTheProcess(assert: IAssert) {
+                // The blob store is a companion (`@@D-845`): it owns no process, so what its port
+                // contributes is the *reference* a deployment's Secret fills — the Secret itself is the
+                // suite's, because the file the credential lives in is the deployment's (`@@D-839`).
+                // The pair has to hold together: an env pointing at a name nobody declared is a
+                // process that boots without a key, and a Secret nobody reads is a file nothing uses.
+                const view = {
+                    realms: ['shop', 'blob'],
+                    groups: [
+                        {name: 'shop.orchestrator', handlerCount: 1, layer: 'orchestrator'},
+                        // The companion's own layer, which is what makes it carried by every process.
+                        {name: 'blob.orchestrator', handlerCount: 1, layer: 'orchestrator'},
+                    ],
+                    ports: [
+                        {id: 'shop.api', type: 'dispatch', namespace: 'shop'},
+                        {
+                            id: 'blob.blobDispatch',
+                            type: 'dispatch',
+                            namespace: 'blob',
+                            k8s: {
+                                k8sEnv: [
+                                    {
+                                        name: 'BLOB_CBC_KEY',
+                                        valueFrom: {
+                                            secretKeyRef: {name: 'blobSecrets', key: 'BLOB_CBC_KEY'},
+                                        },
+                                    },
+                                    {
+                                        name: 'BLOB_COOKIE_SECRET',
+                                        valueFrom: {
+                                            secretKeyRef: {
+                                                name: 'blobSecrets',
+                                                key: 'BLOB_COOKIE_SECRET',
+                                            },
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                    roles: {blob: 'companion' as const},
+                } as unknown as IRegistryView;
+                const plan = planFromRegistry(view, {
+                    suiteName: 'demo',
+                    frameworkImage: 'image',
+                    secrets: {blobSecrets: {envs: ['blob.env']}},
+                });
+
+                assert.deepEqual(
+                    plan.secrets,
+                    [{name: 'blobSecrets', envs: ['blob.env']}],
+                    'the suite owns the generator entry the companion reads',
+                );
+                assert.deepEqual(
+                    plan.deployments[0]?.env,
+                    [
+                        {
+                            name: 'BLOB_CBC_KEY',
+                            valueFrom: {secretKeyRef: {name: 'blobSecrets', key: 'BLOB_CBC_KEY'}},
+                        },
+                        {
+                            name: 'BLOB_COOKIE_SECRET',
+                            valueFrom: {
+                                secretKeyRef: {name: 'blobSecrets', key: 'BLOB_COOKIE_SECRET'},
+                            },
+                        },
+                    ],
+                    'and the process that carries it is given both variables from that Secret',
+                );
+            },
+
             async function aDeclaredVolumeReachesTheProcess(assert: IAssert) {
                 // A volume is the one contribution with a lifetime: the generator mounted whatever the
                 // plan carried, and the plan carried nothing, so a realm that declared a workspace got

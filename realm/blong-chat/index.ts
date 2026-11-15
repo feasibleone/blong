@@ -117,8 +117,10 @@ export default server(() => ({
                         connection: {
                             host: 'db',
                             port: 3306,
-                            user: 'blong-chat',
-                            password: 'password',
+                            // The pair comes from the tenant's own file, not from a source tree
+                            // (`@@D-857`): Secret `blong-releaserc-etc`, mounted at
+                            // `/etc/blong_releaserc` and merged by `rc`. `blong-secrets` is the
+                            // operator's and carries only what it generates (`@@D-855`).
                             database: 'blong-chat',
                         },
                     },

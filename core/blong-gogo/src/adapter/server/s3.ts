@@ -2,12 +2,14 @@ import {
     CopyObjectCommand,
     DeleteObjectCommand,
     GetObjectCommand,
+    type GetObjectCommandOutput,
     HeadObjectCommand,
     ListBucketsCommand,
     ListObjectsV2Command,
     PutObjectCommand,
     S3Client,
 } from '@aws-sdk/client-s3';
+import {Upload} from '@aws-sdk/lib-storage';
 import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import {createReadStream, statSync} from 'fs';
 import {Readable} from 'stream';
@@ -43,6 +45,37 @@ const errorMap: IErrorMap = {
 };
 
 let _errors: Errors<typeof errorMap>;
+
+/** The answer a `get` makes: the object buffered whole, for the callers that expect bytes. */
+export async function s3BufferAnswer(response: GetObjectCommandOutput) {
+    return {
+        body: await response.Body?.transformToByteArray(),
+        contentType: response.ContentType,
+        contentLength: response.ContentLength,
+        metadata: response.Metadata,
+        lastModified: response.LastModified,
+        etag: response.ETag,
+    };
+}
+
+/**
+ * The answer a `stream` makes: the object as a stream, with the headers a reader needs to hand it on.
+ *
+ * Nothing is buffered, so a caller serving a file never holds it — and `range` comes back as
+ * `contentRange`, which is what a `206` answer carries (@@D-838).
+ */
+export function s3StreamAnswer(response: GetObjectCommandOutput) {
+    return {
+        body: response.Body as unknown as Readable,
+        contentType: response.ContentType,
+        contentLength: response.ContentLength,
+        contentRange: response.ContentRange,
+        acceptRanges: response.AcceptRanges,
+        metadata: response.Metadata,
+        lastModified: response.LastModified,
+        etag: response.ETag,
+    };
+}
 
 export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
@@ -83,6 +116,8 @@ export default adapter<IConfig>(({utError}) => {
                       metadata?: Record<string, string>;
                       prefix?: string;
                       maxKeys?: number;
+                      /** An HTTP range (`bytes=0-1023`), honoured by the `stream` operation. */
+                      range?: string;
                       sourceBucket?: string;
                       sourceKey?: string;
                   } & Record<string, unknown>)
@@ -91,6 +126,8 @@ export default adapter<IConfig>(({utError}) => {
         ) {
             const {method} = $meta;
             const [, object, operation] = method!.split('.');
+            if (process.env['BLOB_S3_DEBUG'])
+                console.log('S3-EXEC', JSON.stringify({method, object, operation}));
             let bucket: string | undefined;
             let actualParams = params;
 
@@ -101,8 +138,10 @@ export default adapter<IConfig>(({utError}) => {
             }
 
             // Bucket enumeration (`s3.bucket.list`) does not need a target bucket.
-            const needsBucket =
-                !(object === 'bucket' && (operation === 'list' || operation === 'find'));
+            const needsBucket = !(
+                object === 'bucket' &&
+                (operation === 'list' || operation === 'find')
+            );
             if (!bucket && !this.config.bucket?.Bucket && needsBucket) {
                 throw this.error(_errors['s3.missingBucket'](), $meta);
             }
@@ -123,14 +162,27 @@ export default adapter<IConfig>(({utError}) => {
                         Key: key,
                     });
                     const response = await this.config.context.s3!.send(command);
-                    return {
-                        body: await response.Body?.transformToByteArray(),
-                        contentType: response.ContentType,
-                        contentLength: response.ContentLength,
-                        metadata: response.Metadata,
-                        lastModified: response.LastModified,
-                        etag: response.ETag,
-                    };
+                    return s3BufferAnswer(response);
+                }
+                case 'stream': {
+                    // The same object as `get`, answered as a stream: a caller that serves a file hands
+                    // the bytes on without ever holding them (@@D-838). `range` asks for a slice, which
+                    // is what a `Range:` request turns into.
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['s3.invalid'](), $meta);
+                    }
+                    const {key, range} = actualParams as {key?: string; range?: string};
+                    if (!key) {
+                        throw this.error(_errors['s3.missingKey']({key: 'key'}), $meta);
+                    }
+
+                    const command = new GetObjectCommand({
+                        Bucket: bucket ?? this.config.bucket?.Bucket ?? '',
+                        Key: key,
+                        ...(range ? {Range: range} : {}),
+                    });
+                    const response = await this.config.context.s3!.send(command);
+                    return s3StreamAnswer(response);
                 }
                 case 'add': {
                     // Put object to S3
@@ -172,16 +224,38 @@ export default adapter<IConfig>(({utError}) => {
                         throw this.error(_errors['s3.missingKey']({key: 'body'}), $meta);
                     }
 
-                    const command = new PutObjectCommand({
-                        Bucket: bucket ?? this.config.bucket?.Bucket ?? '',
-                        Key: key,
-                        Body: body as import('@aws-sdk/client-s3').PutObjectCommandInput['Body'],
-                        ContentType: contentType ?? undefined,
-                        ...(contentLength != null &&
-                            contentLength > 0 && {ContentLength: contentLength}),
-                        Metadata: metadata,
-                    });
-                    const putResult = await this.config.context.s3!.send(command);
+                    // A stream whose length nobody knows — a file being encrypted as it is read, a
+                    // response being forwarded — cannot be a `PutObject`: the request signs its length
+                    // before the first byte exists, so the SDK refuses it with
+                    // `Invalid value "undefined" for header "x-amz-decoded-content-length"`, or the server
+                    // answers `MissingContentLength`. The SDK's own uploader splits such a body into parts
+                    // and holds one part at a time, which is what serving a large file needs (@@D-838).
+                    const streamed =
+                        contentLength === undefined &&
+                        body != null &&
+                        typeof (body as {pipe?: unknown}).pipe === 'function';
+                    const putResult = streamed
+                        ? await new Upload({
+                              client: this.config.context.s3!,
+                              params: {
+                                  Bucket: bucket ?? this.config.bucket?.Bucket ?? '',
+                                  Key: key,
+                                  Body: body as import('@aws-sdk/client-s3').PutObjectCommandInput['Body'],
+                                  ContentType: contentType ?? undefined,
+                                  Metadata: metadata,
+                              },
+                          }).done()
+                        : await this.config.context.s3!.send(
+                              new PutObjectCommand({
+                                  Bucket: bucket ?? this.config.bucket?.Bucket ?? '',
+                                  Key: key,
+                                  Body: body as import('@aws-sdk/client-s3').PutObjectCommandInput['Body'],
+                                  ContentType: contentType ?? undefined,
+                                  ...(contentLength != null &&
+                                      contentLength > 0 && {ContentLength: contentLength}),
+                                  Metadata: metadata,
+                              }),
+                          );
                     return this.config.url?.replace?.('{key}', key) ?? {key, etag: putResult.ETag};
                 }
                 case 'delete':
@@ -269,6 +343,10 @@ export default adapter<IConfig>(({utError}) => {
                     return this.config.context.s3!.send(command);
                 }
             }
+            console.log(
+                'S3-FALLTHROUGH',
+                JSON.stringify({method: $meta?.method, object, operation}),
+            );
             throw this.error(_errors['s3.generic']({}), $meta);
         },
     };

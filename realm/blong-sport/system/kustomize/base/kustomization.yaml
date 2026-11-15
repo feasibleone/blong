@@ -19,6 +19,7 @@ resources:
   - rbac/service-account.yaml
   - services/access.yaml
   - services/assets-http.yaml
+  - services/blob.yaml
   - services/blong.yaml
   - services/core.yaml
   - services/feedback.yaml
@@ -26,3 +27,4 @@ resources:
   - services/party.yaml
   - services/sport.yaml
   - services/web-http.yaml
+  - volumes/blobStorage.yaml

@@ -1,0 +1,39 @@
+/*
+ * `BlobImage` — one box, whatever it holds.
+ *
+ * The shape belongs to the box rather than to the picture, so the initials a nameless value falls back to
+ * sit in exactly the space the picture would have taken: a page that swaps one for the other does not
+ * jump (@@D-842).
+ */
+.blong-blob-image {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    overflow: hidden;
+    background: var(--surface-200, #e9ecef);
+    color: var(--text-color-secondary, #6c757d);
+    object-fit: cover;
+}
+
+.blong-blob-image--circle {
+    border-radius: 50%;
+}
+
+.blong-blob-image--square {
+    border-radius: 6px;
+}
+
+.blong-blob-image__initials {
+    font-weight: 600;
+    font-size: 0.9em;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+/* A value with nothing in it: the generic person, sized like the initials it replaced. */
+.blong-blob-image--empty .pi-user {
+    font-size: 1.1em;
+    opacity: 0.75;
+}

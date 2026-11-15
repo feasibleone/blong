@@ -30,6 +30,7 @@ import {FeedbackLayer} from '../../feedback/FeedbackLayer.js';
 import {FeedbackToggle} from '../../feedback/FeedbackToggle.js';
 import {FeedbackActiveContext} from '../../feedback/useFeedbackTarget.js';
 import {prefetchPageSystem} from '../../prefetch.js';
+import {sessionKey} from '../../lib/sessionKey.js';
 import {ActionHint} from '../Hint/Hint.js';
 import {LanguageSwitcher} from '../LanguageSwitcher/LanguageSwitcher.js';
 import {Login} from '../Login/Login.js';
@@ -166,6 +167,35 @@ function AppShell({
         // the reader) gets the newly available dictionary without a reload.
         if (store.auth.isAuthenticated) void store.languageActivate(store.language);
     }, [mergedPortalConfig?.translation?.load, handler]);
+
+    // A stored file is read by the browser from a plain `<img>` or `<a>` — a route, not a call — so the
+    // session cannot vouch for the read itself: `/a/<namespace>/<key>` reads a cookie, and the realm that
+    // mints it is named in the merged portal configuration, exactly as the dictionary readers are
+    // (`@@D-836`). Issue it once per session and again when the reader's authority changes; a cookie
+    // older than the session it was minted from shows a picture that is not there to show. Best effort:
+    // a suite with no blob realm names no method, and a failed issue leaves the pictures broken rather
+    // than the page (`@@D-836`). This effect is where the cadence is proved, because a realm's browser
+    // test group cannot reach a sibling port (`@@D-851`).
+    const scopeIssue = mergedPortalConfig?.blob?.issue;
+    const sessionIdentity = useAppStore(s =>
+        sessionKey(s.auth.profile?.actorId, s.auth.permissions),
+    );
+    const issuedRef = React.useRef<string | null>(null);
+    React.useEffect(() => {
+        if (!isAuthenticated) {
+            issuedRef.current = null;
+            return;
+        }
+        if (!scopeIssue || issuedRef.current === sessionIdentity) return;
+        issuedRef.current = sessionIdentity;
+        const methods = handler as unknown as Record<
+            string,
+            ((params: object, $meta: object) => Promise<unknown>) | undefined
+        >;
+        Promise.resolve(methods[scopeIssue]?.({}, {})).catch(() => {
+            // The cookie never arrived: the pictures are the loss, not the page.
+        });
+    }, [handler, isAuthenticated, scopeIssue, sessionIdentity]);
 
     const loginHandler = React.useCallback(
         async ({username, password}: {username: string; password: string}) => {

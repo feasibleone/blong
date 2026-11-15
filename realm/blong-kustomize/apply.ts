@@ -27,14 +27,17 @@ export const NAME_LABEL = 'app.kubernetes.io/name';
 export const GENERATED_CREDENTIALS_LABEL = 'blong.feasible.one/generated-credentials';
 
 /**
- * The label of the gateway key pair a pass writes for a suite.
+ * The label of the secret configuration a pass writes for a suite.
  *
- * The tree cannot carry the pair — a regenerated tree has to stay byte-identical, and a key that is
- * regenerated is a key browsers are not holding — so the pass creates it outside the tree. This label
- * says why it may live beside a tree that never names it: its owner is the declaration, it is kept
- * while that exists, and a listing which sees it does not make it obsolete .
+ * The tree cannot carry it — a regenerated tree has to stay byte-identical, and a key that is
+ * regenerated is a key browsers (and stored blobs) are not holding — so the pass creates it outside
+ * the tree. This label says why it may live beside a tree that never names it: its owner is the
+ * declaration, it is kept while that exists, and a listing which sees it does not make it obsolete.
+ * The name is the suite's rather than one consumer's (`@@D-855`).
  */
-export const GATEWAY_KEYS_LABEL = 'blong.feasible.one/gateway-keys';
+export const SUITE_SECRETS_LABEL = 'blong.feasible.one/suite-secrets';
+/** The label this object carried before it was generalised: read, so an older Secret still counts. */
+export const SUITE_SECRETS_LEGACY_LABEL = 'blong.feasible.one/gateway-keys';
 
 /**
  * The label that names the *object*, which is what a lookup by identity wants.

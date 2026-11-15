@@ -58,3 +58,18 @@
 .access-profile__roles i {
     color: var(--primary-color, #3b82f6);
 }
+
+/* The photograph and the widget that replaces it, above the details: the picture keeps its box
+   whatever the form does below it, so a person who has one sees it where they expect it. */
+.access-profile__avatar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--surface-border, #e2e8f0);
+}
+
+.access-profile__avatar .blong-asset {
+    flex: 1;
+}

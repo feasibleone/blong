@@ -343,6 +343,12 @@ function FieldRow({
         effectiveSchema?.widget?.selectionMode === 'single' ||
         effectiveSchema?.widget?.type === 'navigator';
 
+    // Whether this field's widget derives sibling values (an asset that fills a format and a
+    // checksum from the record it stored) — it gets the form's setter and nothing else (@@D-852).
+    const needsFill = Boolean(
+        effectiveSchema?.widget?.fill && Object.keys(effectiveSchema.widget.fill).length,
+    );
+
     // Paths for visibility and enabled state, driven by form values at those paths
     const widgetExtra = effectiveSchema?.widget as unknown as Record<string, unknown> | undefined;
     const visiblePath =
@@ -468,6 +474,12 @@ function FieldRow({
                             disabled={widgetDisabled}
                             dropdowns={dropdowns}
                             onSelect={needsOnSelect ? handleTableSelect : undefined}
+                            onFill={
+                                needsFill && setValue
+                                    ? (fieldName: string, filled: unknown) =>
+                                          setValue(fieldName, filled)
+                                    : undefined
+                            }
                         />
                         {effectiveSchema?.description && (
                             <small className="blong-field-hint">
@@ -504,6 +516,7 @@ function FieldRow({
             hideLabel,
             onChange,
             onChangeName,
+            needsFill,
             methods,
             schemaReadOnly,
             loading,

@@ -16,6 +16,7 @@ import type {
 import {Internal} from '@feasibleone/blong/types';
 import fastify, {
     LogController,
+    type FastifyInstance,
     type FastifyReply,
     type FastifyRequest,
     type RouteOptions,
@@ -41,15 +42,25 @@ import {
 import {type TypeBoxTypeProvider} from '@fastify/type-provider-typebox';
 import type {IResolution} from './Resolution.ts';
 import type {IRpcClient} from './RpcClient.ts';
-import jwt from './jwt.ts';
 import {caughtError} from './gatewayCaught.ts';
+import jwt from './jwt.ts';
 import {isExpectedError, methodId, methodParts, snakeToCamel} from './lib.ts';
 import type {IConfig as IConfigMLE} from './mle.ts';
 import isPublic from './public.ts';
+import {registerRawBody} from './rawBody.ts';
 import swagger from './swagger.ts';
 
 const osName: string = [os.type(), os.platform(), os.release()].join(':');
 const hostName: string = os.hostname();
+
+/** True for the stream a raw-body parser left in `request.body`. */
+function isStream(value: unknown): value is NodeJS.ReadableStream {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as {pipe?: unknown}).pipe === 'function'
+    );
+}
 
 const typedError: TSchema = Type.Object({
     message: Type.Optional(Type.String()),
@@ -467,9 +478,15 @@ export default class Gateway extends Internal implements IGateway {
                     'path' in value
                         ? `${value.basePath ?? '/rpc/' + method.split('.', 1)[0]}${value.path}`
                         : `/${value.basePath ?? 'rpc'}/${method.split('.').join('/')}`,
+                // A streamed route names its own ceiling; every other route keeps fastify's, which no
+                // file crosses (@@D-841).
+                ...(value.bodyLimit !== undefined && {bodyLimit: value.bodyLimit}),
                 config: {
                     auth: value.auth ?? 'jwt',
                     methodName: method,
+                    // The route's own request for a stream body, which is what mounts it in the
+                    // encapsulated context that holds the parser (@@D-860).
+                    ...(value.rawBody && {rawBody: true}),
                     ...(value.bundle !== undefined && {bundle: value.bundle}),
                     ...(value.creditCost !== undefined && {creditCost: value.creditCost}),
                     ...(value.meter !== undefined && {meter: value.meter}),
@@ -556,6 +573,8 @@ export default class Gateway extends Internal implements IGateway {
                 //     };
                 // },
                 handler: async (request: GatewayRequest, reply) => {
+                    /** This route asked for its body as a stream (`@@D-860`). */
+                    const rawBodyRoute = (value as {rawBody?: boolean}).rawBody === true;
                     const {id, params, timeout, expect} =
                         'params' in value
                             ? (request.body as {
@@ -613,6 +632,13 @@ export default class Gateway extends Internal implements IGateway {
                         if (!('result' in value)) {
                             const req = this.#local.get(reqName);
                             if (!req) return notfound();
+                            // A raw route is answered from the stream the parser left in
+                            // `request.body`; no schema reads it, so it is handed to the handler
+                            // beside the parameters. The route asked for it, and the encapsulated
+                            // mount is what made the parser reach it (@@D-841 @@D-860).
+                            if (rawBodyRoute && isStream(request.body)) {
+                                (params as Record<string, unknown>).body = request.body;
+                            }
                             // The outermost entry mints the flow: everything this
                             // request does downstream joins it, and the method it
                             // was addressed to is the flow's kind.
@@ -927,7 +953,28 @@ export default class Gateway extends Internal implements IGateway {
             });
             for (const {plugin, options} of this.#plugins)
                 await this.#server.register(plugin, options);
-            this.#routes.forEach(route => this.#server!.route(route));
+            /**
+             * One mount per route, and the streaming ones get a context of their own.
+             *
+             * Fastify's content type parsers are encapsulated: a parser added inside a plugin applies
+             * to that plugin's routes and to no one else's. A route that asked for a stream body is
+             * therefore mounted in a child instance that owns the parser, which is what keeps the rest
+             * of the gateway answering `415` for a body it cannot read instead of handing every route
+             * a stream it does not expect (@@D-860).
+             */
+            for (const route of this.#routes) {
+                const streaming =
+                    (route.config as {rawBody?: boolean} | undefined)?.rawBody === true;
+                if (!streaming) {
+                    this.#server.route(route);
+                    continue;
+                }
+                await this.#server.register(async (instance: FastifyInstance) => {
+                    registerRawBody(instance);
+                    instance.route(route);
+                });
+            }
+            this.#routes = [];
         } finally {
             await old?.close();
         }

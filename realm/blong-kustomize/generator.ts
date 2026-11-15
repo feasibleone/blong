@@ -283,21 +283,24 @@ const RELEASE_RC_HOME = '/home/node/.blong_releaserc';
 const RELEASE_RC_SITE = '/etc/blong_releaserc';
 
 /**
- * The suite's key material, as an rc Secret the pods read — one pair per suite, not per process
- * (@@D-441).
+ * The suite's secret configuration, as an rc document the pods read — one document per suite, not per
+ * process (`@@D-441` `@@D-855`).
+ *
+ * The name says what it is rather than who reads it: the gateway pair, the blob key and the cookie
+ * secret are all in it, and a value a realm adds later needs no second Secret and no second mount.
  */
-const gatewayKeys = (plan: IDeploymentPlan): {volumes: unknown[]; mounts: unknown[]} => ({
+const suiteSecrets = (plan: IDeploymentPlan): {volumes: unknown[]; mounts: unknown[]} => ({
     volumes: [
         {
-            name: 'gateway-keys',
+            name: 'secrets',
             secret: {
-                secretName: GATEWAY_KEYS_SECRET,
+                secretName: SUITE_SECRETS_SECRET,
                 optional: true,
                 items: [{key: 'config', path: 'config'}],
             },
         },
     ],
-    mounts: [{name: 'gateway-keys', mountPath: rcConfigDir(plan), readOnly: true}],
+    mounts: [{name: 'secrets', mountPath: rcConfigDir(plan), readOnly: true}],
 });
 
 /**
@@ -307,8 +310,16 @@ const gatewayKeys = (plan: IDeploymentPlan): {volumes: unknown[]; mounts: unknow
 const rcConfigDir = (plan: IDeploymentPlan): string =>
     `/home/node/.config/blong_${deploymentIntents(plan.suite.intents).at(-1) ?? 'release'}/`;
 
-/** The Secret the suite's gateway keys live in: a constant, because a namespace holds one suite. */
-export const GATEWAY_KEYS_SECRET = 'gateway-keys';
+/**
+ * The Secret the suite's secret configuration lives in: a constant, because a namespace holds one suite.
+ *
+ * Renamed from `gateway-keys`, which named a consumer rather than what the object is (`@@D-855`). The
+ * older name is still read by the ensure, so a deployment that already has one gains the values it is
+ * missing instead of being given a second Secret.
+ */
+export const SUITE_SECRETS_SECRET = 'blong-secrets';
+/** The name this Secret carried before it was generalised, read but never written. */
+export const SUITE_SECRETS_LEGACY_NAME = 'gateway-keys';
 
 const releaseRc = (): {volumes: unknown[]; mounts: unknown[]} => ({
     volumes: [
@@ -511,7 +522,7 @@ const deploymentResource = (
                                 mount,
                                 ...extraMounts,
                                 ...releaseRc().mounts,
-                                ...gatewayKeys(plan).mounts,
+                                ...suiteSecrets(plan).mounts,
                             ],
                             // TCP, not HTTP: the RPC port is open as soon as the
                             // server listens, while an HTTP probe would depend on a
@@ -524,7 +535,7 @@ const deploymentResource = (
                         volume,
                         ...extraVolumes,
                         ...releaseRc().volumes,
-                        ...gatewayKeys(plan).volumes,
+                        ...suiteSecrets(plan).volumes,
                     ],
                 },
             },
@@ -1380,7 +1391,7 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
                                 mount,
                                 {name: 'cache', mountPath: OPERATOR_CACHE_MOUNT},
                                 ...releaseRc().mounts,
-                                ...gatewayKeys(plan).mounts,
+                                ...suiteSecrets(plan).mounts,
                             ],
                             // Two surfaces, and the Service names both: the rpc port carries the
                             // internal dispatch a peer uses, and the gateway port carries the read
@@ -1408,7 +1419,7 @@ const operatorDeploymentResource = (plan: IDeploymentPlan): Record<string, unkno
                             persistentVolumeClaim: {claimName: OPERATOR_CACHE_CLAIM},
                         },
                         ...releaseRc().volumes,
-                        ...gatewayKeys(plan).volumes,
+                        ...suiteSecrets(plan).volumes,
                     ],
                 },
             },

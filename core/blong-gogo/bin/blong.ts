@@ -4,6 +4,7 @@ import minimist from 'minimist';
 import {existsSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {printUsage, shouldShowHelp} from '../src/cliHelp.ts';
+import {isTargetArgument, resolveTarget} from '../src/cliTarget.ts';
 import {autoRun} from '../src/runServer.ts';
 
 const rawArgv = minimist(process.argv.slice(2)) as {
@@ -28,8 +29,9 @@ const {_: positionals, object: objectName} = rawArgv;
 const isRealmCreate =
     positionals.includes('realm') &&
     // If one of the positionals is an existing path it is a target, not the
-    // realm-creation intent.
-    !positionals.some(p => existsSync(resolve(p)));
+    // realm-creation intent. A *name* is never a path: `blong realm dev` scaffolds
+    // `dev` even in a folder that holds one (`@@D-858`).
+    !positionals.some(p => isTargetArgument(p) && existsSync(resolve(p)));
 if (isRealmCreate) {
     const realmIdx = positionals.indexOf('realm');
     const realmName = positionals[realmIdx + 1];
@@ -61,7 +63,9 @@ if (isRealmCreate) {
 // is only a command when it is the first positional and no positional names an
 // existing path (a suite is never run by a `grant` argument in practice, and
 // `existsSync` is the same guard the realm-create branch uses).
-const isGrantCommand = positionals[0] === 'grant' && !positionals.some(p => existsSync(resolve(p)));
+const isGrantCommand =
+    positionals[0] === 'grant' &&
+    !positionals.some(p => isTargetArgument(p) && existsSync(resolve(p)));
 if (isGrantCommand) {
     const {runGrantCommand} = await import('../src/grant.ts');
     await runGrantCommand(positionals, rawArgv);
@@ -69,9 +73,8 @@ if (isGrantCommand) {
 }
 
 const parsed = minimist(process.argv.slice(2)) as {_: string[]};
-// The first positional arg is an optional file/folder target; the rest are intents.
-const [maybeTarget, ...rest] = parsed._;
-const target = maybeTarget && existsSync(resolve(maybeTarget)) ? maybeTarget : undefined;
-const intents = target ? rest : parsed._;
+// The first positional may name a file or folder to run — spelled as one (`./server.ts`, `dev/`) — and
+// the rest are intents. A bare word is an intent whatever the filesystem holds (`@@D-858`).
+const {target, intents} = resolveTarget(parsed._, p => existsSync(resolve(p)));
 
 await autoRun({cwd: process.cwd(), target, intents});

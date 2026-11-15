@@ -55,7 +55,7 @@ export default server(() => ({
                     'test.session',
                     'test.cluster.apply',
                     'test.cluster.status',
-                    'test.gateway.keys',
+                    'test.secrets',
                     'test.volume.prune',
                     'test.reconcile.guard',
                     'test.reconcile.scope',

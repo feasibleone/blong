@@ -84,7 +84,7 @@ export const realmCommand = ({positionals, argv}: ParsedArgs): IRealmCommand | u
     }
     if (command === 'keys-ensure') {
         return {
-            method: 'kustomizeGatewayKeysEnsure',
+            method: 'kustomizeSecretsEnsure',
             params: {...(text(argv.namespace) ? {namespace: text(argv.namespace)} : {})},
         };
     }

@@ -83,6 +83,17 @@ describe('mergePortalConfigs', () => {
         expect(config.feedback).toEqual({enabled: true, submit: 'feedback.session.add'});
     });
 
+    it('keeps the blob scope method of the provider that declares it', () => {
+        // The shell can only mint the read cookie for a suite whose realm named the method, and the
+        // block reaches it through this composition: dropping it here is a suite whose images are
+        // all refused, with nothing in the configuration to explain why (`@@D-836`).
+        const config = mergePortalConfigs([
+            {},
+            {...handWrittenAnswer, blob: {issue: 'blob.scope.issue'}},
+        ]);
+        expect(config.blob).toEqual({issue: 'blob.scope.issue'});
+    });
+
     it('keeps the brand of the provider that declares it', () => {
         // Same rule, and the same failure if it is left out: the shell draws the
         // toolbar mark and the empty state from the *merged* config, so a brand

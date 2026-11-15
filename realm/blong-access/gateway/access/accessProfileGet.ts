@@ -41,6 +41,9 @@ export default validation(
                                     gender: type.Union([type.String(), type.Null()]),
                                     nationality: type.Union([type.String(), type.Null()]),
                                     occupation: type.Union([type.String(), type.Null()]),
+                                    photoUrl: type.Optional(
+                                        type.Union([type.String(), type.Null()]),
+                                    ),
                                 },
                                 {additionalProperties: true},
                             ),
