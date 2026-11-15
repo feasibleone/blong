@@ -27,6 +27,7 @@ import {
     recordQuestion,
     renderFaqBody,
 } from './memoryFaq.ts';
+import {MAX_TITLE_LENGTH} from './memoryTypes.ts';
 
 /** A search hit, as the bank reports one. */
 function hit(tags: string[], similarity: number | null = null): IHindsightHit {
@@ -140,12 +141,13 @@ test('a question is matched by its words, not its punctuation', async t => {
     t.end();
 });
 
-test('a title is one line, a question, and at most eighty columns', async t => {
+test('a title is one line, a question, and within the title budget', async t => {
     t.equal(questionTitle('why is the index stale?'), 'Why is the index stale?', 'cased, one ?');
     const long = questionTitle(
-        'why does the generated index block go stale after an entry is moved between two files',
+        'why does the generated index block go stale after an entry is moved between two files and ' +
+            'then moved back again by a second command that nobody expected to touch it at all',
     );
-    t.ok(long.length <= 80, `kept to 80 columns (${long.length})`);
+    t.ok(long.length <= MAX_TITLE_LENGTH, `kept to ${MAX_TITLE_LENGTH} columns (${long.length})`);
     t.match(long, /…$/, 'and says it was cut');
     t.end();
 });

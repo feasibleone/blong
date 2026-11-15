@@ -456,7 +456,7 @@ export function questionSimilarity(left: string, right: string): number {
     return common / (a.size + b.size - common);
 }
 
-/** A search text turned into an entry title: one line, a question, at most 80 columns. */
+/** A search text turned into an entry title: one line, a question, within the title budget. */
 export function questionTitle(query: string): string {
     const clean = query
         .replace(/\s+/g, ' ')

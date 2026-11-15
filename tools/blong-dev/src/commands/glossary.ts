@@ -40,6 +40,7 @@ import {
 } from '../glossary/glossaryDoc.ts';
 import {repoRoot} from '../report/reportPaths.ts';
 import {helpText, usageHint} from '../usage.ts';
+import {fixMarkdown} from '../utils/markdownFix.ts';
 import {UsageError} from '../utils/usageError.ts';
 import {parseArgs} from './log.ts';
 
@@ -58,9 +59,9 @@ export async function glossary(args: string[]): Promise<void> {
     try {
         switch (verb) {
             case 'add':
-                return add(values, options, json);
+                return await add(values, options, json);
             case 'remove':
-                return remove(values, options, json);
+                return await remove(values, options, json);
             case 'list':
                 return list(options, json);
             case 'show':
@@ -122,7 +123,7 @@ function definitionOf(options: Map<string, string>): string {
 }
 
 /** Add a term, or update the definition of one already there. */
-function add(values: string[], options: Map<string, string>, json: boolean): void {
+async function add(values: string[], options: Map<string, string>, json: boolean): Promise<void> {
     const term = values[0];
     if (term === undefined) throw new UsageError('add needs a term');
     if (values.length > 1) throw new UsageError('add takes a single term');
@@ -137,12 +138,19 @@ function add(values: string[], options: Map<string, string>, json: boolean): voi
     const action = addTerm(doc, term, definition);
     sortTerms(doc);
     writeGlossary(file, doc);
+    // The page is markdown like any other, so the wrap and the spacing it needs are the ones the
+    // editor's formatter would have applied — not a second wrapper written here (F-241).
+    await fixMarkdown(process.cwd(), [file]);
     if (report({file, term, action, entries: doc.entries.length}, json)) return;
     process.stdout.write(`# glossary add: ${action} "${term}" (${doc.entries.length} entries)\n`);
 }
 
 /** Remove one or more terms. */
-function remove(values: string[], options: Map<string, string>, json: boolean): void {
+async function remove(
+    values: string[],
+    options: Map<string, string>,
+    json: boolean,
+): Promise<void> {
     if (values.length === 0) throw new UsageError('remove needs at least one term');
     const file = glossaryFile(options);
     const doc = load(file);
@@ -154,6 +162,7 @@ function remove(values: string[], options: Map<string, string>, json: boolean): 
         else removed.push(was);
     }
     writeGlossary(file, doc);
+    await fixMarkdown(process.cwd(), [file]);
     if (report({file, removed, missing, entries: doc.entries.length}, json)) return;
     if (removed.length > 0) {
         process.stdout.write(

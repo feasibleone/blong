@@ -93,7 +93,13 @@ before the first ask; do not restate it here.
 - **Groups are with a purpose.** "Foundation — the realm exists", "Functionality — the vocabulary
   answers", "Tests", "Docs". A group is not a folder listing.
 - **Verify inside the group.** Every group ends with a task that runs the package's tests and lint;
-  the commands are the group's definition of done.
+  the commands are the group's definition of done. The title says _what the group proves_ — "Verify
+  the store is a configuration value, not a code path" — never where it sits: `Group 3 verification`
+  is the same title in every plan, so two entries carry it and neither can be found.
+- **A title has to survive its plan.** The title becomes the memory entry's title and the id is a
+  side note; a reader searching memory sees only the title. Name the subject and the change, drop
+  the phase number, and keep it unique across the repository — `plan check` reports a positional
+  title and one that repeats an existing entry's.
 - **Docs are last.** Implementation changes what the documentation should say; a docs task written
   before the code is a rewrite waiting to happen.
 - **Tests come before docs and after behaviour.** A tap group per capability, a Playwright spec only

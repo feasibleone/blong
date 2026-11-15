@@ -8,7 +8,9 @@
  * - `check` reads the plan, refuses a task it could not create, and reports a task whose
  *   memory entry has gone missing or drifted.
  * - `tasks` turns each task into a memory todo and trims the plan to a board of titles
- *   with `@@T-` references. `--apply` is the write; a dry run is the default.
+ *   with `@@T-` references. `--apply` is the write; a dry run is the default. The decisions
+ *   listed under `### Decisions this plan takes` are created in the same run, because a
+ *   planning decision is what the tasks rest on (@@D-861).
  * - `init` approves the plan: it creates the tasks, mirrors the plan into a GitHub issue,
  *   opens the plan's Slack channel, and records both in the plan's front matter.
  * - `sync` re-reads the memory and ticks the plan (and republishes the issue) — what a
@@ -41,7 +43,9 @@ import {entryLink, issueLinks} from '../plan/planLinks.ts';
 import {
     bodyWithoutFrontMatter,
     planTitle,
+    positionalTitle,
     readPlan,
+    renderDecisionLine,
     renderPlan,
     renderTaskLine,
     writeMeta,
@@ -59,7 +63,7 @@ import {
     planChannelUrl,
     updatePlanChannelTopic,
 } from '../plan/planSlack.ts';
-import {createPlanTasks, planSlug} from '../plan/planTasks.ts';
+import {createPlanDecisions, createPlanTasks, planSlug} from '../plan/planTasks.ts';
 import {repoRoot} from '../report/reportPaths.ts';
 import {usageHint} from '../usage.ts';
 import {UsageError} from '../utils/usageError.ts';
@@ -81,6 +85,7 @@ const BOOLEAN_FLAGS = new Set([
     'no-issue',
     'no-slack',
     'no-tasks',
+    'no-decisions',
     'plain',
 ]);
 
@@ -318,6 +323,43 @@ function check(
             state: found.entry ? found.entry.status : 'missing',
         };
     });
+    // A decision the plan takes is created with the tasks, so an uncreated one is the same problem a
+    // task without an id is: the plan is not published yet. Drift is reported the way a task's is,
+    // because `sync` repairs both (@@D-861).
+    const decisions = plan.decisions.map(decision => {
+        if (!decision.id) {
+            problems.push(
+                `line ${decision.line + 1}: decision "${decision.title}" has no @@D- id — ` +
+                    'run `plan init`',
+            );
+            return {id: null, title: decision.title, state: 'uncreated'};
+        }
+        const found = entryFor(entries, decision.id);
+        if (found.problem) {
+            problems.push(`line ${decision.line + 1}: ${found.problem}`);
+            return {id: decision.id, title: decision.title, state: 'missing'};
+        }
+        if (found.entry && found.entry.title !== decision.title) {
+            problems.push(
+                `line ${decision.line + 1}: decision "${decision.title}" and its entry say ` +
+                    `different things ("${found.entry.title}") — run \`plan sync\``,
+            );
+        }
+        if (found.entry) {
+            const link = entryLink(root, plan.path, found.entry);
+            if (decision.link !== link) {
+                problems.push(
+                    `line ${decision.line + 1}: decision "${decision.title}" links to ` +
+                        `${decision.link ? `"${decision.link}"` : 'nothing'} — run \`plan sync\``,
+                );
+            }
+        }
+        return {
+            id: decision.id,
+            title: decision.title,
+            state: found.entry ? found.entry.status : 'missing',
+        };
+    });
     // A decision or friction the plan cites is part of its record; a citation that resolves to
     // nothing is the broken promise `memory refs --dangling` reports tree-wide, said here where the
     // author is looking.
@@ -325,9 +367,40 @@ function check(
         if (!item.entry) problems.push(`${item.id} is cited but ${item.problem}`);
     }
 
+    // A title is the handle the entry is found by, so it has to survive being read on its own: a
+    // positional one says nothing two plans apart, and one that repeats an existing entry's title
+    // leaves two entries nobody can tell apart. Both are reported rather than refused — the plan is
+    // still executable, and an old plan is not worth rewriting for a name (@@D-863).
+    const notes: string[] = [];
+    const items = [
+        ...plan.tasks.map(task => ({title: task.title, line: task.line, id: task.id})),
+        ...plan.decisions.map(decision => ({
+            title: decision.title,
+            line: decision.line,
+            id: decision.id,
+        })),
+    ];
+    for (const item of items) {
+        const positional = positionalTitle(item.title);
+        if (positional) {
+            notes.push(
+                `line ${item.line + 1}: "${item.title}" ${positional} — name what it proves, ` +
+                    'e.g. "Verify a mismatched content type answers 415"',
+            );
+        }
+        if (item.id) continue;
+        const clash = entries.find(entry => entry.title === item.title);
+        if (clash) {
+            notes.push(
+                `line ${item.line + 1}: "${item.title}" is already ${clash.id}'s title ` +
+                    `(${clash.path}) — the two entries cannot be told apart`,
+            );
+        }
+    }
+
     if (on(flags, options, 'json')) {
         process.stdout.write(
-            `${JSON.stringify({plan: relative(root, plan.path), tasks, problems}, null, 2)}\n`,
+            `${JSON.stringify({plan: relative(root, plan.path), tasks, decisions, problems, notes}, null, 2)}\n`,
         );
     } else {
         for (const task of tasks) {
@@ -335,9 +408,17 @@ function check(
                 `# ${task.id ?? '(uncreated)'} ${task.title} · ${task.area ?? '(no area)'} · ${task.state}\n`,
             );
         }
+        for (const decision of decisions) {
+            process.stdout.write(
+                `# ${decision.id ?? '(uncreated)'} ${decision.title} · decision · ${decision.state}\n`,
+            );
+        }
+        for (const note of notes) process.stdout.write(`# note: ${note}\n`);
         for (const problem of problems) process.stderr.write(`blong-dev: ${problem}\n`);
         process.stdout.write(
-            `# ${tasks.length} task(s), ${problems.length} problem(s) — ` +
+            `# ${tasks.length} task(s), ${decisions.length} decision(s), ` +
+                `${problems.length} problem(s)` +
+                `${notes.length > 0 ? `, ${notes.length} note(s)` : ''} — ` +
                 `${plan.meta.issueUrl ? 'issue linked' : 'no issue yet'}` +
                 `${plan.meta.conversationId ? `, channel ${plan.meta.channelName}` : ', no channel'}\n`,
         );
@@ -370,11 +451,38 @@ async function tasks(
     if (result.skipped > 0) {
         process.stdout.write(`# ${result.skipped} task(s) already carry an id\n`);
     }
+
+    // The decisions the plan takes are entries for the same reason the tasks are: a decision is what
+    // a later task, comment or doc cites, and prose cannot be cited (@@D-861).
+    let current = result.plan;
+    if (!on(flags, options, 'no-decisions')) {
+        const decisions = await createPlanDecisions(root, current, {
+            apply,
+            update: on(flags, options, 'update'),
+            area: options.get('area'),
+            slug: options.get('slug'),
+        });
+        current = decisions.plan;
+        for (const created of decisions.created) {
+            process.stdout.write(
+                `# ${apply ? created.id : '(new)'} ${created.decision.title} · ` +
+                    `${created.decision.area}\n`,
+            );
+        }
+        for (const updated of decisions.updated) {
+            process.stdout.write(`# ${updated.id} updated from the plan\n`);
+        }
+        if (decisions.skipped > 0) {
+            process.stdout.write(`# ${decisions.skipped} decision(s) already carry an id\n`);
+        }
+    }
+
     if (!apply) {
         process.stdout.write('# dry run — pass --apply to create the entries and trim the plan\n');
     } else {
         process.stdout.write(
-            `# ${relative(root, result.plan.path)} trimmed to ${result.plan.tasks.length} title(s)\n`,
+            `# ${relative(root, current.path)} trimmed to ${current.tasks.length} task(s), ` +
+                `${current.decisions.length} decision(s)\n`,
         );
     }
 }
@@ -453,6 +561,18 @@ async function init(
         current = result.plan;
         process.stdout.write(
             `# ${result.created.length} task(s) ${dryRun ? 'would be' : ''} created\n`,
+        );
+    }
+
+    if (!on(flags, options, 'no-decisions')) {
+        const result = await createPlanDecisions(root, current, {
+            apply: !dryRun,
+            area: options.get('area'),
+            slug: options.get('slug') ?? planSlug(current.path),
+        });
+        current = result.plan;
+        process.stdout.write(
+            `# ${result.created.length} decision(s) ${dryRun ? 'would be' : ''} created\n`,
         );
     }
 
@@ -564,6 +684,7 @@ async function sync(
     let retitled = 0;
     let relinked = 0;
     let missing = 0;
+    let decisionsAligned = 0;
 
     for (const task of plan.tasks) {
         if (!task.id) continue;
@@ -587,6 +708,25 @@ async function sync(
             {checked: done, id: task.id, title: found.entry.title},
             link,
         );
+    }
+
+    // A decision's line is its link and its title, so a retitled or re-anchored entry is re-rendered
+    // here exactly as a task's is — the plan is the board for both (@@D-861).
+    for (const decision of plan.decisions) {
+        if (!decision.id) continue;
+        const found = entryFor(entries, decision.id);
+        if (!found.entry) {
+            missing += 1;
+            process.stderr.write(`blong-dev: line ${decision.line + 1}: ${found.problem}\n`);
+            continue;
+        }
+        const line = renderDecisionLine(
+            {id: decision.id, title: found.entry.title},
+            entryLink(root, plan.path, found.entry),
+        );
+        if (line === lines[decision.line]) continue;
+        lines[decision.line] = line;
+        decisionsAligned += 1;
     }
 
     const updated: IPlanDocument = {...plan, lines};
@@ -617,6 +757,7 @@ async function sync(
     process.stdout.write(
         `# ${ticked} ticked, ${unticked} unticked, ${retitled} title(s) aligned` +
             `${relinked > 0 ? `, ${relinked} link(s) written` : ''}` +
+            `${decisionsAligned > 0 ? `, ${decisionsAligned} decision(s) aligned` : ''}` +
             `${
                 section.refreshed.length > 0
                     ? `, ${section.refreshed.length} entry line(s) refreshed`

@@ -54,8 +54,8 @@ When you do not know the words an entry uses, ask for it by meaning:
 `blong-dev memory search "<question>"` — a write also pushes the entries it touched into the local
 Hindsight index, and `blong-dev memory index --semantic` refills it. The question itself is recorded
 as an `faq` entry, so answer it once you have read the hits (see above) rather than leaving it open.
-The `## Manual` section of the root `todo.md` is the user's own list: agents never add to it, edit it
-or tidy it up. If you encounter markdown lint issues when using `blong-dev memory`, add blong-dev
+The `## Manual` section of the root `todo.md` is the user's own list: agents never add to it, edit
+it or tidy it up. If you encounter markdown lint issues when using `blong-dev memory`, add blong-dev
 memory todo to address it permanently either by better instructions or improved tooling.
 
 - **Output todo metrics explicitly**. Emit the marker **immediately after the switch/pivot**, before
@@ -103,10 +103,19 @@ memory todo to address it permanently either by better instructions or improved 
   `add <kind> --id <id> --body-file <file>` takes an id back from the ledger if you retired one you
   still need. End the work with `blong-dev memory check`.
 
-- **Lint markdown as well as code.** `blong-dev lint --files <paths>` runs cspell, eslint, tsc **and
-  markdownlint** (`.markdownlint.jsonc`: 100 columns, to match prettier). Markdown formatting
-  problems are otherwise only visible in the editor, so name the files explicitly when you change
-  markdown. `memory check` additionally enforces the memory format's own rules.
+- **Lint markdown as well as code, and repair it with `--fix`.** `blong-dev lint --files <paths>`
+  runs cspell, eslint, tsc **and markdownlint** (`.markdownlint.jsonc`: 100 columns, to match
+  prettier). Markdown formatting problems are otherwise only visible in the editor, so name the
+  files explicitly when you change markdown. When it reports a table out of alignment, a paragraph
+  past the width or a list marker style, **run `blong-dev lint --fix --files <paths>`** — it runs
+  prettier, then `markdownlint --fix`, then prettier again, which is the same order the editor's
+  markdown formatter applies on save. Never write a script or a `python3 - <<'PY'` block to re-wrap,
+  re-align or re-indent markdown: the tool already does it, and its output is what CI checks. The
+  run prints which findings `--fix` would repair; a path prettier ignores (`dev/`, `plans/`) is
+  repaired _silently not at all_, so confirm with `git diff` that the fix landed. `memory check`
+  additionally enforces the memory format's own rules, and memory files are the one kind
+  `lint --fix` must not touch — a generated index and the user's `## Manual` section stay
+  byte-for-byte, so `blong-dev memory format` is their fixer (@@D-862).
 
 - **Add a dictionary word with the tool, never by hand.** `blong-dev cspell add <word>` writes the
   word into `cspell.config.yaml` in its sorted position (`--section ignorePaths` for a path), and
@@ -139,6 +148,10 @@ memory todo to address it permanently either by better instructions or improved 
       re-wrap as noise, and the wrapper cannot see it. The wrapper will not _start_ a line with such
       a token — that is MD018/MD031/MD032 and it moves a word rather than let the break land there —
       but a paragraph that begins with one is the author's to fix.
+    - **A fenced example that must stay verbatim is fenced ` ```text `**, not ` ```markdown `.
+      Prettier formats a markdown block as markdown: it re-wraps the example's lines and glues an
+      indented continuation onto the line above, so a plan or memory example that a reader is meant
+      to copy arrives meaning something else. MD040 is satisfied by `text`.
     - **In a memory body, write prose, not lists.** `blong-dev memory` flattens a bullet list into
       one paragraph, so a list arrives as a run-on sentence (recorded as friction T-151).
     - **`blong-dev memory check` covers this**, including the shapes a wrap used to produce
@@ -278,8 +291,8 @@ Hard rules — apply first, never contradict.
 - **Verify after every change** — `get_errors`, tests, lint; never claim "complete" unverified.
 - **Away is not consent to decide alone.** When `vscode_askQuestions` answers that the user is away,
   or the user says to ask in chat, put the question in the conversation the work belongs to — the
-  active plan's `conversationId`, else `#blong-ask` — with the **blong-ask** skill. A decision nobody
-  answered is not a decision; leave it open and say so.
+  active plan's `conversationId`, else `#blong-ask` — with the **blong-ask** skill. A decision
+  nobody answered is not a decision; leave it open and say so.
 - If you must use double quotes around a command containing an exclamation mark (!), you must escape
   it with a backslash (\!) to avoid the error "bash: !: event not found"
 
@@ -738,16 +751,16 @@ A command that is given an incomplete argument reports what it needs and points 
 
 Rules that `--help` does not state:
 
-- **One gateway call is `blong-dev call`** — never add a bespoke CLI for a single API call;
-  business logic stays in the orchestrators. Servers, routes and payload defaults come from
-  `.blong_callrc` (gitignored); `--dry-run` prints what would be sent.
+- **One gateway call is `blong-dev call`** — never add a bespoke CLI for a single API call; business
+  logic stays in the orchestrators. Servers, routes and payload defaults come from `.blong_callrc`
+  (gitignored); `--dry-run` prints what would be sent.
 - **Reach the dev database with `blong-dev sql`**, not a MySQL client or `kubectl exec`; JSON is the
   default output off a TTY. Use `blong-dev user` to bootstrap a login when no gateway is reachable.
 - **Never edit `cspell.config.yaml` or the glossary by hand** — `blong-dev cspell` and
   `blong-dev glossary` own the sorted position, and their `check` is the gate.
-- **`blong-dev ci` diagnoses from the documents a run published**; the **blong-ci** skill carries the
-  vocabulary it prints, and [the blong-dev pattern](../docs/blong/docs/patterns/blong-dev.md) says
-  why each command exists.
+- **`blong-dev ci` diagnoses from the documents a run published**; the **blong-ci** skill carries
+  the vocabulary it prints, and [the blong-dev pattern](../docs/blong/docs/patterns/blong-dev.md)
+  says why each command exists.
 
 ## Architecture & Design Documents
 

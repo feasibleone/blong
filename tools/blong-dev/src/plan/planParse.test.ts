@@ -14,8 +14,10 @@ import {
     parsePlan,
     parseTaskLine,
     planTitle,
+    positionalTitle,
     renderTaskLine,
     taskBodyText,
+    trimDecisionsToLines,
     trimTasksToLines,
     writeMeta,
 } from './planParse.ts';
@@ -145,9 +147,7 @@ test('trimming keeps the title and the id and drops the detail', async t => {
 });
 
 test('a link written once is not rewritten on the next read', async t => {
-    const doc = parsePlan(
-        '- [ ] [@@T-531](../../pkg/.github/memory/todo.md#t-531--one) One\n',
-    );
+    const doc = parsePlan('- [ ] [@@T-531](../../pkg/.github/memory/todo.md#t-531--one) One\n');
     t.equal(doc.tasks[0]?.link, '../../pkg/.github/memory/todo.md#t-531--one');
     const trimmed = trimTasksToLines(doc, new Map(), new Map());
     t.equal(
@@ -214,5 +214,101 @@ test('front matter is metadata for the tooling and not part of the published pla
     const reread = parsePlan(written.lines.join('\n'));
     t.equal(reread.meta.conversationId, 'C1');
     t.equal(reread.meta.title, 'A plan', 'a patch keeps what was there');
+    t.end();
+});
+
+const DECIDED = `# A plan
+
+## 2. Technical approach
+
+### Where the capability lands
+
+- **store** — \`realm/blong-blob\`, \`gateway/blob/\`
+
+### Decisions this plan takes
+
+- The bytes live in a scope, not a namespace · area: realm/blong-blob
+      A scope is what the cookie carries, so a read can prove the caller owns the bytes.
+
+- The upload route asks for its stream body · area: core/blong-gogo
+      A parser at the root would accept what no route reads.
+
+### Configuration
+
+Nothing here.
+`;
+
+test('the decisions a plan takes are read like tasks, with their own list', async t => {
+    const doc = parsePlan(DECIDED);
+    t.same(doc.problems, [], 'a well-formed list reports nothing');
+    t.equal(doc.decisions.length, 2);
+    t.same(
+        doc.decisions.map(decision => [decision.title, decision.area, decision.id]),
+        [
+            ['The bytes live in a scope, not a namespace', 'realm/blong-blob', undefined],
+            ['The upload route asks for its stream body', 'core/blong-gogo', undefined],
+        ],
+    );
+    t.equal(
+        taskBodyText(doc.decisions[0]!),
+        'A scope is what the cookie carries, so a read can prove the caller owns the bytes.',
+    );
+    t.equal(doc.tasks.length, 0, 'a plain bullet is not a task');
+    t.end();
+});
+
+test('a created decision keeps its title and its link, and its detail leaves the plan', async t => {
+    const doc = parsePlan(DECIDED);
+    const ids = new Map([
+        [doc.decisions[0]!, 'D-001'],
+        [doc.decisions[1]!, 'D-002'],
+    ]);
+    const links = new Map([
+        [doc.decisions[0]!, '../../.github/memory/decision.md#d-001--scope'],
+        [doc.decisions[1]!, '../../core/blong-gogo/.github/memory/decision.md#d-002--body'],
+    ]);
+    const trimmed = trimDecisionsToLines(doc, ids, links);
+    const text = trimmed.lines.join('\n');
+    t.match(
+        text,
+        /^- \[@@D-001\]\(\.\.\/\.\.\/\.github\/memory\/decision\.md#d-001--scope\) The bytes live in a scope, not a namespace$/m,
+        'the line is the link and the title',
+    );
+    t.notMatch(text, /cookie carries/, 'the reasoning moved into the entry');
+    t.notMatch(text, /· area:/, 'so did the area marker');
+    t.match(text, /^### Configuration$/m, 'the heading below the list survives');
+
+    const reread = parsePlan(text);
+    t.equal(reread.decisions.length, 2, 'the trimmed list parses back');
+    t.same(reread.problems, [], 'and is still a valid plan');
+    t.end();
+});
+
+test('a decision without an area, or with a section in its detail, is refused', async t => {
+    const noArea = parsePlan(
+        `${DECIDED.split('### Configuration')[0]}`.replace(' · area: core/blong-gogo', ''),
+    );
+    t.match(
+        noArea.problems.join('\n'),
+        /decision "The upload route asks for its stream body" names no area/,
+    );
+    t.end();
+});
+
+test('a plan without a decisions heading has none, and parses as it always did', async t => {
+    const doc = parsePlan(PLAN);
+    t.same(doc.decisions, []);
+    t.equal(doc.tasks.length, 3);
+    t.end();
+});
+
+test('a title that names its position rather than its subject is reported', async t => {
+    t.equal(positionalTitle('Group 3 verification'), 'names a position in the plan, not the thing it checks');
+    t.equal(positionalTitle('Phase 2'), 'names a position in the plan, not the thing it checks');
+    t.equal(positionalTitle('Verification'), 'names a position in the plan, not the thing it checks');
+    t.equal(positionalTitle('Group 4 tests and docs'), 'names a position in the plan, not the thing it checks');
+    t.equal(positionalTitle('Group 2: the parser answers a bad type with 415'), undefined);
+    t.equal(positionalTitle('Verify a mismatched content type answers 415'), undefined);
+    t.equal(positionalTitle("The realm's tap groups"), undefined, 'a plural is not a position');
     t.end();
 });

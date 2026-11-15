@@ -40,6 +40,19 @@ import {parse as parseYaml, stringify as stringifyYaml} from 'yaml';
 const TASK = /^- \[(?<mark>[ xX])\]\s+(?<rest>.*)$/;
 
 /**
+ * The heading that opens the decisions the plan takes, inside `## 2. Technical approach`.
+ *
+ * A plan makes decisions before it is approved — which store, which layer, which default — and a
+ * reader who has to reconstruct them from the prose cannot review the plan. Listing them here gives
+ * them the shape the execution-time ones already have: one entry each, created when the plan is
+ * published (@@D-861).
+ */
+const DECISIONS_HEADING = /^(?<hashes>#{2,4})\s+Decisions this plan takes\s*$/i;
+
+/** A decision line: `- Title · area: <area>`, a plain bullet so the task parser ignores it. */
+const DECISION = /^-\s+(?!\[[ xX]\]\s)(?<rest>.*)$/;
+
+/**
  * The id a created task carries, bare or as the link to its memory entry.
  *
  * `@@T-531 Scaffold the realm` is what an older plan holds and what `plan adopt` writes
@@ -51,6 +64,46 @@ const ID_PREFIX = /^\[?@@(?<id>[FTD]-\d{3})\]?(?:\((?<link>[^)]*)\))?\s+(?<title
 
 /** The area suffix, which is stripped from the title. */
 const AREA_SUFFIX = /\s+·\s+area:\s*(?<area>\S.*?)\s*$/;
+
+/**
+ * A title that opens with where the task sits, not what it does.
+ *
+ * The title becomes a memory entry's title, and that entry is the thing a reader and a search have to
+ * find it by. `Group 3 verification` says nothing a second plan's `Group 3 verification` does not say,
+ * and the two entries are then indistinguishable (@@D-863).
+ */
+const POSITIONAL_PREFIX =
+    /^(?:group|phase|step|stage|part|milestone)\s+(?:\d+|[ivx]+)\b[\s:—–,-]*(?<rest>.*)$/i;
+
+/** The words that still say nothing once the position in front of them is removed. */
+const GENERIC_AFTER_POSITION =
+    /^(?:verification|verify|tests|test|testing|checks|check|docs|doc|documentation|review|wrap[- ]?up|final|misc|etc\.?)$/i;
+
+/**
+ * The reason a title names a position rather than the thing, or `undefined` when it names the thing.
+ *
+ * Exported because `plan check` reports it and its own tests pin the shapes: "Group 3 verification",
+ * "Phase 2", a bare "Verification" — while "Group 2: the parser answers a bad type with 415" is a
+ * title that survives removal from its plan.
+ */
+export function positionalTitle(title: string): string | undefined {
+    const text = title.trim();
+    const rest = (POSITIONAL_PREFIX.exec(text)?.groups?.['rest'] ?? text).trim();
+    // `Group 4 tests and docs` is as positional as `Group 4 verification`: every part has to be one of
+    // the words that say nothing, or the title names something after all.
+    const parts = rest
+        .toLowerCase()
+        .split(/\s*(?:,|and|&|\+)\s*/)
+        .map(part => part.trim())
+        .filter(part => part !== '');
+    if (parts.length > 0 && parts.every(part => GENERIC_AFTER_POSITION.test(part))) {
+        return 'names a position in the plan, not the thing it checks';
+    }
+    if (parts.length === 0 && rest === '') {
+        return 'names a position in the plan, not the thing it checks';
+    }
+    return undefined;
+}
 
 /** A fenced code block opener or closer. */
 const FENCE = /^\s*(?:```|~~~)/;
@@ -87,14 +140,13 @@ export interface IPlanMeta {
     [key: string]: string | number | undefined;
 }
 
-/** One task as the plan states it. */
-export interface IPlanTask {
-    /** 0-based index of the task line. */
+/** One bullet of the work breakdown or the decisions list, as the plan states it. */
+export interface IPlanItem {
+    /** 0-based index of the line the item opens on. */
     line: number;
     /** 0-based index of the last line of the block, inclusive. */
     end: number;
-    checked: boolean;
-    /** `T-531` once the task is created, absent before. */
+    /** `T-531` / `D-861` once the item is created, absent before. */
     id?: string;
     /** The link the id was written as, when the plan uses the link form. */
     link?: string;
@@ -102,9 +154,23 @@ export interface IPlanTask {
     title: string;
     /** The area the memory entry belongs in, when the plan names one. */
     area?: string;
-    /** Dedented detail lines; empty once the task has been created and trimmed. */
+    /** Dedented detail lines; empty once the item has been created and trimmed. */
     body: string[];
 }
+
+/** One task as the plan states it. */
+export interface IPlanTask extends IPlanItem {
+    checked: boolean;
+}
+
+/**
+ * One decision the plan takes.
+ *
+ * The plan's decisions are what the technical approach rests on. They become `D-` entries when the
+ * plan is published, exactly as a task becomes a `T-`, because a decision a reader cannot follow to
+ * its reasoning is a decision they have to take again (@@D-861).
+ */
+export type IPlanDecision = IPlanItem;
 
 /** A plan, parsed. */
 export interface IPlanDocument {
@@ -112,6 +178,8 @@ export interface IPlanDocument {
     lines: string[];
     meta: IPlanMeta;
     tasks: IPlanTask[];
+    /** The decisions listed under `### Decisions this plan takes`; empty when there is none. */
+    decisions: IPlanDecision[];
     /** Problems the parser found, each a sentence a reader can act on. */
     problems: string[];
 }
@@ -306,7 +374,96 @@ export function parsePlan(text: string, path = '', defaultArea?: string): IPlanD
         }
     }
 
-    return {path, lines, meta: front.meta, tasks, problems};
+    const decisions = parseDecisions(lines);
+    const decisionTitles = new Map<string, number>();
+    for (const decision of decisions) {
+        if (!decision.title) {
+            problems.push(`line ${decision.line + 1}: a decision has no title`);
+            continue;
+        }
+        if (!decision.id && !decision.area) {
+            problems.push(
+                `line ${decision.line + 1}: decision "${decision.title}" names no area ` +
+                    '(write ` · area: <package>`)',
+            );
+        }
+        const first = decisionTitles.get(decision.title.toLowerCase());
+        if (first !== undefined) {
+            problems.push(
+                `line ${decision.line + 1}: decision "${decision.title}" repeats the one on ` +
+                    `line ${first + 1} — one decision is one entry`,
+            );
+        } else {
+            decisionTitles.set(decision.title.toLowerCase(), decision.line);
+        }
+    }
+
+    return {path, lines, meta: front.meta, tasks, decisions, problems};
+}
+
+/**
+ * Read the `### Decisions this plan takes` list.
+ *
+ * The list opens at that heading, inside `## 2. Technical approach`, and ends at the next heading of
+ * the same or a higher level — so a plan with no such heading has no decisions and parses as it
+ * always did. A bullet at the margin opens one decision; an empty title is reported by the caller,
+ * so the block still ends where a reader sees it end.
+ */
+function parseDecisions(lines: readonly string[]): IPlanDecision[] {
+    const start = lines.findIndex(line => DECISIONS_HEADING.test(line));
+    if (start === -1) return [];
+    const level = (DECISIONS_HEADING.exec(lines[start] ?? '')?.groups?.['hashes'] ?? '###').length;
+    let end = lines.length;
+    let fence = false;
+    for (let index = start + 1; index < lines.length; index += 1) {
+        const line = lines[index] ?? '';
+        if (FENCE.test(line)) fence = !fence;
+        if (fence) continue;
+        const heading = /^(#{1,6})\s/.exec(line);
+        if (heading && (heading[1]?.length ?? 0) <= level) {
+            end = index;
+            break;
+        }
+    }
+
+    const decisions: IPlanDecision[] = [];
+    for (let index = start + 1; index < end; index += 1) {
+        const match = DECISION.exec(lines[index] ?? '');
+        if (!match) continue;
+        const parsed = parseTaskLine(match.groups?.['rest'] ?? '');
+        // The detail is every following line that is blank or indented; the first line at the
+        // margin ends the decision, which is what lets a paragraph after the list be prose.
+        let last = index;
+        let scan = index + 1;
+        let innerFence = false;
+        while (scan < end) {
+            const next = lines[scan] ?? '';
+            if (FENCE.test(next)) {
+                innerFence = !innerFence;
+                last = scan;
+                scan += 1;
+                continue;
+            }
+            if (!innerFence && next.trim() !== '' && !/^[ \t]/.test(next)) break;
+            last = scan;
+            scan += 1;
+        }
+        const raw = lines.slice(index + 1, last + 1);
+        while (raw.length > 0 && (raw[raw.length - 1] ?? '').trim() === '') raw.pop();
+        const indents = raw.filter(line => line.trim() !== '').map(indentOf);
+        const dedentBy = indents.length > 0 ? Math.min(...indents) : 0;
+        decisions.push({
+            line: index,
+            end: last,
+            id: parsed.id,
+            link: parsed.link,
+            title: parsed.title,
+            area: parsed.area,
+            body: raw.map(line => dedent(line, dedentBy)).map(line => line.trimEnd()),
+        });
+        index = last;
+    }
+    return decisions;
 }
 
 /**
@@ -321,46 +478,91 @@ export function renderTaskLine(
     return `- [${task.checked ? 'x' : ' '}] ${reference ? `${reference} ` : ''}${task.title}`;
 }
 
+/**
+ * The line a created decision carries: `- [@@D-861](link) Title`.
+ *
+ * No checkbox and no area suffix, for the same reason a created task has none: the entry holds the
+ * area and the work, and the line is what a reader clicks.
+ */
+export function renderDecisionLine(
+    decision: Pick<IPlanDecision, 'id' | 'title'>,
+    link?: string,
+): string {
+    const reference = decision.id
+        ? link
+            ? `[@@${decision.id}](${link})`
+            : `@@${decision.id}`
+        : '';
+    return `- ${reference ? `${reference} ` : ''}${decision.title}`;
+}
+
 /** The detail lines of a task as one body string, for a memory entry. */
-export function taskBodyText(task: IPlanTask): string {
+export function taskBodyText(task: IPlanItem): string {
     return task.body.join('\n').trim();
 }
 
 /**
- * Replace every task block with its one-line form, in place.
+ * Replace every item block with its one-line form, in place.
  *
  * The edits happen from the bottom up because replacing a block of ten lines with one
  * moves every line below it; walking forwards would invalidate the indexes the parser
- * produced. A task whose one-line form is already what it would be written as is left
+ * produced. An item whose one-line form is already what it would be written as is left
  * byte-for-byte.
+ *
+ * Tasks and decisions are trimmed by the same code because the shape is the same: a line that names
+ * an entry, and a detail block that has moved into it.
  */
+function trimItems<T extends IPlanItem>(
+    doc: IPlanDocument,
+    items: readonly T[],
+    ids: ReadonlyMap<T, string>,
+    links: ReadonlyMap<T, string> | undefined,
+    render: (item: T, id: string, link: string | undefined) => string,
+): IPlanDocument {
+    const lines = [...doc.lines];
+    const sorted = [...items].sort((a, b) => b.line - a.line);
+    for (const item of sorted) {
+        const id = ids.get(item) ?? item.id;
+        if (!id) continue;
+        const line = render(item, id, links?.get(item) ?? item.link);
+        if (item.body.length === 0 && lines[item.line] === line) continue;
+        // The detail block ends with the blank line that separated it from what follows, so
+        // replacing it with one line would glue the next heading to the item above it. The block's
+        // own trailing blank is kept — which is also what keeps a heading where a reader expects
+        // it, since `plan check` accepts either shape.
+        const block = lines.slice(item.line, item.end + 1);
+        const endedBlank = block.length > 1 && (block[block.length - 1] ?? '').trim() === '';
+        const next = lines[item.end + 1];
+        const followedByHeading = next !== undefined && /^#{1,6}\s/.test(next);
+        lines.splice(
+            item.line,
+            item.end - item.line + 1,
+            ...(endedBlank || followedByHeading ? [line, ''] : [line]),
+        );
+    }
+    return {...doc, lines: collapseBlankRuns(spaceOutHeadings(lines))};
+}
+
+/** Replace every task block with its one-line form, in place. */
 export function trimTasksToLines(
     doc: IPlanDocument,
     ids: ReadonlyMap<IPlanTask, string>,
     links?: ReadonlyMap<IPlanTask, string>,
 ): IPlanDocument {
-    const lines = [...doc.lines];
-    const tasks = [...doc.tasks].sort((a, b) => b.line - a.line);
-    for (const task of tasks) {
-        const id = ids.get(task) ?? task.id;
-        if (!id) continue;
-        const line = renderTaskLine({...task, id}, links?.get(task) ?? task.link);
-        if (task.body.length === 0 && lines[task.line] === line) continue;
-        // The detail block ends with the blank line that separated it from what follows, so
-        // replacing it with one line would glue the next heading to the task above it. The block's
-        // own trailing blank is kept — which is also what keeps a heading where a reader expects
-        // it, since `plan check` accepts either shape.
-        const block = lines.slice(task.line, task.end + 1);
-        const endedBlank = block.length > 1 && (block[block.length - 1] ?? '').trim() === '';
-        const next = lines[task.end + 1];
-        const followedByHeading = next !== undefined && /^#{1,6}\s/.test(next);
-        lines.splice(
-            task.line,
-            task.end - task.line + 1,
-            ...(endedBlank || followedByHeading ? [line, ''] : [line]),
-        );
-    }
-    return {...doc, lines: collapseBlankRuns(spaceOutHeadings(lines))};
+    return trimItems(doc, doc.tasks, ids, links, (task, id, link) =>
+        renderTaskLine({...task, id}, link),
+    );
+}
+
+/** Replace every decision block with its one-line form, in place. */
+export function trimDecisionsToLines(
+    doc: IPlanDocument,
+    ids: ReadonlyMap<IPlanDecision, string>,
+    links?: ReadonlyMap<IPlanDecision, string>,
+): IPlanDocument {
+    return trimItems(doc, doc.decisions, ids, links, (decision, id, link) =>
+        renderDecisionLine({...decision, id}, link),
+    );
 }
 
 /**

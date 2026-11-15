@@ -1,5 +1,12 @@
 import {parseLintArgs} from './args.ts';
-import {formatDiagnostic, lintCollect, lintFix, missingFiles, type LintTool} from './index.ts';
+import {
+    formatDiagnostic,
+    lintCollect,
+    lintFix,
+    missingFiles,
+    repairableCount,
+    type LintTool,
+} from './index.ts';
 
 /**
  * Terminal presentation for the lint tools.
@@ -95,6 +102,16 @@ export async function lintCli(argv: string[], options: LintCliOptions = {}): Pro
     } else {
         const errors = diagnostics.filter(d => d.severity === 'error').length;
         console.log(`  ${errors} error(s), ${diagnostics.length - errors} warning(s)`);
+        // A markdown finding a formatter can repair is not a decision the author has to make, and
+        // saying so is what keeps a session from writing its own script for a table it could have
+        // had aligned (F-241).
+        const repairable = repairableCount(diagnostics);
+        if (repairable > 0 && !fix) {
+            console.log(
+                `  · ${repairable} of these are repaired by \`--fix\` — run it instead of ` +
+                    'editing the wrap or the table by hand',
+            );
+        }
     }
 
     if (staged && ran.length === 0) {

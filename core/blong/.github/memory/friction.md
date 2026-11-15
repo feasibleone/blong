@@ -11,6 +11,10 @@ open (2)
 - `F-168` · core/blong — IPivotConfig declared type contradicted the implementation
 - `F-648` · core/blong — The contract package cannot re-export a value beside its types
 
+resolved (1)
+
+- `F-746` · core/blong — A declared entry point shipped nothing, and the package tests passed
+
 <!-- /memory:index -->
 
 ## Open
@@ -46,3 +50,22 @@ only, and that a helper belongs where it is _used_ — one caller can compute a 
 that had to derive it would carry a formatter for a contract it only displays.
 
 ## Resolved
+
+### F-746 — A declared entry point shipped nothing, and the package tests passed
+
+> _2026-11-15 · core/blong · resolved_
+
+The blob plan added `core/blong/blob.ts` and declared `./blob` in the package's exports, and every
+test the plan listed passed — the realm's tap run, the browser suite, Playwright. The defect was
+still there: `.npmignore` whitelists files one by one (`*` ignores everything, then `!types.ts`), so
+the tarball carried the export's `default` (`dist/blob.js`, once the package was rebuilt) and not
+the `types`/`blong-dev` target (`blob.ts`), which is the file every consumer in this monorepo
+resolves. Nothing in the package can see it, because a workspace resolution goes to the source and a
+release goes to the tarball. The check that does see it is
+`tools/blong-dev/src/publish/publishGuard.test.ts`, which packs each publishing package with
+`npm pack` — and it lives in another package's suite, so the package's own `verify:` command never
+runs it. Two lessons: a task that declares a new entry point owes an ignore-file line and the
+guard's run, and a task's `verify:` should name the gate that can actually fail, not the nearest
+passing one.
+
+Fixed: core/blong/.npmignore ships blob.ts and the package was rebuilt; publishGuard is 16/16.

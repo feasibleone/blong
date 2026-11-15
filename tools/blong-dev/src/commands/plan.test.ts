@@ -161,11 +161,19 @@ test('memory close ticks the plan task beside closing the entry', async t => {
     const closed = await capture(() => memory(['close', 'T-001', '--note', 'landed']));
     t.equal(closed.code, undefined, `close succeeded: ${closed.err}`);
     t.match(closed.out, /T-001 ticked in plans\/demo\/plan\.md:/, 'the marker is reported');
-    t.match(read(repo.file), /^- \[x\] \[@@T-001\]\([^)]*\) Scaffold the realm$/m, 'the box is ticked');
+    t.match(
+        read(repo.file),
+        /^- \[x\] \[@@T-001\]\([^)]*\) Scaffold the realm$/m,
+        'the box is ticked',
+    );
 
     const reopened = await capture(() => memory(['reopen', 'T-001']));
     t.equal(reopened.code, undefined, `reopen succeeded: ${reopened.err}`);
-    t.match(read(repo.file), /^- \[ \] \[@@T-001\]\([^)]*\) Scaffold the realm$/m, 'reopening unticks it');
+    t.match(
+        read(repo.file),
+        /^- \[ \] \[@@T-001\]\([^)]*\) Scaffold the realm$/m,
+        'reopening unticks it',
+    );
     t.end();
 });
 
@@ -195,10 +203,7 @@ test('plan sync gives a bare token the link it is missing, and check reports it 
 
     await capture(() => plan(['tasks', 'demo', '--apply']));
     // A plan converted before the link form, or one somebody edited by hand.
-    writeFileSync(
-        repo.file,
-        read(repo.file).replace(/\[@@T-001\]\([^)]*\)/, '@@T-001'),
-    );
+    writeFileSync(repo.file, read(repo.file).replace(/\[@@T-001\]\([^)]*\)/, '@@T-001'));
     const drifted = await capture(() => plan(['check', 'demo']));
     t.equal(drifted.code, 1, 'a task that names its entry without a link is a problem');
     t.match(drifted.err, /links to nothing — run `plan sync`/);
@@ -351,5 +356,108 @@ test('a decision added with --plan is listed on the board, and its line follows 
     );
     t.equal(refused.code, 1, 'a todo is not listed beside the decisions');
     t.match(refused.err, /put it in the work breakdown/);
+    t.end();
+});
+
+const DECIDED_PLAN = `# Demo plan
+
+## 2. Technical approach
+
+### Decisions this plan takes
+
+- The bytes live in a scope, not a namespace · area: realm/blong-agent
+      A scope is what the cookie carries, so a read can prove the caller owns the bytes.
+
+## Work breakdown
+
+- [ ] Scaffold the realm · area: realm/blong-agent
+      Created with \`kukum realm add\`.
+`;
+
+test('plan tasks creates the decisions the plan takes beside its tasks', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    const repo = tempRepo(DECIDED_PLAN);
+    t.teardown(repo.restore);
+
+    const result = await capture(() => plan(['tasks', 'demo', '--apply']));
+    t.equal(result.code, undefined, `the run succeeded: ${result.err}`);
+    t.match(result.out, /# D-001 The bytes live in a scope, not a namespace · realm\/blong-agent/);
+
+    const decision = read(join(repo.dir, 'realm/blong-agent/.github/memory/decision.md'));
+    t.match(decision, /### D-001 — The bytes live in a scope, not a namespace/);
+    t.match(decision, /Planned in `plans\/demo\/plan\.md`\./, 'the entry traces its plan');
+    t.match(decision, /A scope is what the cookie carries/, 'the reasoning moved into the entry');
+
+    const trimmed = read(repo.file);
+    t.match(
+        trimmed,
+        /^- \[@@D-001\]\(\.\.\/\.\.\/realm\/blong-agent\/\.github\/memory\/decision\.md#d-001--[^)]*\) The bytes live in a scope, not a namespace$/m,
+        'the decision line is the link and the title',
+    );
+    t.notMatch(trimmed, /cookie carries/, 'its reasoning left the plan');
+    t.match(trimmed, /^### Decisions this plan takes$/m, 'the list keeps its heading');
+    t.match(trimmed, /^- \[ \] \[@@T-001\]/m, 'the task below it is created as usual');
+    t.end();
+});
+
+test('a decision created from the plan is checked and realigned like a task', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    const repo = tempRepo(DECIDED_PLAN);
+    t.teardown(repo.restore);
+
+    await capture(() => plan(['tasks', 'demo', '--apply']));
+    const edited = await capture(() =>
+        memory(['edit', 'D-001', '--title', 'The bytes live in the scope cookie']),
+    );
+    t.equal(edited.code, undefined, `the edit succeeded: ${edited.err}`);
+
+    const checked = await capture(() => plan(['check', 'demo']));
+    t.equal(checked.code, 1, 'drift is a problem');
+    t.match(
+        checked.err,
+        /decision "The bytes live in a scope, not a namespace" and its entry say different things/,
+    );
+
+    const synced = await capture(() => plan(['sync', 'demo']));
+    t.equal(synced.code, undefined, `sync succeeded: ${synced.err}`);
+    t.match(synced.out, /1 decision\(s\) aligned/);
+    t.match(
+        read(repo.file),
+        /^- \[@@D-001\]\([^)]*#d-001--the-bytes-live-in-the-scope-cookie\) The bytes live in the scope cookie$/m,
+        'the label and the anchor both follow the entry',
+    );
+
+    const again = await capture(() => plan(['check', 'demo']));
+    t.equal(again.code, undefined, `check is clean afterwards: ${again.err}`);
+    t.end();
+});
+
+test('plan check names a positional title, and a title another entry already holds', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    const repo = tempRepo(
+        `# Demo plan
+
+## Work breakdown
+
+- [ ] Scaffold the realm · area: realm/blong-agent
+      Created with \`kukum realm add\`.
+
+- [ ] Group 3 verification · area: realm/blong-agent
+      Runs the package's tests and lint.
+`
+    );
+    t.teardown(repo.restore);
+
+    // An entry whose title the plan would reuse: two entries with one title cannot be told apart.
+    await capture(() => memory(['add', 'todo', '--title', 'Scaffold the realm', '--area', 'realm/blong-agent']));
+
+    const result = await capture(() => plan(['check', 'demo']));
+    t.equal(result.code, undefined, `a note is not a failure: ${result.err}`);
+    t.match(result.out, /# note: .*"Scaffold the realm" is already T-001's title/);
+    t.match(result.out, /# note: .*"Group 3 verification" names a position in the plan/);
+    t.match(result.out, /2 note\(s\)/);
     t.end();
 });

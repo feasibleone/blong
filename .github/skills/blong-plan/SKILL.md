@@ -94,6 +94,14 @@ in the plan.
 
 ## 2. Technical approach
 
+### Decisions this plan takes
+
+- <The choice, as a statement> · area: <package folder or reserved area>
+      <Why this and not the alternative. The consequence a later reader needs.>
+
+- <The next choice> · area: <area>
+      <Why.>
+
 ### Where the capability lands
 
 - **<concern>** — `core/blong-gogo`, `src/adapter/server/<file>.ts` (<decision>)
@@ -157,6 +165,38 @@ above becomes a memory todo when the plan is approved.
 `memory add … --plan <slug>` appends it, and `plan sync` keeps every line it holds in step with the
 entry. Do not draft it by hand, and do not move it — the section is found by its heading.
 
+### The decisions list
+
+A plan makes choices before it is approved — which store, which layer, which default — and they used
+to live in the prose, which meant that by the time the work started nobody could cite them. List
+them instead, as the first subsection of `## 2. Technical approach`:
+
+```text
+### Decisions this plan takes
+
+- A blob is addressed by a scope, not a namespace · area: realm/blong-blob
+      A scope is what the cookie carries, so a read proves the caller owns the bytes. A
+      namespace would have to be checked against the party on every request.
+
+- The upload route asks for its stream body · area: core/blong-gogo
+      A parser registered at the root makes every route accept what it cannot read.
+```
+
+- A decision is `- <title> · area: <area>` — a plain bullet, never a checkbox, so the task parser
+  ignores it. The detail is the indented lines below it, in the same shape a task uses.
+- The heading is exactly `### Decisions this plan takes` (level 2–4). The list ends at the next
+  heading of the same or a higher level, so keep the whole list in one block.
+- `plan init` (and `plan tasks --apply`) creates one `D-` entry per line, moves the detail into it
+  and leaves `- [@@D-861](link) <title>` behind — exactly what happens to a task. `--no-decisions`
+  leaves the list as prose; there is no reason to use it.
+- Nothing here is a second board: `plan check` reports an uncreated or drifted decision, `plan sync`
+  re-renders its line, and `plan status` counts it beside the execution-time entries.
+
+A decision taken _while the plan is executed_ is not added here — it goes in with
+`memory add decision --plan <slug>`, which lists it on the board the tool owns. The difference is
+what a reader is looking for: this list is the approach's premises, the board is the record of what
+changed on the way.
+
 ### The task line
 
 The work breakdown is a contract `blong-dev plan tasks` parses, so it is stricter than the prose
@@ -164,13 +204,20 @@ around it:
 
 - One task is one **scoped change** with its own verification, not a phase.
 - A task line is `- [ ] <title> · area: <area>`. The title becomes the memory entry's title and is
-  limited to 80 characters; the area is a package folder (`realm/blong-agent`, `core/blong-gogo`) or
-  a reserved root area (`docs`, `skills`, `ci`, `cross-cutting`).
+  limited to 100 characters; the area is a package folder (`realm/blong-agent`, `core/blong-gogo`)
+  or a reserved root area (`docs`, `skills`, `ci`, `cross-cutting`).
+- **The title names the thing, not its position.**
+  `Verify the store is a configuration value, not a code path` — not `Group 3 verification`, which
+  is the same title in every plan, so two entries carry it and neither can be found by search. The
+  entry is read on its own, long after the group numbering is gone; `plan check` reports a
+  positional title and one that repeats an existing entry's.
 - The detail is everything below the line that is indented or blank. It becomes the entry's body, so
   it may hold paragraphs, lists, fenced snippets and a `- verify:` line — but **never a heading**,
   because a memory entry holds prose, not sections.
 - A checkbox outside the work breakdown is not a task. Keep decision lists and other checklists in
   plain bullets.
+- A decision line is the same contract without the checkbox: `- <title> · area: <area>` with its
+  detail indented. See [The decisions list](#the-decisions-list).
 - Never put an `@@T-` reference on a task yourself: `plan tasks` writes it, and `memory close` flips
   the box through it.
 
@@ -194,6 +241,8 @@ plan.
 - **How it is verified**, as an exact command (`blong-dev test`, `blong ./realm/x/index.ts`,
   `blong-dev sql "…"`) or an assertion a test will make.
 - **What it must not break** — the existing behaviour the release relies on.
+- **A title that stands alone**, because it outlives the plan: the group it was written under, the
+  numbering, and the order are all gone by the time someone searches for it.
 
 ## Publishing it: one command on approval
 
@@ -201,17 +250,19 @@ plan.
 blong-dev plan init <slug> --repo feasibleone/blong --invite <slackUserId>
 ```
 
-It creates a memory todo per task, trims the plan to titles plus linked `@@T-…` references, mirrors
-the plan into a GitHub issue, opens the plan's private Slack channel and records the issue, the
-conversation id and the channel link in the front matter. From then on the plan is the board and the
-memory is the detail. An issue that already exists is adopted with `--issue <url>` instead of being
-created. `blong-dev plan init --help` lists the rest — the issue label, the channel (name, target,
-account), `--draft`, and the skips (`--no-issue`, `--no-slack`, `--no-tasks`).
+It creates a memory todo per task and a `D-` entry per decision, trims the plan to titles plus
+linked `@@T-…` / `@@D-…` references, mirrors the plan into a GitHub issue, opens the plan's private
+Slack channel and records the issue, the conversation id and the channel link in the front matter.
+From then on the plan is the board and the memory is the detail. An issue that already exists is
+adopted with `--issue <url>` instead of being created. `blong-dev plan init --help` lists the rest —
+the issue label, the channel (name, target, account), `--draft`, and the skips (`--no-issue`,
+`--no-slack`, `--no-tasks`, `--no-decisions`).
 
 ## Executing it: one task at a time
 
 1. **Read the detail** from the entry, not from the plan: `blong-dev memory show @@T-xxx`. After
-   approval the plan keeps titles; the reasoning is in the entry.
+   approval the plan keeps titles; the reasoning is in the entry. A decision the entry cites is
+   already recorded — read it (`memory show @@D-xxx`) and follow it rather than taking it again.
 2. **Do the work** the entry describes, including its `verify:` command.
 3. **Close it**: `blong-dev memory close @@T-xxx --note "<what landed>"`. The close ticks the plan's
    box and keeps the entry's detail.
@@ -234,6 +285,27 @@ account), `--draft`, and the skips (`--no-issue`, `--no-slack`, `--no-tasks`).
 A question asked while executing goes to the plan's channel, whose id is the front matter's
 `conversationId` — the [blong-ask skill](../blong-ask/SKILL.md) carries the call, the surfaces and
 the timeout.
+
+### What executing a plan has taught
+
+- **A `verify:` command runs from the package that owns the tool, and names the gate that can
+  fail.** `npx tap` from the repository root tries to install tap and blocks on a prompt; the same
+  command from the package that declares it runs. A task that adds a file to a publishing package
+  owes two things a package-local test run never checks: the file in the package's `.npmignore`
+  allow-list, and `tools/blong-dev/src/publish/publishGuard.test.ts`, which packs the tarball a
+  consumer would get — the blob plan's `blob.ts` was declared in `exports` and shipped to nobody
+  while every test it listed passed (@@F-746).
+- **A baseline is a picture of a state, not of the screen.** A screenshot that captures whatever a
+  previous run left — a register with rows in it, a dialog carrying its history — passes today and
+  fails tomorrow. Make the state deterministic in the spec (purge first, capture the empty register)
+  or leave the capture out.
+- **A lint finding is not a decision.** Markdown repair is `blong-dev lint --fix --files <paths>`,
+  which is the editor's formatter; a paragraph re-wrapped or a table re-aligned by hand is work the
+  tool would have done, and a script that does it is worse. Confirm the fix landed (`git diff`) —
+  prettier silently skips an ignored path.
+- **The plan is not the place to correct the detail.** A task that turned out wrong is corrected in
+  its entry (`memory edit`), and `plan sync` carries the title back. Editing the plan risks the two
+  saying different things, which is what `plan check` then reports.
 
 ## Closing it out
 

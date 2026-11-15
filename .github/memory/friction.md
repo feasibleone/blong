@@ -76,7 +76,7 @@ open (64)
 - `F-696` · cross-cutting — The reports site publishes every Playwright trace three times
 - `F-703` · cross-cutting — A dropped table leaves its foreign keys behind
 
-resolved (47)
+resolved (49)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -128,6 +128,8 @@ resolved (47)
 - `F-728` · cross-cutting — The blob realm's tap entry hangs after both platforms start
 - `F-731` · cross-cutting — An orchestrator group answers nothing until a dispatch orchestrator
   serves it
+- `F-744` · cross-cutting — A plan's planning decisions had nowhere to go
+- `F-745` · cross-cutting — Markdown was repaired by scripts the tooling already owned
 
 <!-- /memory:index -->
 
@@ -1834,6 +1836,37 @@ wrong method name; and a suite's own `server/test/` group is dispatched by the a
 does not.
 
 recorded
+
+### F-744 — A plan's planning decisions had nowhere to go
+
+> _2026-11-15 · cross-cutting · resolved_
+
+The blob plan decided three things while it was being drafted — the CLI argument convention, the
+promotion deletion mode, the per-route stream body — and none of them had a home. The plan format
+had a work breakdown with a task line the tooling parses and nothing for a decision, so the choices
+were argued in prose, approved as prose, and recorded as `D-` entries only once implementation had
+started and a comment needed to cite them. The cost is not the writing: it is that a decision
+recorded after the code exists is a description of the code, while the same decision recorded before
+it is what the code was written to satisfy, and a reader cannot tell which they are looking at.
+`@@D-861` gives the list its shape and `plan init` creates the entries.
+
+Resolved by D-861: a plan lists the decisions it takes and plan init creates one entry each.
+
+### F-745 — Markdown was repaired by scripts the tooling already owned
+
+> _2026-11-15 · cross-cutting · resolved_
+
+Roughly half of one session's editing effort went into markdown: a table that MD060 read as
+misaligned, a paragraph past the 100-column limit, a definition over the glossary's forty-word
+ceiling. The repairs were written as `python3` heredocs that re-wrapped and re-indented text, which
+is work the editor does on save and `lintFix` already did on the command line — the instruction said
+"lint markdown as well as code" and never mentioned `--fix`, so the tool was found by reading the
+source, after the scripts. Two lessons: a repair that a formatter performs must be named in the
+instruction that asks for the check, or it will be re-invented; and a lint run that reports a
+mechanical finding should say it is mechanical. Both are `@@D-862`.
+
+Resolved by D-862: lint --fix is the repair, the instruction names it, and lint says which findings
+are mechanical.
 
 ## Retired
 

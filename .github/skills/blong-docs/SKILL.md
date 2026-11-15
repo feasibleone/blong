@@ -149,6 +149,21 @@ A pattern doc does **not** contain philosophical discussion or design rationale.
     class A,B nowrap
     ```
 
+6. **Format it with the tool, not by hand.** A page is markdown in the repository's style — 100
+   columns, prettier's table alignment, `_italic_` — and the editor repairs it on save because
+   markdownlint is registered as the markdown formatter. The same repair is one command:
+
+    ```bash
+    blong-dev lint --fix --files docs/blong/docs/patterns/my-feature.md
+    ```
+
+    It runs prettier, `markdownlint --fix` and prettier again, then reports what is left — the
+    findings a formatter cannot decide, such as a bare `<token>` (MD033) or a fence without a
+    language. Never re-wrap a paragraph or re-align a table with a script: the tool produces the
+    same bytes the editor and CI agree on, and a hand fix is a diff nobody can reproduce. A path
+    prettier ignores (`dev/`, `plans/`) is skipped **silently**, so confirm with `git diff` that
+    something changed.
+
 ---
 
 ### Reviewing an existing doc
@@ -324,14 +339,14 @@ embed's `poster`, so the reader sees something before a Storybook has to boot:
 Note the `poster` shape: an image is in the build only when something imports it, so a poster is a
 `require`, not a path. The poster is drawn at the picture's own aspect — `height` is the live
 frame's — so commit a picture at the shape a reader will see it, cropped to the part that carries
-the claim. Written as `poster="./img/editor-design.png"` it looks right and 404s, and
-`docs verify` reports it as an image that did not load.
+the claim. Written as `poster="./img/editor-design.png"` it looks right and 404s, and `docs verify`
+reports it as an image that did not load.
 
 The tag needs no import in a `.md` or `.mdx` page: `docs/blong/src/theme/MDXComponents.jsx`
 registers it for the docs and the blog alike. `site` names a site in
-`docs/blong/storybook-sites.json` (`browser`, `suite`, `sport`, `feedback`, `log`) and `id` is
-the story id Storybook puts in its own URL. The full attribute table — `height`, `globals`,
-`chrome`, `poster`, and what each is for — is the
+`docs/blong/storybook-sites.json` (`browser`, `suite`, `sport`, `feedback`, `log`) and `id` is the
+story id Storybook puts in its own URL. The full attribute table — `height`, `globals`, `chrome`,
+`poster`, and what each is for — is the
 [Storybook pattern](../../../docs/blong/docs/patterns/blong-browser.md#embedding-a-story), which is
 where a reader looks too; keep the two in step rather than growing a second table here.
 

@@ -55,7 +55,8 @@ test('parseImport reports what would stop a batch', async t => {
             manual: ['not a todo'],
             entries: [
                 {
-                    title: `${'word '.repeat(20).trim()}`,
+                    // Comfortably past the title budget, which is a hundred characters (@@D-863).
+                    title: `${'word '.repeat(30).trim()}`,
                     body: '',
                     area: 'cross-cutting',
                     status: 'active',

@@ -10,6 +10,7 @@ import {test} from 'tap';
 
 import {deriveTitle, migrateLegacy, parseBlameDates, parseDropList} from './memoryMigrate.ts';
 import {splitLines} from './memoryParse.ts';
+import {MAX_TITLE_LENGTH} from './memoryTypes.ts';
 
 const BASE = {kind: 'friction' as const, defaultArea: 'cross-cutting', defaultDate: '2026-09-15'};
 
@@ -41,7 +42,7 @@ test('migrateLegacy converts bold leads, plain bullets and prose', async t => {
             'A substring audit breaks when prettier wraps the call',
             'Polling for pixels cost four approaches',
             'The connection pool drops idle clients',
-            'A paragraph that has no bullet in front of it, which is how four sections were',
+            'A paragraph that has no bullet in front of it, which is how four sections were written',
         ],
         'one entry per block, bold text as the title, a long paragraph summarised',
     );
@@ -280,7 +281,7 @@ test('deriveTitle falls back to a summary and keeps the remainder in the body', 
 
     const long = `${'word '.repeat(30).trim()}`;
     const cut = deriveTitle(long);
-    t.ok(cut.title.length <= 80, 'title stays within the limit');
+    t.ok(cut.title.length <= MAX_TITLE_LENGTH, 'title stays within the limit');
     t.equal(`${cut.title} ${cut.body}`.trim(), long, 'title and body still hold the whole text');
 
     const wrapped = deriveTitle(

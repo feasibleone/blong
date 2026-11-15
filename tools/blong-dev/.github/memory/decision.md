@@ -44,7 +44,6 @@ active (43)
   one
 - `D-779` · tools/blong-dev — db backup dumps through mysql2 into a hand-written zip
 - `D-801` · tools/blong-dev — One config file, .blong_callrc, shared by call and proxy
-- `D-807` · tools/blong-dev — A plan task is a checkbox, a title and an area
 - `D-808` · tools/blong-dev — A plan keeps titles after approval; the memory keeps the detail
 - `D-809` · tools/blong-dev — memory close ticks the plan through the @@T- token
 - `D-810` · tools/blong-dev — A plan's front matter carries its issue and channel
@@ -54,6 +53,7 @@ active (43)
 - `D-815` · tools/blong-dev — a plan lists its decisions and frictions from the memory
 - `D-825` · tools/blong-dev — An FAQ entry is recorded by search and merged by hand
 - `D-826` · tools/blong-dev — blong-dev help is one registry rendered at three levels
+- `D-807` · tools/blong-dev — A plan task is a checkbox, a title and an area
 
 superseded (3)
 
@@ -558,25 +558,6 @@ file holds servers by alias, a route from method prefix to server, default paylo
 prefix, and the prefixes whose routes the gateway serves without auth, whose params therefore travel
 as plain JSON.
 
-### D-807 — A plan task is a checkbox, a title and an area
-
-> _2026-11-11 · tools/blong-dev · active_
-
-A plan's work breakdown is a contract a command parses, so the task line is stricter than the prose
-around it. It is `- [ ] <title> · area: <area>`, and everything below it that is indented or blank
-is the task's detail.
-
-The title becomes a memory entry's title, which is what fixes it at 80 characters. The area is a
-package folder or a reserved root area, because it decides which `todo.md` the entry lands in. The
-detail may hold paragraphs, lists, fenced snippets and a `verify:` line, but never a heading: a
-memory entry holds prose, and a heading inside its body would be parsed as the next entry's
-structure.
-
-A checkbox inside a fenced block is not a task, and neither is a checkbox outside the work
-breakdown, so a plan can still show a question's options as a checklist. After creation the line
-gains the entry's id and reads `- [ ] @@T-531 <title>`; nobody writes that token by hand, because a
-token that points at no entry is worse than no token.
-
 ### D-808 — A plan keeps titles after approval; the memory keeps the detail
 
 > _2026-11-11 · tools/blong-dev · active_
@@ -750,6 +731,26 @@ needed. A new verb or option is added in the registry, and every level that ment
 usage error ends with `usageHint(command, verb)`, so an incomplete call teaches the caller where the
 parameters are documented. Memory keeps its full usage text in `src/commands/memory.ts`, because the
 memory format is used in every session and an agent should not have to call the tool to learn it.
+
+### D-807 — A plan task is a checkbox, a title and an area
+
+> _2026-11-11 · tools/blong-dev · active_
+
+A plan's work breakdown is a contract a command parses, so the task line is stricter than the prose
+around it. It is `- [ ] <title> · area: <area>`, and everything below it that is indented or blank
+is the task's detail.
+
+The title becomes a memory entry's title, which is what fixes it at the title budget — 100
+characters since `@@D-863`, which raised it from 80 so a title can name its subject and its verb
+without being abbreviated into something generic. The area is a package folder or a reserved root
+area, because it decides which `todo.md` the entry lands in. The detail may hold paragraphs, lists,
+fenced snippets and a `verify:` line, but never a heading: a memory entry holds prose, and a heading
+inside its body would be parsed as the next entry's structure.
+
+A checkbox inside a fenced block is not a task, and neither is a checkbox outside the work
+breakdown, so a plan can still show a question's options as a checklist. After creation the line
+gains the entry's id and reads `- [ ] @@T-531 <title>`; nobody writes that token by hand, because a
+token that points at no entry is worse than no token.
 
 ## Superseded
 

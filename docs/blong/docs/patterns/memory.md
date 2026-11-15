@@ -26,7 +26,7 @@ the `TAP_*` variables before spawning the inner run.
 ```
 
 - `F-`/`T-`/`D-` plus a number, allocated workspace-wide and never reused.
-- The title is one line, at most 80 characters, and reads on its own.
+- The title is one line, at most 100 characters, and reads on its own.
 - The line under it — a blockquote, so markdownlint does not read it as a heading — carries the
   date, the area and the status, and is what `list --area` and `list --status` filter on.
 - The body is wrapped at 100 columns by the CLI; paragraphs are separated by a blank line. A fenced
@@ -49,8 +49,8 @@ blong-dev memory move F-014 --area core/semantic-log                    # it bel
 blong-dev memory prune F-101,F-102 --reason "duplicated by F-090"
 ```
 
-`add` refuses a title longer than 80 characters and refuses an area that is neither a package folder
-nor a reserved label. For a long body use `--body-file`; `--date` and `--status` override the
+`add` refuses a title longer than 100 characters and refuses an area that is neither a package
+folder nor a reserved label. For a long body use `--body-file`; `--date` and `--status` override the
 defaults (today, and the first status of the kind).
 
 `move` is how an entry reaches the package that owns it: `--area realm/blong-agent` writes it into
@@ -336,6 +336,7 @@ blong-dev memory check                  # format, ids, areas, index, statuses, m
 blong-dev memory check --files a.md,b.md
 blong-dev memory format                 # re-wrap and re-render everything the CLI owns
 blong-dev memory index                  # regenerate the index blocks only
+blong-dev lint --fix --files <a.md>     # the repair for markdown outside the memory tree
 ```
 
 `check` is the gate: `common/git-hooks/pre-commit` runs `blong-dev lint-staged`, which detects the
@@ -344,8 +345,11 @@ than a review comment. (The CI workflow delegates to a reusable Rush workflow an
 itself, so the hook is the gate a contributor actually meets.) It also reports the markdown a
 hand-written body would break — a section heading in the middle of a body, a line over 100 columns,
 `<placeholder>` HTML, emphasis on a line of its own, a list or fence without a blank line around it.
-`blong-dev lint --files …` covers the same ground for any markdown file plus cspell, and is the
-command to run when you have touched a `.md` file outside the memory tree.
+`memory format` is what repairs it, and it is the only fixer in the memory tree: a memory file is a
+format — a generated index, ids allocated across files, a `## Manual` section that is the user's own
+— so a general formatter must not touch it. Every other markdown file is repaired by
+`blong-dev lint --fix --files <paths>`, which is what the editor does on save and what cspell and
+markdownlint then check (@@D-862).
 
 ## Pointing at a note from the code
 

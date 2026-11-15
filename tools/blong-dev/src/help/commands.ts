@@ -16,16 +16,27 @@ export const COMMANDS: readonly IHelpCommand[] = [
             "Runs tsc, cspell, eslint and markdownlint with blong-dev's own copies, so it works " +
             'from any package without that package declaring them. Named files narrow the spell ' +
             'and lint work; the type check still covers the package, because a file cannot be ' +
-            'type-checked in isolation.',
+            'type-checked in isolation. `--fix` is the repair every other command here calls: ' +
+            'prettier, then `markdownlint --fix`, then prettier again — the order that leaves a ' +
+            'markdown file wrapped at the configured width and its tables aligned, which is what ' +
+            'the editor does on save.',
         usage: 'blong-dev lint [files...] [--files <a,b>] [--fix]',
         options: [
             {
                 flag: '--files <a,b>',
                 description: 'comma-separated paths, instead of bare positionals',
             },
-            {flag: '--fix', description: 'apply the fixes eslint and the pinned prettier can make'},
+            {
+                flag: '--fix',
+                description:
+                    'repair what prettier, eslint and markdownlint can — run it instead of ' +
+                    'editing a wrapped paragraph or a table by hand',
+            },
         ],
-        examples: ['blong-dev lint --files $(git diff --name-only)'],
+        examples: [
+            'blong-dev lint --files $(git diff --name-only)',
+            'blong-dev lint --fix --files docs/blong/docs/patterns/blob.md',
+        ],
     },
     {
         name: 'lint-staged',
@@ -584,7 +595,7 @@ export const COMMANDS: readonly IHelpCommand[] = [
                 options: [
                     {
                         flag: '--title <title>',
-                        description: 'one line naming the entry (keep it under ~70 characters)',
+                        description: 'one line naming the entry, at most 100 characters',
                     },
                     {
                         flag: '--area <area>',
@@ -752,9 +763,11 @@ export const COMMANDS: readonly IHelpCommand[] = [
         summary: 'Run a plan: its tasks, issue and channel',
         description:
             'A plan is a board, not a document: the work breakdown is `- [ ] <title> · area: <area>` ' +
-            'with the detail indented below it. `tasks` moves that detail into memory and leaves ' +
-            'the titles and their references behind; `init` also mirrors the plan into a GitHub ' +
-            'issue and opens its Slack channel; `sync` repairs the board from what the memory says.',
+            'with the detail indented below it, and the decisions it rests on are `- <title> · ' +
+            'area: <area>` under `### Decisions this plan takes`. `tasks` moves that detail into ' +
+            'memory — a todo per task, a decision entry per decision — and leaves the titles and ' +
+            'their references behind; `init` also mirrors the plan into a GitHub issue and opens ' +
+            'its Slack channel; `sync` repairs the board from what the memory says.',
         helpOnBare: true,
         verbs: [
             {
@@ -764,13 +777,15 @@ export const COMMANDS: readonly IHelpCommand[] = [
             },
             {
                 name: 'tasks',
-                summary: 'Create one memory todo per task',
-                usage: 'blong-dev plan tasks <plan> [--apply] [--update] [--area <default>] [--slug <slug>]',
-                description: 'A dry run is the default; `--apply` writes.',
+                summary: 'Create one memory todo per task, one decision per decision',
+                usage: 'blong-dev plan tasks <plan> [--apply] [--update] [--area <default>] [--slug <slug>] [--no-decisions]',
+                description:
+                    'A dry run is the default; `--apply` writes. `--no-decisions` leaves the ' +
+                    '`### Decisions this plan takes` list as prose.',
             },
             {
                 name: 'init',
-                summary: 'Approve the plan: tasks, issue and Slack channel',
+                summary: 'Approve the plan: tasks, decisions, issue and Slack channel',
                 usage: 'blong-dev plan init <plan> [--repo <owner/name>] [--label plan] [--invite <userId,...>] [--dry-run]',
                 description: "Records the issue and the channel in the plan's front matter.",
                 examples: ['blong-dev plan init agent --repo feasibleone/blong --invite U123'],

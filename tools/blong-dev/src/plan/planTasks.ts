@@ -14,12 +14,17 @@
  *
  * A dry run is the default. `--apply` is the write, and it is idempotent: a task that
  * already names an id is skipped, so running it twice creates nothing twice.
+ *
+ * The decisions list under `### Decisions this plan takes` is converted by the same rule and in the
+ * same run: a planning decision is an entry a comment can cite before any code exists, so it is
+ * created with the tasks rather than left as prose (@@D-861).
  */
 
 import {basename, dirname} from 'node:path';
 
-import {bodyLines} from '../memory/memoryEdit.ts';
+import {writeFileSync} from 'node:fs';
 import {addMemoryEntry, replaceMemoryEntry} from '../memory/memoryAdd.ts';
+import {bodyLines} from '../memory/memoryEdit.ts';
 import {MAX_TITLE_LENGTH} from '../memory/memoryTypes.ts';
 import {listEntries} from '../memory/memoryView.ts';
 import {UsageError} from '../utils/usageError.ts';
@@ -27,11 +32,12 @@ import {entryLink} from './planLinks.ts';
 import {
     renderPlan,
     taskBodyText,
+    trimDecisionsToLines,
     trimTasksToLines,
+    type IPlanDecision,
     type IPlanDocument,
     type IPlanTask,
 } from './planParse.ts';
-import {writeFileSync} from 'node:fs';
 
 /** What one run did, or would do. */
 export interface ITaskOutcome {
@@ -64,7 +70,8 @@ function provenance(slug: string): string {
 
 /** The body a task's detail becomes. */
 export function taskEntryBody(slug: string, detail: string): string[] {
-    const text = detail.trim() === '' ? provenance(slug) : `${provenance(slug)}\n\n${detail.trim()}`;
+    const text =
+        detail.trim() === '' ? provenance(slug) : `${provenance(slug)}\n\n${detail.trim()}`;
     return bodyLines(text);
 }
 
@@ -168,4 +175,119 @@ export async function createPlanTasks(
     const trimmed = trimTasksToLines(plan, ids, links);
     writeFileSync(trimmed.path, renderPlan(trimmed), 'utf8');
     return {created, updated, skipped, failures, plan: trimmed};
+}
+
+/** What one decision run did, or would do. */
+export interface IDecisionOutcome {
+    decision: IPlanDecision;
+    id: string;
+    /** Repository-relative path of the memory file the entry landed in. */
+    path?: string;
+}
+
+/** Everything a decision run reports. */
+export interface ICreateDecisionsResult {
+    created: IDecisionOutcome[];
+    updated: IDecisionOutcome[];
+    skipped: number;
+    /** The plan after trimming, when the run applied. */
+    plan: IPlanDocument;
+}
+
+/**
+ * Create the entries a plan's decisions describe, and trim what was created.
+ *
+ * The decisions a plan takes are made *before* it is approved, and until they are entries nobody can
+ * cite them: a comment says `@@D-860` and a comment is not the reasoning. Creating them here, from
+ * the plan itself, is what puts the planning decisions on the same footing as the ones taken while
+ * the work runs (@@D-861).
+ *
+ * Like the tasks, a detail that opens a heading is refused before anything is written, so a run
+ * either converts the list or leaves the plan untouched.
+ */
+export async function createPlanDecisions(
+    root: string,
+    plan: IPlanDocument,
+    options: {apply?: boolean; update?: boolean; area?: string; slug?: string; date?: string},
+): Promise<ICreateDecisionsResult> {
+    const slug = options.slug ?? plan.meta.slug ?? planSlug(plan.path);
+    const created: IDecisionOutcome[] = [];
+    const updated: IDecisionOutcome[] = [];
+    const failures: string[] = [];
+    const ids = new Map<IPlanDecision, string>();
+    const links = new Map<IPlanDecision, string>();
+    const entries = new Map(listEntries(root).map(entry => [entry.id, entry]));
+    let skipped = 0;
+
+    for (const decision of plan.decisions) {
+        const detail = taskBodyText(decision);
+        const heading = decision.body.find(line => /^#{1,6}\s/.test(line));
+        if (heading) {
+            failures.push(
+                `line ${decision.line + 1}: "${decision.title}" contains a heading ` +
+                    `("${heading.trim()}") — a memory entry holds prose, not sections`,
+            );
+            continue;
+        }
+        if (decision.id) {
+            skipped += 1;
+            const entry = entries.get(decision.id);
+            if (entry) links.set(decision, entryLink(root, plan.path, entry));
+            if (options.update && detail !== '') {
+                if (options.apply) {
+                    await replaceMemoryEntry(root, decision.id, {
+                        title: decision.title,
+                        body: taskEntryBody(slug, detail),
+                    });
+                }
+                updated.push({decision, id: decision.id});
+            }
+            continue;
+        }
+        const area = decision.area ?? options.area;
+        if (!area) {
+            failures.push(`line ${decision.line + 1}: "${decision.title}" names no area`);
+            continue;
+        }
+        if (decision.title.length > MAX_TITLE_LENGTH) {
+            failures.push(
+                `line ${decision.line + 1}: the title is ${decision.title.length} characters; ` +
+                    `keep it under ${MAX_TITLE_LENGTH}`,
+            );
+            continue;
+        }
+        if (!options.apply) {
+            created.push({decision, id: '(new)'});
+            continue;
+        }
+        const entry = await addMemoryEntry(root, {
+            kind: 'decision',
+            title: decision.title,
+            area,
+            body: taskEntryBody(slug, detail),
+            date: options.date,
+        });
+        ids.set(decision, entry.id);
+        links.set(
+            decision,
+            entryLink(root, plan.path, {
+                id: entry.id,
+                title: decision.title,
+                path: entry.path,
+            }),
+        );
+        created.push({decision, id: entry.id, path: entry.path});
+    }
+
+    if (failures.length > 0) {
+        throw new UsageError(
+            `the plan's decisions cannot be created:\n${failures.map(line => `  ${line}`).join('\n')}`,
+        );
+    }
+
+    if (!options.apply) return {created, updated, skipped, plan};
+
+    const trimmed = trimDecisionsToLines(plan, ids, links);
+    writeFileSync(trimmed.path, renderPlan(trimmed), 'utf8');
+    return {created, updated, skipped, plan: trimmed};
 }

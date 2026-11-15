@@ -134,8 +134,14 @@ export const RESERVED_AREAS: readonly string[] = ['cross-cutting', 'ci', 'docs',
 /** Prose is hard-wrapped here, matching the repository's prettier `printWidth`. */
 export const MAX_LINE_LENGTH = 100;
 
-/** Entry titles stay on one line, so they have a tighter budget. */
-export const MAX_TITLE_LENGTH = 80;
+/**
+ * Entry titles stay on one line, so they have a budget — the same one prose has.
+ *
+ * The title is the handle every reader and every search has, so it is allowed the full line: 80 was
+ * short enough that a title naming its own subject and its own verb had to be abbreviated into
+ * something generic, which is the opposite of what the line is for (@@D-863).
+ */
+export const MAX_TITLE_LENGTH = 100;
 
 /** The generated index sits between these two lines, verbatim. */
 export const INDEX_START = '<!-- memory:index -->';

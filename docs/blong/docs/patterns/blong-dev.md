@@ -28,9 +28,10 @@ blong-dev memory close --help    # the verb: usage, options, examples
 ```
 
 A command that is given an incomplete argument reports what it is missing and ends with the line
-that names the help for exactly that verb — ``Run `blong-dev memory close --help` to see its
-parameters.`` — so a missing parameter is a discovery step rather than a dead end. `help <command>
-<verb>` is the same as `--help` in that position.
+that names the help for exactly that verb —
+``Run `blong-dev memory close --help` to see its parameters.`` — so a missing parameter is a
+discovery step rather than a dead end. `help <command> <verb>` is the same as `--help` in that
+position.
 
 The text is rendered from one registry, `tools/blong-dev/src/help/commands.ts`, and each command
 prints from it rather than carrying its own copy. Adding a verb or an option means adding it there;
@@ -62,6 +63,7 @@ a level that would mention it then follows, and `USAGE_LINES` (the flat index) i
 
 ```bash
 blong-dev lint --files $(git diff --name-only)
+blong-dev lint --fix --files docs/blong/docs/patterns/blob.md
 blong-dev lint-staged              # what the pre-commit hook runs
 blong-dev test                     # tap, in the current package
 blong-dev playwright --coverage
@@ -71,6 +73,13 @@ blong-dev playwright --coverage
 declaring them. Passed files narrow the spell and lint work; the type check still covers the
 package, because a file cannot be type-checked in isolation. `lint-staged` is the same command
 applied per-package over `git diff --cached`.
+
+`--fix` is the markdown repair, and it is the same one the editor performs on save: prettier, then
+`markdownlint --fix`, then prettier again — the order that leaves a paragraph wrapped at 100 columns
+and a table aligned, because markdownlint has no fixer for `MD013` or `MD060`. A run without `--fix`
+counts the findings a formatter would repair and says so, so a mechanical finding is not mistaken
+for a decision. A path prettier ignores (`dev/`, `plans/`) is skipped silently, so a `✎ prettier`
+line proves the tool ran, not that the file changed.
 
 `test` runs tap in the current package, keeps the TAP in `.ci-report/` and prints a compact failure
 view — enough that a failing suite is readable without reaching for `--reporter`. `playwright` wraps
@@ -322,7 +331,7 @@ the [memory pattern](./memory#searching-by-meaning) for the settings and the bac
 
 ```bash
 blong-dev plan check agent            # parse the work breakdown; report what would not create
-blong-dev plan tasks agent --apply    # one todo per task, linked @@T-… in the plan, detail in memory
+blong-dev plan tasks agent --apply    # one todo per task and one decision per decision, linked
 blong-dev plan init agent --repo feasibleone/blong --invite U123
 blong-dev plan status agent           # done / open, per area, with the issue and channel links
 blong-dev plan sync agent             # tick, align titles and links, republish the issue
@@ -331,7 +340,10 @@ blong-dev plan sync agent --channel    # also re-apply the channel's topic (the 
 
 A plan is a board, not a document: the work breakdown is `- [ ] <title> · area: <area>` with the
 detail indented below it, and `plan tasks` is what moves that detail into memory and leaves the
-title and a reference behind. The reference is a markdown link to the entry
+title and a reference behind. The decisions the plan takes are listed the same way one level up —
+`- <title> · area: <area>` under `### Decisions this plan takes` — and become `D-` entries in the
+same run, because a planning decision a comment cannot cite is a decision nobody can follow. The
+reference is a markdown link to the entry
 (`[@@T-531](../../realm/x/.github/memory/todo.md#t-531--…)`), so the board is navigable in the
 editor and the issue published from it rewrites the same link to a github.com URL. `memory close`
 then ticks the box through that token, and `plan init` mirrors the plan into an issue and opens a

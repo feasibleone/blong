@@ -34,7 +34,12 @@ Before approval a task carries its detail, because that is when the detail is be
 ```
 
 - `- [ ] <title> · area: <area>` is the only task form the tooling reads.
-- The title is at most 80 characters, because it becomes the memory entry's title.
+- The title is at most 100 characters, because it becomes the memory entry's title.
+- The title names the thing, not its position. `Group 3 verification` is the same title in every
+  plan, so two entries carry it and a search finds neither;
+  `Verify the store is a configuration value, not a code path` survives the plan it was written in.
+  `plan check` reports a positional title, and one that repeats a title an existing entry already
+  holds.
 - The area is a package folder (`realm/blong-agent`, `core/blong-gogo`) or a reserved root area
   (`docs`, `skills`, `ci`, `cross-cutting`).
 - The detail is every following line that is indented or blank. It may hold paragraphs, lists,
@@ -66,17 +71,47 @@ target to `https://github.com/<repo>/blob/HEAD/<path>#<anchor>` on the way out. 
 still parsed (a plan written before the link form must not stop working), and `plan check` reports
 one: `sync` writes the link.
 
+## The decisions a plan takes
+
+A plan decides things before it is approved — which store, which layer, which default — and those
+choices are what its tasks rest on. They are a list of their own, as the first subsection of the
+technical approach:
+
+```text
+### Decisions this plan takes
+
+- A blob is addressed by a scope, not a namespace · area: realm/blong-blob
+      A scope is what the cookie carries, so a read proves the caller owns the bytes. A
+      namespace would have to be checked against the party on every request.
+
+- The upload route asks for its stream body · area: core/blong-gogo
+      A parser registered at the root makes every route accept what it cannot read.
+```
+
+- `- <title> · area: <area>` is the only decision form the tooling reads. It is a plain bullet, not
+  a checkbox, so it is never mistaken for work.
+- The heading is exactly `### Decisions this plan takes` and the list ends at the next heading of
+  the same or a higher level, so keep it in one block.
+- `plan init` creates one `D-` entry per line, moves the detail into it and leaves
+  `- [@@D-861](link) <title>` behind — the same trade the work breakdown makes, for the same reason.
+- `plan check` reports an uncreated or drifted decision, `plan sync` re-renders its line, and
+  `plan status` counts it with the decisions the execution recorded.
+
+The distinction from the board below is what a reader is looking for: this list is the approach's
+premises, read before approval; the `## Decisions and frictions` section is the record of what was
+decided or hit on the way, read afterwards.
+
 ## The commands
 
-| Command                       | What it does                                                                    |
-| ----------------------------- | ------------------------------------------------------------------------------- |
-| `plan check <plan>`           | Parses the plan; reports a task with no area, a drift, a missing or bare link   |
-| `plan tasks <plan> [--apply]` | Creates a todo per task, writes the linked `@@T-…`, trims; a dry run by default |
-| `plan init <plan>`            | Approves: tasks, GitHub issue, Slack channel, front matter                      |
-| `plan sync <plan>`            | Re-reads memory, ticks, aligns titles and links, republishes the issue          |
-| `plan sync --channel`         | Also re-applies the channel's topic, which leads with the issue link            |
-| `plan status <plan>`          | Progress per area, the issue and channel links, the decisions it cites          |
-| `plan adopt <plan> <id…>`     | Puts an existing todo, friction, decision or issue under the plan               |
+| Command                       | What it does                                                                  |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| `plan check <plan>`           | Parses the plan; reports a task with no area, a drift, a missing or bare link |
+| `plan tasks <plan> [--apply]` | Creates a todo per task and a `D-` per decision, writes the links, trims      |
+| `plan init <plan>`            | Approves: tasks, decisions, GitHub issue, Slack channel, front matter         |
+| `plan sync <plan>`            | Re-reads memory, ticks, aligns titles and links, republishes the issue        |
+| `plan sync --channel`         | Also re-applies the channel's topic, which leads with the issue link          |
+| `plan status <plan>`          | Progress per area, the issue and channel links, the decisions it cites        |
+| `plan adopt <plan> <id…>`     | Puts an existing todo, friction, decision or issue under the plan             |
 
 `<plan>` is a file, a folder under `plans/`, or the folder name (`agent`). A dry run is what `tasks`
 and `init` do until `--apply` says otherwise; `--dry-run` is honoured by `init` too.
@@ -85,7 +120,9 @@ and `init` do until `--apply` says otherwise; `--dry-run` is honoured by `init` 
 
 1. **Draft with detail.** `plan check` must report zero problems before approval.
 2. **Decide.** Every choice the implementation must not re-litigate is a `decision` entry, cited as
-   `@@D-xxx` in the plan and in the code that embodies it.
+   `@@D-xxx` in the plan and in the code that embodies it. The ones the plan itself takes are listed
+   above the work breakdown and created by `plan init`; the ones taken while it runs are added with
+   `memory add decision --plan`, which puts them on the board.
 3. **Approve.** `blong-dev plan init <slug> --repo feasibleone/blong --invite <slackUserId>`. It
    creates the tasks, trims the plan, creates or reuses the issue (label `plan`) and opens the
    private channel `plan-<slug>` whose purpose is the plan title and whose topic leads with the

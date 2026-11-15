@@ -9,7 +9,7 @@
 
 import t from 'tap';
 
-import {parseMarkdownlint} from './index.ts';
+import {markdownRuleId, parseMarkdownlint, repairableCount} from './index.ts';
 
 t.test('parseMarkdownlint reads a two-segment rule id', t => {
     const diagnostics = parseMarkdownlint(
@@ -50,5 +50,18 @@ t.test('parseMarkdownlint reads the summary and the progress lines as nothing', 
     ].join('\n');
     t.same(parseMarkdownlint(chatter), [], 'a run with no issue line yields no diagnostics');
     t.same(parseMarkdownlint(''), [], 'and so does no output at all');
+    t.end();
+});
+
+t.test('repairableCount names only what a formatter can repair without a decision', t => {
+    const diagnostics = [
+        {tool: 'markdown' as const, severity: 'error' as const, rule: 'MD013/line-length', message: ''},
+        {tool: 'markdown' as const, severity: 'error' as const, rule: 'MD060/table-column-style', message: ''},
+        {tool: 'markdown' as const, severity: 'error' as const, rule: 'MD033/no-inline-html', message: ''},
+        {tool: 'eslint' as const, severity: 'error' as const, rule: 'no-console', message: ''},
+    ];
+    t.equal(repairableCount(diagnostics), 2, 'the wrap and the table are mechanical');
+    t.equal(markdownRuleId('MD060/table-column-style'), 'MD060');
+    t.equal(markdownRuleId(undefined), '', 'a diagnostic without a rule is not fixable');
     t.end();
 });

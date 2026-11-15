@@ -568,6 +568,74 @@ export function hasProblems(result: LintResult): boolean {
 }
 
 /**
+ * The markdown rules `markdownlint --fix` repairs itself.
+ *
+ * The list is markdownlint's own fixable set, and it is here so a run can *say* that a finding is
+ * mechanical instead of leaving the reader to repair it by hand — which is how a session ends up
+ * with a throwaway script for re-aligning a table.
+ */
+export const FIXABLE_MARKDOWN_RULES: ReadonlySet<string> = new Set([
+    'MD004',
+    'MD005',
+    'MD007',
+    'MD009',
+    'MD010',
+    'MD011',
+    'MD012',
+    'MD014',
+    'MD018',
+    'MD019',
+    'MD020',
+    'MD021',
+    'MD022',
+    'MD023',
+    'MD026',
+    'MD027',
+    'MD030',
+    'MD031',
+    'MD032',
+    'MD034',
+    'MD037',
+    'MD038',
+    'MD039',
+    'MD044',
+    'MD047',
+    'MD049',
+    'MD050',
+    'MD051',
+    'MD053',
+    'MD054',
+    'MD058',
+]);
+
+/**
+ * The rules {@link lintFix} repairs, which is one set larger than markdownlint's.
+ *
+ * `MD013` (line length) and `MD060` (table alignment) have no fixer in markdownlint, because only a
+ * formatter knows the configured width — prettier is what aligns the pipes and re-wraps the prose,
+ * and `lintFix` runs it before and after. Naming them here is what makes the CLI's hint honest.
+ */
+export const REPAIRED_MARKDOWN_RULES: ReadonlySet<string> = new Set([
+    ...FIXABLE_MARKDOWN_RULES,
+    'MD013',
+    'MD060',
+]);
+
+/** The bare rule id of a markdownlint diagnostic (`MD060/table-column-style` → `MD060`). */
+export function markdownRuleId(rule: string | undefined): string {
+    return (rule ?? '').split('/')[0] ?? '';
+}
+
+/** How many of these diagnostics `--fix` would repair without a decision from a person. */
+export function repairableCount(diagnostics: readonly Diagnostic[]): number {
+    return diagnostics.filter(
+        diagnostic =>
+            diagnostic.tool === 'markdown' &&
+            REPAIRED_MARKDOWN_RULES.has(markdownRuleId(diagnostic.rule)),
+    ).length;
+}
+
+/**
  * One diagnostic as a single terminal line.
  *
  * A rendering of {@link Diagnostic}, so it belongs beside the type — and both
