@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.2](https://github.com/feasibleone/blong/compare/blong-dev-v1.19.1...blong-dev-v1.19.2) (2026-11-15)
+
+
+### Bug Fixes
+
+* remove incorrect runtime dependency ([3309992](https://github.com/feasibleone/blong/commit/33099921982a1ad194572a73b9354fc3658f78f6))
+
 ## [1.19.1](https://github.com/feasibleone/blong/compare/blong-dev-v1.19.0...blong-dev-v1.19.1) (2026-11-15)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/feasibleone/blong/compare/blong-chat-v0.4.0...blong-chat-v0.4.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* PVC name ([5ec2f37](https://github.com/feasibleone/blong/commit/5ec2f3724e37159c00cad2b0f0970c59812a0781))
+
 ## [0.4.0](https://github.com/feasibleone/blong/compare/blong-chat-v0.3.1...blong-chat-v0.4.0) (2026-11-15)
 
 
