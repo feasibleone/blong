@@ -245,6 +245,7 @@ words:
   - linters
   - Liquibase
   - LM
+  - lockfiles
   - lockup
   - logviewer
   - LONGTEXT

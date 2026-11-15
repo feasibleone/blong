@@ -452,16 +452,16 @@ test('s3-dev — buckets and objects', async ({portal}) => {
     await expect(portal.page).toHaveScreenshot('explore-s3-buckets.png');
     const bucket = await openFirstRowWithChildren(portal.page, 'S3 (dev)');
     if (bucket) {
-        // The seeded object must be listed.
+        // Filter to the seeded object first, then assert: the table is what the assertion reads,
+        // and a leftover from another suite in the bucket makes "is it visible" depend on how many
+        // rows came before it. Fixed content → deterministic ETag/size.
+        await filterRows(portal.page, 'commander/');
         await expect(
             portal.page
                 .locator('.p-datatable-tbody tr')
                 .filter({hasText: 'commander/hello.txt'})
                 .first(),
         ).toBeVisible({timeout: 15_000});
-        // Filter to the seeded object (fixed content → deterministic ETag/size),
-        // hiding other suites' `blong-test` objects.
-        await filterRows(portal.page, 'commander/');
         await expect(portal.page).toHaveScreenshot('explore-s3-objects.png');
     }
 });

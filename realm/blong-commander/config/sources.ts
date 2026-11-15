@@ -107,6 +107,13 @@ export const sources: ICommanderSource[] = [
                 labelField: 'Key',
                 viewer: 'file',
                 permission: 's3Dev.object.list',
+                // The blob store keeps its records in this bucket — `blob-test/<namespace>/<key>`,
+                // with a `-normal`/`-thumb` variant and a `.meta.json` record beside each — and the
+                // integration suites write their probes into its `test` namespace. Those are a
+                // suite's leftovers, not objects a person browses: listing them filled the tree with
+                // hundreds of uuids and made the page, and its screenshot, depend on what another
+                // suite happened to store (`@@D-866`).
+                exclude: ['(^|/)test/'],
                 open: {
                     method: 's3-dev.object.get',
                     params: {bucket: '{parent.bucket}', key: '{Key}'},

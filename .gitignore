@@ -116,7 +116,13 @@ dist
 .scannerwork
 **/.docusaurus
 .tap
-temp
+# Rush's install tree, and API Extractor's reports beside a package. Written out rather than as a
+# bare `temp`, which matches any directory of that name: it also swallowed
+# `realm/blong-blob/{gateway,orchestrator}/temp/`, so the realm's sweep existed in every checkout and
+# not in CI (`@@F-747`). A folder named after what it does is not a build artefact.
+/common/temp
+**/temp/*.api.json
+**/temp/*.api.md
 plans
 storybook-static
 sandbox
