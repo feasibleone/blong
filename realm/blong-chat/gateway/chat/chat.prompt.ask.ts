@@ -24,6 +24,10 @@ export default validation(
                     account: type.Optional(type.String()),
                     conversationId: type.String(),
                     text: type.String(),
+                    // The reasoning, as a message of its own above the card: a card's title is what the
+                    // platform shortens, and a question cut in half is a question nobody answers
+                    // (`@@D-864`).
+                    detail: type.Optional(type.String()),
                     kind: type.Union([
                         type.Literal('choice'),
                         type.Literal('multiChoice'),

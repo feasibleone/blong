@@ -286,6 +286,13 @@ A question asked while executing goes to the plan's channel, whose id is the fro
 `conversationId` — the [blong-ask skill](../blong-ask/SKILL.md) carries the call, the surfaces and
 the timeout.
 
+## Continuity
+
+When executing a plan, at the end of the turn, you need to ask the user how to continue via the
+question asking tool and provide a list of options (check boxes or buttons), or just continue / stop
+for review buttons. The continue will mean continue as per the plan. If you get answer that the user
+is away, repeat the question in chat with blong-ask.
+
 ### What executing a plan has taught
 
 - **A `verify:` command runs from the package that owns the tool, and names the gate that can

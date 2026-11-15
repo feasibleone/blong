@@ -33,7 +33,7 @@ The shapes an editor's question tool offers map onto them directly, and the defa
 **in the conversation**: the options sit in the message with a submit under them, so a person never
 leaves the channel to answer.
 
-| What the caller wants          | `kind`        | Inline — the default                                        |
+| What the caller wants          | `kind`        | Inline (`presentation: 'inline'`)                           |
 | ------------------------------ | ------------- | ----------------------------------------------------------- |
 | One of several (radio buttons) | `choice`      | Radio buttons and a submit; Viber keyboard buttons          |
 | Several of many (check boxes)  | `multiChoice` | Checkboxes and a submit                                     |
@@ -57,6 +57,26 @@ puts a text box beside the options:
 `placeholder` is still the whole trick: it is the caller saying "or type something else", which is
 what makes a question a superset of a multiple-choice list. Ask for a form when the question needs
 the pair in one place; ask inline (the default) when the answer belongs in the conversation.
+
+The default is the **card** — a container in the message holding the controls and a submit. It has
+one limit worth designing around: the platform shortens a card's title, so a question that needs
+more than a sentence puts its reasoning in `detail`:
+
+```json
+{
+    "kind": "choice",
+    "text": "Which store should the next three runs write to?",
+    "detail": "The blob store is a configuration value now, so every run has to say which one it writes to. The local store keeps bytes on disk; the s3 store needs credentials.",
+    "options": [
+        {"value": "local", "label": "The local store"},
+        {"value": "s3", "label": "The s3 store"}
+    ]
+}
+```
+
+`detail` is posted as a message of its own, _before_ the card, and `text` stays the short question
+the controls sit under (`@@D-864`). Without it, a long `text` arrives cut at 150 characters with an
+ellipsis where the reasoning was — the question is then answerable but unreadable.
 
 An answered question is rewritten into its own message: the options stay, the ones that were picked
 are marked — `✅ Unit tests`, `✅ Lint`, `• Integration` — every control goes, because a control

@@ -1,13 +1,13 @@
 ---
 name: blong-ask
 description:
-    Ask a human a question from inside a coding session and wait for the answer — in the plan's Slack
-    channel or in `#blong-ask` — while the work runs. Covers when to ask in the channel instead of
-    the editor's question tool, which conversation to ask in, the card surfaces a question can take
-    (choice, multiChoice, confirm, free text), the timeout and its ceiling, and what a restart costs.
-    Use this skill whenever a decision needs a person who is not at the keyboard, whenever
-    `vscode_askQuestions` answers that the user is away, or whenever the task says to ask in chat —
-    even if the words "Slack" or "prompt" are not used.
+    Ask a human a question from inside a coding session and wait for the answer — in the plan's
+    Slack channel or in `#blong-ask` — while the work runs. Covers when to ask in the channel
+    instead of the editor's question tool, which conversation to ask in, the card surfaces a
+    question can take (choice, multiChoice, confirm, free text), the timeout and its ceiling, and
+    what a restart costs. Use this skill whenever a decision needs a person who is not at the
+    keyboard, whenever `vscode_askQuestions` answers that the user is away, or whenever the task
+    says to ask in chat — even if the words "Slack" or "prompt" are not used.
 ---
 
 # Blong ask — a question a person answers in chat
@@ -59,6 +59,9 @@ conversation and the question:
 blong-dev call chat.prompt.ask '{
   conversationId: C0ABCDEF, kind: choice,
   text: "Which database should the next run write to?",
+  detail: "The last three runs wrote to the shared integration database, which is what the
+    staging checks read. Writing there again keeps them working but leaves the rows of this
+    check beside them; the local database keeps the run private and the checks see nothing.",
   placeholder: "Something else",
   options: [
     {value: local, label: "The local dev database"},
@@ -67,6 +70,11 @@ blong-dev call chat.prompt.ask '{
   timeoutMs: 900000
 }'
 ```
+
+`text` is the question and `detail` is the argument for it. A card shortens its title, so a
+reasoning paragraph inside `text` arrives cut at 150 characters with an ellipsis where the argument
+was; `detail` is posted as a message of its own, above the card, and is not shortened (`@@D-864`).
+Keep `text` to one sentence — the thing being decided, not why.
 
 `chat.out.messageSend` posts a message that needs no answer; `chat.prompt.find` lists what is still
 waiting, which is how a caller checks what it asked without a transcript.
@@ -80,8 +88,8 @@ refusal is a typed error naming the control the platform cannot render.
 
 ## The surfaces
 
-The default is a **card in the message**: the question, its controls and a Submit, where the question
-was asked (@@D-817 @@D-818).
+The default is a **card in the message**: the question, its controls and a Submit, where the
+question was asked (@@D-817 @@D-818).
 
 | Ask                                  | `kind`                        | The card holds                           | Comes back                 |
 | ------------------------------------ | ----------------------------- | ---------------------------------------- | -------------------------- |
@@ -106,6 +114,9 @@ one answer. And read the answer's field before using it: an empty Submit settles
 
 - **Ten options per control.** A longer list is shown as a dropdown, which the realm chooses on its
   own (@@F-718 @@D-819). A label longer than 75 characters is truncated by the platform.
+- **A card title holds 150 characters.** A question asked as `inlineForm` — the default for anything
+  that is not a yes/no — is shortened with an ellipsis past that, which reads as a question whose
+  reasoning was lost. Put the reasoning in `detail` and keep `text` to a sentence (@@D-864).
 - **The wait has a ceiling of `2147483647` ms** — about twenty-five days, where `setTimeout`
   saturates. Above it the ask is refused with `chat.promptTimeoutTooLong` rather than reporting a
   closure that already happened. Three days (`259200000`) is a reasonable horizon for an
@@ -116,14 +127,16 @@ one answer. And read the answer's field before using it: an empty Submit settles
   suspends a session instead of failing it — so it resumes cold however long the answer takes.
 - **A private channel needs two settings** to deliver a typed reply: the app must hold
   `groups:history` and subscribe to `message.groups`. The port writes the subscription itself where
-  a workspace's configuration token is present (@@D-821); an app installed by hand may have
-  neither, and then a `text` question asked with `presentation: inline` waits out its timeout. The
-  card needs no event at all, which is why it is the default.
+  a workspace's configuration token is present (@@D-821); an app installed by hand may have neither,
+  and then a `text` question asked with `presentation: inline` waits out its timeout. The card needs
+  no event at all, which is why it is the default.
 
 ## Before you ask
 
 - The conversation is the work's own — the plan's channel, else `#blong-ask`.
 - The question is one decision, with the `value`s named once.
+- `text` is one sentence and `detail` is the argument for it: a card shortens what it holds, and a
+  question asked with its reasoning inside it arrives cut in half.
 - Something typed is asked as the card, unless there is a reason for `inline`.
-- After the answer: record a durable choice as a decision (`blong-dev memory add decision --plan
-  <slug>` where a plan exists), and carry on with the work.
+- After the answer: record a durable choice as a decision
+  (`blong-dev memory add decision --plan <slug>` where a plan exists), and carry on with the work.

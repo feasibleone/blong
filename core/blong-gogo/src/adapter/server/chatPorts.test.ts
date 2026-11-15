@@ -586,6 +586,29 @@ test('an inline form is one container the person fills in the message', t => {
     t.end();
 });
 
+test('a card shortens its question, which is why the explanation is a message above it', t => {
+    type Card = {type?: string; title?: {text?: string}; child_blocks?: unknown[]};
+    const long = `${'The reasoning for the question. '.repeat(8)}`.trim();
+    t.ok(long.length > 150, 'the fixture is longer than a card title holds');
+
+    const [cut] = slackPromptBlocks(prompt({presentation: 'inlineForm', text: long})) as Card[];
+    t.equal(cut?.title?.text?.length, 150, 'a question in the card alone is cut at 150 characters');
+    t.match(cut?.title?.text ?? '', /…$/, 'and ends in an ellipsis, which is what a reader sees');
+
+    // With the explanation named, the card holds the short question and the reasoning travels as its
+    // own message — posted by the ask, before this one (`@@D-864`).
+    const [brief] = slackPromptBlocks(
+        prompt({
+            presentation: 'inlineForm',
+            text: 'Which store?',
+            detail: long,
+        }),
+    ) as Card[];
+    t.equal(brief?.title?.text, 'Which store?', 'the card carries the question');
+    t.notMatch(JSON.stringify(brief), /The reasoning for the question/, 'and not the explanation');
+    t.end();
+});
+
 test('a list longer than a control holds is a dropdown, in the card and in the dialog', t => {
     type Child = {
         element?: {type?: string; options?: Array<{value?: string; text?: {type?: string}}>};

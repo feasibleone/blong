@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto';
 import {handler, type IMeta} from '@feasibleone/blong';
 import type {IChatAnswer, IChatPrompt} from '@feasibleone/blong/types';
 
+import type {IChatPromptPost} from './chatPromptPosts.ts';
 import {pendingAdd, pendingKey, pendingTake, type IParkedPrompt} from './pending.ts';
 
 /**
@@ -45,6 +46,13 @@ export interface IChatAskParams {
     account?: string;
     conversationId: string;
     text: string;
+    /**
+     * The reasoning, posted as a message above the question.
+     *
+     * A card's title is the first thing a platform shortens, so the argument for the question belongs
+     * in a message of its own and `text` stays short enough to survive the card (`@@D-864`).
+     */
+    detail?: string;
     kind: 'choice' | 'multiChoice' | 'text' | 'confirm';
     options?: Array<{value: string; label: string; description?: string}>;
     placeholder?: string;
@@ -93,7 +101,7 @@ const timeoutLabel = (timeoutMs: number): string => {
 export default handler(
     ({
         handler: {chatOutMessageSend, chatOutPromptSettle, chatOutPromptClose},
-        lib: {chatAnswerFormat, chatReplyMessageId},
+        lib: {chatAnswerFormat, chatPromptPosts, chatReplyMessageId},
         errors: {errorChatPromptTimeout, errorChatPromptTimeoutTooLong},
     }) => {
         return {
@@ -187,6 +195,7 @@ export default handler(
                     promptId: params.promptId ?? randomUUID(),
                     kind: params.kind,
                     text: params.text,
+                    ...(params.detail && {detail: params.detail}),
                     ...(params.options && {options: params.options}),
                     ...(params.placeholder && {placeholder: params.placeholder}),
                     // Absent, not `'inline'`: the port owns the default, and a realm that filled it in
@@ -219,7 +228,37 @@ export default handler(
                     pendingAdd({key, params: parked, resolve, reject, timer});
                 });
                 try {
-                    const sent = await chatOutMessageSend(parked, $meta);
+                    // The lib proxy erases the return type, so it is named here rather than inferred.
+                    const posts = chatPromptPosts(prompt) as {
+                        explanation?: IChatPromptPost;
+                        question: IChatPromptPost;
+                    };
+                    // The reasoning first: a card shortens its title, so an explanation inside it
+                    // arrives cut in half (@@D-864). A refused explanation is a warning — the
+                    // controls are still there to answer, and failing the ask over the message above
+                    // it would take away the question because its context could not be posted.
+                    if (posts.explanation) {
+                        const explained = await chatOutMessageSend(
+                            {
+                                platform: params.platform,
+                                account: params.account,
+                                conversationId: params.conversationId,
+                                ...posts.explanation,
+                            },
+                            $meta,
+                        );
+                        const refusedExplanation = sendFailure(explained);
+                        if (refusedExplanation) port.log?.warn?.(refusedExplanation);
+                    }
+                    const sent = await chatOutMessageSend(
+                        {
+                            platform: params.platform,
+                            account: params.account,
+                            conversationId: params.conversationId,
+                            ...posts.question,
+                        },
+                        $meta,
+                    );
                     const refused = sendFailure(sent);
                     if (refused) throw refused;
                     // Where the question is, so the answer can be written over it later.

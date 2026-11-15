@@ -201,6 +201,16 @@ export interface IChatPrompt {
     promptId: string;
     kind: ChatPromptKind;
     text: string;
+    /**
+     * The reasoning, posted as a message above the question.
+     *
+     * A card is not a document: Slack shortens its title, so a question that argues its case in `text`
+     * arrives cut in half with an ellipsis where the reasoning was. The explanation therefore travels
+     * as its own message, before the card, and `text` stays the brief question the controls sit
+     * under — which is what a person reads twice, once to decide whether to engage and once while
+     * answering (`@@D-864`).
+     */
+    detail?: string;
     options?: IChatPromptOption[];
     placeholder?: string;
     /** `inline` unless the caller asks for a form (`@@D-691`). */
@@ -320,4 +330,3 @@ export interface IChatChannelCreated {
     channelName: string;
     topic?: string;
 }
-

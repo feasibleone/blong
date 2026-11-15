@@ -4,6 +4,7 @@ import {handler, type IMeta} from '@feasibleone/blong';
 
 import {agentSettings, type IAgentDispatchPort} from '../settings.ts';
 import {agentHistory} from '../tools.ts';
+import type {questionParts} from './questionParts.ts';
 
 /**
  * `agent.question.ask` — the question a human answers, and the checkpoint that makes the wait cold-safe.
@@ -69,6 +70,7 @@ export default handler(
             'db/agentCheckpointLastGet': agentCheckpointLastGet,
             'db/agentCheckpointAdd': agentCheckpointAdd,
         },
+        lib: {questionParts: questionPartsLib},
         errors: {errorAgentSessionNotFound},
     }) => ({
         async agentQuestionAsk(
@@ -104,13 +106,18 @@ export default handler(
                 $meta,
             );
             const timeoutMs = params.timeoutMs ?? settings.questionTimeoutMs;
+            // A model writes the question, and a model writes more than a card holds: the first
+            // sentence is what the controls belong to and the whole question goes above them
+            // (`@@D-864`).
+            const parts = questionPartsLib(params.question) as ReturnType<typeof questionParts>;
             const asked = timed(
                 port.dispatch(
                     {
                         platform: params.platform ?? 'slack',
                         account: params.account,
                         conversationId: params.conversationId ?? params.ticketId,
-                        text: params.question,
+                        text: parts.text,
+                        ...(parts.detail && {detail: parts.detail}),
                         kind: params.options?.length ? 'choice' : 'text',
                         options: params.options?.map(value => ({value, label: value})),
                         promptId,
