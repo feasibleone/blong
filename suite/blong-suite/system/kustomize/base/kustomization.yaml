@@ -10,6 +10,7 @@ resources:
   - configmaps/assets-config.yaml
   - deployments/access.yaml
   - deployments/assets.yaml
+  - deployments/blob.yaml
   - deployments/core.yaml
   - deployments/login.yaml
   - deployments/marine.yaml
@@ -22,8 +23,10 @@ resources:
   - rbac/service-account.yaml
   - services/access.yaml
   - services/assets-http.yaml
+  - services/blob.yaml
   - services/blong.yaml
   - services/core.yaml
   - services/login.yaml
   - services/marine.yaml
   - services/web-http.yaml
+  - volumes/blob-storage.yaml

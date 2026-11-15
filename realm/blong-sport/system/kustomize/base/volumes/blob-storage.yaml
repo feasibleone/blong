@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-sport
+    app.kubernetes.io/part-of: blong-sport
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: 68ac36b7df1a7c7d
+  name: blob-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi

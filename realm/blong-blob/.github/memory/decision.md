@@ -51,16 +51,18 @@ already call, in the same change as adding a backend.
 
 > _2026-11-14 · realm/blong-blob · active_
 
-D-845 gave every realm that owns blobs a claim of its own — `partyBlob`, `sportBlob` — and that is
-not expressible: a k8s collection reaches the plan from a port's activation, the realms that own the
-records (`party`, `sport`) own no port of their own (their handlers live on the shared `srv.subject`
-and `srv.db`), and a suite's config block for a port does not carry `k8sVolumes` into the plan
-either — tried both, and the generated sport tree came out without a volume. So the store declares
-one claim, `blobStorage`, mounted at `/var/lib/blong/blob`, and the namespace is a subdirectory
-inside it: two realms in one process share the claim and their files stay apart, and a split process
-mounts the same claim and serves the namespace it was configured with. The consequence for an
-operator is that one claim holds every realm's blobs rather than a claim per realm, which is what a
-single directory per process was always going to mean. The ingress follows the same shape: one `/a`
-on whichever deployment carries the process, rather than a rule per namespace.
+D-845 gave every realm that owns blobs a claim of its own — partyBlob, sportBlob — and that is not
+expressible: a k8s collection reaches the plan from a port's activation, the realms that own the
+records (party, sport) own no port of their own (their handlers live on the shared srv.subject and
+srv.db), and a suite's config block for a port does not carry k8sVolumes into the plan either —
+tried both, and the generated sport tree came out without a volume. So the store declares one claim,
+blob-storage, mounted at /var/lib/blong/blob, and the namespace is a subdirectory inside it: two
+realms in one process share the claim and their files stay apart, and a split process mounts the
+same claim and serves the namespace it was configured with. The consequence for an operator is that
+one claim holds every realm's blobs rather than a claim per realm, which is what a single directory
+per process was always going to mean. The ingress follows the same shape: one /a on whichever
+deployment carries the process, rather than a rule per namespace. The claim was written blobStorage
+when this was decided and the cluster refused the name; it has been blob-storage since the plan
+began checking that a key is an RFC 1123 subdomain (@@D-868).
 
 ## Superseded

@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 13cf937d17b1f3cc
+    blong.feasible.one/spec-hash: 4b7aab84e0c8c265
   name: blong-sport
 spec:
   replicas: 1
@@ -94,7 +94,7 @@ spec:
               name: suite
               readOnly: true
             - mountPath: /var/lib/blong/blob
-              name: blobStorage
+              name: blob-storage
             - mountPath: /home/node/.blong_releaserc
               name: releaserc-home
               readOnly: true
@@ -112,9 +112,9 @@ spec:
             path: /opt/deploy/suite
             type: Directory
           name: suite
-        - name: blobStorage
+        - name: blob-storage
           persistentVolumeClaim:
-            claimName: blobStorage
+            claimName: blob-storage
         - name: releaserc-home
           secret:
             items:

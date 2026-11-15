@@ -3,11 +3,11 @@ kind: PersistentVolumeClaim
 metadata:
   labels:
     app.kubernetes.io/managed-by: blong-kustomize
-    app.kubernetes.io/name: blong-sport
-    app.kubernetes.io/part-of: blong-sport
+    app.kubernetes.io/name: blong-suite
+    app.kubernetes.io/part-of: blong-suite
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 251352819f99ef30
-  name: blobStorage
+    blong.feasible.one/spec-hash: 003368555b40e1fe
+  name: blob-storage
 spec:
   accessModes:
     - ReadWriteOnce

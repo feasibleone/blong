@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: b10c9b0524bf78ab
+    blong.feasible.one/spec-hash: 68aa48ebf924dd36
   name: jobs
 roleRef:
   apiGroup: rbac.authorization.k8s.io

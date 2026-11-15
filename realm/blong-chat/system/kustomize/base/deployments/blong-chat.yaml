@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-chat
     app.kubernetes.io/part-of: blong-chat
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: d599bf81dafca338
+    blong.feasible.one/spec-hash: 7ae83ce36033e7a8
   name: blong-chat
 spec:
   replicas: 1
@@ -96,7 +96,7 @@ spec:
               readOnly: true
               subPath: blong_releaserc
             - mountPath: /home/node/.config/blong_release/
-              name: gateway-keys
+              name: secrets
               readOnly: true
       serviceAccountName: blong
       volumes:
@@ -118,10 +118,10 @@ spec:
                 path: blong_releaserc
             optional: true
             secretName: blong-releaserc-etc
-        - name: gateway-keys
+        - name: secrets
           secret:
             items:
               - key: config
                 path: config
             optional: true
-            secretName: gateway-keys
+            secretName: blong-secrets

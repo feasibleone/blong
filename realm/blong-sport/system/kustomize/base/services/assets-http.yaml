@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 065d038a7ab26226
+    blong.feasible.one/spec-hash: 25ed4467788905f6
   name: assets-http
 spec:
   ports:

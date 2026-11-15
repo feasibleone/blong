@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 6098b9d3ed38b669
+    blong.feasible.one/spec-hash: 0a5bd86e74538d1e
   name: marine
 spec:
   replicas: 1
@@ -81,7 +81,7 @@ spec:
               readOnly: true
               subPath: blong_releaserc
             - mountPath: /home/node/.config/blong_release/
-              name: gateway-keys
+              name: secrets
               readOnly: true
       serviceAccountName: blong
       volumes:
@@ -103,10 +103,10 @@ spec:
                 path: blong_releaserc
             optional: true
             secretName: blong-releaserc-etc
-        - name: gateway-keys
+        - name: secrets
           secret:
             items:
               - key: config
                 path: config
             optional: true
-            secretName: gateway-keys
+            secretName: blong-secrets

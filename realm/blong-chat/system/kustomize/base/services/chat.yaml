@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-chat
     app.kubernetes.io/part-of: blong-chat
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 75d3d4f88ff7b740
+    blong.feasible.one/spec-hash: 77966b6f78eed499
   name: chat
 spec:
   ports:

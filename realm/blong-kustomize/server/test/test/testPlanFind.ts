@@ -733,7 +733,10 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                                     {
                                         name: 'BLOB_CBC_KEY',
                                         valueFrom: {
-                                            secretKeyRef: {name: 'blobSecrets', key: 'BLOB_CBC_KEY'},
+                                            secretKeyRef: {
+                                                name: 'blobSecrets',
+                                                key: 'BLOB_CBC_KEY',
+                                            },
                                         },
                                     },
                                     {
@@ -783,7 +786,9 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
             async function aDeclaredVolumeReachesTheProcess(assert: IAssert) {
                 // A volume is the one contribution with a lifetime: the generator mounted whatever the
                 // plan carried, and the plan carried nothing, so a realm that declared a workspace got
-                // no claim and its edits died with the container's filesystem (`@@T-317`).
+                // no claim and its edits died with the container's filesystem (`@@T-317`). The key is
+                // the claim's name and is written the way a cluster accepts it, not the camelCase a
+                // port key may use (`@@D-868`).
                 const view = {
                     realms: ['shop'],
                     groups: [{name: 'shop.orchestrator', handlerCount: 1, layer: 'orchestrator'}],
@@ -794,7 +799,7 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                             namespace: 'shop',
                             k8s: {
                                 k8sVolumes: {
-                                    shopWorkspace: {size: '5Gi', mountPath: '/srv/shop'},
+                                    'shop-workspace': {size: '5Gi', mountPath: '/srv/shop'},
                                 },
                             },
                         },
@@ -806,7 +811,7 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                             namespace: 'shopWork',
                             k8s: {
                                 k8sVolumes: {
-                                    shopWorkspace: {size: '5Gi', mountPath: '/srv/shop'},
+                                    'shop-workspace': {size: '5Gi', mountPath: '/srv/shop'},
                                 },
                             },
                         },
@@ -817,7 +822,7 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
 
                 assert.deepEqual(
                     plan.deployments[0]?.volumes,
-                    [{name: 'shopWorkspace', size: '5Gi', mountPath: '/srv/shop'}],
+                    [{name: 'shop-workspace', size: '5Gi', mountPath: '/srv/shop'}],
                     'the process carrying the realm mounts the volume it asked for, once',
                 );
                 assert.deepEqual(
@@ -828,6 +833,36 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                     undefined,
                     'and a realm that declares none carries the field not at all',
                 );
+
+                // The key *is* the claim's name, and a claim is a cluster object: a camelCase key
+                // reaches the API server as `PersistentVolumeClaim "blobStorage" is invalid`, and the
+                // install stops in its first Job, after the tree was built and the artifact published
+                // (`@@D-868`).
+                for (const name of ['shopWorkspace', 'Shop', 'shop_workspace', '-shop', 'shop-']) {
+                    assert.throws(
+                        () =>
+                            planFromRegistry(
+                                {
+                                    ...view,
+                                    ports: [
+                                        {
+                                            id: 'shop.api',
+                                            type: 'dispatch',
+                                            namespace: 'shop',
+                                            k8s: {
+                                                k8sVolumes: {
+                                                    [name]: {size: '5Gi', mountPath: '/srv/shop'},
+                                                },
+                                            },
+                                        },
+                                    ],
+                                },
+                                {suiteName: 'demo', frameworkImage: 'image'},
+                            ),
+                        new RegExp(`k8sVolumes entry "${name}" is not a name a cluster accepts`),
+                        `a claim named ${name} is refused where the plan is built, naming the entry`,
+                    );
+                }
             },
 
             async function aWebhookIsReachableFromOutside(assert: IAssert) {

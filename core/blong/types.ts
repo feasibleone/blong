@@ -465,6 +465,10 @@ export interface IComponentK8sContribution {
     /**
      * Volumes the component owns. Keyed by the name the claim takes, because the key is the identity a
      * mount and a claim find each other by, and two components asking for one volume want one claim.
+     *
+     * The key is a cluster object's name, so it is the strict shape a claim accepts — an RFC 1123
+     * subdomain, `blob-storage` rather than `blobStorage` — and the plan refuses one that is not,
+     * where it is built rather than where the cluster applies it (`@@D-868`).
      */
     k8sVolumes?: Record<
         string,

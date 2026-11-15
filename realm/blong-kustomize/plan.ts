@@ -376,6 +376,29 @@ export const k8sPortName = (name: string): string => {
 };
 
 /**
+ * A claim's name as the API server accepts it: an RFC 1123 subdomain.
+ *
+ * The key of `k8sVolumes` is the claim's name, and a claim is a cluster object rather than a
+ * container-local label, so the rules are the strict ones: lower-case alphanumerics, `-` and `.`,
+ * starting and ending with an alphanumeric, at most 253 characters. A repository that writes its
+ * configuration keys in camelCase therefore has to spell this one out — `blobStorage` reached the
+ * composer, and the install stopped with `PersistentVolumeClaim "blobStorage" is invalid: … a
+ * lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters` after the suite
+ * had already been built (`@@D-868`).
+ */
+export const k8sVolumeNameCheck = (name: string): void => {
+    const valid =
+        name.length <= 253 &&
+        /^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$/.test(name);
+    if (valid) return;
+    throw new Error(
+        `k8sVolumes entry "${name}" is not a name a cluster accepts: the key is the claim's name, ` +
+            'and a claim is an RFC 1123 subdomain — lower-case alphanumerics, `-` and `.`, starting ' +
+            'and ending with an alphanumeric. Write `blob-storage`, not `blobStorage`',
+    );
+};
+
+/**
  * Turn a declared map into the list the generator renders, refusing a shape it cannot mean.
  *
  * The counterpart of `resolveExternalServices` for the collections a name identifies on its own. Both
@@ -1371,10 +1394,15 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         // A realm that declared a volume gets it in the process that carries that realm, and the tree
         // emits the claim beside the Deployment (`@@T-317`). Merged by name because two realms of one
         // process can want the same volume, and the map is what makes that one claim rather than two.
+        // The key is the claim's name, so it is refused here when a cluster would refuse it: the tree
+        // is composed after this, and a rejected name stops a deployment in its first Job (`@@D-868`).
         const volumes = resolveNamedEntries<IComponentVolume>(
             mergeNamed(contributions.map(contribution => contribution.k8sVolumes)),
             'k8sVolumes',
-        );
+        ).map(volume => {
+            k8sVolumeNameCheck(volume.name);
+            return volume;
+        });
         return {
             name,
             realms,
