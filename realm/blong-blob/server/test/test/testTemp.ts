@@ -65,9 +65,15 @@ export default handler(({lib: {group}, handler: {blobBlobAdd, blobHead, blobTemp
                 const answer = (await blobTempCleanup({namespaces: ['test'], now}, {
                     ...$meta,
                     method: 'blob.temp.cleanup',
-                } as IMeta)) as {removed: number; bytes: number};
-                assert.ok(answer.removed >= 3, 'the expired records are gone');
-                assert.ok(answer.bytes > 0, 'and the bytes they held are counted');
+                } as IMeta)) as {removed: number; bytes: number} | undefined;
+                // The answer is read through `?.` and reported when it is absent: a dispatch that
+                // answers nothing is a different fault from a sweep that removed nothing, and a
+                // TypeError on the line below tells a reader neither (`@@F-747`).
+                assert.ok(
+                    (answer?.removed ?? -1) >= 3,
+                    `the expired records are gone — the sweep answered ${JSON.stringify(answer)}`,
+                );
+                assert.ok((answer?.bytes ?? 0) > 0, 'and the bytes they held are counted');
 
                 for (const record of gone) {
                     assert.equal(
@@ -98,12 +104,16 @@ export default handler(({lib: {group}, handler: {blobBlobAdd, blobHead, blobTemp
                 const answer = (await blobTempCleanup(
                     {namespaces: ['test'], now: new Date().toISOString()},
                     {...$meta, method: 'blob.temp.cleanup'} as IMeta,
-                )) as {removed: number; bytes: number};
+                )) as {removed: number; bytes: number} | undefined;
                 assert.ok(
                     await present(blobHead, 'test', live.key),
                     'a record whose lifetime is ahead survives the sweep',
                 );
-                assert.equal(answer.bytes >= 0, true, 'and the answer is a count, not a failure');
+                assert.equal(
+                    (answer?.bytes ?? -1) >= 0,
+                    true,
+                    `and the answer is a count, not a failure — it answered ${JSON.stringify(answer)}`,
+                );
                 return {done: true};
             },
         ]),

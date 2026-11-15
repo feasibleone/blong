@@ -1,6 +1,6 @@
 import {handler, type IMeta} from '@feasibleone/blong';
-import {Readable} from 'node:stream';
 import type Assert from 'node:assert';
+import {Readable} from 'node:stream';
 
 /**
  * `testBlobStorageS3` — the blob realm's object-store backend, against a real bucket.
@@ -69,7 +69,10 @@ export default handler(
                     {$meta, upload}: {$meta: IMeta; upload: Promise<{key: string; size: number}>},
                 ) {
                     const {key, size} = await upload;
-                    const stream = (await blobRead({namespace: 'test', key}, $meta)) as Readable | null;
+                    const stream = (await blobRead(
+                        {namespace: 'test', key},
+                        $meta,
+                    )) as Readable | null;
                     assert.ok(stream, 'the blob reads back');
                     let seen = 0;
                     for await (const chunk of stream!) seen += (chunk as Buffer).length;
@@ -87,11 +90,7 @@ export default handler(
                         contentType: string;
                     };
                     assert.equal(answer.size, size, 'the record beside the bytes names their size');
-                    assert.equal(
-                        answer.contentType,
-                        'application/octet-stream',
-                        'and their type',
-                    );
+                    assert.equal(answer.contentType, 'application/octet-stream', 'and their type');
                     return {key};
                 },
 
@@ -138,11 +137,15 @@ export default handler(
                     assert.ok(added?.key, 'a temporary blob is stored');
                     // The cutoff is a day ahead, which is past every temporary record's lifetime.
                     const now = new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString();
-                    const answer = (await blobTempCleanup(
-                        {namespaces: ['test'], now},
-                        $meta,
-                    )) as {removed: number; bytes: number};
-                    assert.ok(answer.removed >= 1, 'the sweep found the expired record');
+                    const answer = (await blobTempCleanup({namespaces: ['test'], now}, $meta)) as
+                        | {removed: number; bytes: number}
+                        | undefined;
+                    // Named rather than dereferenced: an answer that is absent is a dispatch fault,
+                    // and a TypeError here reports neither the fault nor the sweep (`@@F-747`).
+                    assert.ok(
+                        (answer?.removed ?? -1) >= 1,
+                        `the sweep found the expired record — it answered ${JSON.stringify(answer)}`,
+                    );
                     const gone = await Promise.resolve(
                         blobHead({namespace: 'test', key: added.key}, {...$meta} as IMeta),
                     ).then(

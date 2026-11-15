@@ -8,7 +8,7 @@
  * about, how it was chosen, and what it could not see (@@D-561).
  *
  * Usage:
- *   blong-dev ci failures [--pr <n> | --run <n> | --sha <sha> | --branch <name>]
+ *   blong-dev ci failures [--pr <n> | --run <n|id|url> | --sha <sha> | --branch <name>]
  *                         [--repo <owner/name>] [--workflow <name>] [--site <url>]
  *                         [--full] [--json] [--write] [--strict]
  *   blong-dev ci runs [--limit <n>] [--repo <owner/name>]
@@ -292,7 +292,7 @@ async function failures(flags: IFlags, root: string): Promise<void> {
     const resolved = await resolveTarget(flags, base);
     if (!resolved) {
         process.stderr.write(
-            'blong-dev: no run to diagnose — pass --run <n>, --pr <n> or --sha <sha>\n',
+            'blong-dev: no run to diagnose — pass --run <n|id|url>, --pr <n> or --sha <sha>\n',
         );
         process.exitCode = 1;
         return;

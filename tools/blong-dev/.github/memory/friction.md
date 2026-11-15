@@ -53,7 +53,7 @@ open (40)
 - `F-727` · tools/blong-dev — Publishing a plan failed on three marks the linter rejects
 - `F-729` · tools/blong-dev — Prettier wraps a plan's task lines and breaks the board
 
-resolved (13)
+resolved (14)
 
 - `F-080` · tools/blong-dev — `blong-dev` CLI not built
 - `F-090` · tools/blong-dev — `blong-dev` was not built, so `npm run ci-lint` could not find it
@@ -68,6 +68,7 @@ resolved (13)
 - `F-691` · tools/blong-dev — user --role split a role name on its space
 - `F-709` · tools/blong-dev — A memory file's last list cannot satisfy both linters
 - `F-721` · tools/blong-dev — An optional field with two meanings claimed a search that never ran
+- `F-748` · tools/blong-dev — blong-dev ci says no run for the id in the URL
 
 <!-- /memory:index -->
 
@@ -792,3 +793,23 @@ present and empty. A field that carries two meanings needs a tri-state, and only
 whole workflow showed it — the unit tests exercised a body that already had evidence.
 
 fixed in memoryFaq.ts: evidence is null when the line is absent and [] when it is present and empty
+
+### F-748 — blong-dev ci says no run for the id in the URL
+
+> _2026-11-15 · tools/blong-dev · resolved_
+
+The run was handed over as a URL — `https://github.com/feasibleone/blong/actions/runs/43716302586` —
+and `43716302586` is the run's _database id_, while `blong-dev ci failures --run <n>` compares `<n>`
+against the run _number_ (#685) from `gh run list`. The mismatch is not reported as a mismatch: the
+tool falls back to the reports site, finds no document for that number, and answers
+`no run to diagnose — pass --run <n>, --pr <n> or --sha <sha>`, which reads as "you passed nothing"
+to a caller who passed exactly what the browser showed them. Two calls (`--run 43716302586`,
+`--run 262`) produced the same sentence before the right number worked.
+
+The fix is small and belongs in the resolver: match `--run` against `number` or `databaseId`, and
+when neither matches say which numbers it did see and where it looked. A run id is what every GitHub
+URL ends in, so it is the form a person is most likely to paste.
+
+Fixed: runSelector accepts the run number, the database id a GitHub URL ends in, and the URL; a
+selector that matches none now names the runs it saw. ci.test 24/24, and the URL the user pasted
+diagnoses #685.

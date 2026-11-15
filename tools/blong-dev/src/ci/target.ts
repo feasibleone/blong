@@ -74,6 +74,20 @@ export async function resolveRepo(flag?: string): Promise<string | undefined> {
     return view?.nameWithOwner;
 }
 
+/**
+ * The number a `--run` selector names: the run number, its database id, or either inside a URL.
+ *
+ * A person hands over the link their browser shows, and a GitHub run URL ends in the run's *database
+ * id* (`.../runs/43716302586`), not in the `#685` that `gh run list` numbers it by. Reading both is
+ * the difference between answering and saying there was no run (`@@F-748`).
+ */
+export function runSelector(value: string): number | undefined {
+    const match = /(\d+)\/?\s*$/.exec(value.trim());
+    if (!match?.[1]) return undefined;
+    const asked = Number(match[1]);
+    return Number.isFinite(asked) ? asked : undefined;
+}
+
 /** The workflow's runs, newest first, as `gh run list --json` reports them. */
 export async function recentRuns(
     repo: string,
@@ -223,13 +237,24 @@ export async function resolveTarget(
     });
 
     if (flags.run) {
-        const run = runs.find(candidate => candidate.number === Number(flags.run));
+        const asked = runSelector(flags.run);
+        const run = runs.find(
+            candidate => candidate.number === asked || candidate.databaseId === asked,
+        );
         if (!run) {
+            // Naming the numbers the tool did see is what turns "no run" into an answer a caller can
+            // act on: the selector was either an older run or a typo, and the two look the same.
+            const seen = runs
+                .slice(0, 5)
+                .map(candidate => `#${candidate.number}`)
+                .join(', ');
             notes.push(
-                `run #${flags.run} is not among the last ${runs.length} \`${workflow}\` runs; ` +
-                    'older runs are only reachable through the reports site',
+                `"${flags.run}" matches none of the last ${runs.length} \`${workflow}\` runs ` +
+                    `(${seen}${runs.length > 5 ? ', …' : ''}); older runs are only reachable through ` +
+                    'the reports site',
             );
-            const target = await targetFromSite(base, workflow, Number(flags.run));
+            const target =
+                asked === undefined ? undefined : await targetFromSite(base, workflow, asked);
             return target ? {target, history: [target.run], notes} : undefined;
         }
         return of(run, `run #${run.number}, asked for`);

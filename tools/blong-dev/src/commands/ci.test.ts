@@ -11,6 +11,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {test} from 'tap';
 
+import {runSelector} from '../ci/target.ts';
 import {parseCiFlags, staleReport} from './ci.ts';
 
 test('the verb and the flags are read from any order', t => {
@@ -72,5 +73,18 @@ test('a stale local report is named, a current one is not', t => {
     } finally {
         rmSync(dir, {recursive: true, force: true});
     }
+    t.end();
+});
+
+test('a run selector is a number, an id, or the URL a browser shows', t => {
+    t.equal(runSelector('685'), 685, 'the run number `gh` prints');
+    t.equal(runSelector('43716302586'), 43716302586, 'the id a GitHub run URL ends in');
+    t.equal(
+        runSelector('https://github.com/feasibleone/blong/actions/runs/43716302586'),
+        43716302586,
+        'and the URL itself, which is what a person pastes',
+    );
+    t.equal(runSelector(' 622 '), 622, 'surrounding space is not a selector');
+    t.equal(runSelector('latest'), undefined, 'a word is not');
     t.end();
 });

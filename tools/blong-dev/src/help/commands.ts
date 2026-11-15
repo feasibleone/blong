@@ -138,7 +138,7 @@ export const COMMANDS: readonly IHelpCommand[] = [
                 name: 'failures',
                 summary: 'Explain the failures of one run',
                 usage:
-                    'blong-dev ci failures [--pr <n> | --run <n> | --sha <sha> | --branch <name>]\n' +
+                    'blong-dev ci failures [--pr <n> | --run <n|id|url> | --sha <sha> | --branch <name>]\n' +
                     '                       [--repo <owner/name>] [--workflow <name>] [--site <url>]\n' +
                     '                       [--full] [--json] [--write] [--strict]',
                 description:
@@ -150,7 +150,11 @@ export const COMMANDS: readonly IHelpCommand[] = [
                         flag: '--pr <n>',
                         description: 'diagnose the newest completed run of a pull request',
                     },
-                    {flag: '--run <n>', description: 'diagnose one run by number'},
+                    {
+                        flag: '--run <n|id|url>',
+                        description:
+                            'diagnose one run by number, by the id a GitHub run URL ends in, or by that URL',
+                    },
                     {flag: '--sha <sha>', description: 'the newest run of a commit'},
                     {flag: '--branch <name>', description: 'the newest run of a branch'},
                     {
