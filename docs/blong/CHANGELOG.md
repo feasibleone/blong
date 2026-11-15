@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.46.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.45.1...blong-docs-v1.46.0) (2026-11-15)
+
+
+### Features
+
+* blong-blob ([66ba8d7](https://github.com/feasibleone/blong/commit/66ba8d7ec61b1f268209126361055883f00f88ab))
+
+
+### Bug Fixes
+
+* improve planning and linting ([f8536e1](https://github.com/feasibleone/blong/commit/f8536e13376cceb32ed43cdeee497e6884566688))
+
 ## [1.45.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.45.0...blong-docs-v1.45.1) (2026-11-13)
 
 

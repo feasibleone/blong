@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/feasibleone/blong/compare/blong-commander-v1.7.0...blong-commander-v1.7.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* CI failures ([78b998a](https://github.com/feasibleone/blong/commit/78b998ad7e76f3a991d7fb90a48cc8e1c5b0a086))
+
 ## [1.7.0](https://github.com/feasibleone/blong/compare/blong-commander-v1.6.1...blong-commander-v1.7.0) (2026-11-12)
 
 

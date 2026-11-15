@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/feasibleone/blong/compare/blong-party-v1.17.0...blong-party-v1.18.0) (2026-11-15)
+
+
+### Features
+
+* blong-blob ([66ba8d7](https://github.com/feasibleone/blong/commit/66ba8d7ec61b1f268209126361055883f00f88ab))
+
 ## [1.17.0](https://github.com/feasibleone/blong/compare/blong-party-v1.16.0...blong-party-v1.17.0) (2026-11-13)
 
 

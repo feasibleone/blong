@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/feasibleone/blong/compare/blong-chat-v0.3.1...blong-chat-v0.4.0) (2026-11-15)
+
+
+### Features
+
+* blong-blob ([66ba8d7](https://github.com/feasibleone/blong/commit/66ba8d7ec61b1f268209126361055883f00f88ab))
+
+
+### Bug Fixes
+
+* trimmed question in Slack ([537257e](https://github.com/feasibleone/blong/commit/537257e3abd8ff2835b1eac1b3a7e4eb39d058d3))
+
 ## [0.3.1](https://github.com/feasibleone/blong/compare/blong-chat-v0.3.0...blong-chat-v0.3.1) (2026-11-13)
 
 
