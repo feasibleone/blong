@@ -55,7 +55,10 @@ export default handler(({handler: {clusterNodeFind}}) => ({
         return {
             outputDir,
             layout,
-            files: writeKustomizeTree(buildKustomizeTree(plan), outputDir, {layout, plan}),
+            files: writeKustomizeTree(buildKustomizeTree(plan, {layout}), outputDir, {
+                layout,
+                plan,
+            }),
             suite: {
                 name: plan.suite.name,
                 namespace: plan.suite.namespace,

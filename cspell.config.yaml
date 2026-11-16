@@ -339,6 +339,7 @@ words:
   - pino
   - pkce
   - pkill
+  - placeholdered
   - placeholderize
   - pnpmfile
   - pointerdown

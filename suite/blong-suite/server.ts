@@ -44,7 +44,6 @@ export default server(() => ({
         // decisions, and a setting that appears only under `k8s` makes an operator pass report
         // objects it does not manage as drift.
         default: {
-
             kustomize: {
                 deploy: {
                     // No `layout` here, on purpose: the realm's `k8s` activation names the repository
@@ -87,30 +86,23 @@ export default server(() => ({
                             ports: [{name: 'mysql', port: 3306}],
                         },
                     },
-                    // What a service the tree generates has to create for this suite. The list is
-                    // named here because the connection that dials it lives in the `release` block
-                    // below, which a `k8s` planning run does not merge: the plan reads the databases
-                    // its ports' connections name, finds none, and asks the generated service for
-                    // nothing — a ConfigMap that mounts and creates no database, while the migration
-                    // step is the first thing to notice (T-277). One entry, because every realm in
-                    // this suite dials the same database.
+                    // No `services` key, and the silence is the answer rather than an omission: the
+                    // plan offers what an activated adapter implies — a `knex` adapter implies a
+                    // MySQL — and `services.<name>` is where a deployment says which of them it
+                    // brings (D-504). This suite brings none, because it dials `db`, the cluster's
+                    // MySQL through the `ExternalName` above: a generated one would be a second, empty
+                    // instance in `blong-services` that nothing reaches.
                     //
-                    // The key is the opt-in, and this is the suite's own: an adapter makes a service
-                    // *available* and the deployment says which of them it brings, so a plain
-                    // deployment of this suite gets the database it was written against, and a tenant
-                    // that runs its own says `false` for it in the CR — the same switch, the other way
-                    // round (D-504).
+                    // `false` and silence generate the same tree — an absent key is the absence of a
+                    // decision, not a refusal — so writing `mysql: false` here would be a line that
+                    // changes nothing but the committed sample. What it must not be is the *other*
+                    // shape: `mysql: {databases: ['blong-integration'], credentials: {generate: true}}`
+                    // asked the tree to bring one, and that mistake was repaired in a local rc until it
+                    // was removed here, where the default belongs (F-752). A deployment that does want
+                    // its own writes that shape — the databases the suite's connections name, which a
+                    // `k8s` plan cannot read off the `release` block it does not merge (T-277), and the
+                    // credentials a database whose own users are created from them needs (D-509).
                     //
-                    // `credentials.generate` is the second opt-in, and this suite needs it: a service
-                    // whose credentials come from nowhere in particular gets no Secret at all, which is
-                    // the right answer for one configured by a mounted file and the wrong one for a
-                    // database whose own users are created from it (D-509).
-                    services: {
-                        mysql: {
-                            databases: ['blong-integration'],
-                            credentials: {generate: true},
-                        },
-                    },
                     // A portal names its address, the process that answers beside it and the alias
                     // that names its Service. The host is the e2e run's: the cluster's own ingress
                     // controller answers it, and the runbook reaches the suite by sending that Host
@@ -144,6 +136,9 @@ export default server(() => ({
                             host: 'blong-suite.test',
                             realm: 'marine',
                             tls: {secretName: 'marine-tls'},
+                            annotations: {
+                                'cert-manager.io/cluster-issuer': 'letsencrypt-prod',
+                            },
                         },
                     },
                     suiteVolume: {

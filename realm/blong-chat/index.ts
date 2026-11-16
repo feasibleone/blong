@@ -92,6 +92,9 @@ export default server(() => ({
                     portal: {
                         web: {
                             tls: {secretName: 'chat-tls'},
+                            annotations: {
+                                'cert-manager.io/cluster-issuer': 'letsencrypt-prod',
+                            },
                         },
                     },
                     suiteVolume: {

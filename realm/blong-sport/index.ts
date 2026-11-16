@@ -98,6 +98,9 @@ export default server(() => ({
                             // @@D-645. What the suite does say is that it publishes a page and which
                             // Secret its certificate lands in.
                             tls: {secretName: 'sport-tls'},
+                            annotations: {
+                                'cert-manager.io/cluster-issuer': 'letsencrypt-prod',
+                            },
                         },
                     },
                     suiteVolume: {

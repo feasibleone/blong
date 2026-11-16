@@ -608,6 +608,69 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 }
             },
 
+            async function aBackingServicesEnvironmentIsTheDeploys(assert: IAssert) {
+                // A service the deployment brings is a *deploy* decision — `services.mysql` is a switch, and
+                // the environment that names the Secret the tree wrote for it follows that switch. A base
+                // that kept the answer it was generated with could not be corrected by the overlay, which is
+                // the volume source's defect one field over (`@@D-873`): a tenant whose CR turns the service
+                // on would run a suite whose processes never read the credentials the tree created for
+                // them. So the base carries none of it and the patch holds it, and the reference stays
+                // `optional` because the base is shared by deployments that differ here.
+                const dir = mkdtempSync(join(tmpdir(), 'kustomize-service-env-'));
+                try {
+                    const mysql = resolveBackingServices(loadServiceCatalog(), {
+                        kinds: ['knex'],
+                        databases: ['blong-suite'],
+                        namespace: 'shop-services',
+                        // The second opt-in: a database whose users are created from its own credentials
+                        // is the case the environment exists for (@@D-509).
+                        config: {mysql: {credentials: {generate: true}}},
+                    }).services[0];
+                    const secret = mysql?.credentialsSecret;
+                    assert.ok(secret, 'a database the tree generates carries a Secret of its own');
+                    const plan = lib.suitePlan({
+                        suite: lib.pinnedSuite,
+                        backingServices: [mysql],
+                        deployments: [
+                            {
+                                name: 'shop',
+                                realms: ['shop'],
+                                layers: ['shop.orchestrator'],
+                                namespaces: ['shop'],
+                                replicas: 1,
+                            },
+                        ],
+                    }) as IDeploymentPlan;
+                    const built = buildKustomizeTree(plan, {layout: 'split'});
+                    const written = writeKustomizeTree(built, dir, {layout: 'split', plan});
+                    const text = (prefix: string): string =>
+                        written
+                            .filter(file => file.startsWith(prefix))
+                            .map(file => readFileSync(join(dir, file), 'utf8'))
+                            .join('\n');
+                    const base = text('base/deployments/');
+                    const patch = text('local/suite/patches/');
+                    assert.ok(
+                        base.includes('image: PLACEHOLDER'),
+                        'the half holds the workloads it always did, so this is the same base',
+                    );
+                    assert.ok(
+                        !base.includes('envFrom') && !base.includes(secret),
+                        'no base workload names the service or the Secret it brought',
+                    );
+                    assert.ok(
+                        patch.includes('envFrom') && patch.includes(secret),
+                        'and the overlay puts the environment back, under the container it belongs to',
+                    );
+                    assert.ok(
+                        patch.includes('optional: true'),
+                        'optional, because the base is shared by deployments that switch the service off',
+                    );
+                } finally {
+                    rmSync(dir, {recursive: true, force: true});
+                }
+            },
+
             async function aServiceFolderComposesIntoTheObjectsItStandsFor(assert: IAssert) {
                 // A service folder sits beside the base and the overlay is what brings it: kustomize has
                 // to render the two into the objects the tree carries, placeholders and patches resolved
@@ -1518,7 +1581,10 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 const committed = (plan: IDeploymentPlan): Record<string, unknown> => {
                     const dir = mkdtempSync(join(tmpdir(), 'kustomize-release-'));
                     try {
-                        writeKustomizeTree(buildKustomizeTree(plan), dir, {layout: 'base', plan});
+                        writeKustomizeTree(buildKustomizeTree(plan, {layout: 'base'}), dir, {
+                            layout: 'base',
+                            plan,
+                        });
                         return Object.fromEntries(
                             [...readKustomizeTree(dir)].map(([path, resource]) => [
                                 path,
@@ -1550,6 +1616,56 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     committed(plan),
                     'a release changes nothing a repository commits: the base and the sample name what a ' +
                         'deploy puts there, not the values this one had',
+                );
+
+                // And neither does the *deploy*: a host and the annotations beside it are a tenant's, and
+                // a plan whose rc supplied them used to write them into the committed sample — the issuer
+                // of one machine's cluster in the repository, and a drift check that failed on a tree
+                // which was right where it was written (`@@F-752`). The two plans declare the same portal,
+                // the same webhook and the same annotations, and differ only in who named the hosts: the rc
+                // is the deploy's host file, and everything else is the declaration's.
+                const issuer = {'cert-manager.io/cluster-issuer': 'letsencrypt-prod'};
+                const webhook = {
+                    name: 'hooks',
+                    namespace: plan.suite.namespace,
+                    path: '/hooks',
+                    pathType: 'Prefix' as const,
+                    serviceName: 'shop',
+                    servicePort: 8080,
+                    annotations: issuer,
+                };
+                const declared = {
+                    ...plan,
+                    portal: {
+                        web: {
+                            realm: 'shop',
+                            path: '/',
+                            tls: {secretName: 'shop-tls'},
+                            annotations: issuer,
+                        },
+                    },
+                    ingresses: [webhook],
+                } as unknown as IDeploymentPlan;
+                const deployed = {
+                    ...declared,
+                    portal: {
+                        web: {...declared.portal.web, host: 'ui.shop.example'},
+                    },
+                    ingresses: [{...webhook, host: 'hooks.shop.example'}],
+                } as IDeploymentPlan;
+                assert.deepEqual(
+                    committed(deployed)['example/blongdeployment.yaml'],
+                    committed(declared)['example/blongdeployment.yaml'],
+                    'a deploy changes nothing a repository commits: the sample names the host a tenant ' +
+                        'fills in and leaves the annotations beside it',
+                );
+                // The base is where the mistake actually shipped — four Deployments carrying the
+                // environment a `services.mysql: false` deploy does not — so the whole half is compared,
+                // not the sample: a declaration either side of the hosts writes one tree (`@@F-752`).
+                assert.deepEqual(
+                    committed(deployed),
+                    committed(declared),
+                    'and nothing in the base depends on who named a host either',
                 );
             },
 

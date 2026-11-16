@@ -133,7 +133,11 @@ jobs:
         #
         # A generation is deterministic and independent of the release — the base and the sample name
         # what a deploy puts there rather than the version and digest of the one that generated them
-        # (D-872) — so the check is a diff, and a release alone cannot make it fail.
+        # (D-872) — so the check is a diff, and a release alone cannot make it fail. It is independent
+        # of the *deploy* for the same reason: the `k8s` rc beside an entry carries hosts and nothing
+        # else, the sample names each of them `PLACEHOLDER`, and every other value the generation reads
+        # is source — so a checkout with no rc writes the tree committed beside it, and a value that is
+        # not a host put back into an rc is what turns this red (F-752).
         run: |
           failed=0
           for package in suite/blong-suite realm/blong-sport realm/blong-chat; do

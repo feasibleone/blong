@@ -416,6 +416,9 @@ const suiteVolume = (
  * `optional`, because the reference cannot be conditional: the base is shared by every deployment of the
  * suite, and one that switches the service off must not keep its pods from starting on a Secret that went
  * with it (R5).
+ *
+ * Which deployments it reaches is theirs to say, so a split hands it to the overlay rather than committing
+ * it: the base carries none of these entries and the patch beside the workload restores them (`@@D-873`).
  */
 const credentialsEnvFrom = (plan: IDeploymentPlan): unknown[] =>
     plan.backingServices
@@ -2834,7 +2837,18 @@ const serviceDigest = (plan: IDeploymentPlan, service: IBackingService, key: str
 /** The namespace the generated workloads live in: the deployment's, or the realm's default. */
 const servicesNamespace = (service: IBackingService): string => service.namespace;
 
-export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
+export const buildKustomizeTree = (
+    plan: IDeploymentPlan,
+    options: {layout?: TreeLayout} = {},
+): KustomizeTree => {
+    // The base half holds no Ingress: every one of them is written by the overlay, because a host, its
+    // certificate and the annotations a controller acts on are the deployment's. So the contest below —
+    // a webhook must not land on a portal's host — is decided for the tree that carries the objects, and
+    // not for the sample, where each contributed path shows a host the tenant fills in. It has to be
+    // said here rather than in the writer, because a declaration this pass cannot group is a tree it
+    // cannot build at all: a realm whose contributed paths and portal are all hostless plans perfectly
+    // well for a base, and that is the only half CI can regenerate (`@@F-752`).
+    const committedHalf = options.layout === 'base';
     // Two trees, and which one this is decides everything else: a suite's, or the operator's own
     // install (Phase 15 A). They share the finishing step and nothing else.
     if (plan.install) return installKustomizeTree(plan);
@@ -2971,9 +2985,9 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
         // A `sameOrigin` path is not that: it asked for this host, because the browser will not send
         // the page's cookie to any other, and inheriting the page's authentication is what it wants —
         // the same person is reading both (`@@D-870`).
-        const contesting = plan.ingresses.filter(
-            ingress => ingress.host === entry.host && !ingress.sameOrigin,
-        );
+        const contesting = committedHalf
+            ? []
+            : plan.ingresses.filter(ingress => ingress.host === entry.host && !ingress.sameOrigin);
         if (contesting.length) {
             throw new Error(
                 `the portal "${name}" shares host "${entry.host ?? '(none)'}" with ` +
@@ -3269,7 +3283,15 @@ type TreePlacement = 'base' | 'instantiated';
  * The same is true of a webhook's address, which is the field a tenant most needs to learn about: a realm
  * contributes the path and the port, and the host, its certificate and the issuer that signs it are the
  * deployment's (`@@D-800`). The sample therefore carries an entry per contributed ingress with its host
- * replaced, so what a tenant has to write is visible rather than implied.
+ * replaced, so what a tenant has to write is visible rather than implied. Only the host is replaced,
+ * because only a host is a name the repository may not hold: an issuer annotation is a cluster's, and
+ * showing it is what teaches the shape of the file.
+ *
+ * A contribution the *declaration* cannot carry at all — one whose host the realm left to the deploy, which
+ * the CR omits and the operator reads from the artifact's own config — is added here for the same reason:
+ * otherwise the one thing a tenant has to write is the one thing the committed sample does not show. It is
+ * added in the shape the declaration uses, so the two read the same. Either way `PLACEHOLDER` is the same
+ * token, so the example is identical in a checkout with no rc and on the machine that wrote it (`@@F-752`).
  */
 const exampleDeclaration = (
     resource: KustomizeResource,
@@ -3291,12 +3313,32 @@ const exampleDeclaration = (
             : Object.fromEntries(
                   Object.entries(entries).map(([alias, entry]) => [
                       alias,
-                      entry.host === undefined ? entry : {...entry, host: PLACEHOLDER},
+                      {...entry, host: PLACEHOLDER},
                   ]),
               );
     const portal = replaced(spec.portal);
-    const ingresses = replaced(spec.ingresses);
-    if (!portal && !ingresses) return resource;
+    // What the CR could not name, because no host was decided for it: the sample keeps the contribution as
+    // the realm wrote it — the path, the port, the certificate's Secret — and names the host as the
+    // tenant's. The shape is `ingressRequests`' rather than the plan's, because the sample is a declaration
+    // a tenant copies and it has to read like the one the overlay applies.
+    const undecided = Object.fromEntries(
+        plan.ingresses
+            .filter(ingress => ingress.host === undefined && !ingress.sameOrigin)
+            .map(ingress => [
+                ingress.name,
+                {
+                    host: PLACEHOLDER,
+                    ...(ingress.path ? {path: ingress.path} : {}),
+                    ...(ingress.pathType ? {pathType: ingress.pathType} : {}),
+                    ...(ingress.servicePort ? {servicePort: ingress.servicePort} : {}),
+                    ...(ingress.tls ? {tls: ingress.tls} : {}),
+                    ...(ingress.annotations ? {annotations: ingress.annotations} : {}),
+                },
+            ]),
+    );
+    const ingresses = {...replaced(spec.ingresses), ...undecided};
+    const shown = Object.keys(ingresses).length ? ingresses : undefined;
+    if (!portal && !shown) return resource;
     // The sample is what a tenant copies, so the values a *release* owns are placeholders in it too: the
     // host, because the tenant names it, and the version and the artifact's digest, because the next
     // release moves them — a sample committed with `1.20.1` in it is stale the moment `1.20.2` ships, and
@@ -3309,7 +3351,7 @@ const exampleDeclaration = (
         placeholderize(
             {
                 ...resource,
-                spec: {...spec, ...(portal && {portal}), ...(ingresses && {ingresses})},
+                spec: {...spec, ...(portal && {portal}), ...(shown && {ingresses: shown})},
             },
             owned,
         ) as Record<string, unknown>,
@@ -3497,6 +3539,57 @@ const containersOf = (object: Record<string, unknown>): Record<string, unknown>[
 };
 
 /**
+ * The same object with the backing services' environment taken out — what a base holds.
+ *
+ * `envFrom` names the Secret of every service the *deploy* brings, so it is a reference the committed half
+ * may not keep: a CR that switches a service on writes a tree whose base was generated by the release's own
+ * declaration, and a base that kept the old answer is an object the overlay could not correct — the volume
+ * source's defect one field over (`@@D-873` @@F-751). It is dropped rather than placeholdered because there
+ * is no token to write: a `secretRef` with a placeholder name is a reference to a Secret nobody creates.
+ * What the base keeps is the environment the suite declares for itself, and the patch beside it holds this.
+ */
+const withoutCredentialsEnv = (object: Record<string, unknown>): Record<string, unknown> => {
+    const spec = object.spec as
+        | {template?: {spec?: {containers?: Record<string, unknown>[]}}}
+        | undefined;
+    const containers = spec?.template?.spec?.containers;
+    if (!containers?.some(container => container.envFrom !== undefined)) return object;
+    return {
+        ...object,
+        spec: {
+            ...(object.spec as Record<string, unknown>),
+            template: {
+                ...spec?.template,
+                spec: {
+                    ...spec?.template?.spec,
+                    containers: containers.map(container => {
+                        if (container.envFrom === undefined) return container;
+                        const {envFrom: _envFrom, ...rest} = container;
+                        return rest;
+                    }),
+                },
+            },
+        },
+    };
+};
+
+/** The environment a workload's containers draw from Secrets, as `[{name, envFrom}]`. */
+const credentialsEnvOf = (
+    object: Record<string, unknown>,
+): Array<{name: string; envFrom: unknown[]}> =>
+    containersOf(object)
+        .filter(
+            container =>
+                typeof container.name === 'string' &&
+                Array.isArray(container.envFrom) &&
+                container.envFrom.length > 0,
+        )
+        .map(container => ({
+            name: container.name as string,
+            envFrom: container.envFrom as unknown[],
+        }));
+
+/**
  * The images a workload's containers name, as `[{name, image}]`.
  *
  * `name` is the strategic-merge key, so a patch carrying only these two fields adds or replaces the
@@ -3595,12 +3688,25 @@ const splitWorkload = (
     };
     const real = suiteVolumeOf(object);
     const images = imagesOf(object);
+    // One patch entry per container, carrying every field the deploy owns: the strategic-merge key is the
+    // name, so an entry that names two fields sets both and leaves the rest of the container as the base
+    // wrote it (`@@T-449` for the image, `@@D-873` for the environment a backing service supplies).
+    const deployed = new Map<string, Record<string, unknown>>();
+    for (const {name, image} of images) {
+        deployed.set(name, {...deployed.get(name), name, image});
+    }
+    for (const {name, envFrom} of credentialsEnvOf(object)) {
+        deployed.set(name, {...deployed.get(name), name, envFrom});
+    }
+    const containers = [...deployed.values()];
     const realPodLabels = podLabelsOf(object);
     return {
         // Re-stamped: the placeholder is what this file holds, and its fingerprint should say so.
         base: stampSpecHash(
             withPlaceholderVersionLabels(
-                withPlaceholderImages(withSuiteVolume(object, placeholderVolume(plan))),
+                withoutCredentialsEnv(
+                    withPlaceholderImages(withSuiteVolume(object, placeholderVolume(plan))),
+                ),
                 ownedByDeploy(plan),
             ),
         ),
@@ -3623,7 +3729,7 @@ const splitWorkload = (
                 template: {
                     ...(realPodLabels ? {metadata: {labels: {...realPodLabels}}} : {}),
                     spec: {
-                        ...(images.length ? {containers: images} : {}),
+                        ...(containers.length ? {containers} : {}),
                         ...(real ? {volumes: [real]} : {}),
                     },
                 },

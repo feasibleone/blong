@@ -44,9 +44,11 @@ The tree is written in one of two layouts, and which one is a config key (`layou
     so the base carries a **template** under `base/templates/<kind>/` with `PLACEHOLDER` where the
     deploy's values go, and the overlay one kustomization per instance that includes it, appends the
     identity through `nameSuffix` and patches the values back. Every other object is in the base as
-    it is, or with a patch when it carries a _value_ the deploy owns — a Deployment's volume. A rule
-    of thumb: the base is what a reviewer should read, and the overlay is what changes between two
-    deploys.
+    it is, or with a patch when it carries a _value_ the deploy owns — a Deployment's volume, its
+    image, and the `envFrom` that names a backing service's Secret, which is dropped rather than
+    placeholdered because a `secretRef` with a token in it is a reference to a Secret nobody creates
+    (`@@D-873`). A rule of thumb: the base is what a reviewer should read, and the overlay is what
+    changes between two deploys.
 
     The committed half names nothing the _release_ decided, fingerprints included: `spec-hash` is
     stamped over the object the file holds, the sample declaration carries `PLACEHOLDER` for its
@@ -56,6 +58,17 @@ The tree is written in one of two layouts, and which one is a config key (`layou
     that rewrite is the next release's reason. `.github/workflows/kustomize.yaml` regenerates every
     package that keeps a tree and fails on any `git diff`, which is what keeps the discipline honest
     (`@@T-691`).
+
+    Nor does it name anything the _deploy_ decided, and the rule that keeps it so is one line long:
+    **the `k8s` rc carries hosts and nothing else.** A portal's address and a webhook's are the
+    fields the repository may not hold, so they live in `.blong_k8src` beside the entry and
+    everywhere else — the issuer annotation, which services the tree brings (`services.<name>` is
+    the opt-in and silence the decision not to), the certificate's Secret — is source. The sample
+    then names each host as `PLACEHOLDER` and keeps the annotations beside it, and a base generated
+    with the rc is byte-for-byte the one generated without it, which is what the drift check needs
+    and what a test pins. When a value that is _not_ a host ends up in an rc the two halves disagree
+    again, and that is exactly how a green drift check turned red on a tree that was right where it
+    was written (`@@F-752`).
 
     Two things belong to the _deployment_ rather than to the base, because a suite does not decide
     them: the namespaces — the suite's is the one the CR was declared in, and a service's the one
