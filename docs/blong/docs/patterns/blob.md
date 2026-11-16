@@ -129,6 +129,12 @@ Two consequences worth knowing.
 - **An upload with no scope asked for defaults to `authenticated`**, never to an empty list: an
   empty list matches no cookie at all, so a page would be refused the right to draw the file it had
   just written.
+- **The bytes are served on the page's own host.** A cookie is sent only to the origin that set it,
+  so `/a` has to be a path of the portal's host rather than an address of its own — an Ingress
+  without a host answers at every host and carries no cookie, and every image comes back refused.
+  The realm declares that in its own source (`sameOrigin` on the dispatch port's `k8sIngresses`,
+  `@@D-870`), and `blong-kustomize` resolves the host from the portal that fronts the `blob`
+  namespace, so a deployment configures nothing to get it.
 
 ## Choosing a backend
 

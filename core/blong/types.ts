@@ -424,8 +424,13 @@ export interface IComponentK8sPort {
  *
  * A webhook is the ordinary case: a process that must be reached from outside declares the port it
  * opens and the path that reaches it, and `blong-kustomize` turns the pair into a Service port and an
- * Ingress rule. `serviceName` defaults to the deployment that owns the contributing realm, and
- * `servicePort` to 8080.
+ * Ingress rule. `serviceName` defaults to the Service that answers the contributing port's namespace,
+ * and `servicePort` to 8080.
+ *
+ * The `host` is normally absent, and that is not a default: a webhook's address is a DNS record and a
+ * certificate somebody owns, so it arrives from the declaration — `spec.ingresses` in a CR, the rc
+ * file of a local run — and never from the source tree (`@@D-800`). A contribution that has to be
+ * served from the page's own host says so instead, with `sameOrigin`.
  */
 export interface IComponentK8sIngress {
     path: string;
@@ -434,6 +439,22 @@ export interface IComponentK8sIngress {
     serviceName?: string;
     servicePort?: number;
     tls?: {secretName?: string};
+    /**
+     * Serve this path on the host of the portal that fronts the process answering the port's
+     * namespace, rather than on a host of its own.
+     *
+     * It exists for the bytes a page fetches: `blobScopeIssue` sets a cookie for the portal's host, and
+     * a browser sends that cookie only to the origin that issued it, so an image on a host of its own
+     * arrives without it and is refused (`@@D-870`). A webhook must **not** set it — a path on a
+     * portal's host inherits the host's annotations, and an `oauth2` or `basic` portal would then ask
+     * a machine for a browser login, which is why a contribution that does not say `sameOrigin` stays
+     * on the host the tenant names.
+     *
+     * The host cannot be known to the component: it is the tenant's, and the port is the same in
+     * every deployment. So the plan resolves it, from the portal whose process answers the namespace,
+     * and an install tree — which has no portals — leaves the path to the operator's own pass.
+     */
+    sameOrigin?: boolean;
     /**
      * Ingress-controller annotations for the host this path lands on.
      *

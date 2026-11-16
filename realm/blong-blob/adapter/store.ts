@@ -43,17 +43,20 @@ export default adapter<IStorageConfig & IComponentK8sContribution>(() => ({
             directory: join('dev', 'blob'),
             namespaces: {},
             /**
-             * What a cluster mounts and serves for the store (`@@D-854`). The size is a starting point a
+             * What a cluster mounts for the store (`@@D-854`). The size is a starting point a
              * deployment overrides; the path is the directory above, because a namespace is a
              * subdirectory of the claim rather than a claim of its own.
              *
              * The key is the claim's name, and a claim's name is an RFC 1123 subdomain: `blobStorage`
              * is refused by the API server with `a lowercase RFC 1123 subdomain must consist of lower
              * case alphanumeric characters, '-' or '.'` and the whole install tree stops there
-             * (`@@D-868`). The ingress key is free-shaped because its entry names itself in `name`.
+             * (`@@D-868`).
+             *
+             * The *address* is not here: `/a` is a route of the dispatch port that answers it, so the
+             * Ingress is `blobDispatch`'s contribution (`@@D-870`). A claim belongs to the store because
+             * the store owns the mount; a path belongs to the process that serves it.
              */
             k8sVolumes: {'blob-storage': {size: '2Gi', mountPath: '/var/lib/blong/blob'}},
-            k8sIngresses: {blobStore: {name: 'blob-store', path: '/a', pathType: 'Prefix'}},
         },
         release: {
             directory: '/var/lib/blong/blob',

@@ -1605,6 +1605,69 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 );
             },
 
+            async function aSameOriginPathJoinsThePortalsIngress(assert: IAssert) {
+                // The bytes a page fetches are requested by the page's own origin, with the cookie
+                // that origin set: a path on a host of its own was written hostless, answered at every
+                // host and carried no cookie, so every image came back refused (`@@D-870`). The plan
+                // resolves the host; this is what the tree does with it.
+                const tree = buildKustomizeTree(
+                    lib.suitePlan({
+                        profile: 'monolith',
+                        portal: {
+                            store: {
+                                realm: 'shop',
+                                host: 'ui.shop.example',
+                                path: '/shop',
+                                deployment: 'shop',
+                            },
+                        },
+                        ingresses: [
+                            {
+                                name: 'blobServed',
+                                namespace: 'shop-suite',
+                                host: 'ui.shop.example',
+                                path: '/a',
+                                pathType: 'Prefix',
+                                serviceName: 'blob',
+                                servicePort: 8080,
+                                sameOrigin: true,
+                            },
+                        ],
+                    }) as never,
+                );
+                assert.deepEqual(
+                    [...tree.keys()]
+                        .filter(path => path.startsWith('ingresses/'))
+                        .filter(path => !path.endsWith('kustomization.yaml')),
+                    ['ingresses/ui-shop-example.yaml'],
+                    'the served path joins the host the page is on rather than opening one of its own',
+                );
+                const ingress = tree.get('ingresses/ui-shop-example.yaml') as
+                    | {
+                          spec?: {
+                              rules?: Array<{
+                                  http?: {
+                                      paths?: Array<{
+                                          path?: string;
+                                          backend?: {service?: {name?: string}};
+                                      }>;
+                                  };
+                              }>;
+                          };
+                      }
+                    | undefined;
+                assert.ok(
+                    ingress?.spec?.rules?.[0]?.http?.paths?.some(
+                        entry => entry.path === '/a' && entry.backend?.service?.name === 'blob',
+                    ),
+                    'and `/a` reaches the Service that serves the bytes, on that host',
+                );
+                assert.ok(
+                    !tree.has('ingresses/default.yaml'),
+                    'while no hostless Ingress is written beside it',
+                );
+            },
+
             async function aContributionCarriesItsHostAnnotations(assert: IAssert) {
                 // A webhook host belongs to the suite rather than to a tenant, so the issuer that
                 // signs its certificate is the suite's to name. Without it the Ingress names a TLS

@@ -28,6 +28,17 @@ export default orchestrator<IBlobConfig & IComponentK8sContribution>(() => ({
         default: {
             namespace: 'blob',
             imports: [/blob\.(blob|temp|upload|scope)$/],
+            /**
+             * The address the bytes are fetched from (`@@D-870`).
+             *
+             * The claim is the store's, because the store owns the mount; the address is this port's,
+             * because this is the process that answers `/a` — `blobRead` declares it as its
+             * `basePath`. `sameOrigin` is the whole point of the entry: `blobScopeIssue` sets the scope
+             * cookie for the portal's host, and a browser sends that cookie only to the origin that
+             * issued it, so the bytes have to come from there. A host of its own would deliver every
+             * image without its cookie and answer `403`.
+             */
+            k8sIngresses: {blobServed: {path: '/a', pathType: 'Prefix', sameOrigin: true}},
         },
         /**
          * Development-time key material, committed on purpose and not a secret (`@@D-839`).

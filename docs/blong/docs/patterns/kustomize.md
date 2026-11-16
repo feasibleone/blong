@@ -206,7 +206,10 @@ are refused, because the controller would answer from whichever it read first. T
 the controller's and therefore the host's: two portals on one host share them, and a realm's webhook
 may not share a portal's host at all — the tree refuses it, because the alternative is a webhook
 behind the portal's authentication, which an `oauth2` portal would answer with a browser redirect
-and a `basic` one with a password prompt (T-241).
+and a `basic` one with a password prompt (T-241). The one submission to that rule is a path that
+asks for the page's origin (`sameOrigin`): the bytes a blob serves are fetched by the page itself,
+with the cookie that host set, so they have to arrive from it — and the plan resolves the host from
+the portal that fronts the namespace rather than asking a tenant to name it twice (D-870).
 
 Every namespace a process answers reaches the Service that answers it, at `/rpc/<namespace>`. The
 rule is the namespace's Service and not the deployment's name, because a realm need not own a
@@ -255,7 +258,9 @@ export default adapter(blong => ({
 A collection a name identifies is a map keyed by that name, and the realms that share a deployment
 merge it by that key. `k8sEnv` and `k8sManifests` stay lists: the first keeps the configuration's
 order, the second is identified by the `kind` and `metadata.name` inside it. An ingress with no
-`serviceName` binds to the owning deployment's Service.
+`serviceName` binds to the Service named after the namespace the port answers — a realm Service, or
+the generic one the tree publishes for a namespace no realm is named after — and only then to the
+Service of the process that carries the realm.
 
 ## Resolve names in the cluster
 

@@ -793,7 +793,12 @@ const portalRequests = (plan: IDeploymentPlan): ISuitePortalMap =>
  * a tenant's CR the same declaration (`@@D-800`).
  */
 const ingressRequests = (plan: IDeploymentPlan): Record<string, object> | undefined => {
-    const named = plan.ingresses.filter(ingress => ingress.host !== undefined);
+    // A `sameOrigin` path is not a request: its host is the portal's, which the CR already names, and
+    // writing it here would pin it to the host the install tree happened to see — a tenant that moved
+    // the portal to another host would leave the path behind on the old one (`@@D-870`).
+    const named = plan.ingresses.filter(
+        ingress => ingress.host !== undefined && !ingress.sameOrigin,
+    );
     if (!named.length) return undefined;
     return Object.fromEntries(
         named.map(ingress => [
@@ -2962,7 +2967,13 @@ export const buildKustomizeTree = (plan: IDeploymentPlan): KustomizeTree => {
         // ingress API has no per-path annotations to give the webhook its own, so the tree refuses
         // rather than writing a webhook nobody can call — and the refusal names both sides, because
         // the fix is either moving the path to its own host or moving the portal.
-        const contesting = plan.ingresses.filter(ingress => ingress.host === entry.host);
+        //
+        // A `sameOrigin` path is not that: it asked for this host, because the browser will not send
+        // the page's cookie to any other, and inheriting the page's authentication is what it wants —
+        // the same person is reading both (`@@D-870`).
+        const contesting = plan.ingresses.filter(
+            ingress => ingress.host === entry.host && !ingress.sameOrigin,
+        );
         if (contesting.length) {
             throw new Error(
                 `the portal "${name}" shares host "${entry.host ?? '(none)'}" with ` +

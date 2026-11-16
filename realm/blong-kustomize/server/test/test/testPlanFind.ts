@@ -1018,6 +1018,113 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 );
             },
 
+            async function aServedPathRidesThePortalsHost(assert: IAssert) {
+                // The bytes a page fetches have to come from the page's own origin: `blobScopeIssue`
+                // sets the scope cookie for the portal's host, and a browser sends it nowhere else —
+                // so a path on a host of its own delivered every image without its cookie (`@@D-870`).
+                // The component cannot name that host (it is the tenant's), and the tenant should not
+                // have to name it twice, so the plan resolves it from the portal that fronts the
+                // namespace the path is served by.
+                const view = {
+                    realms: ['sport', 'blob'],
+                    groups: [
+                        {name: 'sport.sportDispatch', handlerCount: 1, layer: 'orchestrator'},
+                        {name: 'blob.blobDispatch', handlerCount: 1, layer: 'orchestrator'},
+                    ],
+                    ports: [
+                        {
+                            id: 'sport.sportDispatch',
+                            type: 'dispatch',
+                            namespace: 'sport',
+                            k8s: {
+                                k8sIngresses: {sportHook: {path: '/hook', servicePort: 8095}},
+                            },
+                        },
+                        {
+                            id: 'blob.blobDispatch',
+                            type: 'dispatch',
+                            namespace: 'blob',
+                            k8s: {
+                                k8sIngresses: {
+                                    blobServed: {
+                                        path: '/a',
+                                        pathType: 'Prefix',
+                                        sameOrigin: true,
+                                    },
+                                },
+                            },
+                        },
+                    ],
+                    roles: {},
+                } as unknown as IRegistryView;
+                const options = {
+                    suiteName: 'sport',
+                    frameworkImage: 'image',
+                    profile: 'monolith' as const,
+                    nodes: NODES,
+                    portal: {
+                        web: {
+                            host: 'sport.feasible.one',
+                            path: '/',
+                            tls: {secretName: 'sport-tls'},
+                        },
+                    },
+                };
+
+                const {ingresses} = planFromRegistry(view, options);
+                // By name rather than by position: the plan reads the ports in the order the registry
+                // lists them, which is the suite's business rather than this assertion's.
+                const served = ingresses.find(ingress => ingress.name === 'blobServed');
+                const hook = ingresses.find(ingress => ingress.name === 'sportHook');
+                assert.deepEqual(
+                    {
+                        name: served?.name,
+                        host: served?.host,
+                        path: served?.path,
+                        serviceName: served?.serviceName,
+                        sameOrigin: served?.sameOrigin,
+                    },
+                    {
+                        name: 'blobServed',
+                        host: 'sport.feasible.one',
+                        path: '/a',
+                        // The Service that answers `blob`, not the deployment the process is called:
+                        // an Ingress backend is a Service, and the monolith's is named `sport` (`@@F-750`).
+                        serviceName: 'blob',
+                        sameOrigin: true,
+                    },
+                    'the path lands on the portal’s host, behind the Service that serves its namespace',
+                );
+                // The rule is the opposite of the default on purpose: a webhook on the portal's host
+                // would inherit the host's annotations, which is a browser login a machine cannot
+                // give — so a contribution that did not ask for the page's origin keeps waiting for the
+                // host its own tenant names (`@@D-870`).
+                assert.equal(
+                    hook?.host,
+                    undefined,
+                    'while a webhook beside it is left to the host its tenant names',
+                );
+
+                // An install tree has no portals — it publishes the operator's own declaration — so
+                // the path is left to the operator's pass over the CR rather than written with no host.
+                assert.deepEqual(
+                    planFromRegistry(view, {...options, install: true})
+                        .ingresses.map(ingress => ingress.name)
+                        .sort(),
+                    ['sportHook'],
+                    'an install tree carries no same-origin path, because it knows no portal',
+                );
+
+                // And a path that asked for the page's host with no portal to give it one is refused
+                // where the plan is built: written hostless it would answer at every host, with no
+                // cookie, which is the defect it exists to prevent.
+                assert.throws(
+                    () => planFromRegistry(view, {...options, portal: undefined}),
+                    /is sameOrigin, but no portal fronts the namespace "blob"/,
+                    'a same-origin path with no portal is refused, naming the namespace',
+                );
+            },
+
             async function aCollectionItCannotMeanIsRefused(assert: IAssert) {
                 // The shape is checked where it is read, because both sources are data rather than code:
                 // a config file someone edited, and a CR a tenant wrote. A list is the shape the older

@@ -85,11 +85,20 @@ export interface IComponentIngress {
     path: string;
     host?: string;
     pathType?: 'Prefix' | 'Exact' | 'ImplementationSpecific';
-    /** Defaults to the deployment that owns the contributing realm. */
+    /** Defaults to the Service answering the port's namespace, then to the contributing realm's. */
     serviceName?: string;
     /** Defaults to 8080. */
     servicePort?: number;
     tls?: {secretName?: string};
+    /**
+     * Served on the host of the portal that fronts the process answering the port's namespace,
+     * rather than on a host the tenant names (`@@D-870`).
+     *
+     * The bytes a page fetches need it, because the browser sends the scope cookie only to the
+     * origin that issued it; a webhook does not, because a portal's host carries the portal's
+     * authentication and a machine has no browser login to give.
+     */
+    sameOrigin?: boolean;
     /**
      * Ingress-controller annotations for the host the path lands on — the issuer that signs its
      * certificate, typically (`@@D-799`). Ingress annotations are the host's, so a contribution that
@@ -482,6 +491,8 @@ export interface IIngress {
     servicePort: number;
     tls?: {secretName?: string};
     annotations?: Record<string, string>;
+    /** Served on the portal's own host, so the Ingress it joins is the page's (`@@D-870`). */
+    sameOrigin?: boolean;
 }
 
 /** Where the deployer fetches the suite artifact from (Phase 6). */
@@ -1518,40 +1529,84 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     const contributesIngress = (port: IRegistryPort): boolean =>
         isApplicationPort(port, view) || Object.keys(port.k8s?.k8sIngresses ?? {}).length > 0;
 
-    const ingresses: IIngress[] = view.ports.filter(contributesIngress).flatMap(port =>
+    const ingresses: IIngress[] = view.ports.filter(contributesIngress).flatMap(port => {
         // Read per port rather than merged across them: a rule's Service defaults to the
         // deployment of the realm whose port declared it, so a name two realms both use is two
         // rules for a suite to resolve rather than one silently replaced.
-        resolveNamedEntries<IComponentIngress>(port.k8s?.k8sIngresses, 'k8sIngresses').map(
-            ingress => {
-                // What the deployment says about this address, by the name the contribution carries:
-                // the realm owns the path and the process, and whoever runs the deployment owns the
-                // host, its certificate and the issuer that signs it (`@@D-800`). An override names
-                // only what it decides — an absent field keeps the contribution's answer, and its
-                // annotations merge by key, so a tenant naming the issuer does not erase what a
-                // contribution said about the host it shares.
-                const override = options.install ? undefined : options.ingresses?.[ingress.name];
-                return {
-                    name: ingress.name,
-                    namespace,
-                    host: override?.host ?? ingress.host,
-                    path: override?.path ?? ingress.path,
-                    pathType: override?.pathType ?? ingress.pathType ?? 'Prefix',
-                    serviceName:
-                        ingress.serviceName ??
-                        deploymentForRealm(port.id.split('.')[0] ?? '') ??
-                        deployments[0]?.name ??
-                        '',
-                    servicePort: override?.servicePort ?? ingress.servicePort ?? 8080,
-                    tls: override?.tls ?? ingress.tls,
-                    annotations:
-                        override?.annotations || ingress.annotations
-                            ? {...ingress.annotations, ...override?.annotations}
-                            : undefined,
-                };
-            },
-        ),
-    );
+        const contributions = resolveNamedEntries<IComponentIngress>(
+            port.k8s?.k8sIngresses,
+            'k8sIngresses',
+        );
+        // A `sameOrigin` path is the tenant's portal's path, and an install tree has no portals at
+        // all — it publishes the operator's own declaration and nothing a tenant names. The path is
+        // therefore written by the operator's pass, from the CR the installer leaves behind (`@@D-870`).
+        const hosted = options.install
+            ? contributions.filter(ingress => !ingress.sameOrigin)
+            : contributions;
+        return hosted.map(ingress => {
+            // What the deployment says about this address, by the name the contribution carries:
+            // the realm owns the path and the process, and whoever runs the deployment owns the
+            // host, its certificate and the issuer that signs it (`@@D-800`). An override names
+            // only what it decides — an absent field keeps the contribution's answer, and its
+            // annotations merge by key, so a tenant naming the issuer does not erase what a
+            // contribution said about the host it shares.
+            const override = options.install ? undefined : options.ingresses?.[ingress.name];
+            // The port's own namespace, which is what the path is served by: `/a` is a route of the
+            // `blob` namespace's gateway, so the Service that reaches it is the one named after that
+            // namespace. A name the declaration gives wins, and a namespace no process answers falls
+            // back to the process that carries the realm, as a webhook's always has (`@@D-680`).
+            //
+            // The *namespace* is the name either way: a realm that owns it gets a Service named after
+            // it, and a companion's namespace — blob is one — gets the generic namespace Service the
+            // tree publishes under the same name (`@@F-413`). Reading `plan.services` alone missed
+            // exactly the second case, and the Ingress pointed at a Service that is not there.
+            const answered = namespaceList(port.namespace)[0];
+            const serving =
+                answered !== undefined &&
+                deployments.some(candidate => candidate.namespaces.includes(answered))
+                    ? answered
+                    : undefined;
+            // A path the page fetches has to be on the page's origin: the scope cookie was set for
+            // that host and a browser sends it nowhere else (`@@D-870`). Which portal that is cannot
+            // be known to the component, so it is resolved here — and refused rather than left
+            // without a host, because an Ingress naming no host answers at every host and carries no
+            // cookie.
+            const portalHere = ingress.sameOrigin
+                ? Object.entries(portal).find(([, entry]) =>
+                      deployments
+                          .find(candidate => candidate.name === entry.deployment)
+                          ?.namespaces.includes(answered ?? ''),
+                  )
+                : undefined;
+            if (ingress.sameOrigin && !portalHere) {
+                throw new Error(
+                    `the ingress "${ingress.name}" of port "${port.id}" is sameOrigin, but no ` +
+                        `portal fronts the namespace "${answered ?? '(none)'}": declare the path ` +
+                        'on a host of its own instead, or give that namespace a portal',
+                );
+            }
+            return {
+                name: ingress.name,
+                namespace,
+                host: override?.host ?? ingress.host ?? portalHere?.[1].host,
+                path: override?.path ?? ingress.path,
+                pathType: override?.pathType ?? ingress.pathType ?? 'Prefix',
+                serviceName:
+                    ingress.serviceName ??
+                    serving ??
+                    deploymentForRealm(port.id.split('.')[0] ?? '') ??
+                    deployments[0]?.name ??
+                    '',
+                servicePort: override?.servicePort ?? ingress.servicePort ?? 8080,
+                tls: override?.tls ?? ingress.tls,
+                annotations:
+                    override?.annotations || ingress.annotations
+                        ? {...ingress.annotations, ...override?.annotations}
+                        : undefined,
+                ...(ingress.sameOrigin && {sameOrigin: true}),
+            };
+        });
+    });
 
     /**
      * One address per process that opens a port of its own.
