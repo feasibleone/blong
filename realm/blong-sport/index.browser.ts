@@ -158,6 +158,7 @@ export default browser(blong => ({
             party: {},
             core: {},
             gateway: {},
+            blob: {},
             sport: {},
             feedback: {},
             // Empty, and not optional: the loader skips a child whose name the
@@ -203,7 +204,6 @@ export default browser(blong => ({
             blong: {},
             login: {},
             sport: {},
-            blob: {},
         } as never,
     },
 }));

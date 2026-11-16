@@ -244,7 +244,7 @@ export default adapter(blong => ({
             k8sReplicas: 2,
             k8sResources: {requests: {cpu: '100m', memory: '128Mi'}},
             k8sPorts: {metrics: {port: 9090}},
-            k8sIngresses: {shop-webhook: {path: '/webhook/shop', host: 'shop.example.test'}},
+            k8sIngresses: {shopWebhook: {path: '/webhook/shop', host: 'shop.example.test'}},
             k8sEnv: [{name: 'SHOP_MODE', value: 'live'}],
             k8sManifests: [{apiVersion: 'v1', kind: 'ConfigMap', metadata: {name: 'shop-extra'}}],
         },

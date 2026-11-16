@@ -1,8 +1,8 @@
-import type {Readable} from 'node:stream';
 import type {IBlobMeta} from '@feasibleone/blong';
+import type {Readable} from 'node:stream';
 
-import {handler} from './handlerGroup.ts';
 import {cachePut} from '../../store/storageCache.ts';
+import {handler} from './handlerGroup.ts';
 
 /**
  * Write one blob's content, with its metadata, into its namespace's store.
@@ -17,7 +17,12 @@ export default handler(({lib: {storageDirectory}}) => ({
         $meta?: unknown,
     ): Promise<{key: string; size: number}> {
         void $meta;
-        await cachePut(storageDirectory(params.namespace), params.key, params.body, params.metadata);
+        await cachePut(
+            storageDirectory(this.config, params.namespace),
+            params.key,
+            params.body,
+            params.metadata,
+        );
         return {key: params.key, size: params.metadata.size};
     },
 }));

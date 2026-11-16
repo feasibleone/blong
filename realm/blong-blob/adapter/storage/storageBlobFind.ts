@@ -1,7 +1,7 @@
 import type {IBlobMeta} from '@feasibleone/blong';
 
-import {handler} from './handlerGroup.ts';
 import {cacheFind} from '../../store/storageCache.ts';
+import {handler} from './handlerGroup.ts';
 
 /**
  * List what one namespace holds, optionally narrowed by a key prefix or by an expiry.
@@ -16,7 +16,7 @@ export default handler(({lib: {storageDirectory, storageMetaFromEntry}}) => ({
         $meta?: unknown,
     ): Promise<{blob: IBlobMeta[]}> {
         void $meta;
-        const entries = await cacheFind(storageDirectory(params.namespace));
+        const entries = await cacheFind(storageDirectory(this.config, params.namespace));
         const cutoff = params.expiredBefore ? Date.parse(params.expiredBefore) : undefined;
         const blob = entries
             .filter(entry => !params.prefix || entry.key.startsWith(params.prefix))

@@ -36,6 +36,9 @@ export default browser(blong => ({
         async function access() {
             return import('@feasibleone/blong-access/browser.ts');
         },
+        async function blob() {
+            return import('@feasibleone/blong-blob/browser.ts');
+        },
         async function chat() {
             return import('./browser.ts');
         },
@@ -56,6 +59,7 @@ export default browser(blong => ({
             },
             blong: {},
             login: {},
+            blob: {},
             access: {},
             chat: {},
         },

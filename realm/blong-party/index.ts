@@ -1,5 +1,4 @@
 import {server} from '@feasibleone/blong';
-import {join} from 'node:path';
 
 export default server(() => ({
     url: import.meta.url,
@@ -49,18 +48,15 @@ export default server(() => ({
             // Enforce RBAC on the gateway — resolves allowed actions for the
             // authenticated user (access realm), 403 when not authorized.
             gateway: {authorize: 'access.authorization.list'},
+            blob: {
+                store: {namespaces: {party: {}}},
+            },
         },
         dev: {
             srv: {},
             core: {},
             access: {},
             gateway: {},
-            // The photographs this realm writes. `dev/blob` is gitignored, so a run leaves its files
-            // where a person can look at them without committing anything (`@@D-845`). The key and the
-            // cookie secret come from the realm's own `dev` block.
-            blob: {
-                storage: {directory: join('dev', 'blob'), namespaces: {party: {}}},
-            },
             party: {},
             login: {},
         },

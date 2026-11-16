@@ -22,30 +22,26 @@ export default realm(blong => ({
      * neither mistake can pass quietly (@@D-849).
      */
     validation: blong.type.Object({
-        blob: blong.type.Object({
-            store: blong.type.Optional(
-                blong.type.Union([blong.type.Object({}), blong.type.Literal(false)]),
-            ),
-            s3Store: blong.type.Optional(
-                blong.type.Union([blong.type.Object({}), blong.type.Literal(false)]),
-            ),
-            // The realm declares its own deployment role, so the block it writes it in is part of the shape.
-            k8s: blong.type.Optional(
-                blong.type.Object({k8sRealmRole: blong.type.Optional(blong.type.String())}),
-            ),
-        }),
+        store: blong.type.Optional(
+            blong.type.Union([blong.type.Object({}), blong.type.Literal(false)]),
+        ),
+        s3Store: blong.type.Optional(
+            blong.type.Union([blong.type.Object({}), blong.type.Literal(false)]),
+        ),
+        // The realm declares its own deployment role, so the block it writes it in is part of the shape.
+        k8s: blong.type.Optional(
+            blong.type.Object({k8sRealmRole: blong.type.Optional(blong.type.String())}),
+        ),
     }),
     config: {
         default: {
             // The realm's own defaults are written inside its own block, the way a suite writes them.
-            blob: {
-                k8s: {k8sRealmRole: 'companion'},
-                // The filesystem store is what a process carries unless it says otherwise: the object
-                // store costs a bucket and an endpoint, and a process that cannot reach them has storage
-                // that refuses every write. A deployment that wants S3 names `blob.s3Store` and sets
-                // `blob.store` to `false` — the loader skips a port whose config is `false` (@@D-849).
-                s3Store: false as const,
-            },
+            k8s: {k8sRealmRole: 'companion'},
+            // The filesystem store is what a process carries unless it says otherwise: the object
+            // store costs a bucket and an endpoint, and a process that cannot reach them has storage
+            // that refuses every write. A deployment that wants S3 names `blob.s3Store` and sets
+            // `blob.store` to `false` — the loader skips a port whose config is `false` (@@D-849).
+            s3Store: false as const,
         },
     },
 }));

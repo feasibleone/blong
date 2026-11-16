@@ -47,7 +47,9 @@ export default realm(blong => ({
                     },
                 },
                 blobDispatch: {
-                    crypto: {key: '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff'},
+                    crypto: {
+                        key: '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff',
+                    },
                     cookie: {secret: 'int-adapter-cookie-secret', ttl: 600},
                 },
             },

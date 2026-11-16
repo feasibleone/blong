@@ -1,7 +1,5 @@
-import {library} from '@feasibleone/blong';
 import type {IBlobMeta} from '@feasibleone/blong';
-
-import type {IStorageConfig} from '../store.ts';
+import {library} from '@feasibleone/blong';
 
 /** One entry as `cacache`'s index reports it, narrowed to the fields the store reads. */
 export interface IStorageEntry {
@@ -18,7 +16,7 @@ export interface IStorageEntry {
  * into a directory nobody claimed is how a blob ends up in a container that disappears with the pod
  * (@@D-845).
  */
-export function storageDirectoryOf(config: IStorageConfig, namespace: string): string {
+export function storageDirectoryOf(config: Record<string, unknown>, namespace: string): string {
     const configured = config?.namespaces ?? {};
     if (!Object.prototype.hasOwnProperty.call(configured, namespace)) {
         throw Object.assign(
@@ -29,7 +27,7 @@ export function storageDirectoryOf(config: IStorageConfig, namespace: string): s
             {type: 'blob.namespaceUnknown', namespace},
         );
     }
-    return `${(config.directory ?? '/var/lib/blong/blob').replace(/\/+$/, '')}/${namespace}`;
+    return `${((config.directory as string) ?? '/var/lib/blong/blob').replace(/\/+$/, '')}/${namespace}`;
 }
 
 /** One metadata record, merged over another, with the fields a reader counts on defaulted. */
@@ -72,14 +70,15 @@ export function storageMetaFromEntry(namespace: string, entry: IStorageEntry): I
 
 /** What the `adapter/storage` group injects. */
 export interface IStorageLib {
-    storageDirectory: (namespace: string) => string;
+    storageDirectory: (config: Record<string, unknown>, namespace: string) => string;
     storageMetaMerge: (base: IBlobMeta, patch?: Partial<IBlobMeta>) => IBlobMeta;
     storageMetaFromEntry: (namespace: string, entry: IStorageEntry) => IBlobMeta;
 }
 
 /** `storageLib` — the group's helpers, bound to the adapter's own configuration. */
-export default library(({config}: {config: IStorageConfig}) => ({
-    storageDirectory: (namespace: string) => storageDirectoryOf(config, namespace),
+export default library(() => ({
+    storageDirectory: (config: Record<string, unknown>, namespace: string) =>
+        storageDirectoryOf(config, namespace),
     storageMetaMerge,
     storageMetaFromEntry,
 }));

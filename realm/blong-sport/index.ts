@@ -1,5 +1,4 @@
 import {server} from '@feasibleone/blong';
-import {join} from 'node:path';
 
 /**
  * index.ts — standalone server bootstrap for `sport` integration tests.
@@ -70,6 +69,9 @@ export default server(() => ({
             party: {},
             sport: {},
             feedback: {},
+            blob: {
+                store: {namespaces: {sport: {}, party: {}}},
+            },
             // The suite definition read by the `k8s` generator and the operator. The framework
             // image and version are overridden by the CR, which names the release image.
             kustomize: {
@@ -125,9 +127,6 @@ export default server(() => ({
             party: {schema: {dbTest: false}},
             // A released process carries the store: without the child there is no directory to mount
             // and every upload answers that no namespace is configured (`@@D-854`).
-            blob: {
-                storage: {directory: '/var/lib/blong/blob', namespaces: {sport: {}}},
-            },
             gateway: {
                 static: {root: '/opt/deploy/suite/realm/blong-sport/dist'},
             },
@@ -159,7 +158,6 @@ export default server(() => ({
             access: {},
             gateway: {},
             party: {},
-            blob: {},
         },
         upgrade: {
             sport: {},
@@ -169,9 +167,6 @@ export default server(() => ({
             gateway: {},
             party: {},
             feedback: {},
-            // The store loads under `upgrade` too: its port is what a deployment mounts, and the
-            // migration job reads the same tree as the process it migrates for (`@@D-854`).
-            blob: {},
         },
         dev: {
             srv: {},
@@ -182,9 +177,6 @@ export default server(() => ({
             // The documents this realm stores. `dev/blob` is gitignored, so a run leaves its files
             // where a person can look at them without committing anything (`@@D-845`). The key and the
             // cookie secret come from the realm's own `dev` block.
-            blob: {
-                storage: {directory: join('dev', 'blob'), namespaces: {sport: {}}},
-            },
             sport: {},
             feedback: {},
             login: {},
@@ -200,9 +192,6 @@ export default server(() => ({
             },
             gateway: {},
             party: {},
-            blob: {
-                storage: {directory: join('dev', 'blob'), namespaces: {sport: {}}},
-            },
             sport: {},
             feedback: {},
             testRealm: {

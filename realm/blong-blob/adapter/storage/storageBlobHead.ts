@@ -1,7 +1,7 @@
 import type {IBlobMeta} from '@feasibleone/blong';
 
-import {handler} from './handlerGroup.ts';
 import {cacheHead} from '../../store/storageCache.ts';
+import {handler} from './handlerGroup.ts';
 
 /**
  * Answer one blob's metadata without opening its content.
@@ -15,7 +15,7 @@ export default handler(({lib: {storageDirectory, storageMetaFromEntry}}) => ({
         $meta?: unknown,
     ): Promise<IBlobMeta | null> {
         void $meta;
-        const entry = await cacheHead(storageDirectory(params.namespace), params.key);
+        const entry = await cacheHead(storageDirectory(this.config, params.namespace), params.key);
         return entry ? storageMetaFromEntry(params.namespace, entry) : null;
     },
 }));

@@ -1,5 +1,6 @@
 import {adapter} from '@feasibleone/blong';
 import type {IComponentK8sContribution} from '@feasibleone/blong/types';
+import {join} from 'node:path';
 
 /**
  * `adapter/storage.ts` — the filesystem store, one directory per namespace.
@@ -19,9 +20,9 @@ export interface IStorageNamespaceConfig {
 
 export interface IStorageConfig {
     /** The base directory; a namespace's own store is `<directory>/<namespace>`. */
-    directory: string;
+    directory?: string;
     /** The namespaces this process serves. A namespace absent here is refused. */
-    namespaces: Record<string, IStorageNamespaceConfig>;
+    namespaces?: Record<string, IStorageNamespaceConfig>;
 }
 
 /**
@@ -39,7 +40,7 @@ export default adapter<IStorageConfig & IComponentK8sContribution>(() => ({
             // The handler group this instance serves: `adapter/storage/` is the namespace
             // `blob.storage`, and without this the adapter loads and answers nothing (@@D-838).
             imports: [/\.storage$/],
-            directory: '/var/lib/blong/blob',
+            directory: join('dev', 'blob'),
             namespaces: {},
             /**
              * What a cluster mounts and serves for the store (`@@D-854`). The size is a starting point a
@@ -53,6 +54,9 @@ export default adapter<IStorageConfig & IComponentK8sContribution>(() => ({
              */
             k8sVolumes: {'blob-storage': {size: '2Gi', mountPath: '/var/lib/blong/blob'}},
             k8sIngresses: {blobStore: {name: 'blob-store', path: '/a', pathType: 'Prefix'}},
+        },
+        release: {
+            directory: '/var/lib/blong/blob',
         },
     },
     start() {

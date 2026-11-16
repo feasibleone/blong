@@ -37,7 +37,7 @@ const STORE = S3
               },
           },
       }
-    : {storage: {directory: DIRECTORY, namespaces: {test: {}}}};
+    : {store: {directory: DIRECTORY, namespaces: {test: {}}}};
 
 /**
  * index.ts — standalone server bootstrap for `blob` integration tests.

@@ -60,15 +60,15 @@ children: [
 ],
 config: {
     dev: {
-        blob: {storage: {directory: join('dev', 'blob'), namespaces: {party: {}}}},
+        blob: {store: {namespaces: {party: {}}}},
     },
 },
 ```
 
-**2. Nothing — the upload route asks for its stream body itself.** An upload arrives as
-`image/png`, and fastify answers `415` to a body no parser knows. The route that receives those bytes
-declares `rawBody: true`, and the gateway mounts it in a context that owns the parser, so the switch
-reaches that route and no other:
+**2. Nothing — the upload route asks for its stream body itself.** An upload arrives as `image/png`,
+and fastify answers `415` to a body no parser knows. The route that receives those bytes declares
+`rawBody: true`, and the gateway mounts it in a context that owns the parser, so the switch reaches
+that route and no other:
 
 ```typescript
 return {

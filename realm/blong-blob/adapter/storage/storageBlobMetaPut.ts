@@ -1,5 +1,5 @@
-import {handler} from './handlerGroup.ts';
 import {cacheMetaPut} from '../../store/storageCache.ts';
+import {handler} from './handlerGroup.ts';
 
 /**
  * Replace one blob's metadata without touching its content.
@@ -15,7 +15,7 @@ export default handler(({lib: {storageDirectory}}) => ({
         void $meta;
         return {
             updated: await cacheMetaPut(
-                storageDirectory(params.namespace),
+                storageDirectory(this.config, params.namespace),
                 params.key,
                 params.metadata,
             ),

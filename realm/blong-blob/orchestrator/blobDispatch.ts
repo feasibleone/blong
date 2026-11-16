@@ -27,7 +27,7 @@ export default orchestrator<IBlobConfig & IComponentK8sContribution>(() => ({
     activation: {
         default: {
             namespace: 'blob',
-            imports: [/blob\.(blob|temp|upload|scope|storage)$/],
+            imports: [/blob\.(blob|temp|upload|scope)$/],
         },
         /**
          * Development-time key material, committed on purpose and not a secret (`@@D-839`).
