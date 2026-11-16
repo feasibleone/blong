@@ -105,6 +105,10 @@ export interface IServiceOverride {
      * the config a `k8s` planning run merges, so a suite that names its database only where it
      * dials it would otherwise ask its generated service for nothing and find none of them (@@T-277).
      * What the connections *do* name is merged with this list rather than replaced by it.
+     *
+     * Typed as the list a config file writes, because that is the shape the contract wants; a command
+     * line can only say `--…services.mysql.databases=shop`, and one name is read as one name rather
+     * than as its letters (`@@F-753`).
      */
     databases?: string[];
 }
@@ -278,6 +282,25 @@ export const resolveBackingServices = (
 };
 
 /** A descriptor with the deployment's overrides and the plan's own values resolved into it. */
+/**
+ * The databases a deployment named, as a list — and never as the characters of a string.
+ *
+ * A config file names a list and a command line names a value: `--kustomize.deploy.services.mysql.databases=shop`
+ * is one database, not the string's four letters, and a plan that spread it into the init script created one
+ * schema per character — a tree that read as plausible until the migration found no database called `shop`
+ * (`@@F-753`). So a string is one name, a list of strings is the list, and anything else is refused where it
+ * is read, the way a list where a map belongs is refused (`@@F-404`).
+ */
+const databaseNames = (value: unknown, service: string): string[] => {
+    if (value === undefined) return [];
+    if (typeof value === 'string') return value === '' ? [] : [value];
+    if (Array.isArray(value) && value.every(entry => typeof entry === 'string')) return value;
+    throw new Error(
+        `services.${service}.databases: expected a database name or a list of them, not ` +
+            `${Array.isArray(value) ? 'a list with something that is not a name in it' : typeof value}`,
+    );
+};
+
 const applied = (
     descriptor: IServiceDescriptor,
     override: boolean | IServiceOverride | undefined,
@@ -312,7 +335,9 @@ const applied = (
         namespace: request.namespace ?? DEFAULT_SERVICES_NAMESPACE,
         // The connections first, then what the deployment named: deduplicated, because a name in both
         // places is one database and the init script creates it once.
-        databases: [...new Set([...(request.databases ?? []), ...(named?.databases ?? [])])],
+        databases: [
+            ...new Set([...(request.databases ?? []), ...databaseNames(named?.databases, descriptor.name)]),
+        ],
         // Carried, not interpreted: a placement reaches the pod spec by way of the plan, so whichever
         // pass renders the tree is the one that has to know where the workload may run.
         ...(named?.placement ? {placement: named.placement} : {}),

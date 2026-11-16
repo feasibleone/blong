@@ -52,6 +52,17 @@ export interface IRunbookOptions {
     tree: string;
     agents: number;
     serviceOff?: string;
+    /**
+     * A service the tenant brings itself, and the databases it has to create.
+     *
+     * The mirror of `serviceOff`, because the interesting half of `serviceOff` needs something to switch
+     * off: a pass that removes what its declaration stopped naming is only visible when an earlier pass
+     * brought it, and the tenant's workload surviving that pass is the decision (`@@D-461`). The databases
+     * travel with it for the reason a config file names them at all: a `k8s` run cannot read them off the
+     * `release` block that dials the database (`@@T-277`).
+     */
+    serviceOn?: string;
+    serviceDatabases: string[];
     frameworkImage: string;
     frameworkVersion: string;
     /** Where the operator's own install tree is written; the tenant tree is `tree`. */
@@ -81,6 +92,11 @@ export const runbookOptions = (env = process.env): IRunbookOptions => ({
     tree: env['TREE'] ?? 'system/kustomize',
     agents: Number(env['AGENTS'] ?? 1),
     serviceOff: env['SERVICE_OFF'] || undefined,
+    serviceOn: env['SERVICE_ON'] || undefined,
+    serviceDatabases: (env['SERVICE_ON_DATABASES'] ?? '')
+        .split(',')
+        .map(name => name.trim())
+        .filter(Boolean),
     frameworkImage: env['FRAMEWORK_IMAGE'] ?? 'docker.io/library/blong-gogo',
     frameworkVersion: env['FRAMEWORK_VERSION'] ?? '1',
     operatorTree: env['OPERATOR_TREE'] ?? `${root}/realm/blong-kustomize/system/operator`,
@@ -190,6 +206,8 @@ export const runK3dE2eGenerated = async (options: IRunbookOptions, io: IStepIo):
             entry: options.suiteEntry,
             tree: options.tree,
             serviceOff: options.serviceOff,
+            serviceOn: options.serviceOn,
+            serviceDatabases: options.serviceDatabases,
             digest: options.suiteDigest,
         },
         io,

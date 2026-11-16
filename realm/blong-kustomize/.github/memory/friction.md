@@ -103,7 +103,7 @@ open (66)
 - `F-707` · realm/blong-kustomize — Removing spec.services plans the service, it does not disable
 - `F-726` · realm/blong-kustomize — Generating the base deletes the local overlay beside it
 
-resolved (40)
+resolved (41)
 
 - `F-371` · realm/blong-kustomize — The browser login fails while the same handler authenticates the
   token
@@ -157,6 +157,7 @@ resolved (40)
 - `F-739` · realm/blong-kustomize — A suite-declared secret is listed but never written
 - `F-752` · realm/blong-kustomize — A committed tree generated with a local rc is not the tree CI
   regenerates
+- `F-753` · realm/blong-kustomize — A one-name databases value became one schema per character
 
 <!-- /memory:index -->
 
@@ -1857,6 +1858,37 @@ generation read moved into the suite declaration in source, and the sample names
 PLACEHOLDER while keeping the annotations beside it — so a base generated with the rc is
 byte-identical to one generated without, which a test pins. k8sLocalRcCheck was removed; the drift
 check stays as the net.
+
+### F-753 — A one-name databases value became one schema per character
+
+> _2026-11-16 · realm/blong-kustomize · resolved_
+
+Diagnosing the k8s e2e switch-off failure, I needed a run that _brings_ the backing service before
+the run that switches it off, and the only channel the runbook has is a command line. I tried the
+obvious flag — `--kustomize.deploy.services.mysql.databases=blong-integration` — and the generation
+succeeded, the tree looked right, and the tree carried eleven databases: `b`, `l`, `o`, `n`, `g`,
+`-`, `i`… because `applied()` spread the value into an array and a string spreads into its
+characters.
+
+What makes it a friction rather than a typo is that nothing complained. The init ConfigMap is
+generated text, so it read as eleven `CREATE DATABASE` lines — plausible output for a plan that
+named several schemas — and the failure would have arrived much later, in a migration that found no
+database called `blong-integration`. Every other shape bug in this realm is refused where it is read
+(`resolveNamedEntries`, F-404); this one was not.
+
+The rule now: `databaseNames` takes a string as one name, a list of strings as the list, and refuses
+anything else by naming the field and what it got instead. The command line then has a faithful form
+for both cases — one flag per database, because repetition is the only list a command line has — and
+the e2e's `serviceOnArguments` writes it that way.
+
+The second half of the same lesson: the switch-off phase had been relying on the
+_suite's declaration_ bringing MySQL. It never had to be that — the phase is about a pass leaving a
+tenant's workload alone — so it now has a phase of its own that brings the service first
+(`SERVICE_ON`), which also restored the only coverage of a generated service running end to end.
+
+Fixed where it is read: databaseNames takes a string as one name, a list of strings as the list, and
+refuses anything else by naming the field; the command line's faithful list is a repeated flag,
+which the e2e's serviceOnArguments writes.
 
 ## Retired
 

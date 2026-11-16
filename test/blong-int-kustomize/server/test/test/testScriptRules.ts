@@ -7,6 +7,7 @@ import {
     pageAnswer,
     privateKeyFields,
     serviceOffArguments,
+    serviceOnArguments,
     servicesNamespaceFromNames,
     tokenAnswer,
     upgradeArguments,
@@ -119,6 +120,19 @@ export default handler(({lib: {group}}) => ({
                     'the switch a deployment runs its own database with is one spelling',
                 );
                 assert.deepEqual(serviceOffArguments(undefined), [], 'and none when nothing is switched');
+                // And the other direction, which needs a state to switch off: the tenant's own database,
+                // with the databases the `k8s` plan cannot read off the block that dials it, and the
+                // credentials a generated one needs (`@@T-277` `@@D-509`).
+                assert.deepEqual(
+                    serviceOnArguments('mysql', ['blong-integration', 'second']),
+                    [
+                        '--kustomize.deploy.services.mysql.credentials.generate=true',
+                        '--kustomize.deploy.services.mysql.databases=blong-integration',
+                        '--kustomize.deploy.services.mysql.databases=second',
+                    ],
+                    'one flag per database, because a repeated flag is the only list a command line has',
+                );
+                assert.deepEqual(serviceOnArguments(undefined, ['ignored']), [], 'and none when nothing is brought');
             },
 
             async function theLatestMigrationJobIsTheOneWaitedFor(assert: IAssert) {

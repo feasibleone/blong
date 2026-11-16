@@ -115,6 +115,25 @@ export const serviceOffArguments = (service: string | undefined): string[] =>
     service ? [`--kustomize.deploy.services.${service}=false`] : [];
 
 /**
+ * A service the tenant brings, as the opt-in a declaration writes (`@@D-504`).
+ *
+ * The databases travel with it because a `k8s` plan cannot read them off the block that dials the
+ * database — the connection lives under `release`, which a planning run does not merge — and a generated
+ * MySQL with no schema is a workload that starts and refuses the first migration (`@@T-277`). The
+ * credentials are the second opt-in for the same reason: a database whose users are created from its own
+ * Secret is what a generated one needs (`@@D-509`).
+ */
+export const serviceOnArguments = (service: string | undefined, databases: string[]): string[] =>
+    service
+        ? [
+              `--kustomize.deploy.services.${service}.credentials.generate=true`,
+              ...databases.map(
+                  database => `--kustomize.deploy.services.${service}.databases=${database}`,
+              ),
+          ]
+        : [];
+
+/**
  * The namespace a suite's generated workloads run in, read off the tree rather than declared.
  *
  * The tree carries one namespace file per namespace it uses, and the suite's own is excluded: whatever

@@ -253,6 +253,29 @@ export default handler(({lib: {group}}) => ({
                     ['named-by-a-connection', 'named-by-the-deployment'],
                     'what the deployment names is added to what its connections name, not instead of',
                 );
+
+                // A command line can name one value and no list, so the one name is one name: a plan that
+                // took the string for a list created a schema per character, and the tree read as plausible
+                // until the migration found no database it had been told about (`@@F-753`).
+                const oneName = resolveBackingServices(catalog, {
+                    kinds: ['knex'],
+                    // What a command line can say: `--…services.mysql.databases=shop`.
+                    config: {mysql: {databases: 'named-by-the-deployment' as never}},
+                });
+                assert.deepEqual(
+                    oneName.services[0]?.databases,
+                    ['named-by-the-deployment'],
+                    'a single name is one database, not the letters of it',
+                );
+                assert.throws(
+                    () =>
+                        resolveBackingServices(catalog, {
+                            kinds: ['knex'],
+                            config: {mysql: {databases: 5 as never}},
+                        }),
+                    /services\.mysql\.databases: expected a database name or a list of them, not number/,
+                    'and a value that is neither is refused where it is read, not spread into a tree',
+                );
             },
 
             async function aDeploymentSuppliesTheInitItsServiceNeeds(assert: IAssert) {

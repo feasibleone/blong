@@ -245,6 +245,28 @@ jobs:
         # artifact behind the new name is the same bytes, so nothing about the workloads changes
         # except the cache's fetch command.
         run: test/integration/wait-operator.sh Ready "the operator converged on the released declaration"
+      - name: Run the runbook with the database the tenant brings
+        # The suite brings no service of its own — it dials `db`, the cluster's MySQL through an
+        # `ExternalName` — so the switch-off phase below needs a state to switch *off*, and this is
+        # it: `SERVICE_ON=mysql` opts the service in on the declaration the generation reads, which is
+        # what `services.<name>` is for (D-504), and `SERVICE_ON_DATABASES` is the list the `k8s` plan
+        # cannot read off the `release` block that dials it (T-277).
+        #
+        # It is also the only phase that exercises a generated service end to end: the workload, its
+        # claim, its alias and its credentials are waited for, and the alias is dialled from a pod of
+        # the suite. Nothing else in this job starts one.
+        working-directory: suite/blong-suite
+        env:
+          CLUSTER: kustomize
+          SERVICE_ON: mysql
+          SERVICE_ON_DATABASES: blong-integration
+          ARTIFACT_URL: http://blong-artifact.default.svc.cluster.local/suite.zip
+          OPERATOR_ARTIFACT_URL: http://blong-artifact.default.svc.cluster.local/kustomize.zip
+        run: node --conditions=development ../../test/blong-int-kustomize/bin/blongIntKustomize.ts suite deploy
+      - name: Wait for the operator to converge on the service the tenant brings
+        # The pass that creates the workload: the next phase switches it off and asserts what is left,
+        # so a run that never created it would make that assertion vacuous rather than red.
+        run: test/integration/wait-operator.sh Ready "the operator reports Ready with the database it brought"
       - name: Run the runbook with a service switched off
         # The variant: `SERVICE_OFF=mysql` adds the switch to the generation, and the runbook is the
         # same one — one variable, because what differs is a field on the declaration, not a step.
