@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.43.2](https://github.com/feasibleone/blong/compare/blong-v1.43.1...blong-v1.43.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* blob sameOrigin ingress ([2f471b9](https://github.com/feasibleone/blong/commit/2f471b93e36edb78b870aef80b94f952d53071c8))
+
 ## [1.43.1](https://github.com/feasibleone/blong/compare/blong-v1.43.0...blong-v1.43.1) (2026-11-15)
 
 

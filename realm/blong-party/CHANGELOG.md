@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.18.1](https://github.com/feasibleone/blong/compare/blong-party-v1.18.0...blong-party-v1.18.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* improve kustomize handling ([a4a9532](https://github.com/feasibleone/blong/commit/a4a9532f6da6b48ee20aa337d6085f613f3577c7))
+* store config ([bd8e625](https://github.com/feasibleone/blong/commit/bd8e6259742957705bd1f35eb02e38b75f088a6f))
+
 ## [1.18.0](https://github.com/feasibleone/blong/compare/blong-party-v1.17.0...blong-party-v1.18.0) (2026-11-15)
 
 

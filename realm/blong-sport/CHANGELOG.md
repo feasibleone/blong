@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.2](https://github.com/feasibleone/blong/compare/blong-sport-v0.11.1...blong-sport-v0.11.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* improve kustomize handling ([a4a9532](https://github.com/feasibleone/blong/commit/a4a9532f6da6b48ee20aa337d6085f613f3577c7))
+* move settings from k8s rc ([253dc00](https://github.com/feasibleone/blong/commit/253dc0044453f08b95cb49aee1058213aff4e820))
+* store config ([bd8e625](https://github.com/feasibleone/blong/commit/bd8e6259742957705bd1f35eb02e38b75f088a6f))
+
 ## [0.11.1](https://github.com/feasibleone/blong/compare/blong-sport-v0.11.0...blong-sport-v0.11.1) (2026-11-15)
 
 

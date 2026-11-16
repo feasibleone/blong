@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.2](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.9.1...blong-kustomize-v0.9.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* blob sameOrigin ingress ([2f471b9](https://github.com/feasibleone/blong/commit/2f471b93e36edb78b870aef80b94f952d53071c8))
+* e2e switch-off phase ([62e623b](https://github.com/feasibleone/blong/commit/62e623bf5ec4f6b582a16916d1810c7a4101f6be))
+* improve kustomize handling ([a4a9532](https://github.com/feasibleone/blong/commit/a4a9532f6da6b48ee20aa337d6085f613f3577c7))
+* move settings from k8s rc ([253dc00](https://github.com/feasibleone/blong/commit/253dc0044453f08b95cb49aee1058213aff4e820))
+
 ## [0.9.1](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.9.0...blong-kustomize-v0.9.1) (2026-11-15)
 
 

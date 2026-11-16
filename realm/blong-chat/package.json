@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-chat",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "description": "Chat realm — Slack and Viber as one interaction surface",
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"
