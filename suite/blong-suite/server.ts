@@ -21,9 +21,6 @@ export default server(() => ({
         async function access() {
             return import('@feasibleone/blong-access/server.ts');
         },
-        async function blob() {
-            return import('@feasibleone/blong-blob/server.ts');
-        },
         /** Marine biology demonstration realm */
         async function marine() {
             return import('@feasibleone/blong-marine/server.ts');
@@ -47,9 +44,7 @@ export default server(() => ({
         // decisions, and a setting that appears only under `k8s` makes an operator pass report
         // objects it does not manage as drift.
         default: {
-            blob: {
-                store: {namespaces: {party: {}}},
-            },
+
             kustomize: {
                 deploy: {
                     // No `layout` here, on purpose: the realm's `k8s` activation names the repository

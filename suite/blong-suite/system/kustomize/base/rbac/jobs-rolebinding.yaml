@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 42c7ae5157e3421a
+    blong.feasible.one/spec-hash: 346d2f9ce9649475
   name: jobs
 roleRef:
   apiGroup: rbac.authorization.k8s.io

@@ -242,6 +242,15 @@ export interface IRegistryView {
      * the realm's own `k8sRealmAttachedTo`, read where the role is read (@@D-833).
      */
     attachedTo?: Record<string, string>;
+    /**
+     * What each realm says it needs from the rest of the suite, by realm name.
+     *
+     * A realm names the realms it calls (`k8sNeeds`), which is the half a realm can answer — the
+     * consumer knows its own dependency, and the store does not see who will use it. A companion some
+     * realm names is carried by the processes of the realms that named it; one nothing names keeps the
+     * answer it always had, every process (`@@D-871`).
+     */
+    needs?: Record<string, string[]>;
     /** The package the loaded suite is: the source of its version when the config names none. */
     pkg?: {name?: string; version?: string};
 }
@@ -1129,17 +1138,36 @@ export const registryView = (registry?: IDescribeCapable): IRegistryView => {
     // The realm an `attached` realm rides with, from the same block: the role says a realm has no
     // process of its own, and this says whose it borrows (@@D-833).
     const attachedTo: Record<string, string> = {};
+    // What each realm says it needs, from the same block: a realm is the only one that knows what it
+    // calls, and a companion that nobody calls has no business riding every process.
+    const needs: Record<string, string[]> = {};
     for (const [name, config] of Object.entries(described.realmConfig ?? {})) {
-        const k8s = (config as {k8s?: {k8sRealmRole?: RealmRole; k8sRealmAttachedTo?: string}})
-            ?.k8s;
+        const k8s = (
+            config as {
+                k8s?: {
+                    k8sRealmRole?: RealmRole;
+                    k8sRealmAttachedTo?: string;
+                    k8sNeeds?: string[];
+                };
+            }
+        )?.k8s;
         if (k8s?.k8sRealmRole) roles[name] = k8s.k8sRealmRole;
         // Only for a realm whose role is `attached`: the host of a role that is not attached is a
         // setting nothing reads, and carrying it into the view would invite a reader to use it.
         if (k8s?.k8sRealmRole === 'attached' && k8s.k8sRealmAttachedTo) {
             attachedTo[name] = k8s.k8sRealmAttachedTo;
         }
+        if (k8s?.k8sNeeds?.length) needs[name] = [...k8s.k8sNeeds];
     }
-    return {realms: described.realms ?? [], groups, ports, roles, attachedTo, pkg: described.pkg};
+    return {
+        realms: described.realms ?? [],
+        groups,
+        ports,
+        roles,
+        attachedTo,
+        needs,
+        pkg: described.pkg,
+    };
 };
 
 /** The runtime layer of a group, or `undefined` for layers that never run. */
@@ -1289,10 +1317,11 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         storageClassName: options.storageClassName,
     });
     // What a realm *is* in a deployment decides the split, before any profile splits anything: a
-    // `service` realm becomes a process of its own and owns its namespaces, a `companion` is carried
-    // by every process and owns none (so it publishes no Service), `both` is carried everywhere *and*
-    // owns a process — the only way an in-process library realm can also offer a public API — and
-    // `none` is not deployed at all .
+    // `service` realm becomes a process of its own and owns its namespaces, a `companion` is carried by
+    // other processes and owns none (so it publishes no Service), `both` is carried by them *and* owns a
+    // process — the only way an in-process library realm can also offer a public API — and `none` is not
+    // deployed at all. Which processes carry a companion is the realm's own answer: all of them, or the
+    // ones it named (`@@D-871`).
     const roleOf = (realm: string): RealmRole => view.roles[realm] ?? 'service';
     const deployable = (realm: string): boolean =>
         roleOf(realm) === 'service' || roleOf(realm) === 'both';
@@ -1300,6 +1329,65 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         roleOf(realm) === 'companion' || roleOf(realm) === 'both';
     const selectors = layerSelectors(view).filter(selector => roleOf(realmOf(selector)) !== 'none');
     const companions = selectors.filter(selector => companion(realmOf(selector)));
+
+    /**
+     * Whether a process carries a realm that rides others rather than owning a process.
+     *
+     * The declaration is the consumer's: a realm names what it calls (`k8sNeeds`), because it is the
+     * one that knows, and a store cannot know who will use it. A companion that a realm names is
+     * carried by the processes of the realms that named it and by no other — the copy a process loads
+     * for a realm nobody there calls is a handler group, its adapters and its memory spent on
+     * nothing — and one nothing names keeps the answer it always had, every process, which is what a
+     * library realm every caller reaches in-process wants (`@@D-871`).
+     *
+     * Being carried elsewhere is not the only way to reach it. Every namespace a process answers gets a
+     * Service, so a caller in a process that does not carry the realm dials that Service and pays a hop
+     * rather than a copy — which is why scoping a companion is a choice about latency and memory rather
+     * than about reach.
+     */
+    const declarers = (carried: string): Set<string> =>
+        new Set(
+            Object.entries(view.needs ?? {})
+                .filter(([, named]) => named.includes(carried))
+                .map(([realm]) => realm),
+        );
+    const carriesIt = (carried: string, own: string[]): boolean => {
+        const declaring = declarers(carried);
+        if (!declaring.size) return true;
+        // A realm that rides this process counts too: an `attached` realm's call arrives at the host
+        // that carries it, so its needs are that host's needs (`@@D-833`).
+        const here = new Set([
+            ...own.map(selector => realmOf(selector)),
+            ...ridingWith(own).map(selector => realmOf(selector)),
+        ]);
+        // A `both` realm's own process always carries it, whatever its callers named: that process is
+        // where its own handlers run.
+        if (here.has(carried)) return true;
+        return [...declaring].some(realm => here.has(realm));
+    };
+
+    // What a realm named, checked where the plan is built: a need is a statement about a suite the
+    // realm does not see, so a name it does not load is a compile-time typo rather than a runtime
+    // surprise — and the realm it names has to be one that can ride a process at all (`@@D-871`).
+    const loaded = new Set(view.realms);
+    for (const [realm, named] of Object.entries(view.needs ?? {})) {
+        for (const needed of named) {
+            if (!loaded.has(needed)) {
+                throw new Error(
+                    `realm "${realm}" declares a need for "${needed}", which this suite does not ` +
+                        'load: a need names a realm that runs beside it',
+                );
+            }
+            if (roleOf(needed) !== 'companion' && roleOf(needed) !== 'both') {
+                throw new Error(
+                    `realm "${realm}" declares a need for "${needed}", which is a ` +
+                        `"${roleOf(needed)}" realm: only a realm that rides other processes can be ` +
+                        'needed in one — a `service` realm runs in a process of its own and is ' +
+                        'reached by its Service',
+                );
+            }
+        }
+    }
 
     /**
      * Where an attached realm's selectors go, and why the answer can be "every process".
@@ -1369,16 +1457,22 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
             .flatMap(port => (port.k8s ? [port.k8s] : []));
 
     const deployments: IDeployment[] = [...byName.entries()].map(([name, own]) => {
-        // Every process also carries the companions, so a call into `srv.subject` or `core.*`
-        // resolves in-process wherever it is made. Deduplicated because a `both` realm is already in
-        // its own process's list.
+        // A process also carries the realms that ride others, so a call into `srv.subject` or
+        // `core.*` resolves in-process wherever it is made. Deduplicated because a `both` realm is
+        // already in its own process's list.
+        //
+        // Which of them it carries is not the same answer for all of them: a realm another realm
+        // named in its `k8sNeeds` rides the processes that carry its caller rather than every one, so
+        // a companion that one part of a suite uses does not load in the parts that never call it
+        // (`@@D-871`).
         //
         // An attached realm joins the process that carries its host, and the host is found by the
         // selectors this deployment was built from rather than by its name: `core` is a `both` realm,
         // so it is in every process's list, and the one that rides with it is the one the profile
         // built *from* it (@@D-833).
         const attached = ridingWith(own);
-        const carried = [...new Set([...own, ...companions, ...ridesEverywhere, ...attached])];
+        const here = companions.filter(selector => carriesIt(realmOf(selector), own));
+        const carried = [...new Set([...own, ...here, ...ridesEverywhere, ...attached])];
         const realms = [...new Set(carried.map(selector => selector.split('.')[0]))];
         const contributions = realms.flatMap(contributionFor);
         const replicas = contributions

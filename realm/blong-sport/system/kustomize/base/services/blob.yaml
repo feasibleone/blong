@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: e666c90f03f995e3
+    blong.feasible.one/spec-hash: abd5f51712ca2ab1
   name: blob
 spec:
   ports:
@@ -19,6 +19,6 @@ spec:
       protocol: TCP
       targetPort: http
   selector:
-    app.kubernetes.io/instance: blong-sport
     app.kubernetes.io/part-of: blong-sport
+    blong.feasible.one/namespace-blob: "true"
   type: ClusterIP

@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 37b417cf8372bd69
+    blong.feasible.one/spec-hash: 21380fdf1fa7ad7c
   name: core
 spec:
   replicas: 1
@@ -36,9 +36,6 @@ spec:
             - --core.orchestrator
             - --core.gateway
             - --srv.orchestrator
-            - --access.adapter
-            - --access.orchestrator
-            - --access.gateway
             - --blong.adapter
             - --blong.gateway
           env:
@@ -88,7 +85,7 @@ spec:
       serviceAccountName: blong
       volumes:
         - hostPath:
-            path: /opt/deploy/suite
+            path: /PLACEHOLDER/suite
             type: Directory
           name: suite
         - name: releaserc-home

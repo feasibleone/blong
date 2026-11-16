@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-chat
     app.kubernetes.io/part-of: blong-chat
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 697839dda44858ec
+    blong.feasible.one/spec-hash: 9e6b9523a71d3e9a
   name: auth-review
 rules:
   - apiGroups:

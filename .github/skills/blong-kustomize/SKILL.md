@@ -48,6 +48,15 @@ The tree is written in one of two layouts, and which one is a config key (`layou
     of thumb: the base is what a reviewer should read, and the overlay is what changes between two
     deploys.
 
+    The committed half names nothing the _release_ decided, fingerprints included: `spec-hash` is
+    stamped over the object the file holds, the sample declaration carries `PLACEHOLDER` for its
+    version and artifact digest, and a base volume says `hostPath: /PLACEHOLDER/suite` rather than
+    the mount path inside the container (`@@D-872`, F-751). Otherwise a release rewrites committed
+    files that describe nothing about it, and since a release bumps the package whose files changed,
+    that rewrite is the next release's reason. `.github/workflows/kustomize.yaml` regenerates every
+    package that keeps a tree and fails on any `git diff`, which is what keeps the discipline honest
+    (`@@T-691`).
+
     Two things belong to the _deployment_ rather than to the base, because a suite does not decide
     them: the namespaces — the suite's is the one the CR was declared in, and a service's the one
     that CR names — and the objects that live in them under a name the tenant chose, which are the
@@ -103,6 +112,18 @@ own entry, its tests, its CLI) belongs in `dev` or `integration`, which is how `
 answers for itself, and one realm loaded under two names (`server` the framework's, `srv` its
 child's) keeps its answer under either, because the answer travels with the realm rather than with
 the name.
+
+A `companion` rides **every** process unless a realm names it: a realm says what it needs in its own
+`server.ts` — `k8sNeeds: ['blob']` beside its role, which `party` and `sport` both declare — and the
+realm it names is then carried by the processes that carry its callers and by no other, so a store
+one part of a suite uses is not loaded by the parts that never touch it (`D-871`). The declaration
+is the caller's because the caller is what knows; a companion nobody names keeps the old answer,
+every process, which is right for a library every caller reaches in-process. A `both` realm is
+carried everywhere by its role, so a need naming one is refused rather than accepted as a setting
+nothing reads. Scoping is about memory rather than reach: every namespace a process answers gets a
+Service, so a caller in a process that does not carry the realm dials one that does. A need the
+suite cannot answer — a name it does not load — is refused where the plan is built, which is the
+shape the `blong-suite` mistake had.
 
 `attached` is how a namespace reaches a Service without a pod of its own: `core/blong-realm`
 declares it against `core`, so the Observe pages' `blong.*` reads ride a process the suite already

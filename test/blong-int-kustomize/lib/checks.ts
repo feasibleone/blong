@@ -437,15 +437,38 @@ export const portalChecks = async (
             {namespace, resource: `ingress/${ingress}`, jsonPath: '{.spec.rules[0].host}'},
             io,
         );
-        const service = await getField(
-            {
-                namespace,
-                resource: `ingress/${ingress}`,
-                jsonPath: '{.spec.rules[0].http.paths[0].backend.service.name}',
-            },
-            io,
-        );
-        io.log(`${ingress}: host ${host || '<none>'}, backend ${service}`);
+        /**
+         * The Service that answers one path, whatever position the path holds.
+         *
+         * By path rather than by index, because the first path is not the page's: a realm contributes
+         * the addresses it serves — the blob realm's `/a`, which rides the portal's own host
+         * (`@@D-870`) — and the generator writes those before the bundle's, so `paths[0]` named the
+         * served bytes and the page check below asked a blob Service for `/s/` and took its 404 for a
+         * warning (`@@F-751`).
+         */
+        const serviceAt = async (path: string): Promise<string> =>
+            await getField(
+                {
+                    namespace,
+                    resource: `ingress/${ingress}`,
+                    jsonPath: `{.spec.rules[0].http.paths[?(@.path=="${path}")].backend.service.name}`,
+                    optional: true,
+                },
+                io,
+            );
+        const service =
+            (await serviceAt('/s')) ||
+            (await serviceAt('/')) ||
+            (await getField(
+                {
+                    namespace,
+                    resource: `ingress/${ingress}`,
+                    jsonPath: '{.spec.rules[0].http.paths[0].backend.service.name}',
+                    optional: true,
+                },
+                io,
+            ));
+        io.log(`${ingress}: host ${host || '<none>'}, page backend ${service}`);
         const endpoints = await getField(
             {
                 namespace,

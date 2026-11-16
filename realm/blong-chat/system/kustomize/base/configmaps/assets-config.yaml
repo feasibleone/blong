@@ -12,5 +12,5 @@ metadata:
     app.kubernetes.io/name: blong-chat
     app.kubernetes.io/part-of: blong-chat
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 26e1e3bb7507dfe3
+    blong.feasible.one/spec-hash: 336d36ca4b833e27
   name: assets-config

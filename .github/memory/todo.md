@@ -81,7 +81,7 @@ open (72)
 - `T-647` · cross-cutting — The blob store cannot be chosen per namespace yet
 - `T-688` · cross-cutting — lintFix should say when prettier skipped a path
 
-done (48)
+done (49)
 
 - `T-188` · ci — The Storybook leg produces no .ci-report slice
 - `T-352` · ci — Publish a package's non-tap leg failure in the bundle
@@ -131,6 +131,8 @@ done (48)
 - `T-678` · cross-cutting — Suite wiring and the claim each realm declares
 - `T-684` · docs — Glossary, concept and pattern pages
 - `T-685` · cross-cutting — The package README
+- `T-691` · ci — Regenerate and gate every committed kustomize tree, not only the suite the e2e
+  deploys
 
 <!-- /memory:index -->
 
@@ -1944,6 +1946,36 @@ limit of each.
 
 realm/blong-blob/README.md written in the shape the other packages use: wire names, routes,
 configuration, the two backends and the scaling limit that separates them; blong-dev lint clean.
+
+### T-691 — Regenerate and gate every committed kustomize tree, not only the suite the e2e deploys
+
+> _2026-11-16 · ci · done_
+
+The drift gate added to kustomize.yaml covers suite/blong-suite, because that is the tree the
+artifact ships and the e2e applies. Other packages keep a committed tree too — realm/blong-sport,
+realm/blong-chat, realm/blong-kustomize and the demo realms — and each is generated the same way
+from a plan that can move without them: a realm whose k8sRealmRole or namespace changes leaves a
+workload or a Service behind, and whoever applies that tree gets the stale object with the base's
+placeholder volume, which is what F-751 cost a 30-minute e2e. The gate generalises: for each package
+that holds system/kustomize/base/kustomization.yaml, generate the base from that package and fail
+when git diff is not empty. It needs the same two things the suite's step needs — the package built
+so @feasibleone/blong resolves, and the entry the package's own server.ts names — so it belongs
+beside the existing check rather than in a new workflow. A second, smaller question is the
+placeholder itself: suiteVolumeOf writes hostPath /opt/deploy/suite, which is the container's mount
+path, and reading that in a failed pod is what sent the diagnosis down the wrong path for a while; a
+token that cannot be mistaken for a real node path would say what it is.
+
+The step now loops over every package that keeps a tree and fails on any git diff:
+suite/blong-suite, realm/blong-sport and realm/blong-chat are the only three (realm/blong-kustomize
+and the demo realms keep none, and common/deploy/realm/blong-sport is release-cd's copy of another
+repository). Each is generated through its own entry with layout=base, so the job builds sport and
+chat beside the suite (rush build --to ...sport --to ...chat) or the check would fail on a build
+that never happened, and the path filter gained both realms so a change that drifts a tree triggers
+the job that checks it. Rerunning the loop changes no byte, which is what makes a diff the whole
+assertion. The second question is answered: placeholderVolume writes hostPath /PLACEHOLDER/suite
+instead of SUITE_MOUNT, because a base that named the container's own mount path read as a real node
+directory in a failing pod and sent one diagnosis after a missing directory instead of after the
+overlay that never patched the source.
 
 ## Retired
 

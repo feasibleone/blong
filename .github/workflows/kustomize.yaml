@@ -52,6 +52,10 @@ jobs:
               - 'realm/blong-login/**'
               - 'demo/blong-marine/**'
               - 'suite/blong-suite/**'
+              # A realm that keeps its own tree: the drift check below regenerates it, and the change
+              # that drifts it is a change to the realm.
+              - 'realm/blong-sport/**'
+              - 'realm/blong-chat/**'
               - 'test/integration/**'
               # The runbook every step below runs, and the trees it generates: its image import and
               # its two generations per tree are what put the suite on the cluster, so a change
@@ -104,7 +108,51 @@ jobs:
         # bundle has to exist *before* the deploy or the artifact carries sources and no page — which
         # is what the deployment Ingress would then front. Built here rather than in the image: the
         # image is the framework, and a page belongs to the suite that ships it.
-        run: node common/scripts/install-run-rush.js build --to @feasibleone/blong-suite
+        #
+        # The two realms that keep a tree are built with it, because the drift check loads each one
+        # through its own entry: a package whose dependencies carry no `dist` cannot answer what it
+        # deploys, and the check would fail on a build that never happened.
+        run: >-
+          node common/scripts/install-run-rush.js build
+          --to @feasibleone/blong-suite
+          --to @feasibleone/blong-sport
+          --to @feasibleone/blong-chat
+      - name: The committed trees are the trees their plans produce
+        # The artifact ships the base the repository committed beside its entry, and the operator
+        # writes its overlay *beside that base* rather than beside a fresh one — deliberately, so a
+        # tenant's tree is the repository's design and not a second opinion (D-490). The overlay
+        # patches only the workloads the plan knows, so a base generated from an older plan keeps
+        # the ones it no longer holds, and they are applied as they were committed: a `blob`
+        # Deployment survived that way, mounting the base's placeholder volume
+        # (`hostPath: /opt/deploy/suite`, which is the container's path and not the node's), so the
+        # pod never started and the `blob` Service it alone selected had no endpoints — which the
+        # runbook reported as `blob has no endpoints, so the portal's path leads nowhere` (F-751).
+        #
+        # Every package that keeps a tree is checked, not only the suite this job deploys: a realm's
+        # tree is what someone applies to run that realm, and it drifts the same way.
+        #
+        # A generation is deterministic and independent of the release — the base and the sample name
+        # what a deploy puts there rather than the version and digest of the one that generated them
+        # (D-872) — so the check is a diff, and a release alone cannot make it fail.
+        run: |
+          failed=0
+          for package in suite/blong-suite realm/blong-sport realm/blong-chat; do
+            if [ ! -f "$package/system/kustomize/base/kustomization.yaml" ]; then
+              continue
+            fi
+            (cd "$package" && node --conditions=development ../../core/blong-gogo/bin/blong.ts \
+                index.ts k8s --kustomize.deploy.layout=base \
+                --kustomize.deploy.outputDir=system/kustomize) || exit 1
+            if ! git diff --quiet -- "$package/system"; then
+              echo "::error file=$package/system,title=stale kustomize tree::$package keeps a tree its plan no longer produces — regenerate it"
+              git --no-pager diff --stat -- "$package/system" >&2
+              failed=1
+            fi
+          done
+          if [ "$failed" != 0 ]; then
+            echo 'a committed tree is not the tree this plan produces — regenerate it' >&2
+            exit 1
+          fi
       - name: Build and publish the suite and realm artifacts
         # Built the way a release builds it, served the way the prefetch expects to fetch it: over
         # HTTP, by name, from inside the cluster. Two artifacts, because the operator runs the

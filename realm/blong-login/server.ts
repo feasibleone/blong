@@ -77,9 +77,20 @@ export default realm(blong => {
                     }),
                 }),
             }),
+            // The realm declares what it needs beside it, as every realm does with its deployment
+            // answer: the schema names the keys it may write (`@@D-871`).
+            k8s: blong.type.Optional(
+                blong.type.Object({k8sNeeds: blong.type.Optional(blong.type.Array(blong.type.String()))}),
+            ),
         }),
         config: {
             default: {
+                // What this realm calls beside it: `login.methods` names `access.*` handlers by
+                // default — the credential check, the session and the audit — and a method is reached
+                // in whatever process carries this realm, so that process carries `access` too. A
+                // suite that turns those methods off costs itself a copy it does not use; one that
+                // keeps them, which is every suite that signs a user in, needs this (@@D-871).
+                k8s: {k8sNeeds: ['access']},
                 login: {
                     expire: {
                         code: 60, // 1 minute

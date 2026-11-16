@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 4b7aab84e0c8c265
+    blong.feasible.one/spec-hash: 39553c9c7a455a42
   name: blong-sport
 spec:
   replicas: 1
@@ -48,9 +48,6 @@ spec:
             - --party.adapter
             - --party.orchestrator
             - --party.gateway
-            - --blob.adapter
-            - --blob.orchestrator
-            - --blob.gateway
             - --sport.adapter
             - --sport.orchestrator
             - --sport.gateway
@@ -58,6 +55,9 @@ spec:
             - --feedback.orchestrator
             - --feedback.gateway
             - --srv.orchestrator
+            - --blob.adapter
+            - --blob.orchestrator
+            - --blob.gateway
             - --blong.adapter
             - --blong.gateway
           env:
@@ -109,7 +109,7 @@ spec:
       serviceAccountName: blong
       volumes:
         - hostPath:
-            path: /opt/deploy/suite
+            path: /PLACEHOLDER/suite
             type: Directory
           name: suite
         - name: blob-storage

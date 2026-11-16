@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
-    app.kubernetes.io/version: 0.11.0
-    blong.feasible.one/spec-hash: 02d4877cb1070ce1
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: ea6be4f151783a10
   name: blong-sport
   namespace: blong-sport
 spec:
@@ -35,4 +35,4 @@ spec:
     attemptRetention: 5
     backend: nodeLocal
     retention: 3
-  version: 0.11.0
+  version: PLACEHOLDER

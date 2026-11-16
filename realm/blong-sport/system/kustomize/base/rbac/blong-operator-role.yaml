@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: df0000ad4d09e026
+    blong.feasible.one/spec-hash: d4295767efe5cfee
   name: blong-operator
 rules:
   - apiGroups:

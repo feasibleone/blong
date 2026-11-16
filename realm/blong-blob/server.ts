@@ -7,9 +7,11 @@ import {realm} from '@feasibleone/blong';
  * because everything a read needs lives beside the bytes in the backend (@@D-837). The layers
  * `adapter`, `orchestrator`, `gateway`, `error` and `server/test` are auto-discovered.
  *
- * It is a companion (@@D-845): every process that carries it can store and serve blobs in-process, so
- * it owns no process and publishes no Service of its own. The claim it writes to belongs to the realm
- * that declares it.
+ * It is a companion (@@D-845): a process that carries it can store and serve blobs in-process, so it
+ * owns no process and publishes no Service of its own. The claim it writes to belongs to the realm
+ * that declares it. Which processes carry it is the caller's answer rather than the store's — `party`
+ * names it in its own `k8sNeeds` and no other realm does, so the store rides that process and the one
+ * that carries `party` beside it, and nowhere else (@@D-871).
  */
 export default realm(blong => ({
     url: import.meta.url,

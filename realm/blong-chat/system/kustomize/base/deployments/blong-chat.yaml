@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-chat
     app.kubernetes.io/part-of: blong-chat
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 7ae83ce36033e7a8
+    blong.feasible.one/spec-hash: 1fe1792d35b7e8d8
   name: blong-chat
 spec:
   replicas: 1
@@ -101,7 +101,7 @@ spec:
       serviceAccountName: blong
       volumes:
         - hostPath:
-            path: /opt/deploy/suite
+            path: /PLACEHOLDER/suite
             type: Directory
           name: suite
         - name: releaserc-home

@@ -3271,7 +3271,10 @@ type TreePlacement = 'base' | 'instantiated';
  * deployment's (`@@D-800`). The sample therefore carries an entry per contributed ingress with its host
  * replaced, so what a tenant has to write is visible rather than implied.
  */
-const exampleDeclaration = (resource: KustomizeResource): KustomizeResource => {
+const exampleDeclaration = (
+    resource: KustomizeResource,
+    plan: IDeploymentPlan,
+): KustomizeResource => {
     if (typeof resource === 'string') return resource;
     const spec = (
         resource as {
@@ -3294,10 +3297,23 @@ const exampleDeclaration = (resource: KustomizeResource): KustomizeResource => {
     const portal = replaced(spec.portal);
     const ingresses = replaced(spec.ingresses);
     if (!portal && !ingresses) return resource;
-    return {
-        ...resource,
-        spec: {...spec, ...(portal && {portal}), ...(ingresses && {ingresses})},
-    } as KustomizeResource;
+    // The sample is what a tenant copies, so the values a *release* owns are placeholders in it too: the
+    // host, because the tenant names it, and the version and the artifact's digest, because the next
+    // release moves them — a sample committed with `1.20.1` in it is stale the moment `1.20.2` ships, and
+    // every tenant who copies it deploys the older artifact (`@@D-872`). Stamped after the substitution, so
+    // the file's fingerprint is its own.
+    const owned = ownedByDeploy(plan);
+    const digest = plan.suiteVolume.artifact?.digest;
+    if (digest) owned.set(digest, PLACEHOLDER);
+    return stampSpecHash(
+        placeholderize(
+            {
+                ...resource,
+                spec: {...spec, ...(portal && {portal}), ...(ingresses && {ingresses})},
+            },
+            owned,
+        ) as Record<string, unknown>,
+    ) as KustomizeResource;
 };
 
 /**
@@ -3324,6 +3340,19 @@ const nameOf = (resource: KustomizeResource | undefined): string =>
  * environment value says so without being mistaken for a working value.
  */
 const PLACEHOLDER = 'PLACEHOLDER';
+
+/**
+ * The `hostPath` a base carries in place of the node directory a deploy names.
+ *
+ * Not `SUITE_MOUNT`, which is where the volume is mounted *inside* the container: a base that wrote it
+ * named a path that is real for the pod and meaningless for the kubelet, so a pod that never started
+ * because nothing filled the volume in reported `hostPath: /opt/deploy/suite` — a path that looks
+ * intended, which sent one diagnosis after a missing node directory while the actual problem was an
+ * overlay that had not patched the source at all (F-751). A path that says `PLACEHOLDER` says what it
+ * is in the first line of a `describe`, and the overlay replaces it with the directory the
+ * declaration names.
+ */
+const PLACEHOLDER_VOLUME_PATH = `/${PLACEHOLDER}/suite`;
 
 /**
  * Every string in an object that names something the deploy owns, replaced by the placeholder.
@@ -3366,7 +3395,7 @@ const suiteVolumeOf = (object: Record<string, unknown>): Record<string, unknown>
 const placeholderVolume = (plan: IDeploymentPlan): Record<string, unknown> =>
     plan.suiteVolume.backend === 'shared'
         ? {name: 'suite', persistentVolumeClaim: {claimName: plan.suite.name, readOnly: true}}
-        : {name: 'suite', hostPath: {path: SUITE_MOUNT, type: 'Directory'}};
+        : {name: 'suite', hostPath: {path: PLACEHOLDER_VOLUME_PATH, type: 'Directory'}};
 
 /**
  * The values a base may not name, and what stands in for them: the artifact's identity — the version and
@@ -3681,6 +3710,50 @@ const instantiate = (
     const suffix = metadata.name.slice(template.length);
     const owned = new Map([[identity, PLACEHOLDER]]);
     if (node) owned.set(node, PLACEHOLDER);
+    // The artifact is a deploy's too, and its url names the release: `release-notify` republishes under a
+    // new name, and the tag a real artifact lives under carries the version — so a template that kept the
+    // url would put the release back into the committed base, which is what a split exists to keep out
+    // (`@@D-872`). The patch below restores the container's environment from the original.
+    const artifacts = [
+        plan.suiteVolume.artifact?.url,
+        plan.suiteVolume.artifact?.path,
+        plan.suiteVolume.artifact?.digest,
+    ].filter((value): value is string => typeof value === 'string' && value !== '');
+    for (const value of artifacts) owned.set(value, PLACEHOLDER);
+    /**
+     * The fill container's artifact settings, blanked whatever they held.
+     *
+     * A plan with no artifact names an empty url, which no substitution can find — and a plan with one
+     * names the release. Both are the deploy's, so the template says PLACEHOLDER either way and the patch
+     * puts the real environment back.
+     */
+    const blankArtifactEnv = (object: Record<string, unknown>): Record<string, unknown> => {
+        const env = containerEnvOf(object, 'fill');
+        if (!env.length) return object;
+        const blanked = env.map(entry =>
+            entry.name === FILL_ENV.url || entry.name === FILL_ENV.path
+                ? {...entry, value: PLACEHOLDER}
+                : entry,
+        );
+        const spec = object.spec as {
+            template?: {spec?: {containers?: Array<Record<string, unknown>>}};
+        };
+        return {
+            ...object,
+            spec: {
+                ...spec,
+                template: {
+                    ...spec.template,
+                    spec: {
+                        ...spec.template?.spec,
+                        containers: (spec.template?.spec?.containers ?? []).map(entry =>
+                            entry.name === 'fill' ? {...entry, env: blanked} : entry,
+                        ),
+                    },
+                },
+            },
+        };
+    };
     // The template's own name in the labels that name it: a placeholder would be a name nothing agrees
     // with, and the patch is what makes them agree again.
     const asTemplate = (labels?: Record<string, string>): Record<string, string> | undefined =>
@@ -3692,9 +3765,11 @@ const instantiate = (
     // template that kept it would overrule the CR (`@@T-449`). The version leaves the labels for the
     // same reason (@@D-652), and the patch below puts both back.
     const images = imagesOf(object);
-    const blank = withPlaceholderVersionLabels(
-        withPlaceholderImages(placeholderize(object, owned) as Record<string, unknown>),
-        ownedByDeploy(plan),
+    const blank = blankArtifactEnv(
+        withPlaceholderVersionLabels(
+            withPlaceholderImages(placeholderize(object, owned) as Record<string, unknown>),
+            ownedByDeploy(plan),
+        ),
     );
     const blankMetadata = blank.metadata as {labels?: Record<string, string>} | undefined;
     const patch: Record<string, unknown> = {
@@ -3748,7 +3823,7 @@ const instantiate = (
         key,
         // Re-stamped: the placeholder is what this file holds, and its fingerprint should say so.
         object: stampSpecHash({
-            ...blank,
+            ...withTemplateInstance(blank, template, asTemplate),
             metadata: {
                 ...(blank.metadata as Record<string, unknown>),
                 name: template,
@@ -3758,6 +3833,36 @@ const instantiate = (
             },
         }),
         patch,
+    };
+};
+
+/**
+ * The template with its *pod* labels named after the template too.
+ *
+ * `app.kubernetes.io/instance` on the pod is the instance name, which the placeholder pass turns into
+ * `<template>-PLACEHOLDER-<stamp>` — and the stamp is a hash of what the Job runs, `volumeIdentity`
+ * included, so a release that changed only the version rewrote this file and the base with it
+ * (`@@D-872`). The patch puts the real labels back, so what stays here is a name, and the base's own name
+ * is what it should say.
+ */
+const withTemplateInstance = (
+    object: Record<string, unknown>,
+    template: string,
+    rename: (labels?: Record<string, string>) => Record<string, string> | undefined,
+): Record<string, unknown> => {
+    const podLabels = podLabelsOf(object);
+    const spec = object.spec as {template?: Record<string, unknown>} | undefined;
+    if (!podLabels || !spec?.template) return object;
+    const metadata = (spec.template as {metadata?: Record<string, unknown>}).metadata ?? {};
+    return {
+        ...object,
+        spec: {
+            ...spec,
+            template: {
+                ...spec.template,
+                metadata: {...metadata, labels: rename(podLabels)},
+            },
+        },
     };
 };
 
@@ -3853,6 +3958,22 @@ const namespaceFree = (resource: KustomizeResource): KustomizeResource => {
     return {...resource, metadata: rest} as KustomizeResource;
 };
 
+/**
+ * A base object as the file holds it, fingerprinted over what it holds.
+ *
+ * The fingerprint is what a pass compares to decide an object is unchanged (`specHashOf`), and it was
+ * stamped while the tree was built — over the *deploy's* values: the suite's version, in every label
+ * that names it. A split then takes those values out of the base, which is the point of the base, but it
+ * kept the fingerprint that mentioned them, so a release that changed only the version rewrote sixteen
+ * committed files with one hash each — noise a reviewer reads and a drift check makes compulsory
+ * (`@@D-872`). Stamping the object the file actually holds makes the committed base a function of the
+ * base's own content, and nothing else.
+ */
+const baseObject = (resource: KustomizeResource): KustomizeResource =>
+    typeof resource === 'string'
+        ? resource
+        : (stampSpecHash(namespaceFree(resource) as Record<string, unknown>) as KustomizeResource);
+
 const writeSplitTree = (
     tree: KustomizeTree,
     plan: IDeploymentPlan,
@@ -3901,7 +4022,7 @@ const writeSplitTree = (
         // fetched — and a base every deployment of the suite shares cannot carry any of it (@@D-506), so it
         // travels beside the base as an example to copy.
         if (path === CR_PATH) {
-            examples.set(CR_EXAMPLE, exampleDeclaration(resource));
+            examples.set(CR_EXAMPLE, exampleDeclaration(resource, plan));
             declarations.set(CR_DECLARATION, resource);
             continue;
         }
@@ -4036,7 +4157,7 @@ const writeSplitTree = (
             suiteVolumeOf(resource)
         ) {
             const {base: placeholder, patch} = splitWorkload(plan, resource);
-            base.set(path, namespaceFree(placeholder));
+            base.set(path, baseObject(placeholder));
             patches.set(`patches/${basename(path)}`, patch);
             patchedPaths.add(path);
             continue;
@@ -4050,13 +4171,13 @@ const writeSplitTree = (
         if (typeof resource !== 'string') {
             const blank = withPlaceholderVersionLabels(resource, owned);
             if (JSON.stringify(blank) !== JSON.stringify(resource)) {
-                base.set(path, namespaceFree(blank));
+                base.set(path, baseObject(blank));
                 patches.set(`patches/${path.replaceAll('/', '-')}`, labelPatch(resource));
                 patchedPaths.add(path);
                 continue;
             }
         }
-        base.set(path, namespaceFree(resource));
+        base.set(path, baseObject(resource));
     }
     const filesOf = (entries: Map<string, KustomizeResource>): string[] =>
         [...entries.keys()].filter(path => path.endsWith('/kustomization.yaml') === false).sort();

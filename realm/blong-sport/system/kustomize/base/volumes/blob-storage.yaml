@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 68ac36b7df1a7c7d
+    blong.feasible.one/spec-hash: d669953b191f17f3
   name: blob-storage
 spec:
   accessModes:

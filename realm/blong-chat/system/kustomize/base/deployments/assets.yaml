@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-chat
     app.kubernetes.io/part-of: blong-chat
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 88322791d3b57e6a
+    blong.feasible.one/spec-hash: 7fac7593149d1b24
   name: assets
 spec:
   replicas: 1
@@ -88,7 +88,7 @@ spec:
           type: RuntimeDefault
       volumes:
         - hostPath:
-            path: /opt/deploy/suite
+            path: /PLACEHOLDER/suite
             type: Directory
           name: suite
         - configMap:

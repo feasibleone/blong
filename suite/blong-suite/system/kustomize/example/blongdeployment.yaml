@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-suite
     app.kubernetes.io/part-of: blong-suite
-    app.kubernetes.io/version: 1.20.0
-    blong.feasible.one/spec-hash: 2f3d8552e80daccb
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: 919fb3ac109f5437
   name: blong-suite
   namespace: blong-suite
 spec:
@@ -38,4 +38,4 @@ spec:
     attemptRetention: 5
     backend: nodeLocal
     retention: 3
-  version: 1.20.0
+  version: PLACEHOLDER

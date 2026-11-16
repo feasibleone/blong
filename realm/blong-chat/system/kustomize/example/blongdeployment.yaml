@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/managed-by: blong-kustomize
     app.kubernetes.io/name: blong-chat
     app.kubernetes.io/part-of: blong-chat
-    app.kubernetes.io/version: 0.4.0
-    blong.feasible.one/spec-hash: d7f6aaee8d1b50df
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: a74674d70f3b8936
   name: blong-chat
   namespace: blong-chat
 spec:
@@ -52,4 +52,4 @@ spec:
     attemptRetention: 5
     backend: nodeLocal
     retention: 3
-  version: 0.4.0
+  version: PLACEHOLDER

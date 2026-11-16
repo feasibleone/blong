@@ -1507,6 +1507,52 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 });
             },
 
+            async function aCommittedTreeIsIndependentOfTheRelease(assert: IAssert) {
+                // A release moves two values a tree can name — the suite's version and the artifact's
+                // digest — and a committed base that carried either would have to be regenerated in the
+                // release itself. That is a commit to the package the tree lives in, which asks the next
+                // release for a bump of its own: churn that regenerates itself, and a drift check that
+                // makes it compulsory (`@@D-872`). So the base and the sample carry placeholders where a
+                // deploy owns the value, and two plans that differ only in those values write the same
+                // bytes.
+                const committed = (plan: IDeploymentPlan): Record<string, unknown> => {
+                    const dir = mkdtempSync(join(tmpdir(), 'kustomize-release-'));
+                    try {
+                        writeKustomizeTree(buildKustomizeTree(plan), dir, {layout: 'base', plan});
+                        return Object.fromEntries(
+                            [...readKustomizeTree(dir)].map(([path, resource]) => [
+                                path,
+                                typeof resource === 'string'
+                                    ? (parse(resource) as KustomizeResource)
+                                    : resource,
+                            ]),
+                        );
+                    } finally {
+                        rmSync(dir, {recursive: true, force: true});
+                    }
+                };
+                const plan = lib.suitePlan({profile: 'monolith', ingresses: []}) as IDeploymentPlan;
+                const released = {
+                    ...plan,
+                    suite: {...plan.suite, version: '9.9.9'},
+                    suiteVolume: {
+                        ...plan.suiteVolume,
+                        artifact: {
+                            source: 'url' as const,
+                            url: 'http://artifact/suite.zip',
+                            digest: 'deadbeef'.repeat(8),
+                        },
+                    },
+                } as IDeploymentPlan;
+
+                assert.deepEqual(
+                    committed(released),
+                    committed(plan),
+                    'a release changes nothing a repository commits: the base and the sample name what a ' +
+                        'deploy puts there, not the values this one had',
+                );
+            },
+
             async function oneIngressPerHost(assert: IAssert) {
                 // An Ingress is grouped by host, not by deployment (Phase 15 C, Q3): a host is what a
                 // certificate and a DNS record belong to, so a portal and a realm's webhook land in

@@ -40,6 +40,27 @@ A base that kept these would deploy the release that generated it rather than th
 declaration names, and the symptom is quiet — the artifact, the migration and the reported version
 all move while the pod keeps the image the tree was generated with.
 
+The volume's source is the same rule one level down: the base says
+`hostPath: /PLACEHOLDER/suite` and the overlay replaces it with the directory the declaration names
+— not with `/opt/deploy/suite`, which is where the volume is mounted _inside_ the container, so a
+base that wrote it named a path that is real for the pod and meaningless for the kubelet. A pod that
+never started because the overlay had patched no source reported that path, and it looks intended
+enough to send a diagnosis after a missing node directory instead of after the patch that never ran.
+A `PLACEHOLDER` in a path, a label or an environment value says what it is in the first line of a
+`kubectl describe`.
+
+Nothing the base or the committed sample carries may depend on the release, down to the
+fingerprints: `blong.feasible.one/spec-hash` is stamped over the object _the file holds_ rather than
+over the plan's, and the sample declaration's `version` and `spec.suiteVolume.artifact.digest` are
+`PLACEHOLDER` too — a sample committed at `1.20.1` is stale the moment `1.20.2` ships, and a
+hash stamped over pre-placeholder values rewrote sixteen committed files per release (D-872). The
+reason is not tidiness: a release bumps the package whose files changed, so a repository that
+commits a version-dependent tree can never be released without bumping that package again. With the
+rule held, a generation is a function of the plan alone, which is what lets the drift check in
+`.github/workflows/kustomize.yaml` be a plain `git diff` over every package that keeps a tree
+(`suite/blong-suite`, `realm/blong-sport`, `realm/blong-chat`) rather than a heuristic that has to
+tell a release from a design change (F-751).
+
 ## Configure the suite
 
 ```typescript
@@ -217,6 +238,17 @@ process to own a namespace: `core/blong-realm` declares `k8sRealmRole: 'attached
 so its `blong.*` reads ride a process the suite already runs, that pod labels itself for the
 namespace and the tree writes `services/blong.yaml` beside the path. The catch-all `/rpc/` stays
 behind those rules for a namespace no Service carries.
+
+A realm that rides others is carried by every process unless a realm names it, and a store is worth
+naming: `blob` serves a `party` record, so `party` and `sport` declare `k8sNeeds: ['blob']` in their
+own `server.ts`, and the store then rides the processes that carry those two rather than every pod of
+a suite (D-871). The declaration is the caller's because the caller is the one that knows what it
+calls — a store does not see who will use it. A companion nobody names keeps the old answer, every
+process, which is what a library realm every caller reaches in-process wants. Both mistakes are
+refused where the plan is built: a need the suite cannot answer (a name it does not load), and a need
+naming a realm that has a process of its own — a `service` or `both` realm is reached by its Service,
+so the key would be read by nobody. Scoping costs a hop and saves a copy: the namespace still gets a
+Service, so a process that does not carry the realm dials one that does.
 
 ## The browser bundle
 

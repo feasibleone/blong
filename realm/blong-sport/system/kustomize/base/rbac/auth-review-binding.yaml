@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 49826ae84755d39b
+    blong.feasible.one/spec-hash: e56e84f26e696bde
   name: blong-sport-auth-review
 roleRef:
   apiGroup: rbac.authorization.k8s.io

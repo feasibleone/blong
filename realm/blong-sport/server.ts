@@ -15,5 +15,9 @@ export default realm(() => ({
     url: import.meta.url,
     // What this realm is in every deployment: a process of its own. A suite that deploys it as a
     // monolith still names it in its `k8s` block, but the answer belongs to the realm (@@D-437).
-    config: {default: {k8s: {k8sRealmRole: 'service'}}},
+    //
+    // And what it needs beside it: this realm's own records carry a photograph, and the `blob`
+    // companion is what stores the bytes. A suite that loads this realm therefore carries the store
+    // in its process rather than in every process of the suite (@@D-871).
+    config: {default: {k8s: {k8sRealmRole: 'service', k8sNeeds: ['blob']}}},
 }));

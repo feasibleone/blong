@@ -92,7 +92,13 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                                 // something (@@D-833).
                                 k8s: {k8sRealmRole: 'both', k8sRealmAttachedTo: 'srv'},
                             },
-                            blong: {k8s: {k8sRealmRole: 'attached', k8sRealmAttachedTo: 'core'}},
+                            blong: {
+                                k8s: {
+                                    k8sRealmRole: 'attached',
+                                    k8sRealmAttachedTo: 'core',
+                                    k8sNeeds: ['srv'],
+                                },
+                            },
                         },
                     }),
                 });
@@ -107,6 +113,11 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                     {blong: 'core'},
                     'and an attached realm carries the realm it rides with, while a host declared ' +
                         'beside any other role is not read',
+                );
+                assert.deepEqual(
+                    view.needs,
+                    {blong: ['srv']},
+                    'while a realm that named what it needs is read beside its role',
                 );
                 assert.equal(
                     view.roles.marine,
@@ -1122,6 +1133,149 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                     () => planFromRegistry(view, {...options, portal: undefined}),
                     /is sameOrigin, but no portal fronts the namespace "blob"/,
                     'a same-origin path with no portal is refused, naming the namespace',
+                );
+            },
+
+            async function aCarriedRealmRidesTheProcessesThatCallIt(assert: IAssert) {
+                // A companion rides every process, and that is wrong for a store only one part of a
+                // suite uses: the blob realm loaded by a suite of marine pages put its handler group,
+                // its adapters and its filesystem claim in every pod, none of which would ever call it
+                // (`@@D-871`). The declaration is the caller's — a realm names what it needs, because it
+                // knows what it calls and the store does not see who will use it — and the realm it
+                // names is then carried by the processes that carry the caller, and reached elsewhere
+                // through the Service of its namespace.
+                const view = {
+                    realms: ['sport', 'marine', 'blob'],
+                    groups: [
+                        {name: 'sport.sportDispatch', handlerCount: 1, layer: 'orchestrator'},
+                        {name: 'marine.marineDispatch', handlerCount: 1, layer: 'orchestrator'},
+                        {name: 'blob.blobDispatch', handlerCount: 1, layer: 'orchestrator'},
+                    ],
+                    ports: [
+                        {id: 'sport.sportDispatch', type: 'dispatch', namespace: 'sport'},
+                        {id: 'marine.marineDispatch', type: 'dispatch', namespace: 'marine'},
+                        {id: 'blob.blobDispatch', type: 'dispatch', namespace: 'blob'},
+                    ],
+                    roles: {blob: 'companion' as const},
+                    needs: {sport: ['blob']},
+                } as unknown as IRegistryView;
+                const options = {
+                    suiteName: 'demo',
+                    frameworkImage: 'image',
+                    profile: 'realm' as const,
+                    nodes: NODES,
+                };
+                const plan = planFromRegistry(view, options);
+                const carriers = Object.fromEntries(
+                    plan.deployments.map(deployment => [
+                        deployment.name,
+                        deployment.realms.includes('blob'),
+                    ]),
+                );
+                assert.deepEqual(
+                    carriers,
+                    {sport: true, marine: false},
+                    'the realm that asked for it carries it, and the process that never calls it does not',
+                );
+                assert.deepEqual(
+                    plan.deployments.find(deployment => deployment.name === 'blob'),
+                    undefined,
+                    'while a companion still owns no process of its own',
+                );
+                assert.deepEqual(
+                    plan.deployments.find(deployment => deployment.name === 'marine')?.namespaces,
+                    ['marine'],
+                    'and the namespace it answers is not claimed by a process that does not carry it',
+                );
+
+                // A companion nobody names keeps the answer it always had: every process, which is what a
+                // library realm every caller reaches in-process needs — and what `core` and `srv` are.
+                assert.deepEqual(
+                    Object.fromEntries(
+                        planFromRegistry(
+                            {...view, needs: undefined} as unknown as IRegistryView,
+                            options,
+                        ).deployments.map(deployment => [
+                            deployment.name,
+                            deployment.realms.includes('blob'),
+                        ]),
+                    ),
+                    {sport: true, marine: true},
+                    'a companion nobody needs rides every process, as before',
+                );
+
+                // A `both` realm is scoped the same way — the library realms are `both`, and a process
+                // that calls one only through a `super.` helper has to carry it — while the realm's own
+                // process carries it whatever anyone names (`@@D-872`).
+                const scoped = planFromRegistry(
+                    {
+                        ...view,
+                        roles: {blob: 'companion', sport: 'both'},
+                        needs: {sport: ['blob']},
+                    } as unknown as IRegistryView,
+                    options,
+                );
+                assert.deepEqual(
+                    scoped.deployments.find(deployment => deployment.name === 'sport')?.realms.includes(
+                        'sport',
+                    ),
+                    true,
+                    'a both realm is carried by its own process',
+                );
+                assert.deepEqual(
+                    planFromRegistry(
+                        {
+                            ...view,
+                            roles: {blob: 'companion', marine: 'both'},
+                            needs: {sport: ['marine']},
+                        } as unknown as IRegistryView,
+                        options,
+                    ).deployments.map(deployment => [
+                        deployment.name,
+                        deployment.realms.includes('marine'),
+                    ]),
+                    [
+                        ['sport', true],
+                        ['marine', true],
+                    ],
+                    'and by the processes of the realms that name it, and no other',
+                );
+            },
+
+            async function aNeedTheSuiteCannotAnswerIsRefused(assert: IAssert) {
+                // A need is a statement about a suite the realm does not see, so a name that suite does
+                // not load is a compile-time typo rather than a runtime surprise — and a suite that
+                // loads a store nothing there calls is the mistake that shipped a claim and an Ingress
+                // path into `blong-suite`, which has no `party` record to store (`@@D-871`). Refused
+                // where the plan is built, because the tree would otherwise say it by leaving the realm
+                // out and nothing more.
+                const view = {
+                    realms: ['sport', 'marine', 'blob'],
+                    groups: [
+                        {name: 'sport.sportDispatch', handlerCount: 1, layer: 'orchestrator'},
+                        {name: 'marine.marineDispatch', handlerCount: 1, layer: 'orchestrator'},
+                    ],
+                    ports: [
+                        {id: 'sport.sportDispatch', type: 'dispatch', namespace: 'sport'},
+                        {id: 'marine.marineDispatch', type: 'dispatch', namespace: 'marine'},
+                    ],
+                    roles: {blob: 'companion' as const},
+                    needs: {sport: ['party']},
+                } as unknown as IRegistryView;
+                const options = {suiteName: 'demo', frameworkImage: 'image', nodes: NODES};
+
+                assert.throws(
+                    () => planFromRegistry(view, options),
+                    /realm "sport" declares a need for "party", which this suite does not load/,
+                    'a need the suite cannot answer is refused, naming both sides',
+                );
+
+                // And a need names a realm that rides a process: a service realm has one of its own and
+                // is reached by its Service, so naming one is refused rather than ignored.
+                assert.throws(
+                    () => planFromRegistry({...view, needs: {sport: ['marine']}}, options),
+                    /declares a need for "marine", which is a "service" realm/,
+                    'while a need naming a service realm is refused too',
                 );
             },
 

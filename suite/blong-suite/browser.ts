@@ -54,9 +54,6 @@ export default browser(blong => ({
         async function access() {
             return import('@feasibleone/blong-access/browser.ts');
         },
-        async function blob() {
-            return import('@feasibleone/blong-blob/browser.ts');
-        },
         /** Marine biology realm (brings blong-browser infrastructure with it) */
         async function marine() {
             return import('@feasibleone/blong-marine/browser.ts');
@@ -103,7 +100,6 @@ export default browser(blong => ({
             login: {},
             marine: {},
             blong: {},
-            blob: {},
             // A child realm loads only when the merged config names it (`if (config)`
             // in the loader's child loop), so an empty block is what loads the
             // realm at all. `access` carries the self-service profile page the

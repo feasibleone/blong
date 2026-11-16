@@ -4,9 +4,14 @@ export default realm(() => ({
     url: import.meta.url,
     config: {
         default: {
-            // Carried in-process by every process *and* published as an admin API, so `both` —
-            // declared by the realm itself rather than by the suite that deploys it (D-433).
-            k8s: {k8sRealmRole: 'both'},
+            // Carried in-process by the processes that need it *and* published as an admin API, so
+            // `both` — declared by the realm itself rather than by the suite that deploys it (D-433).
+            //
+            // And what it needs in those processes: the realm's own writes keep the resource graph —
+            // a role, a capability, an action is a `core` resource — and `super.coreResourceEnsure`
+            // is a call to a realm in the same process, so a process that carries this one has to
+            // carry `core` too (@@D-871).
+            k8s: {k8sRealmRole: 'both', k8sNeeds: ['core']},
             // Fallback credential-function parameters for newly created
             // credentials.  The active `access.policy` for the credential
             // type overrides these; these defaults only apply when no
