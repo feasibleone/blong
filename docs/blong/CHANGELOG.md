@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.46.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.46.0...blong-docs-v1.46.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* blob sameOrigin ingress ([2f471b9](https://github.com/feasibleone/blong/commit/2f471b93e36edb78b870aef80b94f952d53071c8))
+* improve kustomize handling ([a4a9532](https://github.com/feasibleone/blong/commit/a4a9532f6da6b48ee20aa337d6085f613f3577c7))
+* move settings from k8s rc ([253dc00](https://github.com/feasibleone/blong/commit/253dc0044453f08b95cb49aee1058213aff4e820))
+* store config ([bd8e625](https://github.com/feasibleone/blong/commit/bd8e6259742957705bd1f35eb02e38b75f088a6f))
+
 ## [1.46.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.45.1...blong-docs-v1.46.0) (2026-11-15)
 
 

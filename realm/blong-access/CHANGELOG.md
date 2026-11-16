@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.1](https://github.com/feasibleone/blong/compare/blong-access-v1.21.0...blong-access-v1.21.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* improve kustomize handling ([a4a9532](https://github.com/feasibleone/blong/commit/a4a9532f6da6b48ee20aa337d6085f613f3577c7))
+
 ## [1.21.0](https://github.com/feasibleone/blong/compare/blong-access-v1.20.1...blong-access-v1.21.0) (2026-11-15)
 
 
