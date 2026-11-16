@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.2](https://github.com/feasibleone/blong/compare/blong-access-v1.21.1...blong-access-v1.21.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* profile person creation ([fba6647](https://github.com/feasibleone/blong/commit/fba66472fa828e6539fd3adc0de8d52a9f06ddbc))
+
 ## [1.21.1](https://github.com/feasibleone/blong/compare/blong-access-v1.21.0...blong-access-v1.21.1) (2026-11-16)
 
 

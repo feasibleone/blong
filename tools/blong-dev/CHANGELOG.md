@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.3](https://github.com/feasibleone/blong/compare/blong-dev-v1.19.2...blong-dev-v1.19.3) (2026-11-16)
+
+
+### Bug Fixes
+
+* profile person creation ([fba6647](https://github.com/feasibleone/blong/commit/fba66472fa828e6539fd3adc0de8d52a9f06ddbc))
+
 ## [1.19.2](https://github.com/feasibleone/blong/compare/blong-dev-v1.19.1...blong-dev-v1.19.2) (2026-11-15)
 
 

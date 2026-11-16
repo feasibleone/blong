@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.2](https://github.com/feasibleone/blong/compare/blong-party-v1.18.1...blong-party-v1.18.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* profile person creation ([fba6647](https://github.com/feasibleone/blong/commit/fba66472fa828e6539fd3adc0de8d52a9f06ddbc))
+
 ## [1.18.1](https://github.com/feasibleone/blong/compare/blong-party-v1.18.0...blong-party-v1.18.1) (2026-11-16)
 
 
