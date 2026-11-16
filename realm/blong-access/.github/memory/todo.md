@@ -17,12 +17,14 @@ open (7)
 - `T-450` · realm/blong-access — access.user.edit refuses an edit that only touches roles
 - `T-451` · realm/blong-access — No UI page calls access.profile.password.change
 
-done (4)
+done (5)
 
 - `T-370` · realm/blong-access — Make the authorization flow runnable from the Test runs page
 - `T-371` · realm/blong-access — Give the server test runner a gateway dispatch port
 - `T-675` · realm/blong-access — access: the profile payload carries the photograph
 - `T-676` · realm/blong-access — access: the profile page shows and replaces the avatar
+- `T-694` · realm/blong-access — A renamed person keeps the old label, and a cleared name writes
+  null into a NOT NULL column
 
 <!-- /memory:index -->
 
@@ -198,3 +200,30 @@ person.photoUrl from the profile payload and renders BlobImage in the same circl
 falling back to them when the picture fails. Access's profile Playwright spec passes on the fallback
 path and its five screenshots were regenerated for the new block; blong-browser 867 tests, both
 packages' ci-lint clean. The with-a-photograph case is T-682's, in a suite that has a person.
+
+### T-694 — A renamed person keeps the old label, and a cleared name writes null into a NOT NULL column
+
+> _2026-11-16 · realm/blong-access · done_
+
+Two gaps the profile edit still has, both about the name fields. The first is the label:
+`party_person.personName` is what every list and ACL target reads (`@@D-602`) and it is set when the
+person is created, but an edit of `firstName`/`middleName`/`lastName` writes the row only — the
+label stays as it was, so a person renamed after registration is listed under the old name.
+Composing the new one needs the merged name, which means reading the row the edit is about to write
+(a partial edit names one field). The second is the clear: `party_person.firstName` and `lastName`
+are `NOT NULL`, and the handler passes `null` straight through, so a form that clears one of them
+fails as a database error rather than as a validation message — either refuse the null where it is
+read, or treat an empty value as "unchanged" and say so. Both belong to the same pass over
+`@@D-874`: the create path now requires both names, so the update path should hold the same rule.
+
+Both halves closed. The label: updatePerson composes personName from the row the patch leaves behind
+and writes it only when a name column was in the patch, so a rename is listed under the new name —
+the resource's own resourceName is deliberately left alone, because renaming a graph node is a
+different operation (lookups by name hang off it) and this handler edits a person, not the graph.
+The clear: the merged row is judged before the write, and a first or last name that would end up
+empty is refused with profile.nameRequired (400) instead of reaching NOT NULL as a constraint error
+— the profile page sends an emptied field as null, so this was a 500 a user could actually hit. The
+page now shows the name fields whether or not a person exists, which is also what makes the creation
+path of D-874 reachable from the UI, and it sends the names and the photograph on every save. Pinned
+in test.profile.create: the rename recomposes the label ('Nina P Returning'), both clears are
+refused with the message and store nothing, and a photograph alone still creates no person.

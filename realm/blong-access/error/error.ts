@@ -3,6 +3,10 @@ export default {
     // Self-service profile password change — the supplied current password does
     // not match the active credential. 401 so the UI treats it as a re-auth signal.
     'profile.wrongPassword': {message: 'Current password is incorrect', statusCode: 401},
+    // A person's first and last name are `NOT NULL` on the row, and the label every list and ACL
+    // target reads is built from them: an edit that clears one leaves a nameless person, so it is
+    // refused where it is read rather than left to the database.
+    'profile.nameRequired': {message: 'A profile needs a first and a last name', statusCode: 400},
     'user.notFound': 'User not found',
     'user.inactive': 'User account is inactive',
     // A service account's client id is unique across the realm.

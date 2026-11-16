@@ -46,8 +46,10 @@ interface IProfile {
  *
  * Shows account details, granted roles (read-only), and lets the user edit
  * their personal details (name/email), preferred language, and password.
- * Name fields are only editable when a linked `party.person` exists (suites
- * without the party realm fall back to no personal data).
+ *
+ * The personal details are editable whether or not the account has a person yet: the first save that
+ * carries a first and a last name creates one (`access.profile.edit`, `@@D-874`). A suite without the
+ * party realm keeps the fields, and the save stores nothing there — the server's documented fallback.
  */
 export function AccessUserProfilePage() {
     const {handler} = useBlong();
@@ -77,7 +79,6 @@ export function AccessUserProfilePage() {
     const [pwError, setPwError] = useState<string | undefined>(undefined);
     const [pwDone, setPwDone] = useState(false);
 
-    const hasPerson = Boolean(profile?.person);
 
     useEffect(() => {
         let cancelled = false;
@@ -109,9 +110,12 @@ export function AccessUserProfilePage() {
         try {
             await handler.accessProfileEdit(
                 {
-                    firstName: hasPerson ? (firstName || null) : undefined,
-                    lastName: hasPerson ? (lastName || null) : undefined,
-                    photoUrl: hasPerson ? photoUrl : undefined,
+                    // Sent whether or not the account has a person: a filled-in name is what creates
+                    // one, and an emptied one is refused by the server with a message rather than a
+                    // database error (`@@D-874`, T-694).
+                    firstName: firstName || null,
+                    lastName: lastName || null,
+                    photoUrl,
                     emailAddress: emailAddress || null,
                     preferredLanguage,
                 },
@@ -146,7 +150,6 @@ export function AccessUserProfilePage() {
         }
     }, [
         handler,
-        hasPerson,
         firstName,
         lastName,
         photoUrl,
@@ -180,7 +183,10 @@ export function AccessUserProfilePage() {
     if (loadError) {
         return (
             <div className="access-profile">
-                <Message severity="error" text={loadError} />
+                <Message
+                    severity="error"
+                    text={loadError}
+                />
             </div>
         );
     }
@@ -201,39 +207,38 @@ export function AccessUserProfilePage() {
                         </p>
                     )}
 
-                    {hasPerson && (
-                        // The photograph, above the details: the picture as the store keeps it —
-                        // a derived thumbnail when there is one — and the widget that replaces it
-                        // (`@@D-842`). Without one the initials stand in, which is what the menubar
-                        // does too.
-                        <div className="access-profile__avatar">
-                            <BlobImage
-                                value={photoUrl}
-                                name={[firstName, lastName].filter(Boolean).join(' ')}
-                                size={96}
-                            />
-                            <AssetWidget
-                                id="access-profile-photo"
-                                name="photoUrl"
-                                schema={
-                                    {
-                                        title: 'Photograph',
-                                        widget: {
-                                            type: 'asset',
-                                            namespace: PARTY_NAMESPACE,
-                                            accept: 'image/*',
-                                            variant: 'thumb',
-                                        },
-                                    } as never
-                                }
-                                value={photoUrl}
-                                onChange={value => setPhotoUrl(value ? String(value) : null)}
-                                // The field is saved with the form, not on its own: a photograph
-                                // chosen and then abandoned is discarded by the widget itself.
-                                onBlur={() => undefined}
-                            />
-                        </div>
-                    )}
+                    {/* The photograph, above the details: the picture as the store keeps it — a
+                        derived thumbnail when there is one — and the widget that replaces it
+                        (`@@D-842`). Without one the initials stand in, which is what the menubar
+                        does too. Shown before a person exists like the names below, because the
+                        save that carries the names is what creates it (`@@D-874`). */}
+                    <div className="access-profile__avatar">
+                        <BlobImage
+                            value={photoUrl}
+                            name={[firstName, lastName].filter(Boolean).join(' ')}
+                            size={96}
+                        />
+                        <AssetWidget
+                            id="access-profile-photo"
+                            name="photoUrl"
+                            schema={
+                                {
+                                    title: 'Photograph',
+                                    widget: {
+                                        type: 'asset',
+                                        namespace: PARTY_NAMESPACE,
+                                        accept: 'image/*',
+                                        variant: 'thumb',
+                                    },
+                                } as never
+                            }
+                            value={photoUrl}
+                            onChange={value => setPhotoUrl(value ? String(value) : null)}
+                            // The field is saved with the form, not on its own: a photograph
+                            // chosen and then abandoned is discarded by the widget itself.
+                            onBlur={() => undefined}
+                        />
+                    </div>
 
                     <form
                         className="access-profile__form"
@@ -242,46 +247,45 @@ export function AccessUserProfilePage() {
                             void onSave();
                         }}
                     >
-                        {hasPerson && (
-                            <>
-                                <div className="field grid">
-                                    <label
-                                        htmlFor="access-profile-firstName"
-                                        className="col-12 md:col-4"
-                                    >
-                                        {tr('First Name')}
-                                    </label>
-                                    <div className="flex align-items-center col-12 md:col-8">
-                                        <InputText
-                                            id="access-profile-firstName"
-                                            name="firstName"
-                                            className="w-full"
-                                            value={firstName}
-                                            onChange={e => setFirstName(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="field grid">
-                                    <label
-                                        htmlFor="access-profile-lastName"
-                                        className="col-12 md:col-4"
-                                    >
-                                        {tr('Last Name')}
-                                    </label>
-                                    <div className="flex align-items-center col-12 md:col-8">
-                                        <InputText
-                                            id="access-profile-lastName"
-                                            name="lastName"
-                                            className="w-full"
-                                            value={lastName}
-                                            onChange={e => setLastName(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            </>
-                        )}
                         <div className="field grid">
-                            <label htmlFor="access-profile-email" className="col-12 md:col-4">
+                            <label
+                                htmlFor="access-profile-firstName"
+                                className="col-12 md:col-4"
+                            >
+                                {tr('First Name')}
+                            </label>
+                            <div className="flex align-items-center col-12 md:col-8">
+                                <InputText
+                                    id="access-profile-firstName"
+                                    name="firstName"
+                                    className="w-full"
+                                    value={firstName}
+                                    onChange={e => setFirstName(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="field grid">
+                            <label
+                                htmlFor="access-profile-lastName"
+                                className="col-12 md:col-4"
+                            >
+                                {tr('Last Name')}
+                            </label>
+                            <div className="flex align-items-center col-12 md:col-8">
+                                <InputText
+                                    id="access-profile-lastName"
+                                    name="lastName"
+                                    className="w-full"
+                                    value={lastName}
+                                    onChange={e => setLastName(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="field grid">
+                            <label
+                                htmlFor="access-profile-email"
+                                className="col-12 md:col-4"
+                            >
                                 {tr('Email')}
                             </label>
                             <div className="flex align-items-center col-12 md:col-8">
@@ -295,7 +299,10 @@ export function AccessUserProfilePage() {
                             </div>
                         </div>
                         <div className="field grid">
-                            <label htmlFor="access-profile-language" className="col-12 md:col-4">
+                            <label
+                                htmlFor="access-profile-language"
+                                className="col-12 md:col-4"
+                            >
                                 {tr('Preferred Language')}
                             </label>
                             <div className="flex align-items-center col-12 md:col-8">
@@ -363,7 +370,10 @@ export function AccessUserProfilePage() {
                             </div>
                         </div>
                         <div className="field grid">
-                            <label htmlFor="access-profile-new" className="col-12 md:col-4">
+                            <label
+                                htmlFor="access-profile-new"
+                                className="col-12 md:col-4"
+                            >
                                 {tr('New Password')}
                             </label>
                             <div className="flex align-items-center col-12 md:col-8">
@@ -379,7 +389,10 @@ export function AccessUserProfilePage() {
                             </div>
                         </div>
                         <div className="field grid">
-                            <label htmlFor="access-profile-confirm" className="col-12 md:col-4">
+                            <label
+                                htmlFor="access-profile-confirm"
+                                className="col-12 md:col-4"
+                            >
                                 {tr('Confirm New Password')}
                             </label>
                             <div className="flex align-items-center col-12 md:col-8">
@@ -395,7 +408,11 @@ export function AccessUserProfilePage() {
                             </div>
                         </div>
                         {pwError && (
-                            <Message severity="error" text={pwError} className="access-profile__msg" />
+                            <Message
+                                severity="error"
+                                text={pwError}
+                                className="access-profile__msg"
+                            />
                         )}
                         {pwDone && (
                             <Message

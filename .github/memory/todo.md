@@ -81,7 +81,7 @@ open (72)
 - `T-647` · cross-cutting — The blob store cannot be chosen per namespace yet
 - `T-688` · cross-cutting — lintFix should say when prettier skipped a path
 
-done (49)
+done (50)
 
 - `T-188` · ci — The Storybook leg produces no .ci-report slice
 - `T-352` · ci — Publish a package's non-tap leg failure in the bundle
@@ -133,6 +133,7 @@ done (49)
 - `T-685` · cross-cutting — The package README
 - `T-691` · ci — Regenerate and gate every committed kustomize tree, not only the suite the e2e
   deploys
+- `T-695` · cross-cutting — Thirteen packages typecheck everything except their server test flows
 
 <!-- /memory:index -->
 
@@ -1976,6 +1977,35 @@ assertion. The second question is answered: placeholderVolume writes hostPath /P
 instead of SUITE_MOUNT, because a base that named the container's own mount path read as a real node
 directory in a failing pod and sent one diagnosis after a missing directory instead of after the
 overlay that never patched the source.
+
+### T-695 — Thirteen packages typecheck everything except their server test flows
+
+> _2026-11-16 · cross-cutting · done_
+
+Found while fixing a type error in `realm/blong-party/server/test/test/testProfileCreate.ts`: the
+error was reported by the editor and by nothing else, because a package tsconfig lists
+`test/**/*.ts` and not `server/**/*.ts`, so every tap flow under `server/test/test/` sits outside
+the package typecheck and outside `ci-lint`'s `tsc: full package` step. `realm/blong-party` now
+includes it (clean), and a probe of `realm/blong-access` and `realm/blong-sport` found zero errors
+with it added — the remaining packages are `blong-agent`, `blong-blob`, `blong-chat`,
+`blong-commander`, `blong-core`, `blong-feedback`, `blong-gateway`, `blong-kustomize`,
+`core/blong-kopi`, `core/blong-realm` and `test/blong-int-kustomize`. The fix is one
+`"server/**/*.ts"` line in each include list; what made it worth recording is that the aliasing
+mistake it hid (`{stepName: alias}` annotated as `{alias: …}`) reads as correct and fails only when
+a flow runs.
+
+Proceeding with it corrected the entry rather than the repo: only realm/blong-party had the gap
+among packages that hold tap flows — its tsconfig enumerated folders and omitted server/, so its
+four flows were untyped. The other twelve glob **/*.ts in their include, so their flows were always
+compiled; the audit that named them was reading the wrong thing (it looked for a server/ pattern
+instead of asking whether the include covers the folder). blong-party's include gains
+server/**/*.ts, and what keeps it from recurring is a guard:
+tools/blong-dev/src/repo/tsconfigFlows.ts asks TypeScript itself (readConfigFile +
+parseJsonConfigFileContent, since two tsconfigs carry comments) which files a package compiles, and
+tsconfigFlowsGuard.test.ts fails on any file under server/test that is not among them. Reverting
+party's one line makes it name all four flows, so it is not vacuous; the Playwright specs under
+test/ are out of scope by design, since every package excludes test/*.play.ts and their config
+bundles them.
 
 ## Retired
 

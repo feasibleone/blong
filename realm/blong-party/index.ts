@@ -62,7 +62,12 @@ export default server(() => ({
         },
         integration: {
             watch: {
-                test: ['test.registration.flow', 'test.acl.flow', 'test.scope'],
+                test: [
+                    'test.registration.flow',
+                    'test.acl.flow',
+                    'test.scope',
+                    'test.profile.create',
+                ],
             },
         },
     },

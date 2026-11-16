@@ -2,10 +2,13 @@ import {validation} from '@feasibleone/blong';
 
 /**
  * `access.profile.edit` — update the caller's own profile (email, preferred
- * language, and — when a linked party.person exists — name fields and the
- * photograph). The actor id comes from the token's `sub` claim, never from
- * params, so this is a self-service method: bearer-authenticated but no RBAC
- * action needed.
+ * language, name fields and the photograph). The actor id comes from the
+ * token's `sub` claim, never from params, so this is a self-service method:
+ * bearer-authenticated but no RBAC action needed.
+ *
+ * The name fields reach a `party.person`, and an account that has none yet gets
+ * one created from the first edit that carries both names — see the adapter
+ * handler, which makes the call through the party realm.
  */
 export default validation(
     async ({lib: {type}}) =>
