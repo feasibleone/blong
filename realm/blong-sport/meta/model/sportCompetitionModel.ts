@@ -18,6 +18,7 @@ export default model(
                 public: true,
                 // Deletion: reference data other records point at: refuse and name what still uses it.
                 deletion: {mode: 'block'},
+                menu: {group: 'Sport', order: 5},
                 nameField: 'competition.competitionName',
                 schema: {
                     properties: {

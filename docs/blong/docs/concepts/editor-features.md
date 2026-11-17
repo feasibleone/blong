@@ -318,10 +318,16 @@ enabling hierarchical selection (e.g. continent → country → city) without an
 
 A child dropdown widget declares `widget.parent: 'parentFieldName'`. When the parent value changes,
 the child dropdown filters its options to entries whose `parent` property matches the new parent
-value.
+value. The name says where the value is read — in a model that is the field's full path
+(`competition.sportId`), because that is where the form stores it — and an option is matched under
+the field's own name (`sportId`), the name the row and the dropdown answer use.
+`widget.optionsFilter` is the explicit form for an option that carries the key under another name.
+A pick the child already holds is dropped when the reader replaces that parent, and kept when the
+form is merely loading the record it was saved in.
 
 See the `Editor/CascadedDropdowns` story. Its three fields are the continent → country → city chain,
-and the open city list holds the one city of the selected country rather than all ten:
+and the open city list holds the one city of the selected country rather than all ten; the
+`NestedCascade` variant declares the same chain under a group, the shape a model produces:
 
 ![Cascaded dropdowns with the city list filtered to the selected country](./img/editor-cascaded-dropdowns.png)
 

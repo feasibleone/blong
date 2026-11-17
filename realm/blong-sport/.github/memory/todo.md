@@ -25,7 +25,7 @@ open (16)
 - `T-620` · realm/blong-sport — A second Playwright run leaves deactivated classifier rows
 - `T-621` · realm/blong-sport — Re-run the sport Playwright baselines after the logo and font change
 
-done (31)
+done (32)
 
 - `T-374` · realm/blong-sport — sport P1 scaffold and boot
 - `T-376` · realm/blong-sport — sport P3 schema and seeds
@@ -58,6 +58,7 @@ done (31)
 - `T-598` · realm/blong-sport — Swap the sport logo for an approved Olympic asset
 - `T-677` · realm/blong-sport — sport: the document model attaches a file
 - `T-683` · realm/blong-sport — Playwright: the sport document
+- `T-696` · realm/blong-sport — Cover the sport discipline cascade with a Playwright pick
 
 <!-- /memory:index -->
 
@@ -665,3 +666,20 @@ with one retry), so the captures repeat.
 
 Spec written and green; the deletion-mode change (D-859) is what unblocked it, and two
 state-dependent captures were replaced with deterministic ones.
+
+### T-696 — Cover the sport discipline cascade with a Playwright pick
+
+> _2026-11-17 · realm/blong-sport · done_
+
+A Playwright spec should pick a discipline after a sport and assert the narrowed list, so the realm
+proves its own cascade end to end rather than leaning on the blong-browser unit test. The obvious
+home is competition.play.ts: after 'competition.sportId' is set to Athletics, select
+'competition.disciplineId' and expect only Athletics disciplines in the open list — the created
+competition does not have to keep it, choosing and clearing is enough, or pick a real seeded
+discipline and let the row keep it. The reachable option list is in the dropdown answer from
+sport.dropdown.list, which attaches sportId to every discipline option (D-789, D-875). Mind the
+snapshots: the competition new/edit screenshots would change if the field is left filled.
+
+competition.play.ts opens the create page, picks Athletics and asserts the open discipline list
+equals that sport subset of the dropdown answer, naming Marathon in and 200 m Butterfly out. The
+whole file passes, 17 tests.

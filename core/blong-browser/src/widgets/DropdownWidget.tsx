@@ -7,6 +7,7 @@ import {useBlongForm} from '../components/Form/FormContext.js';
 import {useBlong} from '../context/BlongContext.js';
 import {useOptionLabel} from '../hooks/useText.js';
 import {dropdownRegistry, useDropdownVersion} from '../model/dropdownRegistry.js';
+import {narrowingOf, parentKey} from './cascade.js';
 
 type SelectOption = IDropdownOption;
 
@@ -56,15 +57,34 @@ function DropdownCore({
     // Re-read the list when a write empties the cache.
     const dropdownVersion = useDropdownVersion();
 
-    // Clear this widget's value when the parent selection changes
-    const prevParentValueRef = useRef<unknown>(parentValue);
+    // Clear this widget's value when the parent selection is replaced. A record
+    // the form loads moves the parent from nothing to its saved value, and the
+    // pick beside it came from that same record: it survives. Only a narrowing
+    // that was already in force, and now says something else, invalidates the
+    // pick it narrowed to. @@D-875
+    const prevNarrowingRef = useRef(narrowingOf([parentValue]));
     useEffect(() => {
         if (parent === undefined) return;
-        if (prevParentValueRef.current !== parentValue) {
-            prevParentValueRef.current = parentValue;
-            if (value !== undefined && value !== null) onChange(undefined);
-        }
+        const previous = prevNarrowingRef.current;
+        const current = narrowingOf([parentValue]);
+        if (previous === current) return;
+        prevNarrowingRef.current = current;
+        if (previous === '') return;
+        if (value !== undefined && value !== null) onChange(undefined);
     }, [parentValue, parent, onChange, value]);
+
+    // The explicit form narrows the same way: a field of `optionsFilter` that the
+    // reader replaces drops the pick, and one the record loading fills does not.
+    const filterNarrowing = filterValues ? narrowingOf(Object.values(filterValues)) : undefined;
+    const prevFilterRef = useRef(filterNarrowing);
+    useEffect(() => {
+        if (filterNarrowing === undefined) return;
+        const previous = prevFilterRef.current;
+        if (previous === filterNarrowing) return;
+        prevFilterRef.current = filterNarrowing;
+        if (!previous) return;
+        if (value !== undefined && value !== null) onChange(undefined);
+    }, [filterNarrowing, onChange, value]);
 
     useEffect(() => {
         let cancelled = false;
@@ -99,7 +119,7 @@ function DropdownCore({
         // Priority 2: explicit fetch action (re-fetch when parent value changes)
         if (!fetchAction) return;
         const params: Record<string, unknown> = {};
-        if (parent && parentValue !== undefined) params[parent] = parentValue;
+        if (parent && parentValue !== undefined) params[parentKey(parent)] = parentValue;
         (handler[fetchAction](params, {}) as Promise<unknown>)
             .then(data => {
                 if (!cancelled) setOptions(toOptions(data));
@@ -134,7 +154,10 @@ function DropdownCore({
         : parent && parentValue !== undefined
           ? translatedOptions.filter(o => {
                 const opt = o as unknown as Record<string, unknown>;
-                return opt[parent] === parentValue || opt['parent'] === parentValue;
+                // The value is read at the field's path, the option matched under
+                // the field's own name. @@D-875
+                const key = parentKey(parent);
+                return opt[key] === parentValue || opt['parent'] === parentValue;
             })
           : translatedOptions;
 

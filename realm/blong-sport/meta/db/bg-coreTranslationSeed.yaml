@@ -15,6 +15,7 @@ translation: |
     sport.discipline|10 m Air Rifle=10 м въздушна пушка
     sport.discipline|10 m Platform=кула 10 м
     sport.discipline|10 m Synchronised Platform=синхронизирана кула 10 м
+    sport.discipline|12-team tournament=турнир за 12 отбора
     sport.discipline|100 m=100 м
     sport.discipline|100 m Backstroke=100 м гръб
     sport.discipline|100 m Breaststroke=100 м бруст
@@ -242,6 +243,7 @@ translation: |
     sport.discipline|Épée Team=шпага отборно
     sport.sport|Aquatics=Водни спортове
     sport.sport|Archery=Стрелба с лък
+    sport.sport|Artistic Swimming=Синхронно плуване
     sport.sport|Athletics=Лека атлетика
     sport.sport|Badminton=Бадминтон
     sport.sport|Baseball/Softball=Бейзбол и софтбол
@@ -250,6 +252,7 @@ translation: |
     sport.sport|Canoeing=Кану-каяк
     sport.sport|Cricket=Крикет
     sport.sport|Cycling=Колоездене
+    sport.sport|Diving=Скокове във вода
     sport.sport|Equestrian=Конен спорт
     sport.sport|Fencing=Фехтовка
     sport.sport|Field Hockey=Хокей на трева
@@ -261,6 +264,7 @@ translation: |
     sport.sport|Judo=Джудо
     sport.sport|Lacrosse=Лакрос
     sport.sport|Modern Pentathlon=Модерен петобой
+    sport.sport|Open Water Swimming=Плуване в открити води
     sport.sport|Rowing=Гребане
     sport.sport|Rugby Sevens=Ръгби 7
     sport.sport|Sailing=Ветроходство
@@ -269,10 +273,12 @@ translation: |
     sport.sport|Sport Climbing=Спортно катерене
     sport.sport|Squash=Скуош
     sport.sport|Surfing=Сърфинг
+    sport.sport|Swimming=Плуване в басейн
     sport.sport|Table Tennis=Тенис на маса
     sport.sport|Taekwondo=Таекуондо
     sport.sport|Tennis=Тенис
     sport.sport|Triathlon=Триатлон
     sport.sport|Volleyball=Волейбол
+    sport.sport|Water Polo=Водна топка
     sport.sport|Weightlifting=Вдигане на тежести
     sport.sport|Wrestling=Борба

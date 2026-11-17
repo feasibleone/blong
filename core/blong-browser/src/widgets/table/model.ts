@@ -7,6 +7,7 @@
  */
 import type {ICycleCellState, IEnrichedFieldSchema, IWidgetProps} from '@feasibleone/blong';
 import label from '../../lib/label.js';
+import {parentKey} from '../cascade.js';
 
 export type Row = Record<string, unknown>;
 export type DropdownOption = {value: unknown; label: string; [k: string]: unknown};
@@ -129,11 +130,14 @@ export function optionsForRow(
     }
     const parent = schema.widget?.parent;
     if (!parent) return options;
-    const want = row[parent];
+    // A row is flat, so the parent is read at the field's own name — the leaf of the
+    // path a model declares. @@D-875
+    const key = parentKey(parent);
+    const want = row[key];
     if (want === undefined || want === null || want === '') return options;
     return options.filter(option => {
         const candidate = option as unknown as Record<string, unknown>;
-        return candidate[parent] === want || candidate['parent'] === want;
+        return candidate[key] === want || candidate['parent'] === want;
     });
 }
 

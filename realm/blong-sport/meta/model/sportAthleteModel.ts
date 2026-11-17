@@ -71,10 +71,13 @@ export default model(
                                 primaryDisciplineId: {
                                     title: 'Main Discipline',
                                     // A discipline belongs to one sport, so the list
-                                    // narrows to the sport chosen above. @@D-789
+                                    // narrows to the sport chosen above. The sport
+                                    // field is `primarySportId` while the discipline
+                                    // answer keys its option `sportId`, so this is
+                                    // the explicit form rather than `parent`. @@D-789
                                     widget: {
                                         dropdown: 'sport.discipline',
-                                        parent: 'athlete.primarySportId',
+                                        optionsFilter: {sportId: 'athlete.primarySportId'},
                                     },
                                 },
                                 currentFederationId: {

@@ -67,7 +67,7 @@ export function renderBody(
             return (
                 <ActionButton
                     label={String(value)}
-                    className="p-button-link p-0"
+                    className="p-button-link p-0 text-left"
                     action={fieldSchema?.action}
                     params={{
                         [keyFieldName]: rowData[keyFieldName],

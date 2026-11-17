@@ -77,6 +77,57 @@ export const CascadedDropdowns: StoryFn = () => (
 );
 
 /**
+ * The shape a model produces: every form field lives under the object's group, so the
+ * parent is declared with the path the form stores the value at (`trip.continent`).
+ * The option is still matched under the field's own name (`continent`), which is the
+ * name the row and the dropdown answer use. @@D-875
+ */
+export const NestedCascade: StoryFn = () => (
+    <Editor
+        schema={{
+            properties: {
+                trip: {
+                    properties: {
+                        continent: {
+                            title: 'Continent (nested)',
+                            widget: {type: 'dropdown', dropdown: 'continent'},
+                        },
+                        country: {
+                            title: 'Country (nested)',
+                            widget: {
+                                type: 'dropdown',
+                                dropdown: 'country',
+                                parent: 'trip.continent',
+                            },
+                        },
+                        city: {
+                            title: 'City (nested)',
+                            widget: {
+                                type: 'dropdown',
+                                dropdown: 'city',
+                                parent: 'trip.country',
+                            },
+                        },
+                    },
+                },
+            },
+        }}
+        cards={{
+            edit: {
+                label: undefined,
+                className: 'xl:col-3',
+                widgets: ['trip.continent', 'trip.country', 'trip.city'],
+            },
+        }}
+        dropdowns={{continent: continents, country: countries, city: cities}}
+        editable
+        editMode
+        layout="edit"
+        layouts={{edit: ['edit']}}
+    />
+);
+
+/**
  * The same cascade declared the other way round: `optionsFilter` names which
  * property of the option the parent field must match, so the option list does not
  * have to carry the key under the parent field's own name — and a field can depend

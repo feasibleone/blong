@@ -11,7 +11,9 @@
  * the earlier attempt created stayed behind — two rows of one name also make a
  * dropdown label ambiguous.
  */
+import {fillFields} from '@feasibleone/blong-browser/playwright/model';
 import {expect, test} from '@feasibleone/blong-browser/playwright/shared';
+import type {Page} from '@playwright/test';
 import {browseModel, cleanupModel, createAndEditModel, quiet} from './sportPlay.js';
 
 test.use({blongPermissions: true});
@@ -19,6 +21,42 @@ test.use({blongPermissions: true});
 const competitionName = 'ENT-PLAY-CP Competition';
 const editionName = 'ENT-PLAY-CP Edition';
 const athleteName = 'ENT-PLAY-CP Athlete';
+const athletics = 'Athletics';
+
+/** One option of a dropdown answer, and the parent keys it carries beside its label. */
+interface IDropdownOption {
+    value: string;
+    label: string;
+    [parentKey: string]: unknown;
+}
+
+/** One call to the server through the page's handler proxy. */
+async function api<T = unknown>(
+    page: Page,
+    method: string,
+    params: Record<string, unknown> = {},
+): Promise<T> {
+    // The `integration` intent installs the proxy when the provider mounts, and the
+    // fixture's login has already waited for it; asking again keeps a spec that calls
+    // before rendering a page from racing it.
+    await page.waitForFunction(
+        () => typeof (window as {__blongHandler?: unknown}).__blongHandler === 'object',
+        undefined,
+        {timeout: 15_000},
+    );
+    return page.evaluate(
+        ([name, args]) => {
+            const handler = (window as {__blongHandler?: Record<string, unknown>}).__blongHandler;
+            if (!handler) {
+                throw new Error(
+                    'the page exposed no `__blongHandler`: the integration intent (testHook) is off',
+                );
+            }
+            return (handler[name] as (p: unknown, m: object) => Promise<unknown>)(args, {});
+        },
+        [method, params] as [string, Record<string, unknown>],
+    ) as Promise<T>;
+}
 
 test.describe('Competition', () => {
     // Dependents first: a result points at a participation, which points at the
@@ -64,6 +102,49 @@ test.describe('Competition', () => {
             'competition.competitionIntlName': 'ENT-PLAY-CP International',
         },
         search: competitionName,
+    });
+
+    /**
+     * The discipline list follows the sport — the form-level cascade a model declares
+     * with a parent path (`competition.sportId`) while the option it narrows on carries
+     * the key under `sportId`. @@D-789 @@D-875
+     *
+     * The expected labels come from the same dropdown answer the page was given, so the
+     * spec asserts the narrowing rather than a copy of the seed: every option of the
+     * chosen sport, and nothing from another one. Nothing is saved, so the competition
+     * the earlier steps created keeps its own screenshots.
+     */
+    test('create sport competition — the discipline list follows the sport', async ({portal}) => {
+        const page = portal.page;
+        await portal.menuClick('sport.competition.browse');
+        await portal.waitForTableData();
+        await page.getByTestId('action-component-sport-competition-new').first().click();
+        await portal.waitForFormLoad();
+
+        await fillFields(page, {'competition.sportId': {widget: 'dropdown', value: athletics}});
+
+        // A dropdown with more than eight options filters, so the panel and its items
+        // are the visible ones — the sport's own panel is closed by the pick above.
+        // The panel is what is waited for, not an item: a narrowed-to-nothing list is
+        // the failure this spec exists to catch, so it has to reach the assertion.
+        await page.getByTestId('competition-disciplineId').click();
+        const panel = page.locator('.p-dropdown-panel:visible');
+        await panel.waitFor({state: 'visible'});
+        const shown = await panel.locator('.p-dropdown-item').allTextContents();
+
+        const lists = await api<Record<string, IDropdownOption[]>>(page, 'sport.dropdown.list');
+        const sportId = lists['sport.sport']?.find(option => option.label === athletics)?.value;
+        expect(sportId, `'${athletics}' is a seeded sport`).toBeTruthy();
+        const expected = (lists['sport.discipline'] ?? [])
+            .filter(option => option.sportId === sportId)
+            .map(option => option.label);
+
+        // Named ends as well as the set, so a failure says which way it broke: an empty
+        // list is the symptom this cascade had, and a whole list is the other failure.
+        expect(expected.length, `'${athletics}' has seeded disciplines`).toBeGreaterThan(0);
+        expect([...shown].sort()).toEqual([...expected].sort());
+        expect(shown).toContain('Marathon');
+        expect(shown).not.toContain('200 m Butterfly');
     });
 
     // After the create, and filtered to it: the table is unfiltered otherwise, so the

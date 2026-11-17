@@ -666,6 +666,49 @@ describe('TableWidget', () => {
         expect(items).not.toContain('200 m Butterfly');
     });
 
+    it('narrows a cell editor list through a parent declared at the field path', () => {
+        const {container} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        items: {
+                            properties: {
+                                sportId: {widget: {dropdown: 'sport.sport'}},
+                                // A model declares the parent at the path its form
+                                // stores the value under; the row is flat. @@D-875
+                                disciplineId: {
+                                    widget: {
+                                        dropdown: 'sport.discipline',
+                                        parent: 'competition.sportId',
+                                    },
+                                },
+                            },
+                        },
+                        widget: {type: 'table', columns: ['sportId', 'disciplineId']},
+                    },
+                    dropdowns: {
+                        'sport.discipline': [
+                            {value: 'd1', label: '100 m Sprint', sportId: 'a1'},
+                            {value: 'd2', label: '200 m Butterfly', sportId: 'a2'},
+                        ],
+                    },
+                    value: [{sportId: 'a1', disciplineId: null}],
+                })}
+            />,
+        );
+        const editButton = container.querySelector('.p-row-editor-init');
+        expect(editButton).toBeTruthy();
+        fireEvent.click(editButton!);
+        const cell = container.querySelector('[data-testid$="-0-disciplineId"]');
+        expect(cell).toBeTruthy();
+        fireEvent.click(cell!);
+        const items = Array.from(document.querySelectorAll('.p-dropdown-item')).map(
+            item => item.textContent,
+        );
+        expect(items).toContain('100 m Sprint');
+        expect(items).not.toContain('200 m Butterfly');
+    });
+
     it('narrows the cell list of a row that is being added, once its sibling is picked', () => {
         const {container} = render(
             <StatefulTable
@@ -700,6 +743,60 @@ describe('TableWidget', () => {
         );
         // Add a row and give it a sport: the discipline list has to follow the pick,
         // even though the row is not part of the form value yet. @@D-617
+        fireEvent.click(container.querySelector('[data-testid$="-addButton"]')!);
+        const sportCell = container.querySelector('[data-testid$="-0-sportId"]');
+        expect(sportCell).toBeTruthy();
+        fireEvent.click(sportCell!);
+        const sportOption = Array.from(document.querySelectorAll('.p-dropdown-item')).find(
+            item => item.textContent === 'Athletics',
+        );
+        expect(sportOption).toBeTruthy();
+        fireEvent.click(sportOption!);
+
+        const disciplineCell = container.querySelector('[data-testid$="-0-disciplineId"]');
+        expect(disciplineCell).toBeTruthy();
+        fireEvent.click(disciplineCell!);
+        const items = Array.from(document.querySelectorAll('.p-dropdown-item')).map(
+            item => item.textContent,
+        );
+        expect(items).toContain('100 m Sprint');
+        expect(items).not.toContain('200 m Butterfly');
+    });
+
+    it('narrows the cell list of an added row whose parent is declared at the field path', () => {
+        const {container} = render(
+            <StatefulTable
+                {...mkProps({
+                    schema: {
+                        items: {
+                            properties: {
+                                sportId: {widget: {dropdown: 'sport.sport'}},
+                                // The table records a pick under the row's own field
+                                // name, which is the leaf of this path. @@D-875
+                                disciplineId: {
+                                    widget: {
+                                        dropdown: 'sport.discipline',
+                                        parent: 'participation.sportId',
+                                    },
+                                },
+                            },
+                        },
+                        widget: {type: 'table', columns: ['sportId', 'disciplineId']},
+                    },
+                    dropdowns: {
+                        'sport.sport': [
+                            {value: 'a1', label: 'Athletics'},
+                            {value: 'a2', label: 'Swimming'},
+                        ],
+                        'sport.discipline': [
+                            {value: 'd1', label: '100 m Sprint', sportId: 'a1'},
+                            {value: 'd2', label: '200 m Butterfly', sportId: 'a2'},
+                        ],
+                    },
+                    value: [],
+                })}
+            />,
+        );
         fireEvent.click(container.querySelector('[data-testid$="-addButton"]')!);
         const sportCell = container.querySelector('[data-testid$="-0-sportId"]');
         expect(sportCell).toBeTruthy();

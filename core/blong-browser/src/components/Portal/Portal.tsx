@@ -304,16 +304,18 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
     }, [portalConfig?.menu, command, handler, t, feedbackTarget, allowed]);
 
     const brand = brandOf(portalConfig);
+    const menuTitle =
+        portalConfig?.menuTitle != null ? portalConfig?.menuTitle : portalConfig?.title;
     const start =
         logo ??
-        (portalConfig?.title || brand ? (
+        (menuTitle || brand ? (
             <span className="blong-portal-brand">
                 <BrandMark brand={brand} />
-                {portalConfig?.title && (
+                {menuTitle && (
                     // The brand name is a label: `Text` reads it from the active
                     // dictionary and falls back to the configured string, so a
                     // translation can rename the portal.
-                    <Text className="blong-portal-brand-name">{portalConfig.title}</Text>
+                    <Text className="blong-portal-brand-name">{menuTitle}</Text>
                 )}
             </span>
         ) : undefined);

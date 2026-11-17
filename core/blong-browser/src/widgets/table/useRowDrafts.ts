@@ -11,6 +11,7 @@
  * stops being edited. `@@D-617`
  */
 import {useCallback, useMemo, useState} from 'react';
+import {parentKey} from '../cascade.js';
 import {KEY, type Row} from './model.js';
 
 /** A column whose list is narrowed by a sibling, or by its `parent`. */
@@ -23,7 +24,9 @@ export function useRowDrafts(columns: ICascadeColumn[]) {
         const fields = new Set<string>();
         for (const col of columns) {
             const widget = col.fieldSchema.widget;
-            if (widget?.parent) fields.add(widget.parent);
+            // Picks are recorded under the row's own field name, which is the leaf of
+            // the path a model declares. @@D-875
+            if (widget?.parent) fields.add(parentKey(widget.parent));
             for (const rowField of Object.values(widget?.optionsFilter ?? {})) {
                 fields.add(String(rowField));
             }

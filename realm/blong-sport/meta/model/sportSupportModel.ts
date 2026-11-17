@@ -11,6 +11,7 @@ export default model(
                 public: true,
                 // Deletion: rows that belong to a parent record: take them with it, without asking.
                 deletion: {mode: 'cascade'},
+                menu: {group: 'Sport', order: 4},
                 nameField: 'support.expertRole',
                 schema: {
                     properties: {

@@ -12,47 +12,52 @@
 # the 2024 weight classes where the LA28 classes are not published yet.
 
 sport: |
-    | name              | code |
-    | ----------------- | --- |
-    | Aquatics          | AQU |
-    | Archery           | ARC |
-    | Athletics         | ATH |
-    | Badminton         | BAD |
-    | Baseball/Softball | BSB |
-    | Basketball        | BAS |
-    | Boxing            | BOX |
-    | Canoeing          | CAN |
-    | Cricket           | CRI |
-    | Cycling           | CYC |
-    | Equestrian        | EQP |
-    | Fencing           | FEN |
-    | Field Hockey      | HOC |
-    | Flag Football     | AFF |
-    | Football          | FBL |
-    | Golf              | GOL |
-    | Gymnastics        | GYM |
-    | Handball          | HBL |
-    | Judo              | JUD |
-    | Lacrosse          | LAX |
-    | Modern Pentathlon | MPN |
-    | Rowing            | ROW |
-    | Rugby Sevens      | RUG |
-    | Sailing           | SAL |
-    | Shooting          | SHO |
-    | Skateboarding     | SKB |
-    | Sport Climbing    | CLB |
-    | Squash            | SQU |
-    | Surfing           | SUR |
-    | Table Tennis      | TTN |
-    | Taekwondo         | TKW |
-    | Tennis            | TEN |
-    | Triathlon         | TRI |
-    | Volleyball        | VVO |
-    | Weightlifting     | WLF |
-    | Wrestling         | WRE |
+    | name                | code |
+    | ------------------- | --- |
+    | Aquatics            | AQU |
+    | Archery             | ARC |
+    | Artistic Swimming   | SWA |
+    | Athletics           | ATH |
+    | Badminton           | BAD |
+    | Baseball/Softball   | BSB |
+    | Basketball          | BAS |
+    | Boxing              | BOX |
+    | Canoeing            | CAN |
+    | Cricket             | CRI |
+    | Cycling             | CYC |
+    | Diving              | DIV |
+    | Equestrian          | EQP |
+    | Fencing             | FEN |
+    | Field Hockey        | HOC |
+    | Flag Football       | AFF |
+    | Football            | FBL |
+    | Golf                | GOL |
+    | Gymnastics          | GYM |
+    | Handball            | HBL |
+    | Judo                | JUD |
+    | Lacrosse            | LAX |
+    | Modern Pentathlon   | MPN |
+    | Open Water Swimming | OWS |
+    | Rowing              | ROW |
+    | Rugby Sevens        | RUG |
+    | Sailing             | SAL |
+    | Shooting            | SHO |
+    | Skateboarding       | SKB |
+    | Sport Climbing      | CLB |
+    | Squash              | SQU |
+    | Surfing             | SUR |
+    | Swimming            | SWM |
+    | Table Tennis        | TTN |
+    | Taekwondo           | TKW |
+    | Tennis              | TEN |
+    | Triathlon           | TRI |
+    | Volleyball          | VVO |
+    | Water Polo          | WPO |
+    | Weightlifting       | WLF |
+    | Wrestling           | WRE |
 
 discipline:
-    Aquatics: |
+    Swimming: |
         50 m Freestyle
         100 m Freestyle
         200 m Freestyle
@@ -74,14 +79,18 @@ discipline:
         4 × 200 m Freestyle Relay, kind: team
         4 × 100 m Medley Relay, kind: team
         Mixed 4 × 100 m Medley Relay, kind: team
+    Open Water Swimming: |
         10 km Open Water
+    Diving: |
         3 m Springboard
         10 m Platform
         3 m Synchronised Springboard
         10 m Synchronised Platform
+    Artistic Swimming: |
         Women Artistic Duet
         Mixed Artistic Team, kind: team
-        Water Polo, kind: team
+    Water Polo: |
+        12-team tournament, kind: team
     Archery: |
         Recurve Individual
         Recurve Team, kind: team

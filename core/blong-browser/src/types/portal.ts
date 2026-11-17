@@ -97,6 +97,7 @@ export interface IPortalBrand {
 export interface IPortalConfig {
     name: string;
     title: string;
+    menuTitle?: string;
     theme?: string;
     home?: IAction;
     menu?: IMenuItem[];

@@ -177,7 +177,13 @@ export interface IWidgetConfig {
         children?: unknown[];
         [extra: string]: unknown;
     }>;
-    /** Parent field name for cascaded dropdowns/tables (supports '$.selected.field' or just 'field') */
+    /**
+     * What narrows a cascaded dropdown or table: the field the value is read from
+     * (a table also takes `$.selected.<field>`). A form field is named by the path
+     * the form stores it under (`competition.sportId`), while the option it narrows
+     * on is matched under the field's own name (`sportId`). `optionsFilter` is the
+     * explicit form when an option carries another key. @@D-875
+     */
     parent?: string;
     /** Key mapping for cascaded table filtering: {ownKey: parentKey} */
     master?: Record<string, string>;

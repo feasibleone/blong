@@ -90,7 +90,8 @@ export default browser(blong => ({
             ui: {
                 portal: {
                     portal: {
-                        title: 'National Olympic Register',
+                        menuTitle: '',
+                        title: 'National Olympic Information Platform',
                         // The suite's brand. The login screen, the menubar and the
                         // portal's empty state all read this block, so one entry here
                         // is what turns the default globe-and-"Blong Portal" into

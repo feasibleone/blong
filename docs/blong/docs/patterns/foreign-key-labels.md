@@ -117,15 +117,15 @@ survey: {
 
 Use it where the row is a line in a simple list and the pencil is the obstacle — a checklist, a
 small detail table. A row with many columns, or one where a half-finished edit must not be kept,
-stays on row editing, where the pencil, *Save* and *Cancel* frame the change.
+stays on row editing, where the pencil, _Save_ and _Cancel_ frame the change.
 
 ## See it working
 
-Every capability above has a story in the `blong-browser` Storybook, under
-**Editor / TableColumns** (`src/components/Editor/stories/TableColumns.stories.tsx`): labels and the
-dropdown filter, the formatter, the compare cell, file cells, the selection cells, sorting, the row
-cascade, a table that edits in place and a read-only table. The form-level `optionsFilter` cascade
-sits beside the `parent` one in **Editor / CascadedDropdowns → OptionsFilter**.
+Every capability above has a story in the `blong-browser` Storybook, under **Editor / TableColumns**
+(`src/components/Editor/stories/TableColumns.stories.tsx`): labels and the dropdown filter, the
+formatter, the compare cell, file cells, the selection cells, sorting, the row cascade, a table that
+edits in place and a read-only table. The form-level `optionsFilter` cascade sits beside the
+`parent` one in **Editor / CascadedDropdowns → OptionsFilter**.
 
 The set carries the `table-columns` tag, so the interaction stories can be exercised on their own:
 
@@ -133,6 +133,6 @@ The set carries the `table-columns` tag, so the interaction stories can be exerc
 npx test-storybook --url http://127.0.0.1:6006 --includeTags table-columns
 ```
 
-A date, time or numeric column reads through the shared formatter rather than `toLocaleString`,
-and `useGrouping` is only its shortcut — see [Formatting values](./formatting.md) for the
-specification and the configuration layers behind it.
+A date, time or numeric column reads through the shared formatter rather than `toLocaleString`, and
+`useGrouping` is only its shortcut — see [Formatting values](./formatting.md) for the specification
+and the configuration layers behind it.

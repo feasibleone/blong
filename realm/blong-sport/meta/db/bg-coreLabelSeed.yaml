@@ -20,11 +20,11 @@ label: |
     Attached On=Прикачен на
     Attached To=Прикачен към
     Attachment=Прикачен файл
-    Attachments=Прикачени файлове
+    Attachments=Прикачени документи
     Attestation=Удостоверение
     Award=Награда
-    Award Conferral=Награждаване
-    Award Conferrals=Награждавания
+    Award Conferral=Награди и отличия
+    Award Conferrals=Награди и отличия
     Awards=Награди
     Awards and Recognition=Награди и признания
     Back=Назад
@@ -63,8 +63,8 @@ label: |
     Coach=Треньор
     Coaches=Треньори
     Coaching Activity=Треньорска дейност
-    Coaching Period=Период на трениране
-    Coaching Periods=Периоди на трениране
+    Coaching Period=Период на спортна подготовка
+    Coaching Periods=Периоди на спортна подготовка
     Code=Код
     Commander keys=Клавиши на командира
     Commander keys (?)=Клавиши на командира (?)
@@ -211,7 +211,7 @@ label: |
     Name=Име
     National=Национален
     National Coach=Национален треньор
-    National Olympic Register=Национален олимпийски регистър
+    National Olympic Information Platform=Национален Олимпийска Информационна Платформа
     National Sports Federation=Национална спортна федерация
     Nationality=Националност
     No records found.=Не са открити записи.
@@ -242,7 +242,7 @@ label: |
     Other=Друго
     Participant=Участник
     Participation=Участие
-    Participations=Участия
+    Participations=Спортни участия
     Partner=Партньор
     Pending=В очакване
     Period=Период

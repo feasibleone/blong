@@ -34,7 +34,7 @@ import {
     Tabs,
     Toolbar,
 } from './Editor.stories.js';
-import {CascadedDropdowns} from './stories/CascadedDropdowns.stories.js';
+import {CascadedDropdowns, NestedCascade} from './stories/CascadedDropdowns.stories.js';
 import {CascadedTables} from './stories/CascadedTables.stories.js';
 import {CustomEditors} from './stories/CustomEditors.stories.js';
 import {MasterDetail} from './stories/MasterDetail.stories.js';
@@ -844,6 +844,166 @@ describe('Editor mode behaviour', () => {
         // Edit button gone, Save/Reset appear
         expect(screen.queryByRole('button', {name: 'Edit'})).toBeNull();
         expect(screen.getByRole('button', {name: 'Save'})).toBeTruthy();
+    });
+
+    /**
+     * A model stores its fields under the object's group, so a cascade names the path
+     * the value lives at while the option carries the key under the field's own name.
+     * Left last on purpose: each Editor render advances React's id counter, and the
+     * snapshots above were recorded against the ids the earlier renders produced.
+     */
+    it('narrows a cascade declared at the field path a model uses', async () => {
+        const {findByText} = render(<NestedCascade />, {dispatch});
+        await flushEffects();
+        const user = userEvent.setup();
+        const body = within(document.body);
+        const fieldOf = async (title: string) =>
+            (await findByText(title)).closest('.field.grid') as HTMLElement;
+
+        // The form stores `trip.continent`, the country option carries `continent`. @@D-875
+        const continentField = await fieldOf('Continent (nested)');
+        await act(() => user.click(within(continentField).getByRole('button')));
+        await flushEffects();
+        await act(() => user.click(body.getAllByText('Europe')[0]));
+        await flushEffects();
+
+        const countryField = await fieldOf('Country (nested)');
+        await act(() => user.click(within(countryField).getByRole('button')));
+        await flushEffects();
+
+        // The narrowed list, not an empty one: the continent the pick set is the key
+        // the option carries — an option that matched nothing would have failed here.
+        expect(body.getAllByText('France').length).toBe(1);
+        expect(body.queryAllByText('Kenya')).toHaveLength(0);
+    });
+
+    it('keeps a cascade pick the record loaded, and drops it when the parent is replaced', async () => {
+        const saved = vi.fn().mockResolvedValue({});
+        const saveDispatch = vi.fn().mockImplementation(async (method: string, params: unknown) => {
+            if (method === 'trip.edit') return saved(params);
+            return {};
+        });
+        // Hoisted so the option carrying its parent key infers a wider type than the
+        // dropdown prop declares; an inline literal would be rejected as excess.
+        const continentOptions = [
+            {value: 1, label: 'Africa'},
+            {value: 2, label: 'Europe'},
+        ];
+        const countryOptions = [
+            {value: 12, label: 'France', continent: 2},
+            {value: 1, label: 'Kenya', continent: 1},
+        ];
+        const {findByText} = render(
+            <Editor
+                schema={{
+                    properties: {
+                        trip: {
+                            properties: {
+                                continent: {
+                                    title: 'Continent',
+                                    widget: {type: 'dropdown', dropdown: 'continent'},
+                                },
+                                country: {
+                                    title: 'Country',
+                                    widget: {
+                                        type: 'dropdown',
+                                        dropdown: 'country',
+                                        parent: 'trip.continent',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                }}
+                cards={{
+                    edit: {label: undefined, widgets: ['trip.continent', 'trip.country']},
+                }}
+                dropdowns={{continent: continentOptions, country: countryOptions}}
+                editable
+                editMode
+                layout="edit"
+                layouts={{edit: ['edit']}}
+                saveAction="trip.edit"
+                value={{trip: {continent: 2, country: 12}}}
+            />,
+            {dispatch: saveDispatch},
+        );
+        await flushEffects();
+        await flushEffects();
+        const user = userEvent.setup();
+        const fieldOf = async (title: string) =>
+            (await findByText(title)).closest('.field.grid') as HTMLElement;
+
+        // The form loaded the pair from one record: the country the reader saved is
+        // still there, not cleared by the parent arriving after the first render.
+        expect((await fieldOf('Country')).textContent).toContain('France');
+
+        // Replacing the continent invalidates the pick it narrowed to: the label goes
+        // and the saved value goes with it, rather than a stale pair being written.
+        const continentField = await fieldOf('Continent');
+        await act(() => user.click(within(continentField).getByRole('button')));
+        await flushEffects();
+        await act(() => user.click(within(document.body).getAllByText('Africa')[0]));
+        await flushEffects();
+        expect((await fieldOf('Country')).textContent).not.toContain('France');
+
+        await waitFor(() => expect(screen.getByRole('button', {name: 'Save'})).not.toBeDisabled());
+        await act(() => fireEvent.click(screen.getByRole('button', {name: 'Save'})));
+        await waitFor(() => expect(saved).toHaveBeenCalled());
+        const payload = saved.mock.calls[0][0] as Record<string, Record<string, unknown>>;
+        expect(payload['trip']?.['country'] ?? payload['trip.country']).toBeUndefined();
+    });
+
+    it('keeps the pick an optionsFilter field was loaded with', async () => {
+        // The explicit form narrows on a field whose name differs from the key the
+        // option carries — what an athlete's `primarySportId`/`primaryDisciplineId`
+        // declares — and a record it was saved in must survive the same load.
+        const continentOptions = [
+            {value: 1, label: 'Africa'},
+            {value: 2, label: 'Europe'},
+        ];
+        const countryOptions = [
+            {value: 12, label: 'France', continent: 2},
+            {value: 1, label: 'Kenya', continent: 1},
+        ];
+        const {findByText} = render(
+            <Editor
+                schema={{
+                    properties: {
+                        trip: {
+                            properties: {
+                                sport: {
+                                    title: 'Sport',
+                                    widget: {type: 'dropdown', dropdown: 'continent'},
+                                },
+                                country: {
+                                    title: 'Country (explicit)',
+                                    widget: {
+                                        type: 'dropdown',
+                                        dropdown: 'country',
+                                        optionsFilter: {continent: 'trip.sport'},
+                                    },
+                                },
+                            },
+                        },
+                    },
+                }}
+                cards={{edit: {label: undefined, widgets: ['trip.sport', 'trip.country']}}}
+                dropdowns={{continent: continentOptions, country: countryOptions}}
+                editable
+                editMode
+                layout="edit"
+                layouts={{edit: ['edit']}}
+                value={{trip: {sport: 2, country: 12}}}
+            />,
+            {dispatch},
+        );
+        await flushEffects();
+        await flushEffects();
+        const countryField = (await findByText('Country (explicit)')).closest(
+            '.field.grid',
+        ) as HTMLElement;
+        expect(countryField.textContent).toContain('France');
     });
 });
 

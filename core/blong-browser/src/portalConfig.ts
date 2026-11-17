@@ -59,12 +59,13 @@ function mergeEntries(target: MenuEntry[], incoming: readonly MenuEntry[]): void
 function firstSet<K extends keyof IPortalConfig>(
     providers: readonly Partial<IPortalConfig>[],
     key: K,
+    skipEmpty: boolean = true,
 ): IPortalConfig[K] | undefined {
     for (const provider of providers) {
         const value = provider[key];
         if (value === undefined || value === null) continue;
-        if (typeof value === 'string' && value === '') continue;
-        if (Array.isArray(value) && value.length === 0) continue;
+        if (skipEmpty && typeof value === 'string' && value === '') continue;
+        if (skipEmpty && Array.isArray(value) && value.length === 0) continue;
         return value;
     }
     return undefined;
@@ -84,6 +85,7 @@ export function mergePortalConfigs(
     const config: IPortalConfig = {
         name: firstSet(providers, 'name') ?? 'blong-portal',
         title: firstSet(providers, 'title') ?? 'Blong',
+        menuTitle: firstSet(providers, 'menuTitle', false),
     };
     const theme = firstSet(providers, 'theme');
     if (theme !== undefined) config.theme = theme;

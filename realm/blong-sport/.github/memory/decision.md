@@ -32,12 +32,12 @@ active (28)
 - `D-786` · realm/blong-sport — Profile removal cascades the profile row and the party row
 - `D-788` · realm/blong-sport — The classifier and register seeds are handler-backed and resolve
   names
-- `D-789` · realm/blong-sport — The pickers cascade through parent keys on the dropdown answer
 - `D-787` · realm/blong-sport — disciplineSex: empty means both sexes, mixed one event
 - `D-791` · realm/blong-sport — Seeds are short tables and the handler derives the rest
 - `D-792` · realm/blong-sport — Sport's logo is the committee's own lockup, with a separate toolbar
   mark
 - `D-859` · realm/blong-sport — The document register deletes with a prompt, not a refusal
+- `D-789` · realm/blong-sport — The pickers cascade through parent keys on the dropdown answer
 
 superseded (1)
 
@@ -312,20 +312,6 @@ seed creates them. The translations stay in bg-coreTranslationSeed.yaml: it is t
 i18n collector, the Playwright harvest and the page that reads them already use, so folding them
 into the classifier file would have meant two sources for one dictionary.
 
-### D-789 — The pickers cascade through parent keys on the dropdown answer
-
-> _2026-11-07 · realm/blong-sport · active_
-
-The three reference pickers cascade sport to discipline to category, and the cascade is carried by
-the dropdown answer, not by the widget. sport.dropdown.list returns the option list the base adapter
-built — label translated in the caller's language, record-level ACL applied — and attaches each
-row's parent keys to it (sportId on a discipline, sportId and disciplineId on a category), because
-rebuilding the list in the realm would have meant repeating the translation join and the ACL filter.
-A form declares the narrowing as parent: 'sportId' where the option key is the field name, and as
-optionsFilter: {disciplineId: 'disciplineId'} where it is not. A category also carries its sport so
-a record whose discipline is still empty narrows by sport alone, and an empty parent field leaves
-the list whole, so the first pick is never blocked.
-
 ### D-787 — disciplineSex: empty means both sexes, mixed one event
 
 > _2026-11-07 · realm/blong-sport · active_
@@ -431,6 +417,21 @@ place: the register's browse page is pictured after the file's own cleanup has e
 delete dialog is pictured by the spec that creates the record it deletes (`@@T-683`). A picture of
 "however many rows a previous run left" is not a baseline — it is a snapshot of a developer's
 database.
+
+### D-789 — The pickers cascade through parent keys on the dropdown answer
+
+> _2026-11-07 · realm/blong-sport · active_
+
+The three reference pickers cascade sport to discipline, and the cascade is carried by the dropdown
+answer, not by the widget. sport.dropdown.list returns the option list the base adapter built —
+label translated in the caller's language, record-level ACL applied — and attaches each row's parent
+key to it (sportId on a discipline), because rebuilding the list in the realm would have meant
+repeating the translation join and the ACL filter. A form declares the narrowing as parent:
+'competition.sportId' — the path the form stores the field under, which is what the widget watches —
+and the option is matched under the field's own name, sportId, because that is the key the answer
+carries (@@D-875). optionsFilter: {disciplineId: 'disciplineId'} is the explicit form for an option
+that carries the key under another name. An empty parent field leaves the list whole, so the first
+pick is never blocked.
 
 ## Superseded
 
