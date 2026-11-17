@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.46.2](https://github.com/feasibleone/blong/compare/blong-docs-v1.46.1...blong-docs-v1.46.2) (2026-11-17)
+
+
+### Bug Fixes
+
+* address blong-sport feedback ([f8d5881](https://github.com/feasibleone/blong/commit/f8d5881d3e33310841b295b53fd86255116122e7))
+
 ## [1.46.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.46.0...blong-docs-v1.46.1) (2026-11-16)
 
 
