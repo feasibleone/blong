@@ -148,6 +148,7 @@ words:
   - errno
   - ERRORRELEASEJOBTRIGGER
   - errorreleasjobtrigger
+  - esbenp
   - ESOCKETTIMEDOUT
   - evals
   - fallbacks
@@ -250,6 +251,7 @@ words:
   - lockup
   - logviewer
   - LONGTEXT
+  - lukaot
   - Mandarinfish
   - Marlin
   - mdns
@@ -414,6 +416,7 @@ words:
   - Semlog
   - SEPA
   - serialisable
+  - serialisers
   - servable
   - serviceaccount
   - servicelb

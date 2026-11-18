@@ -103,6 +103,47 @@ test('a group note at the margin belongs to the group, not the last task', async
     t.end();
 });
 
+test('a title the formatter wrapped keeps its area and its detail', async t => {
+    const doc = parsePlan(`- [ ] Re-point identity at the new store · area:
+      core/blong-gogo
+
+    Rename the module.
+
+    - verify: \`blong-dev test\` passes
+`);
+    t.equal(doc.tasks[0]?.title, 'Re-point identity at the new store');
+    t.equal(doc.tasks[0]?.area, 'core/blong-gogo', 'the area is read across the break');
+    t.same(doc.tasks[0]?.body, ['Rename the module.', '', '- verify: `blong-dev test` passes']);
+    t.same(doc.problems, [], 'a wrapped title is not a problem');
+    t.end();
+});
+
+test('a title that wraps before its area marker is still one line', async t => {
+    const doc = parsePlan(`- [ ] A long title that the formatter broke ·
+      area: docs
+`);
+    t.equal(doc.tasks[0]?.title, 'A long title that the formatter broke');
+    t.equal(doc.tasks[0]?.area, 'docs');
+    t.same(doc.tasks[0]?.body, []);
+    t.end();
+});
+
+test('a decision whose area wrapped is still a decision', async t => {
+    const doc = parsePlan(`### Decisions this plan takes
+
+- A decision with a title long enough that the formatter wrapped its area · area:
+  core/lukaot
+
+    The reasoning.
+
+## 3. Work breakdown
+`);
+    t.equal(doc.decisions.length, 1);
+    t.equal(doc.decisions[0]?.area, 'core/lukaot');
+    t.same(doc.decisions[0]?.body, ['The reasoning.']);
+    t.end();
+});
+
 test('a task without an area is a problem a reader can act on', async t => {
     const doc = parsePlan('- [ ] No area here\n      Detail.\n');
     t.match(doc.problems[0], /names no area/);
@@ -303,10 +344,19 @@ test('a plan without a decisions heading has none, and parses as it always did',
 });
 
 test('a title that names its position rather than its subject is reported', async t => {
-    t.equal(positionalTitle('Group 3 verification'), 'names a position in the plan, not the thing it checks');
+    t.equal(
+        positionalTitle('Group 3 verification'),
+        'names a position in the plan, not the thing it checks',
+    );
     t.equal(positionalTitle('Phase 2'), 'names a position in the plan, not the thing it checks');
-    t.equal(positionalTitle('Verification'), 'names a position in the plan, not the thing it checks');
-    t.equal(positionalTitle('Group 4 tests and docs'), 'names a position in the plan, not the thing it checks');
+    t.equal(
+        positionalTitle('Verification'),
+        'names a position in the plan, not the thing it checks',
+    );
+    t.equal(
+        positionalTitle('Group 4 tests and docs'),
+        'names a position in the plan, not the thing it checks',
+    );
     t.equal(positionalTitle('Group 2: the parser answers a bad type with 415'), undefined);
     t.equal(positionalTitle('Verify a mismatched content type answers 415'), undefined);
     t.equal(positionalTitle("The realm's tap groups"), undefined, 'a plural is not a position');

@@ -8,11 +8,14 @@
  *
  * ```markdown
  * - [ ] Scaffold the realm · area: realm/blong-agent
- *       Created with `kukum realm add …`.
+ *
+ *     Created with `kukum realm add …`.
  * ```
  *
- * The title line is a checkbox, the title, and a ` · area: <area>` suffix. Everything
- * below it that is blank or indented is the task's detail, dedented when it is read.
+ * The title line is a checkbox, the title, and a ` · area: <area>` suffix, and the detail is a
+ * paragraph indented four spaces below a blank line — the shape a markdown formatter leaves alone,
+ * where a lazy continuation would be re-flowed into the title and a `- verify:` glued to the prose
+ * above it. A title the formatter wraps is still one line: `readWrappedTitle` joins it back.
  * After `plan tasks` creates the entry the line keeps its checkbox and title and gains
  * the entry's id as a link:
  *
@@ -271,6 +274,47 @@ export function parseTaskLine(rest: string): {
     return {id, link, title: text, area};
 }
 
+/** How many lines a wrapped title may occupy in total, so a stray block is not read as one. */
+const MAX_TITLE_LINES = 3;
+
+/**
+ * Read a title a formatter wrapped onto the lines below it.
+ *
+ * The task line is the parser's contract, but a markdown formatter re-wraps a line wider than its
+ * print width at a space — and this repository's prettier config sets `proseWrap: always`, so a long
+ * title, or just a ` · area:` whose value will not fit, continues on the next line indented to the
+ * marker:
+ *
+ * ```markdown
+ * - [ ] Re-point identity at the new store · area:
+ *       core/blong-gogo
+ * ```
+ *
+ * That is one logical line and the parser has to read it as one, or a formatter silently robs every
+ * long title of its area. The blank line the format requires before the detail is what separates the
+ * two: every indented line up to the first blank belongs to the title, and joining stops as soon as
+ * the text carries an area, so a task that genuinely names none keeps the detail where it was and is
+ * reported as before.
+ */
+function readWrappedTitle(
+    lines: readonly string[],
+    index: number,
+    rest: string,
+    limit: number,
+): {parsed: ReturnType<typeof parseTaskLine>; extra: number} {
+    const first = parseTaskLine(rest);
+    if (first.area) return {parsed: first, extra: 0};
+    const words = [rest.trim()];
+    for (let scan = index + 1; scan < limit && words.length < MAX_TITLE_LINES; scan += 1) {
+        const next = lines[scan] ?? '';
+        if (next.trim() === '' || !/^[ \t]/.test(next) || FENCE.test(next)) break;
+        words.push(next.trim());
+        const parsed = parseTaskLine(words.join(' '));
+        if (parsed.area) return {parsed, extra: words.length - 1};
+    }
+    return {parsed: first, extra: 0};
+}
+
 /** Read a plan from disk. */
 export function readPlan(path: string): IPlanDocument {
     return parsePlan(readFileSync(path, 'utf8'), path);
@@ -301,7 +345,12 @@ export function parsePlan(text: string, path = '', defaultArea?: string): IPlanD
         if (fence) continue;
         const match = TASK.exec(line);
         if (!match) continue;
-        const parsed = parseTaskLine(match.groups?.['rest'] ?? '');
+        const {parsed, extra} = readWrappedTitle(
+            lines,
+            index,
+            match.groups?.['rest'] ?? '',
+            lines.length,
+        );
         const checked = (match.groups?.['mark'] ?? ' ').toLowerCase() === 'x';
         if (!parsed.title) {
             problems.push(`line ${index + 1}: a task has no title`);
@@ -311,8 +360,8 @@ export function parsePlan(text: string, path = '', defaultArea?: string): IPlanD
         // The detail is every following line that is blank or indented; the first
         // line at the margin ends the task, which is what makes a group's own
         // `- **Verification**` note belong to the group and not to the last task.
-        let end = index;
-        let scan = index + 1;
+        let end = index + extra;
+        let scan = index + extra + 1;
         let innerFence = false;
         while (scan < lines.length) {
             const next = lines[scan] ?? '';
@@ -328,7 +377,8 @@ export function parsePlan(text: string, path = '', defaultArea?: string): IPlanD
             scan += 1;
         }
 
-        const raw = lines.slice(index + 1, end + 1);
+        const raw = lines.slice(index + extra + 1, end + 1);
+        while (raw.length > 0 && (raw[0] ?? '').trim() === '') raw.shift();
         while (raw.length > 0 && (raw[raw.length - 1] ?? '').trim() === '') raw.pop();
         const indents = raw.filter(line => line.trim() !== '').map(indentOf);
         const dedentBy = indents.length > 0 ? Math.min(...indents) : 0;
@@ -430,11 +480,11 @@ function parseDecisions(lines: readonly string[]): IPlanDecision[] {
     for (let index = start + 1; index < end; index += 1) {
         const match = DECISION.exec(lines[index] ?? '');
         if (!match) continue;
-        const parsed = parseTaskLine(match.groups?.['rest'] ?? '');
+        const {parsed, extra} = readWrappedTitle(lines, index, match.groups?.['rest'] ?? '', end);
         // The detail is every following line that is blank or indented; the first line at the
         // margin ends the decision, which is what lets a paragraph after the list be prose.
-        let last = index;
-        let scan = index + 1;
+        let last = index + extra;
+        let scan = index + extra + 1;
         let innerFence = false;
         while (scan < end) {
             const next = lines[scan] ?? '';
@@ -448,7 +498,8 @@ function parseDecisions(lines: readonly string[]): IPlanDecision[] {
             last = scan;
             scan += 1;
         }
-        const raw = lines.slice(index + 1, last + 1);
+        const raw = lines.slice(index + extra + 1, last + 1);
+        while (raw.length > 0 && (raw[0] ?? '').trim() === '') raw.shift();
         while (raw.length > 0 && (raw[raw.length - 1] ?? '').trim() === '') raw.pop();
         const indents = raw.filter(line => line.trim() !== '').map(indentOf);
         const dedentBy = indents.length > 0 ? Math.min(...indents) : 0;

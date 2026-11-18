@@ -97,10 +97,12 @@ in the plan.
 ### Decisions this plan takes
 
 - <The choice, as a statement> · area: <package folder or reserved area>
-      <Why this and not the alternative. The consequence a later reader needs.>
+
+    <Why this and not the alternative. The consequence a later reader needs.>
 
 - <The next choice> · area: <area>
-      <Why.>
+
+    <Why.>
 
 ### Where the capability lands
 
@@ -124,26 +126,32 @@ that is not obvious from the code.>
 ### Group 1: Foundation — <what it makes true>
 
 - [ ] <Task title> · area: <package folder or reserved area>
-      <What to change, where, and how it is verified. This is the detail that moves to memory.>
-      - verify: `<exact command or assertion>`
+
+    <What to change, where, and how it is verified. This is the detail that moves to memory.>
+
+    - verify: `<exact command or assertion>`
 
 - [ ] <Task title> · area: <area>
-      <detail>
+
+    <detail>
 
 ### Group 2: Functionality — <what it makes true>
 
 - [ ] <Task title> · area: <area>
-      <detail>
+
+    <detail>
 
 ### Group 3: Tests
 
 - [ ] <Task title> · area: <area>
-      <detail>
+
+    <detail>
 
 ### Group 4: Docs
 
 - [ ] <Task title> · area: docs
-      <detail>
+
+    <detail>
 
 ## 4. Tracking
 
@@ -175,15 +183,18 @@ them instead, as the first subsection of `## 2. Technical approach`:
 ### Decisions this plan takes
 
 - A blob is addressed by a scope, not a namespace · area: realm/blong-blob
-      A scope is what the cookie carries, so a read proves the caller owns the bytes. A
-      namespace would have to be checked against the party on every request.
+
+    A scope is what the cookie carries, so a read proves the caller owns the bytes. A
+    namespace would have to be checked against the party on every request.
 
 - The upload route asks for its stream body · area: core/blong-gogo
-      A parser registered at the root makes every route accept what it cannot read.
+
+    A parser registered at the root makes every route accept what it cannot read.
 ```
 
 - A decision is `- <title> · area: <area>` — a plain bullet, never a checkbox, so the task parser
-  ignores it. The detail is the indented lines below it, in the same shape a task uses.
+  ignores it. Its detail is a blank line and then a paragraph indented four spaces, in the same
+  shape a task uses.
 - The heading is exactly `### Decisions this plan takes` (level 2–4). The list ends at the next
   heading of the same or a higher level, so keep the whole list in one block.
 - `plan init` (and `plan tasks --apply`) creates one `D-` entry per line, moves the detail into it
@@ -211,9 +222,15 @@ around it:
   is the same title in every plan, so two entries carry it and neither can be found by search. The
   entry is read on its own, long after the group numbering is gone; `plan check` reports a
   positional title and one that repeats an existing entry's.
-- The detail is everything below the line that is indented or blank. It becomes the entry's body, so
-  it may hold paragraphs, lists, fenced snippets and a `- verify:` line — but **never a heading**,
-  because a memory entry holds prose, not sections.
+- The detail is a **blank line** and then a paragraph **indented four spaces** — the shape prettier
+  leaves alone, since it re-flows a lazy continuation into the title's paragraph and glues a
+  `- verify:` to the prose above it. It becomes the entry's body, so it may hold paragraphs, lists,
+  fenced snippets and a `- verify:` item of its own — but **never a heading**, because a memory
+  entry holds prose, not sections.
+- **A title may be wrapped by the formatter, and the parser reads it as one line.** Prettier
+  re-wraps anything past its print width at a space, so a long title ends with `· area:` and its
+  value on the next indented line; everything up to the first blank line belongs to the title, and
+  the detail starts after it. Write the title on one line; do not shorten it to dodge the wrap.
 - A checkbox outside the work breakdown is not a task. Keep decision lists and other checklists in
   plain bullets.
 - A decision line is the same contract without the checkbox: `- <title> · area: <area>` with its
