@@ -4,6 +4,7 @@
         "rootDir": ".",
         "outDir": "dist",
         "allowImportingTsExtensions": true,
+        "types": ["node"],
         "noEmit": true
     }
 }
