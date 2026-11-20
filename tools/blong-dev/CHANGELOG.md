@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.19.3...blong-dev-v1.20.0) (2026-11-20)
+
+
+### Features
+
+* lukaot ([b845604](https://github.com/feasibleone/blong/commit/b8456044641c38ec9fe070f6be72bcc1a82140e8))
+
 ## [1.19.3](https://github.com/feasibleone/blong/compare/blong-dev-v1.19.2...blong-dev-v1.19.3) (2026-11-16)
 
 

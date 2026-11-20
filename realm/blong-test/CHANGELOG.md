@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.1](https://github.com/feasibleone/blong/compare/blong-test-v1.13.0...blong-test-v1.13.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* build ([b105537](https://github.com/feasibleone/blong/commit/b1055379cbc20edd12924d7633e3241d96307293))
+
 ## [1.13.0](https://github.com/feasibleone/blong/compare/blong-test-v1.12.0...blong-test-v1.13.0) (2026-11-06)
 
 

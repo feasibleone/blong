@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-core-v1.6.2...blong-core-v1.7.0) (2026-11-20)
+
+
+### Features
+
+* lukaot ([b845604](https://github.com/feasibleone/blong/commit/b8456044641c38ec9fe070f6be72bcc1a82140e8))
+
 ## [1.6.2](https://github.com/feasibleone/blong/compare/blong-core-v1.6.1...blong-core-v1.6.2) (2026-11-16)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.0](https://github.com/feasibleone/blong/compare/blong-access-v1.21.2...blong-access-v1.22.0) (2026-11-20)
+
+
+### Features
+
+* lukaot ([b845604](https://github.com/feasibleone/blong/commit/b8456044641c38ec9fe070f6be72bcc1a82140e8))
+
 ## [1.21.2](https://github.com/feasibleone/blong/compare/blong-access-v1.21.1...blong-access-v1.21.2) (2026-11-16)
 
 

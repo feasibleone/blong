@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/feasibleone/blong/compare/blong-access-mock-v1.1.1...blong-access-mock-v1.1.2) (2026-11-20)
+
+
+### Bug Fixes
+
+* lint ([8904c05](https://github.com/feasibleone/blong/commit/8904c05440edee6eabb1af278f03ebcede2288ad))
+
 ## [1.1.1](https://github.com/feasibleone/blong/compare/blong-access-mock-v1.1.0...blong-access-mock-v1.1.1) (2026-11-03)
 
 
