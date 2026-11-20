@@ -54,6 +54,9 @@ importers:
       '@slack/types':
         specifier: ^2.20.1
         version: 2.20.1
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
       '@types/react':
         specifier: ^19.1.2
         version: 19.2.14
