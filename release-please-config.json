@@ -7,7 +7,6 @@
         "core/blong-browser": {},
         "core/blong-chain": {},
         "core/blong-config": {},
-        "core/semantic-log": {},
         "realm/blong-commander": {},
         "realm/blong-core": {},
         "tools/blong-dev": {},
