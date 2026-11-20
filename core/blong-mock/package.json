@@ -18,7 +18,8 @@
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
         "@feasibleone/blong-lib": "workspace:^1.0.0",
-        "typebox": "^1.1.5"
+        "typebox": "^1.1.5",
+        "@feasibleone/lukaot": "workspace:^"
     },
     "devDependencies": {
         "@feasibleone/blong-dev": "workspace:*",

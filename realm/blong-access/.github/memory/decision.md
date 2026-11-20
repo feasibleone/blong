@@ -217,15 +217,16 @@ no leftover roles accumulate in the graph the matrix lists.
 
 > _2026-09-16 · realm/blong-access · active_
 
-User decision (T-102): a new role takes MAX(roleBit) + 1, monotonic and never reusing a bit freed by
-a deleted role, because a bit is the role's position in the per mask of already-minted tokens -
-reusing one could silently hand a live token the new role's actions. Every creation path (model add,
-registration, authorization merge, seed merge, gateway bundles) now goes through the one door
-access.role.ensure: blank or omitted means allocate, an explicit bit is honoured or refused with
-role.bitTaken (role.bitInvalid out of range), an existing role always keeps its bit
-(role.bitImmutable on a change attempt), and the row is read back so the caller learns the real bit.
-Seed files list roles by name only (1-accessRoleMerge.yaml lost its bit table); a fresh database
-still numbers the seeded roles 0..5 in file order because MAX on an empty table yields 0.
+User decision (recorded in the retired semantic-log memory): a new role takes MAX(roleBit) + 1,
+monotonic and never reusing a bit freed by a deleted role, because a bit is the role's position in
+the per mask of already-minted tokens - reusing one could silently hand a live token the new role's
+actions. Every creation path (model add, registration, authorization merge, seed merge, gateway
+bundles) now goes through the one door access.role.ensure: blank or omitted means allocate, an
+explicit bit is honoured or refused with role.bitTaken (role.bitInvalid out of range), an existing
+role always keeps its bit (role.bitImmutable on a change attempt), and the row is read back so the
+caller learns the real bit. Seed files list roles by name only (1-accessRoleMerge.yaml lost its bit
+table); a fresh database still numbers the seeded roles 0..5 in file order because MAX on an empty
+table yields 0.
 
 ### D-300 — Self-registration requires email verification, social logins skip it
 

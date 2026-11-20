@@ -61,9 +61,9 @@ flowchart LR
     subgraph SERVER["server platform"]
         direction TB
         server-default-intent["default"] --- server-default-layers["api · init · meta"]
-        server-microservice-intent["microservice"] --- server-microservice-layers["error · adapter · orchestrator · gateway · server/api"]
-        server-k8s-intent["k8s"] --- server-k8s-layers["error · adapter · orchestrator · gateway · server/api"]
-        server-upgrade-intent["upgrade"] --- server-upgrade-layers["error · adapter · orchestrator"]
+        server-microservice-intent["microservice"] --- server-microservice-layers["error · lukaot · adapter · orchestrator · gateway · server/api"]
+        server-k8s-intent["k8s"] --- server-k8s-layers["error · lukaot · adapter · orchestrator · gateway · server/api"]
+        server-upgrade-intent["upgrade"] --- server-upgrade-layers["error · lukaot · adapter · orchestrator"]
         server-integration-intent["integration"] --- server-integration-layers["sim · server/test"]
     end
     subgraph BROWSER["browser platform"]
@@ -92,6 +92,7 @@ handlers it     dispatches (D-436).
 | `browser/init`         | —                          | default              |
 | `browser/orchestrator` | —                          | default              |
 | `error`                | microservice, k8s, upgrade | —                    |
+| `lukaot`               | microservice, k8s, upgrade | —                    |
 | `adapter`              | microservice, k8s, upgrade | —                    |
 | `orchestrator`         | microservice, k8s, upgrade | —                    |
 | `gateway`              | microservice, k8s          | —                    |

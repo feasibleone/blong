@@ -67,15 +67,14 @@ export default orchestrator(() => ({
                 const registered = [...available].filter(n =>
                     n.startsWith(model.subject.toLowerCase()),
                 );
-                this.log?.warn?.({
-                    $meta: {mtid: 'event', method: 'subject.subjectModelList'},
-                    message:
-                        `Model handler name mismatch: derived '${handlerName}' is not a registered ` +
-                        `model handler; expected file '${handlerName}.ts'` +
-                        (registered.length > 0
+                // The identifier says what happened; the values say which name was derived and
+                // which ones the package does register (`@@D-896`).
+                this.signal?.serverModelHandlerMismatch?.({
+                    handler: handlerName,
+                    registered:
+                        registered.length > 0
                             ? ` (registered for '${model.subject}': ${registered.join(', ')})`
-                            : '') +
-                        '.',
+                            : '',
                 });
             }
             subjectModelAdd(handlerName, model);

@@ -8,6 +8,8 @@
  * because a handler must answer with sane values when it is called on a port whose config never
  * merged.
  */
+
+import type {VocabularyProxy} from '@feasibleone/blong/types';
 export interface IAgentDispatchSettings {
     /** The method a human question is asked through. */
     questionMethod?: string;
@@ -70,7 +72,16 @@ export interface IAgentPersonaPreset {
 export interface IAgentDispatchPort {
     config?: IAgentDispatchSettings;
     dispatch?: (params: unknown, $meta: unknown) => Promise<unknown>;
+    /** The component's level face, still used where a line has no declared identifier yet. */
     log?: {warn?: (entry: unknown) => void};
+    /**
+     * The layer's declared vocabulary (`@@T-717`).
+     *
+     * A handler's `port` is this whole object; the declaration lives in `lukaot/signal.ts` and
+     * `lukaot/error.ts`, and every call site writes `?.` because a realm loaded without the layer has no
+     * vocabulary rather than an empty one.
+     */
+    signal?: VocabularyProxy;
 }
 
 export const agentSettings = (config: IAgentDispatchSettings | undefined) => ({

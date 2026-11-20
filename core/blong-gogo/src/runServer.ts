@@ -1,7 +1,7 @@
-import {type SolutionFactory, kind} from '@feasibleone/blong/types';
-import {existsSync} from 'node:fs';
-import {basename, dirname, resolve} from 'node:path';
-import {analyzeFolder, synthesizeServerFromHandlers} from './folderAnalysis.ts';
+import { type SolutionFactory, type VocabularyProxy, kind } from '@feasibleone/blong/types';
+import { existsSync } from 'node:fs';
+import { basename, dirname, resolve } from 'node:path';
+import { analyzeFolder, synthesizeServerFromHandlers } from './folderAnalysis.ts';
 import load from './loadServer.ts';
 
 /** Default intents applied when none are provided on the CLI. */
@@ -17,8 +17,15 @@ export const DEFAULT_INTENTS = [
  * can be unit-tested without touching the real process.
  */
 export interface GracefulShutdownOptions {
-    /** Logger for a final structured "shutting down" line (optional). */
-    log?: {info?: (...args: unknown[]) => void; error?: (...args: unknown[]) => void};
+    /**
+     * The process's vocabulary, when the caller hands one over (optional).
+     *
+     * Named `vocabulary` rather than `signal` because the handler's own parameter *is* the signal —
+     * `SIGTERM` — and the two would shadow each other. Not a logger: the two things this handler says
+     * are declared signals, so what it needs is the vocabulary, and nothing that carries levels. A
+     * caller with none passes nothing and the handler still writes its deterministic marker.
+     */
+    vocabulary?: VocabularyProxy;
     /** Exit function — defaults to `process.exit`. Injected in tests. */
     exit?: (code: number) => void;
     /** Raw output writer for the deterministic marker — defaults to `process.stderr.write`. */
@@ -35,7 +42,7 @@ export interface GracefulShutdownOptions {
  */
 export function createShutdownHandler(
     stop: () => Promise<unknown>,
-    {log, exit, write, timeoutMs}: GracefulShutdownOptions = {},
+    {vocabulary, exit, write, timeoutMs}: GracefulShutdownOptions = {},
 ): {handler: (signal: string) => void; unsubscribe: () => void} {
     const exitFn = exit ?? (code => process.exit(code));
     const writeFn = write ?? (s => process.stderr.write(s));
@@ -51,7 +58,9 @@ export function createShutdownHandler(
         }
         shuttingDown = true;
         writeFn(`blong: shutting down on ${signal}\n`);
-        log?.info?.({signal}, 'shutting down');
+        // The SIGTERM/SIGINT that started it stays on the record as a param: the sentence does
+        // not interpolate it, and a reader looking at why a process stopped wants to know which.
+        vocabulary?.frameworkShutdownStarting?.({signal});
         // Start the bounded-wait timer only once shutdown is triggered — a
         // graceful-shutdown timeout must bound the STOP, not the run. A timer
         // created at handler-creation time would self-destruct a long-running
@@ -73,7 +82,7 @@ export function createShutdownHandler(
             })
             .catch((error: unknown) => {
                 writeFn(`blong: graceful shutdown failed: ${String(error)}\n`);
-                log?.error?.({error}, 'graceful shutdown failed');
+                vocabulary?.frameworkShutdownFailed?.({error});
                 if (timer) clearTimeout(timer);
                 exitFn(1);
             });

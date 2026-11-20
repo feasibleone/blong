@@ -75,7 +75,6 @@ COPY suite/blong-suite/package.json ./suite/blong-suite/
 COPY core/blong-lint/package.json ./core/blong-lint/
 COPY core/blong-kukum/package.json ./core/blong-kukum/
 COPY demo/blong-cli/package.json ./demo/blong-cli/
-COPY core/semantic-log/package.json ./core/semantic-log/
 COPY test/blong-ci-report/package.json ./test/blong-ci-report/
 COPY core/blong-realm/package.json ./core/blong-realm/
 COPY realm/blong-kustomize/package.json ./realm/blong-kustomize/
@@ -86,6 +85,7 @@ COPY realm/blong-chat/package.json ./realm/blong-chat/
 COPY realm/blong-agent/package.json ./realm/blong-agent/
 COPY core/blong-asset/package.json ./core/blong-asset/
 COPY realm/blong-blob/package.json ./realm/blong-blob/
+COPY core/lukaot/package.json ./core/lukaot/
 # END GENERATED package manifests
 # The Node headers this image was built from, for `node-gyp`: `node-rdkafka` (a dependency of
 # `blong-gogo`, and the only native build here) is compiled against them, and without this node-gyp

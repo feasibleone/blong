@@ -12,7 +12,7 @@ import {validation} from '@feasibleone/blong';
  * because they resolve against the whole server registry rather than the gateway's
  * routes.
  *
- * The read itself is the `adapter/semlog/` conversion pair for this method —
+ * The read itself is the `adapter/observer/` conversion pair for this method —
  * `blongFlowFindRequestSend` builds the request, `responseReceive` takes the answer —
  * reached through the `blong` dispatch orchestrator.
  */

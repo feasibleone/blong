@@ -574,6 +574,39 @@ export const COMMANDS: readonly IHelpCommand[] = [
         ],
     },
     {
+        name: 'legacy',
+        summary: 'List the level calls lukaot has not replaced yet',
+        description:
+            'The work order of the lukaot sweep: a package that still writes `log?.warn?.(…)` is ' +
+            'unswept, and this counts those calls by package over the source rather than over a run, ' +
+            'so a branch nobody exercised is counted too. `sites` prints file and line behind each ' +
+            'count, and `check` exits non-zero while anything remains. fastify\'s own `request.log` ' +
+            'is not counted: it is the HTTP layer\'s logger, not a caller\'s.',
+        helpOnBare: true,
+        verbs: [
+            {
+                name: 'list',
+                summary: 'The counts, one line per package',
+                usage: 'blong-dev legacy list [--root <path>] [--json]',
+            },
+            {
+                name: 'sites',
+                summary: 'Every call site, with its file and line',
+                usage: 'blong-dev legacy sites [--root <path>] [--json]',
+            },
+            {
+                name: 'check',
+                summary: 'Exit non-zero while any level call remains',
+                usage: 'blong-dev legacy check [--root <path>]',
+            },
+        ],
+        options: [
+            {flag: '--root <path>', description: 'the tree to scan (default: the repository root)'},
+            {flag: '--json', description: 'the inventory as JSON, for a script'},
+        ],
+        examples: ['blong-dev legacy', 'blong-dev legacy sites', 'blong-dev legacy check'],
+    },
+    {
         name: 'memory',
         summary: 'Write and validate the agent memory files',
         description:
@@ -791,7 +824,11 @@ export const COMMANDS: readonly IHelpCommand[] = [
                 name: 'init',
                 summary: 'Approve the plan: tasks, decisions, issue and Slack channel',
                 usage: 'blong-dev plan init <plan> [--repo <owner/name>] [--label plan] [--invite <userId,...>] [--dry-run]',
-                description: "Records the issue and the channel in the plan's front matter.",
+                description:
+                    "Records the issue and the channel in the plan's front matter. Pass `--invite` with " +
+                    "the owner's Slack **member id** (`U…`, not the email): a private channel nobody " +
+                    'is invited to is invisible to them, and Slack answers `name_taken` afterwards, so ' +
+                    'the invitation cannot be added later by this tool.',
                 examples: ['blong-dev plan init agent --repo feasibleone/blong --invite U123'],
             },
             {

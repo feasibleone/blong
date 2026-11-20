@@ -1,7 +1,7 @@
 {
     "name": "@feasibleone/blong-realm",
     "version": "1.0.0",
-    "description": "Framework realm — the semantic-log service in the `blong` namespace: flows, sequence diagrams, templates, search, digest and incidents",
+    "description": "Framework realm — the lukaot service in the `blong` namespace: flows, sequence diagrams, signals, search and digest",
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"
     },

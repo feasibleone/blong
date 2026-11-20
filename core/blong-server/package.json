@@ -9,7 +9,8 @@
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
-        "@feasibleone/blong-mock": "workspace:^1.0.0"
+        "@feasibleone/blong-mock": "workspace:^1.0.0",
+        "@feasibleone/lukaot": "workspace:^"
     },
     "devDependencies": {
         "@feasibleone/blong-dev": "workspace:*",

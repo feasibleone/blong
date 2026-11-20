@@ -20,6 +20,6 @@ Blong is built on top of other great open source packages:
   deserialization based on patterns, used by the runtime and the framework tests.
 - [ut-function.\*](https://github.com/softwaregroup-bg/ut-function) - Reusable functions.
 
-One more is a Blong package rather than a third-party one:
-[semantic-log](../patterns/semantic-log.md) records the flows the framework executes, and it is what
-the docs' generated sequence diagrams are built from.
+One more is a Blong package rather than a third-party one: [lukaot](../patterns/lukaot.md) declares
+the vocabulary a process reports — logs, errors, captures and decisions — and it is what the docs'
+generated sequence diagrams are built from.

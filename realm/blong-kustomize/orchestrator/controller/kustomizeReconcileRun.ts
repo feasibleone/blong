@@ -1,4 +1,5 @@
 import {handler, type IMeta} from '@feasibleone/blong';
+import type {VocabularyProxy} from '@feasibleone/lukaot';
 import {
     GENERATED_CREDENTIALS_LABEL,
     SUITE_SECRETS_LABEL,
@@ -766,12 +767,12 @@ export default handler(({handler}) => {
         // call answered, which is not the same thing: while the dispatch was broken (@@T-225) that
         // line reported a pass that had run and changed nothing, and the only way to tell it
         // apart from a pass that never ran was to look here.
-        (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
-            $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
-            message:
-                `reconcile: reading from ${origin}, apply ${params.apply === true}, ` +
-                `prune ${params.prune === true}: ${managed.length} managed, ` +
-                `${skipped.length} skipped`,
+        (this as unknown as {signal?: VocabularyProxy}).signal?.kustomizeReconcileListing?.({
+            origin,
+            apply: params.apply === true,
+            prune: params.prune === true,
+            managed: managed.length,
+            skipped: skipped.length,
         });
 
         // One listing per resource type *and namespace*, selected by ownership: everything the
@@ -865,23 +866,20 @@ export default handler(({handler}) => {
             .filter(group => !group.desired.length)
             .map(group => `${group.namespace}/${group.resourceType}=${group.live.length}`);
         if (swept.length || unreadable.length) {
-            (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
-                $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
-                message:
-                    `reconcile: the tree names none of these, so the listing is all ` +
-                    `there is (namespace/kind=count): ${swept.join(', ')}` +
-                    (unreadable.length
-                        ? `; unreadable: ${unreadable
-                              .map(entry =>
-                                  // `expected` in the line as well as on the call: a reader scanning
-                                  // for a rights failure must be able to skip this one the way the
-                                  // adapter's own log level lets them (@@F-684).
-                                  entry.cleanupOnly
-                                      ? `${entry.key} (${entry.message}; cleanup only, expected)`
-                                      : `${entry.key} (${entry.message})`,
-                              )
-                              .join('; ')}`
-                        : ''),
+            (this as unknown as {signal?: VocabularyProxy}).signal?.kustomizeReconcileSwept?.({
+                swept: swept.join(', '),
+                unreadable: unreadable.length
+                    ? `; unreadable: ${unreadable
+                          .map(entry =>
+                              // `expected` in the line as well as on the call: a reader scanning
+                              // for a rights failure must be able to skip this one the way the
+                              // adapter's own log level lets them (@@F-684).
+                              entry.cleanupOnly
+                                  ? `${entry.key} (${entry.message}; cleanup only, expected)`
+                                  : `${entry.key} (${entry.message})`,
+                          )
+                          .join('; ')}`
+                    : '',
             });
         }
 
@@ -952,14 +950,12 @@ export default handler(({handler}) => {
             // derives. Logged only in that state, so a healthy pass stays quiet and a broken one
             // names itself on the first run .
             if (diff.create.length && diff.obsolete.length) {
-                (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
-                    $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
-                    message:
-                        `reconcile: ${group.resourceType} wants ` +
-                        `${resourceKey(diff.create[0].object)} but the cluster has ` +
-                        `${resourceKey(diff.obsolete[0])} [keys ${Object.keys(
-                            diff.obsolete[0],
-                        ).join(',')} apiVersion ${String(diff.obsolete[0].apiVersion)}]`,
+                (this as unknown as {signal?: VocabularyProxy}).signal?.kustomizeReconcileKeyMismatch?.({
+                    resourceType: group.resourceType,
+                    wanted: resourceKey(diff.create[0].object),
+                    present: resourceKey(diff.obsolete[0]),
+                    keys: Object.keys(diff.obsolete[0]).join(','),
+                    apiVersion: String(diff.obsolete[0].apiVersion),
                 });
             }
             if (readOnly) continue;
@@ -1082,14 +1078,16 @@ export default handler(({handler}) => {
         // A pass reports its own outcome, not only the controller that triggered it: a watch
         // triggers a pass directly, and a pass with no line of its own is indistinguishable from
         // one that never ran (the shape @@T-225 hid behind for three days).
-        (this as unknown as {log?: {info?: (entry: object) => void}}).log?.info?.({
-            $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
-            message:
-                `reconcile: pass from ${origin}, apply ${readOnly ? 'no' : 'yes'}: ` +
-                `${created} to create, ${updated} to update, ${unchanged} unchanged, ` +
-                `${obsolete} obsolete, ${deleted} deleted` +
-                `${tally.length ? ` (${tally.join(', ')})` : ''}` +
-                `${failures.length ? `, ${failures.length} failed` : ''}`,
+        (this as unknown as {signal?: VocabularyProxy}).signal?.kustomizeReconcilePass?.({
+            origin,
+            apply: readOnly ? 'no' : 'yes',
+            created,
+            updated,
+            unchanged,
+            obsolete,
+            deleted,
+            tally: tally.length ? ` (${tally.join(', ')})` : '',
+            failed: failures.length ? `, ${failures.length} failed` : '',
         });
 
         // The status is what a reader sees without reading logs: a phase, the version this pass

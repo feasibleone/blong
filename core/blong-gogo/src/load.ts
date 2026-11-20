@@ -37,7 +37,7 @@ import type {IWatch} from './Watch.ts';
  * Every loader below spells its specifier `import('./Mcp' + extension)`. Written as
  * a literal, the concatenation is folded by the bundler, the specifier gets resolved
  * and the module is bundled: the `@vite-ignore` comment silences the warning but does
- * not stop the resolution. That is how `fastify` and the semantic-log service, or
+ * not stop the resolution. That is how `fastify` and the observability service, or
  * `Gateway`, `RpcServer`, `Mcp` and the rest of the server half of the platform map,
  * ended up in browser builds whose `rootKind` never reaches them. Deriving the value
  * from this module's own url keeps the meaning while leaving those specifiers opaque.
@@ -438,6 +438,22 @@ export default async function loadRealm<T extends TSchema>(
      */
     blockOf: (snapshot: object) => unknown = snapshot => snapshot,
 ): Promise<IRegistry> {
+    /**
+     * The attacher that turns a layer's declarations into the `signal` proxy its handlers call.
+     *
+     * Loaded lazily and cached per call — `loadRealm` is re-entered for every child realm, and the
+     * module itself is a singleton anyway. It was skipped in the browser while lukaot's root still
+     * reached pino and `node:async_hooks`; the root is platform-free and the node half lives behind
+     * `@feasibleone/lukaot/node`, so the same attacher serves a page (@@D-912 @@D-920).
+     */
+    let attacher:
+        | Promise<((port: object, vocabularies: readonly object[]) => void) | undefined>
+        | undefined;
+    const signalsAttacher = () =>
+        (attacher ??= import('./signals.ts').then(
+            ({attachSignals}) =>
+                attachSignals as (port: object, vocabularies: readonly object[]) => void,
+        ));
     // Wrap the manifest in a proxy that auto-creates Deferred values on first
     // read and resolves them on first write. This lets callers pass a plain
     // object and have properties like `gatewayPort` transparently work as
@@ -631,7 +647,6 @@ export default async function loadRealm<T extends TSchema>(
                         // platform before this key, because the emitter's store is
                         // node-only.
                         log: {
-                            impl: 'semantic',
                             // Colour when a human is watching, plain text when the
                             // output is piped or captured, so a terminal keeps the
                             // colours the pino printer used to give it while a test
@@ -898,10 +913,11 @@ export default async function loadRealm<T extends TSchema>(
                     if (rootKind === 'browser' && globalThis.window) {
                         return import('./BrowserLog.ts');
                     }
-                    const impl = (mergedConfig as {log?: {impl?: string}} | undefined)?.log?.impl;
-                    return impl === 'semantic'
-                        ? import(/* @vite-ignore */ './SemanticLog' + extension)
-                        : import(/* @vite-ignore */ './Log' + extension);
+                    // One implementation, and the switch that used to choose it is gone with the
+                    // two it chose between (`@@T-715`). `log.impl` is still read by nothing; a
+                    // configuration that names it is ignored rather than refused, because every
+                    // deployment in the tree names `semantic` today.
+                    return import(/* @vite-ignore */ './LukaotLog' + extension);
                 },
             },
             {
@@ -1843,6 +1859,7 @@ export default async function loadRealm<T extends TSchema>(
                                         api?.port,
                                         mergedConfig as unknown as Parameters<typeof layerProxy>[4],
                                         api?.configRuntime,
+                                        signalsAttacher,
                                     ),
                                 ).result,
                             );
@@ -1889,6 +1906,7 @@ export default async function loadRealm<T extends TSchema>(
                         api?.port,
                         mergedConfig as unknown as Parameters<typeof layerProxy>[4],
                         api?.configRuntime,
+                        signalsAttacher,
                     ),
                 ) as {result: IRealm}
             ).result;

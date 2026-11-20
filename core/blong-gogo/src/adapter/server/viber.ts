@@ -92,13 +92,15 @@ export default adapter<IConfig>(() => ({
                     });
                     const body = answer.body as {status?: number; status_message?: string};
                     if (body?.status !== 0)
-                        this.log?.warn?.({
+                        this.signal?.frameworkViberSendRefused?.({
                             account: name,
                             status: body?.status,
-                            message: body?.status_message,
+                            reason: body?.status_message,
                         });
                 } catch (error) {
-                    this.log?.warn?.(error);
+                    this.signal?.frameworkViberSendFailed?.({
+                        error: error instanceof Error ? error.message : String(error),
+                    });
                 }
             }),
         );

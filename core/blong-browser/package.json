@@ -83,6 +83,7 @@
         "@feasibleone/blong-chain": "workspace:^1.0.0",
         "@feasibleone/blong-mock": "workspace:^1.0.0",
         "@feasibleone/blong-template": "workspace:*",
+        "@feasibleone/lukaot": "workspace:^",
         "@tanstack/react-query": "^5.67.3",
         "ky": "^1.14.2",
         "mermaid": "^11.0.0",

@@ -1,5 +1,8 @@
 import type {IApi, IErrorFactory, ILog, IMeta, ITypedError} from '@feasibleone/blong/types';
 
+import {frameworkSignalRegistry} from './frameworkSignals.ts';
+import {signalView, writeThroughFace, type ISignalHost} from './signals.ts';
+
 const typeRegex: RegExp = /^[$a-z]\w*(\.!?\w+)*$/;
 const paramsRegex: RegExp = /\{([^}]*)\}/g;
 
@@ -18,22 +21,22 @@ const getWarnHandler = ({
     if (logFactory) {
         const log = logFactory.createLog(logLevel, {name: 'utError', context: 'utError'});
         if (log.warn) {
+            // A declared identifier rather than a level call, so the notice has a name an operator
+            // can silence on its own — and written through this component's own face, which is what
+            // keeps `utError` as the context of the line.
+            const {vocabulary} = signalView(
+                frameworkSignalRegistry(),
+                writeThroughFace(log as unknown as ISignalHost['log']),
+            );
             return (msg, context) => {
                 const e = new Error();
-                log.warn?.(
-                    {
-                        $meta: {
-                            mtid: 'deprecation',
-                            method: context.method,
-                        },
-                        args: context.args,
-                        error: {
-                            type: 'utError.deprecation',
-                            stack: e.stack?.split('\n').splice(3).join('\n'),
-                        },
-                    },
-                    msg,
-                );
+                vocabulary.frameworkErrorDeprecated?.({
+                    reason: msg ?? 'the definition was not accepted',
+                    method: context.method,
+                    type: 'utError.deprecation',
+                    args: context.args,
+                    stack: e.stack?.split('\n').splice(3).join('\n'),
+                });
             };
         }
     }
@@ -201,8 +204,17 @@ export default ({
                         enumerable: false,
                     });
                     error.type = type;
-                    if (props.print) error.print = props.print;
-                    error.message = interpolate(props.message, params.params);
+                    // A declared message is interpolated from the values the call *supplies*, and a
+                    // realm declares them the way lukaot takes them — beside each other, not inside a
+                    // `params` bag. Reading only `params.params` left every declared message a
+                    // template with `?name?` in it on this path, which is the hole the move out of
+                    // `error/error.ts` was meant to close (`@@T-718`).
+                    const values = (params.params ?? params ?? {}) as unknown as Record<
+                        string,
+                        string
+                    >;
+                    if (props.print) error.print = interpolate(props.print, values);
+                    error.message = interpolate(props.message, values);
                     return $meta ? [error] : error; // to do - fix once bus.register allows to configure unpack
                 };
                 handler.type = type;

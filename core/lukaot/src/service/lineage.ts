@@ -1,0 +1,559 @@
+/**
+ * Causal lineage (PRD R7).
+ *
+ * Time is a poor correlation axis for concurrent systems, so the chain is built
+ * from an explicit parent link where one exists. Where it does not, the trace
+ * id still groups the records and time orders them — so a participant that has
+ * not been updated to emit parent links degrades the precision of the chain
+ * without removing it.
+ *
+ * That degradation is deliberate, not a stub. An emitter rollout is not atomic,
+ * so the service will hold records from both before and after the change; a
+ * service that dropped or refused every record without a parent would lose the
+ * correlation of every un-updated participant, which is the failure the fallback
+ * exists to prevent. What the fallback cannot claim is causation: a trace with
+ * no parent links answers "what happened, in what order, across which services",
+ * not "what caused what".
+ *
+ * The degradation is a property of {@link LineageIndex.trace} alone. `chain()`
+ * has no approximation to offer a record with no parent link — time can order
+ * records but it cannot supply a link — so such a record is the root of a
+ * one-record chain, and a later record that shares its trace is not appended to
+ * it.
+ *
+ * Within a trace, records are ordered by time and a shared timestamp is broken
+ * by `id`, not by `service`. `service` was the other candidate and is rejected:
+ * it is neither unique nor total, so it would leave the order of a
+ * same-millisecond tie partly undefined and could interleave two services'
+ * records. `id` is unique and totally ordered, so the listing is stable however
+ * the records arrived.
+ *
+ * Lineage keys on `trace`, never on a flow. A trace is the W3C correlation id
+ * (PRD R7) and may span more than one flow, while a flow is one caller-minted
+ * execution ULID (D2, ruled 2026-09-13): the two are distinct values and neither
+ * substitutes for the other. Drift keys on `flow.kind`, the caller's stable
+ * process name (D4), for a different question entirely.
+ *
+ * A record whose trace is absent is grouped under {@link UNTRACED} rather than
+ * dropped or held apart: a record with no trace context is still a record, and
+ * ordering it among the other untraced records of the same service is the most a
+ * trace-less record can support. `id` is the emitter's record id, so a caller
+ * that re-`add`s the same id **replaces** the node it indexed earlier — in the
+ * walk's index and in the trace listing alike, so a redelivery is one record
+ * rather than two (see the `add` doc comment).
+ *
+ * The walk is guarded against malformed links. A parent chain is written by the
+ * emitter, so it can arrive cyclic (`a` parented by `b`, `b` parented by `a`) or
+ * dangling (a parent that never reached the service); a walk that trusted it
+ * would not terminate, and a lineage lookup hanging a request is worse than an
+ * approximated answer. The guard is a visited set, so a cycle returns the cycle
+ * itself and a dangling parent ends the walk at the last node that is present.
+ */
+
+import {legOf, type IngestEvent} from './ledger.ts';
+
+/** The trace key a record is grouped under when it carries no usable trace id. */
+const UNTRACED = 'untraced';
+
+/**
+ * The key a record is grouped under. A trace that is absent, empty or not a
+ * string cannot identify a trace, so it is grouped under {@link UNTRACED}
+ * rather than under a key that names nothing — an empty trace is not a trace of
+ * its own. The ingest types the field as a string but does not validate it, so
+ * the check is made on the value rather than assumed from the type; the same
+ * strictness is applied to a flow kind in `ingest.ts`.
+ */
+function traceKeyOf(event: IngestEvent): string {
+    const trace = event.refs?.trace;
+    return typeof trace === 'string' && trace.length > 0 ? trace : UNTRACED;
+}
+
+export interface LineageNode {
+    id: string;
+    trace: string;
+    parent?: string;
+    service: string;
+    time: number;
+    operation?: string;
+    signal: string;
+    intent?: string;
+    /**
+     * The call this record belongs to, when it named one (PRD R22). The trace is
+     * the correlation view and the flow is the shape view; the leg is what makes one
+     * record pair with the other end of the same hop, and its position is what orders
+     * the two ends without a clock.
+     */
+    leg?: string;
+    /** The participant the caller expected to answer that call. */
+    legTo?: string;
+    /** The call's position in the execution. */
+    legSeq?: string;
+}
+
+/**
+ * Traces retained before the least-recently-`add`ed is evicted. Mirrors
+ * `FlowLedger`' execution cap: one trace is a correlation group, and a few
+ * megabytes is a sane ceiling for an index whose whole job is to be the recent
+ * causal graph, not an archive.
+ */
+const DEFAULT_TRACE_LIMIT = 10_000;
+
+/**
+ * Records retained per trace before its least recently indexed is dropped.
+ * Larger than `FlowLedger`' per-execution step cap because a distributed trace
+ * legitimately holds more records than one business flow holds steps, and
+ * smaller than the trace cap because it multiplies with it. Configurable through
+ * the constructor.
+ */
+const DEFAULT_RECORD_LIMIT = 256;
+
+/**
+ * One record in a trace's listing, with the monotonic `sequence` value at the
+ * `add` that put it there. The sequence is what the per-trace cap drops by, and
+ * it is deliberately not the record's `time`: the emitter's clock orders the
+ * records *within* a trace, but it cannot order their *arrival*, and a backdated
+ * record must not be the first the bound drops (see the class doc).
+ */
+interface TraceRecord {
+    node: LineageNode;
+    /** The sequence value at the `add` that last indexed this record. */
+    seq: number;
+}
+
+/**
+ * One trace's records, plus a monotonic recency used only for eviction. The
+ * recency is a counter rather than the newest record's time because the wire
+ * clock is the emitter's: two hosts' clocks are not comparable, and a
+ * backdated record must not make an old trace look recently used.
+ */
+interface TraceBucket {
+    records: TraceRecord[];
+    /** The `sequence` value at the last `add` into this trace; greater is more recent. */
+    touched: number;
+    /**
+     * The rank at which this trace first entered `byTrace`, which is the order
+     * `traceIds()` lists traces in — and therefore the first thing `closest()`
+     * breaks an equal-distance tie by, so its answer never depends on the order
+     * the signal index happens to hold its candidates in.
+     */
+    order: number;
+}
+
+/**
+ * A retained node under its signal, with the rank of its trace at the
+ * `add` that indexed it.
+ *
+ * The rank is copied rather than looked up through `byTrace` at read time: a
+ * trace's rank never changes while it is retained — only re-entering after its
+ * bucket was emptied or evicted takes a new one, and that cannot happen to a
+ * node the index still holds — so the copy is exact, and `closest()` needs no
+ * lookup and no unanswerable "what if the bucket is gone" branch.
+ */
+interface SignalRecord {
+    node: LineageNode;
+    order: number;
+}
+
+/**
+ * The order a trace's listing is kept in: by the record's time first, so a
+ * reader sees a trace's records in the order they happened, then by id, so two
+ * records sharing a millisecond still have one stable order however they
+ * arrived. Every comparison in this file goes through it, so the listing, the
+ * insert that places a record in it and `closest()` cannot disagree about what
+ * "before" means.
+ */
+function compareNodes(a: LineageNode, b: LineageNode): number {
+    return a.time - b.time || a.id.localeCompare(b.id);
+}
+
+/**
+ * Where a record belongs in a listing kept in `compareNodes` order, found by
+ * bisection.
+ *
+ * `add` used to push the record and then re-`sort()` the whole bucket. A profile
+ * of `realm/blong-party`'s browser leg caught that as 44% of the run: the cap is
+ * 256 records, so every `add` re-ran the comparator about 256·log₂ 256 times,
+ * where the record's place is 8 comparisons away. This is the same comparison on
+ * the same array — only the search changed.
+ *
+ * An equal record goes *after* the one already there (`<= 0` moves right), which
+ * is where a stable sort leaves equal keys.
+ */
+function insertIndex(records: TraceRecord[], record: TraceRecord): number {
+    let low = 0;
+    let high = records.length;
+    while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (compareNodes(records[mid].node, record.node) <= 0) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    return low;
+}
+
+/**
+ * The walk index for causal lineage.
+ *
+ * **Retention.** The index is bounded on two axes so it cannot grow with
+ * traffic: at most `traceLimit` traces (the least-recently-`add`ed evicted
+ * first) and at most `recordLimit` records per trace (its least recently
+ * `add`ed dropped). Both bounds are absolute and both are counted —
+ * `evictions()` and `truncations()` — because a bound that drops data silently
+ * is the failure this service exists to prevent, and `traceCount()` shows the
+ * surviving window. The design mirrors `FlowLedger`' `flowLimit`/`flowStepLimit`;
+ * the numbers differ because the units do (a trace holds more records than a
+ * flow holds steps).
+ *
+ * **Both caps order by arrival, not by the emitter's clock.** The record cap
+ * drops the least recently `add`ed record, the same monotonic `sequence` the
+ * trace cap evicts by. Ordering the *cap* by record time would be the one place
+ * this module trusted the wire clock after denying it everywhere else, and it
+ * fails exactly where the module says clocks fail: a backdated record arriving
+ * into a full bucket is the *smallest* time in it, so a time-ordered cap would
+ * `shift` it out the instant it was indexed — discarding the very record a
+ * reader is about to look up, and answering `untraced:<ref>` instead of the
+ * trace it belongs to. Dropping by arrival keeps the record that was just
+ * observed.
+ *
+ * **Eviction changes what `chain()` and `rootOf()` can answer.** This is the
+ * consequence the index was not wired into the service until it was settled. An
+ * evicted record is gone from the walk index, so a chain that walked through it
+ * is truncated at the closest surviving ancestor instead of reaching the real
+ * root: `rootOf()` then names a record closer to the leaf than the true origin.
+ * That is a degraded attribution, not a wrong one — the answer is still "an
+ * ancestor of this record" — and the alternative (an unbounded index) trades a
+ * degraded answer for unbounded memory. What the bound must never do is make
+ * the degradation *invisible*: `evictions()`/`truncations()` and `traceCount()`
+ * report it, `trace()` still lists what survives, and this paragraph is the
+ * contract rather than an implementation note. See `.github/memory/decision.md`
+ * (Plan 2 Task 10) for the ruling and the cap rationale.
+ */
+export class LineageIndex {
+    private readonly nodes = new Map<string, LineageNode>();
+    private readonly byTrace = new Map<string, TraceBucket>();
+    /**
+     * Retained nodes by `signal` — the index a nearest-in-time lookup resolves
+     * against. Before it existed, that lookup walked every record of every retained
+     * trace, through `trace()`, which hands out a freshly copied listing each time;
+     * a profile of the party suite put a quarter of the run there. Nothing is
+     * retained here that the walk index does not hold: the two are written and
+     * forgotten together.
+     */
+    private readonly bySignal = new Map<string, SignalRecord[]>();
+    private readonly traceLimit: number;
+    private readonly recordLimit: number;
+    /** Monotonic recency source, so `touched` is a total order however the clock behaves. */
+    private sequence = 0;
+    /** Monotonic rank source for `TraceBucket.order`. */
+    private traceRank = 0;
+    private evictionCount = 0;
+    private truncationCount = 0;
+
+    /**
+     * `traceLimit` bounds retained traces and `recordLimit` the records retained
+     * per trace; both are clamped to at least one, so a caller cannot configure
+     * a cap that stores nothing (`enforceLimit` also needs a positive bound).
+     * The defaults are documented on the constants above.
+     */
+    constructor(
+        traceLimit: number = DEFAULT_TRACE_LIMIT,
+        recordLimit: number = DEFAULT_RECORD_LIMIT,
+    ) {
+        this.traceLimit = Math.max(1, traceLimit);
+        this.recordLimit = Math.max(1, recordLimit);
+    }
+
+    /**
+     * The bucket for a trace, or a fresh un-stored one when the trace has none.
+     * Shared by the removal and the insert in `add`, because the defensive
+     * `?? fresh` is exercised by the insert's new-trace path — so the fallback is
+     * a branch the tests genuinely reach, not a guard that cannot fire — and an
+     * absent bucket is safe to filter and to push into (a fresh bucket is not
+     * stored until the caller sets it). An unchecked cast to the bucket type
+     * would instead make a missed lookup fail silently in the hands of its
+     * caller; this makes it an empty bucket.
+     */
+    private bucketOf(trace: string): TraceBucket {
+        return this.byTrace.get(trace) ?? {records: [], touched: 0, order: 0};
+    }
+
+    /**
+     * Drop a node from the signal index, pruning the signal when its
+     * last candidate goes — the same hygiene `add` applies to an emptied trace
+     * bucket — so the index cannot accumulate fingerprints that hold nothing.
+     *
+     * Removal is by identity, for the reason the listing's removal is (see `add`).
+     */
+    private unindex(node: LineageNode): void {
+        if (node.signal === undefined) return;
+        const candidates = this.bySignal.get(node.signal) ?? [];
+        const remaining = candidates.filter(candidate => candidate.node !== node);
+        if (remaining.length === 0) {
+            this.bySignal.delete(node.signal);
+        } else {
+            this.bySignal.set(node.signal, remaining);
+        }
+    }
+
+    /**
+     * Drop a node from both indexes at once, which is the only way either of them
+     * ever loses a record: `add`'s replacement, the record cap and the trace cap
+     * all go through here, so the walk index and the signal index cannot
+     * drift apart and leave `closest()` answering with an evicted node.
+     */
+    private forget(node: LineageNode): void {
+        this.unindex(node);
+        this.nodes.delete(node.id);
+    }
+
+    /**
+     * Index one record, replacing any node previously indexed under the same id.
+     *
+     * Replacement is by `id` because the emitter mints it and an at-least-once
+     * redelivery must not create a second node for the same record — and it is
+     * replacement in **both** indexes, because the two must agree: replacing only
+     * in `nodes` would leave the previous node object in the trace listing, so
+     * `trace()` would list one record twice and `intentsOf()` could report an
+     * intent carried only by the replaced node, while a re-add under a *different*
+     * trace would leave the id listed under both — a record appearing in a trace
+     * it is not part of. An id is one record, so it is one listing entry, under
+     * one trace: the one it was last `add`ed with.
+     *
+     * The listing's bucket is pruned when the removal empties it, so `byTrace`
+     * does not accumulate keys that group nothing. `nodes` is the authority for
+     * the id from then on, and the invariant this relies on — a node in `nodes` is
+     * in the bucket named by its own `trace` — is what lets the previous entry be
+     * found by identity rather than by a second lookup.
+     *
+     * The returned node is a copy. The index keeps the object it indexed, so a
+     * caller that edits what it was handed cannot alter the index — the same
+     * ownership rule `trace()` and `chain()` follow for the nodes they hand out
+     * as well as for the arrays.
+     */
+    add(event: IngestEvent): LineageNode {
+        const leg = legOf(event);
+        const node: LineageNode = {
+            id: event.id,
+            trace: traceKeyOf(event),
+            parent: event.refs?.parent,
+            service: event.service,
+            time: event.time,
+            operation: event.operation,
+            signal: event.signal,
+            intent: event.intent?.name,
+            leg: leg?.id,
+            legTo: leg?.to,
+            legSeq: leg?.seq,
+        };
+        const previous = this.nodes.get(node.id);
+        if (previous) {
+            // Removal is by identity rather than `splice(indexOf(previous), 1)`
+            // on a cast bucket: `indexOf` can be `-1`, and `splice(-1, 1)` would
+            // delete the *last* element — silent data loss rather than a no-op.
+            // Filtering by identity cannot mis-target, and `bucketOf` already
+            // turns an absent bucket into a fresh one instead of an unchecked cast.
+            const bucket = this.bucketOf(previous.trace);
+            const remaining = bucket.records.filter(candidate => candidate.node !== previous);
+            // The replaced node leaves the signal index with its listing: the
+            // two indexes hold the same records, and a stale candidate would let
+            // `closest()` name a node the walk index no longer has.
+            this.unindex(previous);
+            if (remaining.length === 0) {
+                this.byTrace.delete(previous.trace);
+            } else {
+                bucket.records = remaining;
+                this.byTrace.set(previous.trace, bucket);
+            }
+        }
+        this.nodes.set(node.id, node);
+        const bucket = this.bucketOf(node.trace);
+        // The monotonic sequence stamped at this `add`, reused as the bucket's
+        // recency so the two caps order by the same clock — the arrival counter.
+        const seq = ++this.sequence;
+        const record: TraceRecord = {node, seq};
+        // Bisect for the record's place instead of pushing and re-sorting (see
+        // `insertIndex`); the listing is in time order either way.
+        bucket.records.splice(insertIndex(bucket.records, record), 0, record);
+        bucket.touched = seq;
+        // A trace that is not in `byTrace` yet takes the next rank, so `closest()`
+        // breaks a tie in the order `traceIds()` reports. A trace whose bucket was
+        // emptied or evicted and is added to again is a fresh insertion and ranks
+        // last, exactly as it does there.
+        if (!this.byTrace.has(node.trace)) bucket.order = ++this.traceRank;
+        this.byTrace.set(node.trace, bucket);
+        if (node.signal !== undefined) {
+            const candidates = this.bySignal.get(node.signal) ?? [];
+            candidates.push({node, order: bucket.order});
+            this.bySignal.set(node.signal, candidates);
+        }
+        // Drop the least recently `add`ed record, not the smallest-time one. A
+        // backdated arrival into a full bucket has the smallest time in it, so a
+        // time-ordered cap would drop it the instant it was indexed — the very
+        // record a reader is about to look up, which would then answer
+        // `untraced:<ref>` instead of this trace. Ordering by arrival keeps
+        // what was just observed. The dropped node leaves `nodes` too, so a
+        // chain that walked through it is truncated at its closest surviving
+        // ancestor rather than reaching the real root (see the class doc).
+        while (bucket.records.length > this.recordLimit) {
+            let victim = 0;
+            for (let i = 1; i < bucket.records.length; i++) {
+                if (bucket.records[i].seq < bucket.records[victim].seq) {
+                    victim = i;
+                }
+            }
+            const [dropped] = bucket.records.splice(victim, 1);
+            this.forget(dropped.node);
+            this.truncationCount++;
+        }
+        this.enforceLimit();
+        return {...node};
+    }
+
+    /**
+     * Every record sharing a trace, in time order. The array and the nodes in
+     * it are copies: the caller cannot reorder or truncate the index's own
+     * listing, nor edit a node and have the index change under it.
+     */
+    trace(traceId: string): LineageNode[] {
+        const bucket = this.byTrace.get(traceId);
+        return bucket ? bucket.records.map(record => ({...record.node})) : [];
+    }
+
+    /**
+     * The retained record whose `signal` is `ref` and whose time is nearest to
+     * `time`, or `undefined` when nothing retained carries that signal.
+     *
+     * Nearest-time rather than exact is deliberate: a redelivery can re-`add`
+     * the record under a later time, and a nearest match still lands on the
+     * record the caller describes. Ties go to the candidate whose trace ranks
+     * first, then to the earlier time and the smaller id — the same order a
+     * caller used to get by scanning `traceIds()` and `trace()` — so no answer
+     * changes because it is now a lookup.
+     *
+     * The node is a copy, like every other node this index hands out.
+     */
+    closest(ref: string, time: number): LineageNode | undefined {
+        const candidates = this.bySignal.get(ref);
+        if (!candidates) return undefined;
+        let best = candidates[0];
+        let bestDistance = Math.abs(best.node.time - time);
+        for (let index = 1; index < candidates.length; index++) {
+            const candidate = candidates[index];
+            const distance = Math.abs(candidate.node.time - time);
+            if (
+                distance < bestDistance ||
+                (distance === bestDistance && this.precedes(candidate, best))
+            ) {
+                best = candidate;
+                bestDistance = distance;
+            }
+        }
+        return {...best.node};
+    }
+
+    /** Whether `left` precedes `right` in the order `traceIds()` then `trace()` list. */
+    private precedes(left: SignalRecord, right: SignalRecord): boolean {
+        if (left.order !== right.order) return left.order < right.order;
+        return compareNodes(left.node, right.node) < 0;
+    }
+
+    /**
+     * How many trace listings the index holds. Exposed so the pruning of an
+     * emptied bucket in `add` is *observable*: `trace()` returns `[]` for a
+     * deleted bucket and for an empty one alike, so without this the
+     * memory-hygiene claim would rest on a `delete` no test can see. A re-add
+     * that moves a trace's only record elsewhere must leave this count
+     * unchanged, not one higher. It is also the surviving-window report for the
+     * trace cap (see the class doc).
+     */
+    traceCount(): number {
+        return this.byTrace.size;
+    }
+
+    /**
+     * The retained trace keys, in the index's own insertion order. A fresh array,
+     * so a caller cannot reorder or truncate the index's listing. This is the
+     * surface correlation reads to find which traces a template appears in; the
+     * alternative it replaced reached into `byTrace` reflectively, which would
+     * have made a rename of a private field silently break correlation.
+     */
+    traceIds(): string[] {
+        return [...this.byTrace.keys()];
+    }
+
+    /** Traces dropped to keep the retained count within the cap. */
+    evictions(): number {
+        return this.evictionCount;
+    }
+
+    /** Records dropped because their trace exceeded the per-trace cap. */
+    truncations(): number {
+        return this.truncationCount;
+    }
+
+    /**
+     * Walk parent links from the root down to `recordId`. A record with no
+     * parent (or whose parent has not been indexed) is the root of its own
+     * chain, and a cycle terminates the walk rather than repeating it. The
+     * nodes handed back are copies, like `trace()`'s.
+     */
+    chain(recordId: string): LineageNode[] {
+        const path: LineageNode[] = [];
+        const seen = new Set<string>();
+        let current = this.nodes.get(recordId);
+        while (current && !seen.has(current.id)) {
+            seen.add(current.id);
+            path.unshift({...current});
+            current = current.parent ? this.nodes.get(current.parent) : undefined;
+        }
+        return path;
+    }
+
+    /** The root of the chain `recordId` belongs to, if the record is known. */
+    rootOf(recordId: string): string | undefined {
+        const path = this.chain(recordId);
+        return path.length ? path[0].id : undefined;
+    }
+
+    /** Intent names observed anywhere in a trace. */
+    intentsOf(traceId: string): string[] {
+        const names = new Set<string>();
+        for (const node of this.trace(traceId)) {
+            if (node.intent) names.add(node.intent);
+        }
+        return [...names];
+    }
+
+    /**
+     * Evict the least-recently-`add`ed trace when the cap is exceeded, deleting
+     * its records from the walk index in the same pass so the two indexes agree.
+     * A node in a bucket is the current `nodes` entry for its id — `add` removes
+     * a previous listing before it writes the new one — so deleting by the
+     * bucket's ids cannot take a record that a *different* trace now owns.
+     */
+    private enforceLimit(): void {
+        if (this.byTrace.size <= this.traceLimit) {
+            return;
+        }
+        let victimKey = '';
+        let oldest = Number.POSITIVE_INFINITY;
+        for (const [trace, bucket] of this.byTrace) {
+            if (bucket.touched < oldest) {
+                oldest = bucket.touched;
+                victimKey = trace;
+            }
+        }
+        // `victimKey` cannot stay empty: the loop above runs because
+        // `byTrace.size > traceLimit >= 1` guarantees at least one entry, and a
+        // real trace key is never the empty string (`traceKeyOf` maps an absent,
+        // empty or non-string trace to `untraced`).
+        const victim = this.byTrace.get(victimKey) as TraceBucket;
+        for (const record of victim.records) {
+            this.forget(record.node);
+        }
+        this.byTrace.delete(victimKey);
+        this.evictionCount++;
+    }
+}

@@ -73,6 +73,9 @@ switch (command) {
     case 'glossary':
         await (await import('./commands/glossary.ts')).glossary(args);
         break;
+    case 'legacy':
+        await (await import('./commands/legacy.ts')).legacy(args);
+        break;
     case 'memory':
         await (await import('./commands/memory.ts')).memory(args);
         break;

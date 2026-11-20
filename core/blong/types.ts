@@ -33,7 +33,6 @@ import type {EventEmitter} from 'events';
 import type {Dirent, StatSyncFn} from 'node:fs';
 import type {Duplex} from 'node:stream';
 import type {OpenAPI, OpenAPIV2, OpenAPIV3_1} from 'openapi-types';
-import type {Level, LogFn, Logger as PinoLogger} from 'pino';
 import merge from 'ut-function.merge';
 import type {Knex} from './knex.ts';
 import type {IMock, IModelSpec} from './model.ts';
@@ -49,7 +48,6 @@ export type * from 'bson';
 export type * from 'mongodb';
 // export type {client} from 'node-vault';
 export type {IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1} from 'openapi-types';
-// export type {Level, LogFn, Logger as PinoLogger} from 'pino';
 export type * from './agent.ts';
 export type * from './blob.ts';
 export type * from './chat.ts';
@@ -57,6 +55,49 @@ export type * from './feedback.ts';
 export type {Knex} from './knex.js';
 export type * from './model.ts';
 export type * from './widget.ts';
+export type {CaptureSurface};
+/**
+ * The six levels a log line can be written at, declared here rather than borrowed.
+ *
+ * These were pino's types until the framework stopped using pino (`@@T-715`). They live in this
+ * package because every realm, suite and adapter names them — a component's `logLevel` is one of
+ * these — and a type a consumer names should not come from a library the consumer does not call.
+ */
+export type Level = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
+
+/** A level, or the word that means "nothing at all". */
+export type LevelWithSilent = Level | 'silent';
+
+/**
+ * One member of a log face, in the order every call site in the tree writes it: an optional bag of
+ * fields first, the sentence second.
+ */
+export type LogFn = (...args: unknown[]) => void;
+
+/**
+ * The shape a *child* logger has, for the two places that hand one to a library.
+ *
+ * Structural rather than nominal: `fastify` only ever calls the six members and `child` on what it is
+ * given, so anything carrying them is a logger as far as it is concerned — which is what lets the
+ * framework's own implementation answer this without borrowing a type from the library it replaced.
+ */
+export interface IChildLogger {
+    trace: LogFn;
+    debug: LogFn;
+    info: LogFn;
+    warn: LogFn;
+    error: LogFn;
+    fatal: LogFn;
+    level: LevelWithSilent;
+    /**
+     * The member that writes nothing.
+     *
+     * `fastify` requires it of the logger it is handed — its own type carries the word so a caller
+     * can ask for silence — and a framework that owns no level at all answers it with a no-op.
+     */
+    silent: LogFn;
+    child: (bindings: object, options?: {level?: LevelWithSilent}) => IChildLogger;
+}
 
 export type ServerContext = {
     queryBuilder?: Knex;
@@ -160,7 +201,34 @@ export type AdapterContext = ServerContext & BrowserContext;
 
 export interface ILog {
     logger: (level: Level | 'silent', bindings: object) => ILogger;
-    child: PinoLogger['child'];
+    child: (bindings: object, options?: {level?: LevelWithSilent}) => IChildLogger;
+    /**
+     * The process's declared vocabulary — `this.log?.signal?.frameworkWatchFileChanged?.({file})`.
+     *
+     * On the log rather than on a class of its own because the log is the object every component
+     * already holds: the watcher, the registry, the gateway and every port have one, and none of them
+     * should have to import a vocabulary package to say something. The implementation builds it
+     * (`signals.ts`), so a component reads a property that is either there or absent — never a module
+     * that might not load on its platform.
+     */
+    signal?: VocabularyProxy;
+    /**
+     * The same vocabulary, written through a face bound to one component's name and level.
+     *
+     * What a component uses, so the line keeps the two things a logger face carries: the `name` the
+     * printer shows as the context (`info **watch** event watch.test.none …`) and the level threshold
+     * that component was configured with. Without it every framework signal is written through the
+     * root logger, and the header says `framework` for every component in the process.
+     */
+    signalFor?: (name: string, level?: Level) => VocabularyProxy | undefined;
+    /**
+     * The declared captures, written through a face bound to one component's name and level.
+     *
+     * Absent when nothing declared a capture for this component — and then `this.capture?.http?.(…)`
+     * costs the optional chaining and nothing else, which is the whole point of the member being there
+     * or not (`@@T-730`).
+     */
+    captureFor?: (name: string, level?: Level) => CaptureSurface | undefined;
     /**
      * The call channel — the framework's account of the calls a process makes
      * and answers. Deliberately *not* part of the level API: see {@link ICallLog}.
@@ -829,6 +897,14 @@ export interface IApi {
     attach: (target: object, patterns: (string | RegExp)[] | string | RegExp) => Promise<object>;
     createLog: ILog['logger'];
     /**
+     * The captures this component may take, by shape family (`@@T-730`).
+     *
+     * Beside `createLog` because it is the same kind of seam: what a component needs from the
+     * framework's log, handed over by whoever built it. Absent when the log implementation has no
+     * captures, which is what makes `this.capture?.http?.(…)` free.
+     */
+    captureFor?: ILog['captureFor'];
+    /**
      * The running log, for the few components that need more than a logger from it.
      *
      * `createLog` is what a component normally wants — a logger bound to itself. This
@@ -898,6 +974,20 @@ export interface IAdapter<T, C> {
     activation?: IActivationConfig<Partial<Config<T, C>>>;
     configBase?: string;
     log?: ILogger;
+    /**
+     * The port's declared vocabulary, when its layer shipped one (`@@T-712`).
+     *
+     * On the port *interface* because that is the type a port's own object literal is written
+     * against: inside `start()` or `configure()` the `this` a handler body sees is this shape, and a
+     * member the base class has but the interface does not would type-check nowhere — which is what
+     * kept the adapter sites of `@@T-710` from converting.
+     */
+    signal?: VocabularyProxy;
+    /**
+     * The port's declared captures, by shape family — collected at the seam that already carries
+     * `signal`, because a port's body has no `this.signal` of its own to reach (`@@T-730`).
+     */
+    capture?: CaptureSurface;
     errors?: Errors<IErrorMap>;
     imported?: Record<string, PortHandlerBound>;
     importedMap?: Map<string, IRemoteHandler>;
@@ -920,7 +1010,8 @@ export interface IAdapter<T, C> {
         target?: R,
     ): Promise<R>;
     connected?(this: Adapter<T, C>): Promise<boolean>;
-    error?(error: unknown, $meta: unknown): void;
+    /** Record one port failure; `$meta` is absent for an event that has no dispatch (`@@T-731`). */
+    error?(error: unknown, $meta?: unknown): void;
     pack?(this: Adapter<T, C>, ...params: unknown[]): unknown;
     unpackSize?(this: Adapter<T, C>, ...params: unknown[]): unknown;
     unpack?(this: Adapter<T, C>, ...params: unknown[]): unknown;
@@ -1115,25 +1206,42 @@ export interface IContext {
     buffer?: Buffer;
 }
 
-export interface ITypedError extends Error {
-    type: string;
-    cause?: Error;
-    print?: string;
-    method?: string | string[];
-    params?: object;
-    code?: string;
-    statusCode?: number;
-    silent?: boolean;
-    req?: {
-        httpVersion: string;
-        url: URL;
-        method: string;
-    };
-    res?: {
-        httpVersion: string;
-        statusCode: number;
-    };
-}
+/**
+ * The declared vocabulary, in the package every realm already imports.
+ *
+ * A realm writes its errors and its log signals as one declaration (`declare({error, log})`) and the
+ * *names* in it are the API its handler calls, so the types describing that declaration belong
+ * beside the handler types rather than behind a second import every realm has to remember. They come
+ * from `@feasibleone/lukaot`, which owns the format; this file is the re-export a realm sees, and it
+ * is a **type-only** re-export on purpose — `core/blong` is imported by browser code, and lukaot's
+ * root reaches `node:async_hooks`, pino and cacache. A value import here would put a server runtime
+ * in a page's bundle.
+ */
+import type {
+    CaptureSurface,
+    ISignalError as ITypedError,
+    VocabularyProxy,
+} from '@feasibleone/lukaot';
+
+export type {
+    IErrorEntry,
+    IErrorSignal,
+    ILogEntry,
+    ILogSignal,
+    ISignal,
+    IVocabulary,
+    IVocabularyDeclaration,
+    LevelName,
+    MessageOf,
+    PlaceholderNames,
+    SignalId,
+    SignalParams,
+    SignalVocabulary,
+    VocabularyProxy,
+} from '@feasibleone/lukaot';
+
+/** The framework's name for a declared failure, which is lukaot's `ISignalError`. */
+export type {ITypedError};
 
 export type Errors<T> = {
     [name in keyof T]: (params?: unknown, $meta?: IMeta) => ITypedError;
@@ -1714,14 +1822,52 @@ export type Kind = typeof Kind;
 
 export abstract class Internal {
     #log?: ILog | undefined;
+    #vocabulary?: VocabularyProxy;
+    #capture?: CaptureSurface;
+    #level?: Level;
     protected log?: ReturnType<ILog['logger']>;
+    /**
+     * The process's declared vocabulary, for a component that has something to report.
+     *
+     * `protected log` is a *logger face* — the level methods of one binding — so the vocabulary is not
+     * on it; it is on the `ILog` this class holds privately, which is why the getter lives here rather
+     * than at every call site. Every component extends `Internal`, so `this.signal?.frameworkX?.({...})`
+     * works in the watcher, the registry and a port alike, and a platform whose log carries no
+     * vocabulary reads `undefined` and the `?.` costs nothing.
+     *
+     * Built once, lazily, through `signalFor` so the record keeps this component's name and level: a
+     * line that said `framework` for every component in the process would have lost the very thing the
+     * header is for.
+     */
+    public get signal(): VocabularyProxy | undefined {
+        if (this.#vocabulary === undefined && this.#log !== undefined) {
+            this.#vocabulary =
+                this.#log.signalFor?.(this.constructor.name, this.#level) ?? this.#log.signal;
+        }
+        return this.#vocabulary;
+    }
+    /**
+     * The captures this component may take, by shape family — `this.capture?.http?.({method}, () => …)`.
+     *
+     * Derived from the log the same way `signal` is, and for the same reason: a component is the thing
+     * that knows which payload it is holding, and the vocabulary is one per process. A component with
+     * no capture declared for it has no member, so the call site's argument is never evaluated.
+     */
+    public get capture(): CaptureSurface | undefined {
+        if (this.#capture === undefined && this.#log !== undefined) {
+            this.#capture = this.#log.captureFor?.(this.constructor.name, this.#level);
+        }
+        return this.#capture;
+    }
     public constructor(api?: {log?: ILog}) {
         this.#log = api?.log;
     }
     protected merge: ILib['merge'] = (...args: Parameters<ILib['merge']>) => {
         const result = merge<{logLevel?: Level}>(...args);
-        if (result.logLevel && this.#log)
+        if (result.logLevel && this.#log) {
+            this.#level = result.logLevel;
             this.log = this.#log.logger(result.logLevel, {name: this.constructor.name});
+        }
         return result;
     };
     /**
@@ -1908,6 +2054,15 @@ export type Kinds =
     | 'handler'
     | 'model'
     | 'fixture'
+    /**
+     * A declared vocabulary (`@@T-711`): the object `declare({log, error, capture})` answers, which the
+     * loader collects for a layer and never tries to call.
+     *
+     * It is a kind of its own rather than an anonymous object because the name a file has no longer
+     * decides what it is: `lukaot/error.ts` is a vocabulary and an `error/error.ts` is an error map, and
+     * reading the kind off the object is what tells them apart.
+     */
+    | 'vocabulary'
     | '';
 export const kind = (what: {[Kind]: Kinds | undefined}): Kinds => what[Kind] || '';
 

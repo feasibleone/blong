@@ -44,7 +44,8 @@
         "@feasibleone/blong-server": "workspace:^1.0.0",
         "tinyglobby": "^0.2.16",
         "typebox": "^1.1.5",
-        "yaml": "^2.8.3"
+        "yaml": "^2.8.3",
+        "@feasibleone/lukaot": "workspace:^"
     },
     "devDependencies": {
         "@feasibleone/blong-browser": "workspace:^1.0.0",

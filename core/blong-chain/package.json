@@ -26,7 +26,8 @@
         "test:examples": "node --test examples/*.test.ts"
     },
     "dependencies": {
-        "p-queue": "^9.1.0"
+        "p-queue": "^9.1.0",
+        "@feasibleone/lukaot": "workspace:^"
     },
     "devDependencies": {
         "@feasibleone/blong-dev": "workspace:*",

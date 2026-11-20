@@ -1,5 +1,6 @@
 import {OPERATOR_ENV} from '../../operator.ts';
 import type {IPlanConfig} from '../../plan.ts';
+import type {VocabularyProxy} from '@feasibleone/lukaot';
 
 /**
  * operatorLoop.ts — the operator's loop: started by config or by the generated Deployment, resyncing
@@ -9,6 +10,7 @@ export const startController = (self: {
     config?: IPlanConfig;
     request?: (...params: unknown[]) => Promise<unknown>;
     log?: {info?: (entry: object) => void; error?: (entry: object) => void};
+    signal?: VocabularyProxy;
 }): void => {
     const configured = self.config?.controller;
     const fromEnv = process.env[OPERATOR_ENV.intervalSeconds];
@@ -53,18 +55,15 @@ export const startController = (self: {
                 from,
                 ...target,
             });
-            self.log?.info?.({
-                $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
-                message:
-                    `controller: pass from ${from}, apply ${apply}, prune ${prune}` +
-                    `${target.name ? ` on ${target.namespace ?? ''}/${target.name}` : ''}: ` +
-                    `${JSON.stringify(result)}`,
+            self.signal?.kustomizeControllerPass?.({
+                origin: from,
+                apply,
+                prune,
+                target: target.name ? ` on ${target.namespace ?? ''}/${target.name}` : '',
+                result: JSON.stringify(result),
             });
         } catch (error) {
-            self.log?.error?.({
-                $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
-                message: `controller: pass failed: ${String(error)}`,
-            });
+            self.signal?.kustomizeControllerPassFailed?.({error: String(error)});
         }
     };
 
@@ -73,11 +72,12 @@ export const startController = (self: {
     // the interval for a change someone just applied is the wrong default. Off leaves the interval
     // below as the only trigger.
     const watching = from === 'cr' && configured?.watch !== false;
-    self.log?.info?.({
-        $meta: {mtid: 'event', method: 'kustomize.reconcile.run'},
-        message:
-            `controller: from ${from}, apply ${apply}, prune ${prune}, ` +
-            `resync every ${interval}s, watch ${watching ? 'on' : 'off'}`,
+    self.signal?.kustomizeControllerStarting?.({
+        origin: from,
+        apply,
+        prune,
+        interval,
+        watching: watching ? 'on' : 'off',
     });
     if (watching) {
         // The trigger is a handler, not this loop, and that is the whole point of
@@ -88,19 +88,11 @@ export const startController = (self: {
         // `watch: true` changes when a pass happens, never what a pass is allowed to do.
         void call('kustomize.watch.run', {apply, prune, from})
             .then(([status]) =>
-                self.log?.info?.({
-                    $meta: {mtid: 'event', method: 'kustomize.watch.run'},
-                    message: `controller: watch ${JSON.stringify(status)}`,
-                }),
+                self.signal?.kustomizeControllerWatch?.({status: JSON.stringify(status)}),
             )
             // Not awaited, so the rejection is reported here: an uncaught one would end the process
             //  instead of leaving a line saying which call failed.
-            .catch(error =>
-                self.log?.error?.({
-                    $meta: {mtid: 'event', method: 'kustomize.watch.run'},
-                    message: `controller: watch failed: ${String(error)}`,
-                }),
-            );
+            .catch(error => self.signal?.kustomizeControllerWatchFailed?.({error: String(error)}));
     }
 
     // Both triggers run in every mode, and that is deliberate rather than a leftover: the watch

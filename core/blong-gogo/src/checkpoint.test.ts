@@ -15,10 +15,10 @@ import type {
     IProgressRegion,
 } from '@feasibleone/blong/types';
 import {
-    attachSemanticVocabulary,
-    detachSemanticVocabulary,
-} from '@feasibleone/semantic-log/attachable';
-import * as semantic from '@feasibleone/semantic-log/emitter';
+    attachVocabulary,
+    detachVocabulary,
+} from '@feasibleone/lukaot/context';
+import * as semantic from '@feasibleone/lukaot';
 import t from 'tap';
 import {createAttachCheckpoint} from './checkpoint.ts';
 
@@ -79,8 +79,8 @@ t.test('a checkpoint exists only where points are recorded', t => {
 });
 
 t.test('a point announced inside a branch names the branch it sat in', t => {
-    attachSemanticVocabulary(semantic);
-    t.teardown(() => detachSemanticVocabulary());
+    attachVocabulary(semantic);
+    t.teardown(() => detachVocabulary());
     const meta: IMeta = {};
     createAttachCheckpoint('test')(meta);
     meta.checkpoint?.('before-the-branch');
@@ -126,8 +126,8 @@ t.test('a point announced inside a branch names the branch it sat in', t => {
 });
 
 t.test('a branch taken inside a branch names the one it sits in', t => {
-    attachSemanticVocabulary(semantic);
-    t.teardown(() => detachSemanticVocabulary());
+    attachVocabulary(semantic);
+    t.teardown(() => detachVocabulary());
     const meta: IMeta = {};
     createAttachCheckpoint('test')(meta);
     meta.decide?.('outer', {}, [
@@ -153,7 +153,7 @@ t.test('a branch taken inside a branch names the one it sits in', t => {
 });
 
 t.test('a checkpoint is announced to the log, and announces nothing without one', t => {
-    detachSemanticVocabulary();
+    detachVocabulary();
     const detached: IMeta = {};
     createAttachCheckpoint('test')(detached);
     detached.checkpoint?.('no-log');
@@ -163,8 +163,8 @@ t.test('a checkpoint is announced to the log, and announces nothing without one'
         'nothing is announced where no emitter is attached: the degradation is the whole point',
     );
 
-    attachSemanticVocabulary(semantic);
-    t.teardown(() => detachSemanticVocabulary());
+    attachVocabulary(semantic);
+    t.teardown(() => detachVocabulary());
     const attached: IMeta = {};
     createAttachCheckpoint('test')(attached);
     attached.checkpoint?.('total-calculated', {total: 200});
@@ -178,7 +178,7 @@ t.test('a checkpoint is announced to the log, and announces nothing without one'
 });
 
 t.test('a decision is announced to the log too, and still selects without one', t => {
-    detachSemanticVocabulary();
+    detachVocabulary();
     const detached: IMeta = {};
     createAttachCheckpoint('test')(detached);
     t.equal(
@@ -188,8 +188,8 @@ t.test('a decision is announced to the log too, and still selects without one', 
     );
     t.equal(semantic.takeDecision(), undefined, 'and no rationale is staged to record');
 
-    attachSemanticVocabulary(semantic);
-    t.teardown(() => detachSemanticVocabulary());
+    attachVocabulary(semantic);
+    t.teardown(() => detachVocabulary());
     const attached: IMeta = {};
     createAttachCheckpoint('test')(attached);
     attached.decide?.('route-selection', {}, [

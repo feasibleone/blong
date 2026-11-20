@@ -6,7 +6,7 @@ import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
  *
  * These steps call the methods through the handler proxy, in this process, so
  * what they exercise is the realm's wiring — the subject namespace, the
- * `semlog` port, the URL and the one helper that builds the request. The
+ * `observer` port, the URL and the one helper that builds the request. The
  * service is running beside them, because the framework starts it in the `dev`
  * intent (`log.cluster`), which is exactly the arrangement a development run
  * has: nothing here starts a server or opens a file, and the records the test
@@ -20,14 +20,7 @@ import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 export default handler(
     ({
         lib: {group},
-        handler: {
-            blongFlowFind,
-            blongFlowGet,
-            blongTemplateFind,
-            blongSearchFind,
-            blongDigestGet,
-            blongIncidentFind,
-        },
+        handler: {blongFlowFind, blongFlowGet, blongTemplateFind, blongSearchFind, blongDigestGet},
     }) => ({
         testBlongRealmFlow: ({name = 'blong realm flow'}: {name?: string} = {}) =>
             group(name)([
@@ -51,15 +44,6 @@ export default handler(
                     assert.ok(
                         Array.isArray(templates),
                         'the templates the run has taught the service',
-                    );
-                },
-
-                /** The correlated failures, one per trace and burst (R15). */
-                async function findIncidents(assert: IAssert, {$meta}: {$meta: IMeta}) {
-                    const incidents = await blongIncidentFind<unknown[]>({}, $meta);
-                    assert.ok(
-                        Array.isArray(incidents),
-                        'the incidents a healthy run has not raised',
                     );
                 },
 

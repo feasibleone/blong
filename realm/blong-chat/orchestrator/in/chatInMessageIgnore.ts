@@ -11,11 +11,9 @@ import type {IChatInbound} from '@feasibleone/blong/types';
  */
 export default handler(() => ({
     async chatInMessageIgnore(inbound: IChatInbound) {
-        const port = this as unknown as {log?: {info?: (message: unknown) => void}};
         // Info, not debug: a deployment that reaches this method is one nobody configured a consumer
         // for, and that is worth a line per message rather than silence.
-        port.log?.info?.({
-            message: 'chat message dropped: no consumer configured',
+        this.signal?.chatInboundUnconsumed?.({
             kind: inbound.kind,
             platform: inbound.platform,
             account: inbound.account,

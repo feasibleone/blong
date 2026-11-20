@@ -49,11 +49,6 @@ export default handler(
                                 method: 'blong.digest.browse',
                                 icon: 'pi pi-chart-line',
                             },
-                            {
-                                title: 'Incidents',
-                                method: 'blong.incident.browse',
-                                icon: 'pi pi-exclamation-triangle',
-                            },
                         ],
                     },
                 ],

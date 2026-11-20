@@ -1,4 +1,4 @@
-import {withProgress} from '@feasibleone/blong-lib';
+import { withProgress } from '@feasibleone/blong-lib';
 import {
     handler,
     Internal,
@@ -18,7 +18,7 @@ import {
     type IRemote,
     type IWatcher,
 } from '@feasibleone/blong/types';
-import type {Dirent} from 'node:fs';
+import type { Dirent } from 'node:fs';
 import merge from 'ut-function.merge';
 
 import layerProxy from './layerProxy.ts';
@@ -27,8 +27,8 @@ import layerProxy from './layerProxy.ts';
 // puts the chain in the browser's eager module graph, where linking its `node:events`
 // import fails before a single handler runs. The Allure session is ended through a
 // dynamic import for the same reason.
-import type {IAllureRunOptions} from './chain.ts';
-import {runInFlow, withStep} from './semanticContext.ts';
+import type { IAllureRunOptions } from './chain.ts';
+import { runInFlow, withStep } from './responseContext.ts';
 
 export interface IWatch {
     start: (realm: IRegistry, remote: IRemote, configOverride: object) => Promise<void>;
@@ -80,7 +80,7 @@ const isHandlerGroup = (filename: string): boolean =>
     /^handlerGroup\.[mc]?[tj]sx?$/i.test(filename);
 
 /** The predicate above, exported so a test pins the convention (like `affectedNamespaces`). */
-export {isHandlerGroup};
+export { isHandlerGroup };
 
 const prefixRE: RegExp = /(?:\d+-)?(.*)/;
 
@@ -465,11 +465,9 @@ export default class Watch extends Internal implements IWatch {
                       ).default
                     : ((await directory![filename]()) as {default: unknown}).default;
             if (!item) {
-                this.log?.error?.(
-                    'Error loading ' +
-                        filename +
-                        ' ; probably a generic source code was put in a handler group folder',
-                );
+                // Declared rather than levelled (`@@T-710`): the identifier names what happened, so an
+                // operator can raise it on its own instead of raising every line the framework writes.
+                this.signal?.frameworkSourceEmpty?.({file: filename});
                 continue;
             }
             const expectedName = this.#platform.basename(
@@ -593,7 +591,13 @@ export default class Watch extends Internal implements IWatch {
                     this.#layerFiles.set(filename, config);
                     return Object.defineProperty(
                         (api: T) => {
-                            (api as Record<string, (...args: unknown[]) => unknown>)[itemName](
+                            // A declared vocabulary is routed by *what it is*, not by the file it is
+                            // written in. `lukaot/error.ts` is a vocabulary and the folder's `error.ts`
+                            // is an error map, so keying off the file name alone handed the declaration
+                            // to the error factory, which read its `signal` member as an error type and
+                            // demanded a message for it (`@@T-717`).
+                            const route = kind(item) === 'vocabulary' ? 'vocabulary' : itemName;
+                            (api as Record<string, (...args: unknown[]) => unknown>)[route](
                                 typeof item === 'function' &&
                                     !['adapter', 'orchestrator'].includes(kind(item))
                                     ? item(api)
@@ -622,20 +626,14 @@ export default class Watch extends Internal implements IWatch {
     private async _reloadConfig(registry: IRegistry, configOverride: object): Promise<void> {
         if (!this.#configRuntime) {
             // No ConfigRuntime attached — nothing to do (graceful degradation)
-            this.log?.warn?.({
-                $meta: {mtid: 'event', method: 'watch.config.reload'},
-                message: 'ConfigRuntime not attached; config change ignored',
-            });
+            this.signal?.frameworkConfigDetached?.();
             return;
         }
 
         const prev = this.#configRuntime.rawSnapshot;
         const diff: ConfigDiff = await this.#configRuntime.reload();
 
-        this.log?.info?.({
-            $meta: {mtid: 'event', method: 'watch.config.reload'},
-            changed: Array.from(diff.keys()),
-        });
+        this.signal?.frameworkConfigReloaded?.({changed: Array.from(diff.keys())});
 
         if (diff.size === 0) return;
 
@@ -654,7 +652,7 @@ export default class Watch extends Internal implements IWatch {
                     next,
                     prev,
                     configOverride,
-                    error => this.log?.error?.(error),
+                    error => this.signal?.frameworkConfigReloadFailed?.({error}),
                     done => {
                         reloaded = done;
                     },
@@ -782,19 +780,14 @@ export default class Watch extends Internal implements IWatch {
         );
         if (!fsWatcher) return;
         this.#watchers.push(fsWatcher);
-        fsWatcher.on('error', error => this.log?.error?.(error));
+        fsWatcher.on('error', error => this.signal?.frameworkWatchFailed?.({error}));
         fsWatcher.on('all', async (event, filename) => {
             try {
                 filename = this.#platform.resolve(filename);
-                this.log?.info?.(
-                    {
-                        $meta: {mtid: 'event', method: `watch.reload.${event}`},
-                    },
-                    filename,
-                );
+                this.signal?.frameworkWatchFileChanged?.({file: filename, event});
                 await this._reloadUnit(registry, configOverride, filename);
             } catch (error) {
-                this.log?.error?.(error);
+                this.signal?.frameworkWatchReloadFailed?.({file: filename, error});
             }
         });
     }
@@ -805,9 +798,8 @@ export default class Watch extends Internal implements IWatch {
         configOverride: object,
     ): Promise<void> {
         if (this.#config.enabled)
-            this.log?.debug?.({
-                $meta: {mtid: 'event', method: 'watch.start'},
-                dir: Array.from(this.#handlerFolders.keys())
+            this.signal?.frameworkWatchStarted?.({
+                folders: Array.from(this.#handlerFolders.keys())
                     .concat(Array.from(this.#handlerFiles.keys()))
                     .concat(Array.from(this.#layerFiles.keys()))
                     .map(folder => this.#platform.relative('.', folder)),
@@ -884,7 +876,7 @@ export default class Watch extends Internal implements IWatch {
                         {getProgress: () => ({done: executed, total: groups.length})},
                     );
                 } catch (error) {
-                    this.log?.error?.(error);
+                    this.signal?.frameworkTestGroupFailed?.({error});
                     done?.(error);
                     return;
                 } finally {
@@ -894,7 +886,7 @@ export default class Watch extends Internal implements IWatch {
                     // platform which never runs a group never links it.
                     await (await import('./chain.ts'))
                         .endAllureSession()
-                        .catch(error => this.log?.error?.(error));
+                        .catch(error => this.signal?.frameworkAllureSessionFailed?.({error}));
                 }
                 done?.();
             });
@@ -913,10 +905,7 @@ export default class Watch extends Internal implements IWatch {
         // not an error, it just has to be said out loud.
         const groups = ([] as string[]).concat(this.#config.test ?? []);
         if (groups.length === 0) {
-            this.log?.info?.(
-                {$meta: {mtid: 'event', method: 'watch.test.none'}},
-                'no test groups configured on this platform; nothing to run',
-            );
+            this.signal?.frameworkWatchNoTests?.();
             return;
         }
         return new Promise<void>((resolve, reject) => {

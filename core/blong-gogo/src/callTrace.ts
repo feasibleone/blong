@@ -1,10 +1,9 @@
 /**
  * Whether a flow's calls are recorded, and the record a phase produces.
  *
- * The *decision* is no longer made here. It is a capability — a per-execution
- * switch — and semantic-log owns those (`@feasibleone/semantic-log/capability`):
- * the switch lives in its ambient scope, travels with the identity in the `cap`
- * field of `x-semantic-trace`, and is read back where a record would be produced.
+ * The *decision* is no longer made here. It is a capability — a per-execution switch — and lukaot
+ * owns those (`@feasibleone/lukaot`): the switch lives in its ambient scope, travels with the identity
+ * in the `cap` field of `x-semantic-trace`, and is read back where a record would be produced.
  * What this module keeps is everything that is the *framework's* rather than the
  * emitter's:
  *
@@ -14,10 +13,9 @@
  *   naming the leg and the phase, which is what the ledger reads a call out of;
  * - the header a grant token arrives in.
  *
- * The line between the two is worth stating, because it is the line between the
- * packages: semantic-log knows what a call *is* (a leg, its target, its position,
- * its phases), and blong knows how this runtime names things and what its records
- * look like.
+ * The line between the two is worth stating, because it is the line between the packages: lukaot knows
+ * what a call *is* (a leg, its target, its position, its phases), and blong knows how this runtime names
+ * things and what its records look like.
  */
 
 import type {CallPhase} from '@feasibleone/blong/types';
@@ -25,10 +23,9 @@ import type {CallPhase} from '@feasibleone/blong/types';
 /**
  * The capability that switches the call channel.
  *
- * The same name semantic-log's `createCallChannel` asks for — it is defined there
- * too, and `callTrace.test.ts` pins the two together, because a value that had to
- * agree across packages by convention is a value that would stop agreeing
- * silently.
+ * The same name lukaot's `createCallChannel` asks for — it is defined there too, and
+ * `callTrace.test.ts` pins the two together, because a value that had to agree across packages by
+ * convention is a value that would stop agreeing silently.
  */
 export const CALLS_CAPABILITY = 'calls';
 
@@ -102,7 +99,7 @@ function matches(pattern: string, entry: string): boolean {
  * What the configuration says about an entry, when nothing else has decided.
  *
  * Only the configuration half of the decision: a capability already published for
- * the flow settles the question before this is reached, and `semanticContext.ts`
+ * the flow settles the question before this is reached, and `responseContext.ts`
  * is where the two are put in order.
  */
 export function callsPermitted(entry: string): boolean {
@@ -118,7 +115,7 @@ export function callsPermitted(entry: string): boolean {
  * What it was when these records were written through the level API — `$meta` with
  * `mtid: 'event'` and a method naming the leg and the phase — so nothing downstream
  * of the channel had to learn a new format, and the ledger still reads a call out
- * of the same two fields. The line beside it belongs to semantic-log, which hands
+ * of the same two fields. The line beside it belongs to lukaot, which hands
  * it to the writer on the event; nothing here names a phase in prose.
  */
 export function callRecord(leg: string, phase: CallPhase): Record<string, unknown> {

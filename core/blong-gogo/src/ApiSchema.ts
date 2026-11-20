@@ -7,10 +7,10 @@ import type {
     PathItemObject,
     SchemaObject,
 } from '@feasibleone/blong/types';
-import {Internal} from '@feasibleone/blong/types';
-import {type Dirent} from 'node:fs';
+import { Internal } from '@feasibleone/blong/types';
+import { type Dirent } from 'node:fs';
 
-import {identifier} from './lib.ts';
+import { identifier } from './lib.ts';
 import loadApi from './loadApi.ts';
 
 interface IConfig {
@@ -166,7 +166,7 @@ export default class ApiSchema extends Internal implements IApiSchema {
             const schema = this.#loaded[method.toLowerCase()];
             if (schema) {
                 // console.log(schema.operation.responses);
-                this.log?.warn?.(`Writing ${filename}`);
+                this.signal?.frameworkSchemaFileRewritten?.({file: filename});
                 this.#platform.writeFileSync(
                     filename,
                     `import unchanged from '@feasibleone/blong';
@@ -310,7 +310,7 @@ export default handler(
         if (this.#config.generate === false) return false;
         const [object, orchestrator, subject] = dir.split('/').reverse();
         if (orchestrator !== 'orchestrator') return false;
-        this.log?.info?.(`Generating dir ${dir}`);
+        this.signal?.frameworkSchemaDirScanning?.({dir});
         const prefix = subject.toLowerCase() + object.toLowerCase();
         let record = this.#generateDir[prefix];
         if (!record) {

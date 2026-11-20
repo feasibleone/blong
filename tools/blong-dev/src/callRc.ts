@@ -64,6 +64,15 @@ export interface ICallRc {
     default?: {server?: string} | string;
     /** A bare address, for a file that names no alias at all. */
     target?: string;
+    /**
+     * What the plan commands read from the file.
+     *
+     * `invite` is the Slack member id (or ids) a plan's private channel is created with. It lives
+     * here because it is a fact about the person rather than about the plan, and because the
+     * invitation is only possible at creation: a channel created without one is invisible to its
+     * owner and cannot be re-created under the same name (`plan init` warns when the list is empty).
+     */
+    plan?: {invite?: string[]};
 }
 
 /** A server resolved for one call, with where it came from. */
@@ -141,9 +150,7 @@ export function mergePayload(
         for (const [key, value] of Object.entries(part)) {
             const before = merged[key];
             merged[key] =
-                isPlainObject(before) && isPlainObject(value)
-                    ? mergePayload(before, value)
-                    : value;
+                isPlainObject(before) && isPlainObject(value) ? mergePayload(before, value) : value;
         }
     }
     return merged;
@@ -239,8 +246,7 @@ export function methodName(raw: string): string {
     if (trimmed.includes('.')) return trimmed;
     if (trimmed.includes('/')) return trimmed.split('/').filter(Boolean).join('.');
     const parts = trimmed.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/\s+/);
-    if (parts.length === 3)
-        return parts.map(part => part.toLowerCase()).join('.');
+    if (parts.length === 3) return parts.map(part => part.toLowerCase()).join('.');
     throw new Error(
         `cannot read "${raw}" as a method: write it as subject.object.predicate ` +
             `(the joined form works only when it is three words)`,

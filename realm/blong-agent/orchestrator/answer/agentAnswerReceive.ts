@@ -94,8 +94,12 @@ export default handler(
                             {...$meta, method: 'notify.pub.publish', mtid: 'request'},
                         );
                     } catch (error) {
-                        port.log?.warn?.({
-                            message: `a wake for ${sessionId} was not published: ${String((error as Error)?.message ?? error)}`,
+                        // A declared identifier rather than a sentence built here: the wake failing is
+                        // its own event, and an operator can silence it without touching the code
+                        // (`@@T-717`).
+                        port.signal?.agentAnswerWakeUnpublished?.({
+                            sessionId: String(sessionId),
+                            error: String((error as Error)?.message ?? error),
                         });
                     }
                 }

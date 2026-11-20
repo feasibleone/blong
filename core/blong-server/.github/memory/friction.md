@@ -11,13 +11,15 @@ open (1)
 
 - `F-623` · core/blong-server — upgrade dies at subject.validation with rpc-core
 
-resolved (3)
+resolved (4)
 
 - `F-415` · core/blong-server — A released db adapter imported nothing, so no schema existed
 - `F-435` · core/blong-server — A handler call made while the process is loading goes over the
   socket
 - `F-437` · core/blong-server — The local read that looks equivalent to the call publishes no
   validations
+- `F-767` · core/blong-server — ci-lint errors in `../blong/` were a missing types: `[node]`, not
+  the change
 
 <!-- /memory:index -->
 
@@ -99,3 +101,18 @@ Resolved by D-459: the collected models live in core/blong-server/subjectModels.
 package root rather than a slot on the port's config, so the port's writes are what the validation
 reads. The lesson stands and is what the friction was kept for; the 13-against-zero disagreement it
 describes is gone.
+
+### F-767 — ci-lint errors in `../blong/` were a missing types: `[node]`, not the change
+
+> _2026-11-19 · core/blong-server · resolved_
+
+Adding a new file to `core/blong-server` made `ci-lint` report 24 errors, none of them in the file:
+`Cannot find name 'Buffer'` in eleven places in `../blong/knex.ts` and thirteen in
+`../blong/types.ts`. The package's `tsconfig.json` had no `"types": ["node"]`, and because this repo
+exports sources rather than declarations a consumer's type-check compiles the dependency's files and
+inherits the gap — so the package had been linted without node's globals all along and nothing
+failed until a file in it reached them. `core/blong-mock` and `core/blong-asset` both carry
+`"types": ["node"]` at line 17; that is the convention, and adding the one line made the package
+clean. The lesson is the order: when `ci-lint` reports errors in files you did not touch, compare
+the package's `tsconfig.json` against a sibling that compiles the same imports before suspecting the
+change.

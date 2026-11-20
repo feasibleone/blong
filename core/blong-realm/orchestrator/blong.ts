@@ -5,7 +5,7 @@ import {orchestrator} from '@feasibleone/blong';
  *
  * A dispatch orchestrator is what owns a namespace: it names it, says which
  * handler groups answer to it, and names the port that carries the calls. The
- * port here is the `semlog` HTTP adapter, because every method under `blong` is
+ * port here is the `observer` HTTP adapter, because every method under `blong` is
  * a read of the cluster service — there is no business logic to coordinate and
  * no data of this realm's own to keep.
  *
@@ -28,7 +28,7 @@ export default orchestrator(() => ({
     activation: {
         default: {
             namespace: 'blong',
-            destination: 'semlog',
+            destination: 'observer',
         },
     },
 }));

@@ -38,7 +38,7 @@ open (25)
 - `T-605` · core/blong-browser — Cheaper Playwright boot: run the specs against a bundled build
 - `T-612` · core/blong-browser — The sherpa engine is untested against a real module and model
 
-done (38)
+done (39)
 
 - `T-369` · core/blong-browser — Resolve TestRun source pointers from a real run
 - `T-367` · core/blong-browser — Test UI phases 2-4: runner, host, Playwright
@@ -79,6 +79,7 @@ done (38)
 - `T-671` · core/blong-browser — Register the widget, translate the labels, write the stories
 - `T-673` · core/blong-browser — Group 4 verification
 - `T-670` · core/blong-browser — The `AssetWidget`
+- `T-736` · core/blong-browser — Give the browser platform a vocabulary
 
 <!-- /memory:index -->
 
@@ -970,3 +971,32 @@ sit in the store until the sweep found it (`@@D-840`). The picture comes back th
 whose record read says what the file is; a pasted link needs no store at all (`@@D-842`).
 `assetIcon` and `assetLabel` turn a type, a name or a `data:` URI into an icon and a readable name,
 and the field fills the sibling fields its model names from the committed record (`@@D-852`).
+
+### T-736 — Give the browser platform a vocabulary
+
+> _2026-11-19 · core/blong-browser · done_
+
+Three level calls remain, all in `core/blong-browser`: `orchestrator/auth/authLogin.ts:36,72` and
+`src/model/component/subjectObjectComponent.ts:36`. They are blocked on the **browser half** of the
+vocabulary seam, not on the conversion: a page's component reaches no `signal` because `BrowserLog`
+carries no `signalFor`, and `load.ts` skips the attacher for the browser platform.
+
+Three changes, in this order. `BrowserLog` gains `signalFor(name, level)` built the way
+`LukaotLog`'s is — `signalView` over a registry composed from what packages contributed — writing
+through its own logger so a page's records keep the component's name; the loader stops resolving the
+attacher to `undefined` for `rootKind === 'browser'`, which is now safe because lukaot's root has no
+`node:` import (the reason the skip existed is gone, `@@D-912`); and `core/blong-browser` declares
+its names in a `lukaot/` layer, so its orchestrator and component handlers have a vocabulary to
+call.
+
+Convert then, with the shapes the other packages use: the login failure as an error or a warn that
+names the case, the token warning as its own identifier, and the component warning likewise. Verify
+with `blong-dev legacy check` (it must report nothing), `core/blong-browser`'s own suite, and a
+browser build of a page that logs — `core/blong-kukum`'s e2e is the one that exercises a real page,
+and it is the proof that the attacher does not reintroduce a node import.
+
+Closed: the loader attaches in the browser too, BrowserLog gained signalFor over the contributed
+vocabularies, core/blong-browser/lukaot/signal.ts contributes browserLoginTokenMissing,
+browserLoginCallFailed and browserModelIncomplete, and the three call sites call them. blong-dev
+legacy check reports zero level calls in the tree; the browser bundle test still finds no node
+builtin; core/blong-browser 876 tests and blong-kukum 669 (with its real page) pass.

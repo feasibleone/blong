@@ -1188,3 +1188,125 @@ t.test('the memory command layer', async t => {
         t.end();
     });
 });
+
+/** An approved plan under a throwaway repo's `plans/`, which is what makes it active. */
+function seedPlan(dir: string, slug = 'demo', status = 'approved'): string {
+    const folder = join(dir, 'plans', slug);
+    mkdirSync(folder, {recursive: true});
+    const path = join(folder, 'plan.md');
+    writeFileSync(
+        path,
+        [
+            '---',
+            `slug: ${slug}`,
+            `title: ${slug} — a plan`,
+            `status: ${status}`,
+            `approved: 2026-11-19`,
+            '---',
+            '',
+            `# ${slug}`,
+            '',
+            '## 3. Work breakdown',
+            '',
+            '- [ ] A task · area: cross-cutting',
+            '',
+        ].join('\n'),
+    );
+    return path;
+}
+
+t.test('a decision while a plan is active must say whether it belongs to it', async t => {
+    const repo = tempRepo();
+    try {
+        const plan = seedPlan(repo.dir);
+        const refused = await capture(() =>
+            memory(['add', 'decision', '--title', 'A choice', '--area', 'cross-cutting']),
+        );
+        t.equal(refused.code, 1, 'the call fails rather than writing a decision the board misses');
+        t.match(refused.err, /active plan "demo"/, 'and names the plan');
+        t.match(refused.err, /--plan demo/, 'with the flag that lists it');
+        t.match(refused.err, /--no-plan/, 'and the one that says it is not part of the plan');
+
+        const notPart = await capture(() =>
+            memory([
+                'add',
+                'decision',
+                '--title',
+                'A choice',
+                '--area',
+                'cross-cutting',
+                '--no-plan',
+            ]),
+        );
+        t.notOk(notPart.code, '--no-plan records it');
+        t.notMatch(
+            readFileSync(plan, 'utf8'),
+            /@@D-/,
+            'and the plan says nothing about a decision that is not its own',
+        );
+
+        const listed = await capture(() =>
+            memory([
+                'add',
+                'decision',
+                '--title',
+                'Another choice',
+                '--area',
+                'cross-cutting',
+                '--plan',
+                'demo',
+            ]),
+        );
+        t.notOk(listed.code, '--plan records it and lists it');
+        t.match(readFileSync(plan, 'utf8'), /Another choice/, 'the board names it');
+    } finally {
+        repo.restore();
+    }
+});
+
+t.test('a plan that is only a draft is not active', async t => {
+    const repo = tempRepo();
+    try {
+        seedPlan(repo.dir, 'draft-plan', 'draft');
+        const added = await capture(() =>
+            memory(['add', 'friction', '--title', 'A surprise', '--area', 'cross-cutting']),
+        );
+        t.notOk(added.code, 'there is nothing to belong to, so no flag is demanded');
+    } finally {
+        repo.restore();
+    }
+});
+
+t.test('a forgotten plan stays forgotten, however many approved ones remain', async t => {
+    // `plans/active.json` holding `{}` is `writeActivePlan(root, undefined)` — somebody said nothing
+    // is being executed. Reading it as "no pointer here, pick the newest approved plan" made that
+    // write a no-op, and a repository whose remaining plans were finished long ago kept naming one of
+    // them at every refusal (@@D-922). The absent pointer keeps the old fallback: a checkout that
+    // predates the pointer still gets the protection (@@D-916).
+    const repo = tempRepo();
+    try {
+        seedPlan(repo.dir);
+        mkdirSync(join(repo.dir, 'plans'), {recursive: true});
+        writeFileSync(join(repo.dir, 'plans', 'active.json'), '{}\n');
+
+        const added = await capture(() =>
+            memory(['add', 'decision', '--title', 'A choice', '--area', 'cross-cutting']),
+        );
+        t.notOk(added.code, 'an empty pointer means no plan is active');
+    } finally {
+        repo.restore();
+    }
+});
+
+t.test('a todo and a question are unaffected by an active plan', async t => {
+    const repo = tempRepo();
+    try {
+        seedPlan(repo.dir);
+        const todo = await capture(() =>
+            memory(['add', 'todo', '--title', 'Later work', '--area', 'cross-cutting']),
+        );
+        t.notOk(todo.code, 'a todo belongs in the work breakdown, not beside the decisions');
+    } finally {
+        repo.restore();
+    }
+});

@@ -208,9 +208,10 @@ export default adapter<IConfig>(({utError}) => {
                                           )
                                         : Buffer.from(await response.arrayBuffer());
                             } catch (error) {
-                                this.log?.error?.(
-                                    `Error fetching report from ${url}: ${(error as Error).message}`,
-                                );
+                                this.signal?.frameworkS3ReportFetchFailed?.({
+                                    url,
+                                    error: (error as Error).message,
+                                });
                                 throw error;
                             }
                         } else {

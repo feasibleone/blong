@@ -1,7 +1,7 @@
 {
     "name": "@feasibleone/blong-core",
     "version": "1.6.2",
-    "description": "Core utility realm — reusable DB schemas for resource, type, property, triple, translation, and path tables",
+    "description": "Core utility realm \u2014 reusable DB schemas for resource, type, property, triple, translation, and path tables",
     "type": "module",
     "exports": {
         "./server.ts": "./server.ts",
@@ -23,7 +23,8 @@
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
-        "typebox": "^1.1.5"
+        "typebox": "^1.1.5",
+        "@feasibleone/lukaot": "workspace:^"
     },
     "devDependencies": {
         "@feasibleone/blong-dev": "workspace:*",

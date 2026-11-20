@@ -1,6 +1,15 @@
 import {withProgress} from '@feasibleone/blong-lib';
+import type {IChildLogger, Level, LevelWithSilent} from '@feasibleone/blong/types';
 import {Internal, type ILog, type ILogger} from '@feasibleone/blong/types';
-import type {Level, Logger as PinoLogger} from 'pino';
+import {
+    compose,
+    contributedVocabularies,
+    createRegistry,
+    signalView,
+    writeThroughFace,
+    type SignalRegistry,
+    type VocabularyProxy,
+} from '@feasibleone/lukaot';
 
 // ── level constants (bunyan numeric levels) ──────────────────────────────────
 const LEVEL_VALUES: Record<string, number> = {
@@ -174,6 +183,7 @@ function createLogger(
 export default class BrowserLog extends Internal implements ILog {
     #config: IBrowserLogConfig = {level: 'info', logByLevel: false};
     #logger: ISimpleLogger;
+    #registry?: SignalRegistry;
 
     public constructor(config: IBrowserLogConfig) {
         super();
@@ -185,14 +195,38 @@ export default class BrowserLog extends Internal implements ILog {
         );
     }
 
-    public child<T extends string = never>(
-        ...params: Parameters<PinoLogger['child']>
-    ): PinoLogger<T> {
-        const [bindings, options] = params;
+    /**
+     * The vocabulary this page's components may report with, bound to one component's name and level.
+     *
+     * The server's `LukaotLog` builds the same view over the framework's registry; here there is no
+     * framework vocabulary to add — a page owns no watcher, no gateway and no cluster — so the
+     * registry is what the packages in this process contributed, which is how a realm's own
+     * `lukaot/` layer reaches a component that has no port to attach to (@@D-920). The name binding is
+     * what keeps a record's header: a line that said `browser` for every component would have lost the
+     * one thing the header is for.
+     *
+     * `undefined` when nothing is declared, so a component's `this.signal?.x?.()` costs the optional
+     * chain and nothing else instead of carrying an empty proxy.
+     */
+    public signalFor(name: string, level?: Level): VocabularyProxy | undefined {
+        const declared = contributedVocabularies();
+        if (declared.length === 0) return undefined;
+        this.#registry ??= createRegistry(compose(...declared));
+        const child = this.#logger.child(
+            {name},
+            level === undefined ? undefined : {level: level as string},
+        );
+        return signalView(
+            this.#registry,
+            writeThroughFace(child as unknown as Parameters<typeof writeThroughFace>[0]),
+        ).vocabulary;
+    }
+
+    public child(bindings: object, options?: {level?: LevelWithSilent}): IChildLogger {
         return this.#logger.child(
             bindings as Record<string, unknown>,
             options as {level?: string} | undefined,
-        ) as unknown as PinoLogger<T>;
+        ) as unknown as IChildLogger;
     }
 
     public logger(

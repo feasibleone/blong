@@ -1,4 +1,4 @@
-import {adapter, type ILogger, type IMeta} from '@feasibleone/blong/types';
+import {adapter, type IMeta, type VocabularyProxy} from '@feasibleone/blong/types';
 import Kafka, {type Message} from 'node-rdkafka';
 import {Duplex} from 'stream';
 
@@ -51,7 +51,7 @@ async function readTopicMessages(
     connection: KafkaConfig,
     topic: string,
     limit: number,
-    log?: ILogger,
+    signal?: VocabularyProxy,
 ): Promise<Message[]> {
     const consumer = new Kafka.KafkaConsumer(
         {...connection, 'group.id': `blong-commander-${Date.now()}`},
@@ -76,15 +76,15 @@ async function readTopicMessages(
                 resolve(messages);
             };
             deadline = setTimeout(() => {
-                log?.warn?.(
-                    {topic, elapsedMs: Date.now() - startedAt},
-                    'kafka topic read timed out',
-                );
+                signal?.frameworkKafkaTopicTimeout?.({
+                    topic,
+                    elapsedMs: Date.now() - startedAt,
+                });
                 finish([]);
             }, joinDeadlineMs);
             consumer.setDefaultConsumeTimeout(consumeTimeoutMs);
             consumer.on('event.error', error => {
-                log?.warn?.({topic, err: error?.message}, 'kafka topic read failed');
+                signal?.frameworkKafkaTopicFailed?.({topic, error: error?.message});
                 finish([]);
             });
             consumer.on('ready', () => {
@@ -98,17 +98,14 @@ async function readTopicMessages(
                     poll = null;
                     consumer.consume(limit, (error, messages) => {
                         if (error) {
-                            log?.warn?.({topic, err: error.message}, 'kafka topic read failed');
+                            signal?.frameworkKafkaTopicFailed?.({topic, error: error.message});
                             return finish([]);
                         }
-                        log?.info?.(
-                            {
-                                topic,
-                                count: messages?.length ?? 0,
-                                elapsedMs: Date.now() - startedAt,
-                            },
-                            'kafka topic read',
-                        );
+                        signal?.frameworkKafkaTopicRead?.({
+                            topic,
+                            count: messages?.length ?? 0,
+                            elapsedMs: Date.now() - startedAt,
+                        });
                         finish(messages ?? []);
                     });
                 }, 200);
@@ -179,15 +176,12 @@ export default adapter<IConfig>(() => {
                 ...this.config.connection,
                 'group.id': groupId,
             };
-            this.log?.info?.(
-                {
-                    groupId,
-                    topics: this.config.consume.topics,
-                    sessionTimeoutMs: consumerConfig['session.timeout.ms'],
-                    broker: consumerConfig['metadata.broker.list'],
-                },
-                'kafka consumer creating',
-            );
+            this.signal?.frameworkKafkaConsumerCreating?.({
+                groupId,
+                topics: this.config.consume.topics,
+                sessionTimeoutMs: consumerConfig['session.timeout.ms'],
+                broker: consumerConfig['metadata.broker.list'],
+            });
 
             consumerStream = Kafka.KafkaConsumer.createReadStream(
                 consumerConfig,
@@ -212,23 +206,20 @@ export default adapter<IConfig>(() => {
                     poll = setInterval(() => {
                         if (consumerStream!.consumer.assignments().length > 0) {
                             cleanup();
-                            this.log?.info?.(
-                                {groupId, elapsedMs: Date.now() - startedAt},
-                                'kafka consumer assigned',
-                            );
+                            this.signal?.frameworkKafkaConsumerAssigned?.({
+                                groupId,
+                                elapsedMs: Date.now() - startedAt,
+                            });
                             resolve();
                         }
                     }, 200);
                     safety = setTimeout(() => {
                         cleanup();
-                        this.log?.warn?.(
-                            {
-                                groupId,
-                                elapsedMs: Date.now() - startedAt,
-                                hint: 'stale group members from an earlier abrupt shutdown keep the rebalance waiting up to session.timeout.ms',
-                            },
-                            'kafka consumer assignment timed out',
-                        );
+                        this.signal?.frameworkKafkaAssignmentTimedOut?.({
+                            groupId,
+                            elapsedMs: Date.now() - startedAt,
+                            hint: 'stale group members from an earlier abrupt shutdown keep the rebalance waiting up to session.timeout.ms',
+                        });
                         // Best-effort graceful close BEFORE failing start: a
                         // consumer that joined the group but never got an
                         // assignment would otherwise linger as a stale group
@@ -244,15 +235,15 @@ export default adapter<IConfig>(() => {
                     }, 30000);
                 };
                 if (consumerStream!.consumer.isConnected()) {
-                    this.log?.info?.({groupId}, 'kafka consumer already connected');
+                    this.signal?.frameworkKafkaConsumerConnected?.({groupId});
                     startPolling();
                 } else {
-                    this.log?.info?.({groupId}, 'kafka consumer connecting, waiting for ready');
+                    this.signal?.frameworkKafkaConsumerConnecting?.({groupId});
                     consumerStream!.consumer.once('ready', () => {
-                        this.log?.info?.(
-                            {groupId, elapsedMs: Date.now() - startedAt},
-                            'kafka consumer ready',
-                        );
+                        this.signal?.frameworkKafkaConsumerReady?.({
+                            groupId,
+                            elapsedMs: Date.now() - startedAt,
+                        });
                         startPolling();
                     });
                 }
@@ -298,7 +289,7 @@ export default adapter<IConfig>(() => {
         async stop(...params: unknown[]) {
             const groupId = this.config.consume.groupId;
             const stopStartedAt = Date.now();
-            this.log?.info?.({groupId}, 'kafka adapter stop');
+            this.signal?.frameworkKafkaStop?.({groupId});
             const awaitClose = (
                 s: {once(e: 'close', cb: () => void): void} | null,
                 disconnect: () => void,
@@ -308,26 +299,20 @@ export default adapter<IConfig>(() => {
                     ? Promise.resolve()
                     : new Promise<void>(resolve => {
                           const t = setTimeout(() => {
-                              this.log?.warn?.(
-                                  {
-                                      groupId,
-                                      waitMs: ms,
-                                      elapsedMs: Date.now() - stopStartedAt,
-                                      hint: 'consumer/producer did not emit close — the group member was not gracefully removed',
-                                  },
-                                  'kafka close timed out',
-                              );
+                              this.signal?.frameworkKafkaCloseTimedOut?.({
+                                  groupId,
+                                  waitMs: ms,
+                                  elapsedMs: Date.now() - stopStartedAt,
+                                  hint: 'consumer/producer did not emit close — the group member was not gracefully removed',
+                              });
                               resolve();
                           }, ms);
                           s.once('close', () => {
                               clearTimeout(t);
-                              this.log?.info?.(
-                                  {
-                                      groupId,
-                                      elapsedMs: Date.now() - stopStartedAt,
-                                  },
-                                  'kafka consumer/producer closed (LeaveGroup sent)',
-                              );
+                              this.signal?.frameworkKafkaClosed?.({
+                                  groupId,
+                                  elapsedMs: Date.now() - stopStartedAt,
+                              });
                               resolve();
                           });
                           disconnect();
@@ -347,10 +332,10 @@ export default adapter<IConfig>(() => {
                         20000,
                     ),
                 ]);
-                this.log?.info?.(
-                    {groupId, elapsedMs: Date.now() - stopStartedAt},
-                    'kafka adapter stop complete',
-                );
+                this.signal?.frameworkKafkaStopComplete?.({
+                    groupId,
+                    elapsedMs: Date.now() - stopStartedAt,
+                });
             } finally {
                 stream = null;
                 codec = null;
@@ -402,7 +387,7 @@ export default adapter<IConfig>(() => {
                             this.config.connection,
                             topic,
                             limit,
-                            this.log,
+                            this.signal,
                         );
                         return {
                             items: messages.map(m => ({

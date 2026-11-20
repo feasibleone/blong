@@ -1,7 +1,7 @@
 import {handler} from '@feasibleone/blong';
 import type {IChatInbound} from '@feasibleone/blong/types';
 
-import {pendingKey, pendingPick} from '../prompt/pending.ts';
+import {pendingPickMatching} from '../prompt/pending.ts';
 
 /**
  * `chat.in.promptPick` — a control of an inline question was toggled, nothing is answered yet.
@@ -18,7 +18,7 @@ import {pendingKey, pendingPick} from '../prompt/pending.ts';
 export default handler(() => ({
     async chatInPromptPick(inbound: IChatInbound): Promise<{handled: boolean}> {
         const {pick} = inbound;
-        if (pick) pendingPick(pendingKey(pick.promptId, inbound), pick);
+        if (pick) pendingPickMatching(pick.promptId, inbound, pick);
         return {handled: true};
     },
 }));

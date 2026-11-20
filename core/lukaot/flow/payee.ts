@@ -1,0 +1,107 @@
+/**
+ * Payee DFSP — the far end.
+ *
+ * The last participant in the chain; its failure is the one that must be
+ * attributed as the origin (PRD R15).
+ *
+ * Both faults here are deployment properties the participant is installed with
+ * (`blockTransfers`, `stallTransfers`) rather than branches a test steers it
+ * into: the file still reads like a real payee that happens to be configured
+ * that way (Plan 3 decision 2).
+ *
+ * The status is set on the reply explicitly; a returned `{status, body}` object
+ * would be answered with HTTP 200 by fastify, so a refusal could never reach the
+ * hub and R15's origin would be the hub's own timeout instead of this service
+ * (see `payer.ts` for the full note).
+ */
+
+import {declare} from '../index.ts';
+import type {Participant} from './participant.ts';
+
+/**
+ * What the payee reports — the far end's four answers and its two refusals.
+ *
+ * A payee is where a failure *originates*, so its names are the ones a person reads when they ask
+ * where a transfer stopped: a stall is a different event from a refusal, and the fixture exists partly
+ * to show that the far end's own record says which one happened (`@@D-889`).
+ */
+export const payeeVocabulary = declare({
+    log: {
+        /** The payee's profile was asked for and answered. */
+        payeePartyProfileReturned: {level: 'info', message: 'party profile returned in {currency}'},
+        /** A quote was signed for this payee. */
+        payeeQuoteSigned: {level: 'info', message: 'quote signed with {condition}'},
+        /** The transfer is waiting for a fulfilment that will not come. */
+        payeeTransferStalled: {
+            level: 'warn',
+            message: 'transfer awaiting fulfilment for {waitedMs}ms',
+        },
+        /** The transfer was refused, as a blocked account refuses it. */
+        payeeTransferRefused: {level: 'error', message: 'transfer refused: {reason}'},
+        /** The transfer fulfilled. */
+        payeeTransferFulfilled: {level: 'info', message: 'transfer fulfilled'},
+    },
+});
+
+export interface PayeeOptions {
+    /** Refuse every transfer, as a blocked account would (fault F1). */
+    blockTransfers?: boolean;
+    /** Never answer the transfer, as a hung downstream would (fault F4). */
+    stallTransfers?: boolean;
+    stallMs?: number;
+}
+
+export function installPayee(participant: Participant, options: PayeeOptions = {}): void {
+    const {signal, app} = participant;
+
+    app.post('/parties', async (request, reply) => {
+        const traceId = participant.traceFrom(request);
+        const flowId = participant.flowFrom(request);
+        const leg = participant.legFrom(request);
+        const result = await participant.run(traceId, flowId, leg, () =>
+            participant.phase('discovery', async () => {
+                signal?.payeePartyProfileReturned?.({currency: 'EUR'});
+                return {status: 200, body: {currency: 'EUR'}};
+            }),
+        );
+        reply.status(result.status);
+        return result.body;
+    });
+
+    app.post('/quotes', async (request, reply) => {
+        const traceId = participant.traceFrom(request);
+        const flowId = participant.flowFrom(request);
+        const leg = participant.legFrom(request);
+        const result = await participant.run(traceId, flowId, leg, () =>
+            participant.phase('quote', async () => {
+                signal?.payeeQuoteSigned?.({condition: 'sha256:condition'});
+                return {status: 200, body: {condition: 'sha256:condition'}};
+            }),
+        );
+        reply.status(result.status);
+        return result.body;
+    });
+
+    app.post('/transfers', async (request, reply) => {
+        const traceId = participant.traceFrom(request);
+        const flowId = participant.flowFrom(request);
+        const leg = participant.legFrom(request);
+        const result = await participant.run(traceId, flowId, leg, () =>
+            participant.phase('transfer', async () => {
+                if (options.stallTransfers) {
+                    signal?.payeeTransferStalled?.({waitedMs: options.stallMs ?? 50});
+                    await new Promise(resolve => setTimeout(resolve, options.stallMs ?? 50));
+                    return {status: 504, body: {reason: 'no fulfilment'}};
+                }
+                if (options.blockTransfers) {
+                    signal?.payeeTransferRefused?.({reason: 'account blocked'});
+                    return {status: 422, body: {reason: 'account blocked'}};
+                }
+                signal?.payeeTransferFulfilled?.({});
+                return {status: 200, body: {fulfilment: 'sha256:preimage'}};
+            }),
+        );
+        reply.status(result.status);
+        return result.body;
+    });
+}

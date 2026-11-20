@@ -13,7 +13,7 @@ import type {
     IMeta,
     IPlatformApi,
 } from '@feasibleone/blong/types';
-import {Internal} from '@feasibleone/blong/types';
+import {Internal, type LevelWithSilent} from '@feasibleone/blong/types';
 import fastify, {
     LogController,
     type FastifyInstance,
@@ -22,12 +22,12 @@ import fastify, {
     type RouteOptions,
 } from 'fastify';
 import os from 'os';
-import type {LevelWithSilent} from 'pino';
+
 import {Type, type TSchema} from 'typebox';
 import Value from 'typebox/value';
 import {v4} from 'uuid';
 
-import {TRACE_HEADER, withoutCapabilities} from '@feasibleone/semantic-log/capability';
+import {TRACE_HEADER, withoutCapabilities} from '@feasibleone/lukaot';
 import {CALLS_CAPABILITY, GRANT_HEADER} from './callTrace.ts';
 import {GENERATED_KEY_SPEC, GENERATED_PAIR_WARNING} from './gatewayKeys.ts';
 import {grantedCalls, grantKeyFrom} from './grant.ts';
@@ -37,7 +37,7 @@ import {
     enterCapability,
     enterRequestFlow,
     runInFlow,
-} from './semanticContext.ts';
+} from './responseContext.ts';
 
 import {type TypeBoxTypeProvider} from '@fastify/type-provider-typebox';
 import type {IResolution} from './Resolution.ts';
@@ -350,7 +350,7 @@ export default class Gateway extends Internal implements IGateway {
         return (
             [
                 ['x-request-id'],
-                // The framework's own identity header (see `semanticContext.ts`). It
+                // The framework's own identity header (see `responseContext.ts`). It
                 // travels in the body as well, but a request that never reached the
                 // route handler — the one the hooks rejected — is only readable from
                 // here, and this is what lets it keep the flow it was given. The

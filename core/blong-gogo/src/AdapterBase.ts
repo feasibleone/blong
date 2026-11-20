@@ -1,5 +1,6 @@
 import type {
     Adapter,
+    CaptureSurface,
     Config,
     Errors,
     IApi,
@@ -8,10 +9,11 @@ import type {
     IMeta,
     ITypedError,
     PortHandlerBound,
+    VocabularyProxy,
 } from '@feasibleone/blong/types';
-import type {TSchema} from 'typebox';
 import type net from 'node:net';
 import PQueue from 'p-queue';
+import type {TSchema} from 'typebox';
 
 import ConfigRuntime from './ConfigRuntime.ts';
 import {formatConfigIssues, validateConfigBlock} from './configValidation.ts';
@@ -24,7 +26,7 @@ import {
     inboundIdentities,
     isFlowId,
     takeProgress,
-} from './semanticContext.ts';
+} from './responseContext.ts';
 
 const errorMap: IErrorMap = {
     'adapter.configValidation': 'Adapter config validation:\r\n{message}',
@@ -88,6 +90,9 @@ type AdapterHandlerContext = {
     config: {namespace?: string | string[]};
 };
 
+/** Where a port keeps its resolved capture surface. */
+const CAPTURE: unique symbol = Symbol('blong:capture');
+
 export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext {
     errors = _errors;
     exec: unknown = null;
@@ -95,6 +100,15 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
     config: Config<T, C> = {} as Config<T, C>;
     configBase: string;
     log: unknown = null;
+    /**
+     * The process's declared vocabulary for this port, or nothing when it holds none.
+     *
+     * A port serves one namespace, and a namespace is one layer's handlers, so the vocabulary is
+     * attached per port by the loader (`signals.ts`, `@@T-712`). Declared here because this class is
+     * the runtime-provided base every adapter extends: without the member, `this.signal?.x?.()` in a
+     * port's own code type-checks against nothing.
+     */
+    signal?: VocabularyProxy;
     importedMap?: Map<string, Record<string, (...args: unknown[]) => unknown>>;
     platform: IApi['platform'];
     registry: IApi['registry'];
@@ -114,8 +128,19 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
     // api.attachHandlers = ... only *after* the port factory returns.  Storing
     // the api object and reading api.attachHandlers lazily (at call time)
     // ensures we always see the real function rather than the initial undefined.
-    _api: Pick<IApi, 'attachHandlers' | 'render' | 'attach'>;
+    _api: Pick<IApi, 'attachHandlers' | 'render' | 'attach' | 'captureFor'>;
     _createLog: IApi['createLog'];
+    /**
+     * The captures this port may take, by shape family (`@@T-730`).
+     *
+     * Handed over with the logger factory because a port's own body has no `this.signal` to reach: the
+     * vocabulary arrives through the same seam, and the surface is resolved once here rather than on
+     * every call.
+     */
+    _captureFor?: IApi['captureFor'];
+    /** The resolved surface, remembered on the instance — a symbol rather than a private field so
+     * it survives the port proxy the layer hands a handler. */
+    [CAPTURE]?: CaptureSurface;
     _attachCheckpoint: IApi['attachCheckpoint'];
     _activationNames: string[];
     _queue?: PQueue;
@@ -134,6 +159,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
             | 'attachHandlers'
             | 'createLog'
             | 'attachCheckpoint'
+            | 'captureFor'
             | 'render'
             | 'platform'
             | 'registry'
@@ -152,6 +178,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         this.registry = api.registry;
         this._api = api;
         this._createLog = api.createLog;
+        this._captureFor = api.captureFor;
         this._attachCheckpoint = api.attachCheckpoint;
         this._activationNames = activationNames;
         this._connected = new Promise<boolean>(resolve => {
@@ -215,14 +242,51 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         );
     }
 
-    error(error: ITypedError, $meta: IMeta): ITypedError {
+    /** The captures this port may take — `this.capture?.http?.({method}, () => exchange)`. */
+    get capture(): CaptureSurface | undefined {
+        const self = this as unknown as Record<symbol, CaptureSurface | undefined>;
+        if (self[CAPTURE] === undefined) {
+            self[CAPTURE] = this._captureFor?.(this.config.id, this.config.logLevel as never);
+        }
+        return self[CAPTURE];
+    }
+
+    /**
+     * Record one port failure, and answer the error so the caller can throw it — the port's only
+     * writer.
+     *
+     * Every failure a port meets — a call it answered badly, a stream that errored, a socket event —
+     * ends here, and it is written **once**: the error object goes in the logger's own error slot,
+     * which is the only place its message and stack are rendered (`Error`'s members are not
+     * enumerable, so handing the error as the fields bag wrote an empty message and lost the stack),
+     * its method rides in the envelope so the header says which call failed (`@@F-764`), and the
+     * record is counted under the declared identity `frameworkPortFailure` so an operator can find it
+     * with `blong-dev log --signal` and the service counts it beside every other signal (`@@T-731`).
+     *
+     * `$meta` is optional because a socket event has no dispatch to describe: `tcp.ts` reports a
+     * server or client `error` event through here too, rather than dropping a bare object on a level
+     * where it lost its type and its expected/silent handling.
+     */
+    error(error: ITypedError, $meta?: IMeta): ITypedError {
         if ($meta) error.method = $meta.method;
         if (error.silent) return error;
-        if (isExpectedError(error.type, $meta?.expect)) {
-            (this.log as {debug?: (...args: unknown[]) => void})?.debug?.(error);
-            return error;
-        }
-        (this.log as {error?: (...args: unknown[]) => void})?.error?.(error);
+        const expected = isExpectedError(error.type, $meta?.expect);
+        const entry = {
+            signal: 'frameworkPortFailure',
+            $meta: {mtid: 'error', ...(error.method === undefined ? {} : {method: error.method})},
+            err: error,
+            type: error.type,
+            ...(error.statusCode === undefined ? {} : {statusCode: error.statusCode}),
+            ...(error.params === undefined ? {} : {params: error.params}),
+            ...(error.validation === undefined ? {} : {validation: error.validation}),
+        };
+        const face = this.log as
+            | {
+                  debug?: (bag: object, message: string) => void;
+                  error?: (bag: object, message: string) => void;
+              }
+            | undefined;
+        (expected ? face?.debug : face?.error)?.call(face, entry, error.message);
         return error;
     }
 

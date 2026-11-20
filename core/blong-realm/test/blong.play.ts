@@ -82,7 +82,6 @@ openPages(test, expect, {
             region: '.p-datatable-tbody tr:first-child',
             mask: ['[data-testid="digest-when"]'],
         },
-        'blong.incident.browse',
     ],
     screenshot: method => `blong-${method.split('.')[1]}.png`,
 });

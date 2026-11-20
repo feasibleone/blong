@@ -1,4 +1,5 @@
 import {orchestrator} from '@feasibleone/blong';
+import type {VocabularyProxy} from '@feasibleone/lukaot';
 import {DEFAULT_OUTPUT_DIR} from '../generator.ts';
 import type {IPlanConfig} from '../plan.ts';
 import {stopWatch} from './controller/kustomizeWatchRun.ts';
@@ -21,6 +22,7 @@ export default orchestrator<IPlanConfig>(blong => {
     const run = async (self: {
         config?: IPlanConfig;
         log?: {info?: (entry: object) => void};
+        signal?: VocabularyProxy;
         request?: (params: unknown, meta: unknown) => Promise<unknown>;
     }): Promise<void> => {
         const outputDir = self.config?.outputDir ?? DEFAULT_OUTPUT_DIR;
@@ -40,15 +42,23 @@ export default orchestrator<IPlanConfig>(blong => {
             profile?: string;
             volume?: string;
         };
-        self.log?.info?.({
-            $meta: {mtid: 'event', method: 'kustomize.tree.generate'},
-            message: answer.suite?.install
-                ? `the operator's install tree: wrote ${answer.files.length} file(s) to ` +
-                  `${answer.outputDir}, namespace ${answer.suite?.namespace}`
-                : `${answer.suite?.name}: wrote ${answer.files.length} file(s) to ${answer.outputDir}, ` +
-                  `${answer.deployments} deployment(s), ${answer.services} service(s), ` +
-                  `profile ${answer.profile}, volume ${answer.volume}`,
-        });
+        if (answer.suite?.install) {
+            self.signal?.kustomizeTreeInstallGenerated?.({
+                files: answer.files.length,
+                outputDir: answer.outputDir,
+                namespace: answer.suite?.namespace,
+            });
+        } else {
+            self.signal?.kustomizeTreeSuiteGenerated?.({
+                suite: answer.suite?.name,
+                files: answer.files.length,
+                outputDir: answer.outputDir,
+                deployments: answer.deployments,
+                services: answer.services,
+                profile: answer.profile,
+                volume: answer.volume,
+            });
+        }
     };
     return {
         extends: 'orchestrator.dispatch',

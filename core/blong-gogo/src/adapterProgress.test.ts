@@ -15,8 +15,8 @@
  * records being invented), and nothing is written when the handler announced nothing.
  */
 import type {IMeta} from '@feasibleone/blong/types';
-import {attachSemanticVocabulary} from '@feasibleone/semantic-log/attachable';
-import * as vocabulary from '@feasibleone/semantic-log/emitter';
+import {attachVocabulary} from '@feasibleone/lukaot/context';
+import * as vocabulary from '@feasibleone/lukaot';
 import t from 'tap';
 import {AdapterBase} from './AdapterBase.ts';
 import {createAttachCheckpoint} from './checkpoint.ts';
@@ -24,7 +24,7 @@ import {createAttachCheckpoint} from './checkpoint.ts';
 // The framework reaches the vocabulary by attachment (the emitter's scope is Node-only, and the
 // browser bootstrap loads this module too), so a tap process attaches it exactly as `loadServer.ts`
 // does. Without it the handles degrade and there is nothing to report.
-attachSemanticVocabulary(vocabulary);
+attachVocabulary(vocabulary);
 
 /** A canonical flow ULID. */
 const FLOW = '01ARZ3NDEKTSV4RRFFQ69G5FAV';

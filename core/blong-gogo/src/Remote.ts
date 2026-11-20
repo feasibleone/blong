@@ -11,7 +11,7 @@ import type {
     ITypedError,
     RemoteMethod,
 } from '@feasibleone/blong/types';
-import {Internal} from '@feasibleone/blong/types';
+import { Internal } from '@feasibleone/blong/types';
 
 const errorMap: IErrorMap = {
     'remote.bindingFailed': 'Method binding failed for {typeName} {methodType} {methodName}',
@@ -232,10 +232,7 @@ export default class Remote extends Internal implements IRemote {
                         // `$subject$objectModel` vs `$subject$ObjectModel`) would
                         // otherwise fail or hang silently. Name it so the typo /
                         // case / placeholder mismatch is obvious.
-                        this.log?.warn?.({
-                            $meta: {mtid: 'event', method: 'remote.methodNotFound'},
-                            message: `remote method not found locally: '${methodName}'`,
-                        });
+                        this.signal?.frameworkRemoteMethodNotFound?.({method: methodName});
                     }
                 }
                 if (!fn) {
@@ -441,11 +438,7 @@ export default class Remote extends Internal implements IRemote {
             return pattern.test(methodName);
         } catch (error) {
             this.#skipPatterns.set(canSkipSocket, null);
-            this.log?.warn?.({
-                $meta: {mtid: 'event', method: 'remote.canSkipSocket'},
-                message: `canSkipSocket is not a regular expression: ${canSkipSocket}`,
-                error,
-            });
+            this.signal?.frameworkRemoteSkipPatternInvalid?.({pattern: canSkipSocket, error});
             return false;
         }
     }

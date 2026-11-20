@@ -131,15 +131,18 @@ export default adapter<IConfig>(({utError, manifest}) => {
                     }
                     url = new URL(path, baseUrl || (this.config.url as string) || '');
                 }
-                this.log?.debug?.({
-                    req: {
-                        method: (method || 'POST').toUpperCase(),
-                        url,
-                        headers,
-                        body,
-                        json,
-                    },
-                });
+                // A capture rather than a dump: the payload is built only when the configuration asks
+                // for one, and what it renders depends on the rung (`line` is the sentence, `body` is
+                // the content) — see `@@T-730`.
+                const verb = (method || 'POST').toUpperCase();
+                this.capture?.http?.({method: verb, phase: 'request'}, () => ({
+                    phase: 'request',
+                    method: verb,
+                    url: String(url),
+                    headers: headers as Record<string, unknown>,
+                    ...(json != null ? {body: json} : body != null ? {body} : {}),
+                }));
+                const startedAt = Date.now();
                 const kyOptions: KyOptions = {
                     method: method || 'POST',
                     headers,
@@ -165,13 +168,16 @@ export default adapter<IConfig>(({utError, manifest}) => {
                     headers: Object.fromEntries(res.headers.entries()),
                     body: resolvedBody,
                 };
-                this.log?.debug?.({
-                    req: {
-                        url,
-                        method: (method || 'POST').toUpperCase(),
-                    },
-                    res: result,
-                });
+                this.capture?.http?.({method: verb, phase: 'response'}, () => ({
+                    phase: 'response',
+                    method: verb,
+                    url: String(url),
+                    statusCode: result.statusCode,
+                    statusMessage: result.statusMessage,
+                    headers: result.headers,
+                    body: resolvedBody,
+                    durationMs: Date.now() - startedAt,
+                }));
                 return result;
             } catch (error) {
                 throw this.error(_errors['http.generic'](error), $meta);

@@ -1,0 +1,12 @@
+*
+!/package.json
+!/index.ts
+!/context.ts
+!/service.ts
+!/inspect.ts
+!/bin
+!/bin/**
+!/src
+!/src/**
+!/flow
+!/flow/**

@@ -227,6 +227,7 @@ words:
   - keepalive
   - Keirin
   - keyblock
+  - kindless
   - Kinesiotherapy
   - knex
   - kopi
@@ -265,6 +266,7 @@ words:
   - Millis
   - Millisec
   - Minipass
+  - Misdeclared
   - Mistral
   - mkac
   - mlek
@@ -494,6 +496,7 @@ words:
   - unindexed
   - unixtime
   - unlayered
+  - unloadable
   - unmarshal
   - unorderable
   - unparseable
@@ -503,6 +506,7 @@ words:
   - unrole
   - unserved
   - unstate
+  - unswept
   - Upserted
   - usec
   - userinfo

@@ -19,13 +19,14 @@ active (1)
 
 > _2026-09-16 · realm/blong-core · active_
 
-User decision (T-102): the entity insert keeps INSERT IGNORE, because merge() would overwrite any
-unique key (F-115), but the row is now read back and a missing one raises an error, so no path can
-report success with no entity row. An existing resource whose row is missing is healed instead of
-staying broken forever, and an allocate option (column/max) fills a unique counter column the caller
-left blank. The allocation logic lives in core.nextCounter (MAX + 1, never reused, ceiling
-enforced). Blast radius checked: access_role.roleBit is the only unique non-PK key among the tables
-this helper writes to (gateway_bundle, gateway_subscription and access_acl are inserted directly),
-so the verification only changes the role path plus ghost healing.
+User decision (recorded in the retired semantic-log memory): the entity insert keeps INSERT IGNORE,
+because merge() would overwrite any unique key (F-115), but the row is now read back and a missing
+one raises an error, so no path can report success with no entity row. An existing resource whose
+row is missing is healed instead of staying broken forever, and an allocate option (column/max)
+fills a unique counter column the caller left blank. The allocation logic lives in core.nextCounter
+(MAX + 1, never reused, ceiling enforced). Blast radius checked: access_role.roleBit is the only
+unique non-PK key among the tables this helper writes to (gateway_bundle, gateway_subscription and
+access_acl are inserted directly), so the verification only changes the role path plus ghost
+healing.
 
 ## Superseded

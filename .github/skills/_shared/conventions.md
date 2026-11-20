@@ -252,6 +252,7 @@ one adapter rather than a realm's whole runtime set.
 | `component`            | —                                | `default`                |
 | `action` / `actions`   | —                                | `default`                |
 | `error`                | `microservice`, `k8s`, `upgrade` | —                        |
+| `lukaot`               | `microservice`, `k8s`, `upgrade` | —                        |
 | `adapter`              | `microservice`, `k8s`, `upgrade` | —                        |
 | `orchestrator`         | `microservice`, `k8s`, `upgrade` | —                        |
 | `gateway`              | `microservice`, `k8s`            | —                        |
@@ -347,23 +348,24 @@ not a TTY, and exits non-zero when diagnostics contain errors.
 
 ### Primitives and kinds
 
-| primitive      | kinds                                                                    |
-| -------------- | ------------------------------------------------------------------------ |
-| `handler`      | `api`, `library`, `db`, `super`, `libBindings`                           |
-| `library`      | `function`, `bindings`                                                   |
-| `layer`        | `server`, `browser`, `custom`                                            |
-| `orchestrator` | `dispatch`, `init`, `schedule`                                           |
-| `adapter`      | `http`, `tcp`, `knex`, `webhook`, `mongodb`, `k8s`, `s3`, `mock`, `base` |
-| `error`        | `layer`, `inline`, `librarySet`                                          |
-| `schema`       | `table`, `register`, `procedure`                                         |
-| `seed`         | `prod`, `test`                                                           |
-| `model`        | `model`, `fixture` (a plain `handler()`)                                 |
-| `test`         | `server`, `browser`, `playwright`                                        |
-| `suite`        | `default`                                                                |
-| `realm`        | `default` (scaffolds the full canonical tree from the template)          |
-| `gateway`      | `validation`, `openapi`                                                  |
-| `component`    | `component`, `actions`, `portal`                                         |
-| `storybook`    | `main`, `preview`, `story` (model pages), `portal` (shell)               |
+| primitive      | kinds                                                                      |
+| -------------- | -------------------------------------------------------------------------- |
+| `handler`      | `api`, `library`, `db`, `super`, `libBindings`                             |
+| `library`      | `function`, `bindings`                                                     |
+| `layer`        | `server`, `browser`, `custom`                                              |
+| `orchestrator` | `dispatch`, `init`, `schedule`                                             |
+| `adapter`      | `http`, `tcp`, `knex`, `webhook`, `mongodb`, `k8s`, `s3`, `mock`, `base`   |
+| `error`        | `layer`, `inline`, `librarySet`                                            |
+| `lukaot`       | the declared vocabulary — `error.ts` and `signal.ts` (see `blong-handler`) |
+| `schema`       | `table`, `register`, `procedure`                                           |
+| `seed`         | `prod`, `test`                                                             |
+| `model`        | `model`, `fixture` (a plain `handler()`)                                   |
+| `test`         | `server`, `browser`, `playwright`                                          |
+| `suite`        | `default`                                                                  |
+| `realm`        | `default` (scaffolds the full canonical tree from the template)            |
+| `gateway`      | `validation`, `openapi`                                                    |
+| `component`    | `component`, `actions`, `portal`                                           |
+| `storybook`    | `main`, `preview`, `story` (model pages), `portal` (shell)                 |
 
 ### Predicates
 

@@ -2,7 +2,7 @@ import type {Adapter, ILib, IMeta} from '@feasibleone/blong/types';
 import merge from 'ut-function.merge';
 
 import {camelToSentence, legName, parseAnnotatedKey, recordedCall} from './lib.ts';
-import {declareCall} from './semanticContext.ts';
+import {declareCall} from './responseContext.ts';
 
 /**
  * Rename a function's `.name` property.

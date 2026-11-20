@@ -1,6 +1,6 @@
 import {handler, type IMeta} from '@feasibleone/blong';
 
-import {pendingGet, pendingKey} from '../prompt/pending.ts';
+import {pendingGetMatching} from '../prompt/pending.ts';
 
 /**
  * `chat.out.prompt.form` — open the form a multiple choice or a text question is answered in.
@@ -24,7 +24,7 @@ export default handler(
         errors: {errorChatPromptNothingPending, errorChatPlatformUnsupported},
     }) => ({
         async chatOutPromptForm(params: IChatPromptFormParams, $meta: IMeta): Promise<unknown> {
-            const parked = pendingGet(pendingKey(params.promptId, params));
+            const parked = pendingGetMatching(params.promptId, params);
             if (!parked)
                 throw errorChatPromptNothingPending({params: {promptId: params.promptId}}, $meta);
             if (params.platform !== 'slack')

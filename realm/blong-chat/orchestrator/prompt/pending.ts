@@ -38,6 +38,28 @@ export const pendingKey = (
     where: {platform: string; account?: string; conversationId: string},
 ): string => [where.platform, where.account ?? '', where.conversationId, promptId].join('|');
 
+/**
+ * The keys a question may be filed under, when looking one up from an inbound.
+ *
+ * A question asked **without** naming an account is filed under none, because its caller does not
+ * know which account serves the conversation: `blong-dev` asks from a shell, and a realm asking its
+ * own channel names a conversation and nothing else. Every inbound carries the account that verified
+ * it (`identity.account` in the Slack port), so an exact-only lookup missed *every* time — the ask
+ * waited for its timeout while the click was acknowledged as a question nobody was waiting for, and a
+ * typed reply fell through to the consumer map and was dropped as a message nobody configured one
+ * for. What an account a parked question did not name therefore matches any, and one it did name must
+ * match exactly: naming an account is a caller saying *which* account it means, and ignoring that
+ * would let a question in one workspace be answered from another.
+ */
+export const pendingKeys = (
+    promptId: string,
+    where: {platform: string; account?: string; conversationId: string},
+): string[] => {
+    const exact = pendingKey(promptId, where);
+    const unnamed = pendingKey(promptId, {...where, account: ''});
+    return exact === unnamed ? [exact] : [exact, unnamed];
+};
+
 const pending = new Map<string, IPendingPrompt>();
 
 export const pendingAdd = (entry: IPendingPrompt): void => {
@@ -62,11 +84,56 @@ export const pendingTake = (key: string): IPendingPrompt | undefined => {
     return entry;
 };
 
+/** The entry an inbound names, tried under each key it may have been filed under. */
+const findMatching = (
+    promptId: string,
+    where: {platform: string; account?: string; conversationId: string},
+): {key: string; entry: IPendingPrompt} | undefined => {
+    for (const key of pendingKeys(promptId, where)) {
+        const entry = pending.get(key);
+        if (entry) return {key, entry};
+    }
+    return undefined;
+};
+
+/** Read a question by the id an inbound carries, whether or not it named an account. */
+export const pendingGetMatching = (
+    promptId: string,
+    where: {platform: string; account?: string; conversationId: string},
+): IPendingPrompt | undefined => findMatching(promptId, where)?.entry;
+
+/** Remember a pick against the question an inbound names, however it was filed. */
+export const pendingPickMatching = (
+    promptId: string,
+    where: {platform: string; account?: string; conversationId: string},
+    pick: {value?: string; values?: string[]},
+): boolean => {
+    const found = findMatching(promptId, where);
+    if (!found) return false;
+    found.entry.pick = pick;
+    return true;
+};
+
+/** Consume the question an inbound answers, whether or not it named an account. */
+export const pendingTakeMatching = (
+    promptId: string,
+    where: {platform: string; account?: string; conversationId: string},
+): IPendingPrompt | undefined => {
+    const found = findMatching(promptId, where);
+    if (!found) return undefined;
+    pending.delete(found.key);
+    return found.entry;
+};
+
 /**
  * The question a typed reply answers.
  *
  * A free-text answer carries no prompt id — there is no button to carry it — so it is matched by the
  * conversation, newest first. Only while something is pending does this claim a message.
+ *
+ * A question that named no account is a candidate here whatever account the message arrived on, for
+ * the reason {@link pendingKeys} gives: an unnamed account is a caller that could not know it, not a
+ * caller that meant a different one.
  */
 export const pendingForConversation = (where: {
     platform: string;
@@ -76,9 +143,10 @@ export const pendingForConversation = (where: {
     let found: IPendingPrompt | undefined;
     for (const entry of pending.values()) {
         const {platform, account, conversationId} = entry.params;
+        const anyAccount = (account ?? '') === '';
         if (
             platform === where.platform &&
-            (account ?? '') === (where.account ?? '') &&
+            (anyAccount || (account ?? '') === (where.account ?? '')) &&
             conversationId === where.conversationId
         )
             found = entry;
@@ -92,10 +160,14 @@ export const pendingList = (): IParkedPrompt[] =>
 
 export default library(() => ({
     pendingKey,
+    pendingKeys,
     pendingAdd,
     pendingGet,
+    pendingGetMatching,
     pendingPick,
+    pendingPickMatching,
     pendingTake,
+    pendingTakeMatching,
     pendingForConversation,
     pendingList,
 }));

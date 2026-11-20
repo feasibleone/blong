@@ -86,8 +86,8 @@ test('layersActivation', t => {
         );
         t.match(
             block,
-            /"error · adapter · orchestrator · gateway · server\/api"/,
-            'microservice groups them',
+            /"error · lukaot · adapter · orchestrator · gateway · server\/api"/,
+            'microservice groups them, and the declared vocabulary rides with the error layer it replaces',
         );
         // The browser platform has no deployment split — the app is the process — so its layers ride
         // whenever it loads, while the test layers stay behind an explicit testing intent.

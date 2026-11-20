@@ -69,7 +69,9 @@ export default function loop(
         function streamClose(): void {
             cleanup();
             event(handlers, context, 'disconnected', handlers.log?.info).catch(error =>
-                handlers.log?.error?.(error),
+                handlers.signal?.frameworkLoopDisconnectedFailed?.({
+                    error: error instanceof Error ? error.message : String(error),
+                }),
             );
         }
         function streamError(error: Error): void {
@@ -165,18 +167,18 @@ async function sendEncode(
     if (fn) {
         const result = await fn.apply(adapter, Array.prototype.concat(dataPacket, context));
         if (dataPacket) dataPacket[0] = result;
-        adapter.log?.trace?.({
-            message: dataPacket,
-            $meta: {method: name, mtid: 'convert'},
-            ...(context?.session && {log: context.session.log}),
-        });
+        // The packet after conversion is a JSON document in the port's own shape: a capture renders it
+        // at the configured rung instead of dumping it (`@@T-730`).
+        adapter.capture?.json?.({method: name}, () => ({
+            label: `${name} packet`,
+            value: dataPacket,
+        }));
     }
     // encode
-    adapter.log?.debug?.({
-        message: typeof dataPacket[0] === 'object' ? dataPacket[0] : {value: dataPacket[0]},
-        $meta,
-        ...(context?.session && {log: context.session.log}),
-    });
+    adapter.capture?.json?.({method: $meta.method}, () => ({
+        label: 'adapter.encode input',
+        value: typeof dataPacket[0] === 'object' ? dataPacket[0] : {value: dataPacket[0]},
+    }));
     let encodeBuffer: unknown = adapter.imported.encode
         ? await (
               adapter.imported.encode as unknown as (
@@ -209,14 +211,11 @@ async function sendEncode(
     if (encodeBuffer) {
         adapter.msgSent?.(1);
         if (!adapter.imported.encode)
-            adapter.log?.trace?.({
-                $meta: {
-                    mtid: 'payload',
-                    method: $meta.method ? $meta.method + '.encode' : 'adapter.encode',
-                },
-                message: encodeBuffer,
-                ...(context?.session && {log: context.session.log}),
-            });
+            // The bytes on the wire are a frame, not a document: the `tcp` shape renders them at `line`
+            // (length and the opening bytes) or `hex` when the content is what matters (`@@T-730`).
+            adapter.capture?.tcp?.({
+                method: $meta.method ? $meta.method + '.encode' : 'adapter.encode',
+            }, () => ({direction: 'out', data: encodeBuffer as Uint8Array}));
         return adapter.imported.pack ? [encodeBuffer, $meta] : (encodeBuffer as object);
     }
     return [encodeBuffer, $meta];
@@ -394,11 +393,10 @@ async function decodeReceive(
         if (dataPacket) {
             adapter.bytesReceived?.(dataPacket.length);
             if (!adapter.imported!.decode)
-                adapter.log?.trace?.({
-                    $meta: {mtid: 'payload', method: 'adapter.decode'},
-                    message: dataPacket,
-                    ...(context?.session && {log: context.session.log}),
-                });
+                adapter.capture?.tcp?.({method: 'adapter.decode'}, () => ({
+                    direction: 'in',
+                    data: dataPacket as Uint8Array,
+                }));
             // todo check buffer size
             context.buffer = Buffer.concat([context.buffer, dataPacket as Buffer]);
         }
@@ -472,11 +470,10 @@ async function receive(
         if (fn) {
             const result = await fn.apply(adapter, Array.prototype.concat(dataPacket, context));
             if (dataPacket) dataPacket[0] = result;
-            adapter.log?.trace?.({
-                message: dataPacket,
-                $meta: {method: name, mtid: 'convert'},
-                ...(context?.session && {log: context.session.log}),
-            });
+            adapter.capture?.json?.({method: name}, () => ({
+                label: `${name} packet`,
+                value: dataPacket,
+            }));
         }
         const validate = adapter.findValidation($meta);
         if (validate) dataPacket[0] = validate.apply(adapter, dataPacket);

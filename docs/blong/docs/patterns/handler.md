@@ -10,13 +10,10 @@ A handler is a plain function, and everything else in this picture is provided: 
 through the proxy, the type it exports becomes both the schema that validates it and the
 documentation that describes it, and the checkpoints it records become the flows the docs draw.
 
-<ArchifyDiagram
-    slug="blong-handler-runtime"
-    title="What the runtime does around one handler"
-    height="600px"
-    posterLight={require('../concepts/img/diagrams/blong-handler-runtime-light.png').default}
-    posterDark={require('../concepts/img/diagrams/blong-handler-runtime-dark.png').default}
-/>
+<ArchifyDiagram slug="blong-handler-runtime" title="What the runtime does around one handler"
+height="600px"
+posterLight={require('../concepts/img/diagrams/blong-handler-runtime-light.png').default}
+posterDark={require('../concepts/img/diagrams/blong-handler-runtime-dark.png').default} />
 
 ## Internal handlers
 
@@ -526,7 +523,7 @@ identically in both contexts.
 
 A **checkpoint** reports a moment; a **branch** explains a choice. They are the two shapes of one
 idea — a _progress point_, recorded in one place and drawn one way by the log
-([R26, R27](../rationale/semantic-log.md)) — and they differ in one respect: a checkpoint is
+([lukaot](../concepts/lukaot.md)) — and they differ in one respect: a checkpoint is
 optional-chained, a branch never is, because a branch _selects_.
 
 ```ts

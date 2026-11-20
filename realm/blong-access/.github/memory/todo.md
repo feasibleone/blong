@@ -75,13 +75,13 @@ already name their row.
 syncEdges inserts its edges with onConflict().ignore(), which MySQL turns into INSERT IGNORE, and
 INSERT IGNORE downgrades a foreign-key violation to a warning: submitting a role id that does not
 exist reports success and writes nothing. That is the same silent-skip shape as the ghost resource
-of T-102, in the write direction, and it is worth closing — by resolving the submitted ids before
-the insert and raising the realm's own typed error for an unknown one, rather than by dropping the
-ignore (the ignore is what makes two edits racing on the same subject harmless). It also means the
-rollback of a realm add or edit cannot be tested by submitting a bad id: the statement that would
-have failed never raises, so a test for the transaction needs a different injected failure — and
-while the point of T-177 was the transaction rather than this, a test that proves a failure rolls
-the credentials back is still missing.
+of the same case, in the write direction, and it is worth closing — by resolving the submitted ids
+before the insert and raising the realm's own typed error for an unknown one, rather than by
+dropping the ignore (the ignore is what makes two edits racing on the same subject harmless). It
+also means the rollback of a realm add or edit cannot be tested by submitting a bad id: the
+statement that would have failed never raises, so a test for the transaction needs a different
+injected failure — and while the point of T-177 was the transaction rather than this, a test that
+proves a failure rolls the credentials back is still missing.
 
 ### T-179 — Three access handlers still write the ensure and the matrix separately
 

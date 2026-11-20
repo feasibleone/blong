@@ -21,17 +21,14 @@ interface BlongLogTerminalLink extends vscode.TerminalLink {
 }
 
 /**
- * Regex matching the id embedded in a `semlog://r/<id>` or `semlog://t/<id>` link.
+ * Regex matching the id embedded in a log link: `lukaot://r/<id>`, `lukaot://t/<id>`.
  *
  * Both kinds resolve the same way — a cache lookup by key — because both are keys in
  * the same store: `r` is a record kept under its own id, and `t` is a shape, which is
  * the entry a reader resolves far more often (the store keeps one per shape, and the
  * line carries the shape reference on every record).
- *
- * The long form is still matched so that a line printed by an older build, or a log
- * left in a terminal's scrollback, still opens.
  */
-const LOG_LINK_REGEX = /(?:semlog|semantic-log):\/\/(?:r|record|t|template)\/([0-9A-Za-z_-]+)/;
+const LOG_LINK_REGEX = /(?:lukaot):\/\/(?:r|record|t|template|p|payload)\/([0-9A-Za-z_-]+)/;
 
 /**
  * This method is called when your extension is activated
@@ -225,12 +222,12 @@ export function activate(context: vscode.ExtensionContext) {
         }
     }
     const logContentProvider = vscode.workspace.registerTextDocumentContentProvider(
-        'semlog',
+        'lukaot',
         new LogContentProvider(),
     );
     context.subscriptions.push(logContentProvider);
 
-    // Register terminal link provider for semlog://r/<id> and semlog://t/<id> links
+    // Register terminal link provider for lukaot://r/<id> and lukaot://t/<id> links
     const logLinkProvider = vscode.window.registerTerminalLinkProvider({
         provideTerminalLinks(terminalContext: vscode.TerminalLinkContext): BlongLogTerminalLink[] {
             const match = LOG_LINK_REGEX.exec(terminalContext.line);

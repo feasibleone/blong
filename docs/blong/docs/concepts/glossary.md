@@ -13,8 +13,8 @@ protocol it speaks. See [adapter](./adapter.md) and the [adapter pattern](../pat
 source of truth for validation and docs. See [API](./api.md) and [OpenAPI](./openapi.md).
 
 **asset server** — The process that serves a suite's browser bundle under /s/, with the security and
-cache headers a page needs; not a realm, and not the blob store, which serves the files people put in
-it. See [kustomize](../patterns/kustomize.md) and [blob](./blob.md).
+cache headers a page needs; not a realm, and not the blob store, which serves the files people put
+in it. See [kustomize](../patterns/kustomize.md) and [blob](./blob.md).
 
 **blob** — Content the framework stores for a realm under a generated key, held as bytes plus the
 record that says what it is; see [blob](./blob.md).
@@ -33,7 +33,7 @@ an arrow, and stored as a fraction of the picture rather than in pixels. See the
 allows. See [chain](./chain.md).
 
 **checkpoint** — A progress point a handler reports to explain the shape a run took, drawn as a note
-on the semantic-log diagram. See [checkpoint](./checkpoint.md).
+on the lukaot diagram. See [checkpoint](./checkpoint.md).
 
 **codec** — A handler group an adapter lists in its imports to serialize the messages of a protocol
 and match its responses. See [codec](../patterns/codec.md).
@@ -80,6 +80,9 @@ run. See [intents](./intents.md) and the [rationale](../rationale/intents.md).
 **library realm** — A realm every calling process carries its own copy of, such as `blong-core` and
 `blong-access`. See the [rationale](../rationale/library-realms.md) and [realm](./realm.md).
 
+**lukaot** — One declared vocabulary for what a process reports — a line, an error, a captured
+payload or a decision, each named once beside the code. See [lukaot](./lukaot.md).
+
 **memory file** — A markdown note an agent keeps for frictions, todos and decisions, written through
 `blong-dev memory`. See [memory files](./memory.md).
 
@@ -113,9 +116,6 @@ procedures from TypeScript and YAML. See [schema sync](./schema-sync.md).
 
 **scope cookie** — The signed, path-scoped cookie that authorizes a browser element's read of a
 stored file, carrying the reader's scopes; see [blob](./blob.md).
-
-**semantic log** — Logging that mints an id per record, so the full detail is reached on demand
-instead of grepped. See [semantic log](./semantic-log.md).
 
 **session** — A long-lived authenticated connection, with refresh tokens and audit. See
 [sessions](./sessions.md).

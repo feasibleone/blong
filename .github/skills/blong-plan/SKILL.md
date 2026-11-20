@@ -241,15 +241,20 @@ around it:
 After approval the same lines read:
 
 ```markdown
-- [ ] [@@T-531](../../realm/blong-agent/.github/memory/todo.md#t-531--scaffold-the-realm) Scaffold
-      the realm
+<!-- prettier-ignore -->
+- [ ] [@@T-531 Scaffold the realm](../../realm/blong-agent/.github/memory/todo.md#t-531--scaffold-the-realm)
 ```
 
-The title plus a link to the entry, because a token a reader has to search for is a worse table of
-contents than a link. `plan check` reports a task that names its entry without one, and `plan sync`
-writes it. The issue published from the plan rewrites the same link to a github.com URL, so the
-issue is navigable too. To change the detail, change the memory entry (`memory edit`), never the
-plan.
+The title inside the link to the entry, because a token a reader has to search for is a worse table
+of contents than a link. `plan check` reports a task that names its entry without one, and
+`plan sync` writes it. The issue published from the plan rewrites the same link to a github.com URL,
+so the issue is navigable too. To change the detail, change the memory entry (`memory edit`), never
+the plan.
+
+The `<!-- prettier-ignore -->` above a list is written by `spaceOutPlan` and never by hand: a
+long title makes a long line, and a formatter that re-wrapped it would split the link across two
+lines, which the board reads as two tasks. One guard covers a whole list; prose, headings and
+tables stay the formatter's.
 
 ### What a good task says
 
@@ -266,6 +271,15 @@ plan.
 ```bash
 blong-dev plan init <slug> --repo feasibleone/blong --invite <slackUserId>
 ```
+
+**Pass `--invite` with the owner's Slack member id** (`U…`, never the email). The channel is
+private, so an invite nobody received means a channel nobody can open — and the invitation cannot be
+added later: Slack answers `name_taken` for the name, and the chat realm has no route that invites
+into an existing channel. `plan init` warns when the list is empty for exactly that reason, and
+reads `plan.invite` from `.blong_callrc` when the flag is absent — the id is a fact about the person
+rather than about the plan, so it is recorded there once and every plan afterwards inherits it. If
+the id is not to hand, Slack's member list in the workspace admin shows it, or the owner invites
+themselves from the channel's _Add people_ dialog once somebody has opened it.
 
 It creates a memory todo per task and a `D-` entry per decision, trims the plan to titles plus
 linked `@@T-…` / `@@D-…` references, mirrors the plan into a GitHub issue, opens the plan's private
@@ -295,6 +309,12 @@ the issue label, the channel (name, target, account), `--draft`, and the skips (
     section; `memory close` rewrites the status there, and `plan sync` re-reads the whole section. A
     todo is never listed this way — it belongs in the work breakdown, so `memory add todo --plan` is
     refused.
+
+    **The flag is not optional while a plan is active.** `plan init` and `plan sync` record the plan
+    being executed in `plans/active.json`, and `memory add` for a decision or a friction then fails
+    on a call that says neither `--plan <slug>` nor `--no-plan`, naming the plan and both flags
+    (@@D-916). `--no-plan` is for an entry that genuinely belongs to no plan — the tooling, or a
+    finding made outside the work — and is the sentence that says so rather than a silent omission.
 
 5. **Sync** after a batch and before handing over: `blong-dev plan sync <slug>`, and
    `blong-dev plan status <slug>` for the one-screen progress the owner reads.
@@ -330,6 +350,12 @@ is away, repeat the question in chat with blong-ask.
 - **The plan is not the place to correct the detail.** A task that turned out wrong is corrected in
   its entry (`memory edit`), and `plan sync` carries the title back. Editing the plan risks the two
   saying different things, which is what `plan check` then reports.
+- **A created task is one line, and its title is the link text** — `- [ ] [@@T-531 <title>](…)`
+  under a `<!-- prettier-ignore -->` the tooling writes (@@D-917 @@D-919). The two-line form this
+  replaced — the link, then the title indented under it — wrapped at the formatter's whim, and the
+  next render then could not tell a wrap from a leftover: that is how titles came to be written two
+  and three times in one plan (@@F-768). `plan sync` compares a block line by line, so a wrapped
+  leftover is repaired rather than preserved.
 
 ## Closing it out
 

@@ -62,10 +62,7 @@ export default handler(({errors, handler, lib: {sessionTokenMint}}) => {
                 // (`$meta.expect`, which is how the negative test presents a token the cluster does
                 // not know) is not warned about.
                 if (!$meta?.expect)
-                    (this as unknown as {log?: {warn?: (entry: object) => void}}).log?.warn?.({
-                        $meta: {mtid: 'event', method: 'login.token.create'},
-                        message: `token review refused (${reason}); presented token is ${token.length} character(s)`,
-                    });
+                    this.signal?.loginTokenReviewRefused?.({reason, length: token.length});
                 throw errors['kustomize.loginFailed']({params: {reason}});
             }
 
@@ -99,12 +96,7 @@ export default handler(({errors, handler, lib: {sessionTokenMint}}) => {
             else if (!$meta?.expect)
                 // Without them every call this caller makes is refused as `Decryption failed`, so the
                 // absence is worth saying out loud rather than leaving to the next request.
-                (this as unknown as {log?: {warn?: (entry: object) => void}}).log?.warn?.({
-                    $meta: {mtid: 'event', method: 'login.token.create'},
-                    message:
-                        `token verified for '${username}', but the call carried no MLE handshake ` +
-                        '(no mlek/mlsk in the JWE header) — later calls cannot be decrypted',
-                });
+                this.signal?.loginTokenHandshakeMissing?.({username});
 
             return {
                 // The session this realm minted, not the cluster token that was presented: only a

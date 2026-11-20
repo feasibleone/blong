@@ -319,9 +319,9 @@ export default handler(({lib: {group}, handler: {orderProcess}}) => ({
 
 A checkpoint is one shape of a progress point; a branch is the other, and one list holds both so
 that the order between them survives. Asserting on it reads the same data the log draws as notes and
-`alt` blocks ([R26, R27](../rationale/semantic-log.md)) — and it is the same data a **test report**
-draws: each point becomes a step under the step that announced it, and a branch the group of the
-points taken inside it.
+`alt` blocks ([lukaot](../concepts/lukaot.md)) — and it is the same data a **test report** draws:
+each point becomes a step under the step that announced it, and a branch the group of the points
+taken inside it.
 
 ### Test Graduation
 

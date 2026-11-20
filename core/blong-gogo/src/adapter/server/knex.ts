@@ -1,4 +1,4 @@
-import {ulid, withProgress} from '@feasibleone/blong-lib';
+import { ulid, withProgress } from '@feasibleone/blong-lib';
 import {
     adapter,
     type Adapter,
@@ -11,10 +11,10 @@ import {
 } from '@feasibleone/blong/types';
 import KnexLib from 'knex';
 import crypto from 'node:crypto';
-import {type TFunction, type TObject} from 'typebox';
-import {v4} from 'uuid';
+import { type TFunction, type TObject } from 'typebox';
+import { v4 } from 'uuid';
 import yaml from 'yaml';
-import {methodParts} from '../../lib.ts';
+import { methodParts } from '../../lib.ts';
 import {
     aclActionId,
     aclActionName,
@@ -26,7 +26,7 @@ import {
     aclEntityOf,
     aclKeyColumn,
 } from '../impl/acl.ts';
-import {createPathRefresh, type IPathRefresh} from '../impl/pathRefresh.ts';
+import { createPathRefresh, type IPathRefresh } from '../impl/pathRefresh.ts';
 import {
     binaryToStr,
     discoverBinaryColumns,
@@ -36,14 +36,14 @@ import {
     prepareResultRows,
     strToBinary,
 } from '../schema/knex/binary.ts';
-import {ensureDatabase} from '../schema/knex/database.ts';
+import { ensureDatabase } from '../schema/knex/database.ts';
 import {
     discoverDateColumns,
     prepareDateParams,
     type DateColumnMap,
 } from '../schema/knex/datetime.ts';
-import {wrapKnex} from '../schema/knex/json.ts';
-import {normalizeOrderBy, orderableTerms} from '../schema/knex/order.ts';
+import { wrapKnex } from '../schema/knex/json.ts';
+import { normalizeOrderBy, orderableTerms } from '../schema/knex/order.ts';
 import {
     cascadeDelete,
     countDependants,
@@ -173,7 +173,7 @@ function ensurePathRefresh(config: {
     return created;
 }
 
-export type {IConfig, ISchemaTable} from '../schema/knex/types.ts';
+export type { IConfig, ISchemaTable } from '../schema/knex/types.ts';
 
 export const errorMap: IErrorMap = {
     // The method and the verb are in the *message*, not only in the log: this is the
@@ -357,16 +357,13 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 try {
                     const {created, database} = await ensureDatabase(knexConfig.connection ?? {});
                     if (created) {
-                        this.log?.info?.({database}, 'created missing database');
+                        this.signal?.frameworkDbDatabaseCreated?.({database});
                     }
                 } catch (error) {
                     // Warn-and-continue: schema sync will surface the real error.
-                    this.log?.warn?.(
-                        {
-                            err: (error as {message?: string}).message ?? String(error),
-                        },
-                        'could not auto-create database — will continue',
-                    );
+                    this.signal?.frameworkDbDatabaseCreateFailed?.({
+                        error: (error as {message?: string}).message ?? String(error),
+                    });
                 }
             }
             this.config.context = {
@@ -1047,9 +1044,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         labelAliases,
                     );
                     for (const column of dropped)
-                        this.log?.warn?.(
-                            `[${subject}.${object}.find] ignoring order by "${column}": no such column on ${table}`,
-                        );
+                        this.signal?.frameworkDbOrderColumnIgnored?.({subject, object, column, table});
                     for (const term of terms) {
                         query = query.orderBy(term.column, term.order);
                     }
@@ -1734,10 +1729,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             // gateway, and no case above claimed it. Naming the verb in the log is
             // what turns "Knex Error" into a diagnosis — without it the only trace
             // is the dialog a caller sees @@D-742.
-            this.log?.warn?.({
-                $meta: {mtid: 'event', method: method ?? 'unknown'},
-                message: `knex: no operation for '${operation}' (${method})`,
-            });
+            this.signal?.frameworkDbOperationMissing?.({operation, method: method ?? 'unknown'});
             throw this.error(
                 _errors['knex.generic']({
                     params: {method: method ?? '(none)', operation: operation ?? '(none)'},
@@ -2102,10 +2094,7 @@ async function processSeedAssets(
             const extname = ctx.platform.extname(path);
             const method = methodParts(ctx.platform.basename(path, extname).split('-').pop()!);
             onProgress?.(name);
-            ctx.log?.debug?.({
-                $meta: {mtid: 'event', method},
-                message: `Processing asset: ${name} at path: ${path}`,
-            });
+            ctx.signal?.frameworkAssetProcessing?.({name, path, method});
             if (extname === '.yaml' || extname === '.yml') {
                 const params = yaml.parse(
                     ctx.platform
@@ -2129,7 +2118,7 @@ async function processSeedAssets(
     }
 }
 
-export {attachHandlers, methodId, snakeToCamel};
+export { attachHandlers, methodId, snakeToCamel };
 
 /** Resolved per-table CRUD options (resource-backed + graph-edge bindings). */
 export interface IResolvedTableOptions {

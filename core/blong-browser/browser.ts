@@ -30,8 +30,8 @@ export default realm(blong => ({
         backend: blong.type.Boolean(),
     }),
     children: globalThis.window
-        ? import.meta.glob(['./adapter/**/*.ts', './orchestrator/**/*.ts'])
-        : ['./adapter', './orchestrator'],
+        ? import.meta.glob(['./adapter/**/*.ts', './lukaot/**/*.ts', './orchestrator/**/*.ts'])
+        : ['./adapter', './lukaot', './orchestrator'],
     config: {
         default: {
             orchestrator: true,

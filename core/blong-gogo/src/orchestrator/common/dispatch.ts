@@ -1,6 +1,6 @@
 import {orchestrator, type IMeta} from '@feasibleone/blong/types';
 import {recordedCall} from '../../lib.ts';
-import {declareCall, namespaceOf} from '../../semanticContext.ts';
+import {declareCall, namespaceOf} from '../../responseContext.ts';
 
 export default orchestrator<{destination?: string; appendNamespace?: string}>(({remote}) => ({
     activation: {

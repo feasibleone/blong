@@ -3,10 +3,10 @@
 ## The problem
 
 Blong is consumed in two very different ways. A deployment runs the framework as a container image
-whose entry point is the `blong` CLI, and a realm that reuses a package — `blong-chain`,
-`semantic-log`, `blong-openapi` — installs it from npm. The repository, meanwhile, is a Rush
-monorepo, so a change to one package can be a change to several, and the version printed by a
-running service has to be traceable back to a commit.
+whose entry point is the `blong` CLI, and a realm that reuses a package — `blong-chain`, `lukaot`,
+`blong-openapi` — installs it from npm. The repository, meanwhile, is a Rush monorepo, so a change
+to one package can be a change to several, and the version printed by a running service has to be
+traceable back to a commit.
 
 A manual release ritual does not survive that: someone must remember which packages changed, decide
 each version, write the changelog, publish in the right order, build the image and tell the

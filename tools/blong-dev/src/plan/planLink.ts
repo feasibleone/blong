@@ -140,3 +140,112 @@ export function setPlanTaskChecked(
     }
     return {changed, seen};
 }
+
+/**
+ * The plan being executed, as the memory commands have to know it.
+ *
+ * A decision or a friction taken while a plan is being executed belongs on that plan's board, and
+ * forgetting to say so is silent: the entry is written, the plan never mentions it, and the reader of
+ * the board cannot tell the difference between "nothing was decided" and "nobody remembered the flag".
+ * So the answer to "is a plan active" is a fact on disk rather than a habit — `plan init` and `plan
+ * sync` write the pointer, and `memory add` refuses a decision or a friction that does not say which
+ * side it is on (@@D-916).
+ *
+ * The pointer is `plans/active.json`: inside the gitignored folder, beside the plans it names, so a
+ * checkout that has no plans has no pointer either.
+ */
+export interface IActivePlan {
+    /** The plan's slug — the folder name under `plans/`, and what `--plan` accepts. */
+    slug: string;
+    /** Repository-relative path of the plan file. */
+    path: string;
+}
+
+/** The pointer file, which records the plan being executed. */
+export function activePlanFile(root: string): string {
+    return join(plansRoot(root), 'active.json');
+}
+
+/** Record the plan being executed, or forget it when `plan` is undefined. */
+export function writeActivePlan(root: string, plan: IActivePlan | undefined): void {
+    const path = activePlanFile(root);
+    if (plan === undefined) {
+        if (existsSync(path)) writeFileSync(path, '{}\n');
+        return;
+    }
+    writeFileSync(path, `${JSON.stringify(plan, null, 4)}\n`);
+}
+
+/**
+ * The plan being executed, or `undefined` when nothing is.
+ *
+ * The pointer is checked against the file it names and against the plan's own front matter: a plan
+ * that was deleted, or one whose `status` is no longer `approved`, is not active however the pointer
+ * reads. When the pointer is absent or stale, the newest approved plan is the answer — a checkout
+ * that predates the pointer still gets the protection.
+ *
+ * An **empty** pointer is different from an absent one: `{}` is what `writeActivePlan(root, undefined)`
+ * writes to forget a plan, so it means "nothing is being executed" and the answer is `undefined`
+ * rather than a guess. Without that distinction the forgetting was a no-op — the very next read
+ * replaced it with the newest approved plan, and a repository whose remaining plans were finished
+ * long ago kept naming one of them at every `memory add` (@@D-922).
+ */
+export function readActivePlan(root: string): IActivePlan | undefined {
+    const pointer = activePlanFile(root);
+    if (existsSync(pointer)) {
+        let parsed: Partial<IActivePlan> | undefined;
+        try {
+            parsed = JSON.parse(readFileSync(pointer, 'utf8')) as Partial<IActivePlan>;
+        } catch {
+            // A file written by something else is not a pointer; the fallback below still answers.
+            parsed = undefined;
+        }
+        const named =
+            typeof parsed?.slug === 'string' && typeof parsed.path === 'string'
+                ? {slug: parsed.slug, path: parsed.path}
+                : undefined;
+        // Present and naming a plan: that plan, if it is still approved.
+        if (named) {
+            const found = approvedPlans(root).find(
+                plan => plan.path === named.path || plan.slug === named.slug,
+            );
+            if (found) return found;
+        } else if (parsed !== undefined && Object.keys(parsed).length === 0) {
+            // Present and empty: somebody said there is nothing to execute, and that stands.
+            return undefined;
+        }
+    }
+    return approvedPlans(root)[0];
+}
+
+/** Every plan whose front matter says `status: approved`, newest first. */
+function approvedPlans(root: string): IActivePlan[] {
+    const found: Array<IActivePlan & {approved: string; touched: number}> = [];
+    for (const path of planFiles(root)) {
+        let text: string;
+        try {
+            text = readFileSync(path, 'utf8');
+        } catch {
+            continue;
+        }
+        const meta = /^---\n(?<body>[\s\S]*?)\n---/.exec(text)?.groups?.['body'] ?? '';
+        if (!/^\s*status:\s*approved\s*$/m.test(meta)) continue;
+        const slug =
+            /^\s*slug:\s*(\S+)\s*$/m.exec(meta)?.[1] ??
+            path.slice(plansRoot(root).length + 1).split(/[\\/]/)[0] ??
+            '';
+        const approved = /^\s*approved:\s*(\S+)\s*$/m.exec(meta)?.[1] ?? '';
+        let touched = 0;
+        try {
+            touched = statSync(path).mtimeMs;
+        } catch {
+            // A file that vanished between the listing and the stat is not the active plan.
+        }
+        found.push({slug, path: relative(root, path), approved, touched});
+    }
+    return found
+        .sort((a, b) =>
+            a.approved === b.approved ? b.touched - a.touched : a.approved < b.approved ? 1 : -1,
+        )
+        .map(({slug, path}) => ({slug, path}));
+}

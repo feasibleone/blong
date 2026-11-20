@@ -77,7 +77,10 @@ memory todo to address it permanently either by better instructions or improved 
 
 - **Record frictions** — `blong-dev memory add friction` with `--title "<title>" --area <area>` and
   `--body "<what cost the effort and the lesson>"`, whenever a task needed unexpected effort or
-  failed (also: long investigations, hard decisions, lots of source read).
+  failed (also: long investigations, hard decisions, lots of source read). While a plan is active
+  the call must also say `--plan <slug>` or `--no-plan`: the tooling fails rather than guessing,
+  because a record the board never mentions is indistinguishable from nothing having happened
+  (`@@D-916`).
 
 - **Track automatic decisions explicitly** — `blong-dev memory add decision` with
   `--title "<what was decided>" --area <area>` and `--body "<the reasoning the code does not show>"`

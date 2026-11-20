@@ -1,4 +1,5 @@
 import type {
+    IApi,
     Adapter,
     GatewaySchema,
     Handlers,
@@ -25,7 +26,7 @@ import merge from 'ut-function.merge';
 
 import * as blongLib from '@feasibleone/blong-lib';
 import {renderAll} from '@feasibleone/blong-template';
-import {vocabulary} from '@feasibleone/semantic-log/attachable';
+import {vocabulary} from '@feasibleone/lukaot/context';
 import {createAttachCheckpoint} from './checkpoint.ts';
 import {methodId, methodParts} from './lib.ts';
 import type {IResolution} from './Resolution.ts';
@@ -218,6 +219,11 @@ export default class Registry extends Internal implements IRegistry {
             attachHandlers: undefined!,
             attach: undefined!,
             createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
+            // The captures a component may take, answered by the log the registry holds — the same
+            // seam as `createLog`, spread rather than re-typed because the factory's parameters are
+            // the log's.
+            captureFor: ((name: string, level?: unknown) =>
+                this.#log?.captureFor?.(name, level as never)) as IApi['captureFor'],
             attachCheckpoint: this.#attachCheckpoint,
             manifest: this.#manifest,
             render: (what: object[] | object) =>

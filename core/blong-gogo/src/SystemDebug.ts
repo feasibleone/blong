@@ -1,6 +1,6 @@
-import type {IConfigRuntime, IGateway, ILog, IRegistry} from '@feasibleone/blong/types';
-import {Internal} from '@feasibleone/blong/types';
-import type {FastifyInstance} from 'fastify';
+import type { IConfigRuntime, IGateway, ILog, IRegistry } from '@feasibleone/blong/types';
+import { Internal } from '@feasibleone/blong/types';
+import type { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 
 interface IConfig {
@@ -69,9 +69,7 @@ export default class SystemDebug extends Internal {
     public async init(): Promise<void> {
         if (!this.#config.enabled || !this.#apiRef.gateway) return;
 
-        this.log?.warn?.(
-            'systemDebug is enabled — introspection endpoints are active; do not enable in production',
-        );
+        this.signal?.frameworkDebugEnabled?.();
 
         const apiRef = this.#apiRef;
         const prefix = this.#config.routePrefix;

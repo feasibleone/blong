@@ -25,11 +25,8 @@ export default handler(({errors}) => {
                 // that message names neither the caller nor the reason, and it is thrown from a hook
                 // that cannot tell a missing session from a tampered body.
                 if (!$meta?.expect)
-                    (this as unknown as {log?: {warn?: (entry: object) => void}}).log?.warn?.({
-                        $meta: {mtid: 'event', method: 'identity.checkInternal'},
-                        message:
-                            `no MLE handshake is recorded for '${actorId || '(unnamed)'}' — ` +
-                            'the caller has to log in again',
+                    this.signal?.identityHandshakeMissing?.({
+                        actorId: `'${actorId || '(unnamed)'}'`,
                     });
                 throw errors['kustomize.sessionUnknown']({params: {actorId}});
             }

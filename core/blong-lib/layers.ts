@@ -32,6 +32,16 @@ export const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: objec
     'browser/init': {browser: {default: true}},
     'browser/orchestrator': {browser: {default: true}},
     error: {server: {microservice: true, k8s: true, upgrade: true}},
+    /**
+     * The declared vocabulary: `lukaot/error.ts` and `lukaot/signal.ts`.
+     *
+     * Activated exactly as `error` is, because it *replaces* it rather than sitting beside it: a
+     * realm that declares its failures in `lukaot/error.ts` declares them for the same reason the
+     * old folder existed — so a thrown failure is a named, documented thing — and the process a
+     * realm runs in is the same process. Keeping the two activations equal is what lets a realm
+     * move a file from one folder to the other without a deployment change.
+     */
+    lukaot: {server: {microservice: true, k8s: true, upgrade: true}},
     adapter: {server: {microservice: true, k8s: true, upgrade: true}},
     orchestrator: {server: {microservice: true, k8s: true, upgrade: true}},
     gateway: {server: {microservice: true, k8s: true}},

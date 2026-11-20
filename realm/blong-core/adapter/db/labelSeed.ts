@@ -73,10 +73,9 @@ export default handler(
             }
 
             if (skipped) {
-                this.log?.warn?.({
-                    $meta: {mtid: 'event', method: 'core.label.seed'},
-                    message: `core.label.seed kept ${skipped} hand-edited ${languageCode} label(s) and replaced the rest`,
-                });
+                // A kept edit is the seed working as designed, and the record is what says which
+                // language it happened in (`@@D-896`).
+                this.signal?.coreLabelSeedKeptEdits?.({skipped, language: languageCode});
             }
 
             return {inserted, updated, unchanged, skipped};

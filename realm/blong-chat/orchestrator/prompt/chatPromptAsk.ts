@@ -106,7 +106,6 @@ export default handler(
     }) => {
         return {
             async chatPromptAsk(params: IChatAskParams, $meta: IMeta): Promise<IChatAnswer> {
-                const port = this as unknown as {log?: {warn?: (message: unknown) => void}};
                 /**
                  * Show the answer where the question is.
                  *
@@ -141,7 +140,7 @@ export default handler(
                     try {
                         if (messageId) return await settle(messageId);
                     } catch (error) {
-                        port.log?.warn?.(error);
+                        this.signal?.chatPromptSettleFailed?.({error});
                     }
                     try {
                         const sent = await chatOutMessageSend(
@@ -156,7 +155,7 @@ export default handler(
                         const refused = sendFailure(sent);
                         if (refused) throw refused;
                     } catch (error) {
-                        port.log?.warn?.(error);
+                        this.signal?.chatPromptAnswerPostFailed?.({error});
                     }
                 };
                 const timeoutMs = params.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -188,7 +187,7 @@ export default handler(
                             $meta,
                         );
                     } catch (error) {
-                        port.log?.warn?.(error);
+                        this.signal?.chatPromptCloseFailed?.({error});
                     }
                 };
                 const prompt: IChatPrompt = {
@@ -248,7 +247,7 @@ export default handler(
                             $meta,
                         );
                         const refusedExplanation = sendFailure(explained);
-                        if (refusedExplanation) port.log?.warn?.(refusedExplanation);
+                        if (refusedExplanation) this.signal?.chatPromptExplanationFailed?.({error: refusedExplanation});
                     }
                     const sent = await chatOutMessageSend(
                         {

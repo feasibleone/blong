@@ -699,12 +699,6 @@
             "tags": ["core"]
         },
         {
-            "packageName": "@feasibleone/semantic-log",
-            "projectFolder": "core/semantic-log",
-            "reviewCategory": "core",
-            "tags": ["core"]
-        },
-        {
             "packageName": "@feasibleone/blong-ci-report",
             "projectFolder": "test/blong-ci-report",
             "reviewCategory": "core",
@@ -763,6 +757,12 @@
             "projectFolder": "realm/blong-blob",
             "reviewCategory": "realm",
             "tags": ["realm"]
+        },
+        {
+            "packageName": "@feasibleone/lukaot",
+            "projectFolder": "core/lukaot",
+            "reviewCategory": "core",
+            "tags": ["core"]
         }
     ]
 }

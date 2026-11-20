@@ -65,6 +65,18 @@ const DECISION = /^-\s+(?!\[[ xX]\]\s)(?<rest>.*)$/;
  */
 const ID_PREFIX = /^\[?@@(?<id>[FTD]-\d{3})\]?(?:\((?<link>[^)]*)\))?\s+(?<title>.*)$/;
 
+/**
+ * A created item whose whole text is the link: `[@@T-531 Scaffold the realm](…/todo.md#t-531--…)`.
+ *
+ * This is the shape a published plan uses, because it is the only one a reader's eye takes in at a
+ * glance: the checkbox, then one link whose text *is* the task. The title used to sit beside or under
+ * the link, and both put it outside the link — beside it made the line wrap into a second paragraph in
+ * the published issue, under it made it look like a subtitle (`@@F-768`). Inside the brackets there is
+ * nothing left to wrap: GitHub wraps the link's text, which is one paragraph however long it is.
+ */
+const LINKED_TITLE =
+    /^\[@@(?<id>[FTD]-\d{3})\s+(?<title>[^\]]*)\]\((?<link>[^)]*)\)\s*(?<rest>.*)$/;
+
 /** The area suffix, which is stripped from the title. */
 const AREA_SUFFIX = /\s+·\s+area:\s*(?<area>\S.*?)\s*$/;
 
@@ -259,11 +271,16 @@ export function parseTaskLine(rest: string): {
     let text = rest.trim();
     let id: string | undefined;
     let link: string | undefined;
-    const withId = ID_PREFIX.exec(text);
+    const inside = LINKED_TITLE.exec(text);
+    const withId = inside ?? ID_PREFIX.exec(text);
     if (withId) {
         id = withId.groups?.['id'];
         link = withId.groups?.['link'];
         text = (withId.groups?.['title'] ?? '').trim();
+        // Text after the closing bracket of a linked title is a residue of an older render; it is
+        // joined so a half-converted line still reads as one title.
+        const rest = (withId.groups?.['rest'] ?? '').trim();
+        if (inside && rest !== '') text = `${text} ${rest}`.trim();
     }
     let area: string | undefined;
     const withArea = AREA_SUFFIX.exec(text);
@@ -303,14 +320,35 @@ function readWrappedTitle(
     limit: number,
 ): {parsed: ReturnType<typeof parseTaskLine>; extra: number} {
     const first = parseTaskLine(rest);
-    if (first.area) return {parsed: first, extra: 0};
+    const marker = /·\s*(?:area:\s*)?$/.test(rest.trim());
+    // A line that is only the entry's link: the title was pushed entirely onto the next line because
+    // the link is wider than the print width.
+    const bareId = /^\[?@@[FTD]-\d{3}\]?(\([^)]*\))?\s*$/.test(rest.trim());
+    // Joining is for three shapes and no more: a line whose ` · area:` value wrapped, a line that
+    // carries its id and whose title wrapped, and a line that is only the link. A task that names no
+    // area at all has none of those markers, keeps its detail where it was, and is still reported.
+    if (first.area !== undefined || !(first.id !== undefined || marker || bareId)) {
+        return {parsed: first, extra: 0};
+    }
     const words = [rest.trim()];
     for (let scan = index + 1; scan < limit && words.length < MAX_TITLE_LINES; scan += 1) {
         const next = lines[scan] ?? '';
         if (next.trim() === '' || !/^[ \t]/.test(next) || FENCE.test(next)) break;
+        // A line that repeats part of the title the line above already carries is not a continuation
+        // of it: an earlier render can leave one behind, and joining it would double the title.
+        if (first.title !== '' && first.title.endsWith(next.trim())) break;
         words.push(next.trim());
         const parsed = parseTaskLine(words.join(' '));
-        if (parsed.area) return {parsed, extra: words.length - 1};
+        // The joined line is taken when it recovered something the break took away: the area, the
+        // id-and-title structure of a line that was only a link, or a longer title than the break
+        // left behind.
+        if (
+            parsed.area !== undefined ||
+            (parsed.id !== undefined && first.id === undefined) ||
+            parsed.title.length > first.title.length
+        ) {
+            return {parsed, extra: words.length - 1};
+        }
     }
     return {parsed: first, extra: 0};
 }
@@ -525,8 +563,46 @@ export function renderTaskLine(
     task: Pick<IPlanTask, 'checked' | 'id' | 'title'>,
     link?: string,
 ): string {
-    const reference = task.id ? (link ? `[@@${task.id}](${link})` : `@@${task.id}`) : '';
-    return `- [${task.checked ? 'x' : ' '}] ${reference ? `${reference} ` : ''}${task.title}`;
+    const reference = task.id
+        ? link
+            ? `[@@${task.id} ${task.title}](${link})`
+            : `@@${task.id}`
+        : '';
+    // A linked task's text is the link itself; an unlinked one keeps the title beside its token, and a
+    // task with no id at all is still the draft line a reviewer edits.
+    const text = task.id && link ? '' : ` ${task.title}`;
+    return `- [${task.checked ? 'x' : ' '}] ${reference}${text}`.trimEnd();
+}
+
+/**
+ * The indentation a title takes on the line after its bullet.
+ *
+ * Six spaces puts it inside the item's content, and a continuation rather than a nested block: the
+ * bullet is `- [ ] ` (six characters), so the line reads as the same list item in GitHub and in a
+ * terminal, and a reader sees the id first and the title under it.
+ */
+const TITLE_INDENT = '      ';
+
+/**
+ * A created task as it is written into the plan: the link line, then the title under it.
+ *
+ * The two-line form exists because a link is long. `- [ ] [@@T-531](../../pkg/.memory/todo.md#t-531--…)
+ * Scaffold the realm` is a hundred characters before the title starts, so the line wraps wherever the
+ * formatter decides, and every later render has to decide whether the line under it is the rest of
+ * the title or a leftover from a previous one — which is how a title ends up written two and three
+ * times (a render appended the title under a line that already carried it, the parser read the two as
+ * one, and the next render wrote it again). Putting the title on its own line is the shape neither
+ * step can get wrong: `readWrappedTitle` already joins a bare-link line with its continuation
+ * (@@F-768).
+ *
+ * A task without a link keeps the one-line draft form, so a plan that has not been published still
+ * reads as prose a reviewer can edit.
+ */
+export function renderTaskBlock(
+    task: Pick<IPlanTask, 'checked' | 'id' | 'title'>,
+    link?: string,
+): string[] {
+    return [renderTaskLine(task, link)];
 }
 
 /**
@@ -541,10 +617,19 @@ export function renderDecisionLine(
 ): string {
     const reference = decision.id
         ? link
-            ? `[@@${decision.id}](${link})`
+            ? `[@@${decision.id} ${decision.title}](${link})`
             : `@@${decision.id}`
         : '';
-    return `- ${reference ? `${reference} ` : ''}${decision.title}`;
+    const text = decision.id && link ? '' : ` ${decision.title}`;
+    return `- ${reference}${text}`.trimEnd();
+}
+
+/** A created decision as it is written into the plan: the link line, then the title under it. */
+export function renderDecisionBlock(
+    decision: Pick<IPlanDecision, 'id' | 'title'>,
+    link?: string,
+): string[] {
+    return [renderDecisionLine(decision, link)];
 }
 
 /** The detail lines of a task as one body string, for a memory entry. */
@@ -568,30 +653,53 @@ function trimItems<T extends IPlanItem>(
     items: readonly T[],
     ids: ReadonlyMap<T, string>,
     links: ReadonlyMap<T, string> | undefined,
-    render: (item: T, id: string, link: string | undefined) => string,
+    render: (item: T, id: string, link: string | undefined) => string[],
 ): IPlanDocument {
     const lines = [...doc.lines];
     const sorted = [...items].sort((a, b) => b.line - a.line);
     for (const item of sorted) {
         const id = ids.get(item) ?? item.id;
         if (!id) continue;
-        const line = render(item, id, links?.get(item) ?? item.link);
-        if (item.body.length === 0 && lines[item.line] === line) continue;
-        // The detail block ends with the blank line that separated it from what follows, so
-        // replacing it with one line would glue the next heading to the item above it. The block's
-        // own trailing blank is kept — which is also what keeps a heading where a reader expects
-        // it, since `plan check` accepts either shape.
-        const block = lines.slice(item.line, item.end + 1);
-        const endedBlank = block.length > 1 && (block[block.length - 1] ?? '').trim() === '';
-        const next = lines[item.end + 1];
-        const followedByHeading = next !== undefined && /^#{1,6}\s/.test(next);
+        const rendered = render(item, id, links?.get(item) ?? item.link);
+        // Already in the form it would be written as — in either shape the formatter may leave it
+        // in — and with no detail left over: nothing to do.
+        if (
+            item.body.length === 0 &&
+            blockIsRendered(lines.slice(item.line, item.end + 1), rendered)
+        ) {
+            continue;
+        }
+        // The whole block goes, not only its first line: an earlier render can leave a repetition of
+        // the title under the line, and replacing the first line alone would keep it forever
+        // (@@F-768).
         lines.splice(
             item.line,
             item.end - item.line + 1,
-            ...(endedBlank || followedByHeading ? [line, ''] : [line]),
+            ...rendered,
+            // A blank line is a heading's, not an item's: consecutive items stay tight so the
+            // breakdown renders as one list rather than one paragraph per task.
+            ...(isHeading(lines[item.end + 1]) ? [''] : []),
         );
     }
-    return {...doc, lines: collapseBlankRuns(spaceOutHeadings(lines))};
+    return {...doc, lines: spaceOutPlan(lines)};
+}
+
+/**
+ * Whether a block already says exactly what would be written for it.
+ *
+ * The comparison is line by line, not by content: a block that was wrapped into two lines by an
+ * earlier format or by an earlier render says the same words but is not the shape the tooling
+ * writes, and the trim exists to put it back (@@F-768 @@D-919). Comparing content instead would
+ * accept the wrapped form forever and leave the board reading one task as two.
+ */
+export function blockIsRendered(block: readonly string[], rendered: readonly string[]): boolean {
+    if (block.length !== rendered.length) return false;
+    return rendered.every((line, index) => (block[index] ?? '').trimEnd() === line.trimEnd());
+}
+
+/** Whether a line is a markdown heading (or the end of the document, which needs no blank). */
+function isHeading(line: string | undefined): boolean {
+    return line !== undefined && /^#{1,6}\s/.test(line);
 }
 
 /** Replace every task block with its one-line form, in place. */
@@ -601,7 +709,7 @@ export function trimTasksToLines(
     links?: ReadonlyMap<IPlanTask, string>,
 ): IPlanDocument {
     return trimItems(doc, doc.tasks, ids, links, (task, id, link) =>
-        renderTaskLine({...task, id}, link),
+        renderTaskBlock({...task, id}, link),
     );
 }
 
@@ -612,8 +720,52 @@ export function trimDecisionsToLines(
     links?: ReadonlyMap<IPlanDecision, string>,
 ): IPlanDocument {
     return trimItems(doc, doc.decisions, ids, links, (decision, id, link) =>
-        renderDecisionLine({...decision, id}, link),
+        renderDecisionBlock({...decision, id}, link),
     );
+}
+
+/**
+ * The spacing a plan's text keeps after an edit: one blank line above every heading, no run of blanks
+ * anywhere else, and a formatter guard above every list of items.
+ *
+ * Exported because `plan sync` edits the same text and must leave the same shape — a sync that only
+ * rewrites item lines leaves a heading glued to the task above it, which is a different rendering in
+ * the issue than in the file (@@F-768).
+ */
+export function spaceOutPlan(lines: readonly string[]): string[] {
+    return collapseBlankRuns(spaceOutHeadings(guardLists(lines)));
+}
+
+/** The comment that keeps the markdown formatter's hands off the list below it. */
+export const LIST_GUARD = '<!-- prettier-ignore -->';
+
+/**
+ * A `<!-- prettier-ignore -->` above every list of items, and nowhere else.
+ *
+ * A plan is formatted like any other markdown page — the headings, the prose and the tables are the
+ * formatter's — but a work-breakdown line is a *record*: the tooling writes it, `plan check` compares
+ * it and the issue is published from it, so a formatter that re-wraps a long title into a second line
+ * changes how the board reads. The guard is what separates the two: one comment, written here rather
+ * than by hand, so the list below it is left exactly as the tooling wrote it (@@D-919).
+ *
+ * The comment is attached to the first line of the list and not separated from it by a blank, because
+ * `prettier-ignore` applies to the node that follows it — a list is one node, so one comment is enough
+ * for every item in it.
+ */
+function guardLists(lines: readonly string[]): string[] {
+    const out: string[] = [];
+    let inFence = false;
+    let guarded = false;
+    for (const line of lines) {
+        const fence = /^\s*(?:```|~~~)/.test(line);
+        if (fence) inFence = !inFence;
+        const item = !inFence && /^- (?:\[[ xX]\] )?\[?@@[FTD]-\d{3}/.test(line);
+        if (item && !guarded && out[out.length - 1] !== LIST_GUARD) out.push(LIST_GUARD);
+        if (item) guarded = true;
+        else if (line.trim() !== '' && !line.startsWith(' ')) guarded = false;
+        out.push(line);
+    }
+    return out;
 }
 
 /**

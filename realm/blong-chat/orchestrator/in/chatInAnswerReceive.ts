@@ -1,7 +1,7 @@
 import {handler, type IMeta} from '@feasibleone/blong';
 import type {IChatAnswer, IChatInbound} from '@feasibleone/blong/types';
 
-import {pendingKey, pendingTake} from '../prompt/pending.ts';
+import {pendingTakeMatching} from '../prompt/pending.ts';
 import {forwardTarget, type IChatDispatchPort} from '../settings.ts';
 
 /**
@@ -61,7 +61,7 @@ export default handler(() => ({
     ): Promise<{handled: boolean}> {
         const inbound = asInbound(params);
         const {answer} = inbound;
-        const entry = pendingTake(pendingKey(answer.promptId, inbound));
+        const entry = pendingTakeMatching(answer.promptId, inbound);
         if (entry) {
             clearTimeout(entry.timer);
             // A submit that names no selection is answered with what the controls were holding: an

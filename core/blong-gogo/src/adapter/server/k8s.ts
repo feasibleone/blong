@@ -986,7 +986,12 @@ export default adapter<IConfig>(({utError}) => {
                             watchPath,
                             {fieldSelector, resourceVersion, labelSelector},
                             (type, object) => {
-                                this.log?.debug?.({object}, `Event: ${type}`);
+                                // The event object is a JSON document with a `type` beside it: a capture
+                                // renders it at the rung the configuration asks for (`@@T-730`).
+                                this.capture?.json?.({method: type}, () => ({
+                                    label: `k8s.event ${type}`,
+                                    value: object,
+                                }));
                                 if (type === 'ERROR') {
                                     eventReject(new Error(object.message || 'Watch error event'));
                                 } else eventResolve({type, object});

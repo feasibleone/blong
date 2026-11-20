@@ -1,6 +1,6 @@
 # Mojaloop Payment Flow
 
-This is included as reference for the [semantic log flows](./semantic-log-flows.md)
+This is included as reference for the [the flows a run observes](./lukaot-flows.md)
 
 ## Cross-currency (single scheme)
 

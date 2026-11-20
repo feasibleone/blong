@@ -6,6 +6,7 @@ import gateway from './gateway.ts';
 import handler from './handler.ts';
 import layer from './layer.ts';
 import library from './library.ts';
+import lukaot from './lukaot.ts';
 import model from './model.ts';
 import orchestrator from './orchestrator.ts';
 import realm from './realm.ts';
@@ -39,6 +40,7 @@ export const PRIMITIVES: PrimitiveDescriptor[] = [
     orchestrator,
     adapter,
     error,
+    lukaot,
     schema,
     seed,
     model,

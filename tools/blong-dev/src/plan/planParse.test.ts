@@ -11,11 +11,13 @@ import {test} from 'tap';
 import {entryLink, githubAnchor, issueLinks} from './planLinks.ts';
 import {
     bodyWithoutFrontMatter,
+    LIST_GUARD,
     parsePlan,
     parseTaskLine,
     planTitle,
     positionalTitle,
     renderTaskLine,
+    spaceOutPlan,
     taskBodyText,
     trimDecisionsToLines,
     trimTasksToLines,
@@ -68,9 +70,8 @@ test('a task line carries a title, an area and an id once created', async t => {
             {checked: true, id: 'T-531', title: 'Scaffold the realm'},
             '../../pkg/.github/memory/todo.md#t-531--scaffold-the-realm',
         ),
-        '- [x] [@@T-531](../../pkg/.github/memory/todo.md#t-531--scaffold-the-realm) ' +
-            'Scaffold the realm',
-        'the link form a converted task carries',
+        '- [x] [@@T-531 Scaffold the realm](../../pkg/.github/memory/todo.md#t-531--scaffold-the-realm)',
+        'the link form a converted task carries: the title is the link text',
     );
     t.end();
 });
@@ -144,6 +145,29 @@ test('a decision whose area wrapped is still a decision', async t => {
     t.end();
 });
 
+test('a created decision whose link wraps keeps its id and its title', async t => {
+    const doc = parsePlan(`### Decisions this plan takes
+
+- [@@D-899](../../.github/memory/decision.md#d-899--reference-scheme-becomes-lukaot) Reference
+  scheme becomes \`lukaot://\`
+
+- [@@D-900](../../.github/memory/decision.md#d-900--the-frameworks-call-sites)
+  The framework's call sites are converted here; the rest are follow-ups
+
+## 3. Work breakdown
+`);
+    t.same(
+        doc.decisions.map(decision => [decision.id, decision.title]),
+        [
+            ['D-899', 'Reference scheme becomes `lukaot://`'],
+            ['D-900', "The framework's call sites are converted here; the rest are follow-ups"],
+        ],
+        'a wrapped link line is one decision, not one per line',
+    );
+    t.same(doc.problems, [], 'and nothing is reported about it');
+    t.end();
+});
+
 test('a task without an area is a problem a reader can act on', async t => {
     const doc = parsePlan('- [ ] No area here\n      Detail.\n');
     t.match(doc.problems[0], /names no area/);
@@ -179,8 +203,8 @@ test('trimming keeps the title and the id and drops the detail', async t => {
     const trimmed = trimTasksToLines(doc, ids, links);
     t.match(
         trimmed.lines.join('\n'),
-        /^- \[ \] \[@@T-531\]\(\.\.\/\.\.\/realm\/blong-agent\/\.github\/memory\/todo\.md#t-531--scaffold\) Scaffold the realm$/m,
-        'the id becomes a link a reader can follow',
+        /^- \[ \] \[@@T-531 Scaffold the realm\]\(\.\.\/\.\.\/realm\/blong-agent\/\.github\/memory\/todo\.md#t-531--scaffold\)$/m,
+        'the id and the title become one link a reader can follow',
     );
     t.notMatch(trimmed.lines.join('\n'), /kukum realm add/, 'the detail is gone');
     t.match(trimmed.lines.join('\n'), /^- \[ \] Write the page · area: docs$/m);
@@ -188,13 +212,78 @@ test('trimming keeps the title and the id and drops the detail', async t => {
 });
 
 test('a link written once is not rewritten on the next read', async t => {
+    // The older shape — the link, then the title beside it — is migrated to the one a reader can take
+    // in: the title *is* the link text. After that the line is left alone, which is what keeps a save
+    // in the editor from putting a diff in the file (@@D-917 @@D-919).
     const doc = parsePlan('- [ ] [@@T-531](../../pkg/.github/memory/todo.md#t-531--one) One\n');
     t.equal(doc.tasks[0]?.link, '../../pkg/.github/memory/todo.md#t-531--one');
+    const once = trimTasksToLines(doc, new Map(), new Map());
+    t.same(
+        once.lines.slice(0, 2),
+        [LIST_GUARD, '- [ ] [@@T-531 One](../../pkg/.github/memory/todo.md#t-531--one)'],
+        'the title moves inside the link, under a guard that keeps a formatter out of the list',
+    );
+    const twice = trimTasksToLines(parsePlan(once.lines.join('\n')), new Map(), new Map());
+    t.same(twice.lines, once.lines, 'and a second read changes nothing');
+    t.end();
+});
+
+test('one guard stands above each list, and nowhere else', async t => {
+    // The guard is attached to the first item and covers the whole list, so a second item does not
+    // repeat it, and prose between two lists ends the guarded run (@@D-919).
+    const lines = spaceOutPlan([
+        '### Group one',
+        '',
+        '- [ ] [@@T-531 One](../../x.md#t-531)',
+        '- [ ] [@@T-532 Two](../../x.md#t-532)',
+        '',
+        'A paragraph of prose that the formatter owns.',
+        '',
+        '- [@@D-001 A decision](../../d.md#d-001)',
+        '',
+    ]);
+    t.same(lines, [
+        '### Group one',
+        '',
+        LIST_GUARD,
+        '- [ ] [@@T-531 One](../../x.md#t-531)',
+        '- [ ] [@@T-532 Two](../../x.md#t-532)',
+        '',
+        'A paragraph of prose that the formatter owns.',
+        '',
+        LIST_GUARD,
+        '- [@@D-001 A decision](../../d.md#d-001)',
+        '',
+    ]);
+    t.end();
+});
+
+test('a title an earlier render repeated under the link is repaired', async t => {
+    // The shape the bug left behind: the link line, then the title again as a detail paragraph, and
+    // sometimes twice. The whole block is replaced, so one trim is enough (@@F-768).
+    const doc = parsePlan(
+        [
+            '- [ ] [@@T-531](../../pkg/.github/memory/todo.md#t-531--one)',
+            '      One',
+            '      One',
+            '',
+            '- [ ] [@@T-532](../../pkg/.github/memory/todo.md#t-532--two) Two',
+            '',
+        ].join('\n'),
+    );
+    t.equal(doc.tasks[0]?.body.join('\n'), 'One', 'the parser reads the repeat as detail');
     const trimmed = trimTasksToLines(doc, new Map(), new Map());
+    const text = trimmed.lines.join('\n');
     t.equal(
-        trimmed.lines.join('\n'),
-        doc.lines.join('\n'),
-        'a task whose line is already right is left alone',
+        text.match(/One/g)?.length,
+        1,
+        "the repeated title is gone, and the one left is the task's own",
+    );
+    t.notMatch(text, /\n\n/, 'and nothing is left between the two tasks');
+    t.same(
+        parsePlan(text).tasks.map(task => task.title),
+        ['One', 'Two'],
+        'the repaired list parses back as two tasks',
     );
     t.end();
 });
@@ -312,8 +401,8 @@ test('a created decision keeps its title and its link, and its detail leaves the
     const text = trimmed.lines.join('\n');
     t.match(
         text,
-        /^- \[@@D-001\]\(\.\.\/\.\.\/\.github\/memory\/decision\.md#d-001--scope\) The bytes live in a scope, not a namespace$/m,
-        'the line is the link and the title',
+        /^- \[@@D-001 The bytes live in a scope, not a namespace\]\(\.\.\/\.\.\/\.github\/memory\/decision\.md#d-001--scope\)$/m,
+        'the line is one link whose text is the decision',
     );
     t.notMatch(text, /cookie carries/, 'the reasoning moved into the entry');
     t.notMatch(text, /· area:/, 'so did the area marker');

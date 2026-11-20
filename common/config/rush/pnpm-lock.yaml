@@ -17,12 +17,12 @@ importers:
 
   ../../core/blong:
     dependencies:
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../lukaot
       openapi-types:
         specifier: ^12.1.3
         version: 12.1.3
-      pino:
-        specifier: ^10.3.1
-        version: 10.3.1
       typebox:
         specifier: ^1.1.5
         version: 1.1.8
@@ -175,6 +175,9 @@ importers:
       '@feasibleone/blong-template':
         specifier: workspace:*
         version: link:../blong-template
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../lukaot
       '@tanstack/react-query':
         specifier: ^5.67.3
         version: 5.95.2(react@19.2.4)
@@ -284,6 +287,9 @@ importers:
 
   ../../core/blong-chain:
     dependencies:
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../lukaot
       p-queue:
         specifier: ^9.1.0
         version: 9.1.0
@@ -479,9 +485,9 @@ importers:
       '@feasibleone/blong-template':
         specifier: workspace:*
         version: link:../blong-template
-      '@feasibleone/semantic-log':
-        specifier: workspace:^1.0.0
-        version: link:../semantic-log
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../lukaot
       '@keycloak/keycloak-admin-client':
         specifier: ^26.6.2
         version: 26.6.2
@@ -509,9 +515,6 @@ importers:
       browser-process-hrtime:
         specifier: ^1.0.0
         version: 1.0.0
-      cacache:
-        specifier: ^20.0.4
-        version: 20.0.4
       chokidar:
         specifier: ^5.0.0
         version: 5.0.0
@@ -563,15 +566,9 @@ importers:
       p-queue:
         specifier: ^9.1.0
         version: 9.1.0
-      pino:
-        specifier: ^10.3.1
-        version: 10.3.1
       pino-abstract-transport:
         specifier: ^3.0.0
         version: 3.0.0
-      pino-pretty:
-        specifier: ^13.1.3
-        version: 13.1.3
       reconnect-core:
         specifier: ^1.3.0
         version: 1.3.0
@@ -621,9 +618,6 @@ importers:
       '@rushstack/heft-typescript-plugin':
         specifier: ^1.3.1
         version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@types/cacache':
-        specifier: ^20.0.1
-        version: 20.0.1
       '@types/node':
         specifier: ^24
         version: 24.12.0
@@ -869,6 +863,9 @@ importers:
       '@feasibleone/blong-lib':
         specifier: workspace:^1.0.0
         version: link:../blong-lib
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../lukaot
       typebox:
         specifier: ^1.1.5
         version: 1.1.8
@@ -998,6 +995,9 @@ importers:
       '@feasibleone/blong-mock':
         specifier: workspace:^1.0.0
         version: link:../blong-mock
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../lukaot
     devDependencies:
       '@feasibleone/blong-dev':
         specifier: workspace:*
@@ -1065,7 +1065,7 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  ../../core/semantic-log:
+  ../../core/lukaot:
     dependencies:
       cacache:
         specifier: ^20.0.4
@@ -1073,6 +1073,15 @@ importers:
       fastify:
         specifier: ^5.12.7
         version: 5.12.7
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
+      pino-abstract-transport:
+        specifier: ^3.0.0
+        version: 3.0.0
+      pino-pretty:
+        specifier: ^13.1.3
+        version: 13.1.3
       ulidx:
         specifier: ^2.4.1
         version: 2.4.1
@@ -1485,6 +1494,9 @@ importers:
       '@feasibleone/blong-kustomize':
         specifier: workspace:^0.1.0
         version: link:../blong-kustomize
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../../core/lukaot
       typebox:
         specifier: ^1.1.5
         version: 1.1.8
@@ -1643,6 +1655,9 @@ importers:
       '@feasibleone/blong-server':
         specifier: workspace:^1.0.0
         version: link:../../core/blong-server
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../../core/lukaot
       typebox:
         specifier: ^1.1.5
         version: 1.1.8
@@ -1774,6 +1789,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../../core/blong
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../../core/lukaot
       typebox:
         specifier: ^1.1.5
         version: 1.1.8
@@ -1969,6 +1987,9 @@ importers:
       '@feasibleone/blong-server':
         specifier: workspace:^1.0.0
         version: link:../../core/blong-server
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../../core/lukaot
       tinyglobby:
         specifier: ^0.2.16
         version: 0.2.17

@@ -125,11 +125,11 @@ in production — that is what makes one handler usable as both production code 
 A checkpoint is one shape of a **progress point**; a `decide` branch is the other. Both are moments
 in the logic that explain the shape a run took, both are recorded in one place, and both are drawn
 on the sequence diagram the log builds — a point as a note beside the participant that reported it,
-a branch as an `alt` block around the calls made inside it
-([R11, R26, R27](../rationale/semantic-log.md)). The **test report** draws the same two shapes from
-the same list, each as what it is: a branch becomes a group — a sub-test in tap, a step in Allure —
-holding the points taken inside it, and a point is printed beside the step that announced it. In tap
-that is a comment, because a moment a step passed through is not a test of its own:
+a branch as an `alt` block around the calls made inside it ([lukaot](../concepts/lukaot.md)). The
+**test report** draws the same two shapes from the same list, each as what it is: a branch becomes a
+group — a sub-test in tap, a step in Allure — holding the points taken inside it, and a point is
+printed beside the step that announced it. In tap that is a comment, because a moment a step passed
+through is not a test of its own:
 
 ```text
 # total-calculated: total=200, itemCount=2
@@ -158,8 +158,8 @@ its call does. A call's records are written by the framework around the handler 
 and after it returns — so nothing is recorded at the moment a handler speaks: what it announced is
 collected once it is done and written on its answer. The participant a note is drawn over is
 therefore the participant that answered, and the collection is installed **before** the handler is
-run, so that what it announces after its first wait is collected too
-([semantic-log](semantic-log.md) has the whole of that rule).
+run, so that what it announces after its first wait is collected too ([lukaot](lukaot.md) has the
+whole of that rule).
 
 ```typescript
 $meta.checkpoint?.('total-calculated', {total, itemCount});

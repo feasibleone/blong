@@ -26,6 +26,7 @@ const thisHost = (): string => process.env.HOSTNAME ?? hostname();
 
 export default handler(
     ({
+        lib,
         handler: {
             'db/agentAnswerFind': agentAnswerFind,
             'db/agentSessionGet': agentSessionGet,
@@ -71,13 +72,19 @@ export default handler(
                 } catch (err) {
                     // A suspended session with no checkpoint cannot be replayed, and one such row must
                     // not stop the tick from resuming the others: recovery purges it once it is stale.
-                    if ((err as {code?: string}).code !== 'agent.checkpointMissing') throw err;
-                    port.log?.warn?.(
-                        `a suspended session had no checkpoint to resume from, skipped: ${sessionId}`,
-                    );
+                    // The identifier a declared error carries is its `type` — `agentCheckpointMissing`
+                    // is the name in `lukaot/error.ts` — and reading `code` there matched nothing, so
+                    // this branch never ran and one session that could not be replayed failed the whole tick (`@@T-718`).
+                    const failure = err as {type?: string; code?: string};
+                    if ((failure.type ?? failure.code) !== 'agentCheckpointMissing') throw err;
+                    port.signal?.agentSessionUnrecoverable?.({sessionId: String(sessionId)});
                     continue;
                 }
                 resumed += 1;
+                // The session is drawn from what its worker announced: the identifier says what
+                // happened, the checkpoint says where in the flow it happened (`@@T-717`).
+                port.signal?.agentSessionResumed?.({sessionId: String(sessionId)});
+                lib.checkpoint?.('agent.session.resumed', {sessionId: String(sessionId)});
             }
             const account = params.engineAccount ?? settings.engineAccount;
             if (!account)
@@ -94,6 +101,16 @@ export default handler(
             if (!claimed?.ticket || !claimed.session) return {claimed: false, resumed};
             const sessionId = String(claimed.session.sessionId);
             const ticket = claimed.ticket;
+            // The claim is what opens a session's flow, so it is announced before the work starts and
+            // named by the ticket and the worker that took it.
+            port.signal?.agentTicketClaimed?.({
+                workerId,
+                ticketId: String(ticket.ticketId ?? ''),
+            });
+            lib.checkpoint?.('agent.ticket.claimed', {
+                ticketId: String(ticket.ticketId ?? ''),
+                sessionId,
+            });
             const run = (await agentSessionRun(
                 {
                     sessionId,

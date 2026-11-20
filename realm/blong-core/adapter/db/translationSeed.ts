@@ -104,12 +104,13 @@ export default handler(
             }
 
             if (skipped || missing) {
-                this.log?.warn?.({
-                    $meta: {mtid: 'event', method: 'core.translation.seed'},
-                    message:
-                        `core.translation.seed ${languageCode}: kept ${skipped} hand-edited, ` +
-                        `skipped ${missing} unknown resource(s)` +
-                        (unknown.length ? ` e.g. ${unknown.join(', ')}` : ''),
+                // The examples are the readable part: a resource the seed does not know is the row a
+                // person has to look at, and the identifier says the seed skipped something (`@@D-896`).
+                this.signal?.coreTranslationSeedSkipped?.({
+                    language: languageCode,
+                    skipped,
+                    missing,
+                    examples: unknown.length ? ` e.g. ${unknown.join(', ')}` : '',
                 });
             }
 

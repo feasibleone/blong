@@ -42,14 +42,19 @@ export default adapter<IConfig>(api => {
     let conCount = 0;
     const streams: Socket[] = [];
 
+    /**
+     * A server or client `error` event, reported through the port's one writer (`@@T-731`).
+     *
+     * It used to be dropped on the level directly, which cost it the record's shape: no `type`, no
+     * `statusCode`, no expected-`silent` handling, and no declared identity for an operator to
+     * filter. A socket event has no dispatch, so no `$meta` is handed over.
+     */
     const onError = (type: string) =>
         function (this: Adapter<IConfig, AdapterContext>, err: Error): void {
-            if (this.log?.error) {
-                const error = new Error(`TCP ${type}`) as ITypedError;
-                error.cause = err;
-                error.type = `portTCP.${type}`;
-                this.log.error(error);
-            }
+            const error = new Error(`TCP ${type}`) as ITypedError;
+            error.cause = err;
+            error.type = `portTCP.${type}`;
+            this.error(error);
         };
     function connect(this: Adapter<IConfig, AdapterContext>, stream: Socket): void {
         conCount += 1;
@@ -61,9 +66,10 @@ export default adapter<IConfig>(api => {
         const maxConnections = this.config.maxConnections ?? 1000;
         const connectionDropPolicy = this.config.connectionDropPolicy ?? 'oldest';
         if (streams.length > maxConnections) {
-            this.log?.warn?.(
-                `Connection limit exceeded (max ${maxConnections}). Closing ${connectionDropPolicy} connection.`,
-            );
+            this.signal?.frameworkTcpConnectionLimit?.({
+                maxConnections,
+                policy: connectionDropPolicy,
+            });
             switch (connectionDropPolicy) {
                 case 'oldest':
                     streams.shift()!.destroy();

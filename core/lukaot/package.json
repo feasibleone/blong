@@ -1,0 +1,68 @@
+{
+    "name": "@feasibleone/lukaot",
+    "version": "0.1.0",
+    "description": "One declared vocabulary for the signals a process emits: errors, logs and the progress between them",
+    "repository": {
+        "url": "git+https://github.com/feasibleone/blong.git"
+    },
+    "type": "module",
+    "exports": {
+        ".": {
+            "blong-dev": "./index.ts",
+            "types": "./dist/index.d.ts",
+            "default": "./index.ts"
+        },
+        "./context": {
+            "blong-dev": "./context.ts",
+            "types": "./dist/context.d.ts",
+            "default": "./context.ts"
+        },
+        "./service": {
+            "blong-dev": "./service.ts",
+            "types": "./dist/service.d.ts",
+            "default": "./service.ts"
+        },
+        "./inspect": {
+            "blong-dev": "./inspect.ts",
+            "types": "./dist/inspect.d.ts",
+            "default": "./inspect.ts"
+        },
+        "./node": {
+            "blong-dev": "./node.ts",
+            "types": "./dist/node.d.ts",
+            "default": "./node.ts"
+        }
+    },
+    "files": [
+        "index.ts",
+        "context.ts",
+        "service.ts",
+        "inspect.ts",
+        "node.ts",
+        "src",
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "ci-lint": "blong-dev lint",
+        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
+        "ci-test": "blong-dev test --jobs=1",
+        "test": "blong-dev test"
+    },
+    "dependencies": {
+        "cacache": "^20.0.4",
+        "fastify": "^5.12.7",
+        "pino": "^10.3.1",
+        "pino-abstract-transport": "^3.0.0",
+        "pino-pretty": "^13.1.3",
+        "ulidx": "^2.4.1"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
+        "@types/cacache": "^20.0.1",
+        "@types/node": "^24",
+        "tap": "^21.6.3",
+        "typescript": "^6.0.3"
+    }
+}

@@ -365,7 +365,7 @@ incantation becomes a command, so it can be tested and documented.
 
 ## See also
 
-- [The log](log.md) and [the log viewer](semantic-log.md) — what `log` reads.
+- [The log](log.md) and [the log viewer](log.md) — what `log` reads.
 - [Playwright](playwright.md) — the suite `playwright` runs and `trace` explains.
 - [Memory](memory.md) — the format `memory` writes.
 - [Plan tracking](planning.md) — the grammar `plan` parses and the board it maintains.

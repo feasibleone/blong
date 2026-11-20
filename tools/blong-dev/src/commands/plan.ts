@@ -27,6 +27,7 @@
 import {existsSync, readdirSync, statSync, writeFileSync} from 'node:fs';
 import {join, relative, resolve} from 'node:path';
 
+import {loadCallRc} from '../callRc.ts';
 import {listEntries, type IMemoryEntryView} from '../memory/memoryView.ts';
 import {
     ghAvailable,
@@ -38,16 +39,18 @@ import {
     labelEnsure,
     originRepo,
 } from '../plan/planGithub.ts';
-import {planFiles, plansRoot} from '../plan/planLink.ts';
+import {planFiles, plansRoot, writeActivePlan} from '../plan/planLink.ts';
 import {entryLink, issueLinks} from '../plan/planLinks.ts';
 import {
+    blockIsRendered,
     bodyWithoutFrontMatter,
     planTitle,
     positionalTitle,
     readPlan,
-    renderDecisionLine,
+    renderDecisionBlock,
     renderPlan,
-    renderTaskLine,
+    renderTaskBlock,
+    spaceOutPlan,
     writeMeta,
     type IPlanDocument,
 } from '../plan/planParse.ts';
@@ -598,6 +601,26 @@ async function init(
             `# channel ${channel.channelName} (${recorded}) recorded for ${channel.platform}/${channel.account}\n`,
         );
     } else if (!on(flags, options, 'no-slack') && !current.meta.conversationId) {
+        const invite = (options.get('invite') ?? '')
+            .split(',')
+            .map(value => value.trim())
+            .filter(Boolean);
+        // The id is a fact about the person, not about the plan, so the file may carry it once
+        // (`plan.invite`) and every plan afterwards inherits it instead of forgetting it.
+        const fromRc = invite.length === 0 ? (loadCallRc()?.config.plan?.invite ?? []) : [];
+        const invited = invite.length > 0 ? invite : fromRc;
+        // A private channel invites nobody unless it is told who, and nobody means the owner cannot
+        // see the conversation the plan asks its questions in. Slack answers `name_taken` for the
+        // name afterwards and the chat realm has no route that invites into an existing channel, so
+        // this is the only moment the invitation can be made — say so rather than creating a channel
+        // nobody can open.
+        if (invited.length === 0 && !dryRun) {
+            process.stderr.write(
+                'blong-dev: the channel will be created with no invite — a private channel nobody ' +
+                    'is invited to is invisible to the owner, and the name cannot be re-created ' +
+                    'afterwards. Pass --invite <slackUserId,...> (the member id, not the email).\n',
+            );
+        }
         try {
             channel = await createPlanChannel({
                 slug,
@@ -605,10 +628,7 @@ async function init(
                 issueUrl: issue?.url ?? current.meta.issueUrl,
                 platform: options.get('platform'),
                 account: options.get('account'),
-                invite: (options.get('invite') ?? '')
-                    .split(',')
-                    .map(value => value.trim())
-                    .filter(Boolean),
+                invite: invited,
                 server: options.get('server'),
                 target: options.get('target'),
                 plain: on(flags, options, 'plain'),
@@ -665,6 +685,10 @@ async function init(
         ...(approved ? {approved: new Date().toISOString().slice(0, 10)} : {}),
     });
     writeFileSync(patched.path, renderPlan(patched), 'utf8');
+    // The plan being executed is a fact on disk from here on: a decision or a friction the work
+    // produces must say whether it belongs to this plan, and `memory add` refuses to guess
+    // (@@D-916). A draft is not recorded, because nothing is being executed yet.
+    if (approved) writeActivePlan(root, {slug, path: relative(root, patched.path)});
     process.stdout.write(
         `# ${relative(root, patched.path)} ${approved ? 'approved' : 'drafted'}\n`,
     );
@@ -685,6 +709,12 @@ async function sync(
     let relinked = 0;
     let missing = 0;
     let decisionsAligned = 0;
+    /** Every item whose block has to be rewritten, collected first and applied bottom-up. */
+    const edits: Array<{
+        item: {line: number; end: number; body: string[]; title: string};
+        rendered: string[];
+        decision: boolean;
+    }> = [];
 
     for (const task of plan.tasks) {
         if (!task.id) continue;
@@ -704,10 +734,11 @@ async function sync(
         // well as a new label; rewriting the whole line keeps the two in one place.
         const link = entryLink(root, plan.path, found.entry);
         if (task.link !== link) relinked += 1;
-        lines[task.line] = renderTaskLine(
-            {checked: done, id: task.id, title: found.entry.title},
-            link,
-        );
+        edits.push({
+            item: task,
+            rendered: renderTaskBlock({checked: done, id: task.id, title: found.entry.title}, link),
+            decision: false,
+        });
     }
 
     // A decision's line is its link and its title, so a retitled or re-anchored entry is re-rendered
@@ -720,16 +751,40 @@ async function sync(
             process.stderr.write(`blong-dev: line ${decision.line + 1}: ${found.problem}\n`);
             continue;
         }
-        const line = renderDecisionLine(
-            {id: decision.id, title: found.entry.title},
-            entryLink(root, plan.path, found.entry),
-        );
-        if (line === lines[decision.line]) continue;
-        lines[decision.line] = line;
-        decisionsAligned += 1;
+        edits.push({
+            item: decision,
+            rendered: renderDecisionBlock(
+                {id: decision.id, title: found.entry.title},
+                entryLink(root, plan.path, found.entry),
+            ),
+            decision: true,
+        });
     }
 
-    const updated: IPlanDocument = {...plan, lines};
+    // Bottom-up: a block written as two lines where one was before moves every line below it, so the
+    // indexes a forward walk holds would go stale.
+    for (const edit of [...edits].sort((a, b) => b.item.line - a.item.line)) {
+        const {item, rendered, decision} = edit;
+        const already =
+            item.body.length === 0 &&
+            blockIsRendered(lines.slice(item.line, item.end + 1), rendered);
+        if (already) continue;
+        // A block is replaced whole rather than line by line: an earlier render can leave a
+        // repetition of the title under the link, and rewriting only the first line would keep it
+        // forever (@@F-768). The blank after the block belongs to a heading, not to an item, so
+        // consecutive tasks stay tight and render as one list.
+        const next = lines[item.end + 1];
+        const heading = next !== undefined && /^#{1,6}\s/.test(next);
+        lines.splice(item.line, item.end - item.line + 1, ...rendered, ...(heading ? [''] : []));
+        if (decision) decisionsAligned += 1;
+    }
+
+    const updated: IPlanDocument = {...plan, lines: spaceOutPlan(lines)};
+    // Refreshed on every sync: a plan re-approved after a rename, or one resumed after another was
+    // finished, is the active one — and `memory add` reads this rather than scanning (@@D-916).
+    if (updated.meta.status === 'approved') {
+        writeActivePlan(root, {slug: updated.meta.slug ?? '', path: relative(root, plan.path)});
+    }
     // A plan approved before the link was recorded gets it on the next sync, so the front
     // matter answers "where do I open the channel" without a second `plan init` (`@@D-813`).
     const channelUrl =
@@ -860,7 +915,7 @@ function adopt(
         const entry = found.entry;
         if (entry.kind === 'todo') {
             added.push(
-                renderTaskLine(
+                ...renderTaskBlock(
                     {checked: isDone(entry), id, title: entry.title},
                     entryLink(root, current.path, entry),
                 ),

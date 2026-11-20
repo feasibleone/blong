@@ -33,7 +33,8 @@ export default async function component(
         // A model that promises something it does not state — a paged table with
         // no order, a navigator with nothing to list — is reported once, where the
         // pages are built, rather than discovered by whoever reads the screen.
-        for (const warning of modelWarnings(model)) this.log?.warn?.(warning);
+        for (const warning of modelWarnings(model))
+            this.signal?.browserModelIncomplete?.({warning});
         components[`${subject}.${object}.browse`] = await subjectObjectBrowse(model, blong);
         components[`${subject}.${object}.new`] = await subjectObjectNew(model, blong);
         components[`${subject}.${object}.open`] = await subjectObjectOpen(model, blong);

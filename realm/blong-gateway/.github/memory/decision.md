@@ -53,10 +53,10 @@ committed as the artifact would say a flow was observed as a sequence of calls w
 anything, and the screenshot baseline would freeze that as the expected state - the same failure
 mode as regenerating baselines over error panels. The moment it waited for has arrived, and the
 artifact has been regenerated on each ruling since: the caller rule restored (D-210), the public
-surface named apart from the namespace (D-244), and the caller moved out of the arrow's label
-(D-249). It now reads `public->>gateway: gateway.bundle.find` - the method alone on the arrow, the
-two ends on its ends - then that call's answer, then the hop this realm makes to `db`, and its
-answer.
+surface named apart from the namespace (D-244), and the caller moved out of the arrow's label (a
+decision retired with the semantic-log package). It now reads
+`public->>gateway: gateway.bundle.find` - the method alone on the arrow, the two ends on its ends -
+then that call's answer, then the hop this realm makes to `db`, and its answer.
 
 ### D-210 — Legs, not services: the credit is keyed on the leg
 
@@ -85,9 +85,9 @@ never written down ('the caller is the emitting service again', pointing at a de
 exists in no memory file - so the reversal itself was unrecoverable from the repo, and the entry
 that recorded it pointed at a dangling id). The rule is now implemented on both sides rather than in
 the ledger alone: the ledger and the diagram take the caller from the identity the declaration
-carries - at first the head of the leg id, and since D-249 a field of its own beside the method -
-and core/blong-gogo declares legs the way the rule needs them - the calling port's _namespace_
-(`login`, `db`) instead of its port id (`login.loginDispatch`, `srv.db`), and the call's _wire_ name
+carries - at first the head of the leg id, and later a field of its own beside the method - and
+core/blong-gogo declares legs the way the rule needs them - the calling port's _namespace_ (`login`,
+`db`) instead of its port id (`login.loginDispatch`, `srv.db`), and the call's _wire_ name
 (`access.permission.list`) instead of the handler name it was written as (`accessPermissionList`),
 because the method's first segment is read as the namespace the call was aimed at. One identity was
 chosen rather than derived, and then renamed: the HTTP route declares the public surface as `public`
@@ -98,7 +98,7 @@ framework realm's own read therefore draws `public->>blong` (the hop visible aga
 collapsing to `blong->>blong`. Verified on a live blong-gateway run: login.token.create draws the
 participants gateway, login, access and db, nested by position. The fixture's shared hub was
 parameterised at the same time, because it runs as `hub` in one scheme and `hubB` in the other and
-its ids have to name the unit that makes the call - and, since D-249 moved the caller out of the
-label, the two mounts declare the same method ids and differ by the caller they state.
+its ids have to name the unit that makes the call - and, once the caller had moved out of the label,
+the two mounts declare the same method ids and differ by the caller they state.
 
 ## Superseded

@@ -37,7 +37,7 @@ capability:
   # page renders its error dialog, and the screenshots look like a broken realm.
   blongRealmRead: >-
     blong.flow.find,blong.flow.get,blong.template.find,
-    blong.search.find,blong.digest.get,blong.incident.find
+    blong.search.find,blong.digest.get
   # The well-known `accessLogin` action — grants the right to establish/renew a
   # session (the login-eligibility gate is always on).  Grant it to any other
   # role that may log in.

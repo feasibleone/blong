@@ -14,6 +14,14 @@ export default class RealmImpl implements IRealm {
         name: string;
         pkg: {name: string; version: string};
     };
+    /**
+     * The vocabularies this realm has declared, shared by reference with every layer's result.
+     *
+     * Held on the realm rather than on a layer because a declaration names what the *realm* reports: a
+     * port attaches the proxy when it is created, which is after every layer has loaded, so the array
+     * it reads has to be the realm's own and still growing (`@@T-718`).
+     */
+    #vocabulary: object[] = [];
 
     public constructor(
         config: {
@@ -53,6 +61,15 @@ export default class RealmImpl implements IRealm {
 
     public addLayer(layerName: string, layer: IRealm): void {
         // this._addModuleInternal(this.#config.name, layer);
+        // The realm's vocabulary is one declaration for the whole realm, not one per folder: a realm
+        // that writes `lukaot/error.ts` beside its handlers declares names for every port it owns, and
+        // the port that answers them is `agent` — a different layer with a folder of its own. Each
+        // layer's result is pointed at this realm's *one* array, so a declaration loaded after a port
+        // was assembled is still in it when the port attaches, and a handler in any layer reads the
+        // same `signal` proxy (`@@T-718`).
+        const declared = (layer as {vocabulary?: object[]}).vocabulary;
+        if (declared?.length) this.#vocabulary.push(...declared);
+        (layer as {vocabulary?: object[]}).vocabulary = this.#vocabulary;
         const source: string[] = [];
         Object.entries(layer).forEach(([itemName, item]) => {
             if (item.source) source.push(item.source);

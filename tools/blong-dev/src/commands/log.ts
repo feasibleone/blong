@@ -4,7 +4,7 @@
  *
  * Blong's pino-cacache transport stores full log entries on disk (default
  * `~/.blong/log-cache`) so they can be inspected on demand. The VS Code
- * extension reads them when clicking `semlog://r/<id>` terminal links; this
+ * extension reads them when clicking `lukaot://r/<id>` terminal links; this
  * command exposes the same data on the CLI for coding agents and humans.
  *
  * Output modes:
@@ -29,6 +29,8 @@
  *   --search <text>      free-text search across all entry properties
  *   --trace-id <id>      filter by exact trace ID
  *   --method <method>    filter by $meta.method (case-insensitive substring)
+ *   --signal <id>        filter by the declared identifier a record was written for
+ *   --capture <id>       filter by the capture declaration a record rendered
  *   --after <ulid>       only entries newer than this ULID
  *   --limit <n>          max entries (default: 50; 0 = all)
  *   --no-color           disable ANSI colors (pretty output)
@@ -213,6 +215,33 @@ function methodOf(data: Record<string, unknown>): string {
     return typeof data.operation === 'string' ? data.operation : '';
 }
 
+/**
+ * The declared identifier a record was written for, when it has one.
+ *
+ * A converted call site no longer writes a sentence as its identity: the line carries `signal` (the
+ * declaration it came from) or `capture` (the shape it rendered), and both are what a reader greps for —
+ * `frameworkWatchFileChanged`, `frameworkHttpExchange`. Printing them in the compact form is what keeps
+ * that possible from the CLI.
+ */
+function identityOf(data: Record<string, unknown>): string {
+    const fields = (data.fields ?? {}) as Record<string, unknown>;
+    const signal = typeof fields.signal === 'string' ? fields.signal : '';
+    if (signal) return `signal=${signal}`;
+    const capture = typeof fields.capture === 'string' ? fields.capture : '';
+    if (capture) {
+        const shape = typeof fields.shape === 'string' ? fields.shape : '';
+        const rung = typeof fields.rung === 'string' ? fields.rung : '';
+        return `capture=${capture}${shape ? ` shape=${shape}` : ''}${rung ? ` rung=${rung}` : ''}`;
+    }
+    return '';
+}
+
+/** One declared name a record carries in its fields: `signal` or `capture`. */
+function declaredOf(data: Record<string, unknown>, key: 'signal' | 'capture'): string {
+    const fields = (data.fields ?? {}) as Record<string, unknown>;
+    return typeof fields[key] === 'string' ? (fields[key] as string) : '';
+}
+
 /** The execution a record belongs to, which the emitter writes under `refs`. */
 function traceOf(data: Record<string, unknown>): string {
     const refs = data.refs as {trace?: string} | undefined;
@@ -237,6 +266,8 @@ function formatCondensed(entry: ILogEntry): string {
     const extra: string[] = [`id=${id}`];
     const service = typeof data.service === 'string' ? data.service : '';
     if (service) extra.push(`service=${service}`);
+    const identity = identityOf(data);
+    if (identity) extra.push(identity);
     const method = methodOf(data);
     if (method) extra.push(`method=${method}`);
     const trace = traceOf(data);
@@ -357,6 +388,8 @@ export async function log(args: string[]): Promise<void> {
     const searchFilter = options.get('search');
     const traceIdFilter = options.get('trace-id');
     const methodFilter = options.get('method');
+    const signalFilter = options.get('signal');
+    const captureFilter = options.get('capture');
     const afterFilter = options.get('after');
     const limitRaw = options.get('limit') ?? '50';
     const limit = Number(limitRaw);
@@ -373,6 +406,11 @@ export async function log(args: string[]): Promise<void> {
         if (nameFilter && !lower(componentOf(e.data)).includes(lower(nameFilter))) return false;
         if (traceIdFilter && traceOf(e.data) !== traceIdFilter) return false;
         if (methodFilter && !lower(methodOf(e.data)).includes(lower(methodFilter))) return false;
+        // The identifier a converted call site writes, which is what a reader greps for once the
+        // sentence is no longer the identity: `--signal frameworkWatchFileChanged` names one declared
+        // signal's records, `--capture frameworkHttpExchange` one capture's.
+        if (signalFilter && declaredOf(e.data, 'signal') !== signalFilter) return false;
+        if (captureFilter && declaredOf(e.data, 'capture') !== captureFilter) return false;
         if (searchFilter && !lower(JSON.stringify(e.data)).includes(lower(searchFilter)))
             return false;
         if (afterFilter && e.id <= afterFilter) return false;

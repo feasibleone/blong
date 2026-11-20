@@ -45,7 +45,7 @@ blong-dev memory close F-014 --note "fixed in b1f3c9a"                # resolved
 blong-dev memory close D-018 --by D-042 --reason "the union is no longer debounced"
 blong-dev memory retire F-014 --reason "never a real defect"          # removed, id left in the ledger
 blong-dev memory reopen F-014                                          # it came back
-blong-dev memory move F-014 --area core/semantic-log                    # it belongs elsewhere
+blong-dev memory move F-014 --area core/lukaot                          # it belongs elsewhere
 blong-dev memory prune F-101,F-102 --reason "duplicated by F-090"
 ```
 

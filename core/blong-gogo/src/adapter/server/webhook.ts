@@ -421,19 +421,31 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                                 followRedirect: false,
                                 // isStream: false,
                             };
-                            if (this.log?.trace) this.log.trace(request);
-                            else
-                                this.log?.info?.(
-                                    `${(request.method as string).toUpperCase()} ${url}`,
-                                );
+                            // A capture, not a dump: the rung decides what is rendered, and the payload
+                            // is built only when the configuration asks for one (`@@T-730`). The verb is
+                            // hoisted because both halves name it in their selector.
+                            const verb = String(request.method).toUpperCase();
+                            this.capture?.http?.({method: verb, phase: 'request'}, () => ({
+                                phase: 'request',
+                                method: verb,
+                                url: String(url),
+                                headers: headers as Record<string, unknown>,
+                                ...(json != null ? {body: json} : {}),
+                            }));
                             {
+                                const startedAt = Date.now();
                                 const result = await got(request);
                                 const {headers, body, statusCode, statusMessage} = result;
-                                if (this.log?.trace) this.log.trace({headers, body, statusCode});
-                                else
-                                    this.log?.info?.(
-                                        `${statusCode} ${statusMessage} ${(request.method as string).toUpperCase()} ${url}`,
-                                    );
+                                this.capture?.http?.({method: verb, phase: 'response'}, () => ({
+                                    phase: 'response',
+                                    method: verb,
+                                    url: String(url),
+                                    statusCode,
+                                    statusMessage,
+                                    headers: headers as unknown as Record<string, unknown>,
+                                    body,
+                                    durationMs: Date.now() - startedAt,
+                                }));
                                 if (!$meta.trace)
                                     readable.push([result, {...$meta, mtid: 'response'}]);
                             }
@@ -514,15 +526,18 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                             // verdict on the case that is waiting.
                             const destination = cfg.destination;
                             const watchdog = setTimeout(() => {
-                                this.log?.debug?.({
-                                    destination,
-                                    message:
-                                        'the webhook was acked and its destination is still running',
-                                });
+                                this.signal?.frameworkWebhookDestinationSlow?.({destination});
                             }, 120_000);
                             (watchdog as unknown as {unref?: () => void}).unref?.();
                             detached
-                                ?.catch(error => this.log?.warn?.(error))
+                                ?.catch(error =>
+                                    this.signal?.frameworkWebhookDestinationFailed?.({
+                                        error:
+                                            error instanceof Error
+                                                ? error.message
+                                                : String(error),
+                                    }),
+                                )
                                 .finally(() => clearTimeout(watchdog));
                             return answer(shaped);
                         } catch (error) {
@@ -534,7 +549,9 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                                 type?: string;
                             };
                             const statusCode = thrown?.statusCode ?? 500;
-                            this.log?.warn?.(thrown);
+                            this.signal?.frameworkWebhookHandlerFailed?.({
+                                error: thrown?.message ?? String(thrown),
+                            });
                             return reply.code(statusCode).send({
                                 error: {
                                     ...(thrown?.type && {type: thrown.type}),

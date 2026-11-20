@@ -1,6 +1,8 @@
 import type {IAdapter, IHandlerProxy, IModelSpec, ValidationFn} from '@feasibleone/blong';
 import {Type} from 'typebox';
 import {withDefaults} from './defaults.ts';
+// Registers the package's names with every port in this process (`@@D-918`).
+import './lukaot.ts';
 
 export {modelWarnings, withDefaults} from './defaults.ts';
 
@@ -42,14 +44,11 @@ export async function mock(
             this: IAdapter<object, object>,
             {[keyField]: id, ...rest}: Record<string, unknown>,
         ) {
-            this.log?.debug?.(
-                {
-                    [keyField]: id,
-                    ...rest,
-                    $meta: {method: `${subject}.${object}.get`},
-                },
-                `Mock get ${id}`,
-            );
+            this.signal?.mockCallAnswered?.({
+                predicate: `${subject}.${object}.get`,
+                [keyField]: id,
+                ...rest,
+            });
             return structuredClone({
                 [object]:
                     (await fixture(`${subject}.${object}`)).find(item => item[keyField] === id) ||
@@ -58,14 +57,7 @@ export async function mock(
         }
         Object.assign(mocks, {
             subjectObjectSchema(this: IAdapter<object, object>) {
-                this.log?.debug?.(
-                    {
-                        $meta: {method: 'subjectObjectSchema'},
-                        subject,
-                        object,
-                    },
-                    'Mock schema',
-                );
+                this.signal?.mockCallAnswered?.({predicate: 'subject.object.schema', subject, object});
                 return {};
             },
             async [`${subject}.${object}.find`](
@@ -84,16 +76,13 @@ export async function mock(
                 },
             ) {
                 // console.log(`Generating find mock for ${subject}.${object}...`);
-                this.log?.debug?.(
-                    {
-                        $meta: {method: `${subject}.${object}.find`},
-                        paging,
-                        orderBy,
-                        search,
-                        ...params,
-                    },
-                    'Mock find',
-                );
+                this.signal?.mockCallAnswered?.({
+                    predicate: `${subject}.${object}.find`,
+                    paging,
+                    orderBy,
+                    search,
+                    ...params,
+                });
                 return structuredClone(await fixture(`${subject}.${object}`))
                     .filter(item => {
                         for (const [key, value] of Object.entries(params)) {
@@ -139,14 +128,11 @@ export async function mock(
                 this: IAdapter<object, object>,
                 {[keyField]: id, ...rest}: Record<string, unknown>,
             ) {
-                this.log?.debug?.(
-                    {
-                        [keyField]: id,
-                        ...rest,
-                        $meta: {method: `${subject}.${object}.remove`},
-                    },
-                    `Mock remove ${id}`,
-                );
+                this.signal?.mockCallAnswered?.({
+                    predicate: `${subject}.${object}.remove`,
+                    [keyField]: id,
+                    ...rest,
+                });
                 const items = await fixture(`${subject}.${object}`);
                 const index = items.findIndex(item => item[keyField] === id);
                 if (index !== -1) {
@@ -171,16 +157,13 @@ export async function mock(
                     [key: string]: unknown;
                 },
             ) {
-                this.log?.debug?.(
-                    {
-                        paging,
-                        orderBy,
-                        search,
-                        ...filterParams,
-                        $meta: {method: `${subject}.${object}.report`},
-                    },
-                    'Mock report',
-                );
+                this.signal?.mockCallAnswered?.({
+                    predicate: `${subject}.${object}.report`,
+                    paging,
+                    orderBy,
+                    search,
+                    ...filterParams,
+                });
                 const allRows = await fixture(`${subject}.${object}`);
                 let result = structuredClone(allRows);
                 // Apply flat filter params (e.g. {coralName: 'Pink'})
@@ -231,14 +214,11 @@ export async function mock(
                     ...rest
                 }: Record<string, Record<string, unknown>>,
             ) {
-                this.log?.debug?.(
-                    {
-                        [object]: {[keyField]: id, ...data},
-                        ...rest,
-                        $meta: {method: `${subject}.${object}.edit`},
-                    },
-                    `Mock edit ${id}`,
-                );
+                this.signal?.mockCallAnswered?.({
+                    predicate: `${subject}.${object}.edit`,
+                    [object]: {[keyField]: id, ...data},
+                    ...rest,
+                });
                 const items = await fixture(`${subject}.${object}`);
                 const index = items.findIndex(item => item[keyField] === id);
                 if (index !== -1) {
@@ -252,14 +232,11 @@ export async function mock(
                 this: IAdapter<object, object>,
                 {[object]: data, ...rest}: Record<string, Record<string, unknown>>,
             ) {
-                this.log?.debug?.(
-                    {
-                        [object]: data,
-                        ...rest,
-                        $meta: {method: `${subject}.${object}.add`},
-                    },
-                    'Mock add',
-                );
+                this.signal?.mockCallAnswered?.({
+                    predicate: `${subject}.${object}.add`,
+                    [object]: data,
+                    ...rest,
+                });
                 const items = await fixture(`${subject}.${object}`);
                 data[keyField] = Math.max(0, ...items.map(item => Number(item[keyField]) || 0)) + 1;
                 items.push(data);
@@ -268,10 +245,7 @@ export async function mock(
         });
         mocks[`${subject}.dropdown.list`] ||= async () => {
             const result: Record<string, {value: unknown; label: unknown}[]> = {};
-            this.log?.debug?.(
-                {$meta: {method: `${subject}.dropdown.list`}},
-                `Generating dropdown list mock`,
-            );
+            this.signal?.mockSurfaceGenerated?.({subject});
             for (const object of Object.keys(subjectObject[subject] ?? {})) {
                 const model = subjectObject[subject][object];
                 const {nameField, keyField} = withDefaults(model);
@@ -284,20 +258,14 @@ export async function mock(
                     label,
                 }));
             }
-            this.log?.debug?.(
-                {
-                    ...result,
-                    $meta: {method: `${subject}.dropdown.list`},
-                },
-                'Mock dropdown',
-            );
+            this.signal?.mockCallAnswered?.({predicate: `${subject}.dropdown.list`, ...result});
             return result;
         };
     }
-    this.log?.debug?.(
-        {$meta: {method: 'subject.object.mock'}, mocks: Object.keys(mocks).join(', ')},
-        'Generated mocks',
-    );
+    this.signal?.mockSurfaceGenerated?.({
+        subject: Object.keys(subjectObject).join(', ') || 'none',
+        mocks: Object.keys(mocks).length,
+    });
 
     return mocks;
 }

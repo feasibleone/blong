@@ -87,8 +87,8 @@ declared when it started, which the framework turns into the participant's band.
 A generated diagram is only worth trusting if it is compared against a real run, so the mechanism
 has three parts:
 
-1. **A fixture that runs a flow and produces the records.** The semantic-log observed-flow test runs
-   the fixture in-process and asserts the diagram it generates.
+1. **A fixture that runs a flow and produces the records.** The observed-flow test runs the fixture
+   in-process and asserts the diagram it generates.
 2. **A committed artefact** — the mermaid source, in the repository, registered in the
    documentation's artefact list with the command that regenerates it.
 3. **A comparison.** The test asserts that the committed artefact still equals what a run produces,
@@ -117,6 +117,6 @@ decorations are more than the two the concept page names: phases and withheld-pa
 drawn as well, so "checkpoints and decisions" is the shape of the progress points rather than the
 whole vocabulary of the drawing.
 
-[The flow patterns](/docs/patterns/semantic-log-flows) walk a diagram leg by leg;
+[The flow patterns](/docs/patterns/lukaot-flows) walk a diagram leg by leg;
 [the checkpoint concept](/docs/concepts/checkpoint) is the mechanism behind the notes and branches,
-and [the rationale](/docs/rationale/semantic-log) states the rules the drawing follows.
+and [the rationale](/docs/rationale/lukaot) states the rules the drawing follows.

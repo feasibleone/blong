@@ -10,7 +10,7 @@
  */
 import * as blongLib from '@feasibleone/blong-lib';
 import type {ILib} from '@feasibleone/blong/types';
-import {vocabulary} from '@feasibleone/semantic-log/attachable';
+import {vocabulary} from '@feasibleone/lukaot/context';
 import t from 'tap';
 import Registry from './Registry.ts';
 

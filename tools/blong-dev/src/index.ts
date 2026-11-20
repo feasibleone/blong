@@ -1,16 +1,15 @@
 // Public API for programmatic usage of blong-dev
 export * from './callRc.ts';
-export * from './usage.ts';
-export {call} from './commands/call.ts';
+export {call, executeCall} from './commands/call.ts';
 export {ciReport} from './commands/ciReport.ts';
 export {cspell} from './commands/cspell.ts';
 export {glossary} from './commands/glossary.ts';
+export {legacy} from './commands/legacy.ts';
 export {lint} from './commands/lint.ts';
 export {lintStaged} from './commands/lintStaged.ts';
 export {log} from './commands/log.ts';
 export {memory} from './commands/memory.ts';
 export {plan} from './commands/plan.ts';
-export {executeCall} from './commands/call.ts';
 export {proxy} from './commands/proxy.ts';
 export {report} from './commands/report.ts';
 export {sql} from './commands/sql.ts';
@@ -50,3 +49,4 @@ export {
     readVitestJson,
     VITEST_JSON,
 } from './report/vitestReport.ts';
+export * from './usage.ts';

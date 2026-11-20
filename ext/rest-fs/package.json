@@ -1,7 +1,7 @@
 {
     "name": "rest-fs",
     "displayName": "REST Filesystem",
-    "version": "1.8.0",
+    "version": "1.8.2",
     "description": "A filesystem provider backed by REST API",
     "categories": [
         "Other"
@@ -45,7 +45,7 @@
                 "restfs.blongLogCachePath": {
                     "type": "string",
                     "default": "~/.blong/log-cache",
-                    "description": "Path to the cacache directory used by the Blong pino-cacache transport. Used to look up log entries when clicking semantic-log://record/ links in the terminal."
+                    "description": "Path to the cacache directory used by the Blong pino-cacache transport. Used to look up log entries when clicking lukaot://r/ links in the terminal."
                 },
                 "workspace": {
                     "type": "object",

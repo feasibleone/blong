@@ -66,8 +66,8 @@ Unify the handler and test concepts along a **continuum** rather than a **bounda
 
 A checkpoint and a decision look like two features and are one. Both are **progress points** —
 moments in the logic that explain the shape a run took — recorded in one place and drawn one way
-([R11, R26, R27](semantic-log.md)). They differ in exactly one respect, and it is a property of the
-concept rather than an accident of the API: **a point may be dropped, a branch may not.** A missing
+([lukaot](lukaot.md)). They differ in exactly one respect, and it is a property of the concept
+rather than an accident of the API: **a point may be dropped, a branch may not.** A missing
 checkpoint costs a note; a missing branch would skip the work. So `checkpoint` is optional-chained
 and `decide` never is, while everything else about the two is shared.
 
@@ -181,7 +181,7 @@ export default handler(
 ```
 
 Taking the branch _is_ announcing it, so the recorded rationale cannot disagree with the branch the
-code took — which is what [R11](semantic-log.md) asks for when it says "deterministically, not as
+code took — which is what [lukaot](lukaot.md) asks for when it says "deterministically, not as
 prose". The chosen branch is a **region**: the records emitted inside it carry its position, so the
 diagram draws an `alt`/`else`/`end` block spanning the calls the branch made, with every candidate
 drawn and the unchosen ones empty. A region with no alternatives — a phase — stays a band.

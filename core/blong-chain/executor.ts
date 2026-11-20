@@ -10,9 +10,17 @@
  * - Latency metrics
  */
 
+import {
+    compose,
+    createRegistry,
+    signalView,
+    type SignalWriter,
+    type VocabularyProxy,
+} from '@feasibleone/lukaot';
 import type nodeAssert from 'node:assert';
 import PQueue from 'p-queue';
 import {Emitter} from './emitter.ts';
+import {chainVocabulary} from './lukaot.ts';
 import {progressTree, reportProgress} from './progress.ts';
 import {mapSourcePosition} from './sourceMap.ts';
 import type {
@@ -37,6 +45,23 @@ import type {
     StepArray,
     StepFunction,
 } from './test-types.js';
+
+/**
+ * The executor's declarations, over the logger it was handed.
+ *
+ * `signalView` wants a writer, and the injected logger is a level interface, so this is the adapter:
+ * the message first with the values beside it, which is how every logger of this shape is called.
+ * Nothing is derived from the message — the identifier is the declaration's — so a reworded sentence
+ * is the same signal.
+ */
+function chainSignal(log: ITestLogger): VocabularyProxy {
+    const writer: SignalWriter = record => {
+        const line = log[record.level];
+        if (typeof line !== 'function') return;
+        line.call(log, {...(record.params ?? {})}, record.message);
+    };
+    return signalView(createRegistry(compose(chainVocabulary)), writer).vocabulary;
+}
 
 /**
  * Creates a thenable proxy for a given context path.
@@ -524,6 +549,15 @@ export class TestExecutor extends Emitter<ITestEvents> {
     private dependencyTracker = new DependencyTracker();
     private log?: ITestLogger;
 
+    /**
+     * The executor's declared vocabulary, over its own logger.
+     *
+     * Built once, when the executor is given its logger, because that is the only moment both halves
+     * exist — the declarations and the destination (`@@D-918`). `undefined` when no logger was handed
+     * over, which is what keeps every call site's `?.` honest.
+     */
+    private signal?: VocabularyProxy;
+
     // Progress tracking
     private progress: ITestProgress = {
         testName: 'test',
@@ -580,6 +614,7 @@ export class TestExecutor extends Emitter<ITestEvents> {
             assert: config.assert,
         };
         this.log = config.log;
+        this.signal = config.log === undefined ? undefined : chainSignal(config.log);
 
         this.queue = new PQueue({concurrency: this.config.concurrency});
         this.dependencyTracker.setOnEdge(edge => this.emit('step:dependency', edge));
@@ -973,10 +1008,12 @@ export class TestExecutor extends Emitter<ITestEvents> {
                     } catch (err) {
                         lastError = err as Error;
                         if (attempt < maxRetries) {
-                            this.log?.warn?.(
-                                {err},
-                                `step ${stepName} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying`,
-                            );
+                            this.signal?.chainStepRetried?.({
+                                step: stepName,
+                                attempt: attempt + 1,
+                                attempts: maxRetries + 1,
+                                reason: err instanceof Error ? err.message : String(err),
+                            });
                         }
                     }
                 }
@@ -1085,7 +1122,10 @@ export class TestExecutor extends Emitter<ITestEvents> {
 
                 this.progress.failedSteps++;
                 this.emit('step:error', stepName, error as Error, stepProgress);
-                this.log?.error?.({err: error}, `step ${stepName} failed`);
+                this.signal?.chainStepFailed?.({
+                    step: stepName,
+                    reason: error instanceof Error ? error.message : String(error),
+                });
 
                 // Reject promises for this step
                 this.promiseManager.reject(stepName, error as Error);

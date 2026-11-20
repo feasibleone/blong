@@ -1,6 +1,6 @@
-import type {IGateway, IGatewayRoute, ILog, IRegistry, IRemote} from '@feasibleone/blong/types';
-import {Internal} from '@feasibleone/blong/types';
-import type {FastifyInstance} from 'fastify';
+import type { IGateway, IGatewayRoute, ILog, IRegistry, IRemote } from '@feasibleone/blong/types';
+import { Internal } from '@feasibleone/blong/types';
+import type { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 
 interface IConfig {
@@ -86,7 +86,7 @@ export default class Mcp extends Internal {
 
         const remote = this.#apiRef.remote;
         if (!remote) {
-            this.log?.warn?.('mcp is enabled but no remote dispatcher is available; skipping');
+            this.signal?.frameworkMcpUnavailable?.();
             return;
         }
 

@@ -227,7 +227,7 @@ scripts pass `--timeout=900` because a budget set to the observed need breaks on
 — it now has, at 240 and at 420 — and because tap hands the same number to the child as its per-test
 ceiling, so the value is a hang ceiling rather than a target. The number no longer binds, and the
 reason is not a smaller matrix: the same investigation that found the budget three seconds short
-found the cost, the semantic-log analysis the suite was running over its own log (D-500 in
+found the cost, the semantic-log analysis the suite was running over its own log (a decision in
 `core/semantic-log`), and that fix took the browser leg from 162.8 s to 8.8 s and the matrices to
 about 13 s of a 60 s file. The 900 s is now purely the ceiling, and trimming the sign-ins (done
 since) is no longer what stands between the suite and its budget.

@@ -15,8 +15,8 @@ import merge from 'ut-function.merge';
 import createPort from './AdapterBase.ts';
 import ConfigRuntime from './ConfigRuntime.ts';
 import createHandlerProxy from './handlerProxy.ts';
-import {methodId} from './lib.ts';
-import type {IPort} from './Port.ts';
+import { methodId } from './lib.ts';
+import type { IPort } from './Port.ts';
 
 /**
  * Create the handler closure that is pushed into `where.methods[]`.
@@ -31,9 +31,17 @@ function createHandlerClosure(
     name: string,
     namespace: string,
     source: string,
-    target: {result: {error: unknown; schema: unknown}},
+    target: {result: {error: unknown; schema: unknown; vocabulary?: object[]}; error?: unknown},
     apiSchema: IApiSchema | undefined,
     configRuntime: IConfigRuntime | undefined,
+    attachSignals?: () => Promise<
+        | ((
+              port: object,
+              vocabularies: readonly object[],
+              policy?: Record<string, object>,
+          ) => void)
+        | undefined
+    >,
 ): (params: {
     remote: (methodName: string) => () => unknown;
     lib: ILib;
@@ -66,6 +74,28 @@ function createHandlerClosure(
             () => ConfigRuntime.mergeLayerConfig(moduleConfigSlice, port?.config?.[namespace]),
             () => configRuntime?.version ?? 0,
         );
+        // The declared vocabulary, attached to the port its handlers run on (`@@T-712`). This is the
+        // first place that holds both halves: the declarations the layer shipped, and the port —
+        // whose bound logger is where a record is written. A port whose layer declared nothing gets
+        // no `signal`, and `this.signal?.x?.()` in its code is then a no-op rather than an error; such
+        // a port also never resolves the attacher, so the module behind it is not loaded at all.
+        // A layer that only declares — `lukaot/` has no port and no handlers — has nowhere to attach
+        // the proxy: the realm hands its array to every layer's result, and the port that answers those
+        // names is an adapter or orchestrator beside it (`@@T-718`).
+        if (target.result.vocabulary?.length && attachSignals && port) {
+            const attach = await attachSignals();
+            // The realm's own `lukaot.policy` block, read from the config this layer was handed: an
+            // operator raises one identifier to `debug` or switches one off there, and nothing in the
+            // layer's source changes. Read structurally so this file keeps its distance from lukaot's
+            // types — it is on the browser loader's path.
+            const policy = (mergedConfig as {lukaot?: {policy?: Record<string, object>}})?.lukaot
+                ?.policy;
+            attach?.(port, target.result.vocabulary, policy);
+            // A `library()` function has no port, so the same vocabulary reaches it through the lib it
+            // is handed: `lib.signal.x()` and `this.signal?.x?.()` are then one mechanism, not two.
+            const vocabulary = (port as {signal?: unknown})?.signal;
+            if (vocabulary) (lib as unknown as Record<string, unknown>).signal = vocabulary;
+        }
         const layerApi = {
             ...rest,
             config: mergedConfig,
@@ -73,6 +103,12 @@ function createHandlerClosure(
                 get(target: ILib, functionName: string) {
                     const rec = target as unknown as Record<string, unknown>;
                     let fn: () => unknown;
+                    // A member the library *has* and the runtime leaves out is absent, not pending:
+                    // `checkpoint` is `undefined` outside a recording mode by design, and reading it
+                    // has to answer `undefined` so `lib.checkpoint?.(…)` costs the optional chain and
+                    // nothing else. Only a key the library has never seen is deferred, because a later
+                    // layer may merge it in (`@@T-718`).
+                    if (Object.hasOwn(rec, functionName)) return rec[functionName];
                     return (
                         rec[functionName] ??
                         function (...params: unknown[]) {
@@ -119,6 +155,43 @@ function createHandlerClosure(
                 case 'object:handler':
                 case 'object:validation':
                     merge(local, what);
+                    break;
+                /**
+                 * The declared vocabulary (`@@T-711` `@@T-712`).
+                 *
+                 * A declaration is a plain object carrying the framework's kind symbol, and it is
+                 * *not* a handler, a lib or a schema — it is the list of names the layer's own code may
+                 * call, so the only thing to do with it is register it: the error half with the error
+                 * factory (so `errors.<name>` answers the declared message and status rather than a
+                 * generated default), and the whole vocabulary on the layer's result, where the port
+                 * reads it to build the `signal` proxy a handler calls.
+                 */
+                case 'object:vocabulary': {
+                    const declaration = what as {
+                        declared?: {error?: Record<string, unknown>};
+                        signal?: Record<string, unknown>;
+                    };
+                    if (declaration.declared?.error && target.error) {
+                        (target.error as (map: object) => unknown)(declaration.declared.error);
+                    }
+                    const vocabulary = target.result as {vocabulary?: object[]};
+                    (vocabulary.vocabulary ??= []).push(declaration);
+                    break;
+                }
+                /**
+                 * The legacy `error/error.ts` map, which has no kind symbol at all.
+                 *
+                 * It arrives here as a bare `object:` — the shape this switch had no case for, so for
+                 * as long as the folder has existed its declared messages and status codes were
+                 * dropped and `errors.<name>` answered a generated default. It is registered now, by
+                 * the same call the vocabulary uses, because a realm that has not moved to a
+                 * declaration must keep the errors it declared (`@@T-711`).
+                 */
+                case 'object:':
+                    if (name === 'error' && target.error) {
+                        (target.error as (map: object) => unknown)(what as object);
+                        break;
+                    }
                     break;
                 case 'function:api':
                     merge(local, await apiSchema!.schema(what(layerApi), source));
@@ -200,7 +273,23 @@ export default function layerProxy(
         [name: string]: object;
     },
     configRuntime?: IConfigRuntime,
-): {result: {error: unknown; schema: unknown}; feature: unknown} {
+    /**
+     * Resolve the attacher that turns a layer's declarations into the `signal` proxy.
+     *
+     * A *resolver*, not the function, and injected rather than imported: this module is on the browser
+     * loader's path too, and `signals.ts` reaches lukaot's root — which reaches pino and
+     * `node:async_hooks`. Resolving it lazily is also what keeps a process that declares nothing from
+     * loading the module at all, which is every process today.
+     */
+    attachSignals?: () => Promise<
+        | ((
+              port: object,
+              vocabularies: readonly object[],
+              policy?: Record<string, object>,
+          ) => void)
+        | undefined
+    >,
+): {result: {error: unknown; schema: unknown; vocabulary?: object[]}; feature: unknown} {
     return new Proxy(
         {
             error: errors?.register.bind(errors),
@@ -226,6 +315,26 @@ export default function layerProxy(
                         return target.result;
                     default:
                         return (fn: unknown, namespace: string, source: string) => {
+                            // A declared vocabulary is registered *now*, not when the layer's methods
+                            // are, because it needs neither the port nor the closure: it is a list of
+                            // names that belongs to the layer's result and to the process-wide error
+                            // factory. Deferring it was incidental, and it left a realm whose layer
+                            // declares nothing but a vocabulary with no registration at all — the
+                            // closure carrying it is only run while a layer's methods are registered,
+                            // and `lukaot/` has no methods of its own (`@@T-717`).
+                            if (kind(fn as never) === 'vocabulary') {
+                                const declaration = fn as {
+                                    declared?: {error?: Record<string, unknown>};
+                                };
+                                if (declaration.declared?.error && target.error) {
+                                    (target.error as (map: object) => unknown)(
+                                        declaration.declared.error,
+                                    );
+                                }
+                                const collected = target.result as {vocabulary?: object[]};
+                                (collected.vocabulary ??= []).push(fn as object);
+                                return;
+                            }
                             type Where = {
                                 methods: unknown[];
                                 port?: unknown;
@@ -350,6 +459,7 @@ export default function layerProxy(
                                             target,
                                             apiSchema,
                                             configRuntime,
+                                            attachSignals,
                                         ),
                                     );
                             }

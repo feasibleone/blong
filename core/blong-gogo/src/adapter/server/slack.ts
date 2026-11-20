@@ -115,11 +115,10 @@ async function maintainPort(this: Adapter<IConfig>, createApps: boolean): Promis
     // One line per pass, because the one question a deployment asks of this port is which accounts
     // it serves: an empty map is the answer a store that is not up yet gives, and it reads exactly
     // like a deployment that configured none.
-    this.log?.info?.({
+    this.signal?.frameworkSlackAccountsRead?.({
         accountsMethod: cfg.accountsMethod,
         accountCount: Object.keys(accounts).length,
         accounts: Object.keys(accounts),
-        message: 'slack port read its accounts',
     });
     // One lookup per pass, not one per account: every account of this port is published by the same
     // listening socket.
@@ -162,7 +161,7 @@ async function resolveAccounts(port: Adapter<IConfig>, cfg: IConfig): Promise<IC
         );
         return stored ?? configured;
     } catch (error) {
-        port.log?.warn?.({message: 'the stored accounts could not be read', error});
+        port.signal?.frameworkSlackAccountsUnreadable?.({error: reasonOf(error)});
         return configured;
     }
 }
@@ -230,13 +229,7 @@ async function renewWorkspaces(
         if (!account.configRefreshToken) continue;
         if (!slackTokenExpiring(account.configTokenExpiresAt)) continue;
         if (!cfg.accountsSaveMethod) {
-            port.log?.warn?.({
-                workspace,
-                accounts: names,
-                message:
-                    'the configuration token is due for renewal, but no account store can keep ' +
-                    'the replacement, so it was left as it is',
-            });
+            port.signal?.frameworkSlackTokenNotSavable?.({workspace, accounts: names});
             continue;
         }
         try {
@@ -248,9 +241,9 @@ async function renewWorkspaces(
             const rotation = answer.body as ISlackTokenRotation | undefined;
             const patch = slackRotationPatch(rotation);
             if (!patch.configToken) {
-                port.log?.warn?.({
+                port.signal?.frameworkSlackTokenNotRenewed?.({
                     workspace,
-                    message: rotation?.error ?? 'the configuration token was not renewed',
+                    reason: rotation?.error ?? 'the platform gave no reason',
                 });
                 continue;
             }
@@ -263,20 +256,15 @@ async function renewWorkspaces(
             } catch (error) {
                 // The in-memory pair is still the one Slack will accept until it expires again, so the
                 // pass continues; the warning is what says the next start will read a spent token.
-                port.log?.warn?.({
+                port.signal?.frameworkSlackTokenUnsaved?.({
                     workspace,
-                    message: 'the renewed configuration token could not be stored',
-                    error,
+                    error: reasonOf(error),
                 });
             }
-            port.log?.info?.({
-                workspace,
-                accounts: names,
-                message: 'slack configuration token renewed',
-            });
+            port.signal?.frameworkSlackTokenRenewed?.({workspace, accounts: names});
             renewed.set(workspace, {...account, ...patch});
         } catch (error) {
-            port.log?.warn?.({workspace, message: 'the token renewal failed', error});
+            port.signal?.frameworkSlackTokenRenewFailed?.({workspace, error: reasonOf(error)});
         }
     }
     return renewed;
@@ -301,10 +289,7 @@ async function ensureApp(
     if (account.appId) return repointApp(port, name, account, path, publicBase);
     if (!account.configToken) return;
     if (!publicBase) {
-        port.log?.warn?.({
-            account: name,
-            message: 'no public address publishes this port, so no Slack app was created',
-        });
+        port.signal?.frameworkSlackNoPublicAddress?.({account: name});
         return;
     }
     try {
@@ -318,15 +303,15 @@ async function ensureApp(
             | (ISlackAppCredentials & {ok?: boolean; error?: string})
             | undefined;
         if (created?.ok === false) {
-            port.log?.warn?.({
+            port.signal?.frameworkSlackAppNotCreated?.({
                 account: name,
-                message: created.error ?? 'the Slack app was not created',
+                reason: created.error ?? 'the platform gave no reason',
             });
             return;
         }
         const patch = slackAppPatch(created);
         if (!patch.appId) {
-            port.log?.warn?.({account: name, message: 'the Slack app creation answered no app id'});
+            port.signal?.frameworkSlackAppNoId?.({account: name});
             return;
         }
         if (cfg.accountsSaveMethod) {
@@ -337,17 +322,13 @@ async function ensureApp(
                     ...patch,
                 });
             } catch (error) {
-                port.log?.warn?.({
-                    account: name,
-                    message: 'the created Slack app could not be stored',
-                    error,
-                });
+                port.signal?.frameworkSlackAppUnsaved?.({account: name, error: reasonOf(error)});
             }
         }
-        port.log?.info?.({account: name, appId: patch.appId, message: 'slack app was created'});
+        port.signal?.frameworkSlackAppCreated?.({account: name, appId: patch.appId});
         await repointApp(port, name, {...account, ...patch}, path, publicBase);
     } catch (error) {
-        port.log?.warn?.({account: name, message: 'the Slack app creation failed', error});
+        port.signal?.frameworkSlackAppCreateFailed?.({account: name, error: reasonOf(error)});
     }
 }
 
@@ -396,9 +377,12 @@ async function checkToken(
         });
         const body = answer.body as {ok?: boolean; error?: string} | undefined;
         if (body?.ok === false)
-            port.log?.warn?.({account: name, message: body.error ?? 'auth.test failed'});
+            port.signal?.frameworkSlackAuthFailed?.({
+                account: name,
+                reason: body.error ?? 'the platform gave no reason',
+            });
     } catch (error) {
-        port.log?.warn?.(error);
+        port.signal?.frameworkSlackAuthUnreachable?.({error: reasonOf(error)});
     }
 }
 
@@ -424,10 +408,7 @@ async function repointApp(
     const {configToken, appId} = account;
     if (!configToken || !appId || !path) return;
     if (!publicBase) {
-        port.log?.warn?.({
-            account: name,
-            message: 'no public address publishes this port, so the Slack app was left as it was',
-        });
+        port.signal?.frameworkSlackAppLeftAsWas?.({account: name});
         return;
     }
     const ngrokUrl = publicBase;
@@ -438,11 +419,10 @@ async function repointApp(
             headers: {'ngrok-skip-browser-warning': 'true'},
         });
     } catch (error) {
-        port.log?.warn?.({
+        port.signal?.frameworkSlackPublicUrlSilent?.({
             account: name,
             publicUrl: ngrokUrl,
-            message: 'the public address does not answer yet',
-            error,
+            error: reasonOf(error),
         });
         return;
     }
@@ -456,9 +436,9 @@ async function repointApp(
         });
         const read = exported.body as {ok?: boolean; error?: string; manifest?: ISlackManifest};
         if (read?.ok === false || !read?.manifest) {
-            port.log?.warn?.({
+            port.signal?.frameworkSlackManifestUnreadable?.({
                 account: name,
-                message: read?.error ?? 'the manifest could not be read',
+                reason: read?.error ?? 'the platform gave no reason',
             });
             return;
         }
@@ -467,11 +447,7 @@ async function repointApp(
         // event has nothing to write, and `apps.manifest.update` is one of the most tightly
         // rate-limited calls Slack has.
         if (slackManifestPointsAt(read.manifest, requestUrl)) {
-            port.log?.info?.({
-                account: name,
-                requestUrl,
-                message: 'slack app already points at its public address and reads its messages',
-            });
+            port.signal?.frameworkSlackAppAlreadyPointed?.({account: name, requestUrl});
             return;
         }
         const updated = await got.post(new URL('apps.manifest.update', SLACK_API), {
@@ -485,20 +461,19 @@ async function repointApp(
         });
         const answer = updated.body as {ok?: boolean; error?: string};
         if (answer?.ok === false) {
-            port.log?.warn?.({
+            port.signal?.frameworkSlackManifestRefused?.({
                 account: name,
                 requestUrl,
-                message: answer.error ?? 'the manifest was refused',
+                reason: answer.error ?? 'the platform gave no reason',
             });
             return;
         }
-        port.log?.info?.({
-            account: name,
-            requestUrl,
-            message: 'slack app points at its public address and reads its messages',
-        });
+        port.signal?.frameworkSlackAppPointed?.({account: name, requestUrl});
     } catch (error) {
-        port.log?.warn?.({account: name, message: 'the manifest update failed', error});
+        port.signal?.frameworkSlackManifestUpdateFailed?.({
+            account: name,
+            error: reasonOf(error),
+        });
     }
 }
 
@@ -514,6 +489,16 @@ const DEFAULT_MAINTAIN_INTERVAL_MILLIS = 3_600_000;
  * genuinely empty store into a loop.
  */
 const STORE_RETRY_MILLIS = 15_000;
+
+/**
+ * A caught failure as the text a signal carries.
+ *
+ * A declared message interpolates a value into a string, so an `Error` handed to a placeholder would
+ * print as `[object Object]`. The message is what a reader needs and what the JSON form keeps, so the
+ * value is narrowed here — at the one place the port catches, rather than at every call.
+ */
+const reasonOf = (error: unknown): string =>
+    error instanceof Error ? error.message : String(error);
 
 export default adapter<IConfig>(() => {
     let maintenance: ReturnType<typeof setInterval> | undefined;
@@ -572,7 +557,13 @@ export default adapter<IConfig>(() => {
             if (cfg.accountsMethod && !Object.keys(cfg.accounts ?? {}).length) {
                 retry = setTimeout(() => {
                     retry = undefined;
-                    maintainPort.call(this, true).catch(error => this.log?.warn?.(error));
+                    maintainPort
+                        .call(this, true)
+                        .catch(error =>
+                            this.signal?.frameworkSlackStoreRetryFailed?.({
+                                error: reasonOf(error),
+                            }),
+                        );
                 }, STORE_RETRY_MILLIS);
                 retry.unref?.();
             }
@@ -580,7 +571,11 @@ export default adapter<IConfig>(() => {
             if (interval > 0) {
                 stopMaintenance();
                 maintenance = setInterval(() => {
-                    maintainPort.call(this, false).catch(error => this.log?.warn?.(error));
+                    maintainPort
+                        .call(this, false)
+                        .catch(error =>
+                            this.signal?.frameworkSlackMaintainFailed?.({error: reasonOf(error)}),
+                        );
                 }, interval);
                 // A maintenance timer is work the process does, not a reason to keep it alive: a test
                 // run and a short-lived CLI both stop the port themselves.

@@ -1,4 +1,4 @@
-import type {IChatAccountMap} from '@feasibleone/blong/types';
+import type {IChatAccountMap, VocabularyProxy} from '@feasibleone/blong/types';
 import {handler, type IMeta} from '@feasibleone/blong/types';
 
 import {chatAccountFind} from '../../../chatAccounts.ts';
@@ -36,6 +36,8 @@ export default handler(({lib: {error, slackSignatureMatches}}) => {
         const port = this as unknown as {
             config?: {accounts?: IChatAccountMap};
             log?: {warn?: (entry: unknown) => void};
+            /** The framework vocabulary, which is where the missing account is reported. */
+            signal?: VocabularyProxy;
         };
         const {appId, clientId} = request.params ?? {};
         const found = chatAccountFind(port.config?.accounts, appId, clientId);
@@ -43,13 +45,10 @@ export default handler(({lib: {error, slackSignatureMatches}}) => {
             // Said before the throw, because the 404 reaches the platform and nothing else: an app
             // whose Request URL carries ids no account declares looks exactly like a message that was
             // never sent, and the two ids are the whole difference.
-            port.log?.warn?.({
-                account: Object.keys(port.config?.accounts ?? {}),
+            port.signal?.frameworkSlackRequestAccountMissing?.({
+                accounts: Object.keys(port.config?.accounts ?? {}).join(', '),
                 appId,
                 clientId,
-                message:
-                    'the request names an app and client no account declares; check the appId and ' +
-                    'clientId of the account, and the Request URL the app points at',
             });
             throw errors['slack.requestAccountMissing']({params: {appId, clientId}}, $meta);
         }

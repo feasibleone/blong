@@ -5,9 +5,9 @@ sequenceDiagram
     autonumber
     participant public
     participant blong
-    participant semlog
+    participant observer
     public->>blong: blong.flow.find
-    blong->>semlog: semlog/blong.flow.find
-    semlog-->>blong: semlog/blong.flow.find
+    blong->>observer: observer/blong.flow.find
+    observer-->>blong: observer/blong.flow.find
     blong-->>public: blong.flow.find
 ```

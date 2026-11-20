@@ -170,7 +170,7 @@ flowchart LR
     class emit,stdout,cache,svc,inspect nowrap
 ```
 
-The mechanism, and the deliverables, are in [the concept page](/docs/concepts/semantic-log); the
-[pattern guide](/docs/patterns/semantic-log) covers the flow ledger and the fault fixtures, and
-[the rationale](/docs/rationale/semantic-log) is the long argument for novelty, rate shift and drift
-as three named things rather than one score.
+The mechanism that replaced this — a declared vocabulary rather than an identity derived from text —
+is in [the concept page](/docs/concepts/lukaot); the [pattern guide](/docs/patterns/lukaot) covers the
+declarations and the flow fixtures, and [the rationale](/docs/rationale/lukaot) is the long argument
+for names over hashes.

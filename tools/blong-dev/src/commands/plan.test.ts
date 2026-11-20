@@ -123,15 +123,20 @@ test('plan tasks creates one entry per task and trims the plan to titles', async
     const trimmed = read(repo.file);
     t.match(
         trimmed,
-        /^- \[ \] \[@@T-001\]\(\.\.\/\.\.\/realm\/blong-agent\/\.github\/memory\/todo\.md#t-001--scaffold-the-realm\) Scaffold the realm$/m,
-        'the id is a link to the entry that holds the detail',
+        /^- \[ \] \[@@T-001 Scaffold the realm\]\(\.\.\/\.\.\/realm\/blong-agent\/\.github\/memory\/todo\.md#t-001--scaffold-the-realm\)$/m,
+        'the id carries the title, and the line is one a reader can click',
     );
     t.match(
         trimmed,
-        /^- \[ \] \[@@T-002\]\(\.\.\/\.\.\/\.github\/memory\/todo\.md#t-002--write-the-page\) Write the page$/m,
+        /^- \[ \] \[@@T-002 Write the page\]\(\.\.\/\.\.\/\.github\/memory\/todo\.md#t-002--write-the-page\)$/m,
         'a root entry is linked the same way from a plan folder',
     );
-    t.match(trimmed, /^\- \[ \] \[@@T-003\]\([^)]+\) Add the tap group$/m);
+    t.match(trimmed, /^\- \[ \] \[@@T-003 [^\]]+\]\([^)]+\)$/m);
+    t.match(
+        trimmed,
+        /<!-- prettier-ignore -->\n- \[ \] \[@@T-001 /,
+        'and the formatter is told to leave the list as it is',
+    );
     t.notMatch(trimmed, /kukum realm add/, 'the detail left the plan');
     t.notMatch(trimmed, /· area:/, 'so did the area marker');
     t.end();
@@ -163,7 +168,7 @@ test('memory close ticks the plan task beside closing the entry', async t => {
     t.match(closed.out, /T-001 ticked in plans\/demo\/plan\.md:/, 'the marker is reported');
     t.match(
         read(repo.file),
-        /^- \[x\] \[@@T-001\]\([^)]*\) Scaffold the realm$/m,
+        /^- \[x\] \[@@T-001 Scaffold the realm\]\([^)]*\)$/m,
         'the box is ticked',
     );
 
@@ -171,7 +176,7 @@ test('memory close ticks the plan task beside closing the entry', async t => {
     t.equal(reopened.code, undefined, `reopen succeeded: ${reopened.err}`);
     t.match(
         read(repo.file),
-        /^- \[ \] \[@@T-001\]\([^)]*\) Scaffold the realm$/m,
+        /^- \[ \] \[@@T-001 Scaffold the realm\]\([^)]*\)$/m,
         'reopening unticks it',
     );
     t.end();
@@ -189,7 +194,7 @@ test('plan sync aligns a title that changed in memory', async t => {
     t.match(result.out, /1 title\(s\) aligned/);
     t.match(
         read(repo.file),
-        /^- \[ \] \[@@T-001\]\([^)]*#t-001--scaffold-the-realm-and-boot-it\) Scaffold the realm and boot it$/m,
+        /^- \[ \] \[@@T-001 Scaffold the realm and boot it\]\([^)]*#t-001--scaffold-the-realm-and-boot-it\)$/m,
         'the label and the anchor both follow the entry',
     );
     t.end();
@@ -203,14 +208,20 @@ test('plan sync gives a bare token the link it is missing, and check reports it 
 
     await capture(() => plan(['tasks', 'demo', '--apply']));
     // A plan converted before the link form, or one somebody edited by hand.
-    writeFileSync(repo.file, read(repo.file).replace(/\[@@T-001\]\([^)]*\)/, '@@T-001'));
+    writeFileSync(
+        repo.file,
+        read(repo.file).replace(
+            /\[@@T-001 Scaffold the realm\]\([^)]*\)/,
+            '@@T-001 Scaffold the realm',
+        ),
+    );
     const drifted = await capture(() => plan(['check', 'demo']));
     t.equal(drifted.code, 1, 'a task that names its entry without a link is a problem');
     t.match(drifted.err, /links to nothing — run `plan sync`/);
 
     const synced = await capture(() => plan(['sync', 'demo']));
     t.match(synced.out, /1 link\(s\) written/);
-    t.match(read(repo.file), /^- \[ \] \[@@T-001\]\([^)]*\) Scaffold the realm$/m);
+    t.match(read(repo.file), /^- \[ \] \[@@T-001 Scaffold the realm\]\([^)]*\)$/m);
     const clean = await capture(() => plan(['check', 'demo']));
     t.equal(clean.code, undefined, `the repaired plan checks: ${clean.err}`);
     t.end();
@@ -250,7 +261,7 @@ test('plan adopt puts an existing todo on the plan board', async t => {
     t.equal(adopted.code, undefined, `adopt succeeded: ${adopted.err}`);
     t.match(
         read(repo.file),
-        /^- \[ \] \[@@T-001\]\([^)]*\) An older task$/m,
+        /^- \[ \] \[@@T-001 An older task\]\([^)]*\)$/m,
         'an adopted task is as navigable as a created one',
     );
     t.end();
@@ -392,12 +403,12 @@ test('plan tasks creates the decisions the plan takes beside its tasks', async t
     const trimmed = read(repo.file);
     t.match(
         trimmed,
-        /^- \[@@D-001\]\(\.\.\/\.\.\/realm\/blong-agent\/\.github\/memory\/decision\.md#d-001--[^)]*\) The bytes live in a scope, not a namespace$/m,
+        /^- \[@@D-001 The bytes live in a scope, not a namespace\]\(\.\.\/\.\.\/realm\/blong-agent\/\.github\/memory\/decision\.md#d-001--[^)]*\)$/m,
         'the decision line is the link and the title',
     );
     t.notMatch(trimmed, /cookie carries/, 'its reasoning left the plan');
     t.match(trimmed, /^### Decisions this plan takes$/m, 'the list keeps its heading');
-    t.match(trimmed, /^- \[ \] \[@@T-001\]/m, 'the task below it is created as usual');
+    t.match(trimmed, /^- \[ \] \[@@T-001 /m, 'the task below it is created as usual');
     t.end();
 });
 
@@ -425,7 +436,7 @@ test('a decision created from the plan is checked and realigned like a task', as
     t.match(synced.out, /1 decision\(s\) aligned/);
     t.match(
         read(repo.file),
-        /^- \[@@D-001\]\([^)]*#d-001--the-bytes-live-in-the-scope-cookie\) The bytes live in the scope cookie$/m,
+        /^- \[@@D-001 The bytes live in the scope cookie\]\([^)]*#d-001--the-bytes-live-in-the-scope-cookie\)$/m,
         'the label and the anchor both follow the entry',
     );
 
@@ -447,12 +458,14 @@ test('plan check names a positional title, and a title another entry already hol
 
 - [ ] Group 3 verification · area: realm/blong-agent
       Runs the package's tests and lint.
-`
+`,
     );
     t.teardown(repo.restore);
 
     // An entry whose title the plan would reuse: two entries with one title cannot be told apart.
-    await capture(() => memory(['add', 'todo', '--title', 'Scaffold the realm', '--area', 'realm/blong-agent']));
+    await capture(() =>
+        memory(['add', 'todo', '--title', 'Scaffold the realm', '--area', 'realm/blong-agent']),
+    );
 
     const result = await capture(() => plan(['check', 'demo']));
     t.equal(result.code, undefined, `a note is not a failure: ${result.err}`);

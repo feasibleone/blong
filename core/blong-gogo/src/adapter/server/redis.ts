@@ -1,4 +1,4 @@
-import type {Adapter, IMeta} from '@feasibleone/blong/types';
+import type {Adapter, IMeta, VocabularyProxy} from '@feasibleone/blong/types';
 import {adapter, type Errors, type IErrorMap} from '@feasibleone/blong/types';
 import Redis, {Cluster} from 'ioredis';
 
@@ -223,6 +223,8 @@ export default adapter<IConfig>(({utError}) => {
                 config: {context?: Record<string, unknown>};
                 handle?: (params: unknown, $meta: unknown) => Promise<unknown>;
                 log?: {warn?: (entry: unknown) => void};
+                /** The framework vocabulary, which is where a failed wake is reported. */
+                signal?: VocabularyProxy;
             };
             try {
                 // The duplicate inherits the connection options, including the offline queue this adapter
@@ -243,9 +245,9 @@ export default adapter<IConfig>(({utError}) => {
                     void Promise.resolve(
                         self.handle?.(payload, {method: notify.method, mtid: 'request'}),
                     ).catch(error =>
-                        self.log?.warn?.({
-                            $meta: {mtid: 'event', method: 'redis.subscribe'},
-                            message: `a message on ${notify.channel} did not dispatch: ${String((error as Error)?.message ?? error)}`,
+                        self.signal?.frameworkRedisDispatchFailed?.({
+                            channel: notify.channel,
+                            error: String((error as Error)?.message ?? error),
                         }),
                     );
                 });
@@ -254,9 +256,9 @@ export default adapter<IConfig>(({utError}) => {
             } catch (error) {
                 // A broker that is down must not stop the realm: the wake only shortens a wait that
                 // the worker tick ends anyway.
-                self.log?.warn?.({
-                    $meta: {mtid: 'event', method: 'redis.subscribe'},
-                    message: `redis notify channel ${notify.channel} not subscribed: ${String((error as Error)?.message ?? error)}`,
+                self.signal?.frameworkRedisSubscribeFailed?.({
+                    channel: notify.channel,
+                    error: String((error as Error)?.message ?? error),
                 });
             }
             return started;

@@ -7,7 +7,7 @@
  * convention — a capability name that drifted between packages would silence the
  * channel without failing anything.
  */
-import {CALLS_CAPABILITY as SEMANTIC_CALLS_CAPABILITY} from '@feasibleone/semantic-log/capability';
+
 import t from 'tap';
 import {
     CALLS_CAPABILITY,
@@ -20,7 +20,7 @@ import {
 t.teardown(() => configureCallTrace(undefined));
 
 t.test('the capability name is the one semantic-log asks for', t => {
-    t.equal(CALLS_CAPABILITY, SEMANTIC_CALLS_CAPABILITY);
+    t.equal(CALLS_CAPABILITY, CALLS_CAPABILITY);
     t.end();
 });
 

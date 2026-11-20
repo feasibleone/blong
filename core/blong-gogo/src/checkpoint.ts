@@ -6,7 +6,7 @@ import type {
     IProgressRegion,
     IRegionMark,
 } from '@feasibleone/blong/types';
-import {vocabulary} from '@feasibleone/semantic-log/attachable';
+import {vocabulary} from '@feasibleone/lukaot/context';
 
 /**
  * The branches the calling scope is running inside, named the way `$meta` names them.

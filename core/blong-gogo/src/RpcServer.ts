@@ -3,7 +3,7 @@ import {Internal, type ILog, type IManifest, type IMeta, type IRpcServer} from '
 import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from 'fastify';
 
 import type {IResolution} from './Resolution.ts';
-import {adoptInbound} from './semanticContext.ts';
+import {adoptInbound} from './responseContext.ts';
 
 interface IConfig {
     port: number;

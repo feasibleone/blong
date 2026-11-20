@@ -22,7 +22,7 @@
  * Usage:
  *   blong-dev memory add <friction|todo|decision|faq> --title <title> [--area <area>]
  *                        [--body <text> | --body-file <file>] [--status <status>] [--id <id>]
- *                        [--plan <file|slug>]
+ *                        [--plan <file|slug> | --no-plan]
  *   blong-dev memory list [--kind <kind>] [--area <area>] [--status <status>] [--search <text>] [--json]
  *   blong-dev memory show <id|id@scope> [--json]
  *   blong-dev memory close <id|id@scope> [--note <text>] [--by <id>] [--reason <text>]
@@ -158,7 +158,7 @@ import {
     type MemoryKind,
 } from '../memory/memoryTypes.ts';
 import type {IMemoryEntryView} from '../memory/memoryView.ts';
-import {planFiles, setPlanTaskChecked} from '../plan/planLink.ts';
+import {planFiles, readActivePlan, setPlanTaskChecked} from '../plan/planLink.ts';
 import {readPlan, renderPlan} from '../plan/planParse.ts';
 import {addPlanEntry, planEntryLine, refreshPlanEntries} from '../plan/planSections.ts';
 import {repoRoot} from '../report/reportPaths.ts';
@@ -198,7 +198,8 @@ const MEMORY_VERBS = new Set([
 
 const USAGE = [
     'blong-dev memory add <friction|todo|decision|faq> --title <title> [--area <area>] [--body <text>]',
-    '                        [--plan <file|slug>]   (decision and friction only; lists it on the plan)',
+    '                        [--plan <file|slug> | --no-plan]  (a decision or a friction must say',
+    '                        which: --plan lists it on that plan, --no-plan records it as not part of one)',
     'blong-dev memory list [--kind <kind>] [--area <area>] [--status <status>] [--search <text>] [--json]',
     'blong-dev memory show <id|id@scope> [--json]',
     'blong-dev memory edit <id|id@scope> [--title <title>] [--body <text>|--body-file <file>] [--status <status>]',
@@ -500,7 +501,12 @@ function tickPlan(root: string, id: string, checked: boolean, plan?: string): vo
     }
 }
 
-async function add(root: string, args: string[], options: Options): Promise<void> {
+async function add(
+    root: string,
+    args: string[],
+    options: Options,
+    flags: Set<string>,
+): Promise<void> {
     const kind = kindOf(args[0]);
     if (!kind) fail('memory add needs a kind: friction, todo, decision or faq');
     const planArgument = options.get('plan')?.trim();
@@ -512,6 +518,20 @@ async function add(root: string, args: string[], options: Options): Promise<void
     }
     if (planArgument && kind === 'faq') {
         fail('a question is not listed on a plan — only a decision or a friction is');
+    }
+    // A decision or a friction taken while a plan is being executed belongs on that plan's board.
+    // Saying nothing is what used to happen, and it is silent: the entry is written and the board
+    // never mentions it, so a reader cannot tell "nothing was decided" from "nobody remembered the
+    // flag". The call has to say which side it is on (@@D-916).
+    if (!planArgument && (kind === 'decision' || kind === 'friction') && !flags.has('no-plan')) {
+        const active = readActivePlan(root);
+        if (active) {
+            fail(
+                `there is an active plan "${active.slug}" (${active.path}) — pass ` +
+                    `--plan ${active.slug} to list this on its board, or --no-plan to record it as ` +
+                    'not part of the plan',
+            );
+        }
     }
 
     const title = (options.get('title') ?? args.slice(1).join(' ')).trim();
@@ -2778,7 +2798,7 @@ export async function memory(args: string[]): Promise<void> {
     try {
         switch (verb) {
             case 'add':
-                return await add(root, positionals.slice(1), options);
+                return await add(root, positionals.slice(1), options, flags);
             case 'list':
                 return list(root, options, flags);
             case 'show':
