@@ -13,7 +13,8 @@
         "declaration": false,
         "declarationMap": false,
         "resolveJsonModule": true,
-        "strict": true
+        "strict": true,
+        "types": ["node"]
     },
     "ts-node": {
         "esm": true,
