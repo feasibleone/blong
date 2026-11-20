@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.47.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.46.2...blong-docs-v1.47.0) (2026-11-20)
+
+
+### Features
+
+* align blong-log with lukaot ([21bba9e](https://github.com/feasibleone/blong/commit/21bba9e8207720a02c934dbd3a8c054de8402dcf))
+* lukaot ([b845604](https://github.com/feasibleone/blong/commit/b8456044641c38ec9fe070f6be72bcc1a82140e8))
+
 ## [1.46.2](https://github.com/feasibleone/blong/compare/blong-docs-v1.46.1...blong-docs-v1.46.2) (2026-11-17)
 
 

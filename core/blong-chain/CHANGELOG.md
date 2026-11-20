@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.13.0...blong-chain-v1.14.0) (2026-11-20)
+
+
+### Features
+
+* lukaot ([b845604](https://github.com/feasibleone/blong/commit/b8456044641c38ec9fe070f6be72bcc1a82140e8))
+
 ## [1.13.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.12.0...blong-chain-v1.13.0) (2026-10-19)
 
 

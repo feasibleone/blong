@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/feasibleone/blong/compare/blong-commander-v1.7.1...blong-commander-v1.8.0) (2026-11-20)
+
+
+### Features
+
+* align blong-log with lukaot ([21bba9e](https://github.com/feasibleone/blong/commit/21bba9e8207720a02c934dbd3a8c054de8402dcf))
+
 ## [1.7.1](https://github.com/feasibleone/blong/compare/blong-commander-v1.7.0...blong-commander-v1.7.1) (2026-11-15)
 
 

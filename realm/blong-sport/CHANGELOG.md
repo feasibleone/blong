@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.11.3...blong-sport-v0.12.0) (2026-11-20)
+
+
+### Features
+
+* align blong-log with lukaot ([21bba9e](https://github.com/feasibleone/blong/commit/21bba9e8207720a02c934dbd3a8c054de8402dcf))
+
 ## [0.11.3](https://github.com/feasibleone/blong/compare/blong-sport-v0.11.2...blong-sport-v0.11.3) (2026-11-17)
 
 

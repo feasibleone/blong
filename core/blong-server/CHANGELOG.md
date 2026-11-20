@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/feasibleone/blong/compare/blong-server-v1.8.0...blong-server-v1.9.0) (2026-11-20)
+
+
+### Features
+
+* lukaot ([b845604](https://github.com/feasibleone/blong/commit/b8456044641c38ec9fe070f6be72bcc1a82140e8))
+
 ## [1.8.0](https://github.com/feasibleone/blong/compare/blong-server-v1.7.0...blong-server-v1.8.0) (2026-11-01)
 
 

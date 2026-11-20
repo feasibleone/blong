@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.2](https://github.com/feasibleone/blong/compare/blong-login-v1.14.1...blong-login-v1.14.2) (2026-11-20)
+
+
+### Bug Fixes
+
+* build ([96ae59e](https://github.com/feasibleone/blong/commit/96ae59e03efccd1018b92e70ad1581e175e53d77))
+
 ## [1.14.1](https://github.com/feasibleone/blong/compare/blong-login-v1.14.0...blong-login-v1.14.1) (2026-11-16)
 
 

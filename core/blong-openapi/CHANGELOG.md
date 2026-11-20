@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/feasibleone/blong/compare/blong-openapi-v1.3.0...blong-openapi-v1.3.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* build ([96ae59e](https://github.com/feasibleone/blong/commit/96ae59e03efccd1018b92e70ad1581e175e53d77))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-openapi-v1.2.1...blong-openapi-v1.3.0) (2026-10-13)
 
 

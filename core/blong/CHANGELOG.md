@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.44.0](https://github.com/feasibleone/blong/compare/blong-v1.43.3...blong-v1.44.0) (2026-11-20)
+
+
+### Features
+
+* lukaot ([b845604](https://github.com/feasibleone/blong/commit/b8456044641c38ec9fe070f6be72bcc1a82140e8))
+
+
+### Bug Fixes
+
+* build ([2ac9099](https://github.com/feasibleone/blong/commit/2ac9099495699f6ac69fea2238c10fc08f43a717))
+
 ## [1.43.3](https://github.com/feasibleone/blong/compare/blong-v1.43.2...blong-v1.43.3) (2026-11-17)
 
 

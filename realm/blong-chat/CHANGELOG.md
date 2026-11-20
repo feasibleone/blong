@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/feasibleone/blong/compare/blong-chat-v0.4.2...blong-chat-v0.5.0) (2026-11-20)
+
+
+### Features
+
+* lukaot ([b845604](https://github.com/feasibleone/blong/commit/b8456044641c38ec9fe070f6be72bcc1a82140e8))
+
 ## [0.4.2](https://github.com/feasibleone/blong/compare/blong-chat-v0.4.1...blong-chat-v0.4.2) (2026-11-16)
 
 

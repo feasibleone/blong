@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.0](https://github.com/feasibleone/blong/compare/blong-party-v1.18.2...blong-party-v1.19.0) (2026-11-20)
+
+
+### Features
+
+* lukaot ([b845604](https://github.com/feasibleone/blong/commit/b8456044641c38ec9fe070f6be72bcc1a82140e8))
+
 ## [1.18.2](https://github.com/feasibleone/blong/compare/blong-party-v1.18.1...blong-party-v1.18.2) (2026-11-16)
 
 
