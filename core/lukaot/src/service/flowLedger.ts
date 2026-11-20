@@ -551,7 +551,14 @@ export class FlowLedger {
                 }
             }
         }
-        if (state.refs.length < this.stepLimit) {
+        // A record that names no declaration still belongs to the execution, but the summary lists
+        // the *signals* it traversed and there is none to list — the flow's own kind is the name a
+        // reader has for it (`@@D-940`).
+        if (
+            typeof event.signal === 'string' &&
+            event.signal.length > 0 &&
+            state.refs.length < this.stepLimit
+        ) {
             state.refs.push(event.signal);
         }
         if (flow.status === 'completed' || flow.status === 'failed') {

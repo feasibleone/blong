@@ -16,8 +16,8 @@
  *   --theme <dark|light> UI theme (default: dark)
  */
 
-import {LogServer} from './server.js';
-import type {LogServerOptions} from './types.js';
+import {LogServer} from './server.ts';
+import type {LogServerOptions} from './types.ts';
 
 const args = process.argv.slice(2);
 
@@ -51,9 +51,13 @@ console.log(`   UDP:       ${options.host}:${udpPort}`);
 console.log(`   WebSocket: ws://${options.host}:${httpPort}/ws`);
 console.log(`   Buffer:    ${options.bufferSize} entries`);
 console.log();
-console.log(`Add to your Pino configuration:`);
+// What a process has to be told to feed this viewer: an address, because the sink is lukaot's and the
+// loader builds it. A pino transport is still shipped for a process that logs through pino, but the
+// framework does not, so it is not the line to print first (@@D-930).
+console.log(`Point a Blong process at it:`);
+console.log(`   log:`);
 console.log(
-    `   transport: {target: '@feasibleone/blong-log/transport', options: {port: ${udpPort}}}`,
+    `       destination: {host: '${options.host === '0.0.0.0' ? '127.0.0.1' : options.host}', port: ${udpPort}}`,
 );
 
 // Handle graceful shutdown

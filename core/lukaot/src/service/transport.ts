@@ -49,8 +49,15 @@ import type {IngestEvent} from './ledger.ts';
  * writes; until then a caller that wants its records counted forwards them with the field set.
  */
 export interface IServiceRecord extends LogRecord {
-    /** The declared identifier — the record's identity (`@@D-889`). */
-    signal: string;
+    /**
+     * The declared identifier — the record's identity (`@@D-889`).
+     *
+     * Absent when the emitter reached no declaration, which is the ordinary case for a realm's own
+     * log line: what makes such a record shippable is its **flow**, an identity the service indexes
+     * on its own. A record outside any flow that names no declaration is still refused — it has
+     * nothing to be counted against (@@D-940).
+     */
+    signal?: string;
 }
 
 export interface ServiceTransportOptions {
@@ -96,7 +103,7 @@ export function toEvent(record: IServiceRecord): IngestEvent {
     return {
         id: record.id,
         time: record.time,
-        signal: record.signal,
+        ...(record.signal === undefined ? {} : {signal: record.signal}),
         message: record.msg,
         service: record.service,
         level: record.level,
@@ -206,16 +213,19 @@ export function createServiceWriter(options: ServiceTransportOptions): ServiceWr
 
     return {
         write(_line: string, record?: LogRecord): void {
-            // A record without an identifier predates the vocabulary and names nothing to count;
-            // `refs` is required by `LogRecord`, so only an untyped caller can omit it, and
-            // `toEvent` dereferences it. Skipping keeps `write` total for that caller rather than
-            // letting the throw escape.
+            // A record is shipped when it can be attributed: it names a declared signal, or it
+            // belongs to a flow, which the service indexes in its own right. The second case is
+            // what a served request is made of — a realm logs, dispatches and answers inside the
+            // flow its route minted, and none of those records names a declaration, so refusing
+            // them left the flow ledger with nothing to draw and every diagram empty (@@D-940).
+            // What stays refused is a record that names neither: `refs` is required by
+            // `LogRecord`, so only an untyped caller can omit it, and `toEvent` dereferences it.
             const candidate = record as IServiceRecord | undefined;
-            if (
-                candidate === undefined ||
-                typeof candidate.signal !== 'string' ||
-                candidate.signal.length === 0
-            ) {
+            if (candidate === undefined) return;
+            const named = typeof candidate.signal === 'string' && candidate.signal.length > 0;
+            const flowId = candidate.flow?.id;
+            const attributed = typeof flowId === 'string' && flowId.length > 0;
+            if (!named && !attributed) {
                 return;
             }
             const events: readonly IngestEvent[] = [toEvent(candidate)];

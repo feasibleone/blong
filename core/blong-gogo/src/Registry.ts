@@ -158,6 +158,15 @@ export default class Registry extends Internal implements IRegistry {
         watch?.setObjectSchema?.(this.objectSchema);
     }
 
+    /**
+     * The log component, so a reload can reach the switches that are configuration rather than a
+     * port's. It owns `log.calls`, which decides whether the flow ledger sees anything at all;
+     * `applyConfigReload` asks it once per reload (@@D-941).
+     */
+    public get logComponent(): ILog | undefined {
+        return this.#log;
+    }
+
     public getPort(id: string): Adapter | undefined {
         return this.#ports.get(id);
     }

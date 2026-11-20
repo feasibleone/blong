@@ -73,14 +73,23 @@ function isFlow(value: unknown): value is {id: string} {
  * them, and the identifier is one of them — it is the key, so an event without one names nothing
  * to count. It is the only identifier that is required: the service deliberately does not check it
  * against a vocabulary, because the vocabulary lives in the process that emits.
+ *
+ * A **flow** is the second way to be attributable (@@D-940), and it is the ordinary one: a served
+ * request's records are emitted by the realm and the runtime, none of which reaches a declaration,
+ * yet each of them belongs to the execution the route minted. Such an event is placed on that
+ * execution and in the lineage and is deliberately not counted against any signal — the signal
+ * ledger is the index of what was *declared*, and inventing a key for it would put a name in a
+ * filter that no source contains. An event that names neither is malformed, as before.
  */
 function isEvent(value: unknown): value is IngestEvent {
     const candidate = value as Partial<IngestEvent> | undefined;
+    const named = typeof candidate?.signal === 'string' && candidate.signal.length > 0;
+    const flowId = (candidate?.flow as {id?: unknown} | undefined)?.id;
+    const attributed = typeof flowId === 'string' && flowId.length > 0;
     return Boolean(
         candidate &&
         typeof candidate.id === 'string' &&
-        typeof candidate.signal === 'string' &&
-        candidate.signal.length > 0 &&
+        (named || attributed) &&
         typeof candidate.service === 'string' &&
         (candidate.flow === undefined || isFlow(candidate.flow)),
     );
@@ -95,8 +104,13 @@ function isEvent(value: unknown): value is IngestEvent {
  */
 interface PreparedEvent {
     event: IngestEvent;
-    ref: string;
-    novel: boolean;
+    /**
+     * The signal the event counts against, absent for an event that only a flow attributes — it is
+     * still accepted and still observed by the lineage and the flow ledger, and there is no ledger
+     * entry for it to be placed on (@@D-940).
+     */
+    ref?: string;
+    novel?: boolean;
 }
 
 export function createIngest(
@@ -106,6 +120,9 @@ export function createIngest(
 
     /** Place one event: which entry it counts against, and whether that entry is new. */
     function prepare(event: IngestEvent): PreparedEvent {
+        if (event.signal === undefined || event.signal.length === 0) {
+            return {event};
+        }
         return {event, ref: event.signal, novel: ledger.get(event.signal) === undefined};
     }
 
@@ -117,14 +134,18 @@ export function createIngest(
      */
     function commit(prepared: PreparedEvent): void {
         // The record joins the causal index before any of its deltas are published, so a consumer
-        // of this signal never reads a lineage that does not hold the record it names.
+        // of this signal never reads a lineage that does not hold the record it names. It also
+        // reaches the flow ledger here, which is what an event with no signal has *instead* of an
+        // entry: the execution it belongs to names it (@@D-940).
         dependencies.onAccepted?.(prepared.event);
+        const ref = prepared.ref;
+        if (ref === undefined) return;
         const {entry, novel} = ledger.upsert(prepared.event);
         // Retention precedes *any* publication, including the first-sighting announcement below:
         // the exemplar is in the store and on the entry before the first callback runs, so no
         // callback that throws — `onSignalAdded` included — can cost a registered event its
         // exemplar.
-        const retained = exemplars.offer(prepared.ref, prepared.event);
+        const retained = exemplars.offer(ref, prepared.event);
         if (retained) {
             entry.exemplars.push(prepared.event.id);
         }

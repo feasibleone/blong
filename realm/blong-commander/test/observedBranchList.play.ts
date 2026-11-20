@@ -17,8 +17,16 @@ import {
     drawsACall,
 } from '@feasibleone/blong-browser/playwright/diagram';
 import type {Locator} from '@playwright/test';
+import {mintGrant} from '@feasibleone/blong-gogo/grant.ts';
 
-test.use({blongPermissions: true});
+test.use({
+    blongPermissions: true,
+    // Recording is off in this suite's `playwright` block, so the branch list this spec draws only
+    // exists because its requests carry a `calls` grant: the header is the per-request switch
+    // (`@@D-223`), minted with no key because the `dev` intent configures the committed development
+    // sign key the gateway verifies with.
+    extraHTTPHeaders: {'x-blong-grant': await mintGrant({cap: ['calls']})},
+});
 // Producing the flow takes a page load, a drill and a second page, and the first attempt does it
 // cold, with the portal loading its realms lazily: the retry is allotted 90s of that, and the
 // test's budget has to hold two attempts, or the first attempt's timeout is reported as the test

@@ -27,7 +27,11 @@ await tap.test('agent realm starts', async (test: Test) => {
     // `agent.db` proves the persistence group that the four tables arrive with (`@@D-707`).
     test.ok(names.includes('agent.task'), 'the task adapter is attached');
     test.ok(names.includes('agent.db'), 'the persistence group is attached');
-    // Wired groups run through `platform.test`; there are none until Group 6 adds them.
 });
+
+// The realm's own groups, through the same runner a deployment uses (`integration.watch.test`). The
+// boot check above is not enough: `blong-dev test` ran no group at all, so a ticket test that had
+// drifted since it was written stayed green because nothing executed it (@@F-778).
+await serverPlatform.test(undefined);
 
 await serverPlatform.stop();

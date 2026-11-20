@@ -167,6 +167,29 @@ void t.test('the envelope reaches the causal index, progress points do not', asy
     t.end();
 });
 
+void t.test('an event whose flow names it is accepted and counts no signal', async t => {
+    // A served request's records reach no declaration, and the flow is what places them: it is the
+    // execution the ledger indexes, so the record is observed without a name being invented for the
+    // signal index — a fabricated key would put a value in a filter that no source contains
+    // (@@D-940).
+    const {ledger, accepted, ingest} = setup();
+    const result = await ingest({
+        events: [
+            {
+                id: 'r1',
+                time: 1000,
+                service: 'blong',
+                flow: {id: '01ARZ3NDEKTSV4RRFFQ69G5FAV', kind: 'blong.flow.find'},
+            } as IngestEvent,
+        ],
+    });
+
+    t.same(result, {accepted: 1, signals: 0}, 'accepted, and counted against no signal');
+    t.same(accepted, ['r1'], 'the lineage and the flow ledger still see it');
+    t.equal(ledger.size(), 0, 'and the signal index is untouched');
+    t.end();
+});
+
 void t.test('a malformed batch is rejected whole, and nothing is written', async t => {
     const {ledger, ingest} = setup();
     for (const body of [

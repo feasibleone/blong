@@ -10,7 +10,8 @@ import {extname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {WebSocketServer, type WebSocket} from 'ws';
 
-import {CircularBuffer} from './buffer.js';
+import {CircularBuffer} from './buffer.ts';
+import {captureOf, contextOf, serviceOf, signalOf} from './record.ts';
 import {
     LEVEL_MAP,
     type ClientConfig,
@@ -18,8 +19,8 @@ import {
     type LogEntry,
     type LogServerOptions,
     type WsMessage,
-} from './types.js';
-import {UdpReceiver} from './udp-receiver.js';
+} from './types.ts';
+import {UdpReceiver} from './udp-receiver.ts';
 
 const DEFAULT_OPTIONS: Required<LogServerOptions> = {
     udpPort: 9999,
@@ -31,7 +32,9 @@ const DEFAULT_OPTIONS: Required<LogServerOptions> = {
     properties: {
         timestamp: 'time',
         level: 'level',
-        name: 'name',
+        // The record's service is `service`; the identity a reader filters by is the reporting port,
+        // which the client reads from `fields.context` (@@D-926).
+        name: 'service',
         traceId: 'traceId',
         error: 'err',
         request: 'req',
@@ -118,7 +121,9 @@ export class LogServer {
 
         // Attach WebSocket server
         this.#wss = new WebSocketServer({server: this.#httpServer});
-        this.#wss.on('connection', (ws: WebSocket) => this.#handleWsConnection(ws));
+        this.#wss.on('connection', (ws: WebSocket, req: IncomingMessage) =>
+            this.#handleWsConnection(ws, req),
+        );
 
         await new Promise<void>((resolve, reject) => {
             this.#httpServer!.listen(this.#options.httpPort, this.#options.host, () => resolve());
@@ -170,11 +175,31 @@ export class LogServer {
 
     /**
      * Get the client configuration for the UI.
+     *
+     * The addresses are taken from the request that asked for them, not from the host the server bound
+     * to: a viewer reached through an ingress, a forwarded port or a different name than `127.0.0.1`
+     * must be told where *it* can reach the API, and a configuration written at startup cannot know
+     * that. `x-forwarded-host` and `x-forwarded-proto` are what a proxy sends; without them the
+     * request's own host and the connection's encryption answer, which is right for a direct visit.
      */
-    getClientConfig(): ClientConfig {
+    getClientConfig(request?: {
+        headers?: Record<string, string | string[] | undefined>;
+        encrypted?: boolean;
+    }): ClientConfig {
+        const header = (name: string): string | undefined => {
+            const value = request?.headers?.[name];
+            return Array.isArray(value) ? value[0] : value;
+        };
+        const address =
+            header('x-forwarded-host') ??
+            header('host') ??
+            `${this.#options.host}:${this.#options.httpPort}`;
+        const secure =
+            (header('x-forwarded-proto') ?? (request?.encrypted ? 'https' : 'http')) === 'https';
+        const http = `${secure ? 'https' : 'http'}://${address}`;
         return {
-            wsUrl: `ws://${this.#options.host}:${this.#options.httpPort}/ws`,
-            apiUrl: `http://${this.#options.host}:${this.#options.httpPort}/api`,
+            wsUrl: `${secure ? 'wss' : 'ws'}://${address}/ws`,
+            apiUrl: `${http}/api`,
             properties: this.#options.properties,
             recentCount: this.#options.recentCount,
             traceUrlPattern: this.#options.traceUrlPattern,
@@ -201,7 +226,7 @@ export class LogServer {
 
         // REST API routes
         if (path === '/api/config') {
-            return this.#sendJson(res, this.getClientConfig());
+            return this.#sendJson(res, this.getClientConfig(req));
         }
 
         if (path === '/api/entries') {
@@ -240,7 +265,9 @@ export class LogServer {
             return this.#sendJson(res, {entries, total: entries.length});
         } catch (err) {
             const message =
-                err instanceof SyntaxError ? 'Invalid JSON in request body' : 'Invalid request body';
+                err instanceof SyntaxError
+                    ? 'Invalid JSON in request body'
+                    : 'Invalid request body';
             res.writeHead(400, {'Content-Type': 'application/json'});
             res.end(JSON.stringify({error: message}));
         }
@@ -250,6 +277,8 @@ export class LogServer {
         const filters: FilterOptions = {};
         if (params.has('level')) filters.level = params.get('level')!;
         if (params.has('name')) filters.name = params.get('name')!;
+        if (params.has('signal')) filters.signal = params.get('signal')!;
+        if (params.has('capture')) filters.capture = params.get('capture')!;
         if (params.has('traceId')) filters.traceId = params.get('traceId')!;
         if (params.has('search')) filters.search = params.get('search')!;
         if (params.has('after')) filters.after = params.get('after')!;
@@ -257,7 +286,18 @@ export class LogServer {
 
         // Parse custom properties
         for (const [key, value] of params) {
-            if (!['level', 'name', 'traceId', 'search', 'after', 'limit'].includes(key)) {
+            if (
+                ![
+                    'level',
+                    'name',
+                    'signal',
+                    'capture',
+                    'traceId',
+                    'search',
+                    'after',
+                    'limit',
+                ].includes(key)
+            ) {
                 filters.properties = filters.properties ?? {};
                 filters.properties[key] = value;
             }
@@ -307,12 +347,20 @@ export class LogServer {
 
     // ── WebSocket handler ─────────────────────────────────────────────────
 
-    #handleWsConnection(ws: WebSocket): void {
+    #handleWsConnection(ws: WebSocket, req?: IncomingMessage): void {
         const client: ConnectedClient = {ws, filters: {}};
         this.#clients.add(client);
 
-        // Send configuration on connect
-        const configMsg: WsMessage = {type: 'config', config: this.getClientConfig()};
+        // Send configuration on connect, addressed the way this client reached us — the socket's own
+        // request carries the host and the proxy headers, which is what a viewer behind an ingress
+        // needs to be told.
+        const configMsg: WsMessage = {
+            type: 'config',
+            config: this.getClientConfig({
+                headers: req?.headers,
+                encrypted: (req?.socket as {encrypted?: boolean} | undefined)?.encrypted === true,
+            }),
+        };
         ws.send(JSON.stringify(configMsg));
 
         ws.on('message', (data: Buffer | string) => {
@@ -374,8 +422,19 @@ export class LogServer {
             if ((entry.level ?? 0) < minLevel) return false;
         }
 
+        // `name` addresses the port or component that reported — the record's `fields.context` — and
+        // falls back to the service, which is what a suite-level reader used to filter by (@@D-926).
         if (filters.name) {
-            if (!entry.name?.toLowerCase().includes(filters.name.toLowerCase())) return false;
+            const where = contextOf(entry) ?? serviceOf(entry) ?? '';
+            if (!where.toLowerCase().includes(filters.name.toLowerCase())) return false;
+        }
+
+        if (filters.signal) {
+            if (signalOf(entry) !== filters.signal) return false;
+        }
+
+        if (filters.capture) {
+            if (captureOf(entry)?.shape !== filters.capture) return false;
         }
 
         if (filters.traceId) {

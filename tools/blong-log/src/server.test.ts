@@ -3,7 +3,7 @@
  */
 
 import {test} from 'tap';
-import {LogServer} from './server.js';
+import {LogServer} from './server.ts';
 
 test('LogServer', async t => {
     t.test('start and stop', async t => {

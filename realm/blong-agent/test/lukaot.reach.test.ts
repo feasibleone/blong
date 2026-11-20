@@ -97,6 +97,32 @@ await test('the declared signals reach the store, the service and the line', asy
     const reference = claim && parseReference(claim.line);
     t.ok(reference, `the line carries a reference (${claim?.line.trim() ?? 'no line'})`);
 
+    // What the tick *decided*, on the record that states its consequence: the claim carries the
+    // branch names it chose between and the reason the work exists (`@@D-933`).
+    const decision = (claim?.record as {decision?: {discriminator?: string; chosen?: string}} | undefined)
+        ?.decision;
+    t.equal(decision?.discriminator, 'agentClaim', 'the claim record carries the decision behind it');
+    t.equal(decision?.chosen, 'claim', 'and the arm that was taken');
+    const intent = (claim?.record as {intent?: {name?: string}} | undefined)?.intent;
+    t.equal(
+        intent?.name,
+        'test.agent.session',
+        'and the intent names the entry that asked for the work, not the hop it was written on',
+    );
+
+    // The engine-mode decision is the second one the realm records, and it is taken inside a session
+    // rather than in a tick: the line says which loop drives the session, and the rationale is on it.
+    const engine = printed.find(
+        entry => entry.record?.fields?.signal === 'agentSessionEngineChosen',
+    );
+    t.ok(engine, 'a session announces the loop that drives it');
+    t.equal(
+        (engine?.record as {decision?: {discriminator?: string; chosen?: string}} | undefined)
+            ?.decision?.discriminator,
+        'agentEngineMode',
+        'and the mode it ran is a recorded decision',
+    );
+
     const inspection = claim && (await inspectLine(dir, claim.line));
     t.equal(inspection?.resolved, true, 'and lukaot inspect resolves it against the store');
     t.equal(

@@ -27,6 +27,15 @@ import {
     diagramText,
     drawsACall,
 } from '@feasibleone/blong-browser/playwright/diagram';
+import {mintGrant} from '@feasibleone/blong-gogo/grant.ts';
+
+/**
+ * Recording is off in this suite's `playwright` block, so these requests record only because they
+ * carry a `calls` grant: the header is the per-request switch (`@@D-223`), minted with no key
+ * because the `dev` intent configures the committed development sign key the gateway verifies
+ * with.
+ */
+test.use({extraHTTPHeaders: {'x-blong-grant': await mintGrant({cap: ['calls']})}});
 
 test.use({blongPermissions: true});
 

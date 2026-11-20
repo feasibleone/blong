@@ -56,7 +56,7 @@ test.describe('Reference', () => {
         fields: {
             'discipline.disciplineName': 'ENT-PLAY-DI-01 Discipline',
             'discipline.disciplineKind': {widget: 'select', value: 'Individual'},
-            'discipline.disciplineSex': {widget: 'select', value: 'Mixed'},
+            'discipline.disciplineGender': {widget: 'select', value: 'Mixed'},
             'discipline.disciplineStatus': {widget: 'select', value: 'Active'},
             'discipline.sportId': {widget: 'dropdown', value: 'Athletics'},
         },

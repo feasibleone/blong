@@ -11,6 +11,13 @@ open (2)
 - `F-762` · core/lukaot — A method named declare made lukaot unloadable by bare node, and tap hid it
 - `F-770` · core/lukaot — A declared-off capture could not be enabled by configuration
 
+resolved (4)
+
+- `F-775` · core/lukaot — A configured destination kept the process alive
+- `F-776` · core/lukaot — A public return type nobody could name broke a consumer's build
+- `F-777` · core/lukaot — A decision's arm names are identifiers, and an illegal one fails at boot
+- `F-779` · core/lukaot — Two silences on one path: the call records and the sink disagreed
+
 <!-- /memory:index -->
 
 ## Open
@@ -57,3 +64,72 @@ scope allows it") asserted the bug, and now pins the new one instead: the declar
 resolver, and a host that answers `undefined` builds nothing.
 
 ## Resolved
+
+### F-775 — A configured destination kept the process alive
+
+> _2026-11-20 · core/lukaot · resolved_
+
+The UDP sink created its socket without `unref`, so a process configured with a `log.destination`
+never exited: the sport realm's test suite finished both flows in 350ms and then waited until tap
+killed it at 250 seconds, and the failure read as "timeout" rather than "the run is over". The flush
+timer was already unref'd for exactly this reason and the socket was missed — an open handle is
+enough to keep the event loop alive, whatever the timer does.
+
+Fixed: the socket is unref'd beside the timer; the sport suite now exits in 4.7s instead of timing
+out.
+
+### F-776 — A public return type nobody could name broke a consumer's build
+
+> _2026-11-20 · core/lukaot · resolved_
+
+`core/blong-mock` could not build: `lukaot.ts` exports `mockVocabulary = contribute({...})`, and the
+inferred type names `DeclaredVocabulary` from lukaot's `dist/src/declare`, which the package root
+does not export — so `tsc` refused to emit the declaration (TS2883, "cannot be named without a
+reference"). The `import './lukaot.ts'` line that looked like a hand edit in `types/index.d.ts` was
+the emit of `index.ts`'s side-effect import, written before the build failed on the next file; the
+missing `types/lukaot.d.ts` is what made it look broken.
+
+The fix is one export: `DeclaredVocabulary` is part of `contribute`'s public contract and was not on
+the package root. A consumer that re-exports what it declared cannot emit declarations without it.
+
+Fixed: DeclaredVocabulary is exported from the lukaot root; blong-mock emits its declarations and
+builds.
+
+### F-777 — A decision's arm names are identifiers, and an illegal one fails at boot
+
+> _2026-11-20 · core/lukaot · resolved_
+
+A declared decision's arm names are validated as _signal identifiers_ — one camelCase token — so
+`no-account` and `one-gender` throw at declaration time ("is not an identifier … never a dotted
+name") and the realm fails to load. The message is clear once it appears, but it appears at process
+start: `node --run test` reports the whole tap file as failing with "no tests found", because the
+platform never got far enough to schedule the group, and the real error is a few hundred lines up
+the log. Declare the arms in camelCase (`noAccount`, `oneGender`). A bare-string `decide('x', …)`
+skips the check entirely, which is how the same-name mistake can survive until someone converts it
+to a declaration.
+
+Documented: arms are camelCase identifiers; both realms now declare their decisions and compile
+against the arm sets.
+
+### F-779 — Two silences on one path: the call records and the sink disagreed
+
+> _2026-11-20 · core/lukaot · resolved_
+
+The CI run was red in three packages, six Playwright specs, all of the same shape: the flow page
+listed no execution named after the page's own read, and a diagram that is drawn from one was never
+drawn. It reproduced locally in each package. The cause was two independent silences on the same
+path, and each alone was enough to empty the ledger.
+
+The emitter: the call channel wrote its records through the level API at debug, so a process
+configured at info produced no call records at all - and the flow ledger, every execution row and
+every diagram are built from those records. The sink: it refused any record that named no declared
+signal, which is every record a served request produces, so even a call record that survived the
+level was dropped before it left the process. The lesson is that the two halves were each "correct"
+against their own note - the sink's rule came from @@D-889, the channel's level from a reading of
+D-223 that treated a level as a decision - and nothing tested the join: a unit test of either half
+passes, and only a page that reads the ledger end to end notices. The specs that do read it were the
+ones CI caught.
+
+Fixed in the same change: the call channel binds its own logger at debug and the write path keeps
+call records off the terminal unless log.calls.stdout asks (D-940); the sink and the ingest accept a
+record a flow attributes. The three packages' Playwright specs pass locally.

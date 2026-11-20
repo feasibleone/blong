@@ -12,13 +12,6 @@
  */
 export * from './index.ts';
 export {
-    captureProcessFailures,
-    createLogger,
-    type Format,
-    type Logger,
-    type LoggerOptions,
-} from './src/logger.ts';
-export {
     /**
      * The ids a store directory holds, read without opening it for writing.
      *
@@ -34,3 +27,33 @@ export {
     type RecordCache,
     type RecordStore,
 } from './src/cache.ts';
+export {
+    captureProcessFailures,
+    createLogger,
+    type Format,
+    type Logger,
+    type LoggerOptions,
+} from './src/logger.ts';
+export {
+    /**
+     * The batch format itself, so a collector reads it from the definition that writes it.
+     */
+    createBatchId,
+    createPacketHeader,
+    HEADER_SIZE,
+    sendBatch,
+    splitPayload,
+    type IBatchTarget,
+} from './src/packets.ts';
+export {
+    /**
+     * The framework's own sink: records over UDP, in the batch format a collector reassembles.
+     *
+     * A process has to be able to send its records somewhere without depending on the tool that shows
+     * them, so the common destination ships here and `log.destination` names it by address alone
+     * (`@@D-930`).
+     */
+    createUdpWriter,
+    type IUdpWriter,
+    type IUdpWriterOptions,
+} from './src/udpWriter.ts';

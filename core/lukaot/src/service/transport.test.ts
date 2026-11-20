@@ -108,6 +108,28 @@ void t.test('a record that names no signal is refused, not sent', async t => {
     t.end();
 });
 
+void t.test('a record whose flow names it is shipped without a signal', async t => {
+    // The ordinary case a served request is made of: the realm and the runtime emit inside the flow
+    // their route minted, and none of those records reaches a declaration. The flow is an identity
+    // the service indexes, so the record is attributable — and refusing it emptied every flow page
+    // and every diagram (@@D-940).
+    const {call, sent} = fetcher(ok);
+    const writer = createServiceWriter({url: 'http://svc', fetch: call});
+    writer.write(
+        'line',
+        record({
+            signal: undefined,
+            flow: {id: '01ARZ3NDEKTSV4RRFFQ69G5FAV', kind: 'blong.flow.find'},
+        }),
+    );
+    await writer.flush();
+
+    t.equal(sent.length, 1, 'the flow is enough to place it');
+    t.equal(sent[0]?.events[0]?.flow?.kind, 'blong.flow.find');
+    t.equal(sent[0]?.events[0]?.signal, undefined, 'and no signal is invented for it');
+    t.end();
+});
+
 void t.test('a refused answer is counted, reported and absorbed', async t => {
     const {call} = fetcher(() => new Response('', {status: 500}));
     const errors: unknown[] = [];

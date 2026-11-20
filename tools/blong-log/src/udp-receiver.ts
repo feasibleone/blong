@@ -2,10 +2,9 @@
  * UDP receiver that reassembles batched log entries.
  */
 
+import {HEADER_SIZE} from '@feasibleone/lukaot/node';
 import dgram from 'node:dgram';
 import {EventEmitter} from 'node:events';
-
-const HEADER_SIZE = 12;
 
 /** Pending batch being reassembled */
 interface PendingBatch {

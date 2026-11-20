@@ -1,7 +1,9 @@
 import {hostname} from 'node:os';
 
 import {handler, type IMeta} from '@feasibleone/blong';
+import {decide} from '@feasibleone/lukaot';
 
+import vocabulary from '../../lukaot/signal.ts';
 import type {IAgentSessionRunResult} from '../session/agentSessionRun.ts';
 import {agentSettings, type IAgentDispatchPort} from '../settings.ts';
 
@@ -87,8 +89,33 @@ export default handler(
                 lib.checkpoint?.('agent.session.resumed', {sessionId: String(sessionId)});
             }
             const account = params.engineAccount ?? settings.engineAccount;
-            if (!account)
-                return {claimed: false, resumed, reason: 'no engine account is configured'};
+            /**
+             * Whether to take a ticket, decided where each answer is announced.
+             *
+             * A decision's rationale belongs to the **next record** in the scope, so it is taken beside
+             * the line that states its consequence rather than once at the top: the claim below is an
+             * `await` over the pool, and its own records would take the rationale away from the line
+             * that says what the worker decided (`@@D-933`).
+             */
+            const decideClaim = (): boolean | undefined =>
+                decide(
+                    vocabulary.decision.agentClaim,
+                    {account: account.length > 0},
+                    [
+                        {
+                            name: 'noAccount',
+                            when: values => values.account === false,
+                            run: () => false,
+                        },
+                        {name: 'claim', when: () => true, run: () => true},
+                    ],
+                );
+            if (!account) {
+                decideClaim();
+                const reason = 'no engine account is configured';
+                port.signal?.agentWorkerIdle?.({workerId, reason});
+                return {claimed: false, resumed, reason};
+            }
             const claimed = (await agentTicketClaim(
                 {
                     workerId,
@@ -102,7 +129,8 @@ export default handler(
             const sessionId = String(claimed.session.sessionId);
             const ticket = claimed.ticket;
             // The claim is what opens a session's flow, so it is announced before the work starts and
-            // named by the ticket and the worker that took it.
+            // named by the ticket and the worker that took it — with the decision that caused it.
+            decideClaim();
             port.signal?.agentTicketClaimed?.({
                 workerId,
                 ticketId: String(ticket.ticketId ?? ''),

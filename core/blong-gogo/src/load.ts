@@ -1739,7 +1739,36 @@ export default async function loadRealm<T extends TSchema>(
                         ) {
                             api![itemName] = new (fn as IConstructor)(config, api);
                             await api![itemName].init?.();
-                            if (itemName === 'log') {
+                            if (itemName === 'log' && platformApi.platform === 'server') {
+                                // A destination, named by configuration rather than by a dependency: the
+                                // framework loads the module or builds the sink the config names and
+                                // installs what it answers, so a process can send its records to a
+                                // viewer without `core/blong-gogo` naming one (`@@D-930`). Installed
+                                // before the realms load, which is the first moment the log exists and
+                                // the last before anything worth watching happens.
+                                //
+                                // Imported through the same non-literal specifier every server half
+                                // below uses: resolving a module needs `node:module`, and this file is
+                                // bundled for a page as well as for a process, where one `node:` import
+                                // costs the page its whole module chain (`@@T-732`).
+                                const {installDestination} = (await import(
+                                    /* @vite-ignore */ './destination' + extension
+                                )) as typeof import('./destination.ts');
+                                const destination = await installDestination(
+                                    (config as {destination?: unknown} | undefined)?.destination,
+                                    (message, reason) => {
+                                        const warn = api!.log?.logger('warn', {
+                                            name,
+                                            context: 'log',
+                                        });
+                                        warn?.warn?.({reason}, message);
+                                    },
+                                );
+                                // Closed with the process, so the last batch is sent rather than lost
+                                // in a socket's queue. A process killed by a signal never reaches
+                                // `beforeExit`, which is why the writer also flushes on its own timer.
+                                if (destination !== undefined)
+                                    process.once?.('beforeExit', () => destination.close());
                                 logger = api!.log?.logger(
                                     mergedConfig[rootKind === 'browser' ? 'browser' : 'server']
                                         ?.load?.logLevel,

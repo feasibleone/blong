@@ -4,7 +4,7 @@
 
 import dgram from 'node:dgram';
 import {test} from 'tap';
-import {UdpReceiver} from './udp-receiver.js';
+import {UdpReceiver} from './udp-receiver.ts';
 
 test('UdpReceiver', async t => {
     t.test('receives and reassembles single-packet batch', async t => {

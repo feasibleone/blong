@@ -84,6 +84,25 @@ export function callTraceConfig(): CallTraceConfig {
     return config;
 }
 
+/**
+ * Change part of the configuration, now.
+ *
+ * The switch a **running** process needs. The whole block is replaced once at load
+ * (`configureCallTrace`, from `log.calls`) and a value that can only change then is a value an
+ * operator cannot use to quiet a noisy deployment without restarting it — which for a flows-based
+ * ledger means the only choice was between everything and nothing.
+ *
+ * This is also the seam a source other than configuration will push through: a deployment that
+ * keeps the decision in its database, or an endpoint an operator calls, sends a patch here and
+ * nothing else in the package learns about that source (@@D-941). `off` is **replaced** rather than
+ * merged, because a list that merged could never lose an entry — the patch says what it wants, and
+ * a caller that only means to add a namespace sends the whole list.
+ */
+export function patchCallTrace(next: Partial<CallTraceConfig>): CallTraceConfig {
+    configureCallTrace({...config, ...next});
+    return config;
+}
+
 /** Does `pattern` name this entry method? */
 function matches(pattern: string, entry: string): boolean {
     if (pattern.length === 0) return false;

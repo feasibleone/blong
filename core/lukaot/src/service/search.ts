@@ -56,7 +56,12 @@ export function recordText(event: IngestEvent): string {
     return (
         [event.signal, event.message, event.msg, event.operation, event.service]
             .filter(part => typeof part === 'string' && part.length > 0)
-            .join(' ') || event.signal
+            .join(' ') ||
+        // A record with no identifier and no text of its own is still findable by the flow it
+        // belongs to, which is the only name it has (`@@D-940`); the id is the last resort, so the
+        // answer is never the empty string, which would match every query equally.
+        event.flow?.kind ||
+        event.id
     );
 }
 
@@ -87,16 +92,18 @@ function tokensOf(query: string): string[] {
  * `agentTicketSkipped` in its message and another signal in its name should rank the named one
  * first: a reader searching for a signal is almost always holding part of its name.
  */
-function scoreOf(haystack: string, ref: string, tokens: readonly string[]): number {
+function scoreOf(haystack: string, ref: string | undefined, tokens: readonly string[]): number {
     const hay = haystack.toLowerCase();
-    const name = ref.toLowerCase();
+    // A record that names no identifier earns no name bonus — it has none to match, and scoring it
+    // as if it did would rank it above a record whose identifier really contains the token.
+    const name = ref?.toLowerCase() ?? '';
     let score = 0;
     for (const token of tokens) {
         if (!hay.includes(token)) {
             continue;
         }
         score += 1;
-        if (name.includes(token)) {
+        if (name !== '' && name.includes(token)) {
             score += 2;
         }
     }
@@ -111,11 +118,7 @@ function scoreOf(haystack: string, ref: string, tokens: readonly string[]): numb
  * reference, so two equally good matches rank deterministically rather than by the order the ledger
  * happens to hold them in.
  */
-export function searchSignals(
-    ledger: SignalLedger,
-    query: string,
-    limit = 10,
-): SignalResult[] {
+export function searchSignals(ledger: SignalLedger, query: string, limit = 10): SignalResult[] {
     const tokens = tokensOf(query);
     if (tokens.length === 0) {
         return [];
@@ -139,11 +142,7 @@ export function searchSignals(
  * not a record result. The bound is therefore the retention bound — signals times the per-signal
  * limit — rather than anything traffic can grow.
  */
-export function searchRecords(
-    exemplars: ExemplarStore,
-    query: string,
-    limit = 10,
-): RecordResult[] {
+export function searchRecords(exemplars: ExemplarStore, query: string, limit = 10): RecordResult[] {
     const tokens = tokensOf(query);
     if (tokens.length === 0) {
         return [];

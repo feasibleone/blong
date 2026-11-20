@@ -40,8 +40,21 @@ const SETTLE_MS = {
     'logviewer--filtered-server': 8000,
 };
 
+/**
+ * The window every story is rendered in.
+ *
+ * 1920x1080 because the viewer is a wide table: at the 1280 the runner defaults to, a shot with an
+ * expanded record cut the JSON in the last column, and a screenshot that hides a column measures the
+ * screenshot rather than the viewer.
+ */
+const VIEWPORT = {width: 1920, height: 1080};
+
 /** @type {import('@storybook/test-runner').TestRunnerConfig} */
 module.exports = {
+    async preVisit(page) {
+        await page.setViewportSize(VIEWPORT);
+    },
+
     async postVisit(page, context) {
         // Lazily extend expect inside the Jest test context
         // eslint-disable-next-line @typescript-eslint/no-require-imports

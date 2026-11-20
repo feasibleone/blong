@@ -197,6 +197,38 @@ t.test('an outermost entry mints a flow and publishes it for the calls inside it
     t.end();
 });
 
+t.test('an outermost entry states the intent it serves and who asked for it', t => {
+    const meta: IMeta = {
+        mtid: 'request',
+        method: 'sport.athlete.get',
+        auth: {actorId: 'u-42'},
+    };
+    t.same(
+        runInFlow(meta, 'sport.athlete.get', () => currentContext().intent),
+        {name: 'sport.athlete.get', actor: 'u-42'},
+        'the method is what the work is for, and the authorised actor is who asked',
+    );
+    t.same(
+        runInFlow({mtid: 'request', method: 'sport.athlete.get'}, 'sport.athlete.get', () =>
+            currentContext().intent,
+        ),
+        {name: 'sport.athlete.get'},
+        'an unauthorised request has no actor, and is not given an invented one',
+    );
+    t.equal(
+        runInFlow({mtid: 'request'}, '', () => currentContext().intent),
+        undefined,
+        'a flow that named no kind has no intent worth recording',
+    );
+    // A nested leg inherits the entry's intent rather than restating its own method as the reason the
+    // request exists: the question the intent answers is asked once, at the boundary.
+    const nested = runInFlow(meta, 'sport.athlete.get', () =>
+        runInFlow(meta, 'db/sport.athlete.get', () => currentContext().intent),
+    );
+    t.equal(nested?.name, 'db/sport.athlete.get', 'and an inner entry may state its own');
+    t.end();
+});
+
 t.test('a trace handed to the entry is reused rather than replaced', t => {
     const meta: IMeta = {mtid: 'request', method: 'm', forward: {'x-b3-traceid': 'tr-9'}};
     t.equal(

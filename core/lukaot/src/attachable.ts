@@ -73,6 +73,9 @@ export const vocabulary = {
     withFlow: <T>(identity: Parameters<AttachedVocabulary['withFlow']>[0], fn: () => T): T =>
         attached === undefined ? fn() : attached.withFlow(identity, fn),
 
+    withIntent: <T>(intent: Parameters<AttachedVocabulary['withIntent']>[0], fn: () => T): T =>
+        attached === undefined ? fn() : attached.withIntent(intent, fn),
+
     step: async <T>(name: string, fn: () => Promise<T> | T): Promise<T> =>
         attached === undefined ? fn() : attached.step(name, fn),
 

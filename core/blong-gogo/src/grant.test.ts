@@ -41,6 +41,26 @@ t.test('the default lifetime is minutes, not a session', async t => {
     t.end();
 });
 
+t.test('a gateway holding only the public half still verifies', async t => {
+    // What the running gateway actually has: the MLE plugin replaces `config.sign` with the public
+    // JWK so private material stays out of every configuration snapshot (@@D-441), and `grantKeyFrom`
+    // hands that to this function. Verification needs no private half, and refusing a key without one
+    // made every grant a request nobody could act on — the header arrived, the token was genuine and
+    // the flow recorded as if none had been sent (@@F-780).
+    const {privateKey} = await generateKeyPair('ES384', {extractable: true});
+    const jwk = {...(await exportJWK(privateKey)), alg: 'ES384'};
+    const {d: _d, ...publicJwk} = jwk;
+    const token = await mintGrant({cap: ['calls'], key: jwk});
+
+    t.equal(
+        (await verifyGrant(token, publicJwk))?.cap.join(),
+        'calls',
+        'the public half is enough to check a signature',
+    );
+    t.equal(await verifyGrant(token, {generate: true}), undefined, 'a generated key verifies nothing');
+    t.end();
+});
+
 t.test('an expired grant is no grant', async t => {
     // Signed with a key this process does not hold, so the failure is the expiry
     // and not the signature: the token below is well-formed in every other way.

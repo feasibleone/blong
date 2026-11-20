@@ -107,7 +107,10 @@ function fakePort(id: string, options: {configChanged?: boolean; throws?: boolea
     return port;
 }
 
-function fakeRegistry(ports: Record<string, FakePort>): IReloadRegistry {
+function fakeRegistry(
+    ports: Record<string, FakePort>,
+    logComponent?: {configChanged?: (...args: unknown[]) => void},
+): IReloadRegistry {
     return {
         ports: {keys: () => Object.keys(ports)},
         async getPort(id) {
@@ -116,6 +119,7 @@ function fakeRegistry(ports: Record<string, FakePort>): IReloadRegistry {
         async createPort(id) {
             return ports[id];
         },
+        ...(logComponent === undefined ? {} : {logComponent}),
     };
 }
 
@@ -162,6 +166,36 @@ test('applyConfigReload — an unrelated key leaves a port running', async t => 
 
     t.equal(reloaded, 1, 'only the affected port was reached');
     t.equal(untouched.calls.length, 0, 'the unrelated port was not stopped or started');
+    t.end();
+});
+
+test('applyConfigReload — the log component is asked, because it is not a port', async t => {
+    // `log.calls` decides whether the flow ledger sees anything at all, and the log is not a port:
+    // without this pass a switch in the config file would only take effect at the next start-up
+    // (@@D-941). It is asked after the ports, and it decides for itself whether its block moved.
+    const port = fakePort('payment.adapter.db');
+    const asked: unknown[][] = [];
+    const registry = fakeRegistry(
+        {'payment.adapter.db': port},
+        {
+            configChanged: (...args: unknown[]) => {
+                asked.push(args);
+            },
+        },
+    );
+    const next = {payment: {adapter: {db: {host: 'b'}}}};
+
+    await applyConfigReload(
+        registry,
+        affectedNamespaces(reloadDiff, registry.ports.keys()),
+        reloadDiff,
+        next,
+        {},
+        {},
+    );
+
+    t.equal(asked.length, 1, 'asked once, whatever the ports needed');
+    t.equal(asked[0]?.[1], next, 'with the new effective config, so it can compare its own block');
     t.end();
 });
 

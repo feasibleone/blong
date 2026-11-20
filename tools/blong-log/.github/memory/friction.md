@@ -14,6 +14,12 @@ open (3)
   log
 - `F-541` · tools/blong-log — The storybook runner takes fewer options than it lists
 
+resolved (2)
+
+- `F-773` · tools/blong-log — The log viewer could not be started or opened, and no test noticed
+- `F-774` · tools/blong-log — An expanded grid row was measured, so it flickered and clipped its own
+  detail
+
 <!-- /memory:index -->
 
 ## Open
@@ -73,3 +79,51 @@ Probing an option costs a full storybook run, so try the space form of a jest op
 concluding the runner does not support it.
 
 ## Resolved
+
+### F-773 — The log viewer could not be started or opened, and no test noticed
+
+> _2026-11-20 · tools/blong-log · resolved_
+
+Reviewing `tools/blong-log` against lukaot turned up three defects that no test covered, because
+each one is outside what the package tests: its producer was a pino transport and the framework had
+stopped writing through pino, so the server had nothing feeding it; `public/index.html` did not
+exist in any environment, so `/` answered 404 and the UI could not be opened at all; and its local
+imports used `.js` specifiers that only the tap loader resolves, so the documented `npx blong-log`
+could not start.
+
+None of the three failed a test, and none would fail one now unless a test opened the page or
+started the CLI. That is the lesson: a tool with a rendered surface needs one test that starts it
+the way a person does and asks for what a person asks for — the page, and an entry in it. The e2e
+test written with this change does the second half (a lukaot writer feeding the server, read back
+through the API); the first is the remaining gap and is recorded as a todo.
+
+Closed: producer moved to a lukaot writer with an e2e test, index.html added, .ts/.tsx specifiers,
+request-derived addresses; the CLI smoke test is T-742.
+
+### F-774 — An expanded grid row was measured, so it flickered and clipped its own detail
+
+> _2026-11-20 · tools/blong-log · resolved_
+
+The grid has to be told a row's height as data, not as a function: `rowHeight` on the column config
+is one number for every row, and a function is silently ignored, which is why the expanded rows were
+drawn at the theme's default and the detail was clipped. `rowHeight` on the row object is read, and
+`_rowHeightFromData` makes the virtual scroller add up the same per-row heights — without it the
+scroll range is computed from the default and an expanded row near the end cannot be reached.
+
+`autoRowHeight` measures the rendered cell instead. That is what made an expanded row scrolled out
+of view come back collapsed for a frame: it is drawn at its closed height, then it jumps when the
+measurement lands, so the scroller repositions itself and a scroll gesture over that row can stop
+working. The height is therefore derived from the record alone — bytes for a frame, lines for a
+document — and never measured; the detail scrolls inside its own viewport instead.
+
+Three more things this cost, all visible rather than diagnosed. A cell has to be the line plus the
+padding or its text is cut in half: the theme pads a cell by 8px and sets a 20px line height, so the
+28px row that looked dense was clipping every column, and the fix is a 16px line, 4px padding and a
+26px row. `white-space: pre-wrap` on an expanded cell renders the newlines and indents between the
+JSX elements as lines, which is the band of blank space that appeared above the first panel — it
+belongs on the text that needs it. And the message and the JSON expand separately: one set of
+expanded ids meant opening a record's JSON also opened its sentence.
+
+Keyboard: space toggles the detail of the column the focused cell belongs to, read from the cell's
+`data-col-id` (written with a leading colon, as `data-row-id` is) rather than from the grid's state,
+which reports cells and rows under keys this version does not document.

@@ -19,7 +19,7 @@ import {library} from '@feasibleone/blong';
  * without that key, and the handler's defaults decide what it means.
  *
  * The parser knows nothing about sports, people or the columns of either: the
- * handler maps a short key (`code`, `sex`) to a column and fills what the file
+ * handler maps a short key (`code`, `gender`) to a column and fills what the file
  * left out, so a realm can change its vocabulary without touching this.
  *
  * Wire: a library function of the `sport.db` handler group, used by
@@ -96,12 +96,12 @@ export default library(() => {
         },
 
         /**
-         * The sex an event name states: `Men`/`Women` at the start, or `Mixed`
+         * The gender an event name states: `Men`/`Women` at the start, or `Mixed`
          * when men and women contest it together. A name that states neither is
-         * an event both sexes contest separately, and has no sex of its own —
+         * an event both genders contest separately, and has no gender of its own —
          * which is not the same as `mixed`.
          */
-        seedSex(name: string): string | undefined {
+        seedGender(name: string): string | undefined {
             if (/\bWomen\b/.test(name)) return 'female';
             if (/\bMen\b/.test(name)) return 'male';
             if (/\bMixed\b/.test(name)) return 'mixed';

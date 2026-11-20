@@ -65,7 +65,13 @@ import {
 } from '@feasibleone/lukaot/service';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
-import {callRecord, configureCallTrace, type CallTraceConfig} from './callTrace.ts';
+import {
+    callRecord,
+    callTraceConfig,
+    configureCallTrace,
+    patchCallTrace,
+    type CallTraceConfig,
+} from './callTrace.ts';
 import {frameworkSignalRegistry, default as frameworkVocabulary} from './frameworkSignals.ts';
 import {signalBindings, signalView, type ISignalHost, type SignalWriter} from './signals.ts';
 
@@ -550,8 +556,18 @@ export default class LukaotLog extends Internal implements ILog {
     #write(line: string, record?: LogRecord): void {
         const primary = this.#config.writer;
         if (primary === null) return;
-        if (primary) primary.write(line, record);
-        else getWriter()?.write(line, record);
+        // A call-phase record is the call ledger's input rather than a line a person reads: the flow
+        // page, every diagram and the flow's own executions are drawn from what arrives here, so
+        // there is no fallback if they stop being produced, while printing two lines per call is
+        // what `log.calls.stdout` opts into (@@D-223). So the terminal is skipped for them and the
+        // service still gets them — which is what "retained and sent to the cluster either way"
+        // means, and what a level above `debug` used to defeat by filtering them out before this
+        // point.
+        const silent = isCallRecord(record) && this.#config.calls?.stdout !== true;
+        if (!silent) {
+            if (primary) primary.write(line, record);
+            else getWriter()?.write(line, record);
+        }
         // The declared identifier reaches this point as a *field* — it is written that way because
         // the printer prints it there (`signal: frameworkWatchFileChanged`) — while the service counts
         // by the record's identity, which is the top-level member. Promoting it is what makes a
@@ -567,6 +583,47 @@ export default class LukaotLog extends Internal implements ILog {
     #complain(message: string, error: unknown): void {
         const reason = error instanceof Error ? error.message : String(error);
         this.#logger.warn(message, {reason});
+    }
+
+    /**
+     * Turn call recording on or off while the process runs — no restart, no reload.
+     *
+     * The imperative half of `log.calls`, and the seam every other source uses: a config reload
+     * pushes the new block through here, an operator or an endpoint does the same, and a deployment
+     * that keeps the decision in its database only has to reach this method once. Nothing is
+     * recreated — the channel asks lukaot's capability per phase — so a switch takes effect on the
+     * next call the process makes (@@D-941).
+     *
+     * The switch reports itself: a deployment whose flow pages are empty is told here whether that
+     * was a decision or a fault, and a run's own log keeps the reason it went quiet.
+     */
+    public setCallRecording(next: Partial<CallTraceConfig>): CallTraceConfig {
+        const before = callTraceConfig();
+        this.#config = {...this.#config, calls: {...this.#config.calls, ...next}};
+        const after = patchCallTrace(next);
+        if (enabledOf(before) !== enabledOf(after)) {
+            this.signal?.frameworkCallRecordingChanged?.({
+                state: enabledOf(after) ? 'on' : 'off',
+            });
+        }
+        return after;
+    }
+
+    /**
+     * Re-apply the block a config change brought, in place.
+     *
+     * A config file that changed is already re-read by the watch loop, and this is the log's half of
+     * "reconfigured without dropping anything": the log component is not a port, so nothing in the
+     * port pipeline would have reached it, and a switch that only took effect at start-up is a
+     * switch an operator cannot use on the process that is misbehaving.
+     */
+    public configChanged(_diff: unknown, next: unknown, prev: unknown): void {
+        const block = (value: unknown): CallTraceConfig | undefined =>
+            (value as {log?: {calls?: CallTraceConfig}} | undefined)?.log?.calls;
+        const before = block(prev) ?? this.#config.calls;
+        const after = block(next);
+        if (after === undefined || JSON.stringify(before) === JSON.stringify(after)) return;
+        this.setCallRecording(after);
     }
 
     public override get signal(): VocabularyProxy | undefined {
@@ -776,8 +833,15 @@ export default class LukaotLog extends Internal implements ILog {
     }
 
     #callsChannel(logger: LukaotLogger): ICallLog {
+        // The channel's own logger is bound at `debug` — the level a call record is — because the
+        // level is a filter, not a decision here: whether a flow records calls at all is the
+        // `calls` capability (`@@D-223`), and a process configured at `info` was silently dropping
+        // every start, end and receipt, which left every flow page empty. What the level decides is
+        // *printing*; `#write` skips the terminal for these records unless `log.calls.stdout` asks.
+        const bound = logger.child({});
+        bound.setLevel('debug');
         return createCallChannel(({leg, phase, message, error, fields}) => {
-            logger[phase === 'error' ? 'warn' : 'debug'](message, {
+            bound[phase === 'error' ? 'warn' : 'debug'](message, {
                 ...callRecord(leg, phase),
                 ...(error === undefined ? {} : {err: error}),
                 ...fields,
@@ -789,4 +853,26 @@ export default class LukaotLog extends Internal implements ILog {
 /** Whether a `cache` value is a store rather than the block that opens one. */
 function isStore(value: {dir?: string; limit?: number} | RecordStore): value is RecordStore {
     return typeof (value as RecordStore).put === 'function';
+}
+
+/** One bit of the call switch, for a comparison that has to say whether anything moved. */
+function enabledOf(config: CallTraceConfig): boolean {
+    return config.enabled !== false;
+}
+
+/**
+ * Is this record one phase of a call, rather than a line a person reads?
+ *
+ * Recognised by the envelope `callRecord` writes — `$meta.mtid` plus a method naming the leg and the
+ * phase — which is the same pair the ledger reads a call out of, so the test cannot drift from what
+ * the service expects (@@D-223). Read at the one point that decides what reaches the terminal.
+ */
+function isCallRecord(record: LogRecord | undefined): boolean {
+    const meta = (record?.fields as {$meta?: {mtid?: unknown; method?: unknown}} | undefined)
+        ?.$meta;
+    return (
+        meta?.mtid === 'event' &&
+        typeof meta.method === 'string' &&
+        /\.(start|end|error|received|answered)$/.test(meta.method)
+    );
 }

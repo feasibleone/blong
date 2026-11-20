@@ -2212,6 +2212,9 @@ importers:
       '@feasibleone/blong-server':
         specifier: workspace:^1.0.0
         version: link:../../core/blong-server
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../../core/lukaot
       tinyglobby:
         specifier: ^0.2.16
         version: 0.2.17
@@ -2811,6 +2814,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../../core/blong
+      '@feasibleone/lukaot':
+        specifier: workspace:^
+        version: link:../../core/lukaot
       pino:
         specifier: ^10.3.1
         version: 10.3.1

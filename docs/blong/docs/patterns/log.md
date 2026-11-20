@@ -1,19 +1,22 @@
 # Real-Time Log
 
-The Blong framework ships with a real-time log viewer. When the framework is running locally, a log
-server is available at `http://127.0.0.1:9998`. All queries use a REST API.
+The Blong framework ships with a real-time log viewer. `blong-log` serves the viewer and its REST/
+WebSocket API on `http://127.0.0.1:9998`, and a process feeds it through the **writer** lukaot hands
+its records to — no pino in the path any more. Which writer is a matter of configuration
+(`log.destination`), not of a dependency, so the framework does not name the viewer and the viewer
+does not have to exist.
 
 ## How it fits together
 
-Entries reach a reader through two **independent** pino transports. The live viewer and the on-disk
-cache are separate sinks, not two views of one store, so an entry missing from the viewer is not
-evidence that it was never written to disk (or the other way round):
+A process writes records; the viewer keeps a recent window of them in memory and the CLI reads the
+ones on disk. The two destinations are **independent**, not two views of one store, so an entry
+missing from the viewer is not evidence that it was never written to disk (or the other way round):
 
 ```mermaid
 flowchart LR
-    app["handlers, adapters, orchestrators"] --> pino["pino"]
-    pino -->|"UDP transport — batched,<br/>8-byte batch id"| srv["log server :9998"]
-    pino -->|"pino-cacache transport"| disk["cacache on disk<br/>~/.blong/log-cache"]
+    app["handlers, adapters, orchestrators"] --> emitter["lukaot records"]
+    emitter -->|"createUdpWriter — batched,<br/>8-byte batch id"| srv["blong-log server :9998"]
+    emitter -->|"pino-cacache transport"| disk["cacache on disk<br/>~/.blong/log-cache"]
     srv --> buf["circular buffer in memory"]
     buf --> ws["WebSocket<br/>live, filtered per client"]
     buf --> rest["REST API<br/>/api/entries, /api/search"]
@@ -27,23 +30,25 @@ The live path, end to end:
 ```mermaid
 sequenceDiagram
     participant App as handler / adapter
-    participant Tr as pino UDP transport
-    participant LS as log server :9998
+    participant W as createUdpWriter
+    participant LS as blong-log :9998
     participant Buf as circular buffer
     participant UI as LogViewer
 
-    App->>Tr: log entry (JSON)
-    Tr->>LS: UDP packets carrying a batch, tagged with an 8-byte batch id
-    LS->>LS: reassemble the batch in order
-    LS->>Buf: parse the JSON, store it with a minted ULID
-    UI->>LS: GET /api/entries (on open)
+    App->>W: record (structured JSON)
+    W->>LS: UDP packets carrying a batch, tagged with an 8-byte batch id
+    LS->>LS: reassemble the batch
+    LS->>Buf: store it with a minted ULID
+    UI->>LS: GET /api/config, then /api/entries
     LS-->>UI: recent entries
     UI->>LS: WebSocket subscribe, with filters
     LS-->>UI: matching entries as they arrive
 ```
 
 The batch id is what lets the server put batched packets back in order; the ULID is what gives every
-entry a stable key, in the buffer and in the on-disk cache alike.
+entry a stable key. The **record** is what goes on the wire, not the rendered line: lukaot hands a
+destination both, and a viewer given only the line could show the sentence but none of the fields a
+capture row draws.
 
 ## Quick Reference
 
@@ -60,6 +65,10 @@ curl -s 'http://127.0.0.1:9998/api/search?search=connection+refused' | jq '.entr
 # Filter by service name
 curl -s 'http://127.0.0.1:9998/api/entries?name=gateway&limit=20' | jq '.entries[]'
 
+# One declared signal, and one capture shape
+curl -s 'http://127.0.0.1:9998/api/entries?signal=frameworkPortFailure' | jq '.entries[]'
+curl -s 'http://127.0.0.1:9998/api/entries?capture=tcp.frame' | jq '.entries[]'
+
 # Trace a request across services
 curl -s 'http://127.0.0.1:9998/api/entries?traceId=abc-123' | jq '.entries[]'
 ```
@@ -73,7 +82,9 @@ Returns the most recent log entries. Supports filtering.
 | Parameter | Type   | Description                                                           |
 | --------- | ------ | --------------------------------------------------------------------- |
 | `level`   | string | Minimum log level: `trace`, `debug`, `info`, `warn`, `error`, `fatal` |
-| `name`    | string | Service name (substring match, case-insensitive)                      |
+| `name`    | string | The port or component that reported it — `fields.context`, substring  |
+| `signal`  | string | One declared identifier, exact match                                  |
+| `capture` | string | One capture shape: `tcp.frame`, `http.exchange`, `json`               |
 | `traceId` | string | Exact trace ID match                                                  |
 | `search`  | string | Free-text search across all properties                                |
 | `after`   | string | Return only entries after this ULID (pagination)                      |
@@ -137,19 +148,159 @@ curl -s "http://127.0.0.1:9998/api/entries?after=$LAST_ID" \
 
 ## Log Entry Properties
 
-| Property    | Type   | Description                                                     |
-| ----------- | ------ | --------------------------------------------------------------- |
-| `id`        | string | ULID — monotonically increasing, sortable                       |
-| `time`      | number | Unix timestamp in milliseconds                                  |
-| `level`     | number | Pino level: 10=trace 20=debug 30=info 40=warn 50=error 60=fatal |
-| `levelName` | string | Human-readable level name                                       |
-| `msg`       | string | Log message                                                     |
-| `name`      | string | Service/module name                                             |
-| `traceId`   | string | Distributed trace ID                                            |
-| `err`       | object | Error details: `{message, stack, type}`                         |
-| `req`       | object | HTTP request: `{method, url, headers, body}`                    |
-| `res`       | object | HTTP response: `{statusCode, headers, responseTime}`            |
-| `$meta`     | object | Blong framework metadata: `{mtid, method, …}`                   |
+A record is lukaot's: the envelope every line carries, and the values in `fields`.
+
+| Property    | Type   | Description                                                                |
+| ----------- | ------ | -------------------------------------------------------------------------- |
+| `id`        | string | ULID — monotonically increasing, sortable                                  |
+| `time`      | number | Unix timestamp in milliseconds                                             |
+| `level`     | number | 10=trace 20=debug 30=info 40=warn 50=error 60=fatal                        |
+| `levelName` | string | Human-readable level name                                                  |
+| `msg`       | string | The sentence the declaration (or the call) carries                         |
+| `service`   | string | The service that wrote it                                                  |
+| `signal`    | string | The declared identifier — promoted out of `fields` for a sink that indexes |
+| `fields`    | object | The line's own values: `context`, `params`, `capture`, `shape`, `rung`, …  |
+| `err`       | object | The failure: `{type, message, stack}`                                      |
+| `refs`      | object | `record`, `template`, and `parent` when the line continues another         |
+| `traceId`   | string | Distributed trace ID                                                       |
+| `req`/`res` | object | The pre-lukaot HTTP shape, still rendered when a record carries it         |
+
+The **`Where`** column is `fields.context` — the port's instance id (`srv.db`) or the component's
+class name — because with one service writing every line it is the identity a reader filters by.
+
+## Captures
+
+A capture is a payload record: `fields.capture` names the declaration, `fields.shape` says which
+renderer produced it and `fields.rung` says how much was kept (`line`, `headers`, `body`, `full`,
+`hex`, `keys`). The viewer draws each of the three shapes the way it reads best:
+
+- **`http.exchange`** — the phase, the request line or the status, the headers, and the body as
+  JSON.
+- **`tcp.frame`** — a hex dump: offset, sixteen bytes per row, and their ASCII beside them, which is
+  how a text protocol opening (`0200`, an MTI, a PEM header) is visible without decoding the bytes.
+- **`json`** — the keys first, then the document.
+
+Expanding a capture row draws the payload, headed by the shape itself — `tcp.frame`, `rung full`,
+`out`, `40 B` — so the panel says what it is without the row repeating the sentence it was logged
+with. The `⌗` mark in the `Signal` column says a row carries one. A capture kept at the `line` rung
+has no payload and says so, which is the difference between a payload that was never configured and
+one that was configured too cheaply.
+
+## What else a record says
+
+A line is not only a sentence. Above it, an expanded row draws the rest as a strip of chips: the
+**intent** it ran under (`release-cd (deployer@comesa)`), the **flow** and step it is in, the
+**leg** it is one end of (`controller → cluster · 1.2`) with the run's status, the record that
+**caused** it, and the **decision** it reports. Every chip naming an identifier is a filter — the
+run id asks the table for the rest of that run, the parent for the record that caused this one —
+which is what makes the strip a place to start reading from rather than a datum to copy out.
+
+A decision gets a panel of its own under the strip: the candidates in **evaluation order** with the
+chosen one marked, because the order is the rule being explained. The values it was decided from are
+usually absent — retained in the process that decided rather than transmitted — and the panel says
+so instead of drawing an empty block.
+
+A request and a response are read in **either spelling**: lukaot writes `operation`/`target` and
+`status`/`elapsedMs`, and a record from before the conversion wrote `method`/`url` and
+`statusCode`/`responseTime`. `exchangeOf` knows both, so a framework record no longer renders as an
+empty request line.
+
+The two wide columns expand **independently**: clicking (or pressing space in) the message opens the
+record's detail, the same in the JSON column opens the record itself. The space bar toggles
+whichever of the two the focused cell belongs to, the way it toggles a disclosure in a file tree.
+
+A row is drawn at a height derived from the record — the dump's rows, the document's lines, the
+sentence — and never measured, so scrolling the table past an expanded row does not re-draw it
+collapsed for a frame. The detail scrolls inside its own viewport once it outgrows the cap, which is
+what keeps its end reachable instead of pushing the rows below it out of the table.
+
+## Running it locally
+
+```bash
+cd tools/blong-log
+node build-client.js # once, and after a change to the client
+node src/cli.ts # viewer on http://127.0.0.1:9998
+```
+
+Then point a process at it. The framework reads `log.destination` from its configuration, so there
+is nothing to add to the code:
+
+```yaml
+log:
+    destination: {port: 9999} # host too, when the collector is not on this machine
+```
+
+The sink itself is lukaot's — `createUdpWriter` in `@feasibleone/lukaot/node` — so the address is
+all a process has to know: nothing extra to install, and no viewer package named in a configuration.
+`destination: 'udp://collector:9999'` and `destination: true` (defaults) are the same thing in the
+other spellings.
+
+A destination the framework does not ship is a **module**: the loader imports it and calls its
+**default export** with the options, and what comes back must be a lukaot `Writer` — an object with
+`write(line, record)`.
+
+```yaml
+log:
+    destination: {module: './tools/my-writer.ts', options: {…}}
+```
+
+The module name is resolved from the working directory the configuration was read from, so a bare
+package name means "installed beside the process" and a relative path names a file.
+
+A destination is **added** to what a process already writes, never a replacement: the terminal keeps
+its copy and the collector gets one too. Installing it as the only writer silenced the process
+completely — a run that says "nothing to run" on stdout said nothing at all, and the test that waits
+for that line hung for its full two minutes.
+
+A destination that cannot be built is reported through the log
+(`log.destination: … could not be imported; records stay where they were`) and then skipped: a wrong
+collector address costs the records it would have received, never the process that was writing them.
+One that loads is closed with the process — `close()`, then `flush()` — so the last batch is sent
+rather than lost in a socket's queue.
+
+The same thing in code, for a process that decides for itself:
+
+```ts
+import {createUdpWriter, setWriter} from '@feasibleone/lukaot/node';
+
+setWriter(createUdpWriter({port: 9999}));
+```
+
+Either way the addresses the viewer is told (`/api/config`) are taken from the request that asks, so
+a page reached through a forwarded port, an ingress or another host name talks to the server that
+served it.
+
+## What a deployment needs
+
+The viewer runs on a developer's machine today; putting it in a cluster is not done, and this is
+what is missing rather than a description of how it works.
+
+**A CRD field.** `BlongDeployment` already has an `assetServer` block for "a process that serves a
+bundle", and a `logViewer` block beside it is the same shape:
+`{enabled, udpPort, httpPort, bufferSize, host}`. The tree writer would emit the Deployment and its
+Service, and — the part that matters — give every process in the suite the address to write to.
+
+**One address for the whole namespace.** The writer is configured per process, so "watch everything
+in the namespace" is a matter of that one setting reaching every pod. The `log.destination` block is
+already the wiring half — a `module` and its `options` handed to every process, with no dependency
+from the framework onto the viewer — so what is missing is only the deployment writing it: the
+`logViewer` block naming the Service, and the tree writer putting its address in every process's
+configuration. A DaemonSet collecting from its own node's pods is the alternative and needs no
+configuration at all, at the cost of a moving part per node.
+
+**Authentication, reusing the portal's.** The server's REST and WebSocket are open. The portal
+already authenticates through `blong-login` and authorises through `blong-access`, so the aligned
+answer is a gateway route in front of the viewer rather than a second login: a capability
+(`log.viewer.open`) on the route, the same JWT, the same session. An ingress-level forward-auth is
+the alternative and keeps the framework out of it, at the cost of a second thing to configure.
+
+**A menu item in the portal.** Once the page is behind the portal, the navigation comes from a
+portal contribution like any other: a component that renders the viewer in a tab, registered where
+the portal's other pages are, with the capability above deciding whether a person sees it.
+
+None of the four is started. They are recorded as todos so the next plan can size them, and the
+pieces that already exist — the writer, the request-derived addresses, the filters — are the ones
+they build on.
 
 ## Runtime Introspection Endpoints
 

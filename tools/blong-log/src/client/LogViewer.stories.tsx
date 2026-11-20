@@ -9,17 +9,20 @@ import React from 'react';
 
 import type {Meta, StoryObj} from '@storybook/react-vite';
 
-import type {ClientConfig, LogEntry} from '../types.js';
+import type {ClientConfig, LogEntry} from '../types.ts';
 import {
     darkThemeConfig,
     errorEntries,
     generateLargeDataset,
     httpDetailedEntries,
     lightThemeConfig,
+    lukaotCaptures,
+    lukaotContextRecords,
+    lukaotEntries,
     sampleEntries,
     TRACE_ID_A,
-} from './__fixtures__/data.js';
-import LogViewer from './LogViewer.js';
+} from './__fixtures__/data.ts';
+import LogViewer from './LogViewer.tsx';
 
 const BASE_TIME = new Date('2026-03-02T21:31:10.000Z').getTime();
 // ── Mock WebSocket for Storybook ──────────────────────────────────────────────
@@ -271,7 +274,6 @@ export const SingleTrace: Story = {
         initialEntries: sampleEntries.filter(e => e.traceId === TRACE_ID_A),
     },
 };
-
 // ── Expanded State Stories ────────────────────────────────────────────────────
 
 /**
@@ -330,6 +332,107 @@ export const ExpandedMixedContent: Story = {
             sampleEntries[4].id,
             sampleEntries[10].id,
         ]),
+    },
+};
+
+// ── lukaot stories ───────────────────────────────────────────────────────────
+
+/**
+ * A run as the framework writes it now: declared signals with their values, the three capture shapes,
+ * and a port failure whose error is the record's own.
+ *
+ * The `Signal` column is the line's identity — `frameworkTcpFrame`, `frameworkPortFailure` — and the
+ * capture rows carry a mark that says their payload is drawn when the row is expanded.
+ */
+export const LukaotRecords: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: lukaotEntries,
+    },
+};
+
+/**
+ * Every capture of the run, expanded: an exchange at `body` and at `headers`, a frame at `full`, one at
+ * `hex`, a document at `body`, and one captured at `line` — which is how a reader sees that the rung,
+ * not the shape, decided how much was kept.
+ */
+export const LukaotCapturesExpanded: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: lukaotCaptures,
+        initialExpandedRows: new Set(lukaotCaptures.map(entry => entry.id)),
+    },
+};
+
+/**
+ * The rest of what a record can say, expanded.
+ *
+ * One row reports a **decision** — what the branch was about, every candidate in evaluation order and the
+ * one that was taken — and carries an **intent** and a **flow leg**; the other carries the exchange in the
+ * shape lukaot writes (`operation`/`target`, `status`/`elapsedMs`), which the panel used to read only in
+ * the pino era's spelling and so drew as an empty line.
+ */
+export const LukaotRecordContext: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: lukaotContextRecords,
+        initialExpandedRows: new Set(lukaotContextRecords.map(entry => entry.id)),
+    },
+};
+
+/**
+ * The frame as a hex editor draws it: offset, sixteen bytes, and their ASCII beside them.
+ *
+ * The two frames are one ISO 8583 request and its response — a readable MTI, a binary bitmap that
+ * reads as dots, and the field data after it, which is the contrast the two columns exist for.
+ */
+export const LukaotFrameDump: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: lukaotCaptures.filter(entry => entry.fields?.['shape'] === 'tcp.frame'),
+        initialExpandedRows: new Set(
+            lukaotCaptures
+                .filter(entry => entry.fields?.['shape'] === 'tcp.frame')
+                .map(entry => entry.id),
+        ),
+    },
+};
+
+/**
+ * The same frames in the light theme, which is where the two colours of the dump are easiest to read.
+ */
+export const LukaotFrameDumpLight: Story = {
+    args: {
+        config: lightThemeConfig,
+        initialEntries: lukaotCaptures.filter(entry => entry.fields?.['shape'] === 'tcp.frame'),
+        initialExpandedRows: new Set(
+            lukaotCaptures
+                .filter(entry => entry.fields?.['shape'] === 'tcp.frame')
+                .map(entry => entry.id),
+        ),
+    },
+};
+
+/**
+ * A declared signal expanded: the identifier, the operation and the values the call supplied.
+ * The sentence is the declaration's, so what a reader needs beside it is the data.
+ */
+export const LukaotSignalExpanded: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: lukaotEntries.filter(
+            entry =>
+                entry.fields?.['capture'] === undefined && entry.fields?.['params'] !== undefined,
+        ),
+        initialExpandedRows: new Set(
+            lukaotEntries
+                .filter(
+                    entry =>
+                        entry.fields?.['capture'] === undefined &&
+                        entry.fields?.['params'] !== undefined,
+                )
+                .map(entry => entry.id),
+        ),
     },
 };
 

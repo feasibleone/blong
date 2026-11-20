@@ -36,9 +36,9 @@ export default model(
                                         ],
                                     },
                                 },
-                                disciplineSex: {
-                                    title: 'Sex',
-                                    // Empty: both sexes contest it, each in its own
+                                disciplineGender: {
+                                    title: 'Gender',
+                                    // Empty: both genders contest it, each in its own
                                     // events. `Mixed` is men and women together.
                                     widget: {
                                         options: [
@@ -87,7 +87,7 @@ export default model(
                             'discipline.disciplineCode',
                             'discipline.sportId',
                             'discipline.disciplineKind',
-                            'discipline.disciplineSex',
+                            'discipline.disciplineGender',
                             'discipline.disciplineStatus',
                             'discipline.inclusionDate',
                             'discipline.sourceName',

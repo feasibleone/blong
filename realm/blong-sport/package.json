@@ -42,6 +42,7 @@
         "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-party": "workspace:^1.0.0",
         "@feasibleone/blong-server": "workspace:^1.0.0",
+        "@feasibleone/lukaot": "workspace:^",
         "tinyglobby": "^0.2.16",
         "typebox": "^1.1.5"
     },

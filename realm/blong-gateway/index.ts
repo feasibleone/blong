@@ -64,5 +64,13 @@ export default server(() => ({
                 testRun: {serverGroups: ['test.meter.flow']},
             },
         },
+        playwright: {
+            // Recording is **off** for the browser specs, and the ones that expect call records ask
+            // for them per request with `x-blong-grant` (`@@D-223`). With it off, an execution on
+            // the flow page can only have come from a granted request, so `test/observedFlow.play.ts`
+            // and `test/observedMergeFlow.play.ts` prove the per-request switch rather than passing on
+            // a default.
+            log: {calls: {enabled: false}},
+        },
     },
 }));

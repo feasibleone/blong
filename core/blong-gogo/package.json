@@ -12,7 +12,8 @@
         },
         "./ConfigRuntime.js": "./src/ConfigRuntime.ts",
         "./cli.ts": "./src/cli.ts",
-        "./rawBody": "./src/rawBody.ts"
+        "./rawBody": "./src/rawBody.ts",
+        "./grant.ts": "./src/grant.ts"
     },
     "bin": {
         "blong": "./bin/blong.ts",

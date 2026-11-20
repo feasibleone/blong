@@ -4,6 +4,6 @@
  * @packageDocumentation
  */
 
-export {LogServer} from './server.js';
-export {default as transport} from './transport.js';
-export type {FilterOptions, LogEntry, LogServerOptions} from './types.js';
+export {LogServer} from './server.ts';
+export {default as transport} from './transport.ts';
+export type {FilterOptions, LogEntry, LogServerOptions} from './types.ts';

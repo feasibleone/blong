@@ -1,4 +1,4 @@
-import { withProgress } from '@feasibleone/blong-lib';
+import {withProgress} from '@feasibleone/blong-lib';
 import {
     handler,
     Internal,
@@ -18,7 +18,7 @@ import {
     type IRemote,
     type IWatcher,
 } from '@feasibleone/blong/types';
-import type { Dirent } from 'node:fs';
+import type {Dirent} from 'node:fs';
 import merge from 'ut-function.merge';
 
 import layerProxy from './layerProxy.ts';
@@ -27,8 +27,8 @@ import layerProxy from './layerProxy.ts';
 // puts the chain in the browser's eager module graph, where linking its `node:events`
 // import fails before a single handler runs. The Allure session is ended through a
 // dynamic import for the same reason.
-import type { IAllureRunOptions } from './chain.ts';
-import { runInFlow, withStep } from './responseContext.ts';
+import type {IAllureRunOptions} from './chain.ts';
+import {runInFlow, withStep} from './responseContext.ts';
 
 export interface IWatch {
     start: (realm: IRegistry, remote: IRemote, configOverride: object) => Promise<void>;
@@ -80,7 +80,7 @@ const isHandlerGroup = (filename: string): boolean =>
     /^handlerGroup\.[mc]?[tj]sx?$/i.test(filename);
 
 /** The predicate above, exported so a test pins the convention (like `affectedNamespaces`). */
-export { isHandlerGroup };
+export {isHandlerGroup};
 
 const prefixRE: RegExp = /(?:\d+-)?(.*)/;
 
@@ -144,6 +144,19 @@ export interface IReloadRegistry {
     ports: {keys: () => Iterable<string>};
     getPort(id: string): Promise<IReloadablePort | undefined>;
     createPort(id: string): Promise<IReloadablePort | undefined>;
+    /**
+     * The log component, when the process has one.
+     *
+     * It is not a port, so nothing in the port pipeline above would ever reach it — and it owns
+     * switches that are *configuration*: `log.calls` decides whether the flow ledger, and so every
+     * flow page and every diagram, sees anything at all. A value that could only change at start-up
+     * is a value an operator cannot use on the process that is misbehaving, so the same reload that
+     * reconfigures a port asks the log once. The component compares what it is given and does
+     * nothing when its own block did not move (`@@D-941`).
+     */
+    logComponent?: {
+        configChanged?(diff: ConfigDiff, next: unknown, prev: unknown): Promise<void> | void;
+    };
 }
 
 /**
@@ -191,6 +204,14 @@ export async function applyConfigReload(
         }
         reloaded += 1;
         onReloaded?.(reloaded, total);
+    }
+    // After the ports, so a change that both a port and the log care about reaches the port first:
+    // the log is the thing that reports what happened, and a report written before the switch it
+    // describes would read as if nothing had changed.
+    try {
+        await registry.logComponent?.configChanged?.(diff, next, prev);
+    } catch (error) {
+        onPortError(error);
     }
     return reloaded;
 }

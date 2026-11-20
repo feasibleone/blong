@@ -74,7 +74,7 @@ open (55)
 - `F-766` · core/blong-gogo — A seam has no owner until both halves run in one process
 - `F-771` · core/blong-gogo — A capture read the live config and tripped the factory-phase guard
 
-resolved (42)
+resolved (43)
 
 - `F-094` · core/blong-gogo — Knex `table.list` prefixed table names with the subject twice
 - `F-095` · core/blong-gogo — tap's order-sensitive snapshots broke on an appended `id` field
@@ -129,6 +129,7 @@ resolved (42)
   it
 - `F-772` · core/blong-gogo — The per-instance capture selector the requirement named was not
   implemented
+- `F-780` · core/blong-gogo — A grant never verified: the public half was refused
 
 <!-- /memory:index -->
 
@@ -1593,3 +1594,23 @@ requirement's own YAML would have caught it at the first review of the `when` bl
 
 Closed: when.instance added to the capture policy, matched on the port id and handed to the
 resolver; documented in patterns/lukaot.md and pinned by two tests.
+
+### F-780 — A grant never verified: the public half was refused
+
+> _2026-11-20 · core/blong-gogo · resolved_
+
+The per-request grant never worked against a running gateway, and nothing noticed because no test
+sent a header to a gateway. x-blong-grant was delivered, the token was genuine, and the request
+recorded exactly as if none had been sent: the MLE plugin replaces config.sign with mle.keys.sign so
+private material stays out of a configuration snapshot, and verifyGrant refused a key without a
+private half - the guard was copied from the minting path, where it is right, into the verification
+path, where a public key is the normal shape and all that a signature check needs.
+
+The lesson is about where the guard came from rather than about keys: minting must refuse a public
+key (a token nobody can verify is worse than an error), verifying must not, and the two paths shared
+one resolution. Found by making the flow-diagram specs depend on the grant instead of on the
+recording default, which is the arrangement that would have caught it the first time: a spec that
+passes with calls off can only pass because the header worked.
+
+Fixed: verifyGrant accepts a public-only JWK (minting still refuses one), with a unit test for the
+gateway's shape; the three packages' specs now record only via a grant, which is what proved it.

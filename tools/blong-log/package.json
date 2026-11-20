@@ -36,6 +36,7 @@
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/lukaot": "workspace:^",
         "pino": "^10.3.1",
         "pino-abstract-transport": "^3.0.0",
         "typebox": "^1.1.5",

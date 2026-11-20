@@ -5,6 +5,19 @@ import {
     drawsACall,
 } from '@feasibleone/blong-browser/playwright/diagram';
 import {openPages} from '@feasibleone/blong-browser/playwright/pages';
+import {mintGrant} from '@feasibleone/blong-gogo/grant.ts';
+
+/**
+ * Recording is off in this suite's `playwright` block, so every request this file makes records
+ * only because it carries a `calls` grant: the header is the per-request switch (`@@D-223`), and
+ * asking for it here is what makes these specs prove that switch instead of passing on a default.
+ *
+ * Minted with no key on purpose — the `dev` intent configures the committed development sign key,
+ * which is the one the gateway verifies with, so a checkout needs no setup and CI needs no secret.
+ */
+test.use({
+    extraHTTPHeaders: {'x-blong-grant': await mintGrant({cap: ['calls']})},
+});
 
 /**
  * The kind this realm's own page read produces, and the flow the capture draws.

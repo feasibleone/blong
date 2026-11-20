@@ -143,6 +143,16 @@ export async function mintGrant({
  * `undefined` for anything that does not verify — absent, malformed, expired,
  * signed by another key, or naming a capability this build does not know. The
  * caller treats that as "no capabilities", never as an error.
+ *
+ * A **public** key is the normal shape here and is all verification needs: the
+ * running gateway is handed the public half by the MLE plugin, which replaces
+ * `config.sign` with `mle.keys.sign` so private material never appears in a
+ * configuration snapshot, a diagnostic or a realm's `gateway.config()` (@@D-441).
+ * Refusing a key without a private half here made every grant unverifiable in a
+ * deployment — the header was delivered, the token was valid, and the flow was
+ * still recorded as if none had been sent (@@F-780). Only the `{generate}` spec
+ * answers nothing, and deliberately: a generated key exists in one process, so
+ * no token minted elsewhere can be checked against it.
  */
 export async function verifyGrant(
     token: string | undefined,
@@ -155,7 +165,7 @@ export async function verifyGrant(
     } catch {
         return undefined;
     }
-    if (!jwk || jwk.d === undefined) return undefined;
+    if (!jwk) return undefined;
     try {
         const {payload} = await jwtVerify(token, await importJWK(publicOf(jwk), algorithmOf(jwk)));
         const cap = Array.isArray(payload.cap) ? payload.cap.filter(isCapability) : [];

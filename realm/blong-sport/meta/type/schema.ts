@@ -161,12 +161,12 @@ export default schema(async ({lib: {type}}) => ({
             sportCode: type.stringNull({maxLength: 20}),
             sportKind: type.stringNotNull({maxLength: 20}),
             /**
-             * The sex a *single-sex sport* admits: `male` or `female`. Empty is
-             * the normal case — both sexes compete, in separate or in mixed
-             * events. A sport whose programme is one sex only says so here, so a
+             * The gender a *single-gender sport* admits: `male` or `female`. Empty is
+             * the normal case — both genders compete, in separate or in mixed
+             * events. A sport whose programme is one gender only says so here, so a
              * reader does not have to derive it from its disciplines.
              */
-            sportSex: type.stringNull({maxLength: 20}),
+            sportGender: type.stringNull({maxLength: 20}),
             sportStatus: type.stringNotNull({maxLength: 20}),
             inclusionDate: type.dateNull(),
             sourceName: type.stringNull({maxLength: 100}),
@@ -187,14 +187,14 @@ export default schema(async ({lib: {type}}) => ({
             disciplineCode: type.stringNull({maxLength: 20}),
             disciplineKind: type.stringNotNull({maxLength: 20}),
             /**
-             * The sex a discipline admits. Empty means both sexes contest it, each
+             * The gender a discipline admits. Empty means both genders contest it, each
              * in its own events — the ordinary case. `male` or `female` names an
-             * event only one sex contests (a weight class, an apparatus), and
+             * event only one gender contests (a weight class, an apparatus), and
              * `mixed` an event men and women contest together, which is a case of
-             * its own. A name that states the sex is how a seed says which.
+             * its own. A name that states the gender is how a seed says which.
              * @@D-787
              */
-            disciplineSex: type.stringNull({maxLength: 20}),
+            disciplineGender: type.stringNull({maxLength: 20}),
             disciplineStatus: type.stringNotNull({maxLength: 20}),
             inclusionDate: type.dateNull(),
             sportId: type.uidNotNull(),

@@ -13,7 +13,13 @@ export interface LogEntry {
     levelName?: string;
     /** Log message */
     msg?: string;
-    /** Service/module name */
+    /** The service that wrote the line — `blong` unless a suite names its own */
+    service?: string;
+    /** The declared signal identifier, promoted from the line's fields (`frameworkPortFailure`) */
+    signal?: string;
+    /** The values a line carries, nested by lukaot: `context`, `signal`, `params`, `capture`, `shape` */
+    fields?: Record<string, unknown>;
+    /** The service/module name as the pino era wrote it — read `service` first */
     name?: string;
     /** Trace ID for distributed tracing */
     traceId?: string;
@@ -23,21 +29,47 @@ export interface LogEntry {
         stack?: string;
         type?: string;
     };
-    /** HTTP request information */
+    /**
+     * HTTP request information.
+     *
+     * Two spellings, because two eras wrote it: lukaot writes `operation`/`target`, and a record from
+     * before the conversion wrote `method`/`url`/`hostname`. Read it through `exchangeOf`, which knows
+     * both (`@@D-926`).
+     */
     req?: {
+        /** The method — lukaot's spelling. */
+        operation?: string;
+        /** Where the call went — lukaot's spelling. */
+        target?: string;
+        /** The method and the URL — the pre-conversion spelling. */
         method?: string;
+        /** The URL — the pre-conversion spelling. */
         url?: string;
         hostname?: string;
         headers?: Record<string, string>;
         body?: unknown;
     };
-    /** HTTP response information */
+    /** HTTP response information, in either spelling — see `exchangeOf`. */
     res?: {
+        /** The status — lukaot's spelling. */
+        status?: number;
+        /** How long it took — lukaot's spelling. */
+        elapsedMs?: number;
+        /** The status — the pre-conversion spelling. */
         statusCode?: number;
+        /** How long it took — the pre-conversion spelling. */
+        responseTime?: number;
         headers?: Record<string, string>;
         body?: unknown;
-        responseTime?: number;
     };
+    /** The run, step and call this record belongs to — see `flowOf`. */
+    flow?: Record<string, unknown>;
+    /** The branch this record reports — see `decisionOf`. */
+    decision?: Record<string, unknown>;
+    /** On whose behalf the work ran — see `intentOf`. */
+    intent?: Record<string, unknown>;
+    /** The references the record carries: its own, its template, its trace, its parent and payloads. */
+    refs?: Record<string, unknown>;
     /** Meta information from blong framework */
     $meta?: {
         mtid?: string;
@@ -51,8 +83,12 @@ export interface LogEntry {
 export interface FilterOptions {
     /** Filter by log level (minimum level) */
     level?: string;
-    /** Filter by service name */
+    /** Filter by the port or component that reported it (`fields.context`, else the service) */
     name?: string;
+    /** Filter by the declared signal identifier */
+    signal?: string;
+    /** Filter by the capture shape that rendered a payload — `tcp.frame`, `http.exchange`, `json` */
+    capture?: string;
     /** Filter by trace ID */
     traceId?: string;
     /** Free text search across all properties */

@@ -11,7 +11,7 @@ Object {
   "properties": Object {
     "error": "err",
     "level": "level",
-    "name": "name",
+    "name": "service",
     "request": "req",
     "response": "res",
     "timestamp": "time",

@@ -21,11 +21,17 @@ export interface IngestEvent {
     /**
      * The declared identifier, which is the record's identity (`@@D-889`).
      *
-     * Required on the wire, and deliberately not checked against a vocabulary: the service is a
-     * different process from the emitter and may be older than the release that names the
-     * signal, so an identifier it has never seen is *observed*, not rejected (D3).
+     * Never checked against a vocabulary: the service is a different process from the emitter and
+     * may be older than the release that names the signal, so an identifier it has never seen is
+     * *observed*, not rejected (D3).
+     *
+     * Optional, because a record that names no declaration can still be **attributed**: when it
+     * carries a flow it has an identity the service already indexes — the execution — so it is
+     * placed on that execution and in the lineage without a signal being invented for it. What has
+     * nothing to be counted against is a record that names neither, and only that is refused
+     * (@@D-940).
      */
-    signal: string;
+    signal?: string;
     /** The declared message, already interpolated by the emitter. */
     message?: string;
     service: string;
@@ -254,9 +260,21 @@ export class SignalLedger {
         this.isDeclared = declared ?? (() => false);
     }
 
-    /** Create or update the entry for an event's identifier. */
+    /**
+     * Create or update the entry for an event's identifier.
+     *
+     * The identifier is the key, so an event that names none has no entry to create and the ingest
+     * never offers one here: a record only its **flow** attributes is observed by the flow ledger
+     * instead (`@@D-940`). Refused rather than skipped, because reaching this with no identifier is
+     * a caller's mistake rather than a value off the wire (D3).
+     */
     upsert(event: IngestEvent): UpsertResult {
         const ref = event.signal;
+        if (ref === undefined || ref.length === 0) {
+            throw new TypeError(
+                'a signal ledger entry needs an identifier; a flow-attributed event has none',
+            );
+        }
         const existing = this.entries.get(ref);
         if (existing) {
             existing.count++;

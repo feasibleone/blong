@@ -3,8 +3,9 @@
  */
 
 import {monotonicFactory} from 'ulidx';
-import type {FilterOptions, LogEntry} from './types.js';
-import {LEVEL_MAP, LEVEL_NAME} from './types.js';
+import {captureOf, contextOf, serviceOf, signalOf, traceOf} from './record.ts';
+import type {FilterOptions, LogEntry} from './types.ts';
+import {LEVEL_MAP, LEVEL_NAME} from './types.ts';
 
 const ulid = monotonicFactory();
 
@@ -88,6 +89,11 @@ export class CircularBuffer {
             entry.level = LEVEL_MAP[entry.level] ?? 0;
         }
 
+        // The trace is a lukaot record's `refs.trace`; the column, the filter and the search were
+        // written for a top-level `traceId`. Read once here, so every reader downstream sees it under
+        // the one spelling it already uses and a record that has none simply has none.
+        entry.traceId = traceOf(entry);
+
         return entry;
     }
 
@@ -100,12 +106,23 @@ export class CircularBuffer {
             result = result.filter(e => (e.level ?? 0) >= minLevel);
         }
 
-        // Filter by service name
+        // Filter by the port or component that reported it — the record's `fields.context` — falling
+        // back to the service, which is what a suite-level reader used to filter by (@@D-926).
         if (options.name) {
             const name = options.name.toLowerCase();
-            result = result.filter(
-                e => typeof e.name === 'string' && e.name.toLowerCase().includes(name),
+            result = result.filter(e =>
+                (contextOf(e) ?? serviceOf(e) ?? '').toLowerCase().includes(name),
             );
+        }
+
+        // Filter by the declared signal identifier.
+        if (options.signal) {
+            result = result.filter(e => signalOf(e) === options.signal);
+        }
+
+        // Filter by the capture shape that rendered a payload.
+        if (options.capture) {
+            result = result.filter(e => captureOf(e)?.shape === options.capture);
         }
 
         // Filter by trace ID

@@ -19,17 +19,53 @@ import React, {
 
 import {Grid, Willow, WillowDark} from '@svar-ui/react-grid';
 
-import type {ClientConfig, FilterOptions, LogEntry, ThemeConfig, WsMessage} from '../types.js';
-import {LEVEL_NAME} from '../types.js';
+import {
+    bytesOfHex,
+    captureOf,
+    contextOf,
+    decisionOf,
+    exchangeOf,
+    flowOf,
+    intentOf,
+    messageIdOf,
+    operationOf,
+    paramsOf,
+    parentOf,
+    serviceOf,
+    signalOf,
+    traceOf,
+} from '../record.ts';
+import type {ClientConfig, FilterOptions, LogEntry, ThemeConfig, WsMessage} from '../types.ts';
+import {LEVEL_NAME} from '../types.ts';
+import {CapturePanel} from './CapturePanel.tsx';
+import {highlightSearch, SyntaxHighlight} from './Highlight.tsx';
+import {DecisionPanel, ExchangePanel, RecordContextStrip} from './RecordPanels.tsx';
 
 // ── Viewer Context ────────────────────────────────────────────────────────────
+
+/**
+ * Which part of a row is expanded.
+ *
+ * The message and the JSON are expanded separately: a reader looking at what a line *said* does not
+ * want a record's whole JSON under it, and one reading the JSON is not helped by the sentence above it
+ * taking the room the structure needs.
+ */
+type ExpandedPart = 'message' | 'json';
+
+/** The rows expanded in each part of the table. */
+interface IExpandedRows {
+    message: Set<string>;
+    json: Set<string>;
+}
 
 interface ViewerContextValue {
     theme: ThemeConfig;
     searchText: string;
     clientConfig: ClientConfig | null;
     onTraceFilter: (traceId: string) => void;
-    onToggleExpanded: (rowId: string) => void;
+    onToggleExpanded: (rowId: string, part: ExpandedPart) => void;
+    /** Ask the table for everything matching `text` — what a context chip does when it is clicked. */
+    onFilterText: (text: string) => void;
 }
 
 const ViewerContext = createContext<ViewerContextValue>({
@@ -38,9 +74,183 @@ const ViewerContext = createContext<ViewerContextValue>({
     clientConfig: null,
     onTraceFilter: () => {},
     onToggleExpanded: () => {},
+    onFilterText: () => {},
 });
 
-const ExpandedRowsContext = createContext<Set<string> | null>(null);
+const ExpandedRowsContext = createContext<IExpandedRows | null>(null);
+
+/**
+ * The viewport an expanded record's detail scrolls in, and the height its row is drawn at.
+ *
+ * Both are derived from the record — never measured. A row that is measured is drawn at its collapsed
+ * height first and jumps when the measurement lands, so scrolling an expanded row out of view and back
+ * re-draws it collapsed for a frame: a flicker, a scroller that repositions itself, and sometimes a
+ * scroll that stops responding because the row under the pointer changed size (`@@F-774`).
+ *
+ * Deriving it rather than fixing it is what keeps a row with nothing to show from being as tall as a
+ * frame dump: the estimate is the content's own shape — bytes for a frame, lines for a document, the
+ * sentence for a plain message — and the detail scrolls past the cap.
+ */
+const DETAIL_MAX = 520;
+/** What the cell adds around the scroll container: its own padding. */
+const CELL_CHROME = 16;
+/** The smallest detail worth drawing: the shape badge and one line under it. */
+const DETAIL_MIN = 68;
+
+const clamp = (value: number, low: number, high: number): number =>
+    Math.min(Math.max(value, low), high);
+
+/** The lines a block of monospace text needs at the viewer's 15px line height. */
+const monospaceLines = (text: string, columns = 90): number =>
+    Math.ceil(text.length / columns) + (text.match(/\n/g)?.length ?? 0);
+
+/** The lines a payload occupies once it is drawn: pretty-printed when it is a document. */
+function payloadLines(payload: string): number {
+    try {
+        return JSON.stringify(JSON.parse(payload), null, 2).split('\n').length;
+    } catch {
+        return monospaceLines(payload);
+    }
+}
+
+/**
+ * The height the detail of an expanded row needs, in pixels, before it starts to scroll.
+ *
+ * Estimated from what will be drawn, from the record alone — never by measuring: a frame is 14px a row
+ * plus its header and the facts above it, a document is 15px a pretty-printed line, a capture that kept
+ * no payload is a single line, and a plain message is its sentence plus whatever block the record
+ * carried beside it. The numbers were calibrated against the rendered stories, so a row is neither a
+ * band of empty space nor a box that clips the thing it was opened to show (`@@F-774`).
+ */
+function detailHeightOf(row: LogEntry, part: ExpandedPart): number {
+    if (part === 'json') {
+        return clamp(
+            JSON.stringify(row, null, 2).split('\n').length * 15 + 20,
+            DETAIL_MIN,
+            DETAIL_MAX,
+        );
+    }
+    const capture = captureOf(row);
+    if (capture !== undefined) {
+        const headers = capture.fields['headers'];
+        const headerRows =
+            headers !== null && typeof headers === 'object' ? Object.keys(headers).length : 0;
+        // An exchange draws its own line for the URL and the phase, above whatever body it kept.
+        const requestLine = capture.fields['url'] === undefined ? 0 : 20;
+        if (capture.shape === 'tcp.frame' && capture.payload !== undefined) {
+            const bytes = bytesOfHex(capture.payload)?.length ?? 0;
+            return clamp(Math.ceil(bytes / 16) * 14 + 82 + headerRows * 15, DETAIL_MIN, DETAIL_MAX);
+        }
+        if (capture.payload !== undefined) {
+            return clamp(
+                payloadLines(capture.payload) * 15 + 70 + requestLine + headerRows * 15,
+                DETAIL_MIN,
+                DETAIL_MAX,
+            );
+        }
+        // The rung kept nothing: the shape badge, the facts and the notice are all there is to draw.
+        return clamp(DETAIL_MIN + requestLine + headerRows * 15, DETAIL_MIN, DETAIL_MAX);
+    }
+    // The panels under the message: the chips that name the branch, the call, the intent and the cause;
+    // the exchange; the decision; the error box; and the signal's own values — each in the lines it
+    // draws plus its padding and the gap above it.
+    const params = paramsOf(row);
+    const chips =
+        intentOf(row) === undefined &&
+        flowOf(row) === undefined &&
+        parentOf(row) === undefined &&
+        decisionOf(row) === undefined
+            ? 0
+            : 24;
+    const exchange = exchangeOf(row);
+    // Each side of an exchange is a padded block with a title, its headers, and — when it kept one — a
+    // labelled body drawn pretty-printed. The body is counted in the lines it *renders* as, not the
+    // characters it was sent as: a compact JSON document is ten lines once it is indented, and an
+    // estimate that counted the compact form left the last three of them under the fold.
+    const side = (headers: Record<string, string> | undefined, body: unknown): number =>
+        headers === undefined && body === undefined
+            ? 0
+            : 40 +
+              (headers === undefined ? 0 : Object.keys(headers).length * 16) +
+              (body === undefined
+                  ? 0
+                  : 24 +
+                    payloadLines(typeof body === 'string' ? body : JSON.stringify(body, null, 2)) *
+                        15);
+    const exchangeH =
+        exchange === undefined
+            ? 0
+            : side(exchange.requestHeaders, exchange.requestBody) +
+              side(exchange.responseHeaders, exchange.responseBody) +
+              (exchange.request === undefined ? 0 : 20);
+    const decision = decisionOf(row);
+    const decisionH =
+        decision === undefined
+            ? 0
+            : 30 +
+              decision.candidates.length * 15 +
+              (decision.values === undefined
+                  ? 15
+                  : monospaceLines(JSON.stringify(decision.values, null, 2)) * 15);
+    const blocks =
+        chips +
+        exchangeH +
+        decisionH +
+        (row.err ? 110 + Math.min((row.err.stack?.match(/\n/g) ?? []).length * 16, 200) : 0) +
+        (params === undefined ? 0 : 30 + monospaceLines(JSON.stringify(params, null, 2)) * 15);
+    // Sixty columns rather than eighty: the message column is the wide one, but a long path wraps in
+    // it, and an estimate that assumes more room than there is leaves the last line under the fold.
+    return clamp(monospaceLines(row.msg ?? '', 60) * 18 + 14 + blocks, DETAIL_MIN, DETAIL_MAX);
+}
+
+/** The height a row is drawn at: the detail it shows, or one line when it is closed. */
+function rowHeightOf(row: LogEntry, expanded: IExpandedRows): number {
+    const json = expanded.json.has(row.id);
+    const message = expanded.message.has(row.id);
+    if (!json && !message) return SINGLE_ROW_HEIGHT;
+    const detail = Math.max(
+        json ? detailHeightOf(row, 'json') : 0,
+        message ? detailHeightOf(row, 'message') : 0,
+    );
+    return Math.min(detail, DETAIL_MAX) + CELL_CHROME;
+}
+
+/**
+ * The height of a row that is not expanded.
+ *
+ * The cells are padded 8px top and bottom by the theme and have a one-pixel border, so the row has to be
+ * the line plus the padding or the text is cut in half — which is what a 28px row was doing to every
+ * column. The padding is cut to 4px and the line to 16px, so 26px draws a full line with room around
+ * it, and a 1080-high window holds forty rows.
+ */
+const SINGLE_ROW_HEIGHT = 26;
+
+/** The scroll viewport every expanded detail shares; its height comes from the record. */
+const EXPANDED_DETAIL_STYLE: CSSProperties = {
+    overflow: 'auto',
+    // Room for the scrollbar, so a scrollable panel does not render the end of a line underneath it.
+    paddingRight: '2px',
+};
+
+/** Whether this row's message is expanded, and the toggle for it. */
+function useMessageExpanded(rowId: string): {isExpanded: boolean; toggle: () => void} {
+    const {onToggleExpanded} = use(ViewerContext);
+    const expanded = React.use(ExpandedRowsContext);
+    return {
+        isExpanded: expanded?.message.has(rowId) ?? false,
+        toggle: useCallback(() => onToggleExpanded(rowId, 'message'), [onToggleExpanded, rowId]),
+    };
+}
+
+/** Whether this row's JSON is expanded, and the toggle for it. */
+function useJsonExpanded(rowId: string): {isExpanded: boolean; toggle: () => void} {
+    const {onToggleExpanded} = use(ViewerContext);
+    const expanded = React.use(ExpandedRowsContext);
+    return {
+        isExpanded: expanded?.json.has(rowId) ?? false,
+        toggle: useCallback(() => onToggleExpanded(rowId, 'json'), [onToggleExpanded, rowId]),
+    };
+}
 
 // ── Utility functions ─────────────────────────────────────────────────────────
 
@@ -68,32 +278,6 @@ function timeAgo(time: number | undefined): string {
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
     return `${Math.floor(diff / 86400000)}d ago`;
-}
-
-function escapeRegExp(s: string): string {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function highlightSearch(text: string, search: string): React.ReactNode {
-    if (!search) return text;
-    const parts = text.split(new RegExp(`(${escapeRegExp(search)})`, 'gi'));
-    return parts.map((part, i) =>
-        part.toLowerCase() === search.toLowerCase() ? (
-            <mark
-                key={i} // eslint-disable-line @eslint-react/no-array-index-key
-                style={{
-                    background: '#e3b341',
-                    color: '#000',
-                    padding: '0 1px',
-                    borderRadius: '2px',
-                }}
-            >
-                {part}
-            </mark>
-        ) : (
-            part
-        ),
-    );
 }
 
 // ── Copy to Clipboard Component ───────────────────────────────────────────────
@@ -167,7 +351,7 @@ function LevelCell({row}: {row: LogEntry}): React.ReactElement {
             style={{
                 display: 'flex',
                 alignItems: 'center',
-                minHeight: '28px',
+                minHeight: '18px',
                 position: 'relative',
                 paddingRight: isHovered ? '36px' : '0',
                 flexWrap: 'nowrap',
@@ -178,9 +362,10 @@ function LevelCell({row}: {row: LogEntry}): React.ReactElement {
         >
             <span
                 style={{
-                    padding: '1px 6px',
+                    padding: '0 6px',
                     borderRadius: '3px',
-                    fontSize: '11px',
+                    fontSize: '10px',
+                    lineHeight: '16px',
                     fontWeight: 'bold',
                     textTransform: 'uppercase',
                     color: '#fff',
@@ -217,6 +402,10 @@ function NameCell({row}: {row: LogEntry}): React.ReactElement {
     const {searchText, theme} = use(ViewerContext);
     const [isHovered, setIsHovered] = useState(false);
     const isDark = theme.mode === 'dark';
+    // The service is the process; the identity an operator filters by is the port or component that
+    // reported, which the record carries as `fields.context` (@@D-926).
+    const service = serviceOf(row);
+    const context = contextOf(row);
 
     return (
         <div
@@ -227,18 +416,38 @@ function NameCell({row}: {row: LogEntry}): React.ReactElement {
                 fontSize: '12px',
                 display: 'flex',
                 alignItems: 'center',
-                minHeight: '28px',
+                minHeight: '18px',
                 position: 'relative',
-                paddingRight: isHovered && row.name ? '36px' : '0',
+                paddingRight: isHovered && service ? '36px' : '0',
             }}
-            title={row.name ?? ''}
+            title={context === undefined ? (service ?? '') : `${service ?? ''} · ${context}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
-            <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                {highlightSearch(row.name ?? '', searchText)}
+            <span
+                style={{
+                    flex: 1,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: 'flex',
+                    gap: '6px',
+                }}
+            >
+                <span>{highlightSearch(service ?? '', searchText)}</span>
+                {context !== undefined && (
+                    <span
+                        style={{
+                            color: isDark ? '#8b949e' : '#57606a',
+                            fontSize: '11px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        }}
+                    >
+                        {highlightSearch(context, searchText)}
+                    </span>
+                )}
             </span>
-            {isHovered && row.name && (
+            {isHovered && service && (
                 <div
                     style={{
                         position: 'absolute',
@@ -249,7 +458,7 @@ function NameCell({row}: {row: LogEntry}): React.ReactElement {
                     }}
                 >
                     <CopyButton
-                        text={row.name}
+                        text={service}
                         isDark={isDark}
                     />
                 </div>
@@ -261,14 +470,15 @@ function NameCell({row}: {row: LogEntry}): React.ReactElement {
 function TraceLinkCell({row}: {row: LogEntry}): React.ReactElement | null {
     const {clientConfig, onTraceFilter, theme} = use(ViewerContext);
     const [isHovered, setIsHovered] = useState(false);
+    const trace = traceOf(row);
 
-    if (!row.traceId) return null;
+    if (trace === undefined) return null;
 
     const isDark = theme.mode === 'dark';
 
     const handleFilterClick = (e: React.MouseEvent): void => {
         e.stopPropagation();
-        onTraceFilter(row.traceId!);
+        onTraceFilter(trace);
     };
 
     const handleExternalLink = (e: React.MouseEvent): void => {
@@ -277,7 +487,7 @@ function TraceLinkCell({row}: {row: LogEntry}): React.ReactElement | null {
             const start = row.time ? (row.time as number) - 60000 : Date.now() - 3600000;
             const end = row.time ? (row.time as number) + 60000 : Date.now();
             const url = clientConfig.traceUrlPattern
-                .replace('{traceId}', row.traceId!)
+                .replace('{traceId}', trace)
                 .replace('{startTime}', String(start))
                 .replace('{endTime}', String(end));
             window.open(url, '_blank');
@@ -290,7 +500,7 @@ function TraceLinkCell({row}: {row: LogEntry}): React.ReactElement | null {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                minHeight: '28px',
+                minHeight: '18px',
                 position: 'relative',
             }}
             onMouseEnter={() => setIsHovered(true)}
@@ -320,7 +530,7 @@ function TraceLinkCell({row}: {row: LogEntry}): React.ReactElement | null {
                 onClick={handleFilterClick}
                 title="Click to filter by this trace ID"
             >
-                {row.traceId.substring(0, 16) + '\u2026'}
+                {trace.substring(0, 16) + '\u2026'}
             </span>
             {isHovered && (
                 <div
@@ -332,7 +542,7 @@ function TraceLinkCell({row}: {row: LogEntry}): React.ReactElement | null {
                     }}
                 >
                     <CopyButton
-                        text={row.traceId}
+                        text={trace}
                         isDark={isDark}
                     />
                 </div>
@@ -341,12 +551,66 @@ function TraceLinkCell({row}: {row: LogEntry}): React.ReactElement | null {
     );
 }
 
+/**
+ * The declared identifier, which is the line's identity since the conversion.
+ *
+ * A level says how loud a line is; an identifier says what happened, and it is what an operator filters
+ * by, raises or silences. A capture's identifier is the same token, so the cell marks the ones that
+ * carry a payload — that is what the expanded row will draw (`@@D-926`).
+ */
+function SignalCell({row}: {row: LogEntry}): React.ReactElement {
+    const {theme, searchText} = use(ViewerContext);
+    const isDark = isDarkMode(theme);
+    const signal = signalOf(row);
+    const capture = captureOf(row);
+
+    return (
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                minHeight: '18px',
+                overflow: 'hidden',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                fontSize: '11px',
+            }}
+            title={capture === undefined ? (signal ?? '') : `${signal ?? ''} · ${capture.shape}`}
+        >
+            {capture !== undefined && (
+                <span
+                    style={{
+                        flexShrink: 0,
+                        padding: '0 4px',
+                        borderRadius: '3px',
+                        background: isDark ? 'rgba(56, 139, 253, 0.25)' : '#ddf4ff',
+                        color: isDark ? '#79c0ff' : '#0969da',
+                    }}
+                >
+                    ⌗
+                </span>
+            )}
+            <span
+                style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    color: signal === undefined ? (isDark ? '#6e7681' : '#8c959f') : undefined,
+                }}
+            >
+                {highlightSearch(signal ?? '—', searchText)}
+            </span>
+        </div>
+    );
+}
+
 function MessageCell({row}: {row: LogEntry}): React.ReactElement {
-    const {searchText, theme, onToggleExpanded} = use(ViewerContext);
-    const expandedRows = React.use(ExpandedRowsContext);
-    const isExpanded = expandedRows?.has(row.id) ?? false;
+    const {searchText, theme, onFilterText} = use(ViewerContext);
+    const {isExpanded, toggle} = useMessageExpanded(row.id);
     const [isHovered, setIsHovered] = useState(false);
     const isDark = isDarkMode(theme);
+    const capture = captureOf(row);
+    const decision = decisionOf(row);
+    const exchange = exchangeOf(row);
 
     const handleClick = useCallback(
         (e: React.MouseEvent) => {
@@ -354,14 +618,15 @@ function MessageCell({row}: {row: LogEntry}): React.ReactElement {
             if ((e.target as HTMLElement).closest('[data-copy-button]')) {
                 return;
             }
-            onToggleExpanded(row.id);
+            toggle();
         },
-        [onToggleExpanded, row.id],
+        [toggle],
     );
 
     const baseStyle: CSSProperties = {
         overflow: 'hidden',
         fontSize: '12px',
+        lineHeight: '16px',
     };
 
     const singleLineStyle: CSSProperties = {
@@ -370,15 +635,26 @@ function MessageCell({row}: {row: LogEntry}): React.ReactElement {
         whiteSpace: 'nowrap',
         display: 'flex',
         alignItems: 'center',
-        minHeight: '28px',
+        minHeight: '18px',
     };
 
     const multiLineStyle: CSSProperties = {
         ...baseStyle,
-        whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
-        padding: '8px 0',
+        padding: '4px 0',
+        // An expanded row may be wider than its column — a hex dump is — and a dump clipped at the cell
+        // edge is a dump a reader has to widen the column to finish reading.
+        overflow: 'auto',
     };
+
+    /**
+     * `pre-wrap` belongs on the text, not on the cell that holds it.
+     *
+     * On the cell it made every newline and every indent between the elements of this JSX a rendered
+     * line, so an expanded record began with a band of blank space above its first panel — the space a
+     * `white-space` rule reserves for whitespace that a layout would otherwise collapse.
+     */
+    const textStyle: CSSProperties = {whiteSpace: 'pre-wrap'};
 
     // Build full text content for copying
     const getFullText = (): string => {
@@ -489,6 +765,7 @@ function MessageCell({row}: {row: LogEntry}): React.ReactElement {
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
+            {' '}
             {isHovered && (
                 <div
                     data-copy-button
@@ -510,170 +787,112 @@ function MessageCell({row}: {row: LogEntry}): React.ReactElement {
                     />
                 </div>
             )}
-            {/* Message */}
-            <div style={{marginBottom: '8px'}}>{messageContent}</div>
+            {/* A capture's message is the shape's own words — `tcp frame` — and the panel below opens
+                with the shape itself, so the sentence is not drawn at all: it is the one line an
+                expanded capture can do without (`@@D-926`). */}
+            <div
+                style={{...EXPANDED_DETAIL_STYLE, maxHeight: `${detailHeightOf(row, 'message')}px`}}
+            >
+                {capture === undefined && (
+                    <div style={{...textStyle, marginBottom: '4px'}}>{messageContent}</div>
+                )}
 
-            {/* Exception details */}
-            {row.err && (
-                <div
-                    style={{
-                        marginBottom: '8px',
-                        padding: '8px',
-                        background: isDarkMode(theme) ? '#1c2128' : '#fff8e6',
-                        borderLeft: `3px solid ${theme.levels?.error ?? '#ef4444'}`,
-                        borderRadius: '4px',
-                    }}
-                >
+                {/* Exception details */}
+                {row.err && (
                     <div
                         style={{
-                            color: theme.levels?.error ?? '#ef4444',
-                            fontWeight: 'bold',
-                            marginBottom: '4px',
+                            marginBottom: '8px',
+                            padding: '8px',
+                            background: isDarkMode(theme) ? '#1c2128' : '#fff8e6',
+                            borderLeft: `3px solid ${theme.levels?.error ?? '#ef4444'}`,
+                            borderRadius: '4px',
                         }}
                     >
-                        {highlightSearch(
-                            `${row.err.type ?? 'Error'}: ${row.err.message ?? 'No message'}`,
-                            searchText,
-                        )}
-                    </div>
-                    {row.err.stack && (
-                        <div style={{fontSize: '11px', fontFamily: 'monospace', whiteSpace: 'pre'}}>
-                            {highlightSearch(row.err.stack, searchText)}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* HTTP Request details */}
-            {row.req && (
-                <div
-                    style={{
-                        marginBottom: '8px',
-                        padding: '8px',
-                        background: isDarkMode(theme) ? '#1c2128' : '#f0f6ff',
-                        borderLeft: '3px solid #1f6feb',
-                        borderRadius: '4px',
-                    }}
-                >
-                    <div style={{fontWeight: 'bold', marginBottom: '4px', fontSize: '11px'}}>
-                        {highlightSearch(
-                            `${row.req.method ?? 'GET'} ${row.req.url ?? ''}`,
-                            searchText,
-                        )}
-                    </div>
-                    {row.req.headers && (
-                        <div style={{fontSize: '10px', marginTop: '4px'}}>
-                            {Object.entries(row.req.headers).map(([key, value]) => (
-                                <div key={key}>
-                                    <span
-                                        style={{
-                                            color: isDarkMode(theme) ? '#79c0ff' : '#0969da',
-                                        }}
-                                    >
-                                        {key + ':'}
-                                    </span>{' '}
-                                    {highlightSearch(String(value), searchText)}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    {!!row.req.body && (
                         <div
                             style={{
-                                marginTop: '6px',
-                                fontSize: '10px',
-                                background: isDarkMode(theme) ? '#161b22' : '#e8f0ff',
-                                padding: '6px',
-                                borderRadius: '3px',
-                                fontFamily: 'monospace',
+                                color: theme.levels?.error ?? '#ef4444',
+                                fontWeight: 'bold',
+                                marginBottom: '4px',
                             }}
                         >
+                            {highlightSearch(
+                                `${row.err.type ?? 'Error'}: ${row.err.message ?? 'No message'}`,
+                                searchText,
+                            )}
+                        </div>
+                        {row.err.stack && (
                             <div
                                 style={{
-                                    color: isDarkMode(theme) ? '#79c0ff' : '#0969da',
-                                    marginBottom: '3px',
+                                    fontSize: '11px',
+                                    fontFamily: 'monospace',
+                                    whiteSpace: 'pre',
                                 }}
                             >
-                                Request Body:
+                                {highlightSearch(row.err.stack, searchText)}
                             </div>
+                        )}
+                    </div>
+                )}
+
+                {/* What the record carries beside its sentence: the branch it reports, the call it is part
+                of, on whose behalf it ran, and what caused it. Then the exchange, in either spelling —
+                the panel used to read only the pino era's and showed an empty request line for a
+                lukaot record (@@D-926). */}
+                <RecordContextStrip
+                    record={row}
+                    theme={theme}
+                    onFilter={onFilterText}
+                />
+                {exchange !== undefined && (
+                    <ExchangePanel
+                        exchange={exchange}
+                        theme={theme}
+                        searchText={searchText}
+                    />
+                )}
+                {decision !== undefined && (
+                    <DecisionPanel
+                        decision={decision}
+                        theme={theme}
+                    />
+                )}
+
+                {/* The capture this record carries, drawn by the shape that produced it, and the values a
+                declared signal was called with — the two things lukaot added that a line cannot show
+                on its own (@@D-926). */}
+                <CapturePanel
+                    record={row}
+                    theme={theme}
+                />
+                {paramsOf(row) !== undefined && (
+                    <div
+                        style={{
+                            marginTop: '4px',
+                            padding: '6px 8px',
+                            borderRadius: '4px',
+                            borderLeft: `3px solid ${isDarkMode(theme) ? '#6e7681' : '#8c959f'}`,
+                            background: isDarkMode(theme) ? '#161b22' : '#f6f8fa',
+                            fontSize: '10px',
+                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                        }}
+                    >
+                        <div style={{marginBottom: '4px', fontWeight: 'bold'}}>
+                            {/* The identifier is the signal column already; what a reader needs here is
+                            the operation it was about and the kind of event it was. */}
+                            {[operationOf(row), messageIdOf(row)]
+                                .filter((fact): fact is string => fact !== undefined)
+                                .join(' · ')}
+                        </div>
+                        <div style={textStyle}>
                             <SyntaxHighlight
-                                json={JSON.stringify(row.req.body, null, 2)}
+                                json={JSON.stringify(paramsOf(row), null, 2)}
                                 theme={theme}
                                 searchText={searchText}
                             />
                         </div>
-                    )}
-                </div>
-            )}
-
-            {/* HTTP Response details */}
-            {row.res && (
-                <div
-                    style={{
-                        padding: '8px',
-                        background: isDarkMode(theme) ? '#1c2128' : '#f0fff4',
-                        borderLeft: `3px solid ${(row.res.statusCode ?? 200) < 400 ? '#22c55e' : '#ef4444'}`,
-                        borderRadius: '4px',
-                    }}
-                >
-                    <div style={{fontWeight: 'bold', fontSize: '11px'}}>
-                        <span
-                            style={{
-                                color: (row.res.statusCode ?? 200) < 400 ? '#22c55e' : '#ef4444',
-                            }}
-                        >
-                            {row.res.statusCode ?? 200}
-                        </span>
-                        {row.res.responseTime ? ` (${row.res.responseTime}ms)` : ''}
                     </div>
-                    {row.res.headers && (
-                        <div style={{fontSize: '10px', marginTop: '4px'}}>
-                            {Object.entries(row.res.headers).map(([key, value]) => (
-                                <div key={key}>
-                                    <span
-                                        style={{
-                                            color:
-                                                (row.res?.statusCode ?? 200) < 400
-                                                    ? '#22c55e'
-                                                    : '#ef4444',
-                                        }}
-                                    >
-                                        {key + ':'}
-                                    </span>{' '}
-                                    {highlightSearch(String(value), searchText)}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    {!!row.res.body && (
-                        <div
-                            style={{
-                                marginTop: '6px',
-                                fontSize: '10px',
-                                background: isDarkMode(theme) ? '#161b22' : '#e8fff0',
-                                padding: '6px',
-                                borderRadius: '3px',
-                                fontFamily: 'monospace',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    color:
-                                        (row.res.statusCode ?? 200) < 400 ? '#22c55e' : '#ef4444',
-                                    marginBottom: '3px',
-                                }}
-                            >
-                                Response Body:
-                            </div>
-                            <SyntaxHighlight
-                                json={JSON.stringify(row.res.body, null, 2)}
-                                theme={theme}
-                                searchText={searchText}
-                            />
-                        </div>
-                    )}
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }
@@ -683,9 +902,8 @@ function isDarkMode(theme: ThemeConfig): boolean {
 }
 
 function JSONCell({row}: {row: LogEntry}): React.ReactElement {
-    const {theme, searchText, onToggleExpanded} = use(ViewerContext);
-    const expandedRows = React.use(ExpandedRowsContext);
-    const isExpanded = expandedRows?.has(row.id) ?? false;
+    const {theme, searchText} = use(ViewerContext);
+    const {isExpanded, toggle} = useJsonExpanded(row.id);
     const [isHovered, setIsHovered] = useState(false);
     const isDark = isDarkMode(theme);
 
@@ -695,9 +913,9 @@ function JSONCell({row}: {row: LogEntry}): React.ReactElement {
             if ((e.target as HTMLElement).closest('[data-copy-button]')) {
                 return;
             }
-            onToggleExpanded(row.id);
+            toggle();
         },
-        [onToggleExpanded, row.id],
+        [toggle],
     );
 
     const jsonString = JSON.stringify(row, null, 2);
@@ -712,7 +930,7 @@ function JSONCell({row}: {row: LogEntry}): React.ReactElement {
                     fontSize: '12px',
                     display: 'flex',
                     alignItems: 'center',
-                    minHeight: '28px',
+                    minHeight: '18px',
                     position: 'relative',
                     cursor: 'pointer',
                 }}
@@ -759,11 +977,13 @@ function JSONCell({row}: {row: LogEntry}): React.ReactElement {
     return (
         <div
             style={{
+                ...EXPANDED_DETAIL_STYLE,
+                maxHeight: `${detailHeightOf(row, 'json')}px`,
                 fontSize: '11px',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-all',
                 fontFamily: 'monospace',
-                padding: '8px 0',
+                padding: '6px 0',
                 position: 'relative',
                 cursor: 'pointer',
             }}
@@ -815,7 +1035,7 @@ function HttpCell({row}: {row: LogEntry}): React.ReactElement {
                 gap: '8px',
                 fontSize: '12px',
                 alignItems: 'center',
-                minHeight: '28px',
+                minHeight: '18px',
             }}
         >
             {row.req && (
@@ -836,82 +1056,6 @@ function HttpCell({row}: {row: LogEntry}): React.ReactElement {
 }
 
 // ── JSON Syntax Highlighting ──────────────────────────────────────────────────
-
-/**
- * Tokenizes JSON and wraps each token with appropriate color from theme.syntax.
- * Also applies search highlighting to matching tokens.
- */
-function SyntaxHighlight({
-    json,
-    theme,
-    searchText = '',
-}: {
-    json: string;
-    theme: ThemeConfig;
-    searchText?: string;
-}): React.ReactElement {
-    const tokens: React.ReactNode[] = [];
-    const syntax = theme.syntax ?? {};
-
-    // Simple JSON tokenizer using regex
-    const pattern = /"(?:[^"\\]|\\.)*"|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\]:,]/g;
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
-
-    while ((match = pattern.exec(json)) !== null) {
-        // Add any whitespace before this token
-        if (match.index > lastIndex) {
-            const whitespace = json.substring(lastIndex, match.index);
-            tokens.push(searchText ? highlightSearch(whitespace, searchText) : whitespace);
-        }
-
-        const token = match[0];
-        let color: string | undefined;
-
-        if (token === 'true' || token === 'false') {
-            color = syntax.boolean;
-        } else if (token === 'null') {
-            color = syntax.null;
-        } else if (token[0] === '"') {
-            // Check if this is a key by looking ahead for a colon
-            const afterToken = json.substring(pattern.lastIndex).trimStart();
-            if (afterToken[0] === ':') {
-                color = syntax.key;
-            } else {
-                color = syntax.string;
-            }
-        } else if (!isNaN(Number(token)) && token !== '') {
-            color = syntax.number;
-        } else if (/[{}[\]:,]/.test(token)) {
-            color = syntax.punctuation;
-        }
-
-        const tokenContent = searchText ? highlightSearch(token, searchText) : token;
-
-        tokens.push(
-            color ? (
-                <span
-                    key={lastIndex}
-                    style={{color}}
-                >
-                    {tokenContent}
-                </span>
-            ) : (
-                tokenContent
-            ),
-        );
-
-        lastIndex = pattern.lastIndex;
-    }
-
-    // Add any remaining text
-    if (lastIndex < json.length) {
-        const remaining = json.substring(lastIndex);
-        tokens.push(searchText ? highlightSearch(remaining, searchText) : remaining);
-    }
-
-    return <>{tokens}</>;
-}
 
 // ── Entry Detail Modal ────────────────────────────────────────────────────────
 
@@ -1232,8 +1376,10 @@ export interface LogViewerProps {
     theme?: ThemeConfig;
     /** Initial search text (for Storybook demos) */
     initialSearchText?: string;
-    /** Initial set of expanded row IDs (for Storybook demos) */
+    /** Initial set of rows whose message is expanded (for Storybook demos) */
     initialExpandedRows?: Set<string>;
+    /** Initial set of rows whose JSON is expanded (for Storybook demos) */
+    initialExpandedJsonRows?: Set<string>;
 }
 
 export function LogViewer({
@@ -1241,15 +1387,17 @@ export function LogViewer({
     theme: themeProp,
     initialSearchText = '',
     initialExpandedRows,
+    initialExpandedJsonRows,
 }: LogViewerProps): React.ReactElement {
     const [entries, setEntries] = useState<LogEntry[]>([]);
     const [clientConfig, setClientConfig] = useState<ClientConfig | null>(null);
     const [connected, setConnected] = useState(false);
     const [filters, setFilters] = useState<FilterOptions>({});
     const [searchText, setSearchText] = useState(initialSearchText);
-    const [expandedRows, setExpandedRows] = useState<Set<string>>(
-        () => initialExpandedRows ?? new Set(),
-    );
+    const [expandedRows, setExpandedRows] = useState<IExpandedRows>(() => ({
+        message: initialExpandedRows ?? new Set(),
+        json: initialExpandedJsonRows ?? new Set(),
+    }));
     const [autoScroll, setAutoScroll] = useState(false);
     const [timeMode, setTimeMode] = useState<'absolute' | 'relative'>('absolute');
     const wsRef = useRef<WebSocket | null>(null);
@@ -1263,9 +1411,31 @@ export function LogViewer({
     const uniqueServiceNames = useMemo(() => {
         const names = new Set<string>();
         entries.forEach(e => {
-            if (e.name) names.add(e.name);
+            const context = contextOf(e);
+            const service = serviceOf(e);
+            if (context !== undefined) names.add(context);
+            else if (service !== undefined) names.add(service);
         });
         return Array.from(names).sort();
+    }, [entries]);
+
+    // The declared identifiers a reader may filter by, and the shapes the entries carry.
+    const uniqueSignals = useMemo(() => {
+        const signals = new Set<string>();
+        for (const entry of entries) {
+            const signal = signalOf(entry);
+            if (signal !== undefined) signals.add(signal);
+        }
+        return Array.from(signals).sort();
+    }, [entries]);
+
+    const uniqueShapes = useMemo(() => {
+        const shapes = new Set<string>();
+        for (const entry of entries) {
+            const capture = captureOf(entry);
+            if (capture !== undefined) shapes.add(capture.shape);
+        }
+        return Array.from(shapes).sort();
     }, [entries]);
 
     const theme = useMemo(
@@ -1398,6 +1568,14 @@ export function LogViewer({
         setFilters(f => ({...f, name: e.target.value || undefined}));
     }, []);
 
+    const handleSignalChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>): void => {
+        setFilters(f => ({...f, signal: e.target.value || undefined}));
+    }, []);
+
+    const handleCaptureChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>): void => {
+        setFilters(f => ({...f, capture: e.target.value || undefined}));
+    }, []);
+
     const handleHasErrorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
         setFilters(f => ({...f, hasError: e.target.checked || undefined}));
     }, []);
@@ -1443,7 +1621,7 @@ export function LogViewer({
 
         // Apply traceId filter
         if (filters.traceId) {
-            result = result.filter(e => e.traceId === filters.traceId);
+            result = result.filter(e => traceOf(e) === filters.traceId);
         }
 
         // Apply level filter
@@ -1460,9 +1638,20 @@ export function LogViewer({
             result = result.filter(e => (e.level ?? 30) >= minLevel);
         }
 
-        // Apply service name filter
+        // Apply service name filter — the port or component that reported, falling back to the
+        // service when a record carries no context.
         if (filters.name) {
-            result = result.filter(e => e.name === filters.name);
+            result = result.filter(e => (contextOf(e) ?? serviceOf(e)) === filters.name);
+        }
+
+        // Apply the declared-signal filter: one identifier, one case.
+        if (filters.signal) {
+            result = result.filter(e => signalOf(e) === filters.signal);
+        }
+
+        // Apply the capture filter: the shape that rendered the payload.
+        if (filters.capture) {
+            result = result.filter(e => captureOf(e)?.shape === filters.capture);
         }
 
         // Apply error filter
@@ -1478,6 +1667,23 @@ export function LogViewer({
 
         return result;
     }, [entries, searchText, filters]);
+
+    /**
+     * The rows the grid is given, each carrying the height it is drawn at.
+     *
+     * The grid reads a row's height off the row (`rowHeight`), not from a function: given a function it
+     * falls back to one height for every row. And the height is decided from the expansion state alone —
+     * never measured — so a row drawn again after being scrolled out of view keeps the height it had and
+     * the table's scroll position does not move (`@@F-774`).
+     */
+    const gridRows = useMemo(
+        () =>
+            displayEntries.map(entry => ({
+                ...entry,
+                rowHeight: rowHeightOf(entry, expandedRows),
+            })),
+        [displayEntries, expandedRows],
+    );
 
     // ── Grid columns ──────────────────────────────────────────────────────
 
@@ -1511,7 +1717,7 @@ export function LogViewer({
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                minHeight: '28px',
+                                minHeight: '18px',
                                 fontSize: '12px',
                                 cursor: 'pointer',
                                 position: 'relative',
@@ -1558,32 +1764,47 @@ export function LogViewer({
             {
                 id: 'level',
                 header: 'Level',
-                width: 75,
+                width: 70,
                 cell: LevelCell,
             },
             {
                 id: 'name',
-                header: 'Service',
-                width: 130,
+                header: 'Where',
+                width: 150,
                 cell: NameCell,
+            },
+            {
+                id: 'signal',
+                header: 'Signal',
+                // Narrow, and the first to give up room: most rows have no signal at all, and one that
+                // does is identified by the start of its name.
+                width: 150,
+                resizable: true,
+                cell: SignalCell,
             },
             {
                 id: 'traceId',
                 header: 'Trace ID',
-                width: 155,
+                width: 120,
                 cell: TraceLinkCell,
             },
             {
                 id: 'msg',
                 header: 'Message',
-                width: 400,
+                // The two wide columns grow into whatever the window has left over, in proportion, so a
+                // wider window is more message and more JSON rather than more empty space. A hex dump
+                // needs about 620px to fit without scrolling; `flexgrow` gives it that on a 1920 screen
+                // and the expanded cell scrolls where it cannot.
+                width: 420,
+                flexgrow: 2,
                 resizable: true,
                 cell: MessageCell,
             },
             {
                 id: 'json',
                 header: 'JSON',
-                width: 400,
+                width: 360,
+                flexgrow: 1,
                 resizable: true,
                 cell: JSONCell,
             },
@@ -1604,45 +1825,11 @@ export function LogViewer({
 
     // ── Row height calculation ────────────────────────────────────────────
 
-    const getRowHeight = useCallback(
-        (row: LogEntry): number => {
-            if (expandedRows.has(row.id)) {
-                // Calculate approximate height for expanded row
-                let height = 0;
-
-                // Base message height
-                if (row.msg) {
-                    const lines = Math.ceil((row.msg.length || 80) / 80);
-                    height += Math.max(lines * 20, 40);
-                }
-
-                // Error details
-                if (row.err) {
-                    height += 100;
-                    if (row.err.stack) {
-                        const stackLines = (row.err.stack.match(/\n/g) || []).length;
-                        height += Math.min(stackLines * 16, 200);
-                    }
-                }
-
-                // Request details
-                if (row.req) height += 80;
-
-                // Response details
-                if (row.res) height += 60;
-
-                return Math.max(height, 100);
-            }
-            return 28; // Default single-line height
-        },
-        [expandedRows],
-    );
-
     // ── Row styling (highlight trace-filtered rows) ───────────────────────
 
     const rowStyle = useCallback(
         (row: LogEntry) => {
-            if (filters.traceId && row.traceId === filters.traceId)
+            if (filters.traceId && traceOf(row) === filters.traceId)
                 return 'blong-log-trace-highlight';
             return '';
         },
@@ -1658,21 +1845,55 @@ export function LogViewer({
         [handleTraceFilter],
     );
 
-    const handleToggleExpanded = useCallback((rowId: string) => {
+    const handleToggleExpanded = useCallback((rowId: string, part: ExpandedPart) => {
         setExpandedRows(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(rowId)) {
-                newSet.delete(rowId);
+            const next = new Set(prev[part]);
+            if (next.has(rowId)) {
+                next.delete(rowId);
             } else {
-                newSet.add(rowId);
+                next.add(rowId);
             }
-            return newSet;
+            return {...prev, [part]: next};
         });
         // Trigger grid resize to recalculate row heights
         setTimeout(() => {
             if (gridApiRef.current?.exec) gridApiRef.current.exec('resize');
         }, 0);
     }, []);
+
+    /**
+     * Space toggles the focused row's detail, the way it toggles a disclosure in a file tree.
+     *
+     * The **column under the focus** decides which detail: a space in the JSON column opens the record's
+     * JSON, anywhere else opens its message. The grid keeps the focus and the selection itself, so the
+     * handler reads both off the element the key event came from — the cell's `data-col-id` and the
+     * row's `data-row-id`, written as CSS-safe values with a leading colon (`:json`, `:perf-101`) — and
+     * falls back to the row the grid marked selected. A space typed into the toolbar's inputs is not
+     * ours: those are outside the wrapper this listens on.
+     */
+    const handleGridKeyDown = useCallback(
+        (e: React.KeyboardEvent): void => {
+            if (e.key !== ' ') return;
+            const container = e.currentTarget as HTMLElement;
+            const target = e.target as HTMLElement;
+            const cell = target.closest<HTMLElement>('.wx-cell');
+            const row =
+                cell?.closest<HTMLElement>('.wx-row[data-id]') ??
+                container.querySelector<HTMLElement>('.wx-row[data-id].wx-selected');
+            // The grid writes both ids as CSS-safe attribute values, with a leading colon (`:json`);
+            // what the expansion sets are keyed by is the record's own id and the column's own id.
+            const bare = (value: string | undefined): string | undefined =>
+                value?.startsWith(':') ? value.slice(1) : value;
+            const rowId = bare(row?.dataset['id']);
+            if (rowId === undefined) return;
+            e.preventDefault();
+            handleToggleExpanded(
+                rowId,
+                bare(cell?.dataset['colId']) === 'json' ? 'json' : 'message',
+            );
+        },
+        [handleToggleExpanded],
+    );
 
     // ── Context value ─────────────────────────────────────────────────────
 
@@ -1683,6 +1904,7 @@ export function LogViewer({
             clientConfig,
             onTraceFilter: handleTraceFilter,
             onToggleExpanded: handleToggleExpanded,
+            onFilterText: setSearchText,
         }),
         [theme, searchText, clientConfig, handleTraceFilter, handleToggleExpanded],
     );
@@ -1733,6 +1955,8 @@ export function LogViewer({
     const hasFilters =
         filters.level ||
         filters.name ||
+        filters.signal ||
+        filters.capture ||
         filters.traceId ||
         filters.search ||
         filters.hasError ||
@@ -1761,6 +1985,17 @@ export function LogViewer({
                         {/* Ensure theme wrapper fills container */}
                         {'.wx-theme { height: 100%; display: flex; flex-direction: column; }'}
                         {'.wx-grid { flex: 1; min-height: 0; }'}
+                        {/* The theme sets a 14px font at a 20px line height on the row; the cells size
+                            their own text and inherit it, which made every cell 20px of text in the
+                            17px a 35px row leaves for it — the clipping every column showed. One line
+                            height, and the row fits what the cells draw. */}
+                        {'.wx-row, .wx-header { line-height: 16px; }'}
+                        {/* The theme pads a cell by 8px vertically, which is most of a dense table's
+                            row height spent on nothing. Four is still a comfortable gap between two
+                            lines of text and puts ten more rows in the same window. */}
+                        {
+                            '.wx-row .wx-cell, .wx-header .wx-cell { padding-top: 4px; padding-bottom: 4px; }'
+                        }
                     </style>
 
                     {/* Toolbar */}
@@ -1782,12 +2017,46 @@ export function LogViewer({
                         </select>
 
                         <input
-                            style={{...inputStyle, width: '140px'}}
-                            placeholder="Service name..."
+                            style={{...inputStyle, width: '160px'}}
+                            placeholder="Port or component..."
                             value={filters.name ?? ''}
                             onChange={handleNameChange}
                             list="service-names-datalist"
                         />
+
+                        <select
+                            style={selectStyle}
+                            value={filters.signal ?? ''}
+                            onChange={handleSignalChange}
+                            title="Filter by the declared signal identifier"
+                        >
+                            <option value="">All signals</option>
+                            {uniqueSignals.map(signal => (
+                                <option
+                                    key={signal}
+                                    value={signal}
+                                >
+                                    {signal}
+                                </option>
+                            ))}
+                        </select>
+
+                        <select
+                            style={selectStyle}
+                            value={filters.capture ?? ''}
+                            onChange={handleCaptureChange}
+                            title="Filter by the capture shape"
+                        >
+                            <option value="">All shapes</option>
+                            {uniqueShapes.map(shape => (
+                                <option
+                                    key={shape}
+                                    value={shape}
+                                >
+                                    {shape}
+                                </option>
+                            ))}
+                        </select>
 
                         {/* Datalist for service name autocomplete */}
                         <datalist id="service-names-datalist">
@@ -1898,16 +2167,23 @@ export function LogViewer({
                     </div>
 
                     {/* SVAR Grid */}
-                    <div style={{flex: 1, overflow: 'hidden'}}>
+                    <div
+                        style={{flex: 1, overflow: 'hidden'}}
+                        onKeyDown={handleGridKeyDown}
+                    >
                         <ThemeWrapper>
                             <Grid
                                 {...({
-                                    data: displayEntries,
+                                    data: gridRows,
                                     columns,
                                     select: true,
                                     rowStyle,
-                                    rowHeight: getRowHeight,
-                                    autoRowHeight: true,
+                                    rowHeight: SINGLE_ROW_HEIGHT,
+                                    // The virtual scroller has to add up the same per-row heights the
+                                    // rows are drawn at, or it computes the scroll range from the
+                                    // default and an expanded row beyond the viewport cannot be
+                                    // reached.
+                                    _rowHeightFromData: true,
                                     init: initGrid,
                                     onFilterTrace: handleFilterTrace,
                                     // eslint-disable-next-line @typescript-eslint/no-explicit-any

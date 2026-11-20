@@ -82,6 +82,20 @@ const vocabulary = declare({
             mtid: 'event',
             method: 'watch.config.reload',
         },
+        /**
+         * Call recording was switched while the process ran.
+         *
+         * Reported rather than silent, because the switch decides whether the flow ledger — and so
+         * every flow page and every diagram — sees anything at all: a deployment whose diagrams are
+         * empty is told here whether that was a decision or a fault. The patch that turned it off
+         * is the whole explanation, and it travels with the record.
+         */
+        frameworkCallRecordingChanged: {
+            level: 'info',
+            message: 'call recording switched {state}',
+            mtid: 'event',
+            method: 'log.calls',
+        },
         /** Reloading a module after a config change failed. */
         frameworkConfigReloadFailed: {level: 'error', message: 'config reload failed: {error}'},
         /**

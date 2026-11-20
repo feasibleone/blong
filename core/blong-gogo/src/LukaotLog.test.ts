@@ -10,8 +10,10 @@
  * and replacing `process.stdout.write` for the duration would swallow the test runner's own output.
  */
 
+import {withCapability} from '@feasibleone/lukaot';
 import {test} from 'tap';
 
+import {CALLS_CAPABILITY, callsPermitted} from './callTrace.ts';
 import {createConfigProxy} from './ConfigRuntime.ts';
 import LukaotLog from './LukaotLog.ts';
 
@@ -85,6 +87,68 @@ test('a face carries every member, and the threshold decides what is written', a
     face.info?.({}, 'filtered');
     t.equal(records().length, 0, 'and the logger filters what its threshold excludes');
     t.type(face.calls, 'object', 'the call channel is there at every level');
+    t.end();
+});
+
+test('the call channel produces records at any level, and prints only when asked', async t => {
+    // The flow ledger and every diagram are drawn from these records, so they are produced by
+    // default; printing two lines per call is what `log.calls.stdout` opts into (`@@D-223`). A
+    // process configured at `info` used to filter them out before they reached anything, which
+    // emptied every flow page — the framework realm's, the gateway's and the commander's.
+    // Delivery to the service is proved by those packages' own Playwright specs; what is asserted
+    // here is the terminal, which is the half a level decides.
+    const quiet = collector();
+    const quietLog = new LukaotLog({format: 'json', level: 'info', writer: quiet.writer});
+    const quietCalls = quietLog.logger('info', {name: 'gateway'}).calls;
+    withCapability('calls', true, () => quietCalls?.start('blong.flow.find'));
+    t.equal(quiet.records().length, 0, 'a call record is not printed by default');
+
+    const loud = collector();
+    const loudLog = new LukaotLog({
+        format: 'json',
+        level: 'info',
+        writer: loud.writer,
+        calls: {stdout: true},
+    });
+    const loudCalls = loudLog.logger('info', {name: 'gateway'}).calls;
+    withCapability('calls', true, () => loudCalls?.start('blong.flow.find'));
+    const [printed] = loud.records();
+    t.ok(printed, 'and printed when the configuration asks for it');
+    t.end();
+});
+
+test('call recording can be switched while the process runs', async t => {
+    // The switch a running process needs: changing `log.calls` in a config file, or a source that
+    // decides from its database, must not require a restart — and the switch reports itself, so a
+    // quiet flow ledger is a decision the log explains rather than a fault (@@D-941).
+    //
+    // What the switch decides is the **next** flow: the capability is published with the execution
+    // it belongs to (`@@D-223`), so a flow already running keeps the answer it entered with. That
+    // is why each call here decides its capability the way the gateway does at the entry — from
+    // `callsPermitted`, which is the configuration half.
+    const {writer, records} = collector();
+    const log = new LukaotLog({format: 'json', level: 'info', writer, calls: {stdout: true}});
+    const calls = log.logger('info', {name: 'gateway'}).calls;
+    const started = (kind: string): void =>
+        withCapability(CALLS_CAPABILITY, callsPermitted(kind), () => calls?.start(kind));
+    const callLines = (): number =>
+        records().filter(record => fields(record).$meta !== undefined).length;
+    const switches = (): number =>
+        records().filter(record => fields(record).signal === 'frameworkCallRecordingChanged')
+            .length;
+
+    started('a.b.c');
+    t.equal(callLines(), 1, 'recording is on until something says otherwise');
+
+    log.setCallRecording({enabled: false});
+    started('a.b.c');
+    t.equal(callLines(), 1, 'and nothing is produced for the flow entered after it is off');
+    t.equal(switches(), 1, 'the switch is reported, so a quiet ledger has a reason');
+
+    log.configChanged(new Map(), {log: {calls: {enabled: true}}}, {log: {calls: {enabled: false}}});
+    started('a.b.c');
+    t.equal(callLines(), 2, 'a config change applies in place, without a restart');
+    t.equal(switches(), 2, 'and it reports itself too');
     t.end();
 });
 

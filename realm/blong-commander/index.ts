@@ -54,5 +54,11 @@ export default server(() => ({
             // nothing.
             registry: {checkpointMode: 'debug'},
         },
+        playwright: {
+            // Recording is **off** for the browser specs, and `test/observedBranchList.play.ts` asks
+            // for its records per request with `x-blong-grant` (`@@D-223`): with it off, the branch
+            // list it draws can only come from a granted request.
+            log: {calls: {enabled: false}},
+        },
     },
 }));

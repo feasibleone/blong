@@ -86,17 +86,29 @@ the blong framework runtime (`core/blong-gogo`), so that it can be tested indepe
 
 ### Server side
 
-Implemented as a new Pino transport, which sends log entries via UDP to a log server. The log server
-is implemented as a separate microservice, which receives log entries from the transport and stores
-them in a circular buffer in memory. The log entries are in JSON format and are split into UDP
-packets, which are sent to the log server. Each set of packets contains a batch of log entries and
-has a randomly generated 8 byte batch id, which allows the log server to reassemble the log entries
-in the correct order. After reassembling the log entries, the log server tries to parse the log
-message as JSON, and if it succeeds, it stores them in the buffer and adds an ULID to each log
-entry. The log server also exposes a WebSocket API, which allows the client to subscribe to log
-entries in real time, and also to provide filters. The log server also exposes a REST API, which
-allows the client to fetch recent log entries on open, and also to fetch log entries based on
-filters.
+Implemented as a lukaot **writer** which sends records via UDP to a log server. The writer replaced
+a pino transport, and the replacement is not a detail: the framework stopped writing through pino
+when the vocabulary landed, so the pino transport had no producer at all. What travels is the
+**record**, not the rendered line — a destination is handed both, and a viewer that had only the
+line could show the sentence but none of the fields a capture row draws.
+
+The writer is `createUdpWriter` in `@feasibleone/lukaot/node`, not in this package: a process has to
+be able to send its records somewhere without depending on the tool that displays them, so the sink
+travels with the vocabulary and the viewer only reads what arrives. The batch format lives beside
+the writer for the same reason — a collector that guessed the header could not be corrected by
+upgrading the process that sends (`@@D-930`).
+
+The log server is a separate process, which receives records from the writer and stores them in a
+circular buffer in memory. The records are JSON and are split into UDP packets; each set carries a
+randomly generated 8-byte batch id, which lets the server reassemble them in the correct order.
+After reassembling, the server stores each record with a minted ULID. It exposes a WebSocket API for
+real-time subscription with filters, a REST API for the recent window, and the client bundle itself,
+which is why a local run is one command.
+
+The client's addresses are derived from the request that asks for them rather than from the host the
+server bound to: a viewer reached through a forwarded port or an ingress must be told where _it_ can
+reach the API, and a configuration written at startup cannot know that. Deployment, authentication
+and a portal entry are not implemented; what they need is recorded in the pattern page.
 
 The server side also hosts the client side artifacts. It is deliberately not a Blong component: the
 receiver, the REST routes and the WebSocket hub are a plain `node:http` server with `ws`
@@ -123,6 +135,11 @@ came to be wrong.
 
 - **Dual filtering**: Client-side filtering (useMemo) for instant response on fetched data, plus
   server-side filtering via WebSocket subscription messages
+- **Declared identity**: a `Signal` column carries the declared identifier, which is the line's
+  identity since the vocabulary landed, and a mark on the rows whose payload can be drawn
+- **Capture rendering**: an expanded capture is drawn by the shape that produced it — an exchange as
+  a request/response with headers and body, a frame as a hex dump with its ASCII beside it, a
+  document as its keys and then its content
 - **Filter persistence**: Uses ref to track current filters and re-sends them on WebSocket
   reconnection
 - **Search highlighting**: Custom highlightSearch() function wraps matches in yellow background

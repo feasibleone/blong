@@ -75,7 +75,14 @@ export interface LineageNode {
     service: string;
     time: number;
     operation?: string;
-    signal: string;
+    /**
+     * The declared identifier the record reached, when it named one.
+     *
+     * Absent for a record that only its flow attributes — an ordinary line a realm or the runtime
+     * emitted inside a served request. The node is still placed: causality runs on the trace and the
+     * parent, and neither needs a signal (`@@D-940`).
+     */
+    signal?: string;
     intent?: string;
     /**
      * The call this record belongs to, when it named one (PRD R22). The trace is

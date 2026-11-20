@@ -4,7 +4,7 @@
  * Provides deterministic log entries for visual testing.
  */
 
-import type {ClientConfig, LogEntry} from '../../types.js';
+import type {ClientConfig, LogEntry} from '../../types.ts';
 
 // Use a fixed base time for deterministic rendering
 const BASE_TIME = new Date('2026-02-13T12:00:00.000Z').getTime();
@@ -315,6 +315,315 @@ export function generateLargeDataset(count: number): LogEntry[] {
             : {}),
     }));
 }
+
+// ── lukaot records ───────────────────────────────────────────────────────────
+
+/**
+ * The records the framework writes now, with the three capture shapes it ships.
+ *
+ * These are the shapes the viewer has to read: a declared signal carries `fields.signal` and
+ * `fields.params` and repeats the identifier at the top level; a capture carries `fields.capture`,
+ * `fields.shape` and `fields.rung` beside the fields its shape rendered, with the payload in
+ * `fields.payload`; a port failure carries the error at the top level and its type in the fields.
+ *
+ * The frames are the ones an ISO 8583 corridor actually sends: an ASCII MTI behind a two-byte length,
+ * a binary bitmap that reads as dots in the ASCII column, and the field data after it. That contrast is
+ * the whole point of drawing both columns (`@@D-927`).
+ */
+const hex = (bytes: number[]): string =>
+    bytes.map(byte => byte.toString(16).padStart(2, '0')).join(' ');
+
+/** `0200` plus a bitmap, a 16-digit pan and a 12-digit amount — 40 bytes. */
+const REQUEST_FRAME = hex([
+    0x00, 0x28, 0x30, 0x32, 0x30, 0x30, 0x3c, 0x24, 0x04, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00,
+    0x16, 0x34, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31,
+    0x35, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+]);
+
+/** `0210` plus an approved response code — 18 bytes. */
+const RESPONSE_FRAME = hex([
+    0x00, 0x12, 0x30, 0x32, 0x31, 0x30, 0x3c, 0x24, 0x04, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00,
+    0x30, 0x30,
+]);
+
+const LUKAOT_TIME = new Date('2026-11-20T09:14:02.000Z').getTime();
+
+export const lukaotEntries: LogEntry[] = [
+    {
+        id: makeId(201),
+        time: LUKAOT_TIME,
+        level: 20,
+        levelName: 'debug',
+        msg: 'watching /home/dev/blong/realm/blong-agent',
+        service: 'blong',
+        signal: 'frameworkWatchStarted',
+        fields: {
+            context: 'Watch',
+            signal: 'frameworkWatchStarted',
+            params: {folders: '/home/dev/blong/realm/blong-agent'},
+        },
+    },
+    {
+        id: makeId(202),
+        time: LUKAOT_TIME + 40,
+        level: 30,
+        levelName: 'info',
+        msg: 'generating dir /home/dev/blong/core/blong-server/orchestrator/subject',
+        service: 'blong',
+        signal: 'frameworkSchemaDirScanning',
+        fields: {
+            context: 'ApiSchema',
+            signal: 'frameworkSchemaDirScanning',
+            params: {dir: '/home/dev/blong/core/blong-server/orchestrator/subject'},
+        },
+    },
+    {
+        id: makeId(203),
+        time: LUKAOT_TIME + 120,
+        level: 40,
+        levelName: 'warn',
+        msg: 'no signing key: no key configured and none was generated',
+        service: 'blong',
+        signal: 'frameworkGatewayKeyMissing',
+        fields: {
+            context: 'Gateway',
+            signal: 'frameworkGatewayKeyMissing',
+            params: {usage: 'signing', reason: 'no key configured and none was generated'},
+            messageId: 'event',
+            operation: 'gateway.key.resolve',
+        },
+        traceId: TRACE_ID_A,
+    },
+    {
+        id: makeId(204),
+        time: LUKAOT_TIME + 160,
+        level: 30,
+        levelName: 'info',
+        msg: 'http exchange',
+        service: 'blong',
+        signal: 'frameworkHttpExchange',
+        traceId: TRACE_ID_A,
+        fields: {
+            context: 'srv.http',
+            signal: 'frameworkHttpExchange',
+            capture: 'frameworkHttpExchange',
+            shape: 'http.exchange',
+            rung: 'body',
+            bytes: 96,
+            phase: 'request',
+            method: 'POST',
+            url: 'https://hub.example.com/rpc/chat/message/post',
+            headers: 'content-type, authorization, accept, x-blong-language',
+            payload: JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'chat.message.post',
+                params: {channel: 'C0CK271R4L9', text: 'the corridor is up'},
+                id: makeId(211),
+            }),
+        },
+    },
+    {
+        id: makeId(205),
+        time: LUKAOT_TIME + 200,
+        level: 30,
+        levelName: 'info',
+        msg: 'tcp frame',
+        service: 'blong',
+        signal: 'frameworkTcpFrame',
+        traceId: TRACE_ID_A,
+        fields: {
+            context: 'srv.tcp',
+            signal: 'frameworkTcpFrame',
+            capture: 'frameworkTcpFrame',
+            shape: 'tcp.frame',
+            rung: 'full',
+            bytes: 40,
+            direction: 'out',
+            ascii: '.(0200<$.........16',
+            payload: REQUEST_FRAME,
+        },
+    },
+    {
+        id: makeId(206),
+        time: LUKAOT_TIME + 260,
+        level: 30,
+        levelName: 'info',
+        msg: 'tcp frame',
+        service: 'blong',
+        signal: 'frameworkTcpFrame',
+        traceId: TRACE_ID_A,
+        fields: {
+            context: 'srv.tcp',
+            signal: 'frameworkTcpFrame',
+            capture: 'frameworkTcpFrame',
+            shape: 'tcp.frame',
+            rung: 'hex',
+            bytes: 18,
+            direction: 'in',
+            ascii: '.(0210<$.........00',
+            payload: RESPONSE_FRAME,
+        },
+    },
+    {
+        id: makeId(207),
+        time: LUKAOT_TIME + 300,
+        level: 30,
+        levelName: 'info',
+        msg: 'json payload',
+        service: 'blong',
+        signal: 'frameworkJsonPayload',
+        traceId: TRACE_ID_A,
+        fields: {
+            context: 'srv.http',
+            signal: 'frameworkJsonPayload',
+            capture: 'frameworkJsonPayload',
+            shape: 'json',
+            rung: 'body',
+            bytes: 118,
+            label: 'mle.result',
+            keys: ['transferId', 'state', 'payer', 'payee', 'amount'],
+            payload: JSON.stringify({
+                transferId: makeId(211),
+                state: 'COMMITTED',
+                payer: {dfsp: 'payerfsp', account: '****4471'},
+                payee: {dfsp: 'payeefsp', account: '****9930'},
+                amount: {currency: 'USD', value: 2500},
+            }),
+        },
+    },
+    {
+        id: makeId(208),
+        time: LUKAOT_TIME + 340,
+        level: 30,
+        levelName: 'info',
+        msg: 'tcp frame',
+        service: 'blong',
+        signal: 'frameworkTcpFrame',
+        fields: {
+            context: 'srv.tcp',
+            signal: 'frameworkTcpFrame',
+            capture: 'frameworkTcpFrame',
+            shape: 'tcp.frame',
+            rung: 'line',
+            bytes: 256,
+            direction: 'in',
+        },
+    },
+    {
+        id: makeId(209),
+        time: LUKAOT_TIME + 400,
+        level: 50,
+        levelName: 'error',
+        msg: 'db.subject.find failed',
+        service: 'blong',
+        signal: 'frameworkPortFailure',
+        traceId: TRACE_ID_A,
+        err: {
+            type: 'Error',
+            message: 'connection terminated unexpectedly',
+            stack:
+                'Error: connection terminated unexpectedly\n' +
+                '    at Client.end (node_modules/pg/lib/client.js:132:5)\n' +
+                '    at AdapterBase.error (/core/blong-gogo/src/AdapterBase.ts:270:1)',
+        },
+        fields: {
+            context: 'srv.db',
+            signal: 'frameworkPortFailure',
+            type: 'error.db.connectionLost',
+            statusCode: 503,
+            messageId: 'error',
+            operation: 'db.subject.find',
+            params: {subject: 'party', object: 'party'},
+        },
+    },
+    {
+        id: makeId(210),
+        time: LUKAOT_TIME + 440,
+        level: 30,
+        levelName: 'info',
+        msg: 'http exchange',
+        service: 'blong',
+        signal: 'frameworkHttpExchange',
+        traceId: TRACE_ID_A,
+        fields: {
+            context: 'srv.http',
+            signal: 'frameworkHttpExchange',
+            capture: 'frameworkHttpExchange',
+            shape: 'http.exchange',
+            rung: 'headers',
+            bytes: 0,
+            phase: 'response',
+            method: 'POST',
+            url: 'https://hub.example.com/rpc/chat/message/post',
+            statusCode: 200,
+            durationMs: 41,
+            headers: 'content-type, x-request-id, cache-control',
+        },
+    },
+];
+
+export const lukaotCaptures = lukaotEntries.filter(
+    entry => entry.fields?.['capture'] !== undefined,
+);
+
+/**
+ * The rest of what a record can say: the branch it reports, the call it is one end of, who asked for the
+ * work and what caused it (`@@D-926`).
+ *
+ * Two records rather than one, because they are the two things a reader looks for separately: a decision
+ * explains why a branch was taken, a flow leg says which call a record belongs to and where in the
+ * execution it sits.
+ */
+export const lukaotContextRecords: LogEntry[] = [
+    {
+        id: makeId(221),
+        time: LUKAOT_TIME + 500,
+        level: 30,
+        levelName: 'info',
+        msg: 'deployment granularity chosen',
+        service: 'blong',
+        fields: {
+            context: 'controller.reconcile',
+            signal: 'kustomizeGranularityDecided',
+            params: {deployment: 'blong-suite'},
+        },
+        refs: {record: '01M7REF221', parent: '01M7REF200', trace: TRACE_ID_A},
+        intent: {name: 'release-cd', actor: 'deployer', tenant: 'comesa', priority: 2},
+        flow: {
+            id: '01M7RUN221',
+            kind: 'kustomize.reconcile',
+            leg: 'controller.cluster',
+            legFrom: 'controller',
+            legTo: 'cluster',
+            legSeq: '1.2',
+            step: 'plan',
+            status: 'running',
+        },
+        decision: {
+            discriminator: 'deployment-granularity',
+            candidates: ['one-process', 'per-realm', 'per-layer'],
+            chosen: 'per-realm',
+            values: {realms: 4, layers: 11},
+        },
+    },
+    {
+        id: makeId(222),
+        time: LUKAOT_TIME + 560,
+        level: 30,
+        levelName: 'info',
+        msg: 'POST /rpc/kustomize/deployment/apply',
+        service: 'blong',
+        fields: {context: 'srv.gateway', signal: 'frameworkHttpRequest'},
+        refs: {record: '01M7REF222', parent: '01M7REF221', trace: TRACE_ID_A},
+        intent: {name: 'release-cd', actor: 'deployer', tenant: 'comesa'},
+        req: {
+            operation: 'POST',
+            target: '/rpc/kustomize/deployment/apply',
+            headers: {'x-request-id': 'r-1'},
+        },
+        res: {status: 202, elapsedMs: 18, headers: {'content-type': 'application/json'}},
+    },
+];
 
 export const darkThemeConfig: ClientConfig = {
     wsUrl: 'ws://localhost:9998',

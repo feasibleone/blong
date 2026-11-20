@@ -3,7 +3,7 @@
  */
 
 import {test} from 'tap';
-import {CircularBuffer} from './buffer.js';
+import {CircularBuffer} from './buffer.ts';
 
 test('CircularBuffer', async t => {
     t.test('add and retrieve entries', async t => {

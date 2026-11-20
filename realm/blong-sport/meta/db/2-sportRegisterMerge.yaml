@@ -213,7 +213,7 @@ coach: |
     | Иван Иванов Калинов                      | Golf              | 1        | треньор |
 
 athlete: |
-    | name               | sport         | discipline                      | sex    | born       | status    | note |
+    | name               | sport         | discipline                      | gender | born       | status    | note |
     | ------------------ | ------------- | ------------------------------- | ------ | ---------- | --------- | --- |
     | Стефка Костадинова | Athletics     | High Jump                       | female | 1965-03-25 | retired   | Скок на височина, Атланта 1996; световна рекордьорка |
     | Йорданка Донкова   | Athletics     | Women 100 m Hurdles             | female | 1961-09-28 | retired   | 100 м с препятствия, Сеул 1988 |

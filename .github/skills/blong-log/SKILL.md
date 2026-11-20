@@ -192,7 +192,7 @@ arriving is a dependency's — which is how `@fastify/bearer-auth`'s refusal was
 Beyond the live log server, Blong's `pino-cacache` transport stores every log entry **on disk**
 (default `~/.blong/log-cache`) with full detail, so they can be inspected later in greater detail
 even after the process has exited. The VS Code extension reads this cache when you click a
-`semlog://t/<shape>` (or `semlog://r/<id>`) link in the terminal. Coding agents can read it directly
+`lukaot://t/<shape>` (or `lukaot://r/<id>`) link in the terminal. Coding agents can read it directly
 with the `blong-dev log` CLI:
 
 ```bash
@@ -202,10 +202,9 @@ blong-dev log <ulid>                         # one entry, in full (JSON)
 blong-dev log --help                         # every filter and output mode
 ```
 
-Output is `condensed` one-line text by default (never colorized, safe to grep), `pretty` for a
-human and `json` for a script; a single ULID prints as JSON. Filters combine (`--level`,
-`--name`, `--trace-id`, `--method`, `--search`, `--after`) and the command names each one in its
-own `--help`.
+Output is `condensed` one-line text by default (never colorized, safe to grep), `pretty` for a human
+and `json` for a script; a single ULID prints as JSON. Filters combine (`--level`, `--name`,
+`--trace-id`, `--method`, `--search`, `--after`) and the command names each one in its own `--help`.
 
 ### Condensed output (for coding agents)
 
@@ -253,6 +252,22 @@ Each log entry may contain these properties:
 - **Combine filters** for precision: `?level=error&name=gateway&search=timeout` returns only gateway
   errors mentioning "timeout".
 
+## Feeding a process into the viewer
+
+The viewer shows nothing until a process hands it records, and where they go is configuration:
+
+```yaml
+log:
+    destination: {port: 9999} # or 'udp://host:9999', or true for the defaults
+```
+
+The sink is lukaot's (`createUdpWriter` in `@feasibleone/lukaot/node`), so the common case needs no
+package named in the configuration. A destination the framework does not ship is named as a module —
+`{module, options}` — whose **default export** is called with the options and must answer a lukaot
+`Writer` (`write(line, record)`); `setWriter(createUdpWriter({port: 9999}))` in code is the same
+thing. A destination that cannot be built is reported (`log.destination: … could not be imported`)
+and skipped rather than thrown, so a wrong address costs records and not the process (@@D-930).
+
 ## Extending the log tooling
 
 `blong-dev log` is the intended way for coding agents to read persisted log entries. It is
@@ -264,7 +279,8 @@ with shell one-liners:
 - The command lives in `tools/blong-dev/src/commands/log.ts`, is registered as `log` in
   `tools/blong-dev/src/cli.ts`, and is exported from `tools/blong-dev/src/index.ts`.
 - Add a filter by following the existing `--level` / `--name` / `--trace-id` pattern, and document
-  it in the help registry (`tools/blong-dev/src/help/commands.ts`) so `blong-dev log --help` shows it.
+  it in the help registry (`tools/blong-dev/src/help/commands.ts`) so `blong-dev log --help` shows
+  it.
 - Keep `condensed` plain and parseable (no ANSI), keep summaries on **stderr**, and list newest
   first — agents and scripts rely on that.
 - Full internals, the on-disk storage format, and step-by-step extension guidance are in the
@@ -329,9 +345,12 @@ new capabilities and usage patterns.
 
 ## Call records (the flow ledger's input)
 
-`call start` / `call end` / `call error` / `call received` are **not level records**: they go
-through `log.calls`, they are produced for a whole flow or not at all, and by default they are
-**stored but not printed** — so a quiet stdout is not evidence that nothing was recorded.
+`call start` / `call end` / `call error` / `call received` / `call answered` are **not level
+records**: they go through the call channel (`log.calls`), they are produced for a whole flow or not
+at all, and by default they are **stored and sent to the service but not printed** — a quiet stdout
+is not evidence that nothing was recorded. The level is not what decides them: the channel binds its
+own logger at `debug` so a process configured at `info` still produces them, and the write path
+skips the terminal for them unless `log.calls.stdout` asks.
 
 ```bash
 # Show them on stdout for a run (they still reach the cache and the service)
@@ -348,10 +367,94 @@ blong grant calls --ttl=15m
 curl -H "x-blong-grant: <token>" ...          # a 401/403 request records no calls: nothing ran
 ```
 
-The files to read when this needs changing: `@feasibleone/semantic-log/capability` (the ambient
-switch, the `cap` field of the identity header, the four phases and the channel),
-`@feasibleone/semantic-log/emitter` (`LogBase` — the destination: the channel's per-component
-loggers, and the `envelope`/`translate` options a runtime fills in),
-`core/blong-gogo/src/callTrace.ts` (the config, the opt-out patterns and the record envelope),
-`grant.ts` (mint/verify), `SemanticLog.ts` (what blong passes to `LogBase`), and `bin/blong.ts`
-(`blong grant`).
+### Turning recording on and off
+
+The switch has three grains, and the one you want depends on how long you need it:
+
+| Grain                                 | How                                                                                          | Lives                      |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------- |
+| One flow                              | the `calls` capability, published with the flow (a grant header turns it on for one request) | the execution              |
+| The whole process, from configuration | `log.calls: {enabled, off, stdout}`                                                          | re-read on a config reload |
+| The whole process, right now          | `api.log.setCallRecording({enabled: false})`                                                 | until the next patch       |
+
+`setCallRecording` is deliberately plain: it patches `callTrace.ts`'s module configuration, so
+**anything** that decides can drive it without the log learning about that source — an operator's
+endpoint today, a value the deployment keeps in its database tomorrow. A config change on disk
+already reaches it: the watch loop's reload asks the log component (`configChanged`), which is the
+one path a non-port component gets, so `log.calls` moves in a **running** process without a reload
+of the process. The change reports itself as `frameworkCallRecordingChanged`, because a flow page
+that is empty has to say whether that was a decision or a fault.
+
+A switch decides the **next** flow: the capability is published with the execution it belongs to, so
+a flow already running keeps the answer it entered with. That is why turning recording off quiets a
+deployment within a request or two rather than instantly.
+
+### `x-blong-grant` — asking for one request's calls
+
+The per-flow grain is a header. A deployment that records nothing useful can turn recording on for
+the one call it is investigating, instead of restarting with a louder configuration:
+
+```bash
+# Mint: one signed token, one capability, fifteen minutes by default
+TOKEN=$(blong grant calls --ttl=15m)
+
+# Use: the next request records its calls; every other request still records nothing
+curl -H "x-blong-grant: $TOKEN" -H 'authorization: Bearer …' http://host:8080/rpc/blong/flow/find
+```
+
+What the header _is_: a short-lived JWT signed with the **gateway's own sign key** — the key already
+configured as `gateway.sign` (or `gateway.grant.key`), whose public half the running gateway holds.
+It carries `cap` (the capabilities it asks for, `['calls']` today) and `exp`. The gateway verifies
+it once, at its earliest hook, before authentication and before the route runs, and republishes the
+answer as the `calls` capability inside the flow's identity — the token itself is **not forwarded**,
+so a downstream process reads a decided capability and needs no key of its own. Because the decision
+is a capability rather than a config value, it wins over `log.calls`: a grant turns recording **on**
+for its request even when the process has it off, which is exactly what makes it usable on the
+deployment that is misbehaving.
+
+Two properties worth knowing when using it:
+
+- **A bad grant is no grant, never a rejection.** Absent, malformed, expired, wrongly signed or
+  naming a capability this build does not know all answer `undefined`, and the request proceeds with
+  recording off. A telemetry switch must not be able to fail the call it was meant to illuminate.
+- **A public key verifies.** The gateway is handed the public JWK by the MLE plugin, so private
+  material never appears in a config snapshot; verification needs the public half and nothing else.
+  Only a **generated** key (no `gateway.sign`, no `gateway.grant.key`) verifies nothing, because a
+  key that exists in one process cannot check a token minted elsewhere.
+
+In a spec, mint it and apply it to the browser context — this is how the flow-diagram specs prove
+they depend on call records instead of on a default:
+
+```ts
+import {mintGrant} from '@feasibleone/blong-gogo/grant.ts';
+
+test.use({extraHTTPHeaders: {'x-blong-grant': await mintGrant({cap: ['calls']})}});
+```
+
+Minted with no key on purpose: it falls back to the committed development sign key, which is what
+the `dev` intent configures — so a checkout and CI agree without a secret. The suites that use this
+(`core/blong-realm`, `realm/blong-gateway`, `realm/blong-commander`) set
+`log: {calls: {enabled: false}}` in their `playwright` block, so an execution on the flow page can
+only have come from a granted request.
+
+### What reaches the service
+
+A record is attributable two ways — it names a declared signal, or it belongs to a flow — and the
+sink and the ingest refuse only a record that names neither. A served request's records name no
+declaration (a realm's `log.info` does not), so the **flow** is what carries them to the ledger; a
+record with neither is dropped before it leaves the process, which is why `blong-dev log` can show a
+line the flow page has nothing to draw from (`@@D-940`).
+
+The files to read when this needs changing, all of them current:
+
+- `core/lukaot/src/capability.ts` — the ambient `calls` switch, the `cap` field of the identity
+  header, the five phases and `createCallChannel`.
+- `core/blong-gogo/src/callTrace.ts` — the configuration, the opt-out patterns, the record envelope,
+  and `patchCallTrace`, the seam a runtime or a database source pushes a change through.
+- `core/blong-gogo/src/LukaotLog.ts` — where the channel is built (its own `debug` logger), where a
+  call record is kept off the terminal, and `setCallRecording`/`configChanged`.
+- `core/blong-gogo/src/frameworkSignals.ts` — `frameworkCallRecordingChanged`.
+- `core/blong-gogo/src/Watch.ts` — `applyConfigReload`, the one place a reload reaches a component
+  that is not a port.
+- `core/blong-gogo/src/grant.ts` and `bin/blong.ts` — `blong grant calls` mints and verifies the
+  per-flow grant.

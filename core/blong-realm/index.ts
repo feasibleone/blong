@@ -31,6 +31,15 @@ export default server(() => ({
             // happen where the child is created rather than here.
             blong: {},
         },
+        playwright: {
+            // Recording is **off** for the browser specs, and the ones that expect call records
+            // ask for them per request with `x-blong-grant`. That is what the header is for — a
+            // switch turned on for the request that needs the data rather than for the deployment
+            // (`@@D-223`) — and it makes the dependency explicit: with recording off, an execution
+            // on the flow page can only have come from a granted request, so the spec proves the
+            // grant instead of passing on a default.
+            log: {calls: {enabled: false}},
+        },
         integration: {
             watch: {
                 test: ['test.blongRealmFlow'],

@@ -2,7 +2,9 @@ import {randomUUID} from 'node:crypto';
 
 import {handler, type IMeta} from '@feasibleone/blong';
 import type {IAgentSessionResult, IAgentStepResult} from '@feasibleone/blong/types';
+import {decide} from '@feasibleone/lukaot';
 
+import vocabulary from '../../lukaot/signal.ts';
 import {agentSettings, type IAgentDispatchPort} from '../settings.ts';
 import {agentHistory, agentToolDefinitions} from '../tools.ts';
 
@@ -173,6 +175,21 @@ export default handler(
                     text: params.answer.answerText,
                 });
             }
+
+            // Which loop drives this session is a decision, not only a field: the record that follows
+            // says which arm was taken and what the session was opened with, so a run that behaved
+            // unexpectedly is answered by reading the rationale rather than by reproducing it. The two
+            // arms are the declaration's, so an arm name that stopped existing is a compile error
+            // (`@@D-933`).
+            const driving = decide(vocabulary.decision.agentEngineMode, {mode}, [
+                {name: 'native', when: values => values.mode === 'native', run: () => 'native'},
+                {name: 'step', when: () => true, run: () => 'step'},
+            ]);
+            port.signal?.agentSessionEngineChosen?.({
+                sessionId: params.sessionId,
+                mode: driving ?? mode,
+                reason: `opened as ${mode}`,
+            });
 
             try {
                 if (mode === 'native') {

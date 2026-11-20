@@ -11,7 +11,7 @@ import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
  * 1. `sport.nomenclature.merge` reads the short seed shape — a padded table for
  *    the sports and a name-per-line block grouped by sport for the disciplines —
  *    and fills what the file leaves out: the resource label and the
- *    international name from the name, the kind, the status, and the sex read
+ *    international name from the name, the kind, the status, and the gender read
  *    from the discipline name. @@D-788
  * 2. A discipline carries the id its sport's name resolved to, so the reference
  *    is a name in the file and a key in the table.
@@ -90,12 +90,12 @@ export default handler(
                     const byName = new Map(rows.map(entry => [entry.disciplineName, entry]));
                     assert.equal(rows.length, 3, 'the disciplines point at the sport');
                     assert.equal(
-                        byName.get(`Men ${stamp} 10 m`)?.disciplineSex,
+                        byName.get(`Men ${stamp} 10 m`)?.disciplineGender,
                         'male',
-                        'the sex is read from the name',
+                        'the gender is read from the name',
                     );
                     assert.equal(
-                        byName.get(`Women ${stamp} 10 m`)?.disciplineSex,
+                        byName.get(`Women ${stamp} 10 m`)?.disciplineGender,
                         'female',
                         'the female event says so',
                     );
@@ -123,7 +123,7 @@ export default handler(
                                 `name: Тест ${stamp} Спортист`,
                                 `sport: ${sport}`,
                                 `discipline: Women ${stamp} 10 m`,
-                                'sex: female',
+                                'gender: female',
                             ].join(', '),
                             coach: `name: Тест ${stamp} Треньор, sport: ${sport}, register: T-3, duty: треньор`,
                         },

@@ -93,6 +93,7 @@ const {
     step,
     withCapability,
     withFlow,
+    withIntent,
 } = vocabulary;
 
 /**
@@ -263,24 +264,51 @@ function enter<T>(scope: Scope, meta: IMeta, fn: () => T): T {
 }
 
 /**
+ * The intent an outermost execution serves, from what the framework already knows.
+ *
+ * `intent` answers *who asked and for what*: a record that carries it can be read without asking which
+ * request it belonged to. The framework knows both halves at the entry — the method the request was
+ * addressed to is what the work is for, and an authorised request names its actor — so it states them
+ * once per flow instead of leaving every realm to invent a spelling. A realm that has a better answer
+ * calls `withIntent` inside the request, which overrides this one for everything it covers.
+ *
+ * Absent rather than half-filled when there is nothing to say: an unlabelled flow (a scheduled run that
+ * named no kind) has no intent worth recording, and a request that was never authorised has no actor.
+ */
+function intentOf(meta: IMeta, kind: string): {name: string; actor?: string} | undefined {
+    if (kind.length === 0) return undefined;
+    const actor = meta.auth?.actorId;
+    return {
+        name: kind,
+        ...(actor === undefined || actor === null || actor === '' ? {} : {actor: String(actor)}),
+    };
+}
+
+/**
  * Run an outermost entry: mint the flow, bind the trace, and publish the identity.
  *
  * Used at the boundaries where an execution begins — the gateway's routes and an
- * inbound RPC call that arrived with no flow of its own.
+ * inbound RPC call that arrived with no flow of its own. The intent is set here
+ * rather than at the call site because this is the one place that knows the entry
+ * is outermost: a nested leg would otherwise restate its own method as the reason
+ * the whole request exists (`@@D-931`).
  */
 export function runInFlow<T>(meta: IMeta, kind: string, fn: () => T): T {
     const inbound = adoptable(meta);
-    return enter(
-        {
-            flow: inbound.flow ?? mintId(),
-            kind: kind.length === 0 ? UNLABELLED : kind,
-            trace: traceOf(meta, inbound),
-            leg: inbound.leg,
-            seq: inbound.seq,
-        },
-        meta,
-        fn,
-    );
+    const intent = intentOf(meta, kind);
+    const run = (): T =>
+        enter(
+            {
+                flow: inbound.flow ?? mintId(),
+                kind: kind.length === 0 ? UNLABELLED : kind,
+                trace: traceOf(meta, inbound),
+                leg: inbound.leg,
+                seq: inbound.seq,
+            },
+            meta,
+            fn,
+        );
+    return intent === undefined ? run() : withIntent(intent, run);
 }
 
 /**

@@ -35,8 +35,16 @@ export default handler(context => {
                         {workerId: 'host-b', engineAccount: 'local'},
                         $meta,
                     )) as IClaimResult;
-                    assert.equal(first.ticket?.ticketId, 'T-1001', 'the first worker takes the first free ticket');
-                    assert.equal(second.ticket?.ticketId, 'T-1002', 'and the second worker the next one');
+                    assert.equal(
+                        first.ticket?.ticketId,
+                        'T-1001',
+                        'the first worker takes the first free ticket',
+                    );
+                    assert.equal(
+                        second.ticket?.ticketId,
+                        'T-1002',
+                        'and the second worker the next one',
+                    );
                     assert.notEqual(
                         first.ticket?.ticketId,
                         second.ticket?.ticketId,
@@ -56,9 +64,13 @@ export default handler(context => {
                         const failure = error as {code?: string; message?: string};
                         code = String(failure.code ?? failure.message ?? '');
                     }
+                    // Case-insensitive, because the same refusal arrives in two shapes: in-process the
+                    // declared code names the error, and over a dispatch only the rendered message does
+                    // (`Workspace … is not on this host`), which is the one that carries the capital
+                    // (@@T-745).
                     assert.match(
                         code,
-                        /workspace/,
+                        /workspace/i,
                         'a ticket whose workspace is not on this host is refused',
                     );
                 },
@@ -74,7 +86,11 @@ export default handler(context => {
                         {ticketId, workerId: 'host-a', ticketStatus: 'done'},
                         $meta,
                     )) as {released?: boolean};
-                    assert.equal(released.released, true, 'the worker that holds the ticket closes it');
+                    assert.equal(
+                        released.released,
+                        true,
+                        'the worker that holds the ticket closes it',
+                    );
                     let code = '';
                     try {
                         await agentTicketRelease(

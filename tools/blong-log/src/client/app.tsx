@@ -7,7 +7,7 @@ import {createRoot} from 'react-dom/client';
 
 import '@svar-ui/react-grid/all.css';
 
-import {LogViewer} from './LogViewer.js';
+import {LogViewer} from './LogViewer.tsx';
 
 const root = createRoot(document.getElementById('root')!);
 root.render(<LogViewer />);

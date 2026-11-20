@@ -114,7 +114,7 @@ export default handler(({lib: {seedRef, seedReference, seedRows}}) => {
             internationalName: text(row.internationalName),
             ...names,
             birthDate: text(row.birthDate) ?? text(row.born),
-            gender: text(row.gender) ?? text(row.sex),
+            gender: text(row.gender) ?? text(row.gender),
             nationality: text(row.nationality) ?? 'BUL',
             citizenship: text(row.citizenship) ?? 'Българско',
             photoUrl: text(row.photoUrl),

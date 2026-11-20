@@ -1,12 +1,12 @@
 # Sport and discipline classifiers — the LA28 programme.
 #
-# One discipline per event. Events both sexes contest are ONE discipline with
-# sex `mixed`; a shape that differs by sex (a weight class, an apparatus, a
-# distance) is a discipline of its own and names its sex.
+# One discipline per event. Events both genders contest are ONE discipline with
+# gender `mixed`; a shape that differs by gender (a weight class, an apparatus, a
+# distance) is a discipline of its own and names its gender.
 #
 # The handler derives what the file does not say: `sportName` and the
 # international name from the name, `kind` (olympic/individual), the status,
-# and the sex from the name of a discipline. Only exceptions are written.
+# and the gender from the name of a discipline. Only exceptions are written.
 #
 # Source: the official programme of the Olympic Games Los Angeles 2028, with
 # the 2024 weight classes where the LA28 classes are not published yet.

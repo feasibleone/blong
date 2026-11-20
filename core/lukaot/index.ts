@@ -108,7 +108,14 @@ export {
     type ICaptureSelector,
     type ICaptureWriterOptions,
 } from './src/captureWriter.ts';
-export {getWriter, setWriter, stderrWriter, stdoutWriter, type Writer} from './src/writer.ts';
+export {
+    createFanoutWriter,
+    getWriter,
+    setWriter,
+    stderrWriter,
+    stdoutWriter,
+    type Writer,
+} from './src/writer.ts';
 export * from './src/propagation.ts';
 export {
     createSignalProxy,

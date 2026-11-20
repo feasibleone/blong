@@ -31,8 +31,16 @@ import {
     diagramText,
     drawsACall,
 } from '@feasibleone/blong-browser/playwright/diagram';
+import {mintGrant} from '@feasibleone/blong-gogo/grant.ts';
 
-test.use({blongPermissions: true});
+test.use({
+    blongPermissions: true,
+    // Recording is off in this suite's `playwright` block, so the merge this spec draws records only
+    // because its requests carry a `calls` grant: the header is the per-request switch (`@@D-223`),
+    // minted with no key because the `dev` intent configures the committed development sign key the
+    // gateway verifies with.
+    extraHTTPHeaders: {'x-blong-grant': await mintGrant({cap: ['calls']})},
+});
 
 /** The kind to draw: the write this realm answers, pinned by name. */
 const REALM_KIND = 'gateway.bundle.merge';
