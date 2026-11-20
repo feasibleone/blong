@@ -99,9 +99,14 @@ await test('the declared signals reach the store, the service and the line', asy
 
     // What the tick *decided*, on the record that states its consequence: the claim carries the
     // branch names it chose between and the reason the work exists (`@@D-933`).
-    const decision = (claim?.record as {decision?: {discriminator?: string; chosen?: string}} | undefined)
-        ?.decision;
-    t.equal(decision?.discriminator, 'agentClaim', 'the claim record carries the decision behind it');
+    const decision = (
+        claim?.record as {decision?: {discriminator?: string; chosen?: string}} | undefined
+    )?.decision;
+    t.equal(
+        decision?.discriminator,
+        'agentClaim',
+        'the claim record carries the decision behind it',
+    );
     t.equal(decision?.chosen, 'claim', 'and the arm that was taken');
     const intent = (claim?.record as {intent?: {name?: string}} | undefined)?.intent;
     t.equal(
@@ -135,17 +140,30 @@ await test('the declared signals reach the store, the service and the line', asy
     // — by the call, not by the record's own trace — so what is asked is the execution that carries
     // this signal and the leg the tick ran as. That is what makes a session's diagram drawable from
     // what the worker said.
+    //
+    // Addressed by the **flow id the record carries**, not by the first execution whose refs name
+    // the signal: every group here runs a tick, so several executions carry `agentTicketClaimed`,
+    // the list is ordered by which was touched last, and the first match is whichever group claimed
+    // most recently — `test.agent.recovery` in CI, the session group locally. The id is the
+    // identity the ledger keys an execution by, so the assertion below is about the tick's own flow
+    // rather than about the run's ordering.
     const executions = (await (await fetch(`${String(clusterUrl)}/flows`)).json()) as {
         executions?: Array<{id?: string; kind?: string; refs?: string[]; legs?: string[]}>;
     };
+    const flowId = (claim?.record as {flow?: {id?: string}} | undefined)?.flow?.id;
     const session = (executions.executions ?? []).find(
-        execution => execution.refs?.includes('agentTicketClaimed') === true,
+        execution => flowId !== undefined && execution.id === flowId,
     );
     t.ok(session, 'and the flow ledger lists the execution the claim belongs to');
-    t.equal(session?.kind, 'agent.worker.tick', 'which is the tick the worker ran');
+    // Matched by the flow id its own record carries, and asserted on the leg rather than the kind:
+    // the kind is the group the runner opened, the leg is the tick that ran inside it (@@F-783).
+    t.ok(
+        (session?.refs ?? []).includes('agentTicketClaimed'),
+        'and it is the execution the claim was counted against',
+    );
     t.ok(
         (session?.legs ?? []).includes('agent.worker.tick'),
-        'with the call the claim was announced under',
+        'with the call the claim was announced under, which is the tick the worker ran',
     );
 
     t.end();

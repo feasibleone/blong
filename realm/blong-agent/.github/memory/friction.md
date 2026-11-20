@@ -21,11 +21,13 @@ open (9)
 - `F-672` · realm/blong-agent — An event payload was written wider than its column
 - `F-778` · realm/blong-agent — the tap gate ran no group, so a ticket test rotted unseen
 
-resolved (3)
+resolved (4)
 
 - `F-651` · realm/blong-agent — A base adapter that skips super.connect leaves start pending
 - `F-653` · realm/blong-agent — An upgrade built a gateway, and the gateway dialled every model
 - `F-654` · realm/blong-agent — An orchestrator cannot inject its persistence handlers by name
+- `F-783` · realm/blong-agent — A ledger assertion matched by recency, and compared the runner's
+  name
 
 <!-- /memory:index -->
 
@@ -194,3 +196,25 @@ group folder; it needs to be a library() injected into agentToolRun.
 Fixed with the documented shape: only the adapter whose namespace differs from the method needs the
 prefix, so db/agentSessionAdd resolves while taskNextTask stays bare; two of the three test steps
 now pass.
+
+### F-783 — A ledger assertion matched by recency, and compared the runner's name
+
+> _2026-11-20 · realm/blong-agent · resolved_
+
+The reach test looked for the flow ledger execution that carries agentTicketClaimed by taking the
+first match, and the list is ordered by which execution was touched last. Every group in the package
+runs a tick, so several executions carry that signal: locally the session group's tick was touched
+last and the assertion passed, in CI the recovery group's was and it failed with expected
+agent.worker.tick, actual test.agent.recovery.
+
+The deeper mistake was the field it compared. A flow's kind is the name of the group the runner
+opened - test.agent.session, test.agent.recovery - while the tick is the leg inside it, which is
+what the diagram is drawn from and what is the same in every group. So the test now finds the
+execution by the flow id its own record carries, and asserts the leg it was announced under rather
+than the kind of whoever ran it. A list read by recency is a list to match by identity, and a
+runner's name is not the realm's.
+
+Fixed in test/lukaot.reach.test.ts: the execution is found by the flow id the claim record carries,
+and the assertion is on the agent.worker.tick leg — the same in every group — rather than on the
+kind, which is the runner's group name. Verified by three consecutive green runs of the package
+(53/53).
