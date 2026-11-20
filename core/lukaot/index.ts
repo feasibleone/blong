@@ -50,6 +50,7 @@ export {
     type ILogSignal,
     type ISignal,
     type IVocabulary,
+    type DeclaredVocabulary,
     type IVocabularyDeclaration,
     type LevelName,
     type MessageOf,
