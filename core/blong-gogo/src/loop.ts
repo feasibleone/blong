@@ -36,7 +36,14 @@ export default function loop(
             // subscription that ended after its first frame (`@@F-799`). The iterable travels
             // untouched because it cannot be a payload: what a codec could do with it, it would do
             // to a generator object.
-            if (isAsyncIterable(frame?.[0])) return frame[0];
+            //
+            // Only when the call asked for one (`$meta.stream`), because a port's transport answer
+            // is an async iterable too: `got`, which the server's http adapter returns, hands back a
+            // node Readable, and a bare `isAsyncIterable` test therefore took *every* HTTP answer for
+            // a stream — the codec that decodes it never ran, `blong.flow.find` answered the raw
+            // response object, and the sealed envelope the gateway finally sent carried the text
+            // `undefined` (`@@F-803`).
+            if ($meta.stream && isAsyncIterable(frame?.[0])) return frame[0];
             return checkError(
                 await decodeReceive(
                     handlers,

@@ -75,7 +75,7 @@ open (56)
 - `F-771` · core/blong-gogo — A capture read the live config and tripped the factory-phase guard
 - `F-784` · core/blong-gogo — A realm adapter needs connect, namespace and imports
 
-resolved (48)
+resolved (49)
 
 - `F-094` · core/blong-gogo — Knex `table.list` prefixed table names with the subject twice
 - `F-095` · core/blong-gogo — tap's order-sensitive snapshots broke on an appended `id` field
@@ -136,6 +136,7 @@ resolved (48)
 - `F-791` · core/blong-gogo — A test group's import crashed a release pod
 - `F-799` · core/blong-gogo — A port serialised the iterable a stream route needs
 - `F-800` · core/blong-gogo — A port's records never named the port
+- `F-803` · core/blong-gogo — An async-iterable answer is every HTTP response, not a stream
 
 <!-- /memory:index -->
 
@@ -1747,3 +1748,24 @@ Done: a port binds its records with context = its id (realm.layer) and the kind 
 portType, which is the pair stdout, the viewer, blong-dev log --context and a capture policy all
 read. Verified on a real run (realm/blong-access prints access.testDispatch where it used to print
 dispatch) and pinned by core/blong-gogo/src/portLogBindings.test.ts.
+
+### F-803 — An async-iterable answer is every HTTP response, not a stream
+
+> _2026-11-21 · core/blong-gogo · resolved_
+
+The stream fix in loop.ts returned any async-iterable answer untouched, which is correct for a
+sequence and wrong for a transport: got's Response, which the server's http adapter hands back, is a
+node Readable and therefore also an async iterable. Every node-side HTTP read skipped the codec that
+decodes it, so blong.flow.find answered the raw response object, the gateway serialised undefined,
+the MLE envelope carried the literal text undefined, and the browser threw a SyntaxError that a page
+showed as an error dialog over an empty Flow table — every blong-gateway Playwright spec failed on
+it. Finding it cost most of a session because the failure is visible only as a client-side JSON
+parse error with no server-side trace, and the first probe, hooking JSON.parse in the page, could
+not see it at all: the parse happens inside the sealed answer's verify, on the server's signed
+envelope. The lesson is that a shape test used as a protocol signal must be keyed to the call, not
+to the object — the loop now asks $meta.stream — and that isAsyncIterable matches almost every
+transport answer, so a bare test of it is never a stream check.
+
+Resolved in loop.ts: the iterable is returned untouched only when the call declared a stream
+($meta.stream), so got's Readable goes through its codec again. blong-gogo 1354 (1348 pass, 6 skip)
+and the gateway Playwright suite 19/19 twice; the MLE half that hid the failure is T-754.

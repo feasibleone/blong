@@ -103,7 +103,7 @@ open (66)
 - `F-707` · realm/blong-kustomize — Removing spec.services plans the service, it does not disable
 - `F-726` · realm/blong-kustomize — Generating the base deletes the local overlay beside it
 
-resolved (42)
+resolved (43)
 
 - `F-371` · realm/blong-kustomize — The browser login fails while the same handler authenticates the
   token
@@ -159,6 +159,8 @@ resolved (42)
   regenerates
 - `F-753` · realm/blong-kustomize — A one-name databases value became one schema per character
 - `F-801` · realm/blong-kustomize — Every Service of a process published all its ports
+- `F-802` · realm/blong-kustomize — A generated Service nothing dialled: the process address needs
+  its condition
 
 <!-- /memory:index -->
 
@@ -1911,6 +1913,28 @@ Done: plan.ts gives a namespace Service portsOf(owner) and the generator prefers
 deployment's; chat and sport now publish each realm's own ports only, and the split profile's tree
 is unchanged. Pinned by aRealmContributesItsOwnAddress, which asserts the realm Service carries its
 UDP port and the companion's carries none.
+
+### F-802 — A generated Service nothing dialled: the process address needs its condition
+
+> _2026-11-21 · realm/blong-kustomize · resolved_
+
+The second Service in a monolith tree was generated for every deployment that declared ports, and
+nothing said what it was for. The rule exists for one case: an Ingress backend must be a Service,
+and a webhook path falls back to the process name when no Service carries the namespace that port
+claims — the chat Slack adapter answers `slack`, which no realm is. Every other port is published by
+the Service named after its realm, so the process name was a second address, that nothing dialled
+for the same pods; the tree had a `blong-sport` Service that nothing referenced. It also cost a
+false lead: the file looked like an important object because it carried the deployment's own ports.
+The lesson is that a generated object needs the condition that justifies it, written in the plan
+beside it, and a test that fails when that condition is not met — the narrowed rule reads the port's
+own namespace and the Ingress serviceName override, and runs after the realm Services so it can see
+what is already published.
+
+Resolved in plan.ts: the loop runs after the realm Services and emits the process Service only when
+a port it carries has no Service of its own — a namespace no realm answers (the chat Slack adapter)
+or an ingress naming the process in serviceName. aRealmContributesItsOwnAddress asserts the absence,
+aWebhookIsReachableFromOutside the fallback; blong-sport lost the file, blong-chat kept it, the
+suite tree is unchanged.
 
 ## Retired
 

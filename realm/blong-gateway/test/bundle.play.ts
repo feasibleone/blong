@@ -48,6 +48,10 @@ test.describe('Gateway Bundle', () => {
         editFields: {
             'bundle.description': 'Edited by Playwright',
         },
-        search: 'Playwright',
+        // The row this test edits, not the `Playwright` marker `cleanupModel` removes with:
+        // `observedMergeFlow` merges a demo bundle whose description also says Playwright, the
+        // two specs run side by side, and the edit test takes whichever row the filter left
+        // first — it opened the merge demo's bundle and compared it against this snapshot.
+        search: 'Edited by Playwright',
     });
 });
