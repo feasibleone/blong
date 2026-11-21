@@ -107,25 +107,26 @@ kustomize: {
 }
 ```
 
-| Key                       | Meaning                                                                                                                                         |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `profile`                 | `namespace`, `realm` (the default), `group` or `monolith` (one process)                                                                         |
-| `groups`                  | `group` only — deployment name → `<realm>.<layer>` selectors                                                                                    |
-| `externalServices`        | Abstract name → `ExternalName` alias for a third-party system, keyed by that name                                                               |
-| `services`                | Per service: `false` (this deployment runs it), an object of overrides, or `true` only where an adapter implies it                              |
-| `servicesNamespace`       | Where the generated service workloads run (default `blong-services`)                                                                            |
-| `storageClassName`        | The class a generated claim asks for, where the descriptor names none                                                                           |
-| `suiteVolume.backend`     | `auto` (default), `shared`, or `nodeLocal`                                                                                                      |
-| `suiteVolume.retention`   | How many artifact directories stay on each node (default 3)                                                                                     |
-| `suiteVolume.rwxProvider` | `openebs` — sets the class to `openebs-rwx`                                                                                                     |
-| `suiteVolume.rwxManifest` | Remote manifest that installs the RWX provider                                                                                                  |
-| `suiteVolume.artifact`    | `{source: 'url', url}` for the cluster, or `{source: 'path', path}` locally                                                                     |
-| `portal.<alias>.realm`    | The realm whose process answers beside the page; omissible                                                                                      |
-| `portal.<alias>.host`     | The DNS name the portal answers on, and `.path` its prefix; the alias names the Service                                                         |
-| `portal.<alias>.auth`     | `{type: 'basic', secretName?}` or `{type: 'oauth2', authUrl?}`                                                                                  |
-| `operator`                | `{enabled?, replicas?, image?}` — the operator's Deployment (`enabled` defaults to false); its ServiceAccount, Role and ClusterRole always ship |
-| `crd`                     | Also emit the CR that asks an installed operator for it                                                                                         |
-| `outputDir`               | Where the tree is written (default `system/kustomize`)                                                                                          |
+| Key                       | Meaning                                                                                                                                                          |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `profile`                 | `namespace`, `realm` (the default), `group` or `monolith` (one process)                                                                                          |
+| `groups`                  | `group` only — deployment name → `<realm>.<layer>` selectors                                                                                                     |
+| `externalServices`        | Abstract name → `ExternalName` alias for a third-party system, keyed by that name                                                                                |
+| `services`                | Per service: `false` (this deployment runs it), an object of overrides, or `true` only where an adapter implies it                                               |
+| `servicesNamespace`       | Where the generated service workloads run (default `blong-services`)                                                                                             |
+| `realms`                  | Per realm: `{enabled: false}` leaves it out of the tree — no process, no layer flags, no Service; `true` gives a realm that declares `none` a process of its own |
+| `storageClassName`        | The class a generated claim asks for, where the descriptor names none                                                                                            |
+| `suiteVolume.backend`     | `auto` (default), `shared`, or `nodeLocal`                                                                                                                       |
+| `suiteVolume.retention`   | How many artifact directories stay on each node (default 3)                                                                                                      |
+| `suiteVolume.rwxProvider` | `openebs` — sets the class to `openebs-rwx`                                                                                                                      |
+| `suiteVolume.rwxManifest` | Remote manifest that installs the RWX provider                                                                                                                   |
+| `suiteVolume.artifact`    | `{source: 'url', url}` for the cluster, or `{source: 'path', path}` locally                                                                                      |
+| `portal.<alias>.realm`    | The realm whose process answers beside the page; omissible                                                                                                       |
+| `portal.<alias>.host`     | The DNS name the portal answers on, and `.path` its prefix; the alias names the Service                                                                          |
+| `portal.<alias>.auth`     | `{type: 'basic', secretName?}` or `{type: 'oauth2', authUrl?}`                                                                                                   |
+| `operator`                | `{enabled?, replicas?, image?}` — the operator's Deployment (`enabled` defaults to false); its ServiceAccount, Role and ClusterRole always ship                  |
+| `crd`                     | Also emit the CR that asks an installed operator for it                                                                                                          |
+| `outputDir`               | Where the tree is written (default `system/kustomize`)                                                                                                           |
 
 `assetServer` is the bundle's own statement: `enabled` (default on when a portal exists), `root`
 (default `dist/` beside the artifact's entry), `base` (default `/s/`), `csp` (`scriptHashes`,

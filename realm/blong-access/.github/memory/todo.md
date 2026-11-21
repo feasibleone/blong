@@ -17,7 +17,7 @@ open (7)
 - `T-450` · realm/blong-access — access.user.edit refuses an edit that only touches roles
 - `T-451` · realm/blong-access — No UI page calls access.profile.password.change
 
-done (5)
+done (6)
 
 - `T-370` · realm/blong-access — Make the authorization flow runnable from the Test runs page
 - `T-371` · realm/blong-access — Give the server test runner a gateway dispatch port
@@ -25,6 +25,7 @@ done (5)
 - `T-676` · realm/blong-access — access: the profile page shows and replaces the avatar
 - `T-694` · realm/blong-access — A renamed person keeps the old label, and a cleared name writes
   null into a NOT NULL column
+- `T-740` · realm/blong-access — Put the log viewer behind the portal's authentication
 
 <!-- /memory:index -->
 
@@ -227,3 +228,26 @@ page now shows the name fields whether or not a person exists, which is also wha
 path of D-874 reachable from the UI, and it sends the names and the photograph on every save. Pinned
 in test.profile.create: the rename recomposes the label ('Nina P Returning'), both clears are
 refused with the message and store nothing, and a photograph alone still creates no person.
+
+### T-740 — Put the log viewer behind the portal's authentication
+
+> _2026-11-20 · realm/blong-access · done_
+
+The viewer stops being a task of its own and becomes part of the viewer realm (D-946): the realm's
+gateway verifies the bearer token and resolves log.viewer.open like any other page, so nothing has
+to be proxied and nothing has to be checked by a second component. What this todo still owns is the
+capability itself and the things around it that the framework does not give for free:
+
+- register log.viewer.open with a seed, so a role can be granted it (realm/blong-access/meta/db),
+  and grant it to the role the portal's readers already hold, which is the same merge every other
+  page's capability takes;
+- decide what an unauthorised reader sees. The portal answers a refused page with its own error
+  dialog and a menu entry that is not offered, so the viewer realm's component inherits that; the
+  decision left is only whether the entry is hidden by the capability (preferred, once) or shown and
+  refused on open;
+- the ingress: the viewer realm answers on the portal's host under its own path, so the tree needs a
+  path rule beside the portal's rather than a second host, and no proxy in front of it.
+
+The proxy route the first version of this todo asked for is withdrawn: it would have had to carry a
+WebSocket upgrade, which nothing in core/blong-gogo speaks, and a viewer whose HTTP is proxied while
+its socket is not looks authenticated and can be bypassed.

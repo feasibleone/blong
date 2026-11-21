@@ -21,6 +21,7 @@ export default browser(blong => ({
     validation: blong.type.Object({
         chat: blong.type.Object({}),
         access: blong.type.Object({}),
+        viewer: blong.type.Object({}),
         ui: blong.type.Object({}),
     }),
     children: [
@@ -38,6 +39,15 @@ export default browser(blong => ({
         },
         async function chat() {
             return import('./browser.ts');
+        },
+        /**
+         * The records this deployment's own processes wrote: Observability → Logs.
+         *
+         * The page reads `viewer.entry.*` from the gateway that served it, and the capability that
+         * opens it is seeded by the deployment's migration (`@@D-946`).
+         */
+        async function viewer() {
+            return import('@feasibleone/blong-viewer/browser.ts');
         },
     ],
     config: {
@@ -58,6 +68,9 @@ export default browser(blong => ({
             login: {},
             access: {},
             chat: {},
+            // A child realm loads only when the merged config names it, so an empty block is what
+            // loads the realm at all: `viewer` is the Logs page over this deployment's own records.
+            viewer: {},
         },
     },
 }));

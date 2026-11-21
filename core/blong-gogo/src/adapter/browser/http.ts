@@ -100,7 +100,7 @@ export default adapter<IConfig>(({utError, manifest}) => {
                 path: string;
                 query: string | Record<string, string>;
                 url?: URL;
-                responseType: 'json' | 'text' | 'buffer';
+                responseType: 'json' | 'text' | 'buffer' | 'stream';
                 method: string;
                 headers: Record<string, string>;
                 body: BodyInit;
@@ -157,11 +157,16 @@ export default adapter<IConfig>(({utError, manifest}) => {
                 };
                 const res = await kyInstance(url.toString(), kyOptions);
                 const resolvedBody =
-                    responseType === 'buffer'
-                        ? await res.arrayBuffer()
-                        : responseType === 'text'
-                          ? await res.text()
-                          : await res.json().catch(() => null);
+                    // A streamed answer is handed back unread: reading it here
+                    // would be exactly the buffering the stream exists to avoid,
+                    // and the caller decides how to consume the bytes (`@@D-949`).
+                    responseType === 'stream'
+                        ? res.body
+                        : responseType === 'buffer'
+                          ? await res.arrayBuffer()
+                          : responseType === 'text'
+                            ? await res.text()
+                            : await res.json().catch(() => null);
                 const result = {
                     statusCode: res.status,
                     statusMessage: res.statusText,

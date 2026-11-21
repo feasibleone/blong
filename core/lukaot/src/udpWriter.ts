@@ -69,6 +69,12 @@ export function createUdpWriter(options: IUdpWriterOptions = {}): IUdpWriter {
         maxPacketSize: settings.maxPacketSize,
     };
     const socket = dgram.createSocket('udp4');
+    // A send is fire-and-forget, so the only way its failure arrives is the socket's own `error`
+    // event — a name that does not resolve, a route that is gone. An emitter with no listener for it
+    // *throws*, which turns "the collector is unreachable" into "the process that was logging exits";
+    // the contract above says the opposite, so the event is consumed here and the batch is what it
+    // costs (`@@F-789`).
+    socket.on('error', () => undefined);
     // The socket is `unref`d for the same reason the timer is: an open handle is enough to keep the
     // event loop alive, and a destination that did would turn every run into one that never exits —
     // a test suite that finishes its work and then waits to be killed (`@@D-930`).

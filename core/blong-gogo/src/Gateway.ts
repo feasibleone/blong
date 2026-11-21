@@ -27,9 +27,26 @@ import {Type, type TSchema} from 'typebox';
 import Value from 'typebox/value';
 import {v4} from 'uuid';
 
+import {
+    deriveStreamKey,
+    newStreamSalt,
+    resolveKeySpec,
+    saltToHeader,
+    streamInfoOf,
+} from '@feasibleone/blong-mle';
 import {TRACE_HEADER, withoutCapabilities} from '@feasibleone/lukaot';
+import {exportJWK} from 'jose';
 import {CALLS_CAPABILITY, GRANT_HEADER} from './callTrace.ts';
 import {GENERATED_KEY_SPEC, GENERATED_PAIR_WARNING} from './gatewayKeys.ts';
+import {
+    envelopeOf,
+    nodeSink,
+    plainEncoder,
+    sealedEncoder,
+    STREAM_BINARY_TYPE,
+    STREAM_TEXT_TYPE,
+    writeEventStream,
+} from './gatewayStream.ts';
 import {grantedCalls, grantKeyFrom} from './grant.ts';
 import {
     callsFor,
@@ -82,6 +99,24 @@ const errorMap: IErrorMap = {
     // The method-level refusal of RBAC.  Typed because a test that probes a denial
     // on purpose declares it in `expect`, and the demotion matches on the type —
     // an untyped `Error` is always logged at error level.
+    'gateway.streamNotRequested': {
+        message:
+            'Method "{method}" answers a stream; ask for one with Accept: text/event-stream ' +
+            'or application/vnd.blong.stream',
+        statusCode: 406,
+    },
+    'gateway.streamNoKey': {
+        message:
+            'Method "{method}" seals its stream and the caller left no key to seal it with: ' +
+            'the route must be served to a caller whose encrypt key is known, or opt out with ' +
+            'stream: {encrypt: false}',
+        statusCode: 500,
+    },
+    'gateway.streamNotIterable': {
+        message:
+            'Method "{method}" was asked for a stream and answered {type} instead of an async iterable',
+        statusCode: 500,
+    },
     'gateway.notAllowed': {
         message: 'Authorization denied: method "{methodName}" not allowed',
         statusCode: 403,
@@ -239,6 +274,8 @@ export default class Gateway extends Internal implements IGateway {
     #rpcClient: IRpcClient;
     #routes: RouteOptions[] = [];
     #local: ILocal;
+    /** This gateway's private encrypt JWK, resolved once for sealing streams. */
+    #streamPrivate: Record<string, unknown> | undefined;
 
     /**
      * The registered routes as plain data.
@@ -373,6 +410,179 @@ export default class Gateway extends Internal implements IGateway {
         }, {});
     }
 
+    /**
+     * Answer a `stream` route: one server-sent event per value the handler yields
+     * (`@@D-948`).
+     *
+     * The response is taken over here (`hijack`) because the frames leave as they
+     * are produced rather than as a body fastify serializes — which also means
+     * nothing below can answer with a status: the failure of a producer is one
+     * `error` event, written by the writer beside the frames that already left.
+     *
+     * The subscription runs inside the flow this request minted, so everything the
+     * handler does for as long as somebody is reading joins that one execution —
+     * and the flow closes when the stream does, which is why the write loop is
+     * awaited rather than handed to the reply.
+     */
+    private async _serveStream(
+        request: GatewayRequest,
+        reply: FastifyReply,
+        meta: IMeta,
+        method: (params: unknown, $meta: IMeta) => Promise<unknown>,
+        params: unknown,
+        methodName: string,
+        spec: boolean | {encrypt?: boolean; heartbeatMs?: number} | undefined,
+    ): Promise<void> {
+        // What the caller asked to read, and whether this route may send it
+        // unsealed. Both are decided before the response is taken over: a refusal
+        // is still an ordinary reply, and a stream that started and then refused
+        // would leave the reader with frames it cannot open.
+        const envelope = envelopeOf(request.headers.accept);
+        if (!envelope) {
+            throw this.#errors['gateway.streamNotRequested']({params: {method: methodName}});
+        }
+        const seal = typeof spec === 'object' ? spec.encrypt !== false : spec !== false;
+        const info = streamInfoOf(methodName);
+        const salt = seal ? newStreamSalt() : undefined;
+        const key = salt ? await this._streamKey(request, salt, info) : undefined;
+        if (seal && !key) {
+            // A route that seals cannot fall back to plain frames: a reader
+            // asking for the stream would receive what the route exists to
+            // protect. The refusal names the missing half.
+            throw this.#errors['gateway.streamNoKey']({params: {method: methodName}});
+        }
+        const controller = new AbortController();
+        reply.hijack();
+        const raw = reply.raw;
+        raw.writeHead(200, {
+            'content-type':
+                envelope === 'binary'
+                    ? `${STREAM_BINARY_TYPE}`
+                    : `${STREAM_TEXT_TYPE}; charset=utf-8`,
+            // A cached stream is a stream that stops: no store, no transform
+            // (which would gzip the frames into a buffer nobody reads), and the
+            // one header an nginx ingress reads to stop holding responses back
+            // while it fills its own.
+            'cache-control': 'no-cache, no-transform',
+            connection: 'keep-alive',
+            // nginx's own spelling, which is why the word is not in the dictionary.
+            'x-accel-buffering': 'no',
+            ...(salt && {'x-blong-stream-salt': saltToHeader(salt)}),
+        });
+        raw.flushHeaders?.();
+        const abort = (): void => controller.abort();
+        // The reader leaving is the *response* closing. A request's own `close`
+        // fires as soon as its body has been read — before the first frame of a
+        // POST — so listening there would abort every stream at once.
+        raw.once('close', abort);
+        try {
+            await runInFlow(meta, methodName, () =>
+                writeEventStream({
+                    sink: nodeSink(raw),
+                    signal: controller.signal,
+                    heartbeatMs: typeof spec === 'object' ? spec.heartbeatMs : undefined,
+                    // A binary reader has no comment frame to skip harmlessly, so
+                    // the keepalive belongs to the readable envelope alone.
+                    heartbeat: envelope === 'text',
+                    encoder:
+                        key === undefined
+                            ? plainEncoder(envelope)
+                            : sealedEncoder(envelope, key, info),
+                    iterate: this._streamFrames(method, params, meta, controller.signal),
+                }),
+            );
+        } finally {
+            raw.off('close', abort);
+        }
+    }
+
+    /**
+     * The key this stream's frames are sealed with, or `undefined` when the caller
+     * left nothing to agree on.
+     *
+     * The pair is the one MLE already uses for responses: the client's public
+     * encrypt key (in the token or the JWE header) and this gateway's own private
+     * one. Nothing new is exchanged, and the salt makes the result a key for *this*
+     * stream only (`@@D-949`).
+     */
+    private async _streamKey(
+        request: GatewayRequest,
+        salt: Uint8Array,
+        info: string,
+    ): Promise<CryptoKey | undefined> {
+        const credentials = request.auth?.credentials as {mlek?: unknown} | undefined;
+        const peer = credentials?.mlek ?? (request as {mleKeys?: {mlek?: unknown}}).mleKeys?.mlek;
+        if (!peer) return undefined;
+        const agreed = (
+            request as {
+                streamKey?: (parameters: {
+                    peerPublicJwk: Record<string, unknown>;
+                    salt: Uint8Array;
+                    info: string;
+                }) => Promise<CryptoKey>;
+            }
+        ).streamKey;
+        if (agreed) {
+            // The MLE plugin's own crypto: it holds the private encrypt half, and the
+            // gateway's config carries only the public JWK (D-441).
+            return agreed({peerPublicJwk: peer as Record<string, unknown>, salt, info});
+        }
+        this.#streamPrivate ||= await this.#resolvePrivateEncryptKey();
+        if (!this.#streamPrivate) return undefined;
+        const asJwk = async (value: unknown): Promise<Record<string, unknown>> =>
+            typeof value === 'object' && value !== null && 'kty' in value
+                ? (value as Record<string, unknown>)
+                : ((await exportJWK(value as CryptoKey)) as Record<string, unknown>);
+        return deriveStreamKey({
+            privateJwk: this.#streamPrivate,
+            peerPublicJwk: await asJwk(peer),
+            salt,
+            info,
+        });
+    }
+
+    /** This gateway's private encrypt JWK, resolved once — a `{generate}` spec must not be re-run. */
+    async #resolvePrivateEncryptKey(): Promise<Record<string, unknown> | undefined> {
+        const spec = this.#config.encrypt;
+        if (!spec) return undefined;
+        const resolved = await resolveKeySpec(spec as Parameters<typeof resolveKeySpec>[0]);
+        if (!resolved) return undefined;
+        const jwk =
+            typeof resolved === 'object' && resolved !== null && 'kty' in resolved
+                ? (resolved as unknown as Record<string, unknown>)
+                : ((await exportJWK(resolved as CryptoKey)) as Record<string, unknown>);
+        // Without the private half there is nothing to agree with, and a key that
+        // silently appeared public would seal frames nobody can open.
+        return 'd' in jwk ? jwk : undefined;
+    }
+
+    /**
+     * What the handler yields, with the abort it needs.
+     *
+     * A generator rather than a direct call, so a handler that throws fails where
+     * the writer can still report it — inside the stream, instead of after the
+     * response was taken over. Only an async iterable counts: a handler that
+     * answers an array is answering a value, and a value is not a sequence.
+     */
+    private async *_streamFrames(
+        method: (params: unknown, $meta: IMeta) => Promise<unknown>,
+        params: unknown,
+        meta: IMeta,
+        signal: AbortSignal,
+    ): AsyncIterable<unknown> {
+        const produced = await method(params, {...meta, abort: signal});
+        if (
+            produced &&
+            typeof (produced as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function'
+        ) {
+            yield* produced as AsyncIterable<unknown>;
+            return;
+        }
+        throw this.#errors['gateway.streamNotIterable']({
+            params: {method: meta.method, type: produced === null ? 'null' : typeof produced},
+        });
+    }
+
     private _meta(req: GatewayRequest, version: string, serviceName: string): Partial<IMeta> {
         const {
             'user-agent': frontEnd,
@@ -468,6 +678,18 @@ export default class Gateway extends Internal implements IGateway {
             const reqName = `ports.${value.destination ?? method.split('.', 1)[0]}.request`;
             const pubName = `ports.${value.destination ?? method.split('.', 1)[0]}.publish`;
             const isWildcard = method.endsWith('.*');
+            /**
+             * What this route says about streaming (`@@D-948` `@@D-949`).
+             *
+             * Only a *refusal* or an *exception* is declared: a route streams when
+             * its handler answers an async iterable and the caller asked for one, so
+             * `stream: {encrypt: false}` is how a route whose frames are not secret
+             * opts out of sealing, and `stream: false` is how one refuses streaming
+             * altogether. Absent means "streamable when asked, sealed".
+             */
+            const streamRoute = value.stream !== false;
+            const sealStream =
+                typeof value.stream === 'object' ? value.stream.encrypt !== false : true;
             this.#resolution?.announce(
                 method.split('.')[0].replace(/\//g, '-'),
                 this.#config.port!,
@@ -488,6 +710,10 @@ export default class Gateway extends Internal implements IGateway {
                     // encapsulated context that holds the parser (@@D-860).
                     ...(value.rawBody && {rawBody: true}),
                     ...(value.bundle !== undefined && {bundle: value.bundle}),
+                    ...(streamRoute && {
+                        stream: true,
+                        ...(sealStream ? {} : {streamSealed: false}),
+                    }),
                     ...(value.creditCost !== undefined && {creditCost: value.creditCost}),
                     ...(value.meter !== undefined && {meter: value.meter}),
                     ...(value.audit !== undefined && {audit: value.audit}),
@@ -516,6 +742,12 @@ export default class Gateway extends Internal implements IGateway {
                                 }),
                             }
                           : undefined),
+                    // The schema stays declared even for a route that can stream:
+                    // a streamed answer takes the response over and is never
+                    // validated, while the MLE codec's `serializeInput` needs the
+                    // compiled serializer for every ordinary answer — dropping it
+                    // for "possible streams" answered every encrypted call with
+                    // "Missing serialization function. Key 2xx" (`@@F-786`).
                     ...('response' in value && value.response
                         ? {response: {'2xx': value.response}}
                         : 'result' in value
@@ -627,6 +859,20 @@ export default class Gateway extends Internal implements IGateway {
                                 .code(404)
                                 .type('text/plain')
                                 .send('validation not found for method ' + methodName);
+                        }
+
+                        if (streamRoute && envelopeOf(request.headers.accept)) {
+                            const req = this.#local.get(reqName);
+                            if (!req) return notfound();
+                            return this._serveStream(
+                                request,
+                                reply,
+                                meta as IMeta,
+                                req.method.bind(req),
+                                params,
+                                methodName,
+                                value.stream,
+                            );
                         }
 
                         if (!('result' in value)) {

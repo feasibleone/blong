@@ -610,20 +610,62 @@ export default class LukaotLog extends Internal implements ILog {
     }
 
     /**
-     * Re-apply the block a config change brought, in place.
+     * Re-apply the blocks a config change brought, in place.
      *
      * A config file that changed is already re-read by the watch loop, and this is the log's half of
      * "reconfigured without dropping anything": the log component is not a port, so nothing in the
      * port pipeline would have reached it, and a switch that only took effect at start-up is a
-     * switch an operator cannot use on the process that is misbehaving.
+     * switch an operator cannot use on the process that is misbehaving (@@D-945).
      */
     public configChanged(_diff: unknown, next: unknown, prev: unknown): void {
-        const block = (value: unknown): CallTraceConfig | undefined =>
-            (value as {log?: {calls?: CallTraceConfig}} | undefined)?.log?.calls;
-        const before = block(prev) ?? this.#config.calls;
-        const after = block(next);
-        if (after === undefined || JSON.stringify(before) === JSON.stringify(after)) return;
-        this.setCallRecording(after);
+        const changed = <T>(
+            pick: (value: unknown) => T | undefined,
+            current: T | undefined,
+        ): T | undefined => {
+            const before = pick(prev) ?? current;
+            const after = pick(next);
+            return after === undefined || JSON.stringify(before) === JSON.stringify(after)
+                ? undefined
+                : after;
+        };
+        const calls = changed(
+            value => (value as {log?: {calls?: CallTraceConfig}} | undefined)?.log?.calls,
+            this.#config.calls,
+        );
+        if (calls !== undefined) this.setCallRecording(calls);
+        const capture = changed(
+            value =>
+                (value as {log?: {capture?: LukaotLogConfig['capture']}} | undefined)?.log?.capture,
+            this.#config.capture,
+        );
+        if (capture !== undefined) this.setCapture(capture);
+    }
+
+    /**
+     * Turn captures on and off while the process runs — no restart, no reload.
+     *
+     * The capture half of the same seam `setCallRecording` opens (@@D-941): the policies are read
+     * by `#resolveCapture` on **every** capture a port takes, so replacing them here reaches the
+     * surfaces the ports already hold — nothing has to be rebuilt, because a surface carries the
+     * resolver rather than a copy of the answer. That is why a `log.capture` change in a config
+     * file can take effect without touching a port, which the reload pipeline alone could not do:
+     * a `log`-only change marks no port affected (@@D-945).
+     *
+     * The declaration is untouched: a policy can only switch a capture that some source declares,
+     * so a configuration naming an identifier nobody declares still records nothing, as before.
+     */
+    public setCapture(next: LukaotLogConfig['capture']): void {
+        const before = JSON.stringify(this.#capture);
+        this.#config = {...this.#config, capture: next};
+        this.#capture = snapshotCapturePolicies(next);
+        if (before !== JSON.stringify(this.#capture)) {
+            // Reported for the same reason the call switch is: a capture an operator turned on and
+            // sees nothing from is a decision they need to be able to confirm, and one turned off
+            // must not read as a broken adapter later.
+            this.signal?.frameworkCaptureChanged?.({
+                state: Object.keys(this.#capture).length > 0 ? 'on' : 'off',
+            });
+        }
     }
 
     public override get signal(): VocabularyProxy | undefined {
@@ -812,7 +854,10 @@ export default class LukaotLog extends Internal implements ILog {
 
     #child(bindings: Record<string, unknown>, level?: Level | 'silent'): LukaotLogger {
         // `name` is the framework's word for the component; lukaot prints the same token as
-        // `context`, and an explicit `context` in the config wins because a port sets both.
+        // `context`, so a component that gives only a name still gets an identity. A port gives
+        // `context` itself — its id, `<realm>.<layer>` — and its kind beside it as `portType`
+        // (`@@F-800`); the fallback is for the components that name themselves (the gateway, the
+        // RPC server).
         const {name, context, ...rest} = bindings;
         const child = this.#logger.child({
             ...rest,

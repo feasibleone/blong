@@ -2413,6 +2413,50 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                 });
             },
 
+            async function aServiceNamedAfterItsProcessIsStillRouted(assert: IAssert) {
+                // A realm whose port is an adapter answers its namespace without any deployment
+                // *listing* it, and the viewer is that realm: its Service and its Deployment carry
+                // the one name. An earlier version of the rule skipped a Service whose name a
+                // Deployment carries, which removed exactly the realm the rule was written for — the
+                // path was there from a hand patch and gone on the next pass, when the tree
+                // regenerated (`@@F-793`). The assertion is the path itself, because every other one
+                // is satisfied by a tree that is merely consistent.
+                const plan = lib.suitePlan({
+                    portal: {web: {realm: 'shop', path: '/', host: 'shop.example'}},
+                    deployments: [
+                        {
+                            name: 'viewer',
+                            realms: ['viewer'],
+                            layers: ['viewer.adapter', 'viewer.gateway'],
+                            namespaces: [],
+                            replicas: 1,
+                        },
+                    ],
+                    services: [{name: 'viewer', namespace: 'shop-suite', deployment: 'viewer'}],
+                }) as IDeploymentPlan;
+                const tree = buildKustomizeTree(plan);
+                const paths = (
+                    tree.get('ingresses/shop-example.yaml') as {
+                        spec?: {
+                            rules?: Array<{
+                                http?: {
+                                    paths?: Array<{
+                                        path: string;
+                                        backend?: {service?: {name?: string}};
+                                    }>;
+                                };
+                            }>;
+                        };
+                    }
+                )?.spec?.rules?.[0]?.http?.paths;
+                const viewer = paths?.find(entry => entry.path === '/rpc/viewer');
+                assert.equal(
+                    viewer?.backend?.service?.name,
+                    'viewer',
+                    'a Service named after its own process is still routed to that Service',
+                );
+            },
+
             async function aPathClaimedTwiceIsRefused(assert: IAssert) {
                 // Two entries at one path on one host would leave the controller to pick whichever it
                 // read first, and an Ingress that answers from a coin toss is the wrong nobody can
@@ -2430,6 +2474,43 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         ),
                     /two entries claim path/,
                     'a path two entries claim is refused rather than resolved by order',
+                );
+            },
+
+            async function aServicesPathCannotShadowAContributedOne(assert: IAssert) {
+                // Every Service of the plan is routed, because a realm that answers a namespace from
+                // an adapter publishes an address no deployment names (`@@F-793`). That rule writes
+                // paths beside ones a realm contributed, so it is the one place a new collision could
+                // appear: a contribution that already claims `/rpc/<service>` is refused here rather
+                // than written twice. The guard is `addPath`, and the assertion is that the refusal
+                // names both claimants — a message naming one side leaves the reader guessing which
+                // contribution to move.
+                const claimed = {
+                    name: 'shop.rpc',
+                    namespace: 'shop-suite',
+                    host: 'shop.example',
+                    path: '/rpc/viewer',
+                    pathType: 'Prefix' as const,
+                    serviceName: 'hooks',
+                    servicePort: 8080,
+                    // On the portal's own host by asking for it, which is the only way a contribution
+                    // lands there: a path that did not ask would inherit the page's authentication,
+                    // and the tree refuses that before any path is written (`@@D-870`).
+                    sameOrigin: true,
+                };
+                assert.throws(
+                    () =>
+                        buildKustomizeTree(
+                            lib.suitePlan({
+                                portal: {web: {realm: 'shop', path: '/', host: 'shop.example'}},
+                                services: [
+                                    {name: 'viewer', namespace: 'shop-suite', deployment: 'shop'},
+                                ],
+                                ingresses: [claimed],
+                            }),
+                        ),
+                    /two entries claim path.*hooks and viewer/s,
+                    'a Service path a contribution already claims is refused, naming both sides',
                 );
             },
 
@@ -3650,6 +3731,9 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     // The artifact the suite is fetched from, rather than a volume the cluster
                     // fills: what the CR names and the tree mounts has to be one volume.
                     suiteVolume: lib.artifactVolume,
+                    // A realm the suite leaves out, which only the CR can keep out on the
+                    // operator's pass (@@D-951).
+                    realmsRequest: {recorder: {enabled: false}},
                     crd: true,
                 }) as IDeploymentPlan;
 

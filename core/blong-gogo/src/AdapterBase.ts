@@ -216,10 +216,18 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
             }
         }
         this.config = this._api.render([this.activeConfig(), ...configs]) as Config<T, C>;
+        // The port's own id — `<realm>.<layer>` — is the component the records belong to, and
+        // `context` is the word both log implementations print: the terminal and the viewer show
+        // it, `blong-dev log` filters on it, and a capture is enabled by it (`@@D-924`). It used to
+        // be `name`, which lukaot only reads as a *fallback* for `context` — so passing both meant
+        // the explicit `context: <type>` shadowed the id and no surface ever said which port a
+        // record came from (`@@F-800`). The kind rides beside it as its own field, because every
+        // adapter of a realm shares the layer id and only the pair tells two of them apart.
+        const portType = this.config.type ?? 'dispatch';
         this.log = this._createLog?.(this.config.logLevel || 'info', {
             ...this.config.log,
-            name: this.config.id,
-            context: this.config.type ?? 'dispatch',
+            context: this.config.id,
+            portType,
         });
         const id = this.config.id.replace(/\./g, '-');
         this._queue = new PQueue({concurrency: this.config.concurrency || 100});

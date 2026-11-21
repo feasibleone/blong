@@ -4,6 +4,7 @@ ignoreRegExpList:
   - semlog://\S+
 words:
   - Abyssal
+  - accel
   - acked
   - acks
   - ACMR
@@ -41,6 +42,7 @@ words:
   - avvio
   - azooxanthellate
   - BAAI
+  - backpressure
   - backticked
   - Barnaby
   - baselined
@@ -193,6 +195,7 @@ words:
   - hget
   - hgetall
   - hincrby
+  - HKDF
   - HMAC
   - honored
   - honoring
@@ -258,6 +261,7 @@ words:
   - Mandarinfish
   - Marlin
   - mdns
+  - mebibyte
   - mediumint
   - MEDIUMTEXT
   - memoise
@@ -427,6 +431,7 @@ words:
   - sherpaw
   - shutil
   - Siderastreidae
+  - SIGABRT
   - SIGALRM
   - SIGILL
   - singularize

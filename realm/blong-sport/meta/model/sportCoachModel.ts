@@ -17,10 +17,10 @@ export default model(
                     properties: {
                         coach: {
                             properties: {
-                                personName: {title: 'Full Name', required: true, filter: true},
-                                firstName: {title: 'First Name'},
+                                personName: {title: 'Full Name', filter: true},
+                                firstName: {title: 'First Name', required: true},
                                 middleName: {title: 'Middle Name'},
-                                lastName: {title: 'Last Name', filter: true},
+                                lastName: {title: 'Last Name', required: true, filter: true},
                                 internationalName: {title: 'International Spelling'},
                                 birthDate: {title: 'Date of Birth', widget: {type: 'date'}},
                                 gender: {

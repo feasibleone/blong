@@ -292,6 +292,30 @@ export interface IUserPasswdResult {
     policyMinLength: number;
 }
 
+/** What `userRemove` did. */
+export interface IUserRemoveResult {
+    userName: string;
+    userId: string;
+    /** The roles the user held when it was removed, so the output says what went with it. */
+    roles: string[];
+    /** Graph edges in both directions that pointed at the user. */
+    edges: number;
+    /** False when the name matched nothing — a cleanup that runs twice is not an error. */
+    removed: boolean;
+}
+
+/** What `userRemove` did. */
+export interface IUserRemoveResult {
+    userName: string;
+    userId: string;
+    /** The roles the user held when it was removed, so the log says what went with it. */
+    roles: string[];
+    /** The rows each kind of reference cost: graph edges in both directions, then the records. */
+    edges: number;
+    /** False when the name matched nothing — a cleanup that runs twice is not an error. */
+    removed: boolean;
+}
+
 /** Resolve role names to their hex ids, failing with the names that do exist. */
 async function resolveRoles(client: IUserClient, roleNames: string[]): Promise<string[]> {
     if (!roleNames.length) return [];
@@ -648,6 +672,71 @@ export async function userPasswd(
     }
 }
 
+/**
+ * Remove an access user and everything that points at it.
+ *
+ * The counterpart of `add`, and the reason it exists: a run that provisions a login for itself has to
+ * take it away again, and a deployment that faces the internet must not be left holding one
+ * (`@@D-952`). The order is the realm's own `access.user.remove`: graph edges in **both** directions
+ * (the user's `hasRole`, and the membership edges that name the user as their object), the ACL rules,
+ * the sessions before the credentials — `access_session.credentialId` is a foreign key into
+ * `access_credential`, so a signed-in user refuses the delete if the credentials go first (`@@F-713`)
+ * — then the user row, the rebuilt paths and finally the resource row `core_path` points at.
+ *
+ * A name that matches nothing is **not** an error: a cleanup runs in a `finally`, and a second run of
+ * it, or a first one whose `add` never committed, must not turn into a failed deployment. What it
+ * reports instead is `removed: false`.
+ */
+export async function userRemove(
+    connection: IConnectionInfo,
+    userName: string,
+    connect: IConnectUser = createConnection as unknown as IConnectUser,
+): Promise<IUserRemoveResult> {
+    const client = await connect(connection);
+    try {
+        await client.beginTransaction();
+        const name = userName.trim();
+        if (!name) throw new Error('a user name is required');
+        const [found] = await client.query<Array<{resourceId: unknown}>>(
+            'SELECT r.resourceId AS resourceId FROM core_resource r' +
+                ' JOIN core_type t ON t.typeId = r.typeId AND t.typeAlias = ?' +
+                ' WHERE r.resourceName = ? LIMIT 1',
+            [USER_TYPE_ALIAS, name],
+        );
+        const userIdHex = found[0] ? hexOf(found[0].resourceId) : '';
+        if (!userIdHex) {
+            await client.commit();
+            return {userName: name, userId: '', roles: [], edges: 0, removed: false};
+        }
+        const userId = Buffer.from(userIdHex, 'hex');
+        // Read the roles before the edges go: what went with the user is the half of the answer a
+        // reader can check against the cluster.
+        const roles = await currentRoles(client, userIdHex);
+        const subject = await client.query<{affectedRows?: number}>(
+            'DELETE FROM core_triple WHERE subjectId = ?',
+            [userId],
+        );
+        const object = await client.query<{affectedRows?: number}>(
+            'DELETE FROM core_triple WHERE objectId = ?',
+            [userId],
+        );
+        const edges = Number(subject[0]?.affectedRows ?? 0) + Number(object[0]?.affectedRows ?? 0);
+        await client.query('DELETE FROM access_acl WHERE principalId = ?', [userId]);
+        await client.query('DELETE FROM access_session WHERE userId = ?', [userId]);
+        await client.query('DELETE FROM access_credential WHERE userId = ?', [userId]);
+        await client.query('DELETE FROM access_user WHERE userId = ?', [userId]);
+        if (edges > 0) await client.query('CALL access_pathRefresh()');
+        await client.query('DELETE FROM core_resource WHERE resourceId = ?', [userId]);
+        await client.commit();
+        return {userName: name, userId: userIdHex, roles, edges, removed: true};
+    } catch (error) {
+        await client.rollback().catch(() => {});
+        throw error;
+    } finally {
+        await client.end().catch(() => {});
+    }
+}
+
 /** List access users (the discovery step `user add` exists to make unnecessary). */
 export async function userList(
     connection: IConnectionInfo,
@@ -769,9 +858,23 @@ export async function user(args: string[]): Promise<void> {
             }
             return;
         }
-        process.stderr.write(
-            `blong-dev user: unknown verb "${verb}"\n${usageHint('user')}\n`,
-        );
+        if (verb === 'remove') {
+            const userName = (parsed.positionals[0] ?? '').trim();
+            if (!userName) throw new Error('a user name is required');
+            const result = await userRemove(connection, userName);
+            if (output === 'json') {
+                process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+            } else if (!result.removed) {
+                process.stdout.write(`no user "${result.userName}" in this database\n`);
+            } else {
+                process.stdout.write(
+                    `removed user "${result.userName}" (${result.userId}), ${result.edges} edge(s)` +
+                        ` and its ${result.roles.length ? result.roles.join(', ') : 'no'} role(s)\n`,
+                );
+            }
+            return;
+        }
+        process.stderr.write(`blong-dev user: unknown verb "${verb}"\n${usageHint('user')}\n`);
         writeUserUsage(process.stderr);
         process.exitCode = 1;
     } catch (error) {

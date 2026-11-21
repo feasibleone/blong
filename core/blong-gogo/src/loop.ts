@@ -2,6 +2,15 @@ import type {Adapter, HRTime, IContext, IMeta} from '@feasibleone/blong/types';
 import type net from 'node:net';
 import {v4} from 'uuid';
 
+/** Whether a handler answered with a sequence rather than a value (`@@F-799`). */
+function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function'
+    );
+}
+
 export default function loop(
     fn: net.Socket | (() => void),
     handlers: Adapter,
@@ -20,6 +29,14 @@ export default function loop(
                 fn,
                 (handlers.pack ? (encodedPacket as unknown[])[0] : encodedPacket) as unknown[],
             );
+            // A stream is not a packet. A handler that answers with an async iterable is handing
+            // back a sequence, and the codec below would take it for one value and encode it: the
+            // gateway then received a plain body where frames were promised, reported the route as
+            // not iterable, wrote one error frame, and closed — which a browser page saw as a
+            // subscription that ended after its first frame (`@@F-799`). The iterable travels
+            // untouched because it cannot be a payload: what a codec could do with it, it would do
+            // to a generator object.
+            if (isAsyncIterable(frame?.[0])) return frame[0];
             return checkError(
                 await decodeReceive(
                     handlers,
@@ -213,9 +230,12 @@ async function sendEncode(
         if (!adapter.imported.encode)
             // The bytes on the wire are a frame, not a document: the `tcp` shape renders them at `line`
             // (length and the opening bytes) or `hex` when the content is what matters (`@@T-730`).
-            adapter.capture?.tcp?.({
-                method: $meta.method ? $meta.method + '.encode' : 'adapter.encode',
-            }, () => ({direction: 'out', data: encodeBuffer as Uint8Array}));
+            adapter.capture?.tcp?.(
+                {
+                    method: $meta.method ? $meta.method + '.encode' : 'adapter.encode',
+                },
+                () => ({direction: 'out', data: encodeBuffer as Uint8Array}),
+            );
         return adapter.imported.pack ? [encodeBuffer, $meta] : (encodeBuffer as object);
     }
     return [encodeBuffer, $meta];

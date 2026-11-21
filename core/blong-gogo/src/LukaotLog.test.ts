@@ -274,6 +274,38 @@ test('the configuration turns a capture off, whatever the declaration says', asy
     t.end();
 });
 
+test('a capture policy can be switched while the process runs', async t => {
+    // The surface a port holds carries the *resolver*, not a copy of the answer — `#resolveCapture`
+    // reads the policies on every capture — so replacing them reaches the surfaces that already
+    // exist, and no port has to be rebuilt for a `log.capture` change to take effect (@@D-945).
+    // What is asserted is exactly that: one surface, built before the switch, on both sides of it.
+    const {writer, records} = collector();
+    const log = new LukaotLog({format: 'json', level: 'info', writer, capture: {}});
+    const surface = log.captureFor('http');
+    const exchange = (): unknown => ({
+        phase: 'request' as const,
+        method: 'POST',
+        url: 'https://host/x',
+        headers: {},
+    });
+    // Call the switch's own report out of the count: `frameworkCaptureChanged` is a record like any
+    // other, and what is asked here is how many *captures* were taken.
+    const captured = (): number =>
+        records().filter(record => fields(record).capture !== undefined).length;
+
+    surface?.http?.({method: 'POST'}, exchange);
+    t.equal(captured(), 0, 'nothing is captured until a policy asks');
+
+    log.setCapture({frameworkHttpExchange: {enabled: true, level: 'line'}});
+    surface?.http?.({method: 'POST'}, exchange);
+    t.equal(captured(), 1, 'the surface built before the switch obeys it');
+
+    log.setCapture({});
+    surface?.http?.({method: 'POST'}, exchange);
+    t.equal(captured(), 1, 'and stops again when the policy is withdrawn');
+    t.end();
+});
+
 test('a capture can be enabled for one adapter instance and left off for the others', async t => {
     // The requirement's grain is the adapter *instance*, not its type: a deployment turns a capture on
     // for the one adapter it is debugging, and the other instances of the same adapter pay nothing —

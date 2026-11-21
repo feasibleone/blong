@@ -299,6 +299,19 @@ export interface IService {
     name: string;
     namespace: string;
     deployment: string;
+    /**
+     * The ports this Service publishes beyond `rpc` and `http` — the ones the realm behind it
+     * contributed (`@@F-801`).
+     *
+     * A port set is a fact about the *process*, and every Service of one process points at the same
+     * pods, so reading them off the Deployment published all of them everywhere: in a monolith the
+     * `login` Service advertised the chat webhooks and the log receiver's UDP port, because those
+     * are the same pod's. What a Service is *for* is the realm it is named after, so the ports travel
+     * with that realm and a foreign one no longer rides along. The process's own Service — the
+     * address an Ingress reaches a webhook through — keeps the whole set, which is why an absent key
+     * means "the deployment's ports" and an empty list means "this realm contributes none".
+     */
+    ports?: IComponentPort[];
 }
 
 /** A third-party service the suite refers to by an abstract name. */
@@ -672,6 +685,31 @@ export interface IAssetServerPlan extends IAssetServerRequest {
     base: string;
 }
 
+/**
+ * What a deployment decides about one realm it loads.
+ *
+ * A realm already says what it *can* be (`k8sRealmRole`: a process of its own, carried by others, or
+ * both), which is a property of the code. Whether a given deployment runs it is the deployment's
+ * decision, and this is where it is taken — a suite that names a realm for its whole fleet still
+ * has the option of leaving it out of one tree, without editing the realm's own declaration or
+ * knowing what a role is called (@@D-951).
+ */
+export interface IRealmSwitch {
+    /**
+     * Deploy the realm (`true`, the default) or leave it out (`false`).
+     *
+     * `false` is a realm that reaches no process and publishes nothing: the layer flags its
+     * deployments would carry are gone with the deployments, and so is the Service its namespace or
+     * its ports would have made. `true` gives it the role it declares; a realm whose own declaration
+     * says `none` — one that only ever runs inside its host — becomes a process of its own, because
+     * a deployment that asks for a realm is asking for the process that serves it.
+     */
+    enabled?: boolean;
+}
+
+/** The realms one deployment decides about, by realm name. */
+export type IRealmSwitchMap = Record<string, IRealmSwitch>;
+
 /** The versioned artifact volume (see the SuiteVolume abstraction in Phase 6). */
 export interface ISuiteVolume {
     backend: SuiteVolumeBackend;
@@ -835,6 +873,14 @@ export interface IDeploymentPlan {
     assetServer?: IAssetServerPlan;
     /** What the suite declared about it, as it declared it — the form a CR carries. */
     assetServerRequest?: IAssetServerRequest;
+    /**
+     * The realms this deployment switched on or off, as it asked.
+     *
+     * The declaration rather than a resolved list, because the roles it competes with are the
+     * realms' own and reach the plan through the registry: what a tree did with a switch is visible
+     * in {@link deployments}, and what a CR must keep is the switch.
+     */
+    realmsRequest?: IRealmSwitchMap;
     /** The realm's own operator: identity, permissions, and its Deployment. */
     operator: ISuiteOperator;
     /** When set, the tree carries the CRD and this suite's CR. */
@@ -935,6 +981,14 @@ export interface IPlanOptions {
     ingresses?: IIngressOverrideMap;
     /** The process that serves the browser bundle, and the policy its headers carry. */
     assetServer?: IAssetServerRequest;
+    /**
+     * The realms this deployment switches on or off, by realm name.
+     *
+     * Silence is ordinary and means "as the realm declares itself". A name is refused when the suite
+     * does not load that realm: a switch is a decision about something that is there, and one that
+     * names nothing would leave a deployment believing it had turned a realm off (`@@D-951`).
+     */
+    realms?: IRealmSwitchMap;
     operator?: ISuiteOperatorRequest;
     /**
      * Secret generator entries for the whole suite, by name.
@@ -1285,6 +1339,44 @@ export const resolveAssetServer = (
 };
 
 /**
+ * The roles the realms hold in this deployment, after the deployment has had its say.
+ *
+ * A realm's declaration is what it *can* be, and the switch is what this deployment *wants*: off,
+ * the realm reaches no process at all — the same answer as a realm that declares `none`, and it is
+ * applied here rather than in the split so the Services, the portals and the namespace lists all
+ * see one answer. On, a realm that declares `none` is given a process, because asking for a realm is
+ * asking for the process that serves it (`@@D-951`).
+ */
+const resolveRoles = (
+    view: IRegistryView,
+    switches: IRealmSwitchMap | undefined,
+): Record<string, RealmRole> => {
+    const declared = (realm: string): RealmRole => view.roles[realm] ?? 'service';
+    const roles: Record<string, RealmRole> = {};
+    for (const realm of new Set([...view.realms, ...Object.keys(switches ?? {})])) {
+        const asked = switches?.[realm]?.enabled;
+        roles[realm] =
+            asked === false
+                ? 'none'
+                : asked === true && declared(realm) === 'none'
+                  ? 'service'
+                  : declared(realm);
+    }
+    // A switch is a decision about a realm that is there. A name the suite does not load is a typo
+    // in a config or a CR — the kind that otherwise turns nothing off and says nothing about it.
+    for (const realm of Object.keys(switches ?? {})) {
+        if (!view.realms.includes(realm)) {
+            throw new Error(
+                `realms names "${realm}", which this suite does not load: a switch decides about ` +
+                    'a realm the registry holds, and the names it holds are ' +
+                    `${view.realms.join(', ') || '(none)'}`,
+            );
+        }
+    }
+    return roles;
+};
+
+/**
  * Derive the deployment plan from a registry view. Pure: no cluster, no
  * filesystem, no framework — which is what makes it unit-testable.
  */
@@ -1321,8 +1413,12 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     // other processes and owns none (so it publishes no Service), `both` is carried by them *and* owns a
     // process — the only way an in-process library realm can also offer a public API — and `none` is not
     // deployed at all. Which processes carry a companion is the realm's own answer: all of them, or the
-    // ones it named (`@@D-871`).
-    const roleOf = (realm: string): RealmRole => view.roles[realm] ?? 'service';
+    // ones it named (`@@D-871`). What this *deployment* wants of each realm is the other half, and it is
+    // folded in here so that every answer below — the split, the Services, the portals — is one answer
+    // (`@@D-951`).
+    const switches = options.install ? undefined : options.realms;
+    const roles = resolveRoles(view, switches);
+    const roleOf = (realm: string): RealmRole => roles[realm] ?? 'service';
     const deployable = (realm: string): boolean =>
         roleOf(realm) === 'service' || roleOf(realm) === 'both';
     const companion = (realm: string): boolean =>
@@ -1455,6 +1551,20 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         view.ports
             .filter(port => (port.id.split('.')[0] ?? '') === realm)
             .flatMap(port => (port.k8s ? [port.k8s] : []));
+
+    /**
+     * The ports one realm contributes, as a container declares them.
+     *
+     * Keyed and named the way the deployment's own list is, because both are read by the same two
+     * renderers: the container's `ports` and a Service's (`@@F-801`). A Service publishes its own
+     * realm's ports and no other realm's, so one function answers both without either spelling the
+     * translation twice.
+     */
+    const portsOf = (realm: string): IComponentPort[] =>
+        resolveNamedEntries<IComponentPort>(
+            mergeNamed(contributionFor(realm).map(contribution => contribution.k8sPorts)),
+            'k8sPorts',
+        ).map(port => ({...port, name: k8sPortName(port.name)}));
 
     const deployments: IDeployment[] = [...byName.entries()].map(([name, own]) => {
         // A process also carries the realms that ride others, so a call into `srv.subject` or
@@ -1610,7 +1720,11 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         // replaced. A namespace without a Service is still reachable in-process from every process
         // that carries it, which is what the companions guarantee.
         if (!owner || !deployment) return [];
-        return [{name: namespaceName, namespace, deployment}];
+        // The ports this Service publishes are the ones the realm behind it opened, not every port of
+        // the pod that serves it (`@@F-801`). A namespace with none says so with an empty list rather
+        // than by leaving the key out: an absent key is the *process* Service's shape, and the
+        // renderer reads it as "this is the address of the whole process".
+        return [{name: namespaceName, namespace, deployment, ports: portsOf(owner)}];
     });
 
     /**
@@ -1703,16 +1817,60 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
     });
 
     /**
-     * One address per process that opens a port of its own.
+     * …and one named after a realm whose ports ride another process's Deployment.
+     *
+     * A port a realm contributes is a fact about that realm, so the name it is reached at is the
+     * realm's rather than whichever process the profile happened to put it in (`@@D-951`). In the
+     * `realm` and `namespace` profiles the two names are the same and this adds nothing; in a
+     * monolith every process is the suite's, and a realm that opened a port would otherwise be
+     * reachable only under the suite's name — a name a suite's own configuration cannot know.
+     */
+    for (const realm of new Set(view.realms)) {
+        if (!deployable(realm)) continue;
+        const deployment = deploymentForRealm(realm);
+        if (!deployment) continue;
+        const carriesPorts = contributionFor(realm).some(
+            contribution => Object.keys(contribution.k8sPorts ?? {}).length > 0,
+        );
+        if (!carriesPorts || services.some(service => service.name === realm)) continue;
+        services.push({name: realm, namespace, deployment, ports: portsOf(realm)});
+    }
+
+    /**
+     * …and one named after a process, for a port no realm Service answers.
      *
      * An Ingress backend is a Service, and a monolith has no namespace named after the suite — so a
      * webhook path had no object to point at even once its contribution was read. A deployment that
      * declares ports therefore gets a Service named after itself, unless a namespace Service already
      * carries that name, which is the realm profile's case.
+     *
+     * It is emitted only when it is the *only* name a port could be reached at (`@@F-802`). Every port
+     * a realm opens is published by the Service named after that realm, and the Ingress prefers it;
+     * this object answers the port whose namespace no Service carries — the chat realm's Slack
+     * adapter answers `slack`, a name no realm is — and a path that names the process itself. A
+     * process whose ports are all published elsewhere does not get a second name for the same pods:
+     * `blong-sport` was an address nothing dialled.
      */
     for (const deployment of deployments) {
         if (!deployment.ports?.length) continue;
         if (services.some(service => service.name === deployment.name)) continue;
+        // Per *port*, because a port claims a namespace of its own rather than its realm's.
+        const unanswered = view.ports.some(
+            port =>
+                deployment.realms.includes(port.id.split('.')[0] ?? '') &&
+                Object.keys(port.k8s?.k8sPorts ?? {}).length > 0 &&
+                namespaceList(port.namespace).every(
+                    answered => !services.some(service => service.name === answered),
+                ),
+        );
+        const named = deployment.realms.some(realm =>
+            contributionFor(realm).some(contribution =>
+                Object.values(contribution.k8sIngresses ?? {}).some(
+                    ingress => ingress.serviceName === deployment.name,
+                ),
+            ),
+        );
+        if (!unanswered && !named) continue;
         services.push({name: deployment.name, namespace, deployment: deployment.name});
     }
 
@@ -1779,6 +1937,9 @@ export const planFromRegistry = (view: IRegistryView, options: IPlanOptions): ID
         // The declaration rather than the resolution: the operator regenerates the tree from the CR,
         // and a field the CR could not carry is a setting that reverts on the next pass.
         ...(options.assetServer ? {assetServerRequest: options.assetServer} : {}),
+        // The same rule for the realm switches: a realm a tenant left out comes back on the
+        // operator's next pass unless the CR carries the switch (`@@D-951`).
+        ...(switches ? {realmsRequest: switches} : {}),
         operator: resolveSuiteOperator(options.operator),
         crd: options.crd,
         install: options.install ?? false,
@@ -1852,6 +2013,8 @@ export interface IPlanConfig {
     ingresses?: IIngressOverrideMap;
     /** The process that serves the browser bundle, and the policy its headers carry. */
     assetServer?: IAssetServerRequest;
+    /** The realms this deployment switches on or off (see {@link IPlanOptions.realms}). */
+    realms?: IRealmSwitchMap;
     /** The realm's own operator: its Deployment and the loop it runs. */
     operator?: ISuiteOperatorRequest;
     /** How this process runs the operator's loop; the environment can turn it on instead. */
@@ -1936,6 +2099,14 @@ export interface IBlongDeploymentSpec {
     /** The process that serves the browser bundle, when a tenant wants one of its own. */
     assetServer?: IAssetServerRequest;
     /**
+     * The realms this deployment leaves out, or asks to deploy though the realm declares otherwise.
+     *
+     * A tenant's decision about the fleet it runs, carried in the CR because the operator
+     * regenerates the tree from it: a realm switched off in a suite's config and not here would
+     * come back on the next pass (`@@D-951`).
+     */
+    realms?: IRealmSwitchMap;
+    /**
      * The nodes a `nodeLocal` deployment runs on, when the tenant names them — as a list of names or
      * as a label selector for the cluster to answer. A tenant that says nothing leaves the realm's
      * own configuration in charge, which is the rule every other field here follows.
@@ -1972,6 +2143,7 @@ export const planOptionsFromSpec = (spec: IBlongDeploymentSpec = {}): Partial<IP
     if (spec.portal !== undefined) options.portal = spec.portal;
     if (spec.ingresses !== undefined) options.ingresses = spec.ingresses;
     if (spec.assetServer !== undefined) options.assetServer = spec.assetServer;
+    if (spec.realms !== undefined) options.realms = spec.realms;
     if (spec.nodeSource !== undefined) options.nodeSource = spec.nodeSource;
     return options;
 };
@@ -1999,6 +2171,7 @@ export const planOptionsOf = (config: IPlanConfig | undefined): IPlanOptions => 
     portal: config?.portal,
     ingresses: config?.ingresses,
     assetServer: config?.assetServer,
+    realms: config?.realms,
     operator: config?.operator,
     secrets: config?.secrets,
     assets: config?.assets,

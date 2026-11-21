@@ -33,6 +33,7 @@ export default browser(blong => ({
         blong: blong.type.Object({}),
         access: blong.type.Object({}),
         kustomize: blong.type.Object({}),
+        viewer: blong.type.Object({}),
     }),
     children: [
         /** Built-in blong-browser realm: RPC, auth, portal, auth orchestrators */
@@ -64,6 +65,16 @@ export default browser(blong => ({
          */
         async function blong() {
             return import('@feasibleone/blong-realm/browser.ts');
+        },
+        /**
+         * The records this deployment's own processes wrote: Observability → Logs.
+         *
+         * The page reads `viewer.entry.*` from the gateway that served it, and
+         * the capability that opens it is seeded by the deployment's migration
+         * (`@@D-946`).
+         */
+        async function viewer() {
+            return import('@feasibleone/blong-viewer/browser.ts');
         },
         /** Deployment realm: its Browse page over the suite's Deployments. */
         async function kustomize() {
@@ -103,9 +114,11 @@ export default browser(blong => ({
             // A child realm loads only when the merged config names it (`if (config)`
             // in the loader's child loop), so an empty block is what loads the
             // realm at all. `access` carries the self-service profile page the
-            // account menu opens; `kustomize` the Deployments page.
+            // account menu opens; `kustomize` the Deployments page; `viewer` the
+            // Logs page over the records this deployment's own processes wrote.
             access: {},
             kustomize: {},
+            viewer: {},
         },
         integration: {
             ui: {

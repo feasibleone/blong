@@ -15,6 +15,9 @@ test('the suite portal carries both realms’ menus', async ({portal}) => {
     await expect(portal.page.locator('.blong-portal-menubar')).toBeVisible();
     await expect(portal.page.getByTestId('portal-menu-marine')).toBeVisible();
     await expect(portal.page.getByTestId('portal-menu-blong')).toBeVisible();
+    // The third menu is a realm whose whole page is the deployment's own records: the
+    // deployment loads it, so the suite's portal carries the group (@@D-946).
+    await expect(portal.page.getByTestId('portal-menu-viewer')).toBeVisible();
     // The title the suite configured, kept because the first provider to set one is
     // the model aggregator — which reads that same `ui.portal.portal` slice. It is the
     // suite's brand name now (`ui.portal.portal.brand`), not the package name.
@@ -33,4 +36,16 @@ test('a page of each realm opens from the composed menu', async ({portal}) => {
     // opened in the DOM, so a sibling panel's rows match the plain selector and a
     // hidden one is what `.first()` finds.
     await expect(portal.page.locator('.p-datatable-tbody tr:visible').first()).toBeVisible();
+});
+
+test('the deployment reads its own records from the portal', async ({portal}) => {
+    // The viewer page is the deployment's account of itself: the tab opens from the
+    // composed menu, and the records it draws are the ones the running process wrote —
+    // the `release`/`dev` destination in the suite's own config, received by the realm's
+    // adapter. A page that loads nothing is the failure this asserts against.
+    await portal.menuClick('viewer.log');
+    const page = portal.page.locator('[data-stream]');
+    // The record grid is the viewer's own, not a model table: `.wx-row` is the row the
+    // grid library renders a record into.
+    await expect(page.locator('.wx-row').first()).toBeVisible();
 });

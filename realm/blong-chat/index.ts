@@ -27,6 +27,16 @@ export default server(() => ({
         async function chat() {
             return import('./server.ts');
         },
+        /**
+         * The records this deployment's own processes wrote: the `viewer` realm's UDP receiver and
+         * the gateway routes the page reads through (`@@D-946`). A deployable realm, so a profile
+         * that splits gives it a process of its own and a Service named after it; in this suite's
+         * `monolith` profile it rides the one process, and its Service is what the destination below
+         * names all the same (`@@D-950`).
+         */
+        async function viewer() {
+            return import('@feasibleone/blong-viewer/server.ts');
+        },
     ],
     config: {
         default: {
@@ -111,6 +121,11 @@ export default server(() => ({
         release: {
             // How a deployed process finds another realm's process: the Service of that name.
             resolution: {impl: 'kubernetes'},
+            // Every process of this deployment sends its records to the `viewer` realm, at the name
+            // its port is published under: the realm contributes the UDP port and the tree turns it
+            // into a Service of the realm's own name, in every profile (`@@D-950`). A suite that
+            // leaves the realm out of a tree drops the block with it.
+            log: {destination: {host: 'viewer', port: 9999}},
             gateway: {
                 static: {root: '/opt/deploy/suite/realm/blong-chat/dist'},
             },
@@ -131,8 +146,8 @@ export default server(() => ({
             },
         },
         // A planning run and the migration Job each need every realm the suite can deploy.
-        k8s: {chat: {}, login: {}, core: {}, access: {}, gateway: {}},
-        upgrade: {chat: {}, login: {}, core: {}, access: {}, gateway: {}},
+        k8s: {chat: {}, login: {}, core: {}, access: {}, gateway: {}, viewer: {}},
+        upgrade: {chat: {}, login: {}, core: {}, access: {}, gateway: {}, viewer: {}},
         integration: {
             // Tests run beside whatever a developer has started, so every listener the platform owns
             // asks for a port the kernel chooses rather than for the one dev uses.

@@ -83,6 +83,18 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
         config.public.sign = mle.keys.sign;
         config.public.encrypt = mle.keys.encrypt;
     }
+    // The one thing a stream route needs that the gateway's own configuration
+    // cannot provide: a key agreed with the **private** encrypt half, which lives in
+    // this instance (D-441, where the config carries the public JWKs). The request asks
+    // for it where the crypto is, rather than the gateway reaching into a plugin
+    // (`@@D-949`).
+    fastify.addHook('onRequest', async request => {
+        (request as {streamKey?: unknown}).streamKey = (parameters: {
+            peerPublicJwk: Record<string, unknown>;
+            salt: Uint8Array;
+            info: string;
+        }) => mle.streamKey(parameters);
+    });
     fastify.addHook(
         'preValidation',
         async (request: FastifyRequest<{Body: {jsonrpc?: string; method?: string}}>, reply) => {

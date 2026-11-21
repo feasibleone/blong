@@ -270,37 +270,40 @@ Either way the addresses the viewer is told (`/api/config`) are taken from the r
 a page reached through a forwarded port, an ingress or another host name talks to the server that
 served it.
 
-## What a deployment needs
+## Deploying it
 
-The viewer runs on a developer's machine today; putting it in a cluster is not done, and this is
-what is missing rather than a description of how it works.
+In a suite the viewer is a realm (`realm/blong-viewer`), not a program installed beside the
+deployment: its adapter receives the records the other processes send, and its gateway layer serves
+them to the page over the same session and the same capability model as every other page
+(`@@D-946`). Two consequences follow, and both are what a deployment sees:
 
-**A CRD field.** `BlongDeployment` already has an `assetServer` block for "a process that serves a
-bundle", and a `logViewer` block beside it is the same shape:
-`{enabled, udpPort, httpPort, bufferSize, host}`. The tree writer would emit the Deployment and its
-Service, and — the part that matters — give every process in the suite the address to write to.
+- **The address is a realm fact.** The adapter claims the `viewer` namespace and contributes the UDP
+  port it listens on (`k8sPorts`), so the tree publishes a Service named after the realm carrying
+  `rpc`, `http` and that port. A realm that opens a port is reached at the realm's name in every
+  profile, which is why a suite can write the address down without knowing how it is split
+  (`@@D-951`).
+- **The destination is the suite's own configuration.** Nothing in the deployment engine knows about
+  a viewer: the processes are pointed at one with the framework's ordinary `log.destination`, and a
+  suite that leaves the realm out has simply not written that block.
 
-**One address for the whole namespace.** The writer is configured per process, so "watch everything
-in the namespace" is a matter of that one setting reaching every pod. The `log.destination` block is
-already the wiring half — a `module` and its `options` handed to every process, with no dependency
-from the framework onto the viewer — so what is missing is only the deployment writing it: the
-`logViewer` block naming the Service, and the tree writer putting its address in every process's
-configuration. A DaemonSet collecting from its own node's pods is the alternative and needs no
-configuration at all, at the cost of a moving part per node.
+```ts
+config: {
+    k8s: {viewer: {}},
+    release: {
+        // Every pod of the deployment, the migration Job included, sends its records here.
+        log: {destination: {host: 'viewer', port: 9999}},
+    },
+}
+```
 
-**Authentication, reusing the portal's.** The server's REST and WebSocket are open. The portal
-already authenticates through `blong-login` and authorises through `blong-access`, so the aligned
-answer is a gateway route in front of the viewer rather than a second login: a capability
-(`log.viewer.open`) on the route, the same JWT, the same session. An ingress-level forward-auth is
-the alternative and keeps the framework out of it, at the cost of a second thing to configure.
+The realm's page is a portal contribution like any other — Observability → Logs — and the capability
+that opens it is seeded into `blong-access` by the deployment's migration (`viewerRead`). A tenant
+that does not want the viewer in a tree switches the realm off, which removes its process, its layer
+flags and its Service together:
 
-**A menu item in the portal.** Once the page is behind the portal, the navigation comes from a
-portal contribution like any other: a component that renders the viewer in a tab, registered where
-the portal's other pages are, with the capability above deciding whether a person sees it.
-
-None of the four is started. They are recorded as todos so the next plan can size them, and the
-pieces that already exist — the writer, the request-derived addresses, the filters — are the ones
-they build on.
+```ts
+config: {kustomize: {deploy: {realms: {viewer: {enabled: false}}}}}
+```
 
 ## Runtime Introspection Endpoints
 

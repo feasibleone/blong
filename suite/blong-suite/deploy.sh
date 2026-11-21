@@ -37,9 +37,13 @@ export DROP_SERVICES=1                   # once the cycle ends, delete the workl
                                          # (F-461) — and the credentials copy the deployment wrote
                                          # into the suite's namespace goes too
 
-# Who the runbook is for, and how much it asks.
-export BLONG_TEST_USER=testAdmin         # the user the runbook drives the portal and its API as
-export BLONG_TEST_PASSWORD=testPassword  # its password (the seeded development default)
+# How much the runbook asks.
+#
+# No test login is named: this deployment faces the internet, and a seed with a password somebody
+# knows is the administrative UI with the lock left open. The run provisions its own login instead —
+# a random name and secret, granted Admin for the length of the run, removed in a `finally` — and
+# reads the database it writes to from the deployment's own rc Secret, so nothing about it is named
+# here.
 export ASSUME_YES=1                      # answer its confirmations with yes; 1 for unattended runs,
                                          # 0 to be asked before it changes anything
 export CLUSTER=dev-cluster               # the k3d cluster to use; the runbook never creates one it

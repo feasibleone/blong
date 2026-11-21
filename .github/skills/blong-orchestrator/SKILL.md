@@ -185,7 +185,10 @@ export default library(
 `namespace`, `imports`, `destination`, `logLevel` — see the Dispatch `activation` above. Extras:
 
 - `imports` / `validations` accept **regex** to match many groups: `imports: [/^realmname\./]`,
-  `validations: [/^realmname\.\w+\.validation$/]`.
+  `validations: [/^realmname\.\w+\.validation$/]`. **Reach for the pattern only when the port
+  gathers groups from several realms** (the `srv` subject orchestrator, the test dispatch ports); a
+  dispatch port that serves one realm names its groups — `imports: ['realmname.entity1']` — because
+  an unnamed tail elsewhere in the suite would otherwise land on it (`@@F-796`).
 
 ### Schedule-Specific Properties
 

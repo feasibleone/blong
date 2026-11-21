@@ -1,3 +1,4 @@
+import {deriveStreamKey, readStream, streamInfoOf, streamSalt} from '@feasibleone/blong-mle';
 import {handler} from '@feasibleone/blong/types';
 import {type Response} from 'got';
 import {exportJWK, generateKeyPair} from 'jose';
@@ -17,6 +18,15 @@ interface IToken {
     refresh_token_expires_in?: number;
 }
 
+/** Whether an answer arrived as a stream rather than as one JSON body. */
+function isStreamBody(body: unknown): boolean {
+    return (
+        typeof body === 'object' &&
+        body !== null &&
+        typeof (body as ReadableStream<Uint8Array>).getReader === 'function'
+    );
+}
+
 export default handler<{
     token: unknown;
     tokenExpire: number;
@@ -26,6 +36,16 @@ export default handler<{
         pending: Promise<{body?: unknown}> | null,
         refreshToken: string | null,
         refreshTokenExpire: number;
+    /**
+     * The pair a sealed stream is opened with, kept here because `receive` runs
+     * outside `ready()`'s scope and the key agreement needs the private half
+     * (`@@D-949`). It is the same pair every MLE message is signed and decrypted
+     * with — nothing extra is generated for a stream.
+     */
+    let streamPair: {
+        clientKey: {encrypt: Record<string, unknown>};
+        serverKey: {encrypt: Record<string, unknown>};
+    } | null = null;
 
     const encrypt = (msg: unknown, protectedHeader?: object): unknown => {
         return jose
@@ -235,6 +255,10 @@ export default handler<{
                 }
                 jose = await joseFactory(mleKey.clientKey);
                 serverKey = mleKey.serverKey;
+                streamPair = {
+                    clientKey: mleKey.clientKey as {encrypt: Record<string, unknown>},
+                    serverKey: mleKey.serverKey as {encrypt: Record<string, unknown>},
+                };
             }
         },
         async send(
@@ -287,6 +311,30 @@ export default handler<{
             }>,
             $meta: unknown,
         ) {
+            // A sealed stream is the one answer this codec owns outright: its frames
+            // are sealed under a key only the two key pairs in hand can agree, and
+            // this is where both of them live (`@@D-949`). The body is not JSON, so
+            // nothing below may try to decrypt it.
+            if (isStreamBody(result.body)) {
+                const streamed = {
+                    headers: result.headers,
+                    body: result.body as unknown as ReadableStream<Uint8Array>,
+                };
+                const salt = streamSalt(streamed);
+                if (salt && streamPair) {
+                    const method = String((($meta as {method?: string}) ?? {}).method ?? '');
+                    const key = await deriveStreamKey({
+                        privateJwk: streamPair.clientKey.encrypt,
+                        peerPublicJwk: streamPair.serverKey.encrypt,
+                        salt,
+                        info: streamInfoOf(method),
+                    });
+                    return readStream(streamed, {key, info: streamInfoOf(method)});
+                }
+                // Unsealed: the codec beneath this one reads it, and there is
+                // nothing here for a key to open.
+                return super.receive(result, $meta);
+            }
             await decrypt(result.body, 'error');
             await decrypt(result.body, 'result');
             // A capture with its own note: the body is a JSON document, and the sentence says which

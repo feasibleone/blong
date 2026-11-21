@@ -119,6 +119,11 @@ export default adapter(blong => ({
 **Extra config keys:** `tls: {ca, cert, key}` for client certificates (the rest — `url`,
 `namespace`, `imports`, `logLevel` — are shown in the TS `activation` above).
 
+**Name the groups in `imports` unless the port gathers several realms.** An adapter that serves one
+realm's folder writes `imports: ['realmname.hsm']`; a pattern is for a port whose handler set spans
+realms — `blong-chat`'s channel adapters, `core/blong-server`'s `srv` — and a pattern where one
+realm is meant sweeps in any folder with the same tail (`@@F-796`).
+
 ### 2. TCP Adapter
 
 **Use Cases:**

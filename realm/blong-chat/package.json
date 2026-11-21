@@ -37,8 +37,9 @@
         "@feasibleone/blong-kustomize": "workspace:^0.1.0",
         "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-server": "workspace:^1.0.0",
-        "typebox": "^1.1.5",
-        "@feasibleone/lukaot": "workspace:^"
+        "@feasibleone/blong-viewer": "workspace:^0.1.0",
+        "@feasibleone/lukaot": "workspace:^",
+        "typebox": "^1.1.5"
     },
     "devDependencies": {
         "@feasibleone/blong-browser": "workspace:^1.0.0",

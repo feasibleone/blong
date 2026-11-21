@@ -24,4 +24,5 @@ resources:
   - services/chat.yaml
   - services/core.yaml
   - services/login.yaml
+  - services/viewer.yaml
   - services/web-http.yaml

@@ -29,6 +29,7 @@ export default browser(blong => ({
         ui: blong.type.Object({}),
         feedback: blong.type.Object({}),
         access: blong.type.Object({}),
+        viewer: blong.type.Object({}),
     }),
     children: [
         async function blong() {
@@ -83,6 +84,15 @@ export default browser(blong => ({
          */
         async function feedback() {
             return import('@feasibleone/blong-feedback/browser.ts');
+        },
+        /**
+         * The records this deployment's own processes wrote: Observability → Logs.
+         *
+         * The page reads `viewer.entry.*` from the gateway that served it, and the capability that
+         * opens it is seeded by the deployment's migration (`@@D-946`).
+         */
+        async function viewer() {
+            return import('@feasibleone/blong-viewer/browser.ts');
         },
     ],
     config: {
@@ -166,6 +176,10 @@ export default browser(blong => ({
             // merged config does not carry, so `access: {}` is what makes the
             // realm load at all (the account menu's profile page lives in it).
             access: {},
+            // The same for the Logs page: its menu entry and the tab it opens come
+            // from the viewer realm, and a portal that does not name it has no way
+            // to read the records the deployment is already sending (`@@D-946`).
+            viewer: {},
         },
         // TEST-ONLY: the `integration` intent (active in a browser run) exposes the
         // wrapped handler as `window.__blongHandler` and the store as

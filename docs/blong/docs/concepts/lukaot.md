@@ -1,4 +1,6 @@
-# lukaot
+# Lukaot
+
+> lukaot = look out in [Bislama](https://en.wikipedia.org/wiki/Bislama)
 
 **lukaot** is one declared vocabulary for everything a process reports: the lines it logs, the
 errors it throws, the payloads it captures, and the choices it makes. A name is written once, in a

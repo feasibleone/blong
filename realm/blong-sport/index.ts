@@ -56,6 +56,16 @@ export default server(() => ({
         async function testRealm() {
             return import('@feasibleone/blong-test/server.ts');
         },
+        /**
+         * The records this deployment's own processes wrote: the `viewer` realm's UDP receiver and
+         * the gateway routes the page reads through (`@@D-946`). A deployable realm, so a profile
+         * that splits gives it a process of its own and a Service named after it; in this suite's
+         * `monolith` profile it rides the one process, and its Service is what the destination
+         * below names all the same (`@@D-950`).
+         */
+        async function viewer() {
+            return import('@feasibleone/blong-viewer/server.ts');
+        },
     ],
     config: {
         default: {
@@ -122,6 +132,11 @@ export default server(() => ({
             // 401 with `rpc.jwtInvalid` (@@F-616). `release` is the trailing intent every deployed
             // process and the migration Job carry, so this is the block they read.
             resolution: {impl: 'kubernetes'},
+            // Every process of this deployment sends its records to the `viewer` realm, at the name
+            // its port is published under: the realm contributes the UDP port and the tree turns it
+            // into a Service of the realm's own name, in every profile (`@@D-950`). A suite that
+            // leaves the realm out of a tree drops the block with it.
+            log: {destination: {host: 'viewer', port: 9999}},
             // Party's dbTest seeds are handler-backed, and the handler group is not loaded in a
             // release process: leaving the flag on made the migration job fall through to the
             // generic `merge`, which read an undefined `party.hierarchy` and failed with
@@ -161,6 +176,7 @@ export default server(() => ({
             access: {},
             gateway: {},
             party: {},
+            viewer: {},
         },
         upgrade: {
             sport: {},
@@ -170,6 +186,7 @@ export default server(() => ({
             gateway: {},
             party: {},
             feedback: {},
+            viewer: {},
         },
         dev: {
             srv: {},

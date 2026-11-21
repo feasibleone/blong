@@ -151,4 +151,18 @@ test('UdpReceiver', async t => {
         socket.close();
         await testReceiver.stop();
     });
+
+    t.test('a port that is taken fails the start instead of the process', async t => {
+        // A container whose port is already bound is a deployment mistake, and the only thing that
+        // may fail is the start that asked for it: the receiver used to emit `error` with no listener
+        // of its own, which an EventEmitter re-throws — the pod then died with `EADDRINUSE` from an
+        // unhandled event, and nothing could report which listener collided (`@@F-788`).
+        const first = new UdpReceiver({port: 19996, host: '127.0.0.1'});
+        await first.start();
+        const second = new UdpReceiver({port: 19996, host: '127.0.0.1'});
+        await t.rejects(second.start(), /EADDRINUSE/, 'the second listener is refused');
+        // And the cleanup a caller does after a failed start is not a second failure.
+        await second.stop();
+        await first.stop();
+    });
 });

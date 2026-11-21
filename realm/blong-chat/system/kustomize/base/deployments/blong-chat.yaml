@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-chat
     app.kubernetes.io/part-of: blong-chat
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 1fe1792d35b7e8d8
+    blong.feasible.one/spec-hash: 124d8d0671d90416
   name: blong-chat
 spec:
   replicas: 1
@@ -45,6 +45,8 @@ spec:
             - --chat.adapter
             - --chat.orchestrator
             - --chat.gateway
+            - --viewer.adapter
+            - --viewer.gateway
             - --srv.orchestrator
             - --blong.adapter
             - --blong.gateway
@@ -73,6 +75,9 @@ spec:
             - containerPort: 8096
               name: chat-viber
               protocol: TCP
+            - containerPort: 9999
+              name: viewer-log-udp
+              protocol: UDP
           readinessProbe:
             tcpSocket:
               port: rpc

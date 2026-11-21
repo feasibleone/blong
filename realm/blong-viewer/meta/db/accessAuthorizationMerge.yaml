@@ -1,0 +1,25 @@
+# RBAC production seed — the capability that opens the viewer.
+#
+# A capability lists the dotted method names the caller invokes, not the handler
+# names: the gateway authorizes the route it serves, so a capability written in
+# handler names grants nothing and the page answers 403.
+#
+# One capability, not a read/manage pair: there is nothing to manage. The records
+# are what the processes wrote, the buffer is bounded, and this realm has no row
+# to change, so a second name would only be a role nobody can hold differently.
+# The page and its two methods are gated by the same name because they are the
+# same authority: a person who may not read the records has no use for an empty
+# page beside the other menu entries.
+#
+# The file name is `accessAuthorizationMerge.yaml` because the seed method is
+# derived from it: the content carries the viewer names, the method is
+# blong-access's shared `access.authorization.merge`.
+#
+# `replace: true` so a shortened list takes effect on a database seeded once
+# instead of leaving the dropped methods granted.
+replace: true
+role:
+  Admin: viewerRead
+  Log Reader: viewerRead,loginCapability
+capability:
+  viewerRead: viewerEntryFind,viewerEntrySearch,viewerEntryWatch,subject.object.schema

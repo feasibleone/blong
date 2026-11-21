@@ -39,6 +39,7 @@ import {fail, handlerIo, type IStepIo} from '../../lib/exec.ts';
 import {keysEnsure, keysEnsureAroundRollout} from '../../lib/keys.ts';
 import {artifactSourceError} from '../../lib/rules.ts';
 import {operatorTreeGenerate, suiteTreeGenerate} from '../../lib/trees.ts';
+import {type IProvisionOptions, provisionUser, retireUser} from '../../lib/users.ts';
 
 /** The repository root, taken from where this file is rather than from `git`. */
 const root = fileURLToPath(new URL('../../../..', import.meta.url)).replace(/\/$/, '');
@@ -106,6 +107,20 @@ export const runbookOptions = (env = process.env): IRunbookOptions => ({
     refresh: env['REFRESH'] !== '0',
     createCluster: env['CREATE_CLUSTER'] === '1',
     credentials: {user: env['BLONG_TEST_USER'], password: env['BLONG_TEST_PASSWORD']},
+});
+
+/**
+ * The login the run provisions for itself, where no seed is named.
+ *
+ * `BLONG_TEST_USER` wins when a caller has one — the CI cluster is a throwaway whose database the
+ * test seed was written to. Otherwise the run makes its own login and removes it, because the
+ * deployment this runbook is normally pointed at faces the internet and must carry no seed at all
+ * (`@@D-952`). The role is the only thing named here; the database, its credentials and the forward
+ * that reaches it come from the deployment.
+ */
+export const userOptions = (namespace: string, env = process.env): IProvisionOptions => ({
+    namespace,
+    role: env['BLONG_TEST_ROLE'] || undefined,
 });
 
 /**
@@ -237,7 +252,29 @@ export const runK3dE2eGenerated = async (options: IRunbookOptions, io: IStepIo):
     await migrationStepRan({namespace: options.namespace}, io);
 
     io.say('portals');
-    await portalChecks({namespace: options.namespace, credentials: options.credentials}, io);
+    // The login round trip provisions its own account and removes it again: a deployment that faces
+    // the internet must not carry a test seed, and a run that assumed one could only check the
+    // credential tables where somebody had already put a known password (`@@D-952`).
+    const own = options.credentials?.user ? undefined : userOptions(options.namespace);
+    const provisioned = own ? await provisionUser(own, io) : undefined;
+    try {
+        await portalChecks(
+            {
+                namespace: options.namespace,
+                // The shapes differ by one field name — `portalChecks` takes `{user, password}` — and
+                // passing the provisioned object through unchanged is a login that reads as unset,
+                // which the check answers by *skipping* the round trip it exists for.
+                credentials: options.credentials?.user
+                    ? options.credentials
+                    : provisioned
+                      ? {user: provisioned.userName, password: provisioned.password}
+                      : undefined,
+            },
+            io,
+        );
+    } finally {
+        if (provisioned && own) await retireUser(provisioned, own, io);
+    }
 
     io.say('pods on which nodes');
     await podsOnNodesReport({namespace: options.namespace}, io);

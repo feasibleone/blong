@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 8b6a8264d9b6d1f7
+    blong.feasible.one/spec-hash: a52b3b982ec604b6
   name: blong-operator
 spec:
   replicas: 1
@@ -87,7 +87,7 @@ spec:
       serviceAccountName: blong-operator
       volumes:
         - hostPath:
-            path: /opt/deploy/suite
+            path: /PLACEHOLDER/suite
             type: Directory
           name: suite
         - name: cache

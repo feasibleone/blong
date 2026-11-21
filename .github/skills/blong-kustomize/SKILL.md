@@ -224,10 +224,12 @@ object). An ingress with no `serviceName` binds to the owning deployment.
 
 A `k8sPorts` entry is not decoration: the tree appends the deployment's contributed ports to its own
 Service beside `rpc` and `http`, so an Ingress that targets a webhook port has endpoints without a
-second declaration, and a deployment that declares ports gets a Service named after itself when no
-namespace Service already carries that name. A port contributed by an _internal_ realm (`blong`,
-`adapter`) is skipped: those are library realms every process carries, not a process of their own
-(`@@D-680`). An Ingress declaring `servicePort` from a port nobody contributed is a plan-time error.
+second declaration. A realm's ports are published by the Service named after the realm; a deployment
+additionally gets a Service named after itself only when a port would otherwise have no address —
+its namespace is no realm's (the chat Slack adapter answers `slack`) or an ingress names the process
+in `serviceName` (`@@F-802`). A port contributed by an _internal_ realm (`blong`, `adapter`) is
+skipped: those are library realms every process carries, not a process of their own (`@@D-680`). An
+Ingress declaring `servicePort` from a port nobody contributed is a plan-time error.
 
 ## Portals
 

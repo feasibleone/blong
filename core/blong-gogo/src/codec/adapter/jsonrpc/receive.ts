@@ -1,5 +1,15 @@
+import {readStream, streamSalt} from '@feasibleone/blong-mle';
 import {handler, type IMeta, type IProgressEntry, type ITypedError} from '@feasibleone/blong/types';
 import {type Response} from 'got';
+
+/** Whether this response is a stream rather than one JSON body. */
+function isStreamBody(body: unknown): body is ReadableStream<Uint8Array> {
+    return (
+        typeof body === 'object' &&
+        body !== null &&
+        typeof (body as ReadableStream<Uint8Array>).getReader === 'function'
+    );
+}
 
 export default handler(({errors}) => ({
     async receive(
@@ -12,6 +22,18 @@ export default handler(({errors}) => ({
         }>,
         $meta?: IMeta,
     ) {
+        // A streamed answer is not a body to parse: a plain one is read here into
+        // the values the producer yielded, and a sealed one is handed outward
+        // because the key agreement needs the caller's private encrypt key, which
+        // only the codec above this one holds (`@@D-949`).
+        if (isStreamBody(response.body)) {
+            const streamed = {
+                headers: response.headers,
+                body: response.body as unknown as ReadableStream<Uint8Array>,
+            };
+            if (streamSalt(streamed)) return {stream: response};
+            return readStream(streamed);
+        }
         const {body} = super.receive ? await super.receive(response) : response;
         if (body?.error !== undefined) {
             const error: ITypedError = body.jsonrpc

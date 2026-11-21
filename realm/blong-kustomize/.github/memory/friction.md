@@ -103,7 +103,7 @@ open (66)
 - `F-707` · realm/blong-kustomize — Removing spec.services plans the service, it does not disable
 - `F-726` · realm/blong-kustomize — Generating the base deletes the local overlay beside it
 
-resolved (41)
+resolved (42)
 
 - `F-371` · realm/blong-kustomize — The browser login fails while the same handler authenticates the
   token
@@ -158,6 +158,7 @@ resolved (41)
 - `F-752` · realm/blong-kustomize — A committed tree generated with a local rc is not the tree CI
   regenerates
 - `F-753` · realm/blong-kustomize — A one-name databases value became one schema per character
+- `F-801` · realm/blong-kustomize — Every Service of a process published all its ports
 
 <!-- /memory:index -->
 
@@ -1889,6 +1890,27 @@ tenant's workload alone — so it now has a phase of its own that brings the ser
 Fixed where it is read: databaseNames takes a string as one name, a list of strings as the list, and
 refuses anything else by naming the field; the command line's faithful list is a repeated flag,
 which the e2e's serviceOnArguments writes.
+
+### F-801 — Every Service of a process published all its ports
+
+> _2026-11-21 · realm/blong-kustomize · resolved_
+
+Every Service of a process published the process's whole port list, so in a monolith the login
+Service advertised Slack and Viber webhooks and the log receiver's UDP port, because all of them are
+the same pod's ports. Reading them off the Deployment was the shortcut: a Service points at pods,
+and the deployment is the only thing the generator had that knew its ports. The consequence is a
+tree that names an address twice — a destination could be pointed at login:9999 and would work,
+which is true of the cluster and false about the design, and the noise grows with every realm that
+opens a port. The plan now gives each Service the ports its own realm contributed, an absent list
+meaning the process's whole set (the Service named after the deployment, which is the address an
+Ingress reaches a webhook through) and an empty list meaning the realm contributes none. Narrowing
+is safe because a Service's selector was never narrowed: the pods still listen on every port, the
+tree simply stops offering them under names they do not belong to.
+
+Done: plan.ts gives a namespace Service portsOf(owner) and the generator prefers them over the
+deployment's; chat and sport now publish each realm's own ports only, and the split profile's tree
+is unchanged. Pinned by aRealmContributesItsOwnAddress, which asserts the realm Service carries its
+UDP port and the companion's carries none.
 
 ## Retired
 

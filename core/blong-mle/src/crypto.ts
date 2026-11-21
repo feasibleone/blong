@@ -36,6 +36,10 @@ import {
 
 type KeyLike = CryptoKey | {type: string};
 
+// The stream cipher shares the keys this module resolves, so it is imported rather
+// than duplicated.
+import {deriveStreamKey} from './streamCipher.ts';
+
 /**
  * Spec for a JWK key that can be:
  * - A static JWK object
@@ -266,6 +270,19 @@ export interface IMleCrypto {
         options: unknown,
     ) => ReturnType<typeof decrypt> | typeof msg;
     verify: (plaintext: string | Uint8Array, key: KeyLike | Uint8Array) => Promise<object>;
+    /**
+     * The key a sealed stream is written under (`@@D-949`).
+     *
+     * It lives here because this instance is where the **private** encrypt half
+     * lives: the gateway's own configuration carries the public JWKs (D-441), so a
+     * component that tried to agree a key from its config would have nothing to
+     * agree with.
+     */
+    streamKey(parameters: {
+        peerPublicJwk: Record<string, unknown>;
+        salt: Uint8Array;
+        info: string;
+    }): Promise<CryptoKey>;
 }
 
 /**
@@ -314,6 +331,16 @@ export async function createMleCrypto({
         decrypt: (msg, options) =>
             mlek ? decrypt(msg, mlek!, options as {complete?: unknown} | undefined) : msg,
         verify: async (msg, key) => verify(msg, await importKey(key)),
+        streamKey: async ({peerPublicJwk, salt, info}) => {
+            if (!resolvedEncrypt) {
+                throw new Error('no encrypt key was configured, so a stream key cannot be agreed');
+            }
+            const own = await exportKey(resolvedEncrypt, true);
+            if (!('d' in own)) {
+                throw new Error('the encrypt key has no private half, so a stream key cannot be agreed');
+            }
+            return deriveStreamKey({privateJwk: own, peerPublicJwk, salt, info});
+        },
     };
 }
 

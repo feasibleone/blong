@@ -626,11 +626,14 @@ const serviceResource = (plan: IDeploymentPlan, service: IService): Record<strin
             //
             // A port a realm contributes joins them, because an Ingress can only reach a port a Service
             // publishes: a webhook declared `k8sPorts` was opened in the container and had no Service
-            // port behind it (`@@D-680`).
+            // port behind it (`@@D-680`). Which ports those are is the *plan's* answer and not the
+            // deployment's: a namespace Service publishes the realm's own, so a monolith's `login`
+            // Service does not advertise the chat webhooks and the log receiver that live in the same
+            // pod (`@@F-801`).
             ports: [
                 {name: 'rpc', port: 8091, targetPort: 'rpc', protocol: 'TCP'},
                 {name: 'http', port: 8080, targetPort: 'http', protocol: 'TCP'},
-                ...(deployment?.ports ?? []).map(port => ({
+                ...(service.ports ?? deployment?.ports ?? []).map(port => ({
                     name: port.name,
                     port: port.port,
                     targetPort: port.name,
@@ -2048,6 +2051,26 @@ const crdResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
                                             items: {type: 'string'},
                                         },
                                     },
+                                    // A map keyed by realm name, so a tenant's CR and the suite's own
+                                    // config merge rather than replace: one entry switches one realm
+                                    // off and leaves every other answer where the artifact put it.
+                                    realms: {
+                                        type: 'object',
+                                        additionalProperties: {
+                                            type: 'object',
+                                            properties: {
+                                                enabled: {
+                                                    type: 'boolean',
+                                                    // Named, so `kubectl explain` answers the question
+                                                    // a tenant asks: what does leaving a realm out do
+                                                    // to the process and the Service it would have?
+                                                    description:
+                                                        'Deploy this realm (true, the default) or ' +
+                                                        'leave it out of the tree (false)',
+                                                },
+                                            },
+                                        },
+                                    },
                                     externalServices: {
                                         // A map keyed by the abstract name the suite resolves, for the
                                         // same reason the portals are: the suite's config and the
@@ -2383,6 +2406,11 @@ const blongDeploymentResource = (plan: IDeploymentPlan): Record<string, unknown>
         // only when the suite declared one, because a field it omits falls back to the artifact's
         // own config on the operator's pass.
         ...(plan.assetServerRequest ? {assetServer: plan.assetServerRequest} : {}),
+        // The realms a tenant switched on or off, by the request rather than a resolution, like
+        // every other field here: which process a realm would have been is a fact the reconciling
+        // operator derives from the registry it loads, and a CR that froze it would keep an answer
+        // the artifact no longer has (`@@D-951`).
+        ...(plan.realmsRequest ? {realms: plan.realmsRequest} : {}),
         // The same rule for the services a deployment brings with it, and one more reason for it: the
         // operator regenerates the tree from this declaration, so a switch the CR cannot carry is a
         // service switched off that comes back on the next pass. Written only when the
@@ -3064,6 +3092,30 @@ export const buildKustomizeTree = (
                     servicePort: 8080,
                 });
             }
+        }
+        // …and every Service the plan publishes that no namespace rule has routed. A realm whose port
+        // is an adapter rather than a dispatch orchestrator answers a namespace without any
+        // deployment *listing* it — the log viewer is the case: its `viewer` namespace is served by
+        // its own Service, and the browser's `viewer.entry.find` had no path of its own. It fell to
+        // the catch-all below, reached the portal's process, and was refused there as an encrypted
+        // body a route that does not require auth cannot decode — an MLE error naming neither the
+        // route nor the process that was missing (`@@F-793`). A Service of the plan *is* an address a
+        // namespace answers, so the rule is the same one the loop above states, applied to the rest.
+        //
+        // A Service named after a process is routed too, and that is deliberate: the viewer's Service
+        // and its Deployment share the one name, so skipping the name a deployment carries skipped
+        // exactly the realm this loop exists for (found on the next deploy — the path was there from a
+        // hand patch and gone once the tree regenerated). A process-named Service whose name no
+        // namespace uses gains a path nothing calls, which costs a traversal and nothing else.
+        for (const service of plan.services) {
+            if (routed.has(service.name)) continue;
+            routed.add(service.name);
+            addPath(entry.host, {
+                path: `${RPC_PREFIX}${service.name}`,
+                pathType: 'Prefix',
+                serviceName: service.name,
+                servicePort: 8080,
+            });
         }
         // And one catch-all behind them, because a namespace no process is *named* after is still a
         // namespace the browser calls: `srv.subject` is a companion every process carries, so

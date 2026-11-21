@@ -38,7 +38,7 @@ open (25)
 - `T-605` · core/blong-browser — Cheaper Playwright boot: run the specs against a bundled build
 - `T-612` · core/blong-browser — The sherpa engine is untested against a real module and model
 
-done (39)
+done (41)
 
 - `T-369` · core/blong-browser — Resolve TestRun source pointers from a real run
 - `T-367` · core/blong-browser — Test UI phases 2-4: runner, host, Playwright
@@ -80,6 +80,8 @@ done (39)
 - `T-673` · core/blong-browser — Group 4 verification
 - `T-670` · core/blong-browser — The `AssetWidget`
 - `T-736` · core/blong-browser — Give the browser platform a vocabulary
+- `T-741` · core/blong-browser — Give the portal a menu entry that opens the log viewer
+- `T-749` · core/blong-browser — Give the browser a way to read a stream, and the page a wake
 
 <!-- /memory:index -->
 
@@ -1000,3 +1002,49 @@ vocabularies, core/blong-browser/lukaot/signal.ts contributes browserLoginTokenM
 browserLoginCallFailed and browserModelIncomplete, and the three call sites call them. blong-dev
 legacy check reports zero level calls in the tree; the browser bundle test still finds no node
 builtin; core/blong-browser 876 tests and blong-kukum 669 (with its real page) pass.
+
+### T-741 — Give the portal a menu entry that opens the log viewer
+
+> _2026-11-20 · core/blong-browser · done_
+
+This becomes the viewer realm's browser layer rather than a separate contribution (D-946): a portal
+module in that realm, a component that renders the existing LogViewer from @feasibleone/blong-log,
+and a menu entry whose presence the same capability decides (log.viewer.open). The realm's browser
+layer already runs in the portal, so it needs no transport of its own: it asks log.entry.find on an
+interval instead of holding a WebSocket, which is the trade D-946 records - the reader becomes an
+ordinary authenticated request at the cost of the last few hundred milliseconds of immediacy.
+
+What it needs that does not exist yet: the realm (T-740) and its gateway group to read from. Then
+the page is small: a browse list, the same component the standalone viewer renders, and the filter
+and detail behaviour it already has.
+
+### T-749 — Give the browser a way to read a stream, and the page a wake
+
+> _2026-11-21 · core/blong-browser · done_
+
+The framework serves a stream (`@@D-948` `@@D-949`) and no browser can read one, so the viewer page
+still polls at 1s. This is what is in place and what the rest of the path needs.
+
+In place and tested: `readStream` in `core/blong-mle/src/streamRead.ts` — the consumer half, one
+place that knows both envelopes, the frame format, the per-frame decryption and the length cap, and
+yields **values**. It flattens a batched frame (`STREAM_FLAG_BATCH`) and never assumes one value per
+frame, which is what a writer buffering a burst needs. `codec.jsonrpc`'s `send` asks for a stream
+when the call carries `$meta.stream` (a string picks the envelope, `binary` for the machine one),
+and the browser `adapter.http` now answers `responseType: 'stream'` with `res.body` unread.
+
+The dispatch map, established by reading it rather than guessing: a browser call resolves through
+`Remote._findMethod` to `ports.<realm>.request`, which the realm's own
+`browser/orchestrator/subject/init.ts` registers; that port is a `orchestrator.dispatch` with
+`destination: 'backend'`, and the `backend` port (`adapter.http` extended, `namespace: 'backend'`)
+is where `codec.jsonrpc`/`codec.mle` run. So an iterable has to survive the dispatch hop — it is
+in-process (`canSkipSocket: true`), and the dispatch port has no codecs, so identity conversions
+apply, but that is exactly the kind of thing to prove with the page rather than assume.
+
+What is left. `codec.jsonrpc.receive` must turn a streamed body into values: unsealed it can call
+`readStream(response)` directly; sealed it cannot, because the key needs the client's private
+encrypt JWK, which lives in `codec.mle`'s closure — so jsonrpc should hand the response to the outer
+codec (`{stream: response}`) and `codec.mle.receive` should derive with `deriveStreamKey` from
+`resolveKeySpec(config.<encrypt key>)` against the gateway's public encrypt key and the announced
+salt, then `readStream(response, {key, info})`. Then the page: `LogViewerSource` gains `subscribe`
+beside `load` and the poll stops, proved by the realm's Playwright spec opening the page and seeing
+a row appear without waiting for a poll.

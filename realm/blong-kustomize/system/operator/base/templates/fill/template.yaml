@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: PLACEHOLDER
     blong.feasible.one/retention: "3"
-    blong.feasible.one/spec-hash: 52b3f574bd596e4d
+    blong.feasible.one/spec-hash: 8f60902cb4aeb64a
     blong.feasible.one/suite-version: PLACEHOLDER
     blong.feasible.one/volume-identity: PLACEHOLDER
   name: blong-operator-fill
@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/instance: blong-operator-fill-PLACEHOLDER-PLACEHOLDER
+        app.kubernetes.io/instance: blong-operator-fill
         app.kubernetes.io/managed-by: blong-kustomize
         app.kubernetes.io/name: blong-operator
         app.kubernetes.io/part-of: blong-operator
@@ -35,7 +35,7 @@ spec:
             - name: BLONG_ARTIFACT_KEEP
               value: "3"
             - name: BLONG_ARTIFACT_URL
-              value: http://blong-artifact.default.svc.cluster.local/kustomize.zip
+              value: PLACEHOLDER
           image: PLACEHOLDER
           name: fill
           resources:

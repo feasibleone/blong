@@ -15,8 +15,13 @@
     "type": "module",
     "exports": {
         ".": "./src/index.ts",
+        "./buffer": "./src/buffer.ts",
+        "./client": "./src/client/LogViewer.tsx",
+        "./record": "./src/record.ts",
+        "./server": "./src/server.ts",
         "./transport": "./src/transport.ts",
-        "./server": "./src/server.ts"
+        "./types": "./src/types.ts",
+        "./udp-receiver": "./src/udp-receiver.ts"
     },
     "bin": {
         "blong-log": "./src/cli.ts"
@@ -39,6 +44,7 @@
         "@feasibleone/lukaot": "workspace:^",
         "pino": "^10.3.1",
         "pino-abstract-transport": "^3.0.0",
+        "primeicons": "^7.0.0",
         "typebox": "^1.1.5",
         "ulidx": "^2.4.1",
         "ws": "^8.18.0"

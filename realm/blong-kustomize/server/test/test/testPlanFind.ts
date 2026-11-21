@@ -241,6 +241,130 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                 );
             },
 
+            async function aRealmContributesItsOwnAddress(assert: IAssert) {
+                // A port a realm contributes is a contract with the other processes of the
+                // deployment: something dials it. The name it is dialled at is the realm's, in every
+                // profile — a namespace publishes a Service only when a *dispatch* port owns it, and
+                // a monolith names its one Deployment after the suite, so without this the only
+                // name for the port would be a suite's (@@D-951).
+                const view = {
+                    realms: ['srv', 'recorder'],
+                    groups: [
+                        {name: 'srv.orchestrator', handlerCount: 1, layer: 'orchestrator'},
+                        {name: 'recorder.adapter', handlerCount: 1, layer: 'adapter'},
+                    ],
+                    ports: [
+                        {id: 'srv.subject', type: 'dispatch', namespace: 'srv'},
+                        {
+                            id: 'recorder.log',
+                            type: 'adapter',
+                            namespace: 'recorder',
+                            k8s: {k8sPorts: {recorderUdp: {port: 9999, protocol: 'UDP'}}},
+                        },
+                    ],
+                    roles: {},
+                } as IRegistryView;
+                const plan = planFromRegistry(view, {
+                    suiteName: 'demo',
+                    frameworkImage: 'image',
+                    profile: 'monolith',
+                });
+                assert.deepEqual(
+                    plan.deployments[0].ports,
+                    [{name: 'recorder-udp', port: 9999, protocol: 'UDP'}],
+                    'the process opens the port the realm contributed',
+                );
+                assert.deepEqual(
+                    plan.services.find(service => service.name === 'recorder'),
+                    {
+                        name: 'recorder',
+                        namespace: 'demo',
+                        deployment: 'demo',
+                        ports: [{name: 'recorder-udp', port: 9999, protocol: 'UDP'}],
+                    },
+                    'and the realm is reached at its own name, not the monolith Deployment',
+                );
+                assert.deepEqual(
+                    plan.services.find(service => service.name === 'srv')?.ports,
+                    [],
+                    'while a Service publishes only the ports its own realm contributed',
+                );
+                assert.equal(
+                    plan.services.some(service => service.name === 'demo'),
+                    false,
+                    'and the process is not a second name for a port a realm already publishes',
+                );
+            },
+
+            async function aDeploymentDecidesAboutARealm(assert: IAssert) {
+                // A realm declares what it *can* be; whether this deployment runs it is the
+                // deployment's decision, and one switch has to reach every answer that follows from
+                // a realm being there — the process, the layer flags it would carry, and the Service
+                // its namespace or its ports would publish. A name nothing loads is refused, because
+                // a switch that silently switches nothing is a deployment that believes it left a
+                // realm out (@@D-951).
+                const view = {
+                    realms: ['srv', 'recorder'],
+                    groups: [
+                        {name: 'srv.orchestrator', handlerCount: 1, layer: 'orchestrator'},
+                        {name: 'recorder.adapter', handlerCount: 1, layer: 'adapter'},
+                    ],
+                    ports: [
+                        {id: 'srv.subject', type: 'dispatch', namespace: 'srv'},
+                        {
+                            id: 'recorder.log',
+                            type: 'adapter',
+                            namespace: 'recorder',
+                            k8s: {k8sPorts: {recorderUdp: {port: 9999, protocol: 'UDP'}}},
+                        },
+                    ],
+                    roles: {},
+                } as IRegistryView;
+                const off = planFromRegistry(view, {
+                    suiteName: 'demo',
+                    frameworkImage: 'image',
+                    realms: {recorder: {enabled: false}},
+                });
+                assert.deepEqual(
+                    off.deployments.map(deployment => deployment.name),
+                    ['srv'],
+                    'a realm the deployment leaves out reaches no process',
+                );
+                assert.ok(
+                    off.deployments.every(
+                        deployment => !deployment.layers.includes('recorder.adapter'),
+                    ),
+                    'and no process is started with its layer flags',
+                );
+                assert.ok(
+                    !off.services.some(service => service.name === 'recorder'),
+                    'nor does it publish the address its port would have made',
+                );
+
+                // On, a realm its own declaration keeps out of every tree is given a process: a
+                // deployment that asks for a realm is asking for the process that serves it.
+                const on = planFromRegistry({...view, roles: {recorder: 'none'}} as IRegistryView, {
+                    suiteName: 'demo',
+                    frameworkImage: 'image',
+                    realms: {recorder: {enabled: true}},
+                });
+                assert.ok(
+                    on.deployments.some(deployment => deployment.name === 'recorder'),
+                    'a realm asked for becomes a process the realm profile names after it',
+                );
+
+                assert.throws(
+                    () =>
+                        planFromRegistry(view, {
+                            suiteName: 'demo',
+                            frameworkImage: 'image',
+                            realms: {payment: {enabled: false}},
+                        }),
+                    /does not load/,
+                    'a switch naming a realm the suite does not load is a typo, and is refused',
+                );
+            },
+
             async function theSuiteVersionIsItsOwnManifest(assert: IAssert) {
                 // A suite's version is a fact about the package it lives in, so the loader reads it
                 // from the manifest beside the entry and the planner takes it from the registry: a
@@ -1216,9 +1340,9 @@ export default handler(({lib: {group}, handler: {kustomizePlanFind}}) => ({
                     options,
                 );
                 assert.deepEqual(
-                    scoped.deployments.find(deployment => deployment.name === 'sport')?.realms.includes(
-                        'sport',
-                    ),
+                    scoped.deployments
+                        .find(deployment => deployment.name === 'sport')
+                        ?.realms.includes('sport'),
                     true,
                     'a both realm is carried by its own process',
                 );

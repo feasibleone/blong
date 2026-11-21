@@ -42,27 +42,42 @@ export class UdpReceiver extends EventEmitter {
             this.#handlePacket(msg);
         });
 
+        // A socket that emits `error` with no listener throws out of the emitter, and that is what a
+        // taken port did: a container whose listener was already bound elsewhere died with
+        // `EADDRINUSE` from an unhandled event instead of the adapter's `start` failing. The error is
+        // reported twice by design — a rejected promise for whoever asked to start, and an `error`
+        // event for whoever subscribed — but a caller that subscribed to neither is not killed by it
+        // (`@@F-788`).
         this.#socket.on('error', (err: Error) => {
-            this.emit('error', err);
+            if (this.listenerCount('error') > 0) this.emit('error', err);
         });
 
         return new Promise<void>((resolve, reject) => {
+            const onError = (err: Error): void => reject(err);
+            this.#socket!.once('error', onError);
             this.#socket!.bind(this.#port, this.#host, () => {
+                // The bind's own listener goes with the bind: a later error is the running
+                // receiver's to report, and a `once` left attached would swallow the first one.
+                this.#socket?.removeListener('error', onError);
                 this.#startCleanup();
                 resolve();
             });
-            this.#socket!.once('error', reject);
         });
     }
 
     async stop(): Promise<void> {
         this.#stopCleanup();
         if (this.#socket) {
+            const socket = this.#socket;
+            this.#socket = null;
             return new Promise<void>(resolve => {
-                this.#socket!.close(() => {
-                    this.#socket = null;
+                try {
+                    socket.close(() => resolve());
+                } catch {
+                    // A socket whose bind failed is not running, and closing one is an error; a stop
+                    // after a failed start is the caller cleaning up, not a second failure.
                     resolve();
-                });
+                }
             });
         }
     }

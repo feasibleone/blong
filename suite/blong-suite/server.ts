@@ -25,6 +25,15 @@ export default server(() => ({
         async function marine() {
             return import('@feasibleone/blong-marine/server.ts');
         },
+        /**
+         * The records this deployment's own processes wrote: the `viewer` realm's UDP receiver and
+         * the gateway routes the page reads through (`@@D-946`). A deployable realm, so a split
+         * profile gives it a process of its own and a Service named after it; in dev it rides this
+         * process, which is what makes a developer's own run show its own records.
+         */
+        async function viewer() {
+            return import('@feasibleone/blong-viewer/server.ts');
+        },
         // The deployment realm is not listed here on purpose: it is one of the framework's own
         // realms, so the loader adds it under the intents it names for itself (`frameworkRealms` in
         // `core/blong-gogo/src/load.ts`) as soon as this suite declares
@@ -172,6 +181,11 @@ export default server(() => ({
             // `Not Found` for `marine.coral.find` while the marine pod was running, and
             // `blong.flow.find` refused the connection on `127.0.0.1:9455` (`@@D-736`).
             resolution: {impl: 'kubernetes'},
+            // Every process of the deployment sends its records to the `viewer` realm, at the name
+            // its port is published under: the realm contributes the UDP port and the tree turns it
+            // into a Service of the realm's own name, in every profile (`@@D-950`). A suite that
+            // leaves the realm out of a tree drops the block with it.
+            log: {destination: {host: 'viewer', port: 9999}},
             gateway: {
                 static: {root: '/opt/deploy/suite/suite/blong-suite/dist'},
             },
@@ -208,14 +222,14 @@ export default server(() => ({
         // processes those realms become, so a realm missing here is a realm missing from the tree.
         // Every suite names its realms once per intent that has to know them — `dev` for a
         // developer's run, `k8s` for the tree, and the flags for a deployed process.
-        k8s: {core: {}, access: {}, marine: {}, login: {}},
+        k8s: {core: {}, access: {}, marine: {}, login: {}, viewer: {}},
         // A migration names the realms here for the same reason a planning run does: bringing a
         // database up to date means *every* realm the suite declares, and no intent implies a realm
         // from another. What such a run needs of each realm is the realm's own answer — `upgrade`
         // activates `error`, `adapter` and `orchestrator` in `core/blong-lib/layers.ts`, and a realm
         // that needs more says so in its own `layer.server.ts` — so the generated Job carries no
         // `--<realm>.<layer>` selector at all (T-268).
-        upgrade: {core: {}, access: {}, marine: {}, login: {}},
+        upgrade: {core: {}, access: {}, marine: {}, login: {}, viewer: {}},
         dev: {
             srv: {
                 db: {
@@ -226,6 +240,12 @@ export default server(() => ({
             access: {},
             marine: {},
             login: {},
+            // The records this developer's own run writes, on the receiver the realm opens beside
+            // them: the destination is the address that receiver answers on (`@@D-946`). The
+            // receiver binds the loopback on a developer's machine and every interface in a
+            // container, which is the realm's own default.
+            viewer: {log: {host: '127.0.0.1'}},
+            log: {destination: {host: '127.0.0.1', port: 9999}},
         },
         // `blong <entry> k8s` needs no block of its own now: the deploy settings above are what the
         // generator reads, and the realm's own `k8s` activation block is what tells it to write. The

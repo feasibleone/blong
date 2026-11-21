@@ -763,6 +763,12 @@
             "projectFolder": "core/lukaot",
             "reviewCategory": "core",
             "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/blong-viewer",
+            "projectFolder": "realm/blong-viewer",
+            "reviewCategory": "realm",
+            "tags": ["realm"]
         }
     ]
 }

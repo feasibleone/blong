@@ -43,7 +43,7 @@ open (25)
 - `T-639` · realm/blong-kustomize — Regenerate the kustomize operator deployments baseline
 - `T-645` · realm/blong-kustomize — A deployment still has no semantic-log service to read
 
-done (18)
+done (21)
 
 - `T-279` · realm/blong-kustomize — The operator reports obsolete objects and never deletes them
 - `T-277` · realm/blong-kustomize — The plan resolves no databases, so the init script creates none
@@ -66,6 +66,9 @@ done (18)
   server
 - `T-686` · realm/blong-kustomize — One generated secret for the suite
 - `T-693` · realm/blong-kustomize — A tenant cannot turn a backing service on after the fact
+- `T-738` · realm/blong-kustomize — Deploy the log viewer from a BlongDeployment field
+- `T-739` · realm/blong-kustomize — Watch a whole namespace's records, not one process's
+- `T-747` · realm/blong-kustomize — Retire the standalone log viewer deployment the realm replaces
 
 <!-- /memory:index -->
 
@@ -707,6 +710,82 @@ services.mysql: false — it dials db, the cluster's MySQL through an ExternalNa
 block is gone from the source rather than patched by an rc. Pinned by
 aBackingServicesEnvironmentIsTheDeploys, which asserts no base workload names the Secret and the
 patch names it optional.
+
+### T-738 — Deploy the log viewer from a BlongDeployment field
+
+> _2026-11-20 · realm/blong-kustomize · done_
+
+`BlongDeployment` has no way to ask for a log viewer, so a tenant cannot deploy one. Add
+`spec.logViewer` beside `assetServer` —
+`{enabled?: boolean; host?: string; udpPort?: number; httpPort?: number; bufferSize?: number}` — and
+have the tree writer emit a Deployment and a Service for `@feasibleone/blong-log` in the suite's
+namespace, serving the built client from the image.
+
+The half that decides whether it is useful is the writer reaching every process: a Deployment is
+meaningless if nothing sends it records. That half is no longer open — `log.destination` takes the
+collector's address and the loader builds the sink lukaot ships, so the tree only has to write
+`destination: {host, port}` into every process's configuration with the Service it just generated
+(@@D-930). No dependency moves into `core/blong-gogo`, and no suite repeats three lines.
+
+Sizing: the CRD field and the manifests are small; the configuration block the tree writes is small.
+Verify by deploying `blong-suite` to the dev cluster and reading its own records in the deployed
+viewer.
+
+Done in the tree: spec.logViewer (CRD + ISuiteSpec + plan request/resolved), resolveLogViewer with
+the Service name as the default host, a hardened Deployment and a two-port Service (TCP page/API,
+UDP records), and log.destination.host/port appended to suiteArgs and migrationArgs so every process
+the tree starts sends its records. The image is a 'viewer' target in
+core/blong-gogo/docker/blong-gogo.Dockerfile (a second rush deploy of @feasibleone/blong-log into
+the same tree plus the client build) rather than a second Dockerfile that would repeat the generated
+manifest block. Covered by a tree test (150/150 in the package). NOT verified against a live
+cluster: no deploy was run here.
+
+### T-739 — Watch a whole namespace's records, not one process's
+
+> _2026-11-20 · realm/blong-kustomize · done_
+
+A viewer deployed beside a suite should show the whole namespace rather than one pod. The writer is
+per process, so "everything in the namespace" is one setting reaching every pod: either the operator
+sets it for the processes it deploys (see the deployment todo), or a DaemonSet collects from pods on
+its own node over host networking.
+
+Record what decides between them: (a) one env var or config key every deployed process reads —
+smallest, no new component, but a pod started outside the operator (a `kubectl run`, a debug
+container) is invisible unless whoever started it sets the same key; (b) a DaemonSet with
+`hostNetwork` that receives records addressed to the node and forwards them to the viewer service —
+catches everything on the node and needs no cooperation from the pods, at the cost of a
+privileged-ish workload and one more thing to deploy. A third option, an agent per pod injected by a
+mutating webhook, is the most complete and the most work.
+
+Nothing is implemented. Decide (a) against (b) with a real case: deploy `blong-suite`, run a second
+workload in the namespace that was not deployed by the operator, and see whether its records arrive.
+
+Decided (D-942): one destination every process reads, written by the tree; the DaemonSet collector
+is the follow-up for workloads the operator does not start. The live experiment the todo asked for
+(a second workload in the namespace) was not run.
+
+### T-747 — Retire the standalone log viewer deployment the realm replaces
+
+> _2026-11-21 · realm/blong-kustomize · done_
+
+The viewer is a realm now (`realm/blong-viewer`, `@@D-946`) and this tree still does the opposite:
+`logViewerDeploymentResource` and `logViewerServiceResource` emit a second Deployment and Service
+from the `viewer` image, and `core/blong-gogo/docker/blong-gogo.Dockerfile` still builds a `viewer`
+stage for it. Retire both halves, keeping what the realm needs: the `logDestinationArgs` every
+process is started with (they should name the Service of the process that carries the realm), the
+`spec.logViewer` field, and the tree test in `server/test/test/testTreeGenerate.ts`, which has to be
+updated to the new shape — the realm contributes its own UDP `k8sPorts`, so the field only decides
+whether a suite points its processes at the viewer and at which host and port.
+
+The one thing to decide while doing it: which process's Service the arguments name when the profile
+splits the realm out. In a monolith it is the suite's own; `k8sRealmRole: 'service'` gives the realm
+a Service of its own in the split profiles, and that name is what the destination needs then.
+
+Done: the generator emits no viewer Deployment or Service and no logViewer field (grep is empty, the
+regenerated CRD has none), the Dockerfile has one release stage, and the realm contributes its own
+Service through k8sPorts. The destination is the suite's own log.destination config rather than
+generated arguments, which is the same decision made in the place that owns it. Verified by a green
+deploy cycle with the viewer pod ready and the page serving records.
 
 ## Retired
 

@@ -18,6 +18,16 @@ import React, {
 } from 'react';
 
 import {Grid, Willow, WillowDark} from '@svar-ui/react-grid';
+// The grid's own stylesheet travels with the component, not with the standalone app entry: a
+// caller that mounts `LogViewer` (the portal's page among them) never loads `app.tsx`, so it used
+// to draw the grid's markup with no rules at all — columns collapsed onto each other and every
+// row overlapped the next, which reads as a broken page rather than as a missing stylesheet
+// (`@@F-795`).
+import '@svar-ui/react-grid/all.css';
+// The font and the icon mapping after it, in that order: PrimeIcons is what draws the glyphs now,
+// and the mapping overrides the vendor's own `.wxi-*` classes (@@F-797).
+import 'primeicons/primeicons.css';
+import './gridIcons.css';
 
 import {
     bytesOfHex,
@@ -1369,9 +1379,52 @@ function EntryModal({
 
 // ── Main LogViewer Component ──────────────────────────────────────────────────
 
+/**
+ * Where a viewer reads its records from, when it is not the tool's own transport.
+ *
+ * The standalone app holds a WebSocket to the log server and streams. A viewer
+ * rendered *inside* a host that already speaks for itself — a portal page
+ * reading through its own gateway — has no socket to open and no second origin
+ * to trust, so it polls instead: the host hands over a `load` that answers what
+ * arrived after an id, and the component stays exactly as it is otherwise
+ * (`@@D-946`).
+ *
+ * The trade is the last few hundred milliseconds of immediacy, and it buys the
+ * reader an ordinary authenticated request instead of a second protocol surface
+ * to guard.
+ */
+export interface LogViewerSource {
+    /**
+     * The records that arrived after `after`, or the recent window when it is
+     * absent — the first load of a page.
+     */
+    load(parameters: {after?: string; limit?: number}): Promise<{entries: LogEntry[]}>;
+    /**
+     * Be told when there is something new, instead of asking on a timer.
+     *
+     * The host decides how — a streamed route, a socket, a shared worker — and
+     * what it yields is only a nudge: the records still arrive through `load`,
+     * because a frame may carry a cursor rather than a record and a writer may
+     * batch several values into one frame (`@@D-949`). So the component never
+     * counts frames as records; it fetches from the last id it has.
+     */
+    subscribe?(parameters: {signal: AbortSignal}): Promise<AsyncIterable<unknown> | undefined>;
+    /** How often to ask, in milliseconds, when there is nothing to subscribe to. */
+    intervalMs?: number;
+    /** The chrome the host can supply: a trace link, extra columns, a theme. */
+    config?: Partial<ClientConfig>;
+}
+
 export interface LogViewerProps {
     /** Server config URL or direct config object */
     config?: string | ClientConfig;
+    /**
+     * Read from this instead of the log server's REST and WebSocket transport.
+     *
+     * When it is given, `config` is not fetched and no socket is opened: the
+     * host is the transport.
+     */
+    source?: LogViewerSource;
     /** Override theme */
     theme?: ThemeConfig;
     /** Initial search text (for Storybook demos) */
@@ -1384,6 +1437,7 @@ export interface LogViewerProps {
 
 export function LogViewer({
     config: configProp,
+    source,
     theme: themeProp,
     initialSearchText = '',
     initialExpandedRows,
@@ -1452,6 +1506,21 @@ export function LogViewer({
     // ── Load config ───────────────────────────────────────────────────────
 
     useEffect(() => {
+        if (source) {
+            // The host is the transport, so its configuration is the one this
+            // render draws from — set once, when the source it came with is
+            // replaced, exactly as the object form below is.
+            // eslint-disable-next-line @eslint-react/set-state-in-effect
+            setClientConfig({
+                wsUrl: '',
+                apiUrl: '',
+                recentCount: 200,
+                properties: {},
+                theme: {},
+                ...source.config,
+            });
+            return;
+        }
         if (typeof configProp === 'object' && configProp) {
             // eslint-disable-next-line @eslint-react/set-state-in-effect
             setClientConfig(configProp);
@@ -1462,12 +1531,83 @@ export function LogViewer({
             .then(r => r.json())
             .then(setClientConfig)
             .catch(err => console.error('[blong-log] Failed to load config:', err));
-    }, [configProp]);
+    }, [configProp, source]);
+
+    // ── Polling, when the host is the transport ───────────────────────────
+
+    useEffect(() => {
+        if (!source) return;
+        let cancelled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const abort = new AbortController();
+
+        const loadOnce = async (): Promise<void> => {
+            try {
+                const answer = await source.load({
+                    ...(lastIdRef.current ? {after: lastIdRef.current} : {limit: 200}),
+                });
+                if (cancelled) return;
+                setConnected(true);
+                if (answer.entries.length > 0) {
+                    setEntries(prev => {
+                        const seen = new Set(prev.map(entry => entry.id));
+                        const added = answer.entries.filter(entry => !seen.has(entry.id));
+                        if (added.length === 0) return prev;
+                        const next = [...prev, ...added];
+                        next.sort((a, b) => a.id.localeCompare(b.id));
+                        lastIdRef.current = next[next.length - 1].id;
+                        // A rolling host buffer drops the oldest: keep the page
+                        // inside what the host itself is willing to hold.
+                        return next.length > 10000 ? next.slice(-5000) : next;
+                    });
+                }
+            } catch (err) {
+                if (cancelled) return;
+                setConnected(false);
+                console.error('[blong-log] Failed to load entries:', err);
+            }
+        };
+
+        // A host that can say "there is something new" is asked once and then
+        // only when it says so; one that cannot is asked on a timer. A frame is a
+        // nudge and never a record, so every wake is one fetch from the cursor.
+        const watch = async (): Promise<void> => {
+            const frames = await source.subscribe?.({signal: abort.signal});
+            if (!frames || cancelled) return;
+            try {
+                for await (const _wake of frames) {
+                    if (cancelled) break;
+                    await loadOnce();
+                }
+                // The subscription ended on its own: fall back to asking, so a
+                // page left open overnight does not quietly stop updating.
+            } catch (err) {
+                if (cancelled) return;
+                setConnected(false);
+                console.error('[blong-log] The subscription failed:', err);
+            }
+            if (!cancelled) timer = setTimeout(watch, source.intervalMs ?? 1000);
+        };
+
+        const start = async (): Promise<void> => {
+            await loadOnce();
+            if (cancelled) return;
+            if (source.subscribe) void watch();
+            else if (!cancelled) timer = setTimeout(watch, source.intervalMs ?? 1000);
+        };
+        void start();
+
+        return (): void => {
+            cancelled = true;
+            abort.abort();
+            if (timer) clearTimeout(timer);
+        };
+    }, [source]);
 
     // ── WebSocket connection ──────────────────────────────────────────────
 
     useEffect(() => {
-        if (!clientConfig) return;
+        if (!clientConfig || source) return;
 
         const wsUrl = clientConfig.wsUrl;
         let ws: WebSocket;
@@ -1532,7 +1672,7 @@ export function LogViewer({
             if (ws) ws.close();
             wsRef.current = null;
         };
-    }, [clientConfig]);
+    }, [clientConfig, source]);
 
     // ── Re-subscribe when filters change ──────────────────────────────────
     // Note: We do client-side filtering in displayEntries, so we don't clear
@@ -2171,7 +2311,7 @@ export function LogViewer({
                         style={{flex: 1, overflow: 'hidden'}}
                         onKeyDown={handleGridKeyDown}
                     >
-                        <ThemeWrapper>
+                        <ThemeWrapper fonts={false}>
                             <Grid
                                 {...({
                                     data: gridRows,

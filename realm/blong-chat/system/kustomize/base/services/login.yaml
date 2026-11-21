@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-chat
     app.kubernetes.io/part-of: blong-chat
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 422bf049c79d7e00
+    blong.feasible.one/spec-hash: df45aadb1ae42166
   name: login
 spec:
   ports:
@@ -18,14 +18,6 @@ spec:
       port: 8080
       protocol: TCP
       targetPort: http
-    - name: chat-slack
-      port: 8095
-      protocol: TCP
-      targetPort: chat-slack
-    - name: chat-viber
-      port: 8096
-      protocol: TCP
-      targetPort: chat-viber
   selector:
     app.kubernetes.io/instance: blong-chat
     app.kubernetes.io/part-of: blong-chat

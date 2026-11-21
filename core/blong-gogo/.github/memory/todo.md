@@ -29,7 +29,7 @@ open (20)
 - `T-216` · core/blong-gogo — Fix the adapter's remaining error calls to use params
 - `T-637` · core/blong-gogo — Find the dispatch path that rethrows the error packet
 
-done (44)
+done (46)
 
 - `T-341` · core/blong-gogo — Validate a config reload and reject an invalid snapshot
 - `T-217` · core/blong-gogo — Warn when a CLI config key matches no realm, port or framework key
@@ -76,6 +76,8 @@ done (44)
   signals
 - `T-722` · core/blong-gogo — Verify the framework's error and logging contract end to end
 - `T-731` · core/blong-gogo — Review every AdapterBase.error call site and reduce them to one shape
+- `T-746` · core/blong-gogo — A capture policy change still needs the port rebuilt
+- `T-748` · core/blong-gogo — A log tail could stream, if a subscription were a realm method
 
 <!-- /memory:index -->
 
@@ -1123,5 +1125,63 @@ port composing its own line and now calls `this.error(error)`, and the orphan
 reports 0 in `core/blong-gogo`). A component that knows its case keeps declaring the identifier for
 it: that is what `frameworkSlackAuthUnreachable` and its siblings are, and the pass confirmed
 nothing reaches for the level API instead.
+
+### T-746 — A capture policy change still needs the port rebuilt
+
+> _2026-11-20 · core/blong-gogo · done_
+
+The call switch now moves in a running process (log.calls is re-applied by the reload pipeline and
+setCallRecording patches it directly), but the other lukaot observability switches do not: capture
+policies are snapshotted when the log component is constructed and resolved per adapter instance
+when the port is built, so a change to log.capture reaches nothing until that port is rebuilt - and
+a log-only config change does not mark any port affected, so nothing rebuilds it.
+
+What it needs is the same shape as D-941: a patch entry on the log component (setCapture, replacing
+snapshotCapturePolicies' one-time snapshot with a mutable one), and the reload path asking the
+instances that hold a resolved surface to re-resolve it - the capture view is per instance, so the
+log cannot swap it alone. Worth doing together with whatever source comes next (an endpoint or the
+database), because the two switches will otherwise be driven by different mechanisms and an operator
+would have to know which is which.
+
+Done: LukaotLog.setCapture replaces the policy snapshot and the resolver reads it per capture, so
+the surfaces ports already hold obey a change immediately; configChanged re-applies log.capture as
+well as log.calls, and frameworkCaptureChanged reports the switch. Test asserts one surface built
+before the switch acting on both sides of it. Full runtime suite 1299 (1293 pass, 6 skip).
+
+### T-748 — A log tail could stream, if a subscription were a realm method
+
+> _2026-11-21 · core/blong-gogo · done_
+
+Explored because the viewer page polls `viewer.entry.find` once a second (`@@D-946`). The
+recommended shape is that a subscription is a method of a realm rather than a transport a realm
+opens: `viewer.entry.stream` declared like any handler, granted by the same `viewerRead`, in the API
+schema, mockable, traced as a flow, and implemented as an async generator that yields the backlog
+from `after` and then each record as the adapter receives it. The transport stays the framework's,
+selected by a route option beside the existing `rawBody`, `bundle` and `meter`, so the realm never
+imports `ws`, never sees a socket and never checks a token.
+
+SSE read through `fetch` is the recommended transport over WebSocket, and the deciding argument is
+authentication rather than throughput: `new WebSocket()` and `EventSource` cannot send an
+`Authorization` header, so a socket would need the token moved into a cookie or a query string — a
+new auth surface, which is what `@@D-946` rejected — while a `fetch` plus `ReadableStream` read
+sends the same bearer as every other call. SSE also needs nothing installed, needs no upgrade
+handling at the ingress, and a log tail is one-way; `LogViewer` already filters client-side, so a
+server-side filter is another request carrying `after`.
+
+What the work would touch: `core/blong-gogo` for the route option, the frame writer, abort on close,
+an overflow policy and the flow a subscription mints and ends; `core/blong-browser` for
+`remote.stream(method, params)` returning an async iterator (deliberately not folded into
+`handler[...]`, whose return type is one value); `tools/blong-log` for `subscribe?` beside `load` in
+`LogViewerSource`; `realm/blong-viewer` for a listener set in the store and `viewerEntryStream`; and
+one ingress annotation for nginx response buffering.
+
+Two limits to carry into it: the buffer belongs to the one process that receives the records, so a
+page served by another replica streams nothing until the store is shared or every replica receives a
+copy; and a subscription is a long-lived flow, so it must be ended at disconnect and given a TTL so
+a revoked capability takes effect on reconnect.
+
+**Open question, asked in `#blong-ask` because the owner was away:** adopt the
+stream now over SSE, adopt it over WebSocket instead, or record this design and keep polling.
+Nothing is implemented until that answer arrives.
 
 ## Retired

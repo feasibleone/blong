@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 39553c9c7a455a42
+    blong.feasible.one/spec-hash: 96570f21f49c390a
   name: blong-sport
 spec:
   replicas: 1
@@ -54,6 +54,8 @@ spec:
             - --feedback.adapter
             - --feedback.orchestrator
             - --feedback.gateway
+            - --viewer.adapter
+            - --viewer.gateway
             - --srv.orchestrator
             - --blob.adapter
             - --blob.orchestrator
@@ -79,6 +81,9 @@ spec:
             - containerPort: 8080
               name: http
               protocol: TCP
+            - containerPort: 9999
+              name: viewer-log-udp
+              protocol: UDP
           readinessProbe:
             tcpSocket:
               port: rpc

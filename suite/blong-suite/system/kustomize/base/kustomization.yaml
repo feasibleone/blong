@@ -13,6 +13,7 @@ resources:
   - deployments/core.yaml
   - deployments/login.yaml
   - deployments/marine.yaml
+  - deployments/viewer.yaml
   - rbac/auth-review-binding.yaml
   - rbac/auth-review.yaml
   - rbac/blong-operator-role.yaml
@@ -26,4 +27,5 @@ resources:
   - services/core.yaml
   - services/login.yaml
   - services/marine.yaml
+  - services/viewer.yaml
   - services/web-http.yaml

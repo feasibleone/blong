@@ -26,5 +26,6 @@ resources:
   - services/login.yaml
   - services/party.yaml
   - services/sport.yaml
+  - services/viewer.yaml
   - services/web-http.yaml
   - volumes/blob-storage.yaml

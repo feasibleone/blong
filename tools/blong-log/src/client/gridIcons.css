@@ -1,0 +1,159 @@
+/**
+ * gridIcons.css — the grid's icons, drawn from PrimeIcons instead of the vendor's CDN.
+ *
+ * `@svar-ui/react-grid` draws its carets, sort arrows, close marks and drag handles with `.wxi-*`
+ * classes whose glyphs live in a stylesheet it fetches from `https://cdn.svar.dev`. That link is
+ * refused in any deployment that carries a content security policy — the portal serves
+ * `style-src 'self' 'unsafe-inline'`, so the browser blocked it and the grid drew each icon as a
+ * box with no glyph. A viewer that depends on a third party being reachable is wrong for a
+ * deployment that faces the internet anyway: the page keeps working when the CDN is down, and it
+ * never asks the browser to talk to a host the policy forbids.
+ *
+ * So the theme is rendered with `fonts={false}` — no CDN `<link>` at all — and the classes the grid
+ * actually emits are mapped to the PrimeIcons the portal already ships. The list is taken from the
+ * package rather than guessed: `wxi-drag`, `wxi-eye`, `wxi-close`, `wxi-dots-h`, `wxi-edit` appear
+ * literally, and `wxi-menu-{down,right}`, `wxi-angle-{down,right}` and `wxi-arrow-{up,down}` are
+ * composed at render time from a state name, so both members of each pair are here.
+ *
+ * The codepoints are PrimeIcons' own, copied rather than built through their class names: the grid
+ * owns the element and its class, so the glyph has to be attached to `wxi-*`, and `content` is the
+ * only way to say which character that is.
+ */
+
+.wxi-drag::before,
+.wxi-eye::before,
+.wxi-close::before,
+.wxi-dots-h::before,
+.wxi-edit::before,
+.wxi-menu-down::before,
+.wxi-menu-right::before,
+.wxi-angle-down::before,
+.wxi-angle-right::before,
+.wxi-arrow-up::before,
+.wxi-arrow-down::before {
+    font-family: 'primeicons';
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    line-height: 1;
+    display: inline-block;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* A collapsed branch says so with a caret that points the way it will open. */
+.wxi-angle-down::before,
+.wxi-menu-down::before {
+    content: '\e902';
+    /* pi-chevron-down */
+}
+
+.wxi-angle-right::before,
+.wxi-menu-right::before {
+    content: '\e901';
+    /* pi-chevron-right */
+}
+
+/* The sort arrow names the direction the rows are in, so a filled caret reads better than a chevron. */
+.wxi-arrow-up::before {
+    content: '\e907';
+    /* pi-caret-up */
+}
+
+.wxi-arrow-down::before {
+    content: '\e906';
+    /* pi-caret-down */
+}
+
+.wxi-close::before {
+    content: '\e90b';
+    /* pi-times */
+}
+
+.wxi-dots-h::before {
+    content: '\e951';
+    /* pi-ellipsis-h */
+}
+
+.wxi-edit::before {
+    content: '\e942';
+    /* pi-pencil */
+}
+
+.wxi-eye::before {
+    content: '\e966';
+    /* pi-eye */
+}
+
+.wxi-drag::before {
+    content: '\e950';
+    /* pi-ellipsis-v */
+    cursor: grab;
+}
+
+/**
+ * The UI font follows the page instead of the vendor's two web faces.
+ *
+ * The theme sets `--wx-font-family: Roboto, Arial, …` and declares an `@font-face` for Roboto and
+ * Open Sans that points at the same CDN — `src: local(""), url(https://cdn.svar.dev/…)`. A machine
+ * without those fonts installed therefore reaches for the network on the first render, which the
+ * portal's policy blocks and an offline deployment cannot answer. `inherit` is the whole fix: the
+ * grid is a view inside a page, and the page already chose its font. Naming a stack here would
+ * still spell `Roboto`, and spelling it is what re-arms the web face.
+ *
+ * The second and third selectors are there because the variable alone did not stop the requests on
+ * the deployed page. The *portal's* own stack names Roboto — `-apple-system, … "Segoe UI", Roboto,
+ * Helvetica` — so the moment the grid's stylesheet declared a Roboto face, the page's font resolved
+ * through it and the browser fetched the file from the CDN. The pair of theme classes outranks the
+ * vendor's single-class rule whatever order the host's bundler gives the two stylesheets.
+ */
+.wx-theme,
+.wx-theme.wx-willow-theme,
+.wx-theme.wx-willow-dark-theme {
+    --wx-font-family: inherit;
+}
+
+/* The vendor's six CDN faces, restated as local lookups: a machine that has the font uses it, and one
+ * that does not falls through to the next family in whatever stack asked. A face a stylesheet
+ * declares is a face any page on the host can be drawn with, which is what made the portal ask. */
+@font-face {
+    font-family: Roboto;
+    font-style: normal;
+    font-weight: 400;
+    src: local('Roboto');
+}
+
+@font-face {
+    font-family: Roboto;
+    font-style: normal;
+    font-weight: 500;
+    src: local('Roboto Medium'), local('Roboto');
+}
+
+@font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Open Sans');
+}
+
+@font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 500;
+    src: local('Open Sans Medium'), local('Open Sans');
+}
+
+@font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 600;
+    src: local('Open Sans SemiBold'), local('Open Sans');
+}
+
+@font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 700;
+    src: local('Open Sans Bold'), local('Open Sans');
+}

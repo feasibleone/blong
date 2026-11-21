@@ -245,6 +245,15 @@ export default adapter(blong => ({
 }));
 ```
 
+**Name the groups; reach for a regex only where the port gathers several realms.** A port that
+serves one realm's one folder says `imports: ['user.user']` — the name is the whole truth, and a
+second folder with the same tail elsewhere in the suite cannot be swept in by accident. A pattern is
+for the ports whose job is to collect handler sets that are not known when the port is written: the
+`srv` subject orchestrator in `core/blong-server`, the test dispatch ports in `realm/blong-test`, and
+`blong-browser`'s orchestrator — each of those gathers groups from more than one realm, which is what
+the pattern expresses. If you cannot name a second realm whose groups the port must also carry, do
+not write a pattern (@@F-796).
+
 ### Folder-Level Default Configuration (config.ts)
 
 Canonical pattern: `.github/skills/_shared/conventions.md` → `[CONFIG_EXAMPLE]`. Each handler group

@@ -11,12 +11,13 @@ open (2)
 - `F-762` · core/lukaot — A method named declare made lukaot unloadable by bare node, and tap hid it
 - `F-770` · core/lukaot — A declared-off capture could not be enabled by configuration
 
-resolved (4)
+resolved (5)
 
 - `F-775` · core/lukaot — A configured destination kept the process alive
 - `F-776` · core/lukaot — A public return type nobody could name broke a consumer's build
 - `F-777` · core/lukaot — A decision's arm names are identifiers, and an illegal one fails at boot
 - `F-779` · core/lukaot — Two silences on one path: the call records and the sink disagreed
+- `F-789` · core/lukaot — An unresolvable collector exited the process that was logging
 
 <!-- /memory:index -->
 
@@ -133,3 +134,25 @@ ones CI caught.
 Fixed in the same change: the call channel binds its own logger at debug and the write path keeps
 call records off the terminal unless log.calls.stdout asks (D-940); the sink and the ingest accept a
 record a flow attributes. The three packages' Playwright specs pass locally.
+
+### F-789 — An unresolvable collector exited the process that was logging
+
+> _2026-11-21 · core/lukaot · resolved_
+
+A process whose collector name did not resolve exited: `createUdpWriter` created a `dgram` socket
+and subscribed nothing to `error`, so `getaddrinfo EAI_AGAIN viewer` thrown onto that event became
+an unhandled emitter error and killed the process. It was found by running the suite with the
+`release` intent outside a cluster — where `log.destination` names a Service that only exists there
+— and it is the exact opposite of what this file documents two paragraphs above the code: a
+collector that is missing costs the records it did not receive and nothing else.
+
+A UDP send's failure only ever arrives on that event — the `send` callback sees the local errors,
+not a resolution that fails later — so the writer now consumes it. Nothing is retried or queued: the
+batch is already lost, the process keeps its terminal, and the next flush tries again.
+
+The trap for a later reader: the `unref` beside it is deliberate and unrelated — an open socket
+keeps the event loop alive, which would make every run one that has to be killed — so the two lines
+look alike and only one of them may be removed.
+
+Verified in the code: core/lukaot/src/udpWriter.ts:77 consumes the socket's error event, so an
+unresolvable collector costs its records and not the process.

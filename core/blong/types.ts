@@ -1093,6 +1093,16 @@ export interface IMeta {
     mtid?: 'request' | 'response' | 'error' | 'notification' | 'discard' | 'event';
     request?: IMeta;
     stream?: unknown;
+    /**
+     * Aborts when the reader of a `stream` route goes away.
+     *
+     * A streaming handler is a producer that may run for as long as somebody
+     * is reading, so it needs to be told when nobody is: the gateway aborts
+     * this on the connection closing, and a handler that ignores it keeps a
+     * loop alive for a reader that has left (`@@D-948`). Absent on every
+     * ordinary call, which has no reader to lose.
+     */
+    abort?: AbortSignal;
     headers?: object;
     trace?: string;
     retry?: number;
@@ -1434,6 +1444,32 @@ export type GatewaySchema = (
      * `params.body`.
      */
     rawBody?: boolean;
+    /**
+     * Answer this route as a sequence rather than one result (`@@D-948`).
+     *
+     * The handler returns an async iterable and each value it yields leaves as one server-sent
+     * event, so the route's `result` schema describes **one frame** rather than the whole answer.
+     * This is the mirror of `rawBody`: that one takes a sequence of bytes in, this one writes a
+     * sequence of values out, and both keep the shape of the call — the same method, the same
+     * authorization, the same capability — instead of opening a second protocol beside the
+     * gateway.
+     *
+     * The handler is told when the reader leaves through `$meta.abort`.
+     */
+    stream?:
+        | boolean
+        | {
+              /**
+               * Whether this route's frames are sealed. On unless it says otherwise,
+               * because a stream has no per-response envelope to fall back on and a
+               * frame that carries something secret must never be readable
+               * (`@@D-949`). A route whose frames carry a cursor or a status — nothing
+               * worth sealing — opts out and stays readable to a person with `curl`.
+               */
+              encrypt?: boolean;
+              /** How often an idle stream writes a keepalive comment. */
+              heartbeatMs?: number;
+          };
     destination?: string;
     operation?: OpenAPIV3_1.OperationObject | OpenAPIV2.OperationObject;
     /** Metering metadata threaded into the Fastify route config by Gateway.ts. */

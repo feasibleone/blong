@@ -68,21 +68,25 @@ Object {
       "deployment": "kustomize",
       "name": "kustomize",
       "namespace": "blong-suite",
+      "ports": Array [],
     },
     Object {
       "deployment": "kustomize",
       "name": "identity",
       "namespace": "blong-suite",
+      "ports": Array [],
     },
     Object {
       "deployment": "kustomize",
       "name": "login",
       "namespace": "blong-suite",
+      "ports": Array [],
     },
     Object {
       "deployment": "kustomize",
       "name": "session",
       "namespace": "blong-suite",
+      "ports": Array [],
     },
   ],
   "suite": Object {

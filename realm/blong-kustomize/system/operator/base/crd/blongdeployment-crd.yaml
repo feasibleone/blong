@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 1dcc7d34dd4f214c
+    blong.feasible.one/spec-hash: e3eb66d23b941e54
   name: blongdeployments.blong.feasible.one
 spec:
   group: blong.feasible.one
@@ -220,6 +220,14 @@ spec:
                     - group
                     - monolith
                   type: string
+                realms:
+                  additionalProperties:
+                    properties:
+                      enabled:
+                        description: Deploy this realm (true, the default) or leave it out of the tree (false)
+                        type: boolean
+                    type: object
+                  type: object
                 services:
                   additionalProperties:
                     x-kubernetes-preserve-unknown-fields: true

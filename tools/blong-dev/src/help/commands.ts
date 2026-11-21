@@ -398,7 +398,7 @@ export const COMMANDS: readonly IHelpCommand[] = [
     },
     {
         name: 'user',
-        summary: 'Add, list or re-password access users',
+        summary: 'Add, list, re-password or remove access users',
         description:
             'Bootstraps a login straight in a database, which is how a first login is created when ' +
             'no gateway is reachable. The login name is the resource name — `access_user` holds no ' +
@@ -447,6 +447,18 @@ export const COMMANDS: readonly IHelpCommand[] = [
                 name: 'list',
                 summary: 'List users with their roles and whether they can log in',
                 usage: 'blong-dev user list [--role <name>] [--output json]',
+            },
+            {
+                name: 'remove',
+                summary: 'Remove a user and everything that points at it',
+                usage: 'blong-dev user remove <userName> [--output json]',
+                description:
+                    "The counterpart of `add`, in the order the realm's own `access.user.remove` " +
+                    'uses: graph edges in both directions, the ACL rules, the sessions (a foreign ' +
+                    'key from `access_session.credentialId`), the credential and user rows, the ' +
+                    'rebuilt paths and finally the resource row. A name that matches nothing is ' +
+                    'answered `no user`, not an error: a cleanup that runs twice must not fail a run.',
+                examples: ['blong-dev user remove runbook-7f3a91'],
             },
         ],
         note:
@@ -580,8 +592,8 @@ export const COMMANDS: readonly IHelpCommand[] = [
             'The work order of the lukaot sweep: a package that still writes `log?.warn?.(…)` is ' +
             'unswept, and this counts those calls by package over the source rather than over a run, ' +
             'so a branch nobody exercised is counted too. `sites` prints file and line behind each ' +
-            'count, and `check` exits non-zero while anything remains. fastify\'s own `request.log` ' +
-            'is not counted: it is the HTTP layer\'s logger, not a caller\'s.',
+            "count, and `check` exits non-zero while anything remains. fastify's own `request.log` " +
+            "is not counted: it is the HTTP layer's logger, not a caller's.",
         helpOnBare: true,
         verbs: [
             {

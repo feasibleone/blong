@@ -96,6 +96,19 @@ const vocabulary = declare({
             mtid: 'event',
             method: 'log.calls',
         },
+        /**
+         * Capture policies were switched while the process ran.
+         *
+         * The same report as the call switch, for the other half of what an operator tunes: a
+         * capture turned on and silent is a decision to check here, and one turned off must not
+         * read later as a broken adapter (`@@D-945`).
+         */
+        frameworkCaptureChanged: {
+            level: 'info',
+            message: 'captures switched {state}',
+            mtid: 'event',
+            method: 'log.capture',
+        },
         /** Reloading a module after a config change failed. */
         frameworkConfigReloadFailed: {level: 'error', message: 'config reload failed: {error}'},
         /**

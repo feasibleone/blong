@@ -19,6 +19,7 @@ import {
     readUserPasswdOptions,
     userAdd,
     userPasswd,
+    userRemove,
     uuidBuffer,
     type IUserClient,
 } from './user.ts';
@@ -461,5 +462,58 @@ test('a policy with digest parameters decides how the secret is hashed', async t
     };
     t.equal(stored.iterations, 2, 'the policy iteration count is used');
     t.equal(stored.keyLength, 32, 'the policy key length is used');
+    t.end();
+});
+
+test("userRemove takes away everything the realm's remove takes away", async t => {
+    const {client, calls} = fakeClient([
+        USER_TYPE_ROW,
+        {
+            match: /FROM core_resource r JOIN core_type t/,
+            rows: [{resourceId: 'CC'.repeat(16)}],
+        },
+        HELD_ROLES,
+        {match: /DELETE FROM core_triple WHERE subjectId/, header: {affectedRows: 2}},
+        {match: /DELETE FROM core_triple WHERE objectId/, header: {affectedRows: 1}},
+    ]);
+    const result = await userRemove({}, ' runbook-7f3a91 ', async () => client);
+    t.equal(result.removed, true, 'reports that the user was there');
+    t.equal(result.userName, 'runbook-7f3a91', 'the name is trimmed');
+    t.equal(result.edges, 3, 'counts the edges in both directions');
+    t.same(result.roles, ['Admin'], 'reports the roles that went with it');
+    const sql = calls.map(c => c.sql);
+    // The order is the realm's own, and the two steps whose order matters are pinned by index:
+    // the sessions go before the credentials (a foreign key), and the paths are rebuilt before the
+    // resource row those paths point at is deleted.
+    t.ok(
+        sql.indexOf('DELETE FROM access_session WHERE userId = ?') <
+            sql.indexOf('DELETE FROM access_credential WHERE userId = ?'),
+        'the sessions go before the credentials they reference',
+    );
+    t.ok(
+        sql.indexOf('CALL access_pathRefresh()') <
+            sql.indexOf('DELETE FROM core_resource WHERE resourceId = ?'),
+        'the paths are rebuilt before the resource row they point at is deleted',
+    );
+    t.ok(
+        sql.indexOf('DELETE FROM access_acl WHERE principalId = ?') >
+            sql.indexOf('DELETE FROM core_triple WHERE objectId = ?'),
+        'the record-level rules go after the edges that could name them',
+    );
+    t.end();
+});
+
+test('userRemove answers a name nobody holds without failing', async t => {
+    const {client} = fakeClient([
+        USER_TYPE_ROW,
+        {match: /FROM core_resource r JOIN core_type t/, rows: []},
+    ]);
+    const result = await userRemove({}, 'runbook-000000', async () => client);
+    t.equal(result.removed, false, 'a cleanup that runs twice is not an error');
+    t.equal(result.userId, '', 'and reports no id it did not find');
+    t.rejects(
+        userRemove({}, '  ', async () => client),
+        /a user name is required/,
+    );
     t.end();
 });
