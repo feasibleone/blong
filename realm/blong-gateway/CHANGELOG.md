@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/feasibleone/blong/compare/blong-gateway-v1.10.0...blong-gateway-v1.10.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* CI failure ([033fd72](https://github.com/feasibleone/blong/commit/033fd720a2834d60256aab1febaefa5b528dbfcf))
+
 ## [1.10.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.9.1...blong-gateway-v1.10.0) (2026-11-20)
 
 

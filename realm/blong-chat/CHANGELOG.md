@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/feasibleone/blong/compare/blong-chat-v0.5.0...blong-chat-v0.6.0) (2026-11-21)
+
+
+### Features
+
+* blong-viewer realm ([320d648](https://github.com/feasibleone/blong/commit/320d64869a309fa43dba926823eea260244ce7ac))
+
 ## [0.5.0](https://github.com/feasibleone/blong/compare/blong-chat-v0.4.2...blong-chat-v0.5.0) (2026-11-20)
 
 
