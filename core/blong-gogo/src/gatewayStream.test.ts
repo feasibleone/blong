@@ -6,6 +6,7 @@ import {
     binaryFrame,
     envelopeOf,
     FLAG_BINARY,
+    FLAG_KEEPALIVE,
     FLAG_SEALED,
     payloadOf,
     plainEncoder,
@@ -261,5 +262,86 @@ test('the frame format is the format, not the caller', t => {
         frame.length - 4,
         'a frame counts itself',
     );
+    t.end();
+});
+
+test('a stream opens by saying it is alive, in whichever envelope it was asked for', async t => {
+    const readable = sinkOf();
+    await writeEventStream({
+        sink: readable,
+        iterate: valuesOf({id: 'a'}),
+        signal: new AbortController().signal,
+        encoder: plainEncoder('text'),
+    });
+    t.same(
+        readable.frames.slice(0, 2),
+        [': ping\n\n', 'data: {"id":"a"}\n\n'],
+        'a reader of the readable envelope learns the stream is open before any value',
+    );
+
+    const machine = sinkOf();
+    await writeEventStream({
+        sink: machine,
+        iterate: valuesOf({id: 'a'}),
+        signal: new AbortController().signal,
+        encoder: plainEncoder('binary'),
+    });
+    const first = machine.frames[0] as Uint8Array;
+    t.equal(first.length, 5, 'a binary keepalive is a length, a flag and nothing else');
+    t.equal(first[4], FLAG_KEEPALIVE, 'the flag is what tells a reader not to look for a value');
+    t.equal(
+        new DataView(first.buffer, first.byteOffset, first.byteLength).getUint32(0, false),
+        1,
+        'and the frame is one byte long, so a reader that does not know the flag still parses it',
+    );
+    t.end();
+});
+
+test('a sealed route says it is alive without spending the sequence', async t => {
+    const {a, b} = await pairOf();
+    const info = 'blong.stream.v1:test.entry.watch';
+    const sink = sinkOf();
+    await writeEventStream({
+        sink,
+        iterate: valuesOf({last: '01M'}),
+        signal: new AbortController().signal,
+        encoder: sealedEncoder('binary', a, info),
+    });
+    const keepalive = sink.frames[0] as Uint8Array;
+    t.equal(keepalive[4], FLAG_KEEPALIVE, 'the keepalive is a keepalive, not a sealed frame');
+    const sealed = sink.frames[1] as Uint8Array;
+    t.equal(sealed[4], FLAG_SEALED, 'the value after it is sealed as usual');
+    t.equal(
+        new TextDecoder().decode(await openFrame(b, 0, sealed.subarray(5), info)),
+        '{"last":"01M"}',
+        'and it opens at sequence zero, because an empty frame was never numbered',
+    );
+    t.not(
+        Buffer.from(keepalive).toString('utf8').includes('01M'),
+        true,
+        'an unsealed keepalive carries nothing that needed sealing',
+    );
+    t.end();
+});
+
+test('a silent stream keeps saying it is alive', async t => {
+    const sink = sinkOf();
+    const writing = writeEventStream({
+        sink,
+        iterate: (async function* () {
+            await new Promise(resolve => setTimeout(resolve, 80));
+            yield {id: 'a'};
+        })(),
+        signal: new AbortController().signal,
+        encoder: plainEncoder('binary'),
+        heartbeatMs: 10,
+    });
+    await writing;
+    const keepalives = (sink.frames as Uint8Array[]).filter(frame => frame[4] === FLAG_KEEPALIVE);
+    t.ok(
+        keepalives.length > 2,
+        'a proxy holding an idle connection open is told again and again, not once',
+    );
+    t.equal(sink.frames.length, keepalives.length + 1, 'and the one value still arrives once');
     t.end();
 });

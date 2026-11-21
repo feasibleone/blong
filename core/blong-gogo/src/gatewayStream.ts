@@ -15,9 +15,11 @@
  *   instead of growing the process. A producer that cannot be slowed has to cope
  *   with a gap itself — one more reason the resume cursor is the *route's*
  *   concept and not this file's.
- * - **Heartbeat.** A comment frame while nothing is being written keeps an idle
- *   proxy or ingress from closing a connection the reader still wants. It is a
- *   comment, not an event, so a client that reads only `data:` never sees it.
+ * - **Heartbeat.** A frame that carries no value, written as soon as the stream opens and again while
+ *   nothing else is being written, keeps an idle proxy or ingress from closing a connection the reader
+ *   still wants and lets the reader tell a quiet stream from a dead one. In the text envelope it is an
+ *   SSE comment, which a client reading `data:` never sees; in the binary one it is a keepalive frame
+ *   @@D-955.
  * - **Abort.** The reader going away is an ordinary event: the signal is aborted
  *   so the producer can stop, and the loop stops pulling.
  * - **Ending.** A thrown producer is one `error` frame — the frames before it stay
@@ -34,6 +36,7 @@
 import {
     STREAM_BINARY_TYPE,
     STREAM_FLAG_BINARY,
+    STREAM_FLAG_KEEPALIVE,
     STREAM_FLAG_SEALED,
     STREAM_MAX_FRAME_BYTES,
     STREAM_TEXT_TYPE,
@@ -49,6 +52,12 @@ export const FLAG_SEALED = STREAM_FLAG_SEALED;
 
 /** A frame whose payload is bytes rather than JSON. */
 export const FLAG_BINARY = STREAM_FLAG_BINARY;
+
+/** A frame that carries no value, written so a reader can tell quiet from dead @@D-955. */
+export const FLAG_KEEPALIVE = STREAM_FLAG_KEEPALIVE;
+
+/** The payload a keepalive carries: none at all. */
+const NO_PAYLOAD = new Uint8Array(0);
 
 /**
  * The most one frame may occupy, and why a writer checks it at all.
@@ -136,6 +145,15 @@ export interface IFrameEncoder {
     encode(value: unknown, seq: number): Promise<string | Uint8Array>;
     /** The last frame, written after a producer failed. */
     error(error: unknown, seq: number): Promise<string | Uint8Array>;
+    /**
+     * A frame that says the stream is still there, carrying no value.
+     *
+     * The text envelope spells it as an SSE comment and the binary one as a frame flagged keepalive,
+     * which every reader skips. It is not sealed even when the route seals: an empty frame has nothing
+     * to protect, and spending a sequence number on it would only make the reader do crypto to learn
+     * that nothing happened @@D-955.
+     */
+    keepalive(): string | Uint8Array;
 }
 
 /**
@@ -157,6 +175,8 @@ export function plainEncoder(envelope: StreamEnvelope): IFrameEncoder {
             if (envelope === 'text') return dataFrame(errorPayload(error));
             return binaryFrame(0, payloadOf(errorPayload(error)).bytes);
         },
+        keepalive: () =>
+            envelope === 'text' ? ': ping\n\n' : binaryFrame(FLAG_KEEPALIVE, NO_PAYLOAD),
     };
 }
 
@@ -186,6 +206,9 @@ export function sealedEncoder(
             if (envelope === 'binary') return binaryFrame(FLAG_SEALED, sealed);
             return `data: ${toBase64(sealed)}\n\n`;
         },
+        // Unsealed on purpose, and carrying nothing: see the interface @@D-955.
+        keepalive: () =>
+            envelope === 'text' ? ': ping\n\n' : binaryFrame(FLAG_KEEPALIVE, NO_PAYLOAD),
     };
 }
 
@@ -208,9 +231,9 @@ export interface IEventStreamOptions {
     signal: AbortSignal;
     /** How a value becomes a frame. */
     encoder: IFrameEncoder;
-    /** How often an idle stream writes a comment frame. Text envelope only. */
+    /** How often an idle stream says it is alive, and how long after it opens it first says so. */
     heartbeatMs?: number;
-    /** Whether to write those comments at all. */
+    /** Whether the stream says it is alive at all. */
     heartbeat?: boolean;
     /** The most one frame may occupy. A producer above it ends the stream. */
     maxFrameBytes?: number;
@@ -234,20 +257,33 @@ export async function writeEventStream({
 }: IEventStreamOptions): Promise<void> {
     let idle: ReturnType<typeof setInterval> | undefined;
     let wroteSomething = false;
-    if (heartbeat && heartbeatMs > 0) {
-        idle = setInterval(() => {
-            if (!wroteSomething && !signal.aborted) sink.write(': ping\n\n');
-            wroteSomething = false;
-        }, heartbeatMs);
-        // An unref'd timer is what keeps a served process able to exit: the
-        // heartbeat is a convenience for the reader, not a reason to stay alive.
-        idle.unref?.();
-    }
     const write = async (frame: string | Uint8Array): Promise<void> => {
         wroteSomething = true;
         if (sink.write(frame)) return;
         await sink.drained(signal);
     };
+    // A keepalive is not a value, so it does not count as writing something: the next idle tick still
+    // owes the reader one @@D-955.
+    const keepalive = async (): Promise<void> => {
+        if (signal.aborted) return;
+        if (sink.write(encoder.keepalive())) return;
+        await sink.drained(signal);
+    };
+    if (heartbeat && heartbeatMs > 0) {
+        // The first one leaves at once, with the headers. A reader that has just subscribed learns that
+        // the stream is open without waiting for the producer's first value — and an intermediary that
+        // holds a response back until its first byte now has one, so the headers reach the reader in
+        // this request rather than at the first record or never @@D-955.
+        await keepalive();
+        idle = setInterval(() => {
+            const silent = !wroteSomething;
+            wroteSomething = false;
+            if (silent) keepalive().catch(() => {});
+        }, heartbeatMs);
+        // An unref'd timer is what keeps a served process able to exit: the
+        // heartbeat is a convenience for the reader, not a reason to stay alive.
+        idle.unref?.();
+    }
     let seq = 0;
     try {
         for await (const value of iterate) {

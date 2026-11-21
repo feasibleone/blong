@@ -148,6 +148,10 @@ export default adapter<IConfig>(({utError, manifest}) => {
                     headers,
                     throwHttpErrors: false,
                     redirect: 'manual',
+                    // A stream has no deadline: the default timeout would abort a subscription ten
+                    // seconds in, and the reader would see a transport failure where frames were
+                    // promised @@F-808. A stream ends when its producer ends or the reader leaves.
+                    ...(responseType === 'stream' ? {timeout: false as const} : {}),
                     ...(json != null ? {json} : {}),
                     ...(form != null ? {body: new URLSearchParams(form)} : {}),
                     ...(body != null && json == null && form == null ? {body} : {}),

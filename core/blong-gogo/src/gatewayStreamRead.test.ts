@@ -1,6 +1,7 @@
 import {
     STREAM_FLAG_BATCH,
     STREAM_FLAG_BINARY,
+    STREAM_FLAG_KEEPALIVE,
     STREAM_FLAG_SEALED,
     deriveStreamKey,
     encodeFrame,
@@ -123,5 +124,30 @@ test('a frame split across chunks still arrives whole', async t => {
         'content-type': 'application/vnd.blong.stream',
     });
     t.same(await collect(readStream(response)), [{last: 'a'}], 'the reader keeps the partial head');
+    t.end();
+});
+
+test('a keepalive is not a value, and a sealed stream still opens around it', async t => {
+    const {seal, open} = await keyPair();
+    const one = encodeFrame(
+        STREAM_FLAG_SEALED,
+        await sealFrame(seal, 0, new TextEncoder().encode('{"last":"a"}'), INFO),
+    );
+    // The keepalive travels unsealed and empty, between two sealed values — what a sealed route writes
+    // while its producer is quiet @@D-955.
+    const keepalive = encodeFrame(STREAM_FLAG_KEEPALIVE, new Uint8Array(0));
+    const two = encodeFrame(
+        STREAM_FLAG_SEALED,
+        await sealFrame(seal, 1, new TextEncoder().encode('{"last":"b"}'), INFO),
+    );
+    const response = responseOf([one, keepalive, two], {
+        'content-type': 'application/vnd.blong.stream',
+        'x-blong-stream-salt': '/w==',
+    });
+    t.same(
+        await collect(readStream(response, {key: open, info: INFO})),
+        [{last: 'a'}, {last: 'b'}],
+        'a reader waiting for a value waits for the next frame, and the sequence stays the writer\u2019s',
+    );
     t.end();
 });

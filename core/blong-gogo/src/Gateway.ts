@@ -79,6 +79,21 @@ function isStream(value: unknown): value is NodeJS.ReadableStream {
     );
 }
 
+/**
+ * The value a port answered with @@F-807.
+ *
+ * A port answers a packet — `[value, $meta]` — which is why every unary branch of this route
+ * destructures what it gets. The stream branch did not: it took the pair for the sequence, reported
+ * a handler that had answered with frames as `streamNotIterable`, wrote one error frame and closed,
+ * so a page saw a subscription that opened and ended in the same millisecond. A port method that
+ * answers a bare value — a test double, or a target served in process — is passed through untouched.
+ */
+function unwrapPortPacket(answered: unknown): unknown {
+    if (!Array.isArray(answered) || answered.length !== 2) return answered;
+    const $meta = answered[1] as {mtid?: unknown} | undefined;
+    return $meta && typeof $meta === 'object' && 'mtid' in $meta ? answered[0] : answered;
+}
+
 const typedError: TSchema = Type.Object({
     message: Type.Optional(Type.String()),
     type: Type.Optional(Type.String()),
@@ -481,9 +496,8 @@ export default class Gateway extends Internal implements IGateway {
                     sink: nodeSink(raw),
                     signal: controller.signal,
                     heartbeatMs: typeof spec === 'object' ? spec.heartbeatMs : undefined,
-                    // A binary reader has no comment frame to skip harmlessly, so
-                    // the keepalive belongs to the readable envelope alone.
-                    heartbeat: envelope === 'text',
+                    // Both envelopes say they are alive, each the way its reader can skip: a comment in
+                    // the readable one, a frame with no value in the binary one @@D-955.
                     encoder:
                         key === undefined
                             ? plainEncoder(envelope)
@@ -570,7 +584,7 @@ export default class Gateway extends Internal implements IGateway {
         meta: IMeta,
         signal: AbortSignal,
     ): AsyncIterable<unknown> {
-        const produced = await method(params, {...meta, abort: signal});
+        const produced = unwrapPortPacket(await method(params, {...meta, abort: signal}));
         if (
             produced &&
             typeof (produced as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function'

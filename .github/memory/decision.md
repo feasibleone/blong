@@ -939,8 +939,8 @@ can adopt it. The reports site keeps 15 runs (`keep-reports: '15'` in `deploy/ac
 Every package now publishes `package-summary.json` in `.ci-report/publish/`, beside the page or the
 Allure report it publishes there. Two things the diagnosis needed it for: a comparison against the
 previous run of a package, and a document a tool can fetch rather than scrape. A package whose page
-is ours had the summary only inside the HTML, and a package whose report is an Allure one had a
-4.3MB single-file report with its data embedded — no `widgets/summary.json`, no `data/` directory,
+is ours had the summary only inside the HTML, and a package whose report is an Allure one had
+a 4.3MB single-file report with its data embedded — no `widgets/summary.json`, no `data/` directory,
 because it is published with `--single-file` — so neither could be read cheaply.
 
 The name keeps clear of Allure's own `summary.json`, which sits in the same directory for the Allure

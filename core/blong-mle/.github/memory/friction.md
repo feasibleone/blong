@@ -24,9 +24,8 @@ resolved (1)
 
 The sealed stream's salt travels in `x-blong-stream-salt` as base64url (a header value must survive
 a URL and a header parser), and the reader decoded it with plain `atob`, which rejects `-` and `_`.
-The browser failed with an `InvalidCharacterError` from `atob` ("the string to be
-decoded is not correctly encoded"), reported by the page as "the subscription
-failed".
+The browser failed with an `InvalidCharacterError` from `atob` ("the string to be decoded is not
+correctly encoded"), reported by the page as "the subscription failed".
 
 `fromBase64` now accepts both alphabets — plain base64 never contains either character, so nothing
 is ambiguous — because the asymmetry was between two encoders written at different times for

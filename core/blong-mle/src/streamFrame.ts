@@ -56,12 +56,28 @@ export const STREAM_FLAG_BINARY = 2;
 export const STREAM_FLAG_BATCH = 4;
 
 /**
+ * A frame that carries no value: the writer saying the stream is alive @@D-955.
+ *
+ * The text envelope has always had this — an SSE comment line between events — and the binary one had
+ * nothing, so a reader of a quiet stream could not tell it from a dead one, and a proxy holding the
+ * response until its first byte kept the headers back indefinitely. A keepalive is a frame with no
+ * payload and this flag, which every reader skips: it says only that the producer is still there.
+ *
+ * It is deliberately never sealed. Sealing it would spend a sequence number on nothing and make the
+ * reader do crypto to learn that nothing happened; an empty frame has no content to protect, and the
+ * numbering of sealed frames stays the writer's to keep aligned @@D-955.
+ */
+export const STREAM_FLAG_KEEPALIVE = 8;
+
+/**
  * The values one frame delivers — at least one, and more when it was batched.
  *
  * The payload is the frame's *plaintext*: a sealed frame is opened first, and this
  * is what turns what arrived into what the producer yielded.
  */
 export function valuesOfFrame(flags: number, payload: Uint8Array): unknown[] {
+    // A keepalive is not a value: a reader waiting for one waits for the next frame.
+    if ((flags & STREAM_FLAG_KEEPALIVE) !== 0) return [];
     if ((flags & STREAM_FLAG_BINARY) !== 0) return [payload];
     const text = new TextDecoder().decode(payload);
     if (text.length === 0) return [];

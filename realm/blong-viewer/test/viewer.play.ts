@@ -17,9 +17,7 @@ test.use({blongPermissions: true});
 
 test('the logs page opens from the menu', async ({portal}) => {
     await portal.menuClick('viewer.log');
-    await expect(
-        portal.page.getByPlaceholder('Search logs... (Enter to apply)'),
-    ).toBeVisible();
+    await expect(portal.page.getByPlaceholder('Search logs... (Enter to apply)')).toBeVisible();
 });
 
 test('the page shows the records the process wrote', async ({portal}) => {
@@ -35,7 +33,7 @@ test('the page shows the records the process wrote', async ({portal}) => {
 });
 
 /**
- * The page is woken, not polled (`@@D-949`).
+ * The page is subscribed, not polling (`@@D-949`).
  *
  * This is the only test that can tell a subscription from a timer: the tap suite
  * proves the handler and the writer, and the two specs above pass either way. What
@@ -45,15 +43,35 @@ test('the page shows the records the process wrote', async ({portal}) => {
  * key from the salt and opening each sealed frame — and it fails at the first link
  * that cannot carry an iterable.
  *
- * The dev server writes records constantly, so the wake arrives on its own; no
- * seed and no poll interval is involved, and the page reports what only the browser
- * can know: that the stream is open and how many wakes it has delivered.
+ * Two things make it deterministic rather than lucky. The stream opens on its own
+ * because the gateway writes a keepalive frame before it waits for anything
+ * (`@@D-955`) — without it the headers rode on the first record, which a served
+ * process writes only when something happens, so the page showed a closed
+ * subscription it actually had. And what is asserted is that the subscription is
+ * *still* there after the interval the viewer falls back on: a poll would have ended
+ * it and reopened it every five seconds, and the closed interval between two
+ * subscribes is what this catches.
+ *
+ * That a *record* wakes the page is the tap group's claim (`test.viewer.flow`: "wakes
+ * when a record arrives carrying only a cursor"), because a browser cannot make the
+ * process write one — so `data-wakes` stays what the page reports about itself
+ * rather than something this spec waits for.
  */
-test('the page receives wakes over a stream', async ({portal}) => {
+test('the page stays subscribed over a stream', async ({portal}) => {
     await portal.menuClick('viewer.log');
     const page = portal.page.locator('[data-stream]');
     await expect(page).toHaveAttribute('data-stream', 'open', {timeout: 15_000});
-    await expect
-        .poll(async () => Number(await page.getAttribute('data-wakes')), {timeout: 20_000})
-        .toBeGreaterThan(0);
+    // The viewer polls this often when the stream is not there, so an open subscription
+    // has to outlive two of those without ever closing. Sampled rather than slept
+    // through: a timer that ended and reopened the subscription leaves a closed
+    // interval, and a single late look would step over it.
+    const deadline = Date.now() + 6000;
+    let samples = 0;
+    while (Date.now() < deadline) {
+        await expect(page).toHaveAttribute('data-stream', 'open');
+        samples += 1;
+        await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    expect(samples).toBeGreaterThan(20);
+    await expect(page).not.toHaveAttribute('data-stream-end', /.+/);
 });

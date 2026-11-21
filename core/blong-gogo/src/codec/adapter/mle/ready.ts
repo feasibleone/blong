@@ -340,10 +340,13 @@ export default handler<{
             // A capture with its own note: the body is a JSON document, and the sentence says which
             // half of the exchange it came from (`@@T-730`).
             const failed = Boolean(result.body?.error);
-            this.capture?.json?.({method: String((($meta as {method?: string}) ?? {}).method ?? 'mle.receive')}, () => ({
-                label: failed ? 'mle.error' : 'mle.result',
-                value: failed ? result.body?.error : result.body?.result,
-            }));
+            this.capture?.json?.(
+                {method: String((($meta as {method?: string}) ?? {}).method ?? 'mle.receive')},
+                () => ({
+                    label: failed ? 'mle.error' : 'mle.result',
+                    value: failed ? result.body?.error : result.body?.result,
+                }),
+            );
             return super.receive(result, $meta);
         },
         async errorReceive(result: Response, $meta: unknown) {

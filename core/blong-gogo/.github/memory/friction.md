@@ -75,7 +75,7 @@ open (56)
 - `F-771` · core/blong-gogo — A capture read the live config and tripped the factory-phase guard
 - `F-784` · core/blong-gogo — A realm adapter needs connect, namespace and imports
 
-resolved (49)
+resolved (52)
 
 - `F-094` · core/blong-gogo — Knex `table.list` prefixed table names with the subject twice
 - `F-095` · core/blong-gogo — tap's order-sensitive snapshots broke on an appended `id` field
@@ -137,6 +137,9 @@ resolved (49)
 - `F-799` · core/blong-gogo — A port serialised the iterable a stream route needs
 - `F-800` · core/blong-gogo — A port's records never named the port
 - `F-803` · core/blong-gogo — An async-iterable answer is every HTTP response, not a stream
+- `F-806` · core/blong-gogo — The stream guard returned the iterable instead of the packet
+- `F-807` · core/blong-gogo — The stream route took the port's packet for its sequence
+- `F-808` · core/blong-gogo — A stream inherited the http client's ten-second timeout
 
 <!-- /memory:index -->
 
@@ -1769,3 +1772,76 @@ transport answer, so a bare test of it is never a stream check.
 Resolved in loop.ts: the iterable is returned untouched only when the call declared a stream
 ($meta.stream), so got's Readable goes through its codec again. blong-gogo 1354 (1348 pass, 6 skip)
 and the gateway Playwright suite 19/19 twice; the MLE half that hid the failure is T-754.
+
+### F-806 — The stream guard returned the iterable instead of the packet
+
+> _2026-11-21 · core/blong-gogo · resolved_
+
+The `F-799` fix returned the async iterable on its own when the call asked for a stream, and that
+skipped the packet as well as the codec. Everything in this loop answers a `[value, $meta]` pair —
+`exec` builds it, `decodeReceive` returns it — and the reader in `Remote` unwraps it with
+`result.at(0)`. A generator indexed at zero is `undefined`, so `viewer.entry.watch` resolved to
+nothing and the page's `subscribe` took the "no frames" branch: the widget reported
+`data-stream="closed"` and `data-wakes="0"` while the network panel showed a `200` with
+`content-type application/vnd.blong.stream`, the salt header, and one sealed frame. Nothing threw
+and nothing logged, because an absent answer is a documented case rather than an error.
+
+The lesson is that a short-circuit around a codec still owes the caller the shape the codec would
+have left behind: skipping `decodeReceive` for an iterable is right, and returning the iterable
+instead of `frame` is not. The second lesson is about the test: a spec that asserts the rows are
+there cannot tell a subscription from a poll, which is why the page publishes the stream state at
+all — `data-stream` and `data-wakes` are what turned a silent drop into one failing assertion.
+Reaching the answer took three probes read back from a Playwright trace (`adapter`, `mle.receive`,
+`Remote`), because a value lost in the middle of the chain leaves no error to find.
+
+Fixed in `core/blong-gogo/src/loop.ts`: the stream branch now returns the frame, so the iterable
+reaches the reader's unpack as the packet's first element. Verified by the viewer's three Playwright
+specs (the wake test passes), the realm's nine tap tests, and the framework's 1354 (1348 pass, 6
+skip, 0 fail).
+
+### F-807 — The stream route took the port's packet for its sequence
+
+> _2026-11-21 · core/blong-gogo · resolved_
+
+The stream branch of the gateway route called the port method and took the answer for the sequence.
+Every other branch destructures the packet the port answers with —
+`const [result, resultMeta] = await runInFlow(...)` — because a port answers `[value, $meta]`. The
+stream branch passed the pair straight to `writeEventStream`, which found no `Symbol.asyncIterator`
+on an array, threw `gateway.streamNotIterable`, wrote one error frame and closed. A page therefore
+saw a subscription that opened and closed in the same millisecond, with `data-stream-end="ended"`.
+
+The two halves of this stream were broken in opposite directions and neither showed up in the same
+place. `loop.ts` returned the iterable instead of the packet, so the reading side resolved
+`undefined` (F-806); once that was fixed, the route received the packet it never expected. Both are
+the same lesson: a port answers a packet, and a caller that wants the value has to unwrap it — the
+only place that may skip the codec is a place that still unwraps the packet.
+
+Finding it took a probe in the browser chain (which hop received what) and a probe in the route
+(what the producer's type was), read back from the Playwright trace and from a file the server
+process wrote. A stream failure that closes normally leaves no error anywhere:
+`aborted=false ended=true` was the whole symptom on the server, and `data-wakes` climbing with
+`data-stream="closed"` was the whole symptom in the page.
+
+Fixed in core/blong-gogo/src/Gateway.ts: _streamFrames unwraps the port packet before asking whether
+the answer is iterable. Verified by the viewer's tap suite (9) and the framework's 1354 (1348 pass,
+6 skip).
+
+### F-808 — A stream inherited the http client's ten-second timeout
+
+> _2026-11-21 · core/blong-gogo · resolved_
+
+The browser's http adapter passed every request ky's default ten-second timeout, including the one
+that asks for a stream. A subscription is not a request: it is meant to outlive any deadline, and
+the read that ends it is the reader leaving or the producer finishing. Ten seconds in, the timeout
+aborted the body, the reader saw a transport failure and the page reported a subscription that never
+opened — and because the browser error surfaced as a JSON-RPC answer with no `result`, the real
+cause was reported as `jsonrpcEmpty`, which reads like a protocol problem in a codec.
+
+The lesson is that a transport's defaults are chosen for a request, and the one call whose lifetime
+is the session has to opt out of them explicitly: `timeout: false` belongs to
+`responseType === 'stream'` and nowhere else. The second lesson repeated the first one — a failure
+that is converted into a different failure costs far more to read than the original — so the guard
+that lets a stream past the codec now also lets a transport error past it unchanged.
+
+Fixed in core/blong-gogo/src/adapter/browser/http.ts: a streamed request opts out of ky's ten-second
+timeout, since a subscription ends only when its producer or its reader does.

@@ -2,7 +2,7 @@ import type {Adapter, HRTime, IContext, IMeta} from '@feasibleone/blong/types';
 import type net from 'node:net';
 import {v4} from 'uuid';
 
-/** Whether a handler answered with a sequence rather than a value (`@@F-799`). */
+/** Whether a handler answered with a sequence rather than a value @@F-799. */
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
     return (
         typeof value === 'object' &&
@@ -33,7 +33,7 @@ export default function loop(
             // back a sequence, and the codec below would take it for one value and encode it: the
             // gateway then received a plain body where frames were promised, reported the route as
             // not iterable, wrote one error frame, and closed — which a browser page saw as a
-            // subscription that ended after its first frame (`@@F-799`). The iterable travels
+            // subscription that ended after its first frame @@F-799. The iterable travels
             // untouched because it cannot be a payload: what a codec could do with it, it would do
             // to a generator object.
             //
@@ -42,8 +42,14 @@ export default function loop(
             // node Readable, and a bare `isAsyncIterable` test therefore took *every* HTTP answer for
             // a stream — the codec that decodes it never ran, `blong.flow.find` answered the raw
             // response object, and the sealed envelope the gateway finally sent carried the text
-            // `undefined` (`@@F-803`).
-            if ($meta.stream && isAsyncIterable(frame?.[0])) return frame[0];
+            // `undefined` @@F-803.
+            //
+            // The iterable is skipped past the *codec*, never past the packet: what this branch
+            // answers is the `[value, $meta]` pair every caller unwraps, and returning the iterable
+            // on its own made the reader `Remote` reads index into a generator object and resolve
+            // `undefined` — so a page opened a subscription the server honoured and then saw
+            // nothing @@F-806.
+            if ($meta.stream && isAsyncIterable(frame?.[0])) return frame as unknown[];
             return checkError(
                 await decodeReceive(
                     handlers,
