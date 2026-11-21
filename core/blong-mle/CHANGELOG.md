@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-mle-v1.3.0...blong-mle-v1.4.0) (2026-11-21)
+
+
+### Features
+
+* blong-viewer realm ([320d648](https://github.com/feasibleone/blong/commit/320d64869a309fa43dba926823eea260244ce7ac))
+
+
+### Bug Fixes
+
+* gateway stream keep alive ([685d66b](https://github.com/feasibleone/blong/commit/685d66b74952a60bc054d4b1d7611a9f8ac382b6))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-mle-v1.2.0...blong-mle-v1.3.0) (2026-11-12)
 
 

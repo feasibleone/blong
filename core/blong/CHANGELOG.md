@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.45.0](https://github.com/feasibleone/blong/compare/blong-v1.44.0...blong-v1.45.0) (2026-11-21)
+
+
+### Features
+
+* blong-viewer realm ([320d648](https://github.com/feasibleone/blong/commit/320d64869a309fa43dba926823eea260244ce7ac))
+
 ## [1.44.0](https://github.com/feasibleone/blong/compare/blong-v1.43.3...blong-v1.44.0) (2026-11-20)
 
 
