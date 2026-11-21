@@ -24,5 +24,17 @@ import {realm} from '@feasibleone/blong';
  */
 export default realm(() => ({
     url: import.meta.url,
-    config: {default: {k8s: {k8sRealmRole: 'service'}}},
+    config: {
+        default: {
+            // A process of its own, in a deployment: the split profiles read this to give the UDP
+            // listener a single owner (`@@D-947`).
+            k8s: {k8sRealmRole: 'service'},
+        },
+        // A run from source is on a developer's machine, where every interface is the network's:
+        // the receiver answers on the loopback, which is also where the process's own destination
+        // points when nobody named one (`@@D-953`). A container keeps the adapter's own `0.0.0.0`.
+        dev: {log: {host: '127.0.0.1'}},
+        // Playwright is a dev run with a browser in front of it.
+        playwright: {log: {host: '127.0.0.1'}},
+    },
 }));

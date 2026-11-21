@@ -368,7 +368,7 @@
               "flexShrink": "1",
               "flexDirection": "row",
               "overflow": "hidden",
-              "childCount": 2,
+              "childCount": 1,
               "children": [
                 {
                   "tag": "div",
@@ -407,21 +407,6 @@
                       "childCount": 1
                     }
                   ]
-                },
-                {
-                  "tag": "link",
-                  "depth": 4,
-                  "classes": [],
-                  "id": null,
-                  "display": "none",
-                  "position": "static",
-                  "width": "auto",
-                  "height": "auto",
-                  "flexGrow": "0",
-                  "flexShrink": "1",
-                  "flexDirection": "row",
-                  "overflow": "visible",
-                  "childCount": 0
                 }
               ]
             },
@@ -462,8 +447,8 @@
                   "id": null,
                   "display": "block",
                   "position": "static",
-                  "width": "47.0469px",
-                  "height": "12px",
+                  "width": "53px",
+                  "height": "13px",
                   "flexGrow": "0",
                   "flexShrink": "1",
                   "flexDirection": "row",
@@ -477,8 +462,8 @@
                   "id": null,
                   "display": "block",
                   "position": "static",
-                  "width": "37.5781px",
-                  "height": "12px",
+                  "width": "44px",
+                  "height": "13px",
                   "flexGrow": "0",
                   "flexShrink": "1",
                   "flexDirection": "row",
@@ -492,7 +477,7 @@
                   "id": null,
                   "display": "block",
                   "position": "static",
-                  "width": "39.9219px",
+                  "width": "46px",
                   "height": "13px",
                   "flexGrow": "0",
                   "flexShrink": "1",

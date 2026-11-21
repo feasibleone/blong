@@ -240,12 +240,10 @@ export default server(() => ({
             access: {},
             marine: {},
             login: {},
-            // The records this developer's own run writes, on the receiver the realm opens beside
-            // them: the destination is the address that receiver answers on (`@@D-946`). The
-            // receiver binds the loopback on a developer's machine and every interface in a
-            // container, which is the realm's own default.
-            viewer: {log: {host: '127.0.0.1'}},
-            log: {destination: {host: '127.0.0.1', port: 9999}},
+            // The receiver rides this process in dev, and a process nobody names a destination for
+            // sends its records to the realm beside it — so a run from source names the realm and
+            // nothing about the address (`@@D-953`).
+            viewer: {},
         },
         // `blong <entry> k8s` needs no block of its own now: the deploy settings above are what the
         // generator reads, and the realm's own `k8s` activation block is what tells it to write. The

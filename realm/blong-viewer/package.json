@@ -9,6 +9,7 @@
     "exports": {
         "./server.ts": "./server.ts",
         "./browser.ts": "./browser.ts",
+        "./devPort.ts": "./devPort.ts",
         "./browser.js": {
             "development": "./browser.ts",
             "import": "./browser.ts"

@@ -34,10 +34,6 @@ export default server(() => ({
             // Enforce RBAC on the gateway — resolves allowed actions for the
             // authenticated user (access realm), 403 when not authorized.
             gateway: {authorize: 'access.authorization.list'},
-            // Where this process writes what it emits: its own listener, which
-            // is what makes the page show the records the process is writing.
-            log: {destination: {host: '127.0.0.1', port: 9999}},
-            viewer: {log: {udpPort: 9999, host: '127.0.0.1'}},
             // The suite definition the `k8s` generator and the operator read.
             kustomize: {
                 deploy: {

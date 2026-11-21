@@ -10,11 +10,12 @@ open (1)
 
 - `T-742` · tools/blong-log — Test that the CLI serves the page
 
-done (3)
+done (4)
 
 - `T-354` · tools/blong-log — The FilteredServer snapshot depends on stream timing
 - `T-743` · tools/blong-log — The viewer's package name does not resolve in this repository
 - `T-744` · tools/blong-log — The viewer draws none of flow, decision, progress, intent or lineage
+- `T-755` · tools/blong-log — blong-log's standalone page has no tracked source, and no font
 
 <!-- /memory:index -->
 
@@ -95,3 +96,25 @@ trip; a `flowId` parameter belongs with the producer work, when there is somethi
 
 Viewer side complete and reviewed on sport records; intent now stated by the framework at the entry;
 flow was already produced; first realm decision in sport's nomenclature merge.
+
+### T-755 — blong-log's standalone page has no tracked source, and no font
+
+> _2026-11-21 · tools/blong-log · done_
+
+tools/blong-log serves its standalone page from public/, which .gitignore excludes, and nothing in
+the repository generates it: build-client.js writes only app.js, and there is no index.html.ts as
+the other packages have. A fresh checkout therefore has no shell to serve at /, and the one on a
+developer's machine is hand-made — which is also why the font fix for the standalone page could not
+be committed: the page names no font-family, so the grid renders in a serif there for the same
+reason the Storybook did (the theme blanks its family when mounted with fonts={false}, see the
+friction entry about the serif shots). Create the shell where the build can see it — an
+index.html.ts generator or a tracked template copied into public/ — and give its body the portal's
+stack, var(--font-family, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial,
+sans-serif). Check that the page still loads app.js and app.css from the same paths the server
+already serves.
+
+Done: the shell is a tracked index.html at the package root and build-client.js copies it beside the
+bundle it writes, so an empty public/ rebuilds into a served page (verified: from a deleted folder,
+the server answers / with text/html carrying #root and the font stack, and /app.css and /app.js
+both 200). Its body names the portal's stack with var(--font-family) first, which is the same rule
+the Storybook preview needed; the package's 135 tests and tsc/cspell/eslint are clean.

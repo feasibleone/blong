@@ -1769,6 +1769,14 @@ export default async function loadRealm<T extends TSchema>(
                                 // `beforeExit`, which is why the writer also flushes on its own timer.
                                 if (destination !== undefined)
                                     process.once?.('beforeExit', () => destination.close());
+                                // Whether this process was *told* where its records go, published where
+                                // a realm can read it. A receiver that rides the process — the viewer's
+                                // UDP listener — has to know the difference between "nobody named a
+                                // destination" and "one was installed", and neither `getWriter()` nor
+                                // the merged config tells it: by the time a realm starts, the log has a
+                                // writer either way, and the config it sees is its own slice. Set before
+                                // the realms load, like `clusterUrl` below (`@@D-953`).
+                                if (destination !== undefined) manifest.logDestination = true;
                                 logger = api!.log?.logger(
                                     mergedConfig[rootKind === 'browser' ? 'browser' : 'server']
                                         ?.load?.logLevel,

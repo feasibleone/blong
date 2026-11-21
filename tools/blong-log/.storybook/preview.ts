@@ -11,6 +11,14 @@ style.textContent = `
         padding: 0;
         height: 100%;
         overflow: hidden;
+        /* The viewer draws on the grid's theme, and that theme blanks its own font family when it
+           is mounted with fonts={false} — the prop this package sets to keep the vendor's
+           stylesheet off the network (@@F-805). A blank family is a family nothing declares, so the
+           text falls back to the browser's default, which is a serif: the screenshots were
+           rendered in Times. What the theme expects is the host's font, and the host of a story is
+           this page, so the stack the portal's own theme declares is named here — the same rule
+           and the same reason as browser.css in blong-browser. */
+        font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
     }
 
     /* Make storybook-root fill the viewport for fullscreen layout */

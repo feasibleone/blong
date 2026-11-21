@@ -15,7 +15,7 @@ open (4)
 - `F-541` · tools/blong-log — The storybook runner takes fewer options than it lists
 - `F-788` · tools/blong-log — A taken UDP port killed the process instead of failing the start
 
-resolved (5)
+resolved (6)
 
 - `F-773` · tools/blong-log — The log viewer could not be started or opened, and no test noticed
 - `F-774` · tools/blong-log — An expanded grid row was measured, so it flickered and clipped its own
@@ -23,6 +23,8 @@ resolved (5)
 - `F-798` · tools/blong-log — The log page reconnects and refetches every five seconds
 - `F-795` · tools/blong-log — A component's stylesheet was imported by the app entry
 - `F-797` · tools/blong-log — The grid's icons came from a third-party CDN
+- `F-805` · tools/blong-log — The storybook shots were serif: fonts off means the host names the
+  font
 
 <!-- /memory:index -->
 
@@ -212,3 +214,24 @@ classes are mapped to PrimeIcons in gridIcons.css. One part is not: the browser 
 font files, because the portal's own font stack names Roboto and the vendor stylesheet declares a
 face for it. They are refused by the deployment's CSP and never render, and the residual is tracked
 as its own todo rather than claimed here.
+
+### F-805 — The storybook shots were serif: fonts off means the host names the font
+
+> _2026-11-21 · tools/blong-log · resolved_
+
+The Storybook screenshots and the CI comparison disagreed after the CDN-free icon change: the shots
+came out in Times. The cause is the prop that fix introduced: the grid's theme is mounted with
+fonts={false}, and that prop makes the vendor blank its own font family — three rules
+declare --wx-font-family, the last with an empty value — so font-family: var(--wx-font-family) is
+invalid and the text inherits the browser default, which is a serif. It is by design: with the
+vendor's stylesheet off the network, the host supplies the typography, and the portal does
+(PrimeReact's theme sets --font-family on the body, which the grid inherits). Only the Storybook
+page had no font, because the preview's style block set margins and heights and nothing else. The
+lesson is that a visual test measures whatever the page computes, including a font nobody named, and
+that turning a vendor's stylesheet off also turns off the scale it carried: the fix is a font-family
+in the preview, the stack the portal's own theme declares, so a story renders what an embedded
+viewer renders.
+
+Closed with the fix it produced: the Storybook preview names the portal's font stack, so font-family
+resolves instead of falling back to a serif; the 27 image baselines were regenerated from that
+rendering and the suite is green (28 tests, 27 snapshots).

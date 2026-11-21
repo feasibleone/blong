@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blong log</title>
+    <!--
+        The shell the viewer mounts into, tracked here rather than left in `public/`: that folder is
+        ignored and nothing generated it, so a checkout had no page to serve at `/` and the only copy
+        was whatever a developer had made by hand. `build-client.js` copies this file beside the
+        `app.js` and `app.css` it writes, and the server serves the folder as it is — so the three
+        paths here are the ones it already answers.
+    -->
+    <link rel="stylesheet" href="/app.css" />
+    <style>
+        html,
+        body,
+        #root {
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            background: #0d1117;
+            /* The stack the portal's theme declares, with a host's `--font-family` first when one is
+               present. The viewer's grid is mounted with `fonts={false}` so the vendor stylesheet
+               stays off the network, and that prop makes the theme blank its own font family: a page
+               that names nothing renders the log in the browser's default, which is a serif
+               (`@@F-805`). */
+            font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="module" src="/app.js"></script>
+</body>
+
+</html>

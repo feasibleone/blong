@@ -1,8 +1,14 @@
 /**
  * Build script to bundle the React client into the public/ directory.
+ *
+ * The folder is ignored, and it is what the server serves, so everything the page needs has to be
+ * written here: the bundle, the stylesheet esbuild emits beside it, the glyph files, and the shell
+ * itself. The shell is a tracked file at the package root — a page that existed only in `public/`
+ * meant a checkout had none to serve, and the copy in a developer's folder was hand-made.
  */
 
 import {build} from 'esbuild';
+import {copyFileSync, mkdirSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -38,5 +44,9 @@ await build({
         '.svg': 'file',
     },
 });
+
+// The page itself, beside the bundle it loads: the same folder, so the server answers `/` with it.
+mkdirSync(join(__dirname, 'public'), {recursive: true});
+copyFileSync(join(__dirname, 'index.html'), join(__dirname, 'public/index.html'));
 
 console.log('[blong-log] Client built successfully');
