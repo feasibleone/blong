@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.12.0...blong-sport-v0.13.0) (2026-11-21)
+
+
+### Features
+
+* blong-viewer realm ([320d648](https://github.com/feasibleone/blong/commit/320d64869a309fa43dba926823eea260244ce7ac))
+
 ## [0.12.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.11.3...blong-sport-v0.12.0) (2026-11-20)
 
 
