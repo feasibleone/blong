@@ -63,7 +63,7 @@ jobs:
             framework_version: ${{ steps.plan.outputs.framework_version }}
             framework_image: ${{ steps.plan.outputs.framework_image }}
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
               with:
                   # The map is read from the default branch; what to build is fetched by tag, because
                   # a batch is a set of tags rather than one checked-out ref.
@@ -208,7 +208,7 @@ jobs:
             group: deploy-${{ matrix.alias }}
             cancel-in-progress: false
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
               with:
                   ref: ${{ needs.resolve.outputs.tag }}
                   fetch-depth: 0
@@ -399,7 +399,7 @@ jobs:
         permissions:
             contents: write
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
               with:
                   ref: ${{ needs.resolve.outputs.tag }}
                   fetch-depth: 0

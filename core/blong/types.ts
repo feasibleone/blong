@@ -765,6 +765,14 @@ export interface IRegistry {
      * implementations stay valid; `load()` always calls it with the root module's `pkg`.
      */
     setPackage?: (pkg: {name?: string; version?: string}) => void;
+    /**
+     * The process's log component — the object a reload reaches its switches through.
+     *
+     * Declared because `load()` answers *the registry*, not the api it built, so a caller holding a
+     * platform has no other way to the log: what it needs is here. The shutdown and warning handlers of
+     * `runServer.ts` are the callers (`@@F-813`). Optional so existing implementations stay valid.
+     */
+    logComponent?: ILog;
 }
 
 /** A handler group (folder) discovered on disk. */

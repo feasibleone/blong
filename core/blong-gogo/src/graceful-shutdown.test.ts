@@ -61,6 +61,7 @@ test('a second signal forces an immediate exit', async t => {
             write: () => {},
             exit: code => exitCodes.push(code),
             timeoutMs: 50_000,
+            repeatGraceMs: 0,
         },
     );
 
@@ -68,6 +69,56 @@ test('a second signal forces an immediate exit', async t => {
     handler('SIGTERM');
 
     t.same(exitCodes, [1], 'second signal exits 1');
+});
+
+test('the same keystroke arriving twice does not cut the shutdown short', async t => {
+    // A terminal signals the whole foreground group and the package manager that started this
+    // process forwards what it got, so one Ctrl+C is delivered twice (@@D-958).
+    let marker = '';
+    const exitCodes: number[] = [];
+    let stopped = 0;
+    const {handler} = createShutdownHandler(
+        async () => {
+            stopped += 1;
+        },
+        {
+            write: s => (marker += s),
+            exit: code => exitCodes.push(code),
+            timeoutMs: 50_000,
+            repeatGraceMs: 1000,
+        },
+    );
+
+    handler('SIGINT');
+    handler('SIGINT');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    t.equal(stopped, 1, 'the cleanup ran once, uninterrupted');
+    t.same(marker.match(/blong: shutting down on SIGINT/g)?.length, 1, 'one shutdown marker');
+    t.notMatch(marker, /forcing exit/, 'the echo never forces an exit');
+    t.same(exitCodes, [0], 'the graceful path finished and exited 0');
+});
+
+test('a second press after the grace window still forces the exit', async t => {
+    let marker = '';
+    const exitCodes: number[] = [];
+    const {handler} = createShutdownHandler(
+        () => new Promise(() => {}), // a shutdown that hangs
+        {
+            write: s => (marker += s),
+            exit: code => exitCodes.push(code),
+            timeoutMs: 50_000,
+            repeatGraceMs: 10,
+        },
+    );
+
+    handler('SIGINT');
+    await new Promise(resolve => setTimeout(resolve, 25));
+    handler('SIGINT');
+
+    t.match(marker, /blong: second SIGINT received, forcing exit/, 'the operator gets the forced exit');
+    t.same(exitCodes, [1], 'exits 1');
 });
 
 test('a failing stop() exits 1 with a failure marker', async t => {

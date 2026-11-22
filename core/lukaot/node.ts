@@ -54,6 +54,8 @@ export {
      * (`@@D-930`).
      */
     createUdpWriter,
+    LOG_DESTINATION_CODE,
     type IUdpWriter,
+    type IUdpWriterFailures,
     type IUdpWriterOptions,
 } from './src/udpWriter.ts';

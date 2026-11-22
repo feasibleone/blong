@@ -11,13 +11,14 @@ open (2)
 - `F-762` · core/lukaot — A method named declare made lukaot unloadable by bare node, and tap hid it
 - `F-770` · core/lukaot — A declared-off capture could not be enabled by configuration
 
-resolved (5)
+resolved (6)
 
 - `F-775` · core/lukaot — A configured destination kept the process alive
 - `F-776` · core/lukaot — A public return type nobody could name broke a consumer's build
 - `F-777` · core/lukaot — A decision's arm names are identifiers, and an illegal one fails at boot
 - `F-779` · core/lukaot — Two silences on one path: the call records and the sink disagreed
 - `F-789` · core/lukaot — An unresolvable collector exited the process that was logging
+- `F-811` · core/lukaot — A failing log destination was consumed and discarded
 
 <!-- /memory:index -->
 
@@ -156,3 +157,37 @@ look alike and only one of them may be removed.
 
 Verified in the code: core/lukaot/src/udpWriter.ts:77 consumes the socket's error event, so an
 unresolvable collector costs its records and not the process.
+
+### F-811 — A failing log destination was consumed and discarded
+
+> _2026-11-22 · core/lukaot · resolved_
+
+The UDP writer consumed the socket's `error` event with a listener that did nothing. Consuming it is
+right — an emitter with no listener for `error` throws, which turns "the collector is unreachable"
+into "the process that was logging exits", the opposite of the writer's contract. Discarding it was
+not: a `log.destination` whose host does not resolve, whose port nothing listens on, or whose packet
+is too large produced no record, no warning and no exit, and the only symptom was a viewer showing
+fewer lines than the process wrote.
+
+It cost a day once already: a derived destination port pointed at a port no process sent to, and
+every layer behaved exactly as documented, so nothing anywhere said the address was wrong.
+
+The fix reports without throwing and without logging. The first failure of each _kind_ (the error's
+code) is emitted with `process.emitWarning`, naming the destination and the code
+`BLONG_LOG_DESTINATION`, and every failure is counted and kept on the writer for a caller that asks
+(`IUdpWriter.failures()`). A warning rather than a record because this writer _is_ the log
+destination: a record about its own failure would go through it, which is a process writing to
+itself forever. Once per kind rather than once per batch because a broken destination fails every
+100 ms, and a warning per batch is a log flood that hides the one line that matters. Counting rather
+than only warning because the caller that cares is usually a different one — a test pointing the
+writer at a port nothing listens on, or a tool explaining why a process's records never arrived.
+
+The `flush` catch got the same treatment: a send that could not even be attempted is the same
+failure the socket event reports, and dropping it because it happened to arrive as a throw is the
+same silence.
+
+Fixed in src/udpWriter.ts: the socket's error event is consumed and reported — the first failure of
+each kind as a process.emitWarning naming the destination with code BLONG_LOG_DESTINATION, every
+failure counted and kept in IUdpWriter.failures(), and flush's catch routed through the same report.
+Two tests pin it (a .invalid destination counts, keeps the error and warns once; a healthy one
+counts nothing), and the writer still never throws at its caller.

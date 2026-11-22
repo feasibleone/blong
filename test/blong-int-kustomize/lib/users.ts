@@ -199,8 +199,10 @@ export const provisionUser = async (
     if (!database) {
         return fail(
             'the deployment names no database this run can reach: its rc Secret ' +
-                '(blong-releaserc-etc) carries no connection, so a login cannot be provisioned — ' +
-                'mount one, or point the suite at a database the run can dial',
+                '(blong-releaserc-etc) carries no srv.db.knex.connection, so a login cannot be ' +
+                'provisioned — mount one (the key is blong_releaserc, the document the pods read ' +
+                'from /etc/blong_releaserc, and it is the tenant\'s: the tree writes neither rc ' +
+                'Secret), or point the suite at a database the run can dial (F-810)',
         );
     }
     const user = runUserNames();

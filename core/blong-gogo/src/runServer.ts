@@ -1,7 +1,15 @@
-import { type SolutionFactory, type VocabularyProxy, kind } from '@feasibleone/blong/types';
-import { existsSync } from 'node:fs';
-import { basename, dirname, resolve } from 'node:path';
-import { analyzeFolder, synthesizeServerFromHandlers } from './folderAnalysis.ts';
+import {
+    type ILog,
+    type SolutionFactory,
+    type VocabularyProxy,
+    kind,
+} from '@feasibleone/blong/types';
+import {signalView, writeThroughFace} from '@feasibleone/lukaot';
+import {LOG_DESTINATION_CODE} from '@feasibleone/lukaot/node';
+import {existsSync} from 'node:fs';
+import {basename, dirname, resolve} from 'node:path';
+import {analyzeFolder, synthesizeServerFromHandlers} from './folderAnalysis.ts';
+import {frameworkSignalRegistry} from './frameworkSignals.ts';
 import load from './loadServer.ts';
 
 /** Default intents applied when none are provided on the CLI. */
@@ -11,6 +19,9 @@ export const DEFAULT_INTENTS = [
     'dev',
     ...(process.env.CI ? ['ci'] : []),
 ] as const;
+
+/** Whether this process already reports its runtime warnings, so a second platform does not double them. */
+let reportingWarnings = false;
 
 /**
  * Options for {@link gracefulShutdown}. Dependencies are injectable so the helper
@@ -32,6 +43,19 @@ export interface GracefulShutdownOptions {
     write?: (chunk: string) => void;
     /** How long to wait for `stop` before force-exiting. Defaults to 30s. */
     timeoutMs?: number;
+    /**
+     * How soon after a signal a second one is the *same* Ctrl+C arriving twice.
+     *
+     * A terminal delivers one SIGINT to every process in the foreground group, and a package manager
+     * forwards the signal it received to the process it started — which is also in that group. So one
+     * keystroke reaches blong twice, milliseconds apart, and the handler used to take the second for an
+     * operator demanding a forced exit: the log read "shutting down" immediately followed by "second
+     * SIGINT received, forcing exit", and the cleanup the handler exists for was cut off. Measured: a
+     * parent that forwards what it receives gives its child two SIGINTs from one group signal
+     * (@@D-958). A deliberate second press comes after the operator has waited, so the window is
+     * what separates them; the bounded `timeoutMs` still covers a shutdown that really hangs.
+     */
+    repeatGraceMs?: number;
 }
 
 /**
@@ -42,21 +66,27 @@ export interface GracefulShutdownOptions {
  */
 export function createShutdownHandler(
     stop: () => Promise<unknown>,
-    {vocabulary, exit, write, timeoutMs}: GracefulShutdownOptions = {},
+    {vocabulary, exit, write, timeoutMs, repeatGraceMs}: GracefulShutdownOptions = {},
 ): {handler: (signal: string) => void; unsubscribe: () => void} {
     const exitFn = exit ?? (code => process.exit(code));
     const writeFn = write ?? (s => process.stderr.write(s));
     const timeout = timeoutMs ?? 30_000;
+    const grace = repeatGraceMs ?? 1000;
 
     let shuttingDown = false;
+    let startedAt = 0;
     let timer: NodeJS.Timeout | undefined;
     const handler = (signal: string): void => {
         if (shuttingDown) {
+            // The same keystroke echoed by whoever started this process, or an operator asking again:
+            // only the second is worth cutting the cleanup short for (@@D-958).
+            if (Date.now() - startedAt < grace) return;
             writeFn(`blong: second ${signal} received, forcing exit\n`);
             exitFn(1);
             return;
         }
         shuttingDown = true;
+        startedAt = Date.now();
         writeFn(`blong: shutting down on ${signal}\n`);
         // The SIGTERM/SIGINT that started it stays on the record as a param: the sentence does
         // not interpolate it, and a reader looking at why a process stopped wants to know which.
@@ -94,6 +124,81 @@ export function createShutdownHandler(
             process.removeListener('SIGINT', handler);
             if (timer) clearTimeout(timer);
         },
+    };
+}
+
+/**
+ * Report the runtime's own warnings as the process's records (@@D-959).
+ *
+ * Node raises deprecations, listener leaks and a log destination that refused a batch as `warning`
+ * events, which reach the terminal and nothing else: a served process's records — what the viewer, the
+ * collector and an operator's query read — never carried them. The destination failure is the one that
+ * matters most, because its own record is exactly what cannot be written: the batch it would travel in
+ * is the batch that was refused (`@@F-811`).
+ *
+ * Two rules keep it safe. Node prints the warning to stderr **and** calls the listener, so writing a
+ * record adds the structured copy rather than replacing the line a person sees — the diagnosis survives
+ * even when the destination does not. And the reporter ignores warnings for the turn in which it wrote
+ * one, because a sink that warns about its own record is how a reporter feeds itself: the shape of every
+ * logging loop ever written. The log destination is that sink by definition, so the guard is what keeps
+ * a broken destination from turning one warning into a stream of records that can never arrive
+ * (@@F-811 @@D-958).
+ *
+ * Installed once per process: a suite loads two platforms that share one, and two reporters would write
+ * every warning twice.
+ *
+ * @param log - The process's log component (`platform.logComponent`), whose `warn` line the record
+ *   travels through.
+ * @returns An unsubscribe function, so a `cli` run that stops explicitly also stops reporting.
+ */
+export function reportProcessWarnings(log?: ILog): () => void {
+    if (reportingWarnings) return () => undefined;
+    const face = log?.logger('warn', {name: 'blong', context: 'process'}) as
+        | {warn?: (fields: object, message: string) => void}
+        | undefined;
+    if (!face?.warn) return () => undefined;
+    reportingWarnings = true;
+    const {vocabulary} = signalView(frameworkSignalRegistry(), writeThroughFace(face));
+    // The reporter's own turn, held for the whole event-loop turn rather than for the call: a warning
+    // is delivered on `process.nextTick`, so a sink that raises one *while* its record is written
+    // (the log destination does exactly that when a batch cannot be sent, @@F-811) is heard after the
+    // write has returned. A flag cleared in `finally` would be false by then and the turn would write
+    // another record into the same sink, forever, never yielding to I/O. `setImmediate` runs after the
+    // ticks of this turn, so it is when the reporter may listen again; the handle is unref'd because a
+    // process on its way out must not be held open for it.
+    let writing = false;
+    const listener = (warning: Error & {code?: string}): void => {
+        if (writing) return;
+        writing = true;
+        try {
+            const params = {
+                name: warning.name ?? 'Warning',
+                code: warning.code ?? 'no-code',
+                message: warning.message,
+            };
+            // Which identifier carries it is the warning's code, not its name: a lost batch is an error
+            // (@@D-960), and `process.emitWarning` gives every event the same name unless the emitter
+            // chose one, so the code is the only thing a reporter can trust.
+            if (warning.code === LOG_DESTINATION_CODE) {
+                vocabulary.frameworkLogDestinationFailed?.(params);
+            } else {
+                vocabulary.frameworkProcessWarning?.(params);
+            }
+        } catch {
+            // The record could not be written, and Node has already printed the warning itself: the
+            // diagnosis is on the terminal, so repeating it here buys nothing and a throw would land on
+            // a tick nobody awaits as an uncaught exception.
+        } finally {
+            const release = setImmediate(() => {
+                writing = false;
+            });
+            release.unref?.();
+        }
+    };
+    process.on('warning', listener);
+    return () => {
+        reportingWarnings = false;
+        process.removeListener('warning', listener);
     };
 }
 
@@ -147,6 +252,9 @@ export async function runPlatform(
     // repository — because a process-wide listener swallowed the rejection, named no call, and let the
     // failure repeat until something restarted the process for it (T-229). Nothing is installed here.
     const shutdown = gracefulShutdown(() => platform.stop!());
+    // The runtime's own warnings join this process's records, beside the shutdown handler for the same
+    // reason: both are installed once the log exists and stay until the process ends (@@D-959).
+    reportProcessWarnings(platform.logComponent);
     await platform.test!(undefined);
     // Whether the process outlives its work is a config decision, declared per
     // intent (`cli`/`db` exit, `playwright` does not, `integration` only in CI) —
@@ -226,6 +334,10 @@ export async function autoRun(options: {
         const shutdown = gracefulShutdown(async () => {
             for (const platform of platforms) await platform.stop();
         });
+        // One reporter for the process, not one per platform: the two share it and would write the
+        // same warning twice. The server half is the one whose log the record travels through
+        // (@@D-959).
+        reportProcessWarnings(platforms[0].logComponent);
         await platforms[1].test!(undefined);
         // Both platforms are loaded with the same intents, so either one carries
         // the same resolved flag.

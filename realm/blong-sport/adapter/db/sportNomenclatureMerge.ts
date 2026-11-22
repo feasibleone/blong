@@ -1,9 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- the knex builder and the
    seed payload are untyped here, as in the rest of the adapter's db group. */
 import {type IMeta, handler} from '@feasibleone/blong';
-import {decide} from '@feasibleone/lukaot';
-
-import vocabulary from '../../lukaot/signal.ts';
 
 type KnexQb = any;
 
@@ -104,45 +101,14 @@ export default handler(({lib: {seedRef, seedReference, seedRows, seedGender}}) =
                 gendersOf.set(sport, entry);
             }
 
-            /**
-             * The gender a sport is drawn as, when the file does not state one.
-             *
-             * Derived only when every event of the sport is the same gender and none is open to both: a
-             * sport that contests one gender is that gender, and a sport with both — or with an event open to
-             * anyone — stays open, which is the empty column the model leaves for it. The three
-             * outcomes are named as branches rather than written as a ternary so the choice is
-             * recorded with the candidates it chose between (`@@D-931`), and the record that follows
-             * this handler carries the rationale.
-             */
-            const derivedGender = (
-                entry: {genders: Set<string>; open: boolean} | undefined,
-                stated: unknown,
-            ): string | undefined => {
-                if (stated !== undefined && stated !== null && stated !== '') return String(stated);
-                const values = {
-                    open: entry?.open === true,
-                    genders: entry === undefined ? 0 : entry.genders.size,
-                };
-                return decide(vocabulary.decision.sportGenderDerived, values, [
-                    {
-                        name: 'absent',
-                        when: v => v.open !== false && v.genders === 0,
-                        run: () => undefined,
-                    },
-                    {name: 'open', when: v => v.open === true, run: () => undefined},
-                    {
-                        name: 'oneGender',
-                        when: v => v.genders === 1,
-                        run: () => [...(entry?.genders ?? [])][0],
-                    },
-                    {name: 'mixed', when: () => true, run: () => undefined},
-                ]);
-            };
-
             const sports = sportRows.map(row => {
                 const name = String(row.sportName ?? row.name ?? '');
                 const entry = gendersOf.get(name);
-                const gender = derivedGender(entry, row.sportGender ?? row.gender) as string | undefined;
+                const derived =
+                    entry && !entry.open && entry.genders.size === 1
+                        ? [...entry.genders][0]
+                        : undefined;
+                const gender = (row.sportGender ?? row.gender ?? derived) as string | undefined;
                 return {
                     name,
                     sportName: name,
@@ -194,26 +160,7 @@ export default handler(({lib: {seedRef, seedReference, seedRows, seedGender}}) =
                 });
             }
 
-            // The decision above explains the *next* record, so this line is also what carries it: a
-            // seed that derived a classification is a fact worth a line, and a bare counts line would
-            // have taken the rationale from whatever the framework happened to write afterwards.
-            const log = (this as {log?: Record<string, (...args: unknown[]) => void>}).log;
-            const derived = sports.filter(row => (row as {sportGender?: string}).sportGender !== undefined);
-            for (const row of derived) {
-                log?.['debug']?.('sport {sportName}: gender {sportGender}', {
-                    context: 'sport.nomenclature',
-                    signal: 'sportSportGenderDerived',
-                    params: {
-                        sportName: (row as {sportName?: string}).sportName,
-                        sportGender: (row as {sportGender?: string}).sportGender,
-                    },
-                });
-            }
-            log?.['info']?.('seeded {sports} sport(s) and {disciplines} discipline(s)', {
-                context: 'sport.nomenclature',
-                signal: 'sportSeedMerged',
-                params: {sports: sports.length, disciplines: rows.length},
-            });
+            this.signal?.sportSeedMerged?.({sports: sports.length, disciplines: rows.length});
 
             return {sport: sports.length, discipline: rows.length};
         },

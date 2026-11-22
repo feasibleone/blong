@@ -371,6 +371,26 @@ const vocabulary = declare({
         frameworkShutdownStarting: {level: 'info', message: 'shutting down'},
         /** A graceful shutdown failed and the process is exiting anyway. */
         frameworkShutdownFailed: {level: 'error', message: 'graceful shutdown failed: {error}'},
+        /**
+         * The Node runtime warned about this process.
+         *
+         * A deprecation, a listener leak, a warning a dependency raised: all of them arrive as a
+         * `warning` event, and none of them appeared in a process's own records before
+         * (@@D-959). Declared rather than written as a level call, like every other framework notice,
+         * so an operator can raise or silence this identifier on its own. A destination that refused a
+         * batch is *not* one of these: it is an error, and it has its own identifier below
+         * (@@D-960).
+         */
+        frameworkProcessWarning: {level: 'warn', message: '{name} {code}: {message}'},
+        /**
+         * The process's log destination refused a batch.
+         *
+         * An error rather than a warning, because the records in that batch are gone and nothing
+         * retries them: a reader filtering at `warn` must not find this beside a deprecation
+         * (@@D-960). Written by the framework's reporter from the code the writer emits, since the
+         * writer cannot write a record about its own failure (@@F-811).
+         */
+        frameworkLogDestinationFailed: {level: 'error', message: '{code}: {message}'},
         /** A TCP port is at its connection limit and has to drop one. */
         frameworkTcpConnectionLimit: {
             level: 'warn',

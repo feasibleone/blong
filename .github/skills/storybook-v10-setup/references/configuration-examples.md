@@ -132,7 +132,7 @@ jobs:
     storybook-tests:
         runs-on: ubuntu-26.04
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
 
             - uses: actions/setup-node@v4
               with:

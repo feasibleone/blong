@@ -42,6 +42,7 @@ export interface ConfigSources {
     files: string[];
     env: string[];
     argv: string[];
+    cwd: string | undefined;
 }
 
 /**
@@ -144,6 +145,7 @@ function load({
         argv: Object.keys(argv)
             .filter(key => key !== '_')
             .sort(),
+        cwd: (globalThis as {process?: {cwd: () => string}}).process?.cwd(),
     });
 
     configs.unshift(baseConfig);

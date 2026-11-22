@@ -121,3 +121,79 @@ test('a batch larger than a packet is split, and the header says how many', asyn
     t.same(splitPayload(Buffer.alloc(0), 100), [], 'an empty payload makes no packet');
     t.end();
 });
+
+/** Collect the warnings this process emits while `body` runs. */
+async function warningsOf(body: () => Promise<void>): Promise<string[]> {
+    const seen: string[] = [];
+    const listener = (warning: Error): void => {
+        const {code} = warning as Error & {code?: string};
+        seen.push(`${warning.name} ${code ?? ''}: ${warning.message}`);
+    };
+    process.on('warning', listener);
+    try {
+        await body();
+    } finally {
+        process.off('warning', listener);
+    }
+    return seen;
+}
+
+/** Wait for a condition the socket reports asynchronously, rather than sleeping a guessed interval. */
+async function eventually(ready: () => boolean, timeoutMs = 5000): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (!ready()) {
+        if (Date.now() > deadline) return;
+        await new Promise(resolve => setTimeout(resolve, 20));
+    }
+}
+
+test('a destination that cannot be reached is reported, not swallowed', async t => {
+    // `.invalid` is reserved for exactly this: it never resolves, so the socket's own `error` event
+    // is what a wrong `log.destination` looks like (@@F-789 @@F-811).
+    const writer = createUdpWriter({
+        host: 'no-collector.invalid',
+        port: 9999,
+        flushInterval: 60_000,
+    });
+    t.teardown(() => writer.close());
+
+    const warnings = await warningsOf(async () => {
+        t.doesNotThrow(() => {
+            writer.write('a record the destination will refuse');
+            writer.flush();
+        }, 'a destination never breaks its caller');
+        await eventually(() => writer.failures().count > 0);
+        // A second batch of the same kind: the count moves, the warning does not repeat.
+        writer.write('another record');
+        writer.flush();
+        await eventually(() => writer.failures().count > 1);
+    });
+
+    t.ok(writer.failures().count > 0, 'the writer counted the batches it could not send');
+    t.ok(writer.failures().last instanceof Error, 'and kept the error the socket reported');
+    t.equal(
+        warnings.length,
+        1,
+        'one warning for one kind of failure, however many batches it costs',
+    );
+    t.match(warnings[0] ?? '', /no-collector\.invalid:9999/, 'the warning names the destination');
+    t.match(warnings[0] ?? '', /BLONG_LOG_DESTINATION/, 'and carries a code a reader can grep');
+    // A lost batch is not a caution: the records are gone and nothing retries them (@@D-960). The
+    // channel is the runtime's, so the severity has to travel in what the event carries.
+    t.match(warnings[0] ?? '', /^Error /, 'and reads as an error rather than a warning');
+    t.end();
+});
+
+test('a writer nothing is written to has no failures to report', async t => {
+    const sink = await collector();
+    const writer = createUdpWriter({port: sink.port});
+    t.teardown(async () => {
+        writer.close();
+        await sink.close();
+    });
+    writer.write('a record that arrives');
+    writer.flush();
+    await new Promise(resolve => setTimeout(resolve, 100));
+    t.same(writer.failures(), {count: 0}, 'a destination that answers counts nothing against it');
+    t.end();
+});

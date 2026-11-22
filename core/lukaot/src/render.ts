@@ -178,9 +178,13 @@ function header(record: LogRecord, options: RenderOptions): string {
     // they were asked for. Everything a line needs to be greppable without them
     // is below: level, context, message id, operation and the message.
     if (options.details) parts.push(paint(ANSI.cyan, sanitise(record.service)));
-    if (record.context) parts.push(sanitise(record.context));
-    if (record.fields?.context)
-        parts.push(paint(ANSI.greenBright, sanitise(record.fields?.context)));
+    let context = record.context || record.fields?.context;
+    // The port's kind rides with its id — `demo.adapter(knex)` — because a realm has several ports
+    // on one layer and the id alone cannot tell them apart (@@F-800). Read from the field bag,
+    // where the port's own bindings land.
+    const kind = record.fields?.portType;
+    if (context && typeof kind == 'string' && kind) context = `${context}(${kind})`;
+    if (context) parts.push(paint(ANSI.greenBright, sanitise(context)));
     if (record.messageId) parts.push(paint(ANSI.magenta, sanitise(record.messageId)));
     if (record.operation) parts.push(paint(ANSI.yellow, sanitise(record.operation)));
     if (record.flow) {
@@ -235,7 +239,7 @@ function keyValues(prefix: string, values: Record<string, string> | undefined): 
 /** Values that have no meaningful text form in a log line. */
 function isSkippedField(key: string, value: unknown): boolean {
     return (
-        /^config$|^configBase$/.test(key) ||
+        /^config$|^configBase$|^params$|^signal$|^portType$/.test(key) ||
         value === undefined ||
         typeof value === 'function' ||
         typeof value === 'symbol'

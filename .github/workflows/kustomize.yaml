@@ -103,6 +103,37 @@ jobs:
         run: |
           kubectl apply -k test/integration/
           kubectl -n blong-integration wait --for=condition=Available deployment/mysql --timeout=300s
+      - name: The tenant's own configuration
+        # The suite's tree mounts two rc documents and writes neither — both are `optional: true`,
+        # because what a deployment dials is the tenant's answer and not the framework's @@D-855.
+        # A cluster that supplies none is a legitimate deployment, and the runbook's login check then
+        # has nothing to provision against: its own message names the missing Secret ("the deployment
+        # names no database this run can reach"), which is what this job hit once the run started
+        # provisioning its own account instead of assuming a test seed @@D-952 @@F-810.
+        #
+        # So this job is the tenant, and it supplies the one thing its deployment needs and does not
+        # name itself: the credentials for the database the suite dials. `host: db` is the
+        # ExternalName the tree writes into the suite's namespace, and the pair below is the user the
+        # integration manifest creates — the same document a tenant would mount to run this suite
+        # against their own MySQL.
+        run: |
+          kubectl create namespace blong-suite --dry-run=client -o yaml | kubectl apply -f -
+          cat > "$RUNNER_TEMP/tenant-rc.yaml" <<'RC'
+          srv:
+            db:
+              knex:
+                connection:
+                  host: db
+                  port: 3306
+                  user: blong-test
+                  password: password
+                  database: blong-integration
+          RC
+          kubectl -n blong-suite create secret generic blong-releaserc-etc \
+            --from-file=blong_releaserc="$RUNNER_TEMP/tenant-rc.yaml" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n blong-suite get secret blong-releaserc-etc -o jsonpath='{.data.blong_releaserc}' \
+            | base64 -d
       - name: Build the suite's browser bundle
         # The suite's `build` script is `vite build`, and a deploy copies each package whole, so the
         # bundle has to exist *before* the deploy or the artifact carries sources and no page — which

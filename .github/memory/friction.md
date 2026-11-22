@@ -84,7 +84,7 @@ open (70)
 - `F-759` · cross-cutting — An answered prompt is dropped when the asking process was killed
 - `F-782` · cross-cutting — TSServer SIGABRT is heap OOM at the 3072 MB default
 
-resolved (52)
+resolved (53)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -141,6 +141,7 @@ resolved (52)
 - `F-756` · cross-cutting — The markdown formatter flattens a plan's lazy continuations
 - `F-781` · cross-cutting — Tests green, commit blocked: an optional field is a compile-time change
 - `F-796` · cross-cutting — A single-realm port listed its group by pattern
+- `F-810` · ci — The e2e deployment had no tenant rc, so no login could be provisioned
 
 <!-- /memory:index -->
 
@@ -502,8 +503,8 @@ which keeps the local side.
 > _2026-10-07 · ci · open_
 
 Running `rush update --full` to repair the store passes `--no-prefer-frozen-lockfile` and
-`--config.resolutionMode=highest`, so pnpm re-resolves every range: typebox went from 1.1.8
-to 1.3.36, which no longer exports `Type.Awaited`. That run then failed on the native build of
+`--config.resolutionMode=highest`, so pnpm re-resolves every range: typebox went from 1.1.8 to
+1.3.36, which no longer exports `Type.Awaited`. That run then failed on the native build of
 node-rdkafka and left the rewritten lockfile in place. Image and artifacts are built from that
 lockfile, so every tenant pod of the suite started, logged its adapters as ready and died inside
 `Registry._validations` with `TypeError: Type.Awaited is not a function` at
@@ -853,8 +854,8 @@ Node takes the default condition of the exports map and loads core/blong/dist/ty
 runtime export added to types.ts therefore works locally and fails only in CI. The Build #629
 failure read SyntaxError: The requested module '@feasibleone/blong' does not provide an export named
 'handlerGroup' at realm/blong-core/adapter/db/handlerGroup.ts:1. Prove the CI path before concluding
-anything about a local pass: run the probe with NODE_OPTIONS cleared, e.g. env -u NODE_OPTIONS
-node --input-type=module -e "console.log(import.meta.resolve('@feasibleone/blong'))".
+anything about a local pass: run the probe with NODE_OPTIONS cleared, e.g. env -u NODE_OPTIONS node
+--input-type=module -e "console.log(import.meta.resolve('@feasibleone/blong'))".
 
 ### F-575 — Docs check needs Kafka for an unrelated artefact
 
@@ -1528,9 +1529,9 @@ is obvious while editing. The fix for the alignment rule is to run the repo's pr
 (rush-prettier, installed under common/temp) with --write on the file, so the order is: edit,
 prettier, then lint.
 
-blong-dev lint --fix now runs prettier (the pinned rush-prettier autoinstaller), then
-markdownlint --fix, then prettier again, so the edit-prettier-lint order is one command; the memory
-pattern page was rewritten with it and the diff stayed at 44 insertions with no unrelated rewraps
+blong-dev lint --fix now runs prettier (the pinned rush-prettier autoinstaller), then markdownlint
+--fix, then prettier again, so the edit-prettier-lint order is one command; the memory pattern page
+was rewritten with it and the diff stayed at 44 insertions with no unrelated rewraps
 
 ### F-467 — A mask hides a wrong shot; redaction showed one
 
@@ -2037,8 +2038,38 @@ sweeps in any other folder that happens to end the same way, and the failure it 
 attached to a port nobody wrote it for. The habit came from copying examples that legitimately used
 patterns; blong-layer, blong-adapter and blong-orchestrator now say when each form applies.
 
-Verified: realm/blong-viewer/adapter/log.ts:54 imports its own group by name, ['viewer.log'];
+Verified: realm/blong-viewer/adapter/log.ts:54 imports its own group by name, `['viewer.log']`;
 blong-layer, blong-adapter and blong-orchestrator now say when a pattern is the right form.
+
+### F-810 — The e2e deployment had no tenant rc, so no login could be provisioned
+
+> _2026-11-22 · ci · resolved_
+
+The kustomize e2e failed at "the deployment names no database this run can reach". The runbook had
+started provisioning its own login instead of assuming a test seed, and to do that it reads the
+deployment's own configuration — the rc Secret `blong-releaserc-etc`, which the suite's tree mounts
+and never writes, because both rc Secrets are `optional: true` and what a deployment dials is the
+tenant's answer. The workflow never supplied one, so in CI there was no connection to read and no
+database to create a login in.
+
+It could not be seen locally: a developer's cluster has carried that Secret since the first cycle,
+so the read succeeds and the check passes. The message the run prints names the reason and even the
+remedy ("mount one, or point the suite at a database the run can dial"), which is how it was found.
+
+The fix is in the job, because the job is the tenant: a step writes the document a real tenant would
+mount — `srv.db.knex.connection` naming `db`, the ExternalName the tree puts in the suite's
+namespace, with the user the integration manifest creates. Two lessons. A check that reads
+tenant-owned configuration is only exercised where a tenant exists, and CI is one — an e2e that
+passes on a developer's machine because of state an earlier run left is a check nobody has run. And
+optional mounts make absence ordinary, so the run's own sentence has to name what is missing and who
+supplies it, which is the one thing this failure did right.
+
+Fixed in the e2e job: a step before the first deploy writes the document a tenant mounts —
+blong-releaserc-etc in the suite's namespace, key blong_releaserc, naming srv.db.knex.connection
+with host db, the integration user and its database. Verified against the dev cluster with the
+runbook's own deploymentDatabase: the document resolves to the mysql.blong-integration forward, and
+deleting the Secret reproduces the CI failure. The runbook's message now names the key and the
+field, and says the rc is the tenant's.
 
 ## Retired
 

@@ -44,6 +44,23 @@ export interface IUdpWriter extends Writer {
     flush(): void;
     /** Flush and close the socket; safe to call twice. */
     close(): void;
+    /**
+     * The batches this writer could not send.
+     *
+     * Readable rather than only visible on stderr, because the caller that cares is usually a
+     * *different* one: a test that points the writer at a port nothing listens on, or a tool that
+     * reports why a process's records never arrived. A destination never breaks its caller, so this
+     * is how a failure is still observable.
+     */
+    failures(): IUdpWriterFailures;
+}
+
+/** What a writer has seen go wrong: how often, and with what. */
+export interface IUdpWriterFailures {
+    /** How many batches failed outright — one count per failed send, not per record. */
+    count: number;
+    /** The last failure the socket reported. */
+    last?: Error;
 }
 
 const DEFAULTS = {
@@ -53,6 +70,12 @@ const DEFAULTS = {
     flushInterval: 100,
     maxPacketSize: 65000,
 };
+
+/**
+ * The code this writer's failures carry, so a reader — or the framework's warning reporter — can tell
+ * a lost batch from any other runtime warning (`@@D-960`).
+ */
+export const LOG_DESTINATION_CODE = 'BLONG_LOG_DESTINATION';
 
 /**
  * A writer that ships records to a collector over UDP.
@@ -69,12 +92,39 @@ export function createUdpWriter(options: IUdpWriterOptions = {}): IUdpWriter {
         maxPacketSize: settings.maxPacketSize,
     };
     const socket = dgram.createSocket('udp4');
+    let failures = 0;
+    let lastFailure: Error | undefined;
+    /** The failure kinds already reported, so a broken destination does not write a line per batch. */
+    const reported = new Set<string>();
     // A send is fire-and-forget, so the only way its failure arrives is the socket's own `error`
     // event — a name that does not resolve, a route that is gone. An emitter with no listener for it
     // *throws*, which turns "the collector is unreachable" into "the process that was logging exits";
-    // the contract above says the opposite, so the event is consumed here and the batch is what it
-    // costs (`@@F-789`).
-    socket.on('error', () => undefined);
+    // the contract above says the opposite, so the event is consumed here.
+    //
+    // Consumed, and not discarded: a destination that silently receives nothing is a day nobody can
+    // explain — the viewer was once pointed at a port no process sent to, and every layer of the
+    // framework behaved exactly as documented (@@F-789 @@F-811). So the first failure of each
+    // kind is reported on stderr, and every one is counted for a caller that asks.
+    //
+    // A warning event rather than a record: this writer is the log destination, and a record about its
+    // own failure would go through it — the loop that ends with a process writing to itself forever.
+    // The severity is still an error, because the batch is gone and nothing retries it: `type: 'Error'`
+    // is what the terminal prints, and the framework's reporter writes the record at error level
+    // (@@D-960).
+    const note = (error: Error & {code?: string}): void => {
+        failures += 1;
+        lastFailure = error;
+        const kind = error.code ?? error.message;
+        if (reported.has(kind)) return;
+        reported.add(kind);
+        process.emitWarning(
+            `the log destination ${settings.host}:${settings.port} refused a batch ` +
+                `(${kind}: ${error.message}); records keep being written and these are lost ` +
+                'until the destination answers',
+            {code: LOG_DESTINATION_CODE, type: 'Error'},
+        );
+    };
+    socket.on('error', note);
     // The socket is `unref`d for the same reason the timer is: an open handle is enough to keep the
     // event loop alive, and a destination that did would turn every run into one that never exits —
     // a test suite that finishes its work and then waits to be killed (`@@D-930`).
@@ -89,8 +139,12 @@ export function createUdpWriter(options: IUdpWriterOptions = {}): IUdpWriter {
         batch = [];
         try {
             sendBatch(socket, lines, target);
-        } catch {
-            // A destination never breaks its caller, and a lost batch costs lines in a viewer.
+        } catch (error) {
+            // A destination never breaks its caller, and a lost batch costs lines in a viewer. A send
+            // that could not even be attempted is the same failure the socket event reports — a
+            // socket closed under the batch, say — so it is counted and reported the same way rather
+            // than dropped because it happened to arrive as a throw (@@F-811).
+            note(error as Error);
         }
     };
 
@@ -114,6 +168,7 @@ export function createUdpWriter(options: IUdpWriterOptions = {}): IUdpWriter {
             if (batch.length >= settings.batchSize) flush();
         },
         flush,
+        failures: () => ({count: failures, ...(lastFailure ? {last: lastFailure} : {})}),
         close(): void {
             if (closed) return;
             flush();
