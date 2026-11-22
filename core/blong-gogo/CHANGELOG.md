@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.54.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.54.2...blong-gogo-v1.54.3) (2026-11-22)
+
+
+### Bug Fixes
+
+* improve stub generation for API definitions ([bf0f7ce](https://github.com/feasibleone/blong/commit/bf0f7cea5f8bc2539e388781e1d3d3a8140d7a3e))
+
 ## [1.54.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.54.1...blong-gogo-v1.54.2) (2026-11-22)
 
 

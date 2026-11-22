@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.2](https://github.com/feasibleone/blong/compare/blong-log-v1.10.1...blong-log-v1.10.2) (2026-11-22)
+
+
+### Bug Fixes
+
+* improve stub generation for API definitions ([bf0f7ce](https://github.com/feasibleone/blong/commit/bf0f7cea5f8bc2539e388781e1d3d3a8140d7a3e))
+
 ## [1.10.1](https://github.com/feasibleone/blong/compare/blong-log-v1.10.0...blong-log-v1.10.1) (2026-11-22)
 
 
