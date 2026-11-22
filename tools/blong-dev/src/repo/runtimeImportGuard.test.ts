@@ -32,7 +32,8 @@ const DEPLOYED = ['realm', 'suite', 'demo'];
 const RUNTIME = /(?:from\s*|import\s*\(\s*)['"]@feasibleone\/blong-gogo(?:\/[^'"]*)?['"]/;
 
 /** What a deployed artifact never loads, so an import there costs nothing. */
-const EXEMPT = /(^|\/)(bin|test)\/|\/[^/]*\.test\.tsx?$|(^|\/)(index\.html\.ts|test\.ts)$/;
+const EXEMPT =
+    /(^|\/)(bin|test)\/|\/[^/]*\.test\.tsx?$|(^|\/)(index\.html\.ts|test\.ts)$|(^|\/)generate\.tool\.ts/;
 
 /** Whether a path is source a deployment runs. */
 export function isDeployedSource(path: string): boolean {
