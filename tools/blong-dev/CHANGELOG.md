@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.1](https://github.com/feasibleone/blong/compare/blong-dev-v1.21.0...blong-dev-v1.21.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* CI failure ([5974513](https://github.com/feasibleone/blong/commit/59745136a258c0fad238c75001e23313b1cd1cbf))
+
 ## [1.21.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.20.0...blong-dev-v1.21.0) (2026-11-21)
 
 

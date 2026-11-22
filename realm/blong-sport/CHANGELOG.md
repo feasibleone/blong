@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.2](https://github.com/feasibleone/blong/compare/blong-sport-v0.13.1...blong-sport-v0.13.2) (2026-11-22)
+
+
+### Bug Fixes
+
+* CI failure ([5974513](https://github.com/feasibleone/blong/commit/59745136a258c0fad238c75001e23313b1cd1cbf))
+
 ## [0.13.1](https://github.com/feasibleone/blong/compare/blong-sport-v0.13.0...blong-sport-v0.13.1) (2026-11-22)
 
 

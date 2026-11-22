@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.48.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.48.0...blong-docs-v1.48.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* CI failure ([5974513](https://github.com/feasibleone/blong/commit/59745136a258c0fad238c75001e23313b1cd1cbf))
+* docs ([6bbcdba](https://github.com/feasibleone/blong/commit/6bbcdba6579c18f82de73d2c1af49aab6b568b30))
+* improve stub generation for API definitions ([bf0f7ce](https://github.com/feasibleone/blong/commit/bf0f7cea5f8bc2539e388781e1d3d3a8140d7a3e))
+
 ## [1.48.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.47.0...blong-docs-v1.48.0) (2026-11-21)
 
 
