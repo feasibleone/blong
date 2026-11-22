@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.54.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.54.1...blong-gogo-v1.54.2) (2026-11-22)
+
+
+### Bug Fixes
+
+* udp writer and signal handling ([af3e381](https://github.com/feasibleone/blong/commit/af3e381e8d4b3d463a89b0793cef03a0b3e1bdca))
+
 ## [1.54.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.54.0...blong-gogo-v1.54.1) (2026-11-22)
 
 

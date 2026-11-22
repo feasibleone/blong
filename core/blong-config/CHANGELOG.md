@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/feasibleone/blong/compare/blong-config-v1.2.2...blong-config-v1.2.3) (2026-11-22)
+
+
+### Bug Fixes
+
+* udp writer and signal handling ([af3e381](https://github.com/feasibleone/blong/commit/af3e381e8d4b3d463a89b0793cef03a0b3e1bdca))
+
 ## [1.2.2](https://github.com/feasibleone/blong/compare/blong-config-v1.2.1...blong-config-v1.2.2) (2026-10-17)
 
 
