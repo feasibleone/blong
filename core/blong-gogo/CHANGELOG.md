@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.54.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.53.0...blong-gogo-v1.54.0) (2026-11-21)
+
+
+### Features
+
+* blong-viewer realm ([320d648](https://github.com/feasibleone/blong/commit/320d64869a309fa43dba926823eea260244ce7ac))
+
+
+### Bug Fixes
+
+* CI failure ([4ded03b](https://github.com/feasibleone/blong/commit/4ded03b0f333485b61f3f5c1fca648c79a90778d))
+* CI failure ([033fd72](https://github.com/feasibleone/blong/commit/033fd720a2834d60256aab1febaefa5b528dbfcf))
+* gateway stream keep alive ([685d66b](https://github.com/feasibleone/blong/commit/685d66b74952a60bc054d4b1d7611a9f8ac382b6))
+
 ## [1.53.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.52.1...blong-gogo-v1.53.0) (2026-11-20)
 
 

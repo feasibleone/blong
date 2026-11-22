@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.10.0](https://github.com/feasibleone/blong/compare/blong-log-v1.9.0...blong-log-v1.10.0) (2026-11-21)
+
+
+### Features
+
+* blong-viewer realm ([320d648](https://github.com/feasibleone/blong/commit/320d64869a309fa43dba926823eea260244ce7ac))
+
+
+### Bug Fixes
+
+* CI failure ([4ded03b](https://github.com/feasibleone/blong/commit/4ded03b0f333485b61f3f5c1fca648c79a90778d))
+
 ## [1.9.0](https://github.com/feasibleone/blong/compare/blong-log-v1.8.0...blong-log-v1.9.0) (2026-11-20)
 
 
