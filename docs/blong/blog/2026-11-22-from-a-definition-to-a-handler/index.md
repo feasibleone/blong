@@ -111,5 +111,5 @@ command line or over the API — the same tree, without a process watching a fil
 Between the two, the definition stops being a document that describes the code and becomes the thing
 the code is generated from — and the drift has nowhere left to happen.
 
-Read the full mechanics in the [api generation pattern](../docs/patterns/api-generation.md), and run
+Read the full mechanics in the [api generation pattern](/docs/patterns/api-generation), and run
 `demo/blong-generate` to watch three published documents become seven handlers across two realms.

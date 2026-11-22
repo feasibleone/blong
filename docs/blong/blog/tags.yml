@@ -45,3 +45,13 @@ chat:
   label: Chat
   permalink: /chat
   description: Bots on Slack and Viber, and the port that carries both halves of a conversation.
+
+api:
+  label: API
+  permalink: /api
+  description: API paradigms
+
+developer-experience:
+  label: DexEx
+  permalink: /dev-exp
+  description: Developer experience
