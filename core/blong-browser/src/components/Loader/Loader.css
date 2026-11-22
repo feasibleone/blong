@@ -43,6 +43,8 @@
 .blong-loader-message {
     margin-top: 20px;
     font-size: 16px;
-    font-family: Roboto, Arial;
+    /* The page's own font: a loader has no typographic opinion, and naming `Roboto` asked the
+       browser for a face the portal does not bundle (`@@T-753`). */
+    font-family: inherit;
     z-index: 1;
 }

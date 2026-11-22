@@ -217,8 +217,13 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                     error = undefined as string | undefined;
                 const code = reply.statusCode.toString().slice(0, 1) + 'xx';
                 if ('result' in where)
+                    // An absent answer is `null` here too (`@@D-956`): the serializer renders `undefined`
+                    // through an empty schema as the four characters `undefined`, which is not JSON, so a
+                    // sealed envelope would carry text the reader parses and fails on — while the plain
+                    // one drops the key and is refused as `jsonrpcEmpty`. The gateway answers `null`
+                    // already; this is the same rule for a route that answers nothing on its own.
                     result = reply.serializeInput(
-                        where.result as Record<string, unknown>,
+                        (where.result ?? null) as Record<string, unknown>,
                         code,
                     ) as string;
                 if (payload.jsonrpc && 'error' in where)

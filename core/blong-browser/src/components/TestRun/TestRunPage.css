@@ -11,11 +11,12 @@
     overflow: hidden;
     background: var(--surface-ground, #f8f9fa);
     color: var(--text-color);
+    /* The theme's family, without `Roboto`: the portal bundles no face for it, and naming one a
+       style-sheet declared is what makes the browser fetch it (`@@T-753`). */
     font-family: var(--font-family,
             -apple-system,
             BlinkMacSystemFont,
             'Segoe UI',
-            Roboto,
             Helvetica,
             Arial,
             sans-serif);

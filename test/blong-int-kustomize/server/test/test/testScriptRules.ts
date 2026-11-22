@@ -1,7 +1,6 @@
 import {handler, type IAssert} from '@feasibleone/blong';
 import {USAGE, realmCommand} from '../../../bin/blongIntKustomizeCommand.ts';
 import {latestMigrationJob} from '../../../lib/checks.ts';
-import {cycleOptions} from '../../../orchestrator/runbook/runbookMachinePrepare.ts';
 import {
     artifactSourceError,
     pageAnswer,
@@ -13,6 +12,7 @@ import {
     upgradeArguments,
     validationRefusal,
 } from '../../../lib/rules.ts';
+import {cycleOptions} from '../../../orchestrator/runbook/runbookMachinePrepare.ts';
 
 /**
  * server/test/test/testScriptRules.ts — the decisions the k3d runbook makes, tested without a cluster.
@@ -44,8 +44,13 @@ export default handler(({lib: {group}}) => ({
                     'and the deployment intents sit between upgrade and release, in that order',
                 );
                 assert.match(
-                    upgradeArguments(['./index.ts', 'upgrade', 'release', '--db.port=3306', 'db'])
-                        ?? '',
+                    upgradeArguments([
+                        './index.ts',
+                        'upgrade',
+                        'release',
+                        '--db.port=3306',
+                        'db',
+                    ]) ?? '',
                     /after a flag/,
                     'while a positional after one is refused: the parser reads it as that flag value',
                 );
@@ -82,20 +87,54 @@ export default handler(({lib: {group}}) => ({
                     ['<unparsed>'],
                     'an unreadable body that looks like a key is reported',
                 );
-                assert.deepEqual(privateKeyFields('not json at all'), [], 'and one that does not, is not');
+                assert.deepEqual(
+                    privateKeyFields('not json at all'),
+                    [],
+                    'and one that does not, is not',
+                );
             },
 
             async function theRoundTripsReadAsTheyDid(assert: IAssert) {
                 assert.equal(pageAnswer('<!doctype html><html>'), true, 'a page is a page');
                 assert.equal(pageAnswer('<!DOCTYPE HTML>'), true, 'whatever case it arrives in');
                 assert.equal(pageAnswer('{"error":"not found"}'), false, 'and an answer is not');
-                assert.equal(tokenAnswer('{"result":{"access_token":"x"}}'), true, 'a token is a token');
                 assert.equal(
-                    validationRefusal('{"error":{"message":"isActive must be boolean"}}'),
+                    tokenAnswer('{"result":{"access_token":"x"}}'),
                     true,
-                    'and a refusal names the type the model wanted (F-437)',
+                    'a token is a token',
                 );
-                assert.equal(validationRefusal('{"result":{}}'), false, 'while everything else is not');
+                assert.equal(
+                    validationRefusal({
+                        status: 400,
+                        body: '{"error":{"type":"gateway.validationFailed","message":"isActive: must be boolean"}}',
+                    }),
+                    undefined,
+                    'and a refusal is the 400 that names the type the model wanted (F-437)',
+                );
+                assert.match(
+                    validationRefusal({
+                        status: 500,
+                        body: '{"error":{"message":"must be boolean"}}',
+                    }) ?? '',
+                    /answered 500/,
+                    'an unhandled failure is not a refusal, however it is worded (@@D-957)',
+                );
+                assert.match(
+                    validationRefusal({
+                        status: 400,
+                        body: '{"error":{"message":"must be boolean"}}',
+                    }) ?? '',
+                    /not typed as a validation failure/,
+                    'and a 400 without the type is one a run cannot tell from another refusal',
+                );
+                assert.match(
+                    validationRefusal({
+                        status: 400,
+                        body: '{"error":{"type":"gateway.validationFailed"}}',
+                    }) ?? '',
+                    /does not name the field's type/,
+                    'while the field is what a person reads to fix the call',
+                );
             },
 
             async function theRunRefusesWhatItCannotDo(assert: IAssert) {
@@ -119,7 +158,11 @@ export default handler(({lib: {group}}) => ({
                     ['--kustomize.deploy.services.mysql=false'],
                     'the switch a deployment runs its own database with is one spelling',
                 );
-                assert.deepEqual(serviceOffArguments(undefined), [], 'and none when nothing is switched');
+                assert.deepEqual(
+                    serviceOffArguments(undefined),
+                    [],
+                    'and none when nothing is switched',
+                );
                 // And the other direction, which needs a state to switch off: the tenant's own database,
                 // with the databases the `k8s` plan cannot read off the block that dials it, and the
                 // credentials a generated one needs (`@@T-277` `@@D-509`).
@@ -132,7 +175,11 @@ export default handler(({lib: {group}}) => ({
                     ],
                     'one flag per database, because a repeated flag is the only list a command line has',
                 );
-                assert.deepEqual(serviceOnArguments(undefined, ['ignored']), [], 'and none when nothing is brought');
+                assert.deepEqual(
+                    serviceOnArguments(undefined, ['ignored']),
+                    [],
+                    'and none when nothing is brought',
+                );
             },
 
             async function theLatestMigrationJobIsTheOneWaitedFor(assert: IAssert) {

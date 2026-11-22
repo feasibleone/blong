@@ -619,22 +619,30 @@ const loginRoundTrip = async (
         // serving payloads no model allows (F-437). Asking for a type violation is what tells the two
         // apart, and the call is an `edit` of an id no suite has, so a run without validations writes
         // nothing.
-        const refusal = await request(`http://127.0.0.1:${proxyPort}/rpc/access/access/edit`, {
-            method: 'POST',
-            headers: {'content-type': 'application/json'},
-            body: JSON.stringify({
-                params: {
-                    access: {
-                        accessId: '00000000-0000-0000-0000-000000000000',
-                        isActive: 'not-a-boolean',
+        const refusal = await requestAnswer(
+            `http://127.0.0.1:${proxyPort}/rpc/access/access/edit`,
+            {
+                method: 'POST',
+                headers: {'content-type': 'application/json'},
+                body: JSON.stringify({
+                    // Declared, because this run makes the refusal on purpose: an expected error is
+                    // recorded at debug level instead of error, so the deployment's own log does not
+                    // report a failing call that was a probe (`@@D-957`).
+                    expect: 'gateway.validationFailed',
+                    params: {
+                        access: {
+                            accessId: '00000000-0000-0000-0000-000000000000',
+                            isActive: 'not-a-boolean',
+                        },
                     },
-                },
-            }),
-        });
-        if (validationRefusal(refusal)) {
+                }),
+            },
+        );
+        const judged = validationRefusal(refusal);
+        if (judged === undefined) {
             io.log('and the published validation refuses a payload the model does not allow');
         } else {
-            io.warn(`the gateway answered no validation refusal: ${refusal}`);
+            io.warn(`the gateway answered no validation refusal: ${judged}`);
         }
     } finally {
         stop();
@@ -643,11 +651,21 @@ const loginRoundTrip = async (
 
 /** One request, with its failure as an empty answer: an unreachable portal is a warning, not a crash. */
 const request = async (url: string, init?: RequestInit): Promise<string> => {
+    const answered = await requestAnswer(url, init);
+    return answered.body;
+};
+
+/** One answer, as a caller that judges it needs to see it: the status, and the body it carried. */
+const requestAnswer = async (
+    url: string,
+    init?: RequestInit,
+): Promise<{status: number; body: string}> => {
     try {
         const response = await fetch(url, {...init, signal: AbortSignal.timeout(20_000)});
-        return await response.text();
+        return {status: response.status, body: await response.text()};
     } catch {
-        return '';
+        // A transport failure is not an answer: the status says so, and the empty body says nothing.
+        return {status: 0, body: ''};
     }
 };
 

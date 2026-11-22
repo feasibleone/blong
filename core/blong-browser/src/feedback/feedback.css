@@ -95,8 +95,9 @@
     font-size: 1rem;
     /* The theme's own family: a callout is a note about the page, not a different
        kind of page. The fallback is the theme's stack, because `inherit` would pass
-       on a serif a host never replaced. */
-    font-family: var(--font-family, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+       on a serif a host never replaced — without `Roboto`, which the portal does not
+       bundle and which a style-sheet it imports declares a face for (`@@T-753`). */
+    font-family: var(--font-family, system-ui, -apple-system, 'Segoe UI', sans-serif);
     color: var(--text-color, #111827);
     background: color-mix(in srgb, var(--surface-card, #ffffff) 94%, transparent);
     border: 1px solid var(--callout-color);

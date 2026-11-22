@@ -26,16 +26,19 @@ export REFRESH=1                         # drop the caches and restart everythin
 export SERVICE_OFF=mysql                 # deploy the suite without mysql, leaving the database to
                                          # the installation in blong-integration; set it only for a
                                          # run that is not about that service (its workload still
-                                         # belongs to the deployment: see DROP_SERVICES)
-export DROP_SERVICES=1                   # once the cycle ends, delete the workloads of the
-                                         # switched-off service and tell the CR to stop naming it,
-                                         # because a pass would otherwise rebuild it within the
-                                         # minute; the next cycle re-applies the CR and it returns,
-                                         # so 0 keeps it. The namespace and the Role in it stay —
-                                         # deleting the namespace took the grants with it, so every
-                                         # later pass failed to read what it was meant to report
-                                         # (F-461) — and the credentials copy the deployment wrote
-                                         # into the suite's namespace goes too
+                                         # belongs to the tenant: see DROP_WORKLOADS)
+export STOP_NAMING=1                     # after the cycle, tell the CR to stop asking for the
+                                         # switched-off service: a pass reconciles the declaration, so
+                                         # while it names the service it puts it back within the
+                                         # minute. This is the half that makes the switch stick, and
+                                         # the only half the deployment owns
+export DROP_WORKLOADS=0                  # 0 keeps the workload, its claim and its Service in the
+                                         # services namespace. They are the tenant's to retire, not
+                                         # this script's (D-461), and the *next* cycle asserts they
+                                         # are still there — so 1 makes the next run red on its own
+                                         # switch-off check unless that run leaves SERVICE_OFF unset
+                                         # (F-792). 1 frees the cluster; it is not the default
+                                         # because a cycle has to be re-runnable
 
 # How much the runbook asks.
 #
@@ -49,28 +52,52 @@ export ASSUME_YES=1                      # answer its confirmations with yes; 1 
 export CLUSTER=dev-cluster               # the k3d cluster to use; the runbook never creates one it
                                          # did not find (F-446)
 
-# The cycle, then the drop it is told to make.
+# The cycle, then what it leaves behind.
 node --conditions=development ../../test/blong-int-kustomize/bin/blongIntKustomize.ts cycle run
 status=$?
 
-# After the run rather than before it: the CR the run applied names the service, so an earlier drop
-# would only make the cycle pay for a fresh one.
-if [ "${DROP_SERVICES:-0}" = 1 ]; then
+# The old name for the pair below, honoured rather than ignored: a run that still sets it meant both
+# halves, and a variable that quietly did nothing would read as a run that had cleaned up.
+if [ "${DROP_SERVICES:-}" = 1 ]; then
+    echo "DROP_SERVICES is now STOP_NAMING=1 DROP_WORKLOADS=1; this run takes it as both"
+    STOP_NAMING=1
+    DROP_WORKLOADS=1
+fi
+
+# After the run rather than before it: the CR the run applied names the service, so an earlier patch
+# would be reconciled away by the run's own apply.
+if [ "${STOP_NAMING:-0}" = 1 ]; then
     if [ -z "${SERVICE_OFF:-}" ]; then
-        echo "DROP_SERVICES=1 but SERVICE_OFF names nothing: no service was switched off to drop"
+        echo "STOP_NAMING=1 but SERVICE_OFF names nothing: no service was switched off to stop naming"
     elif ! command -v kubectl >/dev/null 2>&1; then
-        echo "DROP_SERVICES=1 but kubectl is not on PATH: leaving blong-services alone"
+        echo "STOP_NAMING=1 but kubectl is not on PATH: leaving blong-services alone"
     else
         context="k3d-$CLUSTER"
         patchBody="{\"spec\":{\"services\":{\"$SERVICE_OFF\":false}}}"
-        # The declaration first: a pass reconciles the CR, so while it names the service it puts it
-        # back in its next pass — thirty seconds later.
         if kubectl --context "$context" -n blong-suite patch blongdeployments blong-suite \
                 --type=merge -p "$patchBody" >/dev/null 2>&1; then
             echo "blong-suite no longer asks for $SERVICE_OFF"
         else
             echo "no blong-suite custom resource to patch: a pass may bring $SERVICE_OFF back"
         fi
+        # The copies the deployment wrote into its own namespace outlive the tree that asked for
+        # them, because removing them is pruning and a pass only prunes what it is told to: the
+        # run's own check fails on the credentials copy the next time the service is switched off.
+        kubectl --context "$context" -n blong-suite delete secret "$SERVICE_OFF-credentials" \
+                --ignore-not-found
+    fi
+fi
+
+# The tenant's objects, which the deployment does not own and the next cycle judges: a run that drops
+# them has to be followed by one that names no SERVICE_OFF, or its switch-off check fails on a
+# namespace this script emptied (F-792).
+if [ "${DROP_WORKLOADS:-0}" = 1 ]; then
+    if [ -z "${SERVICE_OFF:-}" ]; then
+        echo "DROP_WORKLOADS=1 but SERVICE_OFF names nothing: no service was switched off to drop"
+    elif ! command -v kubectl >/dev/null 2>&1; then
+        echo "DROP_WORKLOADS=1 but kubectl is not on PATH: leaving blong-services alone"
+    else
+        context="k3d-$CLUSTER"
         # The workloads, not the namespace: that namespace holds the tenant Role and RoleBinding
         # the runbook applied so the operator can read and apply there, and the operator may not
         # re-create them — the RBAC kinds are install-owned. Deleting it took the grants with it and
@@ -80,14 +107,11 @@ if [ "${DROP_SERVICES:-0}" = 1 ]; then
             kubectl --context "$context" -n blong-services \
                 delete deployment,service,persistentvolumeclaim,configmap,secret,job,cronjob \
                 -l "app.kubernetes.io/part-of=blong-suite" --ignore-not-found
+            echo "dropped $SERVICE_OFF's workload: run the next cycle with SERVICE_OFF unset, "
+            echo "or its switch-off check fails on the objects this run removed"
         else
             echo "blong-services is not in the cluster: nothing to drop"
         fi
-        # The copies the deployment wrote into its own namespace outlive the tree that asked for
-        # them, because removing them is pruning and a pass only prunes what it is told to: the
-        # run's own check fails on the credentials copy the next time the service is switched off.
-        kubectl --context "$context" -n blong-suite delete secret "$SERVICE_OFF-credentials" \
-                --ignore-not-found
     fi
 fi
 

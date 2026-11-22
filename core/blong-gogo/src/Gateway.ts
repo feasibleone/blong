@@ -59,7 +59,9 @@ import {
 import {type TypeBoxTypeProvider} from '@fastify/type-provider-typebox';
 import type {IResolution} from './Resolution.ts';
 import type {IRpcClient} from './RpcClient.ts';
+import {jsonRpcAnswer} from './gatewayAnswer.ts';
 import {caughtError} from './gatewayCaught.ts';
+import {invalidFields, problemsOf} from './gatewayValidation.ts';
 import jwt from './jwt.ts';
 import {isExpectedError, methodId, methodParts, snakeToCamel} from './lib.ts';
 import type {IConfig as IConfigMLE} from './mle.ts';
@@ -139,6 +141,13 @@ const errorMap: IErrorMap = {
     'gateway.noActions': {
         message: 'Authorization denied: no actions resolved',
         statusCode: 403,
+    },
+    // A body, query or params that does not match the schema the route declares. Typed and 400
+    // because a caller's mistake is not the process's: the same refusal used to reach the client as
+    // "internal server error" and the log as an unhandled error with a stack (`@@D-957`).
+    'gateway.validationFailed': {
+        message: 'The request does not match the schema: {problems}',
+        statusCode: 400,
     },
 };
 
@@ -985,14 +994,15 @@ export default class Gateway extends Internal implements IGateway {
                                     ),
                                 )) ?? null;
                             this._applyMeta(reply, resultMeta as {httpResponse?: unknown});
-                            return {
-                                jsonrpc: '2.0',
+                            // The answer is built rather than written out here, so an empty result keeps
+                            // its key: `result: undefined` is dropped by the serializer and refused by the
+                            // caller's codec, and the sealed envelope filled it with the text `undefined`
+                            // (`@@T-754`).
+                            return jsonRpcAnswer({
                                 id,
                                 result,
-                                ...((resultMeta as {progress?: unknown[]})?.progress?.length && {
-                                    progress: (resultMeta as {progress?: unknown[]}).progress,
-                                }),
-                            };
+                                progress: (resultMeta as {progress?: unknown[]})?.progress,
+                            });
                         }
                     } catch (caught) {
                         // A dispatch answers a failure as a packet, and one path rethrows the packet
@@ -1075,12 +1085,15 @@ export default class Gateway extends Internal implements IGateway {
                 return (data: unknown) => {
                     // 1. Runtime validation check
                     if (!Value.Check(schema, data)) {
-                        const errors = [...Value.Errors(schema, data)];
-                        return {
-                            error: new Error(
-                                `Validation failed: ${errors.map(e => e.message).join(', ')}`,
-                            ),
-                        };
+                        // A refusal, not a fault: typed and 400, with the fields a form paints
+                        // (`@@D-957`). The `validation` member is what the browser's Editor reads,
+                        // and the type is what an expected-errors declaration names.
+                        const validation = invalidFields(Value.Errors(schema, data));
+                        const error = this.#errors['gateway.validationFailed']({
+                            params: {problems: problemsOf(validation)},
+                        }) as Error & {validation?: unknown};
+                        error.validation = validation;
+                        return {error};
                     }
 
                     // 2. Transform/Decode the validated string into a Date object

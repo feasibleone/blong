@@ -101,11 +101,11 @@
  * grid is a view inside a page, and the page already chose its font. Naming a stack here would
  * still spell `Roboto`, and spelling it is what re-arms the web face.
  *
- * The second and third selectors are there because the variable alone did not stop the requests on
- * the deployed page. The *portal's* own stack names Roboto — `-apple-system, … "Segoe UI", Roboto,
- * Helvetica` — so the moment the grid's stylesheet declared a Roboto face, the page's font resolved
- * through it and the browser fetched the file from the CDN. The pair of theme classes outranks the
- * vendor's single-class rule whatever order the host's bundler gives the two stylesheets.
+ * The second and third selectors outrank the vendor's single-class rule whatever order the host's
+ * bundler gives the two stylesheets. They were added when the *portal's* stack still named Roboto,
+ * so the page's own font resolved through the face this file restates below; the portal no longer
+ * names a family it does not bundle (`@@T-753`), and the pair stays because a host's stack is a
+ * thing this component does not own.
  */
 .wx-theme,
 .wx-theme.wx-willow-theme,
@@ -115,7 +115,8 @@
 
 /* The vendor's six CDN faces, restated as local lookups: a machine that has the font uses it, and one
  * that does not falls through to the next family in whatever stack asked. A face a stylesheet
- * declares is a face any page on the host can be drawn with, which is what made the portal ask. */
+ * declares is a face any page on the host can be drawn with — which is what made the portal ask — so
+ * the declaration is kept local even though nothing in the portal names these families any more. */
 @font-face {
     font-family: Roboto;
     font-style: normal;

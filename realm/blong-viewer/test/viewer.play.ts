@@ -75,3 +75,26 @@ test('the page stays subscribed over a stream', async ({portal}) => {
     expect(samples).toBeGreaterThan(20);
     await expect(page).not.toHaveAttribute('data-stream-end', /.+/);
 });
+
+/**
+ * The page draws with the fonts it carries (`@@T-753`).
+ *
+ * The grid's stylesheet ships the vendor's `@font-face` rules, which point at a CDN; the portal's own
+ * stack named `Roboto`, which the portal does not bundle, so naming it made those faces selectable and
+ * the browser asked the CDN for six files the deployment's policy refuses. A test rather than a
+ * comment because the coupling is invisible: nothing in the page mentions a font, and a stack
+ * restored from an older theme brings the requests back with no other change.
+ */
+test('the page asks no third party for a font', async ({portal}) => {
+    const asked: string[] = [];
+    const note = (url: string): void => {
+        if (/cdn\.svar\.dev|fonts\.(googleapis|gstatic)\.com/.test(url)) asked.push(url);
+    };
+    portal.page.on('request', request => note(request.url()));
+    portal.page.on('requestfailed', request => note(request.url()));
+    await portal.menuClick('viewer.log');
+    // Text is what resolves a family, so the grid being drawn is when a face would have been fetched.
+    await expect(portal.page.getByRole('grid')).toBeVisible();
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    expect(asked).toEqual([]);
+});

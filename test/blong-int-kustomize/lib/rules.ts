@@ -88,8 +88,30 @@ export const pageAnswer = (body: string): boolean => /<html|<!doctype/i.test(bod
 /** A login answer that carries a token, which is what says the released process reached a schema. */
 export const tokenAnswer = (body: string): boolean => body.includes('access_token');
 
-/** An answer that refuses a payload no model allows, by naming the field's type (F-437). */
-export const validationRefusal = (body: string): boolean => body.includes('must be boolean');
+/**
+ * Why a refused payload was not refused the way this run expects, or `undefined` when it was (F-437).
+ *
+ * A payload no model allows has to be answered as a **client** error: a 400 that carries the fields,
+ * which is what a form can paint (`@@D-957`). Judging the sentence instead let a 500 through — the
+ * gateway used to answer a schema failure as an unhandled error, so the run was green while the pod
+ * logged a failure that meant nothing — and the words of a message are the part most likely to change.
+ */
+export const validationRefusal = ({
+    status,
+    body,
+}: {
+    status: number;
+    body: string;
+}): string | undefined => {
+    if (status !== 400) return `the gateway answered ${status || 'nothing'}, not 400: ${body}`;
+    if (!body.includes('gateway.validationFailed')) {
+        return `the refusal is not typed as a validation failure: ${body}`;
+    }
+    if (!body.includes('must be boolean')) {
+        return `the refusal does not name the field's type: ${body}`;
+    }
+    return undefined;
+};
 
 /**
  * The suite artifact must be named, one way or the other.
