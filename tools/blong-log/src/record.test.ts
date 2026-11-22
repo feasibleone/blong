@@ -42,17 +42,17 @@ const record = (extra: Record<string, unknown>): LogEntry =>
 
 test('a declared signal carries its identifier at the top level and its values in the fields', async t => {
     const signal = record({
-        signal: 'frameworkSchemaDirScanning',
+        signal: 'frameworkSchemaFileRewritten',
         fields: {
             context: 'ApiSchema',
-            signal: 'frameworkSchemaDirScanning',
-            params: {dir: '/tmp/x'},
+            signal: 'frameworkSchemaFileRewritten',
+            params: {file: '/tmp/x.ts'},
         },
     });
-    t.equal(signalOf(signal), 'frameworkSchemaDirScanning', 'the identifier is found');
+    t.equal(signalOf(signal), 'frameworkSchemaFileRewritten', 'the identifier is found');
     t.equal(contextOf(signal), 'ApiSchema', 'and the component that reported it');
     t.equal(serviceOf(signal), 'blong', 'the service is the process, not the component');
-    t.same(paramsOf(signal), {dir: '/tmp/x'}, 'the values a reader wants beside the sentence');
+    t.same(paramsOf(signal), {file: '/tmp/x.ts'}, 'the values a reader wants beside the sentence');
     t.end();
 });
 

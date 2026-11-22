@@ -7,13 +7,9 @@ Before the details, one call through all of them: a client posts to the gateway,
 authorizes and validates, an orchestrator coordinates, an adapter writes, and the reply travels back
 — with `$meta` forwarded at every hop and a checkpoint left on the way.
 
-<ArchifyDiagram
-    slug="blong-rpc-call"
-    title="One RPC call, end to end"
-    height="700px"
-    posterLight={require('./img/diagrams/blong-rpc-call-light.png').default}
-    posterDark={require('./img/diagrams/blong-rpc-call-dark.png').default}
-/>
+<ArchifyDiagram slug="blong-rpc-call" title="One RPC call, end to end" height="700px"
+posterLight={require('./img/diagrams/blong-rpc-call-light.png').default}
+posterDark={require('./img/diagrams/blong-rpc-call-dark.png').default} />
 
 ## Gateway API
 
@@ -91,5 +87,11 @@ paths:
         post:
             x-blong-method: userAdd
 ```
+
+A definition that already exists can also be the _source_ of the implementation: under the `dev`
+intent the framework writes a typed handler stub for every method that has no file yet, which is how
+a contract another team published turns into the skeleton of the realm that serves it. The loop, the
+naming rules and the override-merge convention are in the
+[api generation pattern](../patterns/api-generation.md).
 
 To learn how to expose or consume OpenAPI, read the [rest pattern](../patterns/rest.md).

@@ -45,7 +45,7 @@ export const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: objec
     adapter: {server: {microservice: true, k8s: true, upgrade: true}},
     orchestrator: {server: {microservice: true, k8s: true, upgrade: true}},
     gateway: {server: {microservice: true, k8s: true}},
-    'server/api': {server: {microservice: true, k8s: true}},
+    'server/api': {server: {microservice: true, k8s: true, dev: true}},
     sim: {server: {integration: true}},
     'server/test': {server: {integration: true}},
     test: {browser: {integration: true, 'test-ui': true}},

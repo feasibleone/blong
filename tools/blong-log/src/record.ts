@@ -9,10 +9,10 @@
  * A record's shape, as the framework writes it:
  *
  * ```json
- * {"id":"…","time":1420070400000,"level":30,"levelName":"info","msg":"generating dir /tmp/x",
+ * {"id":"…","time":1420070400000,"level":30,"levelName":"info","msg":"writing /tmp/x.ts",
  *  "service":"blong","version":"0.1.0","refs":{"record":"…","template":"…"},
- *  "fields":{"context":"ApiSchema","signal":"frameworkSchemaDirScanning","params":{"dir":"/tmp/x"}},
- *  "template":"[LEVEL: INFO] …","fingerprint":"…","signal":"frameworkSchemaDirScanning"}
+ *  "fields":{"context":"ApiSchema","signal":"frameworkSchemaFileRewritten","params":{"file":"/tmp/x.ts"}},
+ *  "template":"[LEVEL: INFO] …","fingerprint":"…","signal":"frameworkSchemaFileRewritten"}
  * ```
  *
  * A **capture** is the same envelope with `fields.capture`, `fields.shape` and `fields.rung` beside the

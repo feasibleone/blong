@@ -769,6 +769,12 @@
             "projectFolder": "realm/blong-viewer",
             "reviewCategory": "realm",
             "tags": ["realm"]
+        },
+        {
+            "packageName": "@feasibleone/blong-generate",
+            "projectFolder": "demo/blong-generate",
+            "reviewCategory": "core",
+            "tags": ["core"]
         }
     ]
 }

@@ -204,10 +204,26 @@ const vocabulary = declare({
             message:
                 'systemDebug is enabled — introspection endpoints are active; do not enable in production',
         },
-        /** An API schema file is being written over the one it generated before. */
-        frameworkSchemaFileRewritten: {level: 'warn', message: 'writing {file}'},
-        /** An orchestrator folder is being read for API schema generation. */
-        frameworkSchemaDirScanning: {level: 'info', message: 'generating dir {dir}'},
+        /**
+         * A stub handler was written into an empty file, from the API definition that asked for it.
+         *
+         * `{method}` is the handler name, so the line answers both halves of the question a generator
+         * raises: which file, and for which operation. It is the only line a pass writes per stub; the
+         * folder scan behind it is silent, since a scan that produces nothing is the common case and
+         * used to fill the log (@@D-961).
+         */
+        frameworkSchemaFileRewritten: {level: 'info', message: 'wrote {file} for {method}'},
+        /**
+         * An API method was loaded and no orchestrator folder could take it.
+         *
+         * The one outcome a developer cannot see for themselves: the definition loaded, nothing was
+         * generated, and the cause is an operation id naming a group that does not exist. Said once per
+         * method, at warn, because it is a mistake rather than a routine step (@@D-961).
+         */
+        frameworkSchemaMethodUnplaced: {
+            level: 'warn',
+            message: 'no orchestrator folder for {method}',
+        },
         /** MCP was asked for and no remote dispatcher is available, so it is skipped. */
         frameworkMcpUnavailable: {
             level: 'warn',

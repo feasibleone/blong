@@ -1,0 +1,75 @@
+# The invoice API, published by the finance team. Same story as the contract one: this is their
+# document, in their naming, and the realm wires it rather than restating it.
+openapi: 3.0.3
+info:
+    title: Invoice API
+    version: 1.8.0
+    description: |
+        Invoices are raised against a signed contract and paid by the customer. This API is used by
+        the finance portal and by the payment reconciliation job.
+servers:
+    - url: https://finance.example.com/v1
+tags:
+    - name: invoices
+      description: Raising and reading an invoice
+paths:
+    /invoices:
+        post:
+            operationId: issueInvoice
+            summary: Issue an invoice
+            tags: [invoices]
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                contractId:
+                                    type: string
+                                    description: The signed contract the invoice is raised against.
+                                amountMinor:
+                                    type: integer
+                                    description: The amount in the currency's minor unit.
+                                dueDate:
+                                    type: string
+                                    description: ISO 8601 date the customer has to pay by.
+            responses:
+                '200':
+                    description: The invoice that was raised
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    invoiceNumber:
+                                        type: string
+                                    dueDate:
+                                        type: string
+    /invoices/{invoiceNumber}:
+        get:
+            operationId: getInvoice
+            summary: Read one invoice
+            tags: [invoices]
+            parameters:
+                - in: path
+                  name: invoiceNumber
+                  required: true
+                  schema:
+                      type: string
+            responses:
+                '200':
+                    description: The invoice
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    invoiceNumber:
+                                        type: string
+                                    contractId:
+                                        type: string
+                                    amountMinor:
+                                        type: integer
+                                    paidAt:
+                                        type: string

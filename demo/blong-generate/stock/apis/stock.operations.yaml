@@ -1,0 +1,30 @@
+# Wiring the published stock API into the realm — the same three jobs as the orders documents, and one
+# thing this document needs that a published one often does not say out loud: which namespace it is
+# dispatched under. Without `x-blong.namespace` these operations would belong to `stock.api.yaml`'s
+# file name (`stock`) by luck, and to `getStockItem`'s own wording; with it they are `stockItemGet`,
+# `stockItemAdjust` and `stockItemReserve`, which is what the realm calls them.
+openapi: 3.0.3
+x-blong:
+    namespace: stock
+paths:
+    /items/{sku}:
+        get:
+            x-blong-method: ItemGet
+            summary: Read the stock of one item
+            description: |
+                What the warehouse holds and what is already promised to an order. The difference is
+                the number a picking run can use.
+    /items/{sku}/movements:
+        post:
+            x-blong-method: ItemAdjust
+            summary: Move the stock of one item by a delta
+            description: |
+                Every change to stock is a movement with a reason attached, because a number that
+                moved for no recorded reason is a number nobody can reconcile.
+    /items/{sku}/reservations:
+        post:
+            x-blong-method: ItemReserve
+            summary: Hold stock for an order that has not shipped yet
+            description: |
+                A reservation is a promise: the stock stays on the shelf but it is no longer available
+                to anyone else.

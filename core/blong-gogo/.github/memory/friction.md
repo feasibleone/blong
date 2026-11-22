@@ -75,7 +75,7 @@ open (56)
 - `F-771` · core/blong-gogo — A capture read the live config and tripped the factory-phase guard
 - `F-784` · core/blong-gogo — A realm adapter needs connect, namespace and imports
 
-resolved (55)
+resolved (58)
 
 - `F-094` · core/blong-gogo — Knex `table.list` prefixed table names with the subject twice
 - `F-095` · core/blong-gogo — tap's order-sensitive snapshots broke on an appended `id` field
@@ -143,6 +143,9 @@ resolved (55)
 - `F-812` · core/blong-gogo — One Ctrl+C reached blong twice and read as a forced exit
 - `F-813` · core/blong-gogo — The loaded platform had no log, because load answers the registry
 - `F-814` · core/blong-gogo — The schema generator announced every folder it scanned
+- `F-815` · core/blong-gogo — An api() layer produced no schemas and said nothing
+- `F-816` · core/blong-gogo — A tool's own --flag reached the suite as configuration
+- `F-817` · core/blong-gogo — A pass rewrote identical stubs and the watcher restarted for ever
 
 <!-- /memory:index -->
 
@@ -1889,3 +1892,54 @@ line that appears everywhere and means nothing teaches a reader to skim past the
 
 Fixed in ApiSchema: the scan is silent, the write is the only line, and the folder map is keyed by
 folder.
+
+### F-815 — An api() layer produced no schemas and said nothing
+
+> _2026-11-22 · core/blong-gogo · resolved_
+
+Declaring an API with `api(() => ({url}))` produced no schemas at all, and nothing said why. Four
+separate gaps stood between a written definition and a generated handler, and every one of them
+failed silently.
+
+The definition was unwrapped before the layer proxy saw it: `Watch` called any plain function export
+and handed over its result, which is right for a handler and wrong for an `api` definition, whose
+kind is what the proxy routes on — so `case 'function:api'` never ran. The `server/api` layer was
+not active under the `dev` intent, only under `microservice` and `k8s`, which is the opposite of
+where interactive generation matters. A realm child is loaded only when the suite's config has a
+block under its name, so a realm that was declared in `children` and nowhere in `config` was skipped
+without a word. And a realm folder needs its own `package.json`, because the loader reads one beside
+the realm to find what it declares.
+
+The lesson is about silence, not about any one of them: a feature that produces nothing should say
+which of its preconditions is missing, and four of these could have said so in one line each.
+
+Fixed: the proxy sees the api kind, server/api is active in dev, and the demo shows every
+precondition.
+
+### F-816 — A tool's own --flag reached the suite as configuration
+
+> _2026-11-22 · core/blong-gogo · resolved_
+
+A script that loads a suite shares `process.argv` with it, and the loader reads the command line as
+configuration: `node generate.tool.ts --update` failed the load with
+`unknown key 'update' in the config block`. The fix is to take the script's own flags out of
+`process.argv` before anything loads, and the lesson is that "my tool's flag" and "the suite's
+config" are the same channel unless the script claims its flags first.
+
+### F-817 — A pass rewrote identical stubs and the watcher restarted for ever
+
+> _2026-11-22 · core/blong-gogo · resolved_
+
+The generator wrote every stub it considered, whether or not the file already said exactly that. On
+disk a write is never a no-op — it bumps the mtime — so a watching runner saw a change and
+restarted, the restarted process generated again, and `blong-watch` in `demo/blong-generate`
+restarted for ever. The same write also made an editor ask whether to reload a file nobody had
+touched.
+
+The fix is to compare before writing: the stub is built, the file is read, and the write happens
+only when the two differ. That is one extra read per candidate — the same read the marker check
+already did — and it turns a repeated pass into silence instead of a loop. The lesson is that "write
+the file" and "make the file say this" are different operations, and tooling that watches files only
+ever sees the former.
+
+A pass now builds the stub, reads the file and writes only when they differ; pinned by a unit test.

@@ -1,0 +1,85 @@
+# The contract API, as published by the team that owns it.
+#
+# Note what is *not* here: no `x-blong`, no blong-style operation ids. This document is somebody
+# else's, versioned and read by their clients, and the realm that serves it does not get to rewrite
+# it. Everything needed to wire it to blong lives in `contract.operations.yaml`, which is merged on
+# top of this file.
+openapi: 3.0.3
+info:
+    title: Contract API
+    version: 2.3.0
+    description: |
+        Contracts are drafted by the sales desk and signed by the customer. This API is the one the
+        sales portal already uses; it is versioned with the portal, not with the warehouse.
+servers:
+    - url: https://contracts.example.com/v2
+tags:
+    - name: contracts
+      description: Drafting and reading a contract
+paths:
+    /contracts:
+        post:
+            operationId: createContract
+            summary: Create a contract draft
+            tags: [contracts]
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required: [customerName, currencyCode]
+                            properties:
+                                customerName:
+                                    type: string
+                                    description: Who the contract is with.
+                                currencyCode:
+                                    type: string
+                                    description: ISO 4217 code the amounts are written in.
+                                note:
+                                    type: string
+                                    description: Free text the sales desk may leave on the draft.
+            responses:
+                '200':
+                    description: The draft that was created
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    contractId:
+                                        type: string
+                                    status:
+                                        type: string
+    /contracts/{contractId}:
+        get:
+            operationId: getContract
+            summary: Read one contract
+            tags: [contracts]
+            parameters:
+                - in: path
+                  name: contractId
+                  required: true
+                  schema:
+                      type: string
+                - in: query
+                  name: expand
+                  description: Comma separated list of related objects to inline.
+                  schema:
+                      type: string
+            responses:
+                '200':
+                    description: The contract
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    contractId:
+                                        type: string
+                                    customerName:
+                                        type: string
+                                    currencyCode:
+                                        type: string
+                                    status:
+                                        type: string

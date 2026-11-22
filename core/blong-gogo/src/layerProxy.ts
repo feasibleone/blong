@@ -15,8 +15,8 @@ import merge from 'ut-function.merge';
 import createPort from './AdapterBase.ts';
 import ConfigRuntime from './ConfigRuntime.ts';
 import createHandlerProxy from './handlerProxy.ts';
-import { methodId } from './lib.ts';
-import type { IPort } from './Port.ts';
+import {methodId} from './lib.ts';
+import type {IPort} from './Port.ts';
 
 /**
  * Create the handler closure that is pushed into `where.methods[]`.
@@ -35,11 +35,7 @@ function createHandlerClosure(
     apiSchema: IApiSchema | undefined,
     configRuntime: IConfigRuntime | undefined,
     attachSignals?: () => Promise<
-        | ((
-              port: object,
-              vocabularies: readonly object[],
-              policy?: Record<string, object>,
-          ) => void)
+        | ((port: object, vocabularies: readonly object[], policy?: Record<string, object>) => void)
         | undefined
     >,
 ): (params: {
@@ -194,7 +190,9 @@ function createHandlerClosure(
                     }
                     break;
                 case 'function:api':
-                    merge(local, await apiSchema!.schema(what(layerApi), source));
+                    // Only the server platform carries an `ApiSchema`; the `api` layer is active on both,
+                    // and a browser load used to reach this case with nothing to call.
+                    if (apiSchema) merge(local, await apiSchema.schema(what(layerApi), source));
                     break;
                 case 'object:schema':
                     if (target.result.schema)
@@ -282,11 +280,7 @@ export default function layerProxy(
      * loading the module at all, which is every process today.
      */
     attachSignals?: () => Promise<
-        | ((
-              port: object,
-              vocabularies: readonly object[],
-              policy?: Record<string, object>,
-          ) => void)
+        | ((port: object, vocabularies: readonly object[], policy?: Record<string, object>) => void)
         | undefined
     >,
 ): {result: {error: unknown; schema: unknown; vocabulary?: object[]}; feature: unknown} {

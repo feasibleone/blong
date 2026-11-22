@@ -653,7 +653,12 @@ export default async function loadRealm<T extends TSchema>(
                             // run stays readable as text.
                             color: isTTY(),
                         },
-                        apiSchema: {},
+                        apiSchema: {
+                            // Stub generation writes into the source tree, so only an interactive run turns
+                            // it on — the `dev` block below does. A serving or manifest-writing process has
+                            // no business editing the code it was started from (@@D-963).
+                            generate: false,
+                        },
                         error: {},
                         registry: {},
                         port: {},
@@ -724,6 +729,14 @@ export default async function loadRealm<T extends TSchema>(
                             encrypt: devEncryptKey,
                         },
                         systemDebug: {enabled: true},
+                        apiSchema: {
+                            // A stub handler appears in the source tree from an API definition whose
+                            // method has no file yet: the loop an interactive developer wants — edit
+                            // `operations.yaml`, save, and the handler skeleton is there (@@D-961).
+                            // Nothing outside `dev` does this, for the reason the default block gives
+                            // (@@D-963).
+                            generate: true,
+                        },
                     },
                     integration: {
                         remote: {canSkipSocket: true},

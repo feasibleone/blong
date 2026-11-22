@@ -30,10 +30,10 @@ test('a lukaot process feeds the server with the records the viewer draws', asyn
     // record it hands the destination is the structured one — the line is a rendering for a terminal,
     // and a viewer that had only the line could draw the sentence but none of the fields.
     const log = createLogger({level: 'trace', service: 'blong-probe'});
-    log.info('generating dir /tmp/x', {
+    log.info('writing /tmp/x.ts', {
         context: 'ApiSchema',
-        signal: 'frameworkSchemaDirScanning',
-        params: {dir: '/tmp/x'},
+        signal: 'frameworkSchemaFileRewritten',
+        params: {file: '/tmp/x.ts'},
     });
     log.info('tcp frame', {
         context: 'srv.tcp',
@@ -61,11 +61,11 @@ test('a lukaot process feeds the server with the records the viewer draws', asyn
     const body = (await response.json()) as {entries: Array<Record<string, unknown>>};
     t.equal(body.entries.length, 3, 'three records crossed the wire');
 
-    const signal = body.entries.find(entry => entry['signal'] === 'frameworkSchemaDirScanning');
+    const signal = body.entries.find(entry => entry['signal'] === 'frameworkSchemaFileRewritten');
     t.ok(signal, 'a declared signal keeps its identifier at the top level');
     t.same(
         (signal?.['fields'] as Record<string, unknown>)?.['params'],
-        {dir: '/tmp/x'},
+        {file: '/tmp/x.ts'},
         'and the values it was called with',
     );
 

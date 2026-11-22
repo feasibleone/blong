@@ -1,0 +1,115 @@
+# The stock API, published by the warehouse team.
+#
+# Same convention as the orders documents: this is the publishers' file, in their naming, and the
+# realm wires it with `stock.operations.yaml` rather than rewriting it.
+openapi: 3.0.3
+info:
+    title: Stock API
+    version: 1.4.0
+    description: |
+        What the warehouse holds, one item at a time. Used by the picking app and by the nightly
+        reconciliation run.
+servers:
+    - url: https://stock.example.com/v1
+tags:
+    - name: items
+      description: Reading and moving an item's stock
+paths:
+    /items/{sku}:
+        get:
+            operationId: getStockItem
+            summary: Read the stock of one item
+            tags: [items]
+            parameters:
+                - in: path
+                  name: sku
+                  required: true
+                  schema:
+                      type: string
+            responses:
+                '200':
+                    description: The item
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    sku:
+                                        type: string
+                                    onHand:
+                                        type: integer
+                                    reserved:
+                                        type: integer
+    /items/{sku}/movements:
+        post:
+            operationId: adjustStock
+            summary: Move the stock of one item by a delta
+            tags: [items]
+            parameters:
+                - in: path
+                  name: sku
+                  required: true
+                  schema:
+                      type: string
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required: [delta]
+                            properties:
+                                delta:
+                                    type: integer
+                                    description: Positive receives stock, negative ships it.
+                                reason:
+                                    type: string
+                                    description: Why the stock moved, for the audit trail.
+            responses:
+                '200':
+                    description: The item after the movement
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    sku:
+                                        type: string
+                                    onHand:
+                                        type: integer
+    /items/{sku}/reservations:
+        post:
+            operationId: reserveStock
+            summary: Hold stock for an order that has not shipped yet
+            tags: [items]
+            parameters:
+                - in: path
+                  name: sku
+                  required: true
+                  schema:
+                      type: string
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required: [quantity]
+                            properties:
+                                quantity:
+                                    type: integer
+                                orderNumber:
+                                    type: string
+                                    description: The order the hold belongs to.
+            responses:
+                '200':
+                    description: The hold that was placed
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    reservationId:
+                                        type: string
+                                    reserved:
+                                        type: integer

@@ -619,8 +619,14 @@ export default class Watch extends Internal implements IWatch {
                             // demanded a message for it (`@@T-717`).
                             const route = kind(item) === 'vocabulary' ? 'vocabulary' : itemName;
                             (api as Record<string, (...args: unknown[]) => unknown>)[route](
+                                // A few definitions are *called by the layer proxy*, not here: an
+                                // adapter and an orchestrator build their instance from the port api,
+                                // and an api definition is resolved with the platform's `ApiSchema`, so
+                                // calling it first would hand the proxy a plain result object and lose
+                                // the kind it routes on — which is why an `api()` layer silently
+                                // produced no schemas and generated no handlers (`@@F-815`).
                                 typeof item === 'function' &&
-                                    !['adapter', 'orchestrator'].includes(kind(item))
+                                    !['adapter', 'orchestrator', 'api'].includes(kind(item))
                                     ? item(api)
                                     : item,
                                 config.name + '.' + itemName,

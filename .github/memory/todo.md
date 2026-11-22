@@ -461,12 +461,12 @@ sweep them deliberately with a run of each suite after a baseline regeneration.
 > _2026-09-22 · docs · open_
 
 blong-dev docs check is side-effect-free for artefacts whose generator only writes the registered
-destination, but not for the two produced by Playwright specs: writing their markdown needs
---update-snapshots, which also rewrites that package's committed _.play.ts-snapshots baselines, and
-check does not snapshot or restore those. So a full docs check can leave modified baselines. Both
-artefacts are already guarded by their own packages (ci-ui runs the same spec, which compares the
-artefact and fails when it is stale), so the workaround is to run check filtered to flows._ and
-png.\*. The proper fix is a second, compare-only command per artefact in
+destination, but not for the two produced by Playwright specs: writing their markdown
+needs --update-snapshots, which also rewrites that package's committed _.play.ts-snapshots
+baselines, and check does not snapshot or restore those. So a full docs check can leave modified
+baselines. Both artefacts are already guarded by their own packages (ci-ui runs the same spec, which
+compares the artefact and fails when it is stale), so the workaround is to run check filtered to
+flows._ and png.\*. The proper fix is a second, compare-only command per artefact in
 docs/blong/docs-artifacts.json. Recorded as item 5 in the Further considerations of
 plans/docs/VISUAL_DOCS_PLAN.md.
 
@@ -1033,9 +1033,9 @@ of the runner. Deferred on purpose when the CI build was repaired, since reporti
 `.ci-report/storybook.log` (its own file in the directory a bridge would read), and prints one
 summary line from it, so the count a slice needs is already in the log the CI artifact uploads.
 
-Closed by the bridge it proposed: test-storybook writes .ci-report/storybook.json with --json
---outputFile, blong-dev report jest converts it under --runner storybook, and the leg passes
---status so a non-zero exit always leaves a failing slice.
+Closed by the bridge it proposed: test-storybook writes .ci-report/storybook.json with
+--json --outputFile, blong-dev report jest converts it under --runner storybook, and the leg
+passes --status so a non-zero exit always leaves a failing slice.
 
 ### T-352 — Publish a package's non-tap leg failure in the bundle
 
@@ -1056,8 +1056,8 @@ message, so the bundle no longer names two legs of a three-failure run.
 > _2026-10-16 · ci · done_
 
 Remove or raise the in-file `setTimeout(60_000)` in `demo/blong-cli/index.test.ts` and
-`core/blong-kukum/index.test.ts` so the runner's `--timeout=240` decides (@@D-247). Both files ran
-2.5x longer on the shared runner than on the previous run and expired there; kukum's expiry was
+`core/blong-kukum/index.test.ts` so the runner's `--timeout=240` decides (@@D-247). Both files
+ran 2.5x longer on the shared runner than on the previous run and expired there; kukum's expiry was
 inside `kukum.source.check`, which lints the whole package for a request that names one file, so
 scoping that lint to the named files is the other half of the fix.
 
@@ -1394,10 +1394,10 @@ renders every diagram on 106 pages.
 > _2026-11-12 · ci · done_
 
 The framework's build is `heft build --clean; dts-bundle-generator --config dts-gen.config.json` and
-it is the long pole of both deploy jobs: 98.9 s of the artifact job's 238 s build on 2026-11-12 (run
-43207810220). The declaration bundle is 34.7 s of that, measured locally, and nothing in a deployed
-artifact reads it — `dist/types.js` is what the `default` export condition resolves, and the `.d.ts`
-bundle is for npm consumers only.
+it is the long pole of both deploy jobs: 98.9 s of the artifact job's 238 s build on 2026-11-12
+(run 43207810220). The declaration bundle is 34.7 s of that, measured locally, and nothing in a
+deployed artifact reads it — `dist/types.js` is what the `default` export condition resolves, and
+the `.d.ts` bundle is for npm consumers only.
 
 An artifact build could skip it with a flag the build script honours (an environment variable read
 in a small script rather than `;`-chained in package.json), which saves the same ~35 s twice per
@@ -1655,10 +1655,9 @@ a scoped one answers `403`.
 
 blob.scope.issue collects the configured providers' scopes (provider order kept, actor from
 $meta.auth, authenticated added), signs an HMAC-SHA256 cookie in blobScopeSign and sets it through
-$meta.httpResponse.state
-scoped to /a/; blob/blobSettings.ts is the one place a group slice plus the port block becomes
-settings, and orchestrator/blobDispatch.ts is the port that serves blob.\*; 211 assertions across 10
-files, ci-lint clean.
+$meta.httpResponse.state scoped to /a/; blob/blobSettings.ts is the one place a group slice plus the
+port block becomes settings, and orchestrator/blobDispatch.ts is the port that serves blob.\*; 211
+assertions across 10 files, ci-lint clean.
 
 ### T-660 — Scope providers in the consuming realms
 
@@ -2269,15 +2268,15 @@ error-signal kind, not a message with a value in it); `core/blong-mock`'s ten ar
 carrying the predicate and the params rather than ten; `core/blong-browser`'s three are an auth
 failure, a token warning, and a component-generation warning.
 
-The seam exists in two shapes, and twelve of the fifteen calls are converted with it. A **library on
-a host's port** declares with `contribute`: the names are registered at the package's module load
-and composed into every port the framework attaches a vocabulary to, ahead of the layer's own — so
-`blong-mock`'s eleven traces are now `signal?.mockCallAnswered?.({predicate, …})` and
-`signal?.mockSurfaceGenerated?.(…)`, with the predicate as a parameter rather than ten call sites
-and ten sentences. A **class handed a logger** gets no port and cannot: `blong-chain`'s executor
-builds a view over its own logger with `signalView`, so `chainStepRetried` and `chainStepFailed`
-report where the executor is constructed, which is a controller or a demo rather than a realm
-(`@@D-918`).
+The seam exists in two shapes, and twelve of the fifteen calls are converted with it.
+A **library on a host's port** declares with `contribute`: the names are registered at the package's
+module load and composed into every port the framework attaches a vocabulary to, ahead of the
+layer's own — so `blong-mock`'s eleven traces are now `signal?.mockCallAnswered?.({predicate, …})`
+and `signal?.mockSurfaceGenerated?.(…)`, with the predicate as a parameter rather than ten call
+sites and ten sentences. A **class handed a logger** gets no port and cannot: `blong-chain`'s
+executor builds a view over its own logger with `signalView`, so `chainStepRetried` and
+`chainStepFailed` report where the executor is constructed, which is a controller or a demo rather
+than a realm (`@@D-918`).
 
 `blong-dev legacy` went 15 → 3. The three left are in `core/blong-browser` and wait on the browser
 half of the same seam: `BrowserLog` has no `signalFor` and the loader skips the attacher for that

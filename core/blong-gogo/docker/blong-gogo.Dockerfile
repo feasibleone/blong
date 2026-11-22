@@ -87,6 +87,7 @@ COPY core/blong-asset/package.json ./core/blong-asset/
 COPY realm/blong-blob/package.json ./realm/blong-blob/
 COPY core/lukaot/package.json ./core/lukaot/
 COPY realm/blong-viewer/package.json ./realm/blong-viewer/
+COPY demo/blong-generate/package.json ./demo/blong-generate/
 # END GENERATED package manifests
 # The Node headers this image was built from, for `node-gyp`: `node-rdkafka` (a dependency of
 # `blong-gogo`, and the only native build here) is compiled against them, and without this node-gyp

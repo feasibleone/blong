@@ -1,0 +1,31 @@
+# Wiring the published contract API into the realm.
+#
+# `contract.api.yaml` is not touched: it is somebody else's document, versioned with their portal.
+# This file is merged over it and adds only what the framework needs to bind the operations.
+#
+# Three things happen here, in the order a team usually needs them:
+#   1. `x-blong` binds the document to the realm's namespace. Without it the operations would be
+#      dispatched under `contract` — the name of this file — and the handlers would be named
+#      `contractCreateContract`; with it they belong to `orders`, which is the realm.
+#   2. `x-blong-method` gives each upstream operation the object and predicate of the semantic triple,
+#      so `createContract` is served by `ordersContractAdd` rather than by `ordersCreateContract`.
+#   3. the summaries and descriptions are reworded for the realm's own readers — the upstream text is
+#      written for the sales portal's audience, this one for the people running the warehouse.
+openapi: 3.0.3
+x-blong:
+    namespace: orders
+paths:
+    /contracts:
+        post:
+            x-blong-method: ContractAdd
+            summary: Write a contract down before anyone signs it
+            description: |
+                Creates the draft the warehouse works from. The amounts are quoted in the contract's
+                currency, and nothing about them is frozen until the customer signs.
+    /contracts/{contractId}:
+        get:
+            x-blong-method: ContractGet
+            summary: Read one contract
+            description: |
+                What the warehouse knows about a contract: who it is with, in which currency, and how
+                far it has got.

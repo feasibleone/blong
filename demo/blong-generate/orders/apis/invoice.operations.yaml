@@ -1,0 +1,33 @@
+# Wiring the published invoice API into the realm — the same three jobs as the contract one, plus a
+# fourth that is the most common reason an override file exists at all: the published document is
+# *incomplete* and something has to make it valid enough to bind.
+#
+# `issueInvoice` declares a request body whose members are all optional, which is how the finance
+# portal has always called it. As a handler contract that would mean a body of `{contractId?: string,
+# amountMinor?: number}` — a stub that type-checks while describing an invoice with no amount. The
+# `required` list below says what the realm actually needs, so the generated stub asks for it.
+openapi: 3.0.3
+x-blong:
+    namespace: orders
+paths:
+    /invoices:
+        post:
+            x-blong-method: InvoiceIssue
+            summary: Raise an invoice against a signed contract
+            description: |
+                An invoice is money the customer owes. It is raised against one contract, in that
+                contract's currency, and the amount is never negative.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required: [contractId, amountMinor]
+    /invoices/{invoiceNumber}:
+        get:
+            x-blong-method: InvoiceGet
+            summary: Read one invoice
+            description: |
+                What has been invoiced and whether it has been paid — the question a reconciliation
+                run asks, one invoice at a time.

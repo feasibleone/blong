@@ -435,6 +435,51 @@ prompt that says "enhance this later" should record the intent this way rather t
 - When the target has no `node_modules`, diagnostics are reported as `skipped` rather than as a wall
   of unresolved-import errors.
 
+### From an API definition to the stubs
+
+An API definition that already exists is the other way into the same tree, and the naming rule is
+the same one: the namespace is the subject — the realm — and the operation's object and predicate
+decide the file, taken from `x-blong-method` when the publisher's own `operationId` does not carry
+them. So `x-blong-method: OrderAdd` in namespace `orders` is the handler `ordersOrderAdd`, in
+`orders/orchestrator/order/`.
+
+The published document is not edited to achieve that. A `<name>.operations.yaml` beside it is merged
+over it and supplies `x-blong.namespace` (which realm it serves — the file name is the publisher's),
+`x-blong-method` per operation, reworded descriptions, and anything the binding needs that the
+document left out, such as a `required` list. One realm serves several documents this way; a second
+_namespace_ is a second realm.
+
+Two tools read that rule, and the difference is who is driving:
+
+| Driver                        | Tool                                        | When                                          |
+| ----------------------------- | ------------------------------------------- | --------------------------------------------- |
+| a person editing a definition | `apiSchema.generate` under the `dev` intent | interactive, the definition is a file         |
+| an agent that wrote it first  | `kukum handler add --kind=api` per method   | no watcher, the definition came from a prompt |
+
+The dev-time path needs three things a realm does not otherwise have: a folder of documents
+(`apis/<name>.api.yaml` plus its `<name>.operations.yaml` wiring file, merged in name order), a
+`server/api/api.ts` (below), and an **existing** group folder — the generator fills folders, it does
+not create them.
+
+```ts
+// server/api/api.ts — the folder beside the named file is what gets read
+import {api} from '@feasibleone/blong';
+export default api(() => ({url: new URL('../../apis/<name>.api.yaml', import.meta.url).href}));
+```
+
+The generated stub carries the parameter and reply types from the definition and a body that throws,
+so it type-checks and says what it is. The `import unchanged` marker decides, in both directions: a
+file that still has it is rewritten from the definition on the next run, and a file without it is
+the developer's and is left alone. The marker is an unused import, so an editor that removes dead
+imports on save drops it on the first edit — the hand-off needs no ritual. A realm that keeps stubs
+in the repository wants the comparison a throwaway copy allows (`npm run generate:check` /
+`generate:update`, as `demo/blong-generate/generate.tool.ts` does) wired into its tests, which is
+what notices a document edited without a dev run. `demo/blong-generate` is the worked example, and
+the mechanics are in `docs/blong/docs/patterns/api-generation.md`.
+
+An agent that generated the definition should use `kukum handler add --kind=api` (one call per
+method, `--dry-run` first) and then fill the bodies — the same result without a running watcher.
+
 ---
 
 ## [FRONTMATTER_TEMPLATE]

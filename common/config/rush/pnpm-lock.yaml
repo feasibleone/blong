@@ -1167,6 +1167,40 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  ../../demo/blong-generate:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@swc/core':
+        specifier: ^1.7.14
+        version: 1.15.21
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: 21.8.0
+        version: 21.8.0(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(supports-color@10.2.2)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   ../../demo/blong-hello:
     dependencies:
       '@feasibleone/blong':

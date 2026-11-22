@@ -11,8 +11,8 @@ description:
 # Implementing REST APIs
 
 > **Scaffold, don't transcribe.** Generate the namespace and stub handlers with
-> `kukum gateway add --subject=<realm> --object=<name> --kind=openapi`
-> (`[KUKUM_API]` in `_shared/conventions.md`), then fill in the operations.
+> `kukum gateway add --subject=<realm> --object=<name> --kind=openapi` (`[KUKUM_API]` in
+> `_shared/conventions.md`), then fill in the operations.
 
 ## Overview
 
@@ -219,6 +219,16 @@ export default handler(
 | `GET /rest/release/release`        | `ReleaseReport` | `releaseReleaseReport` |
 | `POST /rest/release/job/{jobName}` | `JobTrigger`    | `releaseJobTrigger`    |
 | `GET /rest/agreement/quotes/{id}`  | `QuoteGet`      | `agreementQuoteGet`    |
+
+**Let the definition write them.** When the specification is the starting point rather than a
+description of code already written, a `dev` run generates these handlers instead of this step being
+done by hand: `operationId: HealthGet` in namespace `release` becomes
+`release/orchestrator/health/releaseHealthGet.ts`, typed from the parameters and the reply schema,
+with a body that throws until it is filled in. It needs a contract folder, a `server/api/api.ts`
+declaring the namespace, and the group folder to exist — a file with content is never touched. See
+[the api generation pattern](../../../docs/blong/docs/patterns/api-generation.md) and
+`demo/blong-generate`; for a session with no watcher, `kukum handler add --kind=api` writes the same
+file.
 
 ### Step 4: Configure Realm
 

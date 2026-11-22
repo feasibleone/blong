@@ -29,7 +29,7 @@ realmname/
 ├── sim/                 # Auto-activated (server, integration)
 │   └── backend.ts
 ├── server/              # Server-only well-known sub-layers
-│   ├── api/             # Auto-activated (server, integration)
+│   ├── api/             # Auto-activated (server, dev, microservice, k8s) — the API definition
 │   ├── init/            # Auto-activated (server, default)
 │   └── test/            # Server tap tests (server, integration)
 │       └── test/
