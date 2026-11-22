@@ -23,6 +23,10 @@ open (8)
 - `F-711` · test/blong-int-kustomize — A local cycle run fills a deployed database with the dev
   seeds
 
+resolved (1)
+
+- `F-809` · test/blong-int-kustomize — A workspace tool is not on PATH unless npm run put it there
+
 <!-- /memory:index -->
 
 ## Open
@@ -132,3 +136,33 @@ is somebody's. The lesson is that a cycle run writes to the schema the deploymen
 purge names the principals to remove rather than the ones to keep.
 
 ## Resolved
+
+### F-809 — A workspace tool is not on PATH unless npm run put it there
+
+> _2026-11-22 · test/blong-int-kustomize · resolved_
+
+The e2e runbook provisions its own login with `blong-dev user add`, and CI started failing with
+`blong-dev is not on PATH` even though `@feasibleone/blong-dev` is a declared devDependency of the
+package. The dependency was never the problem: `node_modules/.bin` is put on `PATH` by `npm run`,
+and CI starts the cycle as `node bin/blongIntKustomize.ts`, so nothing ever did it. Locally the same
+call worked because the tool is also linked into the developer's own `PATH`, which is why the
+regression could not be seen by running the cycle.
+
+Two things were wrong, not one. The child was spawned with the runner's `PATH` inherited unchanged,
+so `blong-dev` could not be found; and the availability gate answered from `process.env.PATH` while
+the child it guards was given something else, so even a fixed spawn would have been refused by the
+check in front of it. The fix builds the `PATH` a child gets — this package's `node_modules/.bin`
+directories, found by walking up from the file, then the caller's — and answers both questions with
+that one value.
+
+Worth keeping: a hand-rolled `spawn` is a hole in the seam. Auditing the package for `child_process`
+found a second one, the `blong-dev proxy` that makes an MLE answer readable, which would have failed
+right after the provisioning stopped failing. And the message the gate printed ("run the cycle from
+the repository, where the workspace binary is") was advice that could not work, because the cycle
+was already running from the repository.
+
+Fixed in lib/exec.ts: runPath() builds the PATH a child gets (the package's node_modules/.bin
+directories, then the caller's), spawnCommand sets it on every child, onPath answers with the same
+value, and the hand-rolled blong-dev proxy spawn in lib/checks.ts passes it explicitly. The new
+test.script.paths group proves the seam, and the package suite passes under PATH=/usr/bin:/bin where
+no blong-dev is installed.

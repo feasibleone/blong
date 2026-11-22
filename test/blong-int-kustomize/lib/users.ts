@@ -184,11 +184,15 @@ export const provisionUser = async (
     options: IProvisionOptions,
     io: IStepIo,
 ): Promise<IProvisionedUser> => {
+    // The tool is the workspace's, so it is found through the package's own bins rather than the
+    // runner's `PATH` @@F-809. A run whose install is incomplete says so here, instead of failing at
+    // the spawn with a bare `ENOENT`.
     if (!onPath('blong-dev')) {
         return fail(
-            'blong-dev is not on PATH: this run provisions its own login with `blong-dev user add` ' +
-                'rather than assuming a test seed in the deployment (run the cycle from the ' +
-                'repository, where the workspace binary is)',
+            'blong-dev is not installed for this package: this run provisions its own login with ' +
+                '`blong-dev user add` rather than assuming a test seed in the deployment, and the ' +
+                'binary it calls is the one `node_modules/.bin` holds — run `rush update` in the ' +
+                'repository root so the workspace tool is installed',
         );
     }
     const database = options.database ?? (await deploymentDatabase(options.namespace, io));

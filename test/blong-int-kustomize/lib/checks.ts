@@ -26,7 +26,7 @@ import {
     readyPodName,
     type IPortForward,
 } from './cluster.ts';
-import {fail, waitFor, type IStepIo} from './exec.ts';
+import {fail, runPath, waitFor, type IStepIo} from './exec.ts';
 import {
     pageAnswer,
     privateKeyFields,
@@ -568,7 +568,10 @@ const loginRoundTrip = async (
             `http://127.0.0.1:${forward.localPort}`,
             '--no-login',
         ],
-        {stdio: ['ignore', 'ignore', 'pipe']},
+        // The same `PATH` every other child gets: this spawn is hand-rolled because the proxy has to
+        // outlive the call that starts it, and a runner whose `PATH` holds no `blong-dev` would
+        // otherwise fail here too @@F-809.
+        {stdio: ['ignore', 'ignore', 'pipe'], env: {...process.env, PATH: runPath()}},
     );
     // Kept rather than discarded: a proxy that dies leaves a run waiting for a port nobody is
     // listening on, and its own complaint is the only thing that says why.

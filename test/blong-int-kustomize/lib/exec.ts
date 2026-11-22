@@ -14,7 +14,9 @@
  */
 import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
+import {dirname, join} from 'node:path';
 import {createInterface} from 'node:readline/promises';
+import {fileURLToPath} from 'node:url';
 
 /** One command, with what it answered. */
 export interface ICommandResult {
@@ -79,6 +81,53 @@ export const fail = (message: string, code = 1): never => {
     throw new StepFailure(message, code);
 };
 
+/** How this platform separates the directories of a `PATH`. */
+const PATH_SEPARATOR = process.platform === 'win32' ? ';' : ':';
+
+/** Where the search for the package's own bins starts: this file. */
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * The `node_modules/.bin` directories between this file and the filesystem root.
+ *
+ * `npm run` prepends the running package's bin directory for the child, and **only** `npm run` does:
+ * a process started as `node bin/blongIntKustomize.ts` — which is how CI starts this runbook — inherits
+ * the runner's `PATH`, where nothing has installed `blong-dev`. That is why a step that shells out to it
+ * worked on a developer's machine, where the tool is also linked globally, and failed on a runner with
+ * `blong-dev is not on PATH` while the dependency was declared and installed @@F-809.
+ *
+ * The tools a step reaches for are declared dependencies of this package, so their shims are in these
+ * directories; collecting them is the same `PATH` an `npm run` would have handed the child. Walking up
+ * rather than naming one directory keeps it right whether the install hoisted the shim or not.
+ */
+const binDirectories = (): string[] => {
+    const directories: string[] = [];
+    let directory = HERE;
+    for (;;) {
+        const candidate = join(directory, 'node_modules', '.bin');
+        if (existsSync(candidate)) directories.push(candidate);
+        const parent = dirname(directory);
+        if (parent === directory) return directories;
+        directory = parent;
+    }
+};
+
+/**
+ * The `PATH` a child process gets: the package's own bins, the Node that is running this, then the
+ * caller's.
+ *
+ * Exported because two questions have to be answered by the same value: what a child is given, and
+ * whether a tool is reachable — a run that checked `process.env.PATH` and then spawned a child with
+ * this one would refuse to start over a tool the child could have run @@F-809.
+ *
+ * The Node directory is on it for the shims: `node_modules/.bin/blong-dev` is a shell script whose
+ * last line is `exec node …`, so a `PATH` without one of those starts nothing at all — and a runner
+ * that reaches its Node by an absolute path (an nvm install that is not exported, a container entry
+ * point) has exactly that `PATH`.
+ */
+export const runPath = (path = process.env['PATH'] ?? ''): string =>
+    [dirname(process.execPath), ...binDirectories(), path].filter(Boolean).join(PATH_SEPARATOR);
+
 /**
  * Hand every caller its command unwrapped, without rewriting it as one shell string.
  *
@@ -96,6 +145,9 @@ const spawnCommand = (
     new Promise((resolve, reject) => {
         const env = {...process.env, ...options.env};
         for (const name of options.unset ?? []) delete env[name];
+        // The package's own bins are reached the way `npm run` reaches them, whatever started the run
+        // @@F-809 — a caller that set `PATH` keeps it, behind the bins.
+        env['PATH'] = runPath(env['PATH']);
         const child = spawn(command, args, {
             cwd: options.cwd,
             env,
@@ -217,17 +269,21 @@ export const handlerIo = (context: unknown): IIo => {
 };
 
 /**
- * Whether a tool is on `PATH`, without asking a shell.
+ * Whether a tool is reachable by a child, without asking a shell.
  *
  * `command -v` is a shell builtin, so a runbook that checked its tools by running it was really
  * checking that a shell was there. This walks the directories itself, which is also what makes the
  * check work when the caller's `PATH` is the interesting part.
+ *
+ * The default is the `PATH` a child is actually given rather than the runner's own, because the two
+ * differ by the package's `node_modules/.bin` — and a gate that read the bare environment refused a run
+ * whose child would have found the tool on the first try @@F-809.
  */
-export const onPath = (tool: string, path = process.env['PATH'] ?? ''): boolean =>
+export const onPath = (tool: string, path = runPath()): boolean =>
     path
-        .split(':')
+        .split(PATH_SEPARATOR)
         .filter(Boolean)
-        .some(directory => existsSync(`${directory}/${tool}`));
+        .some(directory => existsSync(join(directory, tool)));
 
 /** Wait for something to become true, without a fixed sleep that is either slow or too short. */
 export const waitFor = async (

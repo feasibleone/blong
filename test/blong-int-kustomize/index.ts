@@ -36,7 +36,7 @@ export default server(() => ({
             // it and the coverage report says "incomplete" for no visible reason. The rules group is
             // the half that needs no cluster, so it is what a plain `npm test` proves.
             watch: {
-                test: ['test.cluster.suite', 'test.script.rules'],
+                test: ['test.cluster.suite', 'test.script.rules', 'test.script.paths'],
             },
         },
     },
