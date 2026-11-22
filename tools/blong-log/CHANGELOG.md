@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/feasibleone/blong/compare/blong-log-v1.10.0...blong-log-v1.10.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* blong-viewer follow up fixes ([58df4c5](https://github.com/feasibleone/blong/commit/58df4c5daf0343177f2380c2f140630a4779dd19))
+
 ## [1.10.0](https://github.com/feasibleone/blong/compare/blong-log-v1.9.0...blong-log-v1.10.0) (2026-11-21)
 
 

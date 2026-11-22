@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.54.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.54.0...blong-gogo-v1.54.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* blong-viewer follow up fixes ([58df4c5](https://github.com/feasibleone/blong/commit/58df4c5daf0343177f2380c2f140630a4779dd19))
+* CI failure ([027a00e](https://github.com/feasibleone/blong/commit/027a00e26bc958bff9b801954909945e8f600db9))
+
 ## [1.54.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.53.0...blong-gogo-v1.54.0) (2026-11-21)
 
 
