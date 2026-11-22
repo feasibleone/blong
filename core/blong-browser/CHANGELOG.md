@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.38.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.38.0...blong-browser-v1.38.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* blong-viewer follow up fixes ([58df4c5](https://github.com/feasibleone/blong/commit/58df4c5daf0343177f2380c2f140630a4779dd19))
+* CI failure ([027a00e](https://github.com/feasibleone/blong/commit/027a00e26bc958bff9b801954909945e8f600db9))
+
 ## [1.38.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.37.0...blong-browser-v1.38.0) (2026-11-21)
 
 
