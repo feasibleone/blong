@@ -142,6 +142,12 @@
         // the Storybook test runner — launch the same browser build.
         "playwright": "1.63.0",
         "playwright-core": "1.63.0",
+        // One mermaid for the whole workspace, for the reason the Playwright lines give: the docs
+        // site gets it from `@docusaurus/theme-mermaid` (`>=11.6.0`) and every portal from
+        // `blong-browser`, and one copy is what keeps a second parser out of a browser bundle. The
+        // version is 12 because its parser (`@mermaid-js/parser` 2) dropped langium, whose deep
+        // import of `vscode-jsonrpc/lib/common/*` was what a newer `vscode-jsonrpc` refused.
+        "mermaid": "12.3.0",
         "tap": "21.8.0"
         // "example1": "^1.0.0",
         // "example2": "npm:@company/example2@^1.0.0"

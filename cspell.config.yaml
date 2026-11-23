@@ -74,6 +74,7 @@ words:
   - chdir
   - checkpointed
   - Chelonia
+  - chevrotain
   - cipheriv
   - cirratum
   - citest
@@ -227,6 +228,7 @@ words:
   - jobtriger
   - Jost
   - jsonPath
+  - jsonrpc
   - jwks
   - kalin
   - kalinkrustev
@@ -246,6 +248,7 @@ words:
   - kustomization
   - kustomizations
   - labeled
+  - langium
   - Lanternfish
   - letsencrypt
   - Levski

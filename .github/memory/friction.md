@@ -84,7 +84,7 @@ open (70)
 - `F-759` · cross-cutting — An answered prompt is dropped when the asking process was killed
 - `F-782` · cross-cutting — TSServer SIGABRT is heap OOM at the 3072 MB default
 
-resolved (53)
+resolved (54)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -142,6 +142,8 @@ resolved (53)
 - `F-781` · cross-cutting — Tests green, commit blocked: an optional field is a compile-time change
 - `F-796` · cross-cutting — A single-realm port listed its group by pattern
 - `F-810` · ci — The e2e deployment had no tenant rc, so no login could be provisioned
+- `F-827` · cross-cutting — A new dependency's version hoisted over an undeclared one and broke two
+  browser builds
 
 <!-- /memory:index -->
 
@@ -2070,6 +2072,25 @@ with host db, the integration user and its database. Verified against the dev cl
 runbook's own deploymentDatabase: the document resolves to the mysql.blong-integration forward, and
 deleting the Secret reproduces the CI failure. The runbook's message now names the key and the
 field, and says the rc is the tenant's.
+
+### F-827 — A new dependency's version hoisted over an undeclared one and broke two browser builds
+
+> _2026-11-23 · cross-cutting · resolved_
+
+The setup job failed in blong-docs and blong-kustomize, not in anything the change touched: both
+bundle mermaid, whose parser (langium, in @mermaid-js/parser 1.x) deep-imports
+vscode-jsonrpc/lib/common/cancellation.js and events.js without declaring the package, so it
+resolved whichever copy pnpm had hoisted. Adding the Copilot SDK, which requires vscode-jsonrpc 10
+exactly, made 10 the hoisted copy, and 10 has an exports map exposing only its root, ./node and
+./browser, so the deep path is refused under browser conditions. A globalPackageExtensions entry
+giving langium ~8.2.0 fixed the build, and it was the wrong fix: the dependency was upstream's to
+stop needing. Mermaid 12's parser (@mermaid-js/parser 2) dropped langium for chevrotain, so the
+upgrade removes the deep import entirely, keeps the workspace on one mermaid through a
+globalOverrides pin (the Docusaurus theme accepts >=11.6.0), and leaves vscode-jsonrpc 10 to the
+SDK. Five Playwright snapshots of mermaid drawings were re-baselined for the new layout. The lesson
+is that rush update can change resolution for packages nobody edited, so a red setup job is worth
+reading for the module it names before the change that was just made — and the durable fix for a
+transitive deep import is to stop depending on the package that has it.
 
 ## Retired
 

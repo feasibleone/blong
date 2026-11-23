@@ -86,7 +86,7 @@
         "@feasibleone/lukaot": "workspace:^",
         "@tanstack/react-query": "^5.67.3",
         "ky": "^1.14.2",
-        "mermaid": "^11.0.0",
+        "mermaid": "^12.0.0",
         "zustand": "^5.0.4"
     },
     "devDependencies": {
