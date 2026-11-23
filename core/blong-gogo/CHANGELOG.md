@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.55.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.54.3...blong-gogo-v1.55.0) (2026-11-23)
+
+
+### Features
+
+* improve planning and GitHub sync ([0baa800](https://github.com/feasibleone/blong/commit/0baa8000acdca6f102d88471822e855acf6676fc))
+
 ## [1.54.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.54.2...blong-gogo-v1.54.3) (2026-11-22)
 
 
