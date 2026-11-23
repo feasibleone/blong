@@ -16,7 +16,7 @@ import {join} from 'node:path';
 import {test} from 'tap';
 
 import {setHindsightStoreFactory} from '../memory/hindsight/hindsightRuntime.ts';
-import {issueBody, setIssueReader} from '../plan/planGithub.ts';
+import {issueBody, setGhRunner, setIssueReader, type IGhResult} from '../plan/planGithub.ts';
 import {memory} from './memory.ts';
 import {plan} from './plan.ts';
 
@@ -511,6 +511,54 @@ test('plan init claims the plan for this host', async t => {
         /"slug": "demo"/,
         'and the plan is the active one',
     );
+    t.end();
+});
+
+test('plan init marks the issue it creates as claimed', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    const repo = tempRepo('# Demo plan\n\n## Work breakdown\n\n- [ ] One · area: docs\n');
+    t.teardown(repo.restore);
+
+    const ok: IGhResult = {ok: true, out: '', err: ''};
+    const calls: string[][] = [];
+    setGhRunner((args): IGhResult => {
+        calls.push([...args]);
+        const [first, second] = args;
+        if (first === '--version') return {...ok, out: 'gh version 2.0.0'};
+        if (first === 'api') return {...ok, out: 'kalin'};
+        if (first === 'issue' && second === 'list') return {...ok, out: '[]'};
+        if (first === 'issue' && second === 'create')
+            return {...ok, out: 'https://github.com/feasibleone/blong/issues/42'};
+        if (first === 'issue' && second === 'view') return {ok: false, out: '', err: 'none'};
+        return ok;
+    });
+    t.teardown(() => setGhRunner(null));
+
+    const result = await capture(() =>
+        plan([
+            'init',
+            'demo',
+            '--repo',
+            'feasibleone/blong',
+            '--no-tasks',
+            '--no-decisions',
+            '--no-slack',
+        ]),
+    );
+    t.equal(result.code, undefined, `init published the issue: ${result.err}`);
+    t.match(result.out, /feasibleone\/blong#42/, 'and says where it went');
+
+    const edit = calls.find(args => args[0] === 'issue' && args[1] === 'edit');
+    t.ok(edit, 'the new issue is given its labels in one edit');
+    const editLine = (edit ?? []).join(' ');
+    t.match(editLine, /--add-label plan-claimed/, 'the claim label is on the first publication');
+    t.match(
+        editLine,
+        /--add-label plan-host:[A-Za-z0-9._-]+/,
+        'and the label that names this host',
+    );
+    t.match(editLine, /--add-assignee kalin/, 'and the login that took the claim');
     t.end();
 });
 

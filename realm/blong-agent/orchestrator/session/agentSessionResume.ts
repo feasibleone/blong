@@ -24,6 +24,28 @@ export interface IAgentSessionResumeParams {
     channel?: {platform?: string; account?: string; conversationId?: string};
 }
 
+/**
+ * What a native engine is told when a parked question is answered (`@@D-976`).
+ *
+ * A native engine cannot be handed the result of a call it made in another process, so the answer —
+ * and the question it belongs to, which the pending checkpoint kept — becomes the next user turn.
+ */
+export const nativePrompt = (
+    checkpoint: Record<string, unknown> | undefined,
+    answer: {answerText: string; senderName?: string} | undefined,
+): string => {
+    if (!answer) return 'Continue the ticket.';
+    const question = checkpoint?.pendingQuestionText
+        ? String(checkpoint.pendingQuestionText)
+        : undefined;
+    const who = answer.senderName ? `${answer.senderName} answered` : 'The person answered';
+    return [
+        question ? `${who} the question "${question}":` : `${who}:`,
+        answer.answerText,
+        'Continue the ticket with that answer.',
+    ].join('\n');
+};
+
 export default handler(
     ({
         handler: {
@@ -85,7 +107,7 @@ export default handler(
                     // A native engine is told the answer as its next prompt; a step session folds it in as
                     // the pending tool's result and continues the transcript it already has.
                     ...(native
-                        ? {prompt: params.answer?.answerText ?? 'Continue.'}
+                        ? {prompt: nativePrompt(last.checkpoint, params.answer)}
                         : {answer: params.answer}),
                     channel: params.channel,
                 },

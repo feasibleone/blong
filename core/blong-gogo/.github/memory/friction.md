@@ -75,7 +75,7 @@ open (56)
 - `F-771` · core/blong-gogo — A capture read the live config and tripped the factory-phase guard
 - `F-784` · core/blong-gogo — A realm adapter needs connect, namespace and imports
 
-resolved (58)
+resolved (63)
 
 - `F-094` · core/blong-gogo — Knex `table.list` prefixed table names with the subject twice
 - `F-095` · core/blong-gogo — tap's order-sensitive snapshots broke on an appended `id` field
@@ -146,6 +146,15 @@ resolved (58)
 - `F-815` · core/blong-gogo — An api() layer produced no schemas and said nothing
 - `F-816` · core/blong-gogo — A tool's own --flag reached the suite as configuration
 - `F-817` · core/blong-gogo — A pass rewrote identical stubs and the watcher restarted for ever
+- `F-820` · core/blong-gogo — pnpm refuses the Copilot SDK's koffi build until the allow-list names
+  it
+- `F-821` · core/blong-gogo — A scripted native session lost its position across the close three
+  times
+- `F-823` · core/blong-gogo — The command switch was documented but not enforced until the shell
+  tools were excluded
+- `F-824` · core/blong-gogo — A suite that used the runtime passed and then never exited
+- `F-825` · core/blong-gogo — A provider 404 named the model when the base URL was the Anthropic
+  wire
 
 <!-- /memory:index -->
 
@@ -603,7 +612,7 @@ not the schema declaration, is what exposes the CRUD over RPC.
 
 > _2026-10-11 · core/blong-gogo · open_
 
-core/blong-gogo/src/codec/browser.ts globs ./test/**/*.ts beside ./adapter/**/*.ts, and
+core/blong-gogo/src/codec/browser.ts globs ./test/**/\*.ts beside ./adapter/**/\*.ts, and
 import.meta.glob is expanded when the bundle is built, so the codec's test handlers are in every app
 bundle this repository produces: the operator's page ships testCodecMle and testLoginTokenCreate
 chunks that no user can reach, and nothing in the build says so. The layer is inert —
@@ -894,8 +903,8 @@ which is what lets the watcher's `watch.reload.{event}` keep its dynamic event n
 The context column was a second, separate loss, and my first explanation of it was wrong: the
 component name was not "in the record". The record carries the call _site_ (file and line) and
 nothing about the component; the name only ever lived on the logger face the old call used.
-Restoring it is not a matter of printing a field — it is a matter of
-_writing through the right face_.
+Restoring it is not a matter of printing a field — it is a matter of _writing through the right
+face_.
 
 That is where the child-logger idea belongs, and it corrected the design. A proxy per component
 would have built a registry per component — fragmenting exactly the coverage answer the plan wants
@@ -1314,17 +1323,17 @@ and recorded the missing warning as a todo in `core/blong-gogo`.
 
 The realm runbook tells a reader to bring an image in with podman because docker is absent on this
 machine and the k3d nodes are podman containers, and podman refuses the Dockerfile at its first real
-step: COPY --parents is a BuildKit feature, so the build dies with COPY only supports the
---chmod --chown and --from flags. The deployment run needed a stand-in image built from the deploy
-folder instead. A plain COPY per category folder plus the existing .dockerignore is portable to both
-and needs no rush install at that step.
+step: COPY --parents is a BuildKit feature, so the build dies with COPY only supports the --chmod
+--chown and --from flags. The deployment run needed a stand-in image built from the deploy folder
+instead. A plain COPY per category folder plus the existing .dockerignore is portable to both and
+needs no rush install at that step.
 
 Closed by removing the BuildKit-only syntax rather than by giving up podman: the Dockerfile now
 copies one folder per package category (rush.json plus common, core, realm, test, suite, demo,
 tools, docs, ext) instead of one COPY per package.json with --parents, and the release stage copies
-the whole deploy folder with the prune done by the builder (rm -rf .rush, find -type d -name
-docker -o -name rush-logs) instead of --exclude. podman 4.9.3 built the image: 1.1 GB, imported into
-both k3d nodes with ctr.
+the whole deploy folder with the prune done by the builder (rm -rf .rush, find -type d -name docker
+-o -name rush-logs) instead of --exclude. podman 4.9.3 built the image: 1.1 GB, imported into both
+k3d nodes with ctr.
 
 ### F-413 — A release default resolved Services the tree never writes
 
@@ -1451,10 +1460,10 @@ The null result is the second half of the trap: a transport refusal should not r
 > _2026-10-12 · core/blong-gogo · resolved_
 
 The split was planned to delete the identity.checkInternal special case from RpcClient.sender, on
-the reasoning that a process serving a gateway now resolves locally in Remote._getMethod before the
+the reasoning that a process serving a gateway now resolves locally in Remote.\_getMethod before the
 transport. Reading the code showed the opposite: GatewayCodec asks for the caller's session from
 inside its own verification and is handed RpcClient.sender directly, so that call never goes through
-_getMethod at all, and removing the branch would have re-opened F-497 even with gateway.skipSocket
+\_getMethod at all, and removing the branch would have re-opened F-497 even with gateway.skipSocket
 set. The lesson is that the framework has two ways into the transport — the resolver, and a codec
 that was handed a sender — and a rule about where a call runs has to be checked against both before
 a special case is called dead. The cost was one plan reversal, caught by grepping who calls sender
@@ -1523,7 +1532,7 @@ showed Athletics in Bulgarian. The reason is the table spec: sport.sport declare
 {nameColumn: sportName}, so the row carries its own display column, the branch returned without a
 join, and the grid reads that column rather than a name the adapter projects. Such a table still
 needs the translation, and it must replace the column in place: the COALESCE selection is aliased to
-the same column name and appended after table.* so the duplicate resolves to the translated value.
+the same column name and appended after table.\* so the duplicate resolves to the translated value.
 When adding a translation to a read, check both shapes of resource-backed table before believing the
 picture.
 
@@ -1551,14 +1560,14 @@ binding.
 
 > _2026-10-31 · core/blong-gogo · resolved_
 
-Mastra 1.81.0 ships dist/_types copies of the AI SDK provider packages, and its own d.ts then import
-them by relative path and ask for ProviderV3 and LanguageModelV3 while the copy it ships declares
-ProviderV1. Neither ai 7 nor ai 6 changes it, so the errors are in the dependency rather than in our
-code, and a global skipLibCheck would hide every other dependency's mistakes to accommodate this
-one. The adapter loads Mastra through a computed specifier instead: TypeScript then never reads
-those declarations, the blind spot stays on the single module that has the fault, and
-core/blong-gogo keeps skipLibCheck off. The AI SDK stays on its current major (ai 7,
-@ai-sdk/openai 4), which also compiles and passes.
+Mastra 1.81.0 ships dist/\_types copies of the AI SDK provider packages, and its own d.ts then
+import them by relative path and ask for ProviderV3 and LanguageModelV3 while the copy it ships
+declares ProviderV1. Neither ai 7 nor ai 6 changes it, so the errors are in the dependency rather
+than in our code, and a global skipLibCheck would hide every other dependency's mistakes to
+accommodate this one. The adapter loads Mastra through a computed specifier instead: TypeScript then
+never reads those declarations, the blind spot stays on the single module that has the fault, and
+core/blong-gogo keeps skipLibCheck off. The AI SDK stays on its current major (ai 7, @ai-sdk/openai
+4), which also compiles and passes.
 
 agentMastra.ts imports Mastra through a computed specifier; tsconfig unchanged and the suite is
 green on ai 7
@@ -1828,9 +1837,9 @@ process wrote. A stream failure that closes normally leaves no error anywhere:
 `aborted=false ended=true` was the whole symptom on the server, and `data-wakes` climbing with
 `data-stream="closed"` was the whole symptom in the page.
 
-Fixed in core/blong-gogo/src/Gateway.ts: _streamFrames unwraps the port packet before asking whether
-the answer is iterable. Verified by the viewer's tap suite (9) and the framework's 1354 (1348 pass,
-6 skip).
+Fixed in core/blong-gogo/src/Gateway.ts: \_streamFrames unwraps the port packet before asking
+whether the answer is iterable. Verified by the viewer's tap suite (9) and the framework's 1354
+(1348 pass, 6 skip).
 
 ### F-808 — A stream inherited the http client's ten-second timeout
 
@@ -1943,3 +1952,88 @@ the file" and "make the file say this" are different operations, and tooling tha
 ever sees the former.
 
 A pass now builds the stub, reads the file and writes only when they differ; pinned by a unit test.
+
+### F-820 — pnpm refuses the Copilot SDK's koffi build until the allow-list names it
+
+> _2026-11-23 · core/blong-gogo · resolved_
+
+`rush update` failed on the new dependency with ERR_PNPM_IGNORED_BUILDS: koffi, the FFI binding the
+Copilot SDK loads its runtime through, has an install script and pnpm refuses the whole install
+rather than skipping it. The fix is a line in `globalAllowBuilds` in
+`common/config/rush/pnpm-config.json`, next to sharp, and the lesson is that any package with a
+native postinstall needs that entry before the first `rush update`, not after a diagnosis.
+
+globalAllowBuilds in common/config/rush/pnpm-config.json now names koffi; rush update installs
+@microsoft/copilot-sdk cleanly and the package loads its exports.
+
+globalAllowBuilds in common/config/rush/pnpm-config.json now names koffi; rush update installs
+@microsoft/copilot-sdk cleanly and the package loads its exports.
+
+### F-821 — A scripted native session lost its position across the close three times
+
+> _2026-11-23 · core/blong-gogo · resolved_
+
+The scripted native fixture cost three diagnosis cycles before it behaved like the real harness.
+First, `engine.account.check` reported a `workspaceRoot` only in the copilot branch, so a sim
+account could not exercise the remote workspace path. Second, `simSession` replayed its whole script
+on every call, so a resume re-suspended instead of continuing. Third, `engine.session.close` reset
+the sim cursor, which the suspension's finally-block called, so the resume started at the top again.
+The lesson: a test double for a resumable engine has to carry position across the close, and a close
+that follows a suspension must not forget where the dialogue stopped.
+
+simSession keeps its cursor across a close when the account is native, the check reports
+workspaceRoot for every account that names one, so the scripted suspension and its resume now run in
+test.agent.native.
+
+simSession keeps its cursor across a close when the account is native, and engine.account.check
+reports workspaceRoot for every account that names one, so the scripted suspension and its resume
+run in test.agent.native.
+
+### F-823 — The command switch was documented but not enforced until the shell tools were excluded
+
+> _2026-11-23 · core/blong-gogo · resolved_
+
+The unit test asserted the permission decision and the README said a deployment disables commands
+with agentDispatch.shellEnabled, but on a real runtime the first wire test asked for echo hi with
+the switch off and got exit code 0. A coding-agent session runs its tools as the CLI does with
+--allow-all, and neither permissions.onRequest nor permissions.mode manual changes that: the handler
+is never called for the shell. The switch is now the runtime's shell tools excluded from the session
+(bash, powershell, shell), the handler is kept as a second line, and the lesson is that a security
+statement needs a run against the real system before it is described as enforced; a stub client can
+only prove what the code sends, never what the other side does with it.
+
+COPILOT_SHELL_TOOLS is excluded from a session when allowShell is false, asserted in
+agentCopilot.test.ts and proven on a local runtime: the file was written and echo hi could not run
+with the switch off, and ran with it on.
+
+### F-824 — A suite that used the runtime passed and then never exited
+
+> _2026-11-23 · core/blong-gogo · resolved_
+
+With a real account in play the copilot group ran green in two seconds and the process then hung
+until timeout killed it, printing no summary at all: the cached CopilotClient still held its TCP
+connection to the runtime, and a live socket is a live event loop. The engine adapter now has a stop
+hook that closes every client this process started, guarded by a flag set when the kind is
+dispatched so a deployment without a copilot account never loads the module to find out. The lesson
+is that a client cached for reuse is the process's, not a session's, and its close belongs to the
+platform's stop.
+
+copilotStopClients is called from the engine adapter's stop, only when the kind was dispatched; the
+copilot-intent run now exits 0 with 27/27 and prints its summary.
+
+### F-825 — A provider 404 named the model when the base URL was the Anthropic wire
+
+> _2026-11-23 · core/blong-gogo · resolved_
+
+The first wire test borrowed its base URL from the ambient COPILOT_PROVIDER_BASE_URL, which is
+https://api.deepseek.com/anthropic, and sent the OpenAI shape to it. DeepSeek answered 404 "Model
+deepseek-flash not found on provider at https://api.deepseek.com/anthropic", and that sentence is
+where the tracing went wrong: deepseek-flash is the current model id, deepseek-chat is the retired
+one, and both answer on the OpenAI route. Measured afterwards: the Anthropic path works when the
+account names provider anthropic, and fails exactly as seen when it does not. copilotSessionConfig
+now refuses a baseUrl ending in /anthropic unless the account names that wire, and the lesson is to
+read a provider error for the route as well as the noun it prints.
+
+copilotSessionConfig throws on an /anthropic baseUrl without provider anthropic (unit test added),
+the accounts and samples name deepseek-flash, and a run on the local runtime returns ready on both
+wires.

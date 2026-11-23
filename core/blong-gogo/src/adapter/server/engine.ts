@@ -7,6 +7,7 @@ import type {
 } from '@feasibleone/blong/types';
 import {adapter, type Adapter} from '@feasibleone/blong/types';
 
+import type {CopilotDispatch} from '../../agent/agentCopilot.ts';
 import {simReset, simSession, simStep} from '../../agent/agentSim.ts';
 
 /**
@@ -34,9 +35,17 @@ export interface IConfig {
 const accountOf = (self: Adapter<IConfig>, alias: string): IAgentEngineAccount | undefined =>
     (self.config as IConfig | undefined)?.accounts?.[alias];
 
+/**
+ * Whether a copilot session was opened in this process.
+ *
+ * Set when the kind is dispatched, not when an account is configured: a deployment whose copilot
+ * accounts were never used has no client to stop and must not load the module to find that out.
+ */
+let copilotStarted = false;
+
 /** The kind's default mode, when the account does not name one. */
 const modeOf = (account: IAgentEngineAccount): 'step' | 'native' =>
-    account.mode ?? (account.kind === 'deepseek' ? 'native' : 'step');
+    account.mode ?? (account.kind === 'deepseek' || account.kind === 'copilot' ? 'native' : 'step');
 
 const unavailable = (account: IAgentEngineAccount): never => {
     throw new Error(`engine kind ${account.kind} is not available in this process`);
@@ -58,9 +67,39 @@ const unavailable = (account: IAgentEngineAccount): never => {
 const loadKind = async (name: string): Promise<Record<string, unknown>> =>
     (await import(`../../agent/agent${name}.ts`)) as Record<string, unknown>;
 
+/**
+ * A native engine asked for one turn: a session whose prompt is that turn.
+ *
+ * Shared by every kind that owns its loop, so the two of them cannot answer a step request two
+ * different ways.
+ */
+const nativeAsStep = async (
+    self: Adapter<IConfig>,
+    request: IAgentStepRequest,
+    dispatch: CopilotDispatch,
+): Promise<IAgentStepResult> => {
+    const lastUser = [...request.history].reverse().find(message => message.role === 'user') as
+        | {text?: string}
+        | undefined;
+    const native = await sessionOf(
+        self,
+        {
+            account: request.account,
+            prompt: lastUser?.text ?? '',
+            tools: request.tools,
+            instructions: request.instructions,
+            allowShell: request.allowShell,
+            toolDispatch: request.toolDispatch,
+        },
+        dispatch,
+    );
+    return {text: native.text, toolCalls: [], finishReason: native.finishReason ?? 'native'};
+};
+
 const stepOf = async (
     self: Adapter<IConfig>,
     request: IAgentStepRequest,
+    dispatch: CopilotDispatch,
 ): Promise<IAgentStepResult> => {
     const account = accountOf(self, request.account);
     if (!account) throw new Error(`engine account ${request.account} is not configured`);
@@ -85,22 +124,10 @@ const stepOf = async (
             };
             return mastraStep(account, request);
         }
-        case 'deepseek': {
+        case 'deepseek':
+        case 'copilot':
             // The harness owns its loop, so a one-turn request becomes a session with one prompt.
-            const lastUser = [...request.history]
-                .reverse()
-                .find(message => message.role === 'user') as {text?: string} | undefined;
-            const native = await sessionOf(self, {
-                account: request.account,
-                prompt: lastUser?.text ?? '',
-                tools: request.tools,
-            });
-            return {
-                text: native.text,
-                toolCalls: [],
-                finishReason: native.finishReason ?? 'native',
-            };
-        }
+            return nativeAsStep(self, request, dispatch);
         default:
             return unavailable(account);
     }
@@ -109,6 +136,7 @@ const stepOf = async (
 const sessionOf = async (
     self: Adapter<IConfig>,
     request: IAgentSessionRequest,
+    dispatch: CopilotDispatch,
 ): Promise<IAgentSessionResult> => {
     const account = accountOf(self, request.account);
     if (!account) throw new Error(`engine account ${request.account} is not configured`);
@@ -126,17 +154,34 @@ const sessionOf = async (
             };
             return deepseekSession(account, request);
         }
+        case 'copilot': {
+            copilotStarted = true;
+            const {copilotSession} = (await loadKind('Copilot').catch(() =>
+                unavailable(account),
+            )) as {
+                copilotSession: (
+                    a: IAgentEngineAccount,
+                    r: IAgentSessionRequest,
+                    d: CopilotDispatch,
+                ) => Promise<IAgentSessionResult>;
+            };
+            return copilotSession(account, request, dispatch);
+        }
         case 'vercel':
         case 'mastra':
             // A step engine has no loop of its own: one prompt is one turn.
             return {
                 text: (
-                    await stepOf(self, {
-                        account: request.account,
-                        instructions: '',
-                        history: [{role: 'user', text: request.prompt}],
-                        tools: request.tools,
-                    })
+                    await stepOf(
+                        self,
+                        {
+                            account: request.account,
+                            instructions: '',
+                            history: [{role: 'user', text: request.prompt}],
+                            tools: request.tools,
+                        },
+                        dispatch,
+                    )
                 ).text,
                 finishReason: 'step',
             };
@@ -145,56 +190,128 @@ const sessionOf = async (
     }
 };
 
-export default adapter<IConfig>(() => ({
-    activation: {
-        default: {
-            namespace: 'engine',
-            imports: [/\.engine$/],
-            accounts: {},
-        },
-    },
+export default adapter<IConfig>(api => {
     /**
-     * Open the adapter's loop before the platform starts serving.
+     * The realm's tool boundary, reached by name (`@@D-975`).
      *
-     * A base adapter that never calls `super.connect()` leaves the port's queue without a loop, and the
-     * platform's `start` then waits for a promise that never settles — the log still shows
-     * `adapter.start` and `adapter.ready`, which is what made this cost an afternoon (`@@F-651`).
+     * A native engine's custom tool handler runs in this process, so the call is local even when the
+     * model runs on another host; the `$meta` method is what names the handler.
      */
-    start(this: Adapter<IConfig>) {
-        super.connect();
-        return super.start();
-    },
-    /** One model turn, executed by the account's kind. The realm's loop calls this (`@@D-708`). */
-    async engineStep(this: Adapter<IConfig>, request: IAgentStepRequest) {
-        return stepOf(this, request);
-    },
-    /** A native run, for an engine that owns its loop (`@@D-711`). */
-    async engineSession(this: Adapter<IConfig>, request: IAgentSessionRequest) {
-        return sessionOf(this, request);
-    },
-    /** Release whatever the account is holding: a scripted cursor, or a harness subprocess. */
-    async engineClose(this: Adapter<IConfig>, params: {account: string; workspacePath?: string}) {
-        const account = accountOf(this, params.account);
-        if (!account) return {closed: false};
-        if (account.kind === 'sim') simReset(params.account, params.workspacePath);
-        if (account.kind === 'deepseek') {
-            const {deepseekClose} = (await loadKind('Deepseek').catch(() =>
-                unavailable(account),
-            )) as {deepseekClose: (a: IAgentEngineAccount, w?: string) => void};
-            deepseekClose(account, params.workspacePath);
-        }
-        return {closed: true};
-    },
-    /** Whether this process can answer for the account at all, and in which mode. */
-    async engineCheck(this: Adapter<IConfig>, params: {account: string}) {
-        const account = accountOf(this, params.account);
-        if (!account) return {reachable: false, kind: 'none', mode: 'none'};
-        if (account.kind === 'vercel' || account.kind === 'mastra')
-            await (account.kind === 'vercel' ? loadKind('Vercel') : loadKind('Mastra')).catch(() =>
-                unavailable(account),
-            );
-        if (account.kind === 'deepseek')
-            await loadKind('Deepseek').catch(() => unavailable(account));
-        return {reachable: true, kind: account.kind, mode: modeOf(account)};
-    },
-}));
+    const dispatch: CopilotDispatch = (params, meta) =>
+        Promise.resolve(api.dispatch(params, meta)) as Promise<unknown>;
+
+    return {
+        activation: {
+            default: {
+                namespace: 'engine',
+                imports: [/\.engine$/],
+                accounts: {},
+            },
+        },
+        /**
+         * Open the adapter's loop before the platform starts serving.
+         *
+         * A base adapter that never calls `super.connect()` leaves the port's queue without a loop, and the
+         * platform's `start` then waits for a promise that never settles — the log still shows
+         * `adapter.start` and `adapter.ready`, which is what made this cost an afternoon (`@@F-651`).
+         */
+        start(this: Adapter<IConfig>) {
+            super.connect();
+            return super.start();
+        },
+        /**
+         * Stop the runtime clients this process started.
+         *
+         * A started client holds a TCP connection and the connection holds the event loop, so a run that
+         * opened a copilot session does not exit without this: the suite finished its work and then hung
+         * until it was killed. The client is shared by every session that named its endpoint, which is why
+         * the close belongs to the platform rather than to a session's own close (`@@D-971`).
+         */
+        async stop(this: Adapter<IConfig>) {
+            if (copilotStarted) {
+                const {copilotStopClients} = (await loadKind('Copilot').catch(() => ({}))) as {
+                    copilotStopClients?: () => Promise<void>;
+                };
+                await copilotStopClients?.();
+            }
+            return super.stop();
+        },
+        /** One model turn, executed by the account's kind. The realm's loop calls this (`@@D-708`). */
+        async engineStep(this: Adapter<IConfig>, request: IAgentStepRequest) {
+            return stepOf(this, request, dispatch);
+        },
+        /** A native run, for an engine that owns its loop (`@@D-711`). */
+        async engineSession(this: Adapter<IConfig>, request: IAgentSessionRequest) {
+            return sessionOf(this, request, dispatch);
+        },
+        /** Release whatever the account is holding: a scripted cursor, or a harness subprocess. */
+        async engineClose(
+            this: Adapter<IConfig>,
+            params: {account: string; workspacePath?: string},
+        ) {
+            const account = accountOf(this, params.account);
+            if (!account) return {closed: false};
+            // A step dialogue starts over with the next run; a native one stops where it parked, because
+            // the close that follows a suspension is what the resume continues from (`@@D-976`).
+            if (account.kind === 'sim' && modeOf(account) === 'step')
+                simReset(params.account, params.workspacePath);
+            if (account.kind === 'deepseek') {
+                const {deepseekClose} = (await loadKind('Deepseek').catch(() =>
+                    unavailable(account),
+                )) as {deepseekClose: (a: IAgentEngineAccount, w?: string) => void};
+                deepseekClose(account, params.workspacePath);
+            }
+            if (account.kind === 'copilot') {
+                const {copilotClose} = (await loadKind('Copilot').catch(() =>
+                    unavailable(account),
+                )) as {copilotClose: (a: IAgentEngineAccount, w?: string) => void};
+                copilotClose(account, params.workspacePath);
+            }
+            return {closed: true};
+        },
+        /** Whether this process can answer for the account at all, and in which mode. */
+        async engineCheck(this: Adapter<IConfig>, params: {account: string}) {
+            const account = accountOf(this, params.account);
+            if (!account) return {reachable: false, kind: 'none', mode: 'none'};
+            if (account.kind === 'vercel' || account.kind === 'mastra')
+                await (account.kind === 'vercel' ? loadKind('Vercel') : loadKind('Mastra')).catch(
+                    () => unavailable(account),
+                );
+            if (account.kind === 'deepseek')
+                await loadKind('Deepseek').catch(() => unavailable(account));
+            if (account.kind === 'copilot') {
+                const {copilotCheck} = (await loadKind('Copilot').catch(() =>
+                    unavailable(account),
+                )) as {
+                    copilotCheck: (a: IAgentEngineAccount) => Promise<{
+                        reachable: boolean;
+                        kind: string;
+                        mode: string;
+                        tools: string[];
+                        workspaceRoot?: string;
+                    }>;
+                };
+                try {
+                    return await copilotCheck(account);
+                } catch {
+                    // A runtime that is down is an account nobody can claim on, not a crash (`@@D-970`).
+                    return {
+                        reachable: false,
+                        kind: 'copilot',
+                        mode: 'native',
+                        tools: [],
+                        ...(account.workspaceRoot && {workspaceRoot: account.workspaceRoot}),
+                    };
+                }
+            }
+            return {
+                reachable: true,
+                kind: account.kind,
+                mode: modeOf(account),
+                // Where a kind's workspace lives is a property of the account, not of the kind
+                // (`@@D-978`): a scripted account names one to exercise the remote path too.
+                ...(account.workspaceRoot && {workspaceRoot: account.workspaceRoot}),
+            };
+        },
+    };
+});

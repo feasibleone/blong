@@ -58,7 +58,7 @@ open (45)
 - `F-818` · tools/blong-dev — An id attached to a wrapped plan bullet shifts every id after it
 - `F-819` · tools/blong-dev — lint --fix repairs nothing under plans/, which prettier ignores
 
-resolved (14)
+resolved (15)
 
 - `F-080` · tools/blong-dev — `blong-dev` CLI not built
 - `F-090` · tools/blong-dev — `blong-dev` was not built, so `npm run ci-lint` could not find it
@@ -74,6 +74,7 @@ resolved (14)
 - `F-709` · tools/blong-dev — A memory file's last list cannot satisfy both linters
 - `F-721` · tools/blong-dev — An optional field with two meanings claimed a search that never ran
 - `F-748` · tools/blong-dev — blong-dev ci says no run for the id in the URL
+- `F-826` · tools/blong-dev — plan init published a claimed issue without the claim's labels
 
 <!-- /memory:index -->
 
@@ -905,3 +906,21 @@ URL ends in, so it is the form a person is most likely to paste.
 Fixed: runSelector accepts the run number, the database id a GitHub URL ends in, and the URL; a
 selector that matches none now names the runs it saw. ci.test 24/24, and the URL the user pasted
 diagnoses #685.
+
+### F-826 — plan init published a claimed issue without the claim's labels
+
+> _2026-11-23 · tools/blong-dev · resolved_
+
+The claim travels two ways: the marker in the issue body, which a host reads back, and the two
+labels the issue list shows. init wrote the claim into the front matter before publishing, so the
+body carried the marker, but only plan claim ever applied the labels: issue #300 read as claimed in
+its header and as unlabelled in every list, which is the one state a reader checking the list cannot
+see. The decision is now one pure function (claimLabelsChange) applied by publishIssue in both its
+create and update paths, so a plain plan sync repairs an issue published before the fix, and label
+application no longer depends on which verb happened to publish. A setGhRunner seam was added beside
+the existing reader seam, because a publication path that only GitHub can exercise is a path nothing
+checks, and that is how the gap survived: the command tests all ran with --no-issue.
+
+publishIssue applies claimLabelsChange on create and on update; plan sync repaired #300 to
+plan-claimed + plan-host:ms-02, and plan.test.ts now drives init through a setGhRunner stand-in and
+asserts both labels and the assignee.

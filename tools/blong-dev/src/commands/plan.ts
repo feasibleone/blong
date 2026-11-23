@@ -38,6 +38,7 @@ import {join, relative, resolve} from 'node:path';
 import {loadCallRc} from '../callRc.ts';
 import {listEntries, type IMemoryEntryView} from '../memory/memoryView.ts';
 import {
+    claimLabelsChange,
     ghAvailable,
     ghLogin,
     issueBody,
@@ -59,7 +60,6 @@ import {
     CLAIM_LABEL,
     claimOf,
     claimPatch,
-    hostLabel,
     isHostLabel,
     isMine,
     parseClaimMarker,
@@ -686,6 +686,37 @@ function issueNumberOf(value: string | undefined): number | undefined {
 }
 
 /** Publish the plan to its issue, creating it when there is none. */
+/** The labels an issue carries now, or nothing when it cannot be read. */
+function claimLabelsPresent(repo: string, issue: number): string[] {
+    return issueView(repo, issue)?.labels ?? [];
+}
+
+/**
+ * Put the claim on an issue as labels, creating the labels the repository does not have yet.
+ *
+ * A label that does not exist makes `gh issue edit --add-label` fail, and a claim that silently loses
+ * its visible mark is worse than one with no label at all (`@@D-967`).
+ */
+function claimLabelsApply(repo: string, issue: number, claim: IPlanClaim, present: string[]): void {
+    const change = claimLabelsChange(claim, present);
+    labelEnsure(repo, CLAIM_LABEL);
+    labelEnsure(repo, change.wanted, `Plan claimed by the host \`${claim.host}\``, '0E8A16');
+    issueTrack(repo, issue, {
+        addLabels: change.add,
+        ...(change.remove.length > 0 ? {removeLabels: change.remove} : {}),
+        ...(change.assignee ? {assignee: change.assignee} : {}),
+    });
+}
+
+/**
+ * The issue a plan is published to, kept in step with the plan file.
+ *
+ * The claim travels twice: as the marker in the body, which a host reads back, and as the labels,
+ * which is what the issue list shows. Both are applied here rather than in `plan claim` alone, because
+ * `plan init` publishes a claimed plan — the first publication was the path that skipped the labels,
+ * and an issue whose body says claimed while every list says otherwise is the one state the list
+ * cannot show (`@@D-967`).
+ */
 function publishIssue(
     root: string,
     plan: IPlanDocument,
@@ -718,6 +749,11 @@ function publishIssue(
         issueFind(repo, title);
     if (existing && existing.number > 0) {
         issueEdit({repo, issue: existing.number, body, title});
+        if (claim) {
+            const present = claimLabelsPresent(repo, existing.number);
+            if (!claimLabelsChange(claim, present).holds)
+                claimLabelsApply(repo, existing.number, claim, present);
+        }
         const url =
             existing.url ||
             issueFind(repo, title)?.url ||
@@ -730,6 +766,10 @@ function publishIssue(
     }
     labelEnsure(repo, label);
     const created = issueCreate({repo, title, body, labels: [label]});
+    // The label goes on at creation, in a second call rather than in this one, so a claim the
+    // repository has never seen is created with its description and colour instead of being added
+    // by name and left bare.
+    if (claim && created.number > 0) claimLabelsApply(repo, created.number, claim, []);
     return {number: created.number, url: created.url, repo};
 }
 
@@ -1370,21 +1410,7 @@ function claim(
                 'blong-dev: the issue was not updated — the claim holds on this checkout only\n',
             );
         } else {
-            // A label that does not exist makes `gh issue edit --add-label` fail, and a claim that
-            // silently loses its visible mark is worse than one with no label at all. The host gets
-            // a label of its own, so the issue list says who holds the plan rather than only that
-            // somebody does (`@@D-967`).
-            labelEnsure(repo, CLAIM_LABEL);
-            const label = hostLabel(host);
-            labelEnsure(repo, label, `Plan claimed by the host \`${host}\``, '0E8A16');
-            // A takeover (`--force`) leaves the previous host's label behind unless it is taken off
-            // in the same call, and two host labels would be two answers to one question.
-            const stale = remote.labels.filter(other => isHostLabel(other) && other !== label);
-            issueTrack(repo, number, {
-                addLabels: [CLAIM_LABEL, label],
-                ...(stale.length > 0 ? {removeLabels: stale} : {}),
-                ...(by ? {assignee: by} : {}),
-            });
+            claimLabelsApply(repo, number, taken, remote.labels);
             publishIssue(root, patched, options, flags);
         }
     }

@@ -50,10 +50,25 @@ export default handler(
             const ticket = claimed?.ticket;
             if (!ticket) return {};
             const ticketId = String(ticket.ticketId);
-            const prepared = (await workspaceRepoPrepare({ticketId}, $meta)) as {
-                workspacePath: string;
-                baseCommit?: string;
-            };
+            const account = params.engineAccount ?? '';
+            // The account decides who owns the loop and, for a kind whose workspace lives on a runtime
+            // host, where that workspace is (`@@D-708`, `@@D-978`).
+            const checked = account
+                ? ((await engineAccountCheck({account}, $meta)) as {
+                      mode?: string;
+                      workspaceRoot?: string;
+                  })
+                : undefined;
+            const remoteRoot = checked?.workspaceRoot;
+            const prepared = remoteRoot
+                ? // The runtime host owns this directory and the runtime refuses a session in one that
+                  // does not exist, so the folder the deployment keeps for the host is the workspace
+                  // itself; the agent clones and pulls into it (`@@D-978`).
+                  {workspacePath: remoteRoot.replace(/\/+$/, '')}
+                : ((await workspaceRepoPrepare({ticketId}, $meta)) as {
+                      workspacePath: string;
+                      baseCommit?: string;
+                  });
             const source = ticket.workspaceSource ? String(ticket.workspaceSource) : undefined;
             if (source && source !== prepared.workspacePath) {
                 // Hand it back before refusing: a ticket this host will not run has to be free for the
@@ -65,12 +80,8 @@ export default handler(
                 throw errorAgentWorkspaceMissing({workspacePath: source});
             }
             const sessionId = randomUUID();
-            const account = params.engineAccount ?? '';
             // The account decides who owns the loop (`@@D-708`): a caller that names no mode gets the
             // one the engine reports, and `step` is only the answer when nobody says otherwise.
-            const checked = account
-                ? ((await engineAccountCheck({account}, $meta)) as {mode?: string})
-                : undefined;
             const added = (await agentSessionAdd(
                 {
                     sessionId,
@@ -82,6 +93,7 @@ export default handler(
                     engineMode: params.engineMode ?? checked?.mode ?? 'step',
                     workerId: params.workerId,
                     workspacePath: prepared.workspacePath,
+                    workspaceKind: remoteRoot ? 'remote' : 'local',
                     baseCommit: prepared.baseCommit,
                 },
                 $meta,

@@ -78,3 +78,24 @@ test('sim.session reports the whole script once', t => {
     t.equal(run.finishReason, 'stop', 'and the run reports why it ended');
     t.end();
 });
+
+test('sim.session parks a native run on a scripted question', t => {
+    const account = 'parked';
+    const run = simSession(
+        [{text: 'Checking the branch.'}, {suspend: {promptId: 'p-9'}}, {text: 'Applied.'}],
+        account,
+        {account, prompt: 'Fix it.', tools: [], workspacePath: '/tmp/ws'},
+    );
+    t.same(run.suspended, {promptId: 'p-9'}, 'the question is reported as a suspension');
+    t.equal(run.finishReason, 'suspended', 'and the run says it did not finish');
+    t.equal(
+        run.sessionKey,
+        'sim-parked|/tmp/ws',
+        'the session id is still returned for the resume',
+    );
+    t.ok(
+        run.events?.some(event => event.kind === 'suspend'),
+        'the suspension is one of the reported events',
+    );
+    t.end();
+});

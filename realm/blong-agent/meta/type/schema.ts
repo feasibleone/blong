@@ -88,6 +88,11 @@ export default schema(async ({lib: {type}}) => ({
             workerId: type.stringNotNull({maxLength: 128}),
             /** Null when the persona claims no workspace, which is what a toolless chat persona does. */
             workspacePath: type.stringNull({maxLength: 1000}),
+            /**
+             * `local` or `remote`: whether the workspace adapter owns that path, or a runtime host does
+             * (`@@D-978`). Null is a session written before the column existed, read as local.
+             */
+            workspaceKind: type.stringNull({maxLength: 16}),
             baseCommit: type.stringNull({maxLength: 64}),
             turnCount: type.integerNull(),
             lastActivityAt: type.dateTimeNull(),

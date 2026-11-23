@@ -13,7 +13,13 @@
 
 import {execFileSync, spawnSync} from 'node:child_process';
 
-import {claimMarker, type IPlanClaim} from './planOwnership.ts';
+import {
+    CLAIM_LABEL,
+    claimMarker,
+    hostLabel,
+    isHostLabel,
+    type IPlanClaim,
+} from './planOwnership.ts';
 
 /** GitHub's own limit on an issue body. */
 export const ISSUE_BODY_LIMIT = 65_536;
@@ -21,11 +27,29 @@ export const ISSUE_BODY_LIMIT = 65_536;
 /** Leave room for the truncation note and the header this module adds. */
 const SAFE_BODY = ISSUE_BODY_LIMIT - 2_048;
 
-/** The answer every call reports. */
+/** One answer of the `gh` client, as a caller reads it. */
 export interface IGhResult {
     ok: boolean;
     out: string;
     err: string;
+}
+
+/** A `gh` stand-in, so a test can publish without a network. */
+export type GhRunner = (args: string[], input?: string) => IGhResult;
+
+let injectedRunner: GhRunner | undefined;
+
+/**
+ * Replace the `gh` client, or put the spawned one back.
+ *
+ * The claim has a reader seam because a plan published by another host has no local checkout; this
+ * one is for the other half — the calls a publication *makes*. A claim's labels are written by
+ * `plan init` on the issue it has just created, and a path that can only be exercised against
+ * GitHub is a path nothing checks, which is exactly how the labels went missing on the first
+ * publication (`@@D-967`).
+ */
+export function setGhRunner(runner: GhRunner | null): void {
+    injectedRunner = runner ?? undefined;
 }
 
 /** One issue, as the tooling needs it. */
@@ -37,6 +61,7 @@ export interface IIssueRef {
 
 /** Run `gh`, capturing its answer instead of throwing. */
 function gh(args: string[], input?: string): IGhResult {
+    if (injectedRunner) return injectedRunner(args, input);
     const result = spawnSync('gh', args, {
         encoding: 'utf8',
         maxBuffer: 32 * 1024 * 1024,
@@ -352,6 +377,44 @@ export function stripIssueHeader(body: string): string {
         skipBlank();
     }
     return lines.slice(index).join('\n');
+}
+
+/** What a claim wants an issue's labels to be, given what they are (`@@D-967`). */
+export interface IClaimLabels {
+    /** The label that names this host. */
+    wanted: string;
+    /** Labels to add: the bare claim and the host's own. */
+    add: string[];
+    /** A host label left behind by a takeover, which would be a second answer to one question. */
+    remove: string[];
+    /** The login that took the claim, which the issue is assigned to when it is known. */
+    assignee?: string;
+    /** Whether the issue already says who holds the plan. */
+    holds: boolean;
+}
+
+/**
+ * The labels a claim puts on its issue, and whether they are already there.
+ *
+ * The body's marker is the record a host reads back; the labels are what the issue *list* shows
+ * without opening anything, which is what a second host checks before it starts. Both are the claim
+ * (`@@D-967`), so every path that publishes a claimed plan goes through this one decision — and the
+ * first publication was the one that skipped it, leaving an issue that reads as claimed in its body
+ * and as unclaimed in every list.
+ *
+ * Pure, because the comparison is the part worth testing: a test that had to run `gh` would be a test
+ * nobody runs, which is how the gap survived.
+ */
+export function claimLabelsChange(claim: IPlanClaim, present: string[]): IClaimLabels {
+    const wanted = hostLabel(claim.host);
+    const others = present.filter(other => isHostLabel(other) && other !== wanted);
+    return {
+        wanted,
+        add: [CLAIM_LABEL, wanted],
+        remove: others,
+        ...(claim.by ? {assignee: claim.by} : {}),
+        holds: present.includes(CLAIM_LABEL) && present.includes(wanted) && others.length === 0,
+    };
 }
 
 /** Add or remove labels and assignees on an issue. Never fatal: the body is the record. */

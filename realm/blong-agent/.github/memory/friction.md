@@ -21,13 +21,15 @@ open (9)
 - `F-672` · realm/blong-agent — An event payload was written wider than its column
 - `F-778` · realm/blong-agent — the tap gate ran no group, so a ticket test rotted unseen
 
-resolved (4)
+resolved (5)
 
 - `F-651` · realm/blong-agent — A base adapter that skips super.connect leaves start pending
 - `F-653` · realm/blong-agent — An upgrade built a gateway, and the gateway dialled every model
 - `F-654` · realm/blong-agent — An orchestrator cannot inject its persistence handlers by name
 - `F-783` · realm/blong-agent — A ledger assertion matched by recency, and compared the runner's
   name
+- `F-822` · realm/blong-agent — The copilot intent's ad-hoc account was named local and shadowed the
+  integration sim account
 
 <!-- /memory:index -->
 
@@ -218,3 +220,19 @@ Fixed in test/lukaot.reach.test.ts: the execution is found by the flow id the cl
 and the assertion is on the agent.worker.tick leg — the same in every group — rather than on the
 kind, which is the runner's group name. Verified by three consecutive green runs of the package
 (53/53).
+
+### F-822 — The copilot intent's ad-hoc account was named local and shadowed the integration sim account
+
+> _2026-11-23 · realm/blong-agent · resolved_
+
+A verification run with the new intent left eight tests red. The `copilot` block added an account
+called `local` for a runtime started by hand, and `config.integration` claims with an account of the
+same name whose script the session group depends on. The accounts are one merged map across every
+intent of an instance, so the later block replaced the scripted account and the group
+dialled 127.0.0.1:4321 instead of replaying a script. The account is now `laptop`, and the lesson is
+that an alias is a key shared by every intent, so a new intent must never reuse one. A run of the
+suite with the intent's own accounts is what catches it; the integration run without the intent
+cannot.
+
+The account is now laptop across adapter/engine.ts, the README and the plan's sample; a run
+with --intent copilot passes 25/25 where it failed 8 before.

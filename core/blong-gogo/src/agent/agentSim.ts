@@ -50,6 +50,8 @@ export const simStep = (
     const entry = script[index];
     cursors.set(key, index + 1);
     if (!entry) return {text: 'Nothing left to do.', toolCalls: [], finishReason: 'stop'};
+    // A suspension is a native outcome; a step engine that meets one stops without a call.
+    if ('suspend' in entry) return {toolCalls: [], finishReason: 'suspended'};
     if ('toolCall' in entry)
         return {
             ...(entry.text !== undefined && {text: entry.text}),
@@ -74,8 +76,21 @@ export const simSession = (
     request: IAgentSessionRequest,
 ): IAgentSessionResult => {
     const events: Array<{kind: string; payload?: unknown}> = [];
+    const key = cursorKey(account, request.workspacePath);
+    // A resume names the session it is continuing, so it carries on after the entry that parked it;
+    // a fresh run starts at the top, like the step kind does.
+    let index = request.sessionKey ? (cursors.get(key) ?? 0) : 0;
     let text: string | undefined;
-    for (const entry of script) {
+    let suspended: {promptId?: string; question?: string} | undefined;
+    for (; index < script.length; index += 1) {
+        const entry = script[index];
+        if ('suspend' in entry) {
+            // The run parked on a question: the rest of the script is what the resume would say.
+            suspended = entry.suspend;
+            events.push({kind: 'suspend', payload: entry.suspend});
+            cursors.set(key, index + 1);
+            break;
+        }
         if ('toolCall' in entry) {
             events.push({kind: 'tool', payload: entry.toolCall});
             continue;
@@ -83,10 +98,13 @@ export const simSession = (
         text = entry.text;
         events.push({kind: 'text', payload: {text: entry.text}});
     }
+    // A finished dialogue starts over next time; a parked one keeps its cursor for the resume.
+    if (!suspended) cursors.delete(key);
     return {
         text,
-        sessionKey: `sim-${cursorKey(account, request.workspacePath)}`,
-        finishReason: 'stop',
+        sessionKey: `sim-${key}`,
+        finishReason: suspended ? 'suspended' : 'stop',
         events,
+        ...(suspended && {suspended}),
     };
 };

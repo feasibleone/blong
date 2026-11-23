@@ -29,6 +29,8 @@ export default handler(({lib: {uuidBuf, rowOut}}) => ({
             workerId: string;
             /** Null when the persona claims no workspace. */
             workspacePath?: string | null;
+            /** `local` or `remote`: who owns the path (`@@D-978`). */
+            workspaceKind?: string | null;
             baseCommit?: string;
         },
         _$meta: IMeta,
@@ -51,6 +53,7 @@ export default handler(({lib: {uuidBuf, rowOut}}) => ({
             engineSessionId: null,
             workerId: params.workerId,
             workspacePath: params.workspacePath ?? null,
+            workspaceKind: params.workspaceKind ?? null,
             baseCommit: params.baseCommit ?? null,
             turnCount: 0,
             lastActivityAt: now,

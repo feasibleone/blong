@@ -9,7 +9,7 @@
 
 import {test} from 'tap';
 
-import {issueBody, issueFrontMatter, stripIssueHeader} from './planGithub.ts';
+import {claimLabelsChange, issueBody, issueFrontMatter, stripIssueHeader} from './planGithub.ts';
 
 const PLAN_BODY = '# Demo plan\n\n## 3. Work breakdown\n\n- [ ] One · area: docs\n';
 
@@ -34,6 +34,27 @@ test('whatever header the issue carries, the plan comes back as it was', async t
 
     const removed = issueBody(PLAN_BODY, 'demo', {removedAt: '2026-11-24'});
     t.equal(stripIssueHeader(removed), PLAN_BODY, 'and the one that says the file is gone');
+    t.end();
+});
+
+test('a claim knows which labels its issue should carry', t => {
+    const claim = {host: 'ms-02', at: '2026-11-23', by: 'kalin'};
+
+    const fresh = claimLabelsChange(claim, ['plan']);
+    t.notOk(fresh.holds, 'a freshly created issue does not carry the claim yet');
+    t.same(fresh.add, ['plan-claimed', 'plan-host:ms-02'], 'both labels are what it adds');
+    t.same(fresh.remove, [], 'and nothing is taken off');
+    t.equal(fresh.assignee, 'kalin', 'the login that took it is the assignee');
+
+    const marked = claimLabelsChange(claim, ['plan', 'plan-claimed', 'plan-host:ms-02']);
+    t.ok(marked.holds, 'an issue that already carries them needs no edit');
+
+    const takenOver = claimLabelsChange(claim, ['plan', 'plan-claimed', 'plan-host:builder-01']);
+    t.notOk(takenOver.holds, "another host's label is not this claim");
+    t.same(takenOver.remove, ['plan-host:builder-01'], 'so it is taken off in the same edit');
+
+    const anonymous = claimLabelsChange({host: 'ms-02', at: '2026-11-23'}, []);
+    t.notOk('assignee' in anonymous, 'a claim with no known login assigns nobody');
     t.end();
 });
 

@@ -69,6 +69,7 @@ export default handler(
             agentToolRun,
             agentSessionSuspend,
             agentTicketRelease,
+            engineAccountCheck,
             engineStepRun,
             engineSessionRun,
             engineSessionClose,
@@ -107,6 +108,16 @@ export default handler(
                     ? offered
                     : offered.filter(tool => params.tools?.includes(tool.toolName));
             const instructions = params.instructions ?? DEFAULT_INSTRUCTIONS;
+            // A native engine can only answer for the tools its kind can bridge, and the account says
+            // which those are (`@@D-974`); a kind that names none is offered what the realm always
+            // offered, because a step engine runs them itself.
+            const bridged =
+                mode === 'native' && account
+                    ? ((await engineAccountCheck({account}, $meta)) as {tools?: string[]}).tools
+                    : undefined;
+            const runTools = bridged
+                ? tools.filter(tool => bridged.includes(tool.toolName))
+                : tools;
 
             await agentSessionEdit(
                 {sessionId: params.sessionId, patch: {status: 'running'}},
@@ -198,7 +209,16 @@ export default handler(
                             account,
                             prompt:
                                 params.prompt ?? String(session.ticketTitle ?? 'Work the ticket.'),
-                            tools,
+                            tools: runTools,
+                            instructions,
+                            allowShell: settings.shellEnabled,
+                            // Where the engine's own tool call reaches this realm (`@@D-975`).
+                            toolDispatch: {
+                                method: 'agent.tool.run',
+                                ticketId,
+                                sessionId: params.sessionId,
+                                channel: params.channel,
+                            },
                             sessionKey: session.engineSessionId
                                 ? String(session.engineSessionId)
                                 : undefined,
@@ -214,6 +234,44 @@ export default handler(
                     for (const reported of run.events ?? [])
                         await logEvent(reported.kind, reported.payload);
                     await logEvent('step', {text: run.text, finishReason: run.finishReason});
+                    if (run.suspended) {
+                        // The engine parked on a question and gave its run up; the checkpoint the ask
+                        // wrote is what the resume continues from, and the engine session id kept above
+                        // is what the resume names (`@@D-976`). A suspension nothing in this realm asked
+                        // for — an engine that parked on its own, or a runtime that died mid-question —
+                        // gets its checkpoint here, or the resume would have nothing to read.
+                        const pending = String(last.checkpoint?.pendingPromptId ?? '');
+                        const parked = String(run.suspended.promptId ?? '');
+                        if (!parked || pending !== parked) {
+                            await nextSequence();
+                            await agentCheckpointAdd(
+                                {
+                                    checkpointId: randomUUID(),
+                                    sessionId: params.sessionId,
+                                    sequence: checkpointSequence,
+                                    historyJSON: JSON.stringify(history),
+                                    pendingPromptId: run.suspended.promptId,
+                                    pendingQuestionText: run.suspended.question,
+                                    stepCount,
+                                },
+                                $meta,
+                            );
+                        }
+                        const suspended = (await agentSessionSuspend(
+                            {
+                                sessionId: params.sessionId,
+                                promptId: run.suspended.promptId,
+                                reason: 'question',
+                            },
+                            $meta,
+                        )) as {promptId?: string};
+                        return {
+                            status: 'suspended',
+                            sessionId: params.sessionId,
+                            steps: run.events?.length ?? 1,
+                            promptId: suspended?.promptId,
+                        };
+                    }
                     if (releasable && workerId)
                         await agentTicketRelease(
                             {ticketId, workerId, ticketStatus: 'done', summary: run.text},

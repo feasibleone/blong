@@ -79,7 +79,11 @@ export default handler(
                     continue;
                 }
                 if (decision.startsWith('purg') || decision.startsWith('discard')) {
-                    await workspaceRepoRemove({ticketId}, $meta);
+                    // A remote workspace belongs to a runtime host, and this adapter can only remove a
+                    // directory it owns: purging one here would delete nothing and report success
+                    // (`@@D-978`).
+                    if (String(session.workspaceKind ?? 'local') !== 'remote')
+                        await workspaceRepoRemove({ticketId}, $meta);
                     await agentTicketRelease({ticketId, workerId, ticketStatus: 'failed'}, $meta);
                     result.purged += 1;
                     continue;

@@ -97,12 +97,63 @@ export default adapter<
                         {text: 'It was already right, so nothing was written.'},
                     ],
                 },
+                // A native run that parks on a question nobody answered, on a workspace the runtime
+                // host owns: the suspension path and the remote workspace in one account (`@@D-976`,
+                // `@@D-978`).
+                parking: {
+                    kind: 'sim',
+                    mode: 'native',
+                    workspaceRoot: '/srv/blong-agent/workspaces',
+                    script: [
+                        {text: 'Read the ticket.'},
+                        {suspend: {promptId: 'parking-1', question: 'Which fix do you want?'}},
+                        {text: 'Applied the answer.'},
+                    ],
+                },
                 // A conversation: no tools, so every turn is one answer, and the script running out
                 // leaves the kind answering `Nothing left to do.` instead of failing (`@@D-729`).
                 chat: {
                     kind: 'sim',
                     mode: 'step',
                     script: [{text: 'Ready when you are.'}, {text: 'Still here.'}],
+                },
+            },
+        },
+        // The Copilot harness on servers of our own: one account per runtime, because a session lives
+        // in the runtime that holds it and a resume has to go back to that one (`@@D-972`). The
+        // workspace is a directory on the runtime host, which the agent clones into (`@@D-978`), and
+        // the token is a client-side secret - a deployment supplies the variable the account names.
+        //
+        // `laptop` is a runtime started by hand on the developer host, which is what a run uses
+        // before a server is reachable; it is not a deployment's account. It is not called `local`
+        // because that is the scripted account `integration` claims with, and the maps merge.
+        copilot: {
+            accounts: {
+                srv1: {
+                    kind: 'copilot',
+                    runtimeUrl: '10.0.1.10:4321',
+                    runtimeTokenEnv: 'COPILOT_CONNECTION_TOKEN',
+                    workspaceRoot: '/srv/blong-agent/workspaces',
+                    modelName: 'deepseek-flash',
+                    baseUrl: 'https://api.deepseek.com/v1',
+                    apiKeyEnv: 'AGENT_ENGINE_API_KEY',
+                },
+                srv2: {
+                    kind: 'copilot',
+                    runtimeUrl: '10.0.1.11:4321',
+                    runtimeTokenEnv: 'COPILOT_CONNECTION_TOKEN',
+                    workspaceRoot: '/srv/blong-agent/workspaces',
+                    modelName: 'deepseek-flash',
+                    baseUrl: 'https://api.deepseek.com/v1',
+                    apiKeyEnv: 'AGENT_ENGINE_API_KEY',
+                },
+                laptop: {
+                    kind: 'copilot',
+                    runtimeUrl: '127.0.0.1:4321',
+                    workspaceRoot: '/srv/blong-agent/workspaces',
+                    modelName: 'deepseek-flash',
+                    baseUrl: 'https://api.deepseek.com/v1',
+                    apiKeyEnv: 'AGENT_ENGINE_API_KEY',
                 },
             },
         },

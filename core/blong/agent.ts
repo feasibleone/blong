@@ -15,7 +15,7 @@
 export type AgentEngineMode = 'step' | 'native';
 
 /** The engine implementations one process can carry. `sim` replays a script and needs no network. */
-export type AgentEngineKind = 'vercel' | 'mastra' | 'deepseek' | 'sim';
+export type AgentEngineKind = 'vercel' | 'mastra' | 'deepseek' | 'sim' | 'copilot';
 
 /**
  * One engine account, as the configuration carries it.
@@ -77,6 +77,30 @@ export interface IAgentEngineAccount {
     dshHome?: string;
     /** The `dsh` executable this account spawns, when it is not the one on the path. */
     dshBin?: string;
+    /**
+     * The Copilot runtime this account attaches to, as `host:port` — no scheme, because the wire is
+     * plain JSON-RPC over TCP and not HTTP (`@@D-971`). A `copilot` account's only endpoint; the
+     * connection is made when a session runs, so a process that opens none never connects.
+     */
+    runtimeUrl?: string;
+    /**
+     * Where the runtime's connection token is kept: the name of the environment variable carrying it,
+     * which a container fills from a Secret (`@@T-578`). A non-loopback runtime refuses to start
+     * without one, and a client that sends the wrong one cannot connect.
+     */
+    runtimeTokenEnv?: string;
+    /** The token itself, for a checkout; a deployment supplies it through `runtimeTokenEnv`. */
+    runtimeToken?: string;
+    /**
+     * The directory on the runtime host that holds the ticket workspaces (`@@D-978`). A copilot
+     * session's workspace is `<workspaceRoot>/<ticketId>` there, created before the session, and it is
+     * not the realm's `workspace.root`: the two hosts are not one filesystem.
+     */
+    workspaceRoot?: string;
+    /** How long one native run waits for the engine to go idle, in milliseconds. */
+    timeoutMs?: number;
+    /** The directory a native engine works in, when the caller does not derive one from `workspaceRoot`. */
+    workingDirectory?: string;
     /** The dialogue a `sim` account replays, one entry per turn. */
     script?: IAgentScriptEntry[];
 }
@@ -87,7 +111,12 @@ export type AgentEngineProvider = 'openai' | 'anthropic' | 'gateway';
 /** One line of a scripted dialogue. */
 export type IAgentScriptEntry =
     | {text: string; finishReason?: string}
-    | {toolCall: {toolName: string; args?: unknown; toolCallId?: string}; text?: string};
+    | {toolCall: {toolName: string; args?: unknown; toolCallId?: string}; text?: string}
+    /**
+     * A question nobody answered: a native run reports it as `suspended` (`@@D-976`), which is how the
+     * realm's suspension is exercised without a runtime. `question` is what the resume states back.
+     */
+    | {suspend: {promptId?: string; question?: string}};
 
 /** A tool the model is allowed to call, in the neutral (TypeBox-derived) schema. */
 export interface IAgentToolDefinition {
@@ -123,6 +152,12 @@ export interface IAgentStepRequest {
     instructions: string;
     history: IAgentMessage[];
     tools: IAgentToolDefinition[];
+    /**
+     * The two settings a kind that owns its loop needs when it is asked for one turn: whether the
+     * deployment lets the session run commands, and where a tool call goes (`@@D-974`, `@@D-975`).
+     */
+    allowShell?: boolean;
+    toolDispatch?: IAgentToolDispatch;
 }
 
 /** What a `step` engine answers: what it said, and the calls it wants run. Nothing is executed. */
@@ -141,6 +176,34 @@ export interface IAgentSessionRequest {
     sessionKey?: string;
     /** The directory the engine works in — the ticket's workspace. */
     workspacePath?: string;
+    /** The standing instruction block, carried as the engine's system message (`@@D-976`). */
+    instructions?: string;
+    /** Whether the deployment lets this session run commands; a native engine applies its own tools. */
+    allowShell?: boolean;
+    /** How the engine's own tool call reaches the realm's tool boundary (`@@D-975`). */
+    toolDispatch?: IAgentToolDispatch;
+}
+
+/**
+ * Where a native engine's custom tool call goes (`@@D-975`).
+ *
+ * A function cannot cross a port, so the realm hands the engine a name and the identifiers the call
+ * needs instead: the engine dispatches `method` with the tool call and the realm's tool boundary runs
+ * it, which is what makes `askHuman` park a native session exactly as it parks a step one.
+ */
+export interface IAgentToolDispatch {
+    /** The method a call is dispatched to — `agentToolRun`. */
+    method: string;
+    ticketId: string;
+    sessionId: string;
+    /** The conversation a question is asked in, carried from the claimed ticket. */
+    channel?: {platform?: string; account?: string; conversationId?: string};
+    /**
+     * The call's metadata, forwarded so the dispatch is recorded under the same trace. Kept structural
+     * rather than importing `IMeta`, because `types.ts` re-exports this module and the type would close
+     * the cycle.
+     */
+    meta?: Record<string, unknown>;
 }
 
 /** What a `native` engine answers, once its loop has gone idle. */
@@ -151,4 +214,12 @@ export interface IAgentSessionResult {
     finishReason?: string;
     /** Lines the engine reported, for the realm's event log. */
     events?: Array<{kind: string; payload?: unknown}>;
+    /**
+     * Set when the run parked on a question instead of finishing (`@@D-976`).
+     *
+     * A native engine cannot be handed the result of a call it made in another process, so the realm
+     * suspends the session and delivers the answer as the next user turn when it resumes. The question
+     * rides along because the resume states it to an engine that has no transcript to replay.
+     */
+    suspended?: {promptId?: string; question?: string};
 }

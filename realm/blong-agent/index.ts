@@ -240,6 +240,10 @@ export default server(() => ({
                     'test.agent.session',
                     'test.agent.workspace',
                     'test.agent.recovery',
+                    'test.agent.native',
+                    // A runtime account answers one turn where one is reachable, and says nothing
+                    // where it is not (`@@T-777`).
+                    'test.agent.copilot',
                 ],
             },
         },

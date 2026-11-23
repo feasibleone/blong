@@ -26,6 +26,14 @@ export interface IAgentDispatchSettings {
     heartbeatMs?: number;
     /** How long a question waits before the session is suspended instead. */
     questionTimeoutMs?: number;
+    /**
+     * Whether a session may run commands.
+     *
+     * A step engine's `runCommand` is refused by the workspace adapter's own `shell.enabled`; a native
+     * engine runs its own shell, so the same statement is made here and handed to the engine
+     * (`@@D-974`). A deployment that disables one disables both.
+     */
+    shellEnabled?: boolean;
     maxSteps?: number;
     maxToolCalls?: number;
     /** The window a chat session stays open, when the persona names none. */
@@ -93,6 +101,7 @@ export const agentSettings = (config: IAgentDispatchSettings | undefined) => ({
     leaseMs: config?.leaseMs ?? 60_000,
     heartbeatMs: config?.heartbeatMs ?? 20_000,
     questionTimeoutMs: config?.questionTimeoutMs ?? 1_800_000,
+    shellEnabled: config?.shellEnabled ?? true,
     maxSteps: config?.maxSteps ?? 40,
     maxToolCalls: config?.maxToolCalls ?? 12,
     continuationMinutes: config?.continuationMinutes ?? 1440,
