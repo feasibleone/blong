@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.46.0](https://github.com/feasibleone/blong/compare/blong-v1.45.1...blong-v1.46.0) (2026-11-23)
+
+
+### Features
+
+* improve planning and GitHub sync ([0baa800](https://github.com/feasibleone/blong/commit/0baa8000acdca6f102d88471822e855acf6676fc))
+
 ## [1.45.1](https://github.com/feasibleone/blong/compare/blong-v1.45.0...blong-v1.45.1) (2026-11-22)
 
 

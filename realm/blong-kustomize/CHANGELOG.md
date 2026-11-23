@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.11.0...blong-kustomize-v0.12.0) (2026-11-23)
+
+
+### Features
+
+* improve planning and GitHub sync ([0baa800](https://github.com/feasibleone/blong/commit/0baa8000acdca6f102d88471822e855acf6676fc))
+
 ## [0.11.0](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.10.0...blong-kustomize-v0.11.0) (2026-11-21)
 
 
