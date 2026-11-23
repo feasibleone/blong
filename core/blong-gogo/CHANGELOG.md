@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.56.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.55.0...blong-gogo-v1.56.0) (2026-11-23)
+
+
+### Features
+
+* Copilot agent ([9df1ecc](https://github.com/feasibleone/blong/commit/9df1eccaa7e430d42fcc8cea3d008b1a65393c87))
+
 ## [1.55.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.54.3...blong-gogo-v1.55.0) (2026-11-23)
 
 

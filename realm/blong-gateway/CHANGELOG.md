@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.2](https://github.com/feasibleone/blong/compare/blong-gateway-v1.10.1...blong-gateway-v1.10.2) (2026-11-23)
+
+
+### Bug Fixes
+
+* upgrade to mermaid 12 ([d0a413a](https://github.com/feasibleone/blong/commit/d0a413a6147cdc187add5203c91228c5a3373aeb))
+
 ## [1.10.1](https://github.com/feasibleone/blong/compare/blong-gateway-v1.10.0...blong-gateway-v1.10.1) (2026-11-21)
 
 
