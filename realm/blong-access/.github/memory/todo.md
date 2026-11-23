@@ -21,11 +21,11 @@ done (6)
 
 - `T-370` · realm/blong-access — Make the authorization flow runnable from the Test runs page
 - `T-371` · realm/blong-access — Give the server test runner a gateway dispatch port
-- `T-675` · realm/blong-access — access: the profile payload carries the photograph
-- `T-676` · realm/blong-access — access: the profile page shows and replaces the avatar
 - `T-694` · realm/blong-access — A renamed person keeps the old label, and a cleared name writes
   null into a NOT NULL column
 - `T-740` · realm/blong-access — Put the log viewer behind the portal's authentication
+- `T-675` · realm/blong-access — access: the profile payload carries the photograph
+- `T-676` · realm/blong-access — access: the profile page shows and replaces the avatar
 
 <!-- /memory:index -->
 
@@ -160,48 +160,6 @@ the browser page calls backend/test.run.*, the backend adapter strips the prefix
 validations expose the methods, and the blong-test testDispatch port runs the group. Access
 Playwright captures the server-hosted run.
 
-### T-675 — access: the profile payload carries the photograph
-
-> _2026-11-14 · realm/blong-access · done_
-
-Planned in `plans/blob/plan.md`.
-
-`adapter/db/accessProfileGet.ts` selects `p.photoUrl` and returns it on `person`;
-`adapter/db/accessProfileEdit.ts` writes `photoUrl` beside the name fields, with the same
-best-effort guard for a suite without `party_person`. The gateway validations of both handlers gain
-the field.
-
-- verify: `server/test/test/testProfileFlow.ts` edits a `blob://` photograph and reads it back.
-
-accessProfileGet selects and returns person.photoUrl, accessProfileEdit writes it beside the names
-through the same best-effort person patch (renamed from namePatch), and both gateway validations
-accept the field. The access suite has no party_person table, so its profile flow proves what it
-can: the edit with a blob:// photograph succeeds and the person stays null (the documented fallback)
-— 70/70, ci-lint clean. The real round trip wants a person, and the party suite's keepPhotograph
-step asserts it.
-
-### T-676 — access: the profile page shows and replaces the avatar
-
-> _2026-11-14 · realm/blong-access · done_
-
-Planned in `plans/blob/plan.md`.
-
-`src/pages/accessUserProfilePage.tsx` gains an avatar block above the personal details: the
-photograph at `thumbnail` size when there is one, the initials when there is not, and the
-`AssetWidget` to replace it. Saving sends `photoUrl` with the rest of the form, and the top-right
-account menu picks up the new picture because `setProfile` is already called there.
-
-- verify: `npm run ci-test` in `realm/blong-access` renders the page with and without a photograph.
-
-accessUserProfilePage gains an avatar block above the details: BlobImage at 96px (the stored thumb
-when the record has one, the initials otherwise) and the AssetWidget that replaces it, with photoUrl
-in the form state, sent on save and pushed to setProfile so the menubar avatar updates without a
-reload. The menubar itself learned to draw the picture: IUserProfile.photoUrl, AccountMenu reads
-person.photoUrl from the profile payload and renders BlobImage in the same circle as the initials,
-falling back to them when the picture fails. Access's profile Playwright spec passes on the fallback
-path and its five screenshots were regenerated for the new block; blong-browser 867 tests, both
-packages' ci-lint clean. The with-a-photograph case is T-682's, in a suite that has a person.
-
 ### T-694 — A renamed person keeps the old label, and a cleared name writes null into a NOT NULL column
 
 > _2026-11-16 · realm/blong-access · done_
@@ -251,3 +209,45 @@ capability itself and the things around it that the framework does not give for 
 The proxy route the first version of this todo asked for is withdrawn: it would have had to carry a
 WebSocket upgrade, which nothing in core/blong-gogo speaks, and a viewer whose HTTP is proxied while
 its socket is not looks authenticated and can be bypassed.
+
+### T-675 — access: the profile payload carries the photograph
+
+> _2026-11-14 · realm/blong-access · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`adapter/db/accessProfileGet.ts` selects `p.photoUrl` and returns it on `person`;
+`adapter/db/accessProfileEdit.ts` writes `photoUrl` beside the name fields, with the same
+best-effort guard for a suite without `party_person`. The gateway validations of both handlers gain
+the field.
+
+- verify: `server/test/test/testProfileFlow.ts` edits a `blob://` photograph and reads it back.
+
+accessProfileGet selects and returns person.photoUrl, accessProfileEdit writes it beside the names
+through the same best-effort person patch (renamed from namePatch), and both gateway validations
+accept the field. The access suite has no party_person table, so its profile flow proves what it
+can: the edit with a blob:// photograph succeeds and the person stays null (the documented fallback)
+— 70/70, ci-lint clean. The real round trip wants a person, and the party suite's keepPhotograph
+step asserts it.
+
+### T-676 — access: the profile page shows and replaces the avatar
+
+> _2026-11-14 · realm/blong-access · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`src/pages/accessUserProfilePage.tsx` gains an avatar block above the personal details: the
+photograph at `thumbnail` size when there is one, the initials when there is not, and the
+`AssetWidget` to replace it. Saving sends `photoUrl` with the rest of the form, and the top-right
+account menu picks up the new picture because `setProfile` is already called there.
+
+- verify: `npm run ci-test` in `realm/blong-access` renders the page with and without a photograph.
+
+accessUserProfilePage gains an avatar block above the details: BlobImage at 96px (the stored thumb
+when the record has one, the initials otherwise) and the AssetWidget that replaces it, with photoUrl
+in the form state, sent on save and pushed to setProfile so the menubar avatar updates without a
+reload. The menubar itself learned to draw the picture: IUserProfile.photoUrl, AccountMenu reads
+person.photoUrl from the profile payload and renders BlobImage in the same circle as the initials,
+falling back to them when the picture fails. Access's profile Playwright spec passes on the fallback
+path and its five screenshots were regenerated for the new block; blong-browser 867 tests, both
+packages' ci-lint clean. The with-a-photograph case is T-682's, in a suite that has a person.

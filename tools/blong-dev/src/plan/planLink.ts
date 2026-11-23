@@ -16,6 +16,8 @@
 import {existsSync, readFileSync, readdirSync, statSync, writeFileSync} from 'node:fs';
 import {join, relative} from 'node:path';
 
+import {thisHost} from './planOwnership.ts';
+
 /**
  * A task line whose reference may be a bare token or a link to the memory entry.
  *
@@ -45,7 +47,9 @@ export function plansRoot(root: string): string {
  * The folder is gitignored and shallow by rule (one folder per plan), so a recursive
  * walk stays cheap; a file is a plan when its name is `plan.md`, case-insensitively, or
  * when a folder has no `plan.md` and holds one markdown file. The second rule is what
- * makes `plans/memory-prose/PLAN.md` and its siblings work without a rename.
+ * makes `plans/memory-prose/PLAN.md` and its siblings work without a rename — and a
+ * `plan.prompt.md` is not one, so a folder whose `plan.md` was removed on release does
+ * not come back as a plan made of its own request.
  */
 export function planFiles(root: string): string[] {
     const base = plansRoot(root);
@@ -59,7 +63,9 @@ export function planFiles(root: string): string[] {
         } catch {
             return;
         }
-        const markdown = names.filter(name => name.toLowerCase().endsWith('.md'));
+        const markdown = names
+            .filter(name => name.toLowerCase().endsWith('.md'))
+            .filter(name => !name.toLowerCase().endsWith('.prompt.md'));
         const named = markdown.filter(name => name.toLowerCase() === 'plan.md');
         for (const name of named) found.push(join(dir, name));
         if (named.length === 0 && markdown.length === 1) found.push(join(dir, markdown[0]!));
@@ -191,6 +197,7 @@ export function writeActivePlan(root: string, plan: IActivePlan | undefined): vo
  * long ago kept naming one of them at every `memory add` (@@D-922).
  */
 export function readActivePlan(root: string): IActivePlan | undefined {
+    const host = thisHost();
     const pointer = activePlanFile(root);
     if (existsSync(pointer)) {
         let parsed: Partial<IActivePlan> | undefined;
@@ -204,23 +211,26 @@ export function readActivePlan(root: string): IActivePlan | undefined {
             typeof parsed?.slug === 'string' && typeof parsed.path === 'string'
                 ? {slug: parsed.slug, path: parsed.path}
                 : undefined;
-        // Present and naming a plan: that plan, if it is still approved.
+        // Present and naming a plan: that plan, if it is still approved and this host claims it.
         if (named) {
             const found = approvedPlans(root).find(
                 plan => plan.path === named.path || plan.slug === named.slug,
             );
-            if (found) return found;
+            return found && found.claimed === host ? found : undefined;
         } else if (parsed !== undefined && Object.keys(parsed).length === 0) {
             // Present and empty: somebody said there is nothing to execute, and that stands.
             return undefined;
         }
     }
-    return approvedPlans(root)[0];
+    // Nothing named: the plan this host claimed is the one being executed. An approved plan no
+    // host holds is not being worked, so `memory add` does not demand a `--plan` for it — that is
+    // what the claim is for (`planOwnership.ts`).
+    return approvedPlans(root).find(plan => plan.claimed === host);
 }
 
 /** Every plan whose front matter says `status: approved`, newest first. */
-function approvedPlans(root: string): IActivePlan[] {
-    const found: Array<IActivePlan & {approved: string; touched: number}> = [];
+function approvedPlans(root: string): Array<IActivePlan & {claimed?: string}> {
+    const found: Array<IActivePlan & {approved: string; touched: number; claimed?: string}> = [];
     for (const path of planFiles(root)) {
         let text: string;
         try {
@@ -235,17 +245,24 @@ function approvedPlans(root: string): IActivePlan[] {
             path.slice(plansRoot(root).length + 1).split(/[\\/]/)[0] ??
             '';
         const approved = /^\s*approved:\s*(\S+)\s*$/m.exec(meta)?.[1] ?? '';
+        const claimed = /^\s*claimed:\s*(?<host>\S+)\s*$/m.exec(meta)?.groups?.['host'];
         let touched = 0;
         try {
             touched = statSync(path).mtimeMs;
         } catch {
             // A file that vanished between the listing and the stat is not the active plan.
         }
-        found.push({slug, path: relative(root, path), approved, touched});
+        found.push({
+            slug,
+            path: relative(root, path),
+            approved,
+            touched,
+            ...(claimed ? {claimed} : {}),
+        });
     }
     return found
         .sort((a, b) =>
             a.approved === b.approved ? b.touched - a.touched : a.approved < b.approved ? 1 : -1,
         )
-        .map(({slug, path}) => ({slug, path}));
+        .map(({slug, path, claimed}) => ({slug, path, ...(claimed ? {claimed} : {})}));
 }

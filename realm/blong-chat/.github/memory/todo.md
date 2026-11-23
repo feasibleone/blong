@@ -31,9 +31,6 @@ done (28)
 - `T-522` · realm/blong-chat — Close the tasks and check the memory
 - `T-527` · realm/blong-chat — Per-account chat addressing, tunnel manifest and question shapes
 - `T-528` · realm/blong-chat — Replace the controls once the question is answered
-- `T-566` · realm/blong-chat — Group 5: realm/blong-chat/orchestrator/in/chatInAnswerReceive.ts
-- `T-568` · realm/blong-chat — Group 5 verify: chat tests and lint
-- `T-567` · realm/blong-chat — Group 5: The chat tap test
 - `T-625` · realm/blong-chat — The workspace and account lists answer their credentials
 - `T-626` · realm/blong-chat — The model pages carry two routes to the same tables
 - `T-525` · realm/blong-chat — Cover the residual config-fallback branches in blong-chat
@@ -42,6 +39,9 @@ done (28)
 - `T-629` · realm/blong-chat — Close the other three public chat routes
 - `T-634` · realm/blong-chat — Prove plan channel creation against the real workspace
 - `T-635` · realm/blong-chat — Grant the Slack app groups:history for private-channel replies
+- `T-566` · realm/blong-chat — Forward an unmatched chat answer to its consumer
+- `T-567` · realm/blong-chat — Test the chat answer seam
+- `T-568` · realm/blong-chat — Verify blong-chat after the seam
 
 <!-- /memory:index -->
 
@@ -304,36 +304,6 @@ it.
 The question message is now rewritten once it is answered — options kept and marked, controls gone
 (`@@D-692`).
 
-### T-566 — Group 5: realm/blong-chat/orchestrator/in/chatInAnswerReceive.ts
-
-> _2026-10-31 · realm/blong-chat · done_
-
-plans/agent/plan.md, Group 5 The chat seam.
-`realm/blong-chat/orchestrator/in/chatInAnswerReceive.ts`: an answer nobody is waiting for honours
-`chat.chatDispatch.forward` for its account (`*` fallback) instead of being dropped, still
-acknowledging the platform, and still logging when no consumer is configured (`@@D-702`).
-
-implemented and verified in this pass
-
-### T-568 — Group 5 verify: chat tests and lint
-
-> _2026-10-31 · realm/blong-chat · done_
-
-plans/agent/plan.md, Group 5 The chat seam. Verify: `blong-dev test` in `realm/blong-chat` (its
-current 40+ steps stay green), `blong-dev lint --files`.
-
-implemented and verified in this pass
-
-### T-567 — Group 5: The chat tap test
-
-> _2026-10-31 · realm/blong-chat · done_
-
-plans/agent/plan.md, Group 5 The chat seam. The chat tap test: an unmatched answer reaches the
-configured consumer; with no consumer it is acknowledged and logged exactly as today.
-
-testChatInbound gained anUnmatchedAnswerReachesTheConsumer: a signed click for a prompt nobody waits
-for reaches the configured consumer, and an unmapped account is acknowledged and dropped
-
 ### T-625 — The workspace and account lists answer their credentials
 
 > _2026-11-10 · realm/blong-chat · done_
@@ -470,6 +440,33 @@ already require.
 
 groups:history granted on the app and the port now subscribes message.groups; a reply in a private
 plan channel answered an inline question live.
+
+### T-566 — Forward an unmatched chat answer to its consumer
+
+> _2026-10-31 · realm/blong-chat · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`orchestrator/in/chatInAnswerReceive.ts`: an answer nobody is waiting for honours
+`chat.chatDispatch.forward` for its account (`*` fallback) instead of being dropped, still
+acknowledging the platform, and still logging when no consumer is configured (`@@D-702`).
+
+### T-567 — Test the chat answer seam
+
+> _2026-10-31 · realm/blong-chat · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+An unmatched answer reaches the configured consumer; with no consumer it is acknowledged and logged
+exactly as before.
+
+### T-568 — Verify blong-chat after the seam
+
+> _2026-10-31 · realm/blong-chat · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`blong-dev test` in `realm/blong-chat` (its 40+ steps stay green), `blong-dev lint --files`.
 
 ## Retired
 

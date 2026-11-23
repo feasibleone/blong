@@ -95,7 +95,7 @@ authenticates, axis-app answers User not found.
 
 > _2026-11-14 · realm/blong-party · done_
 
-Planned in `plans/blob/plan.md`.
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
 
 `meta/model/partyPersonModel.ts` keeps `photoUrl` and gives it
 `widget: {type: 'asset', namespace: 'party', accept: 'image/*', variant: 'thumb'}`, so the column
@@ -106,7 +106,7 @@ and columns are unchanged, and `meta/type/schema.ts` is untouched.
 
 > _2026-11-14 · realm/blong-party · done_
 
-Planned in `plans/blob/plan.md`.
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
 
 `test/profile.play.ts` gains the photograph: upload a small PNG through the widget, save, assert the
 account-menu avatar is the picture rather than the initials, then restore the earlier state so the

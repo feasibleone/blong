@@ -26,8 +26,9 @@ Answer: No lukaot package or prior work existed in the tree when the question wa
 'lukaot' under core, realm, suite, demo, test, tools and ext found nothing, and the nearest evidence
 the bank returned — the semantic-log attachable facade and capability decisions, both retired with
 the semantic-log package where they were written — described the system lukaot was planned to
-replace. The convergence was specified, not implemented, in `plans/lukaot/plan.md`; the decisions it
-rests on now live in `core/lukaot`'s memory, and the identity one is @@D-889.
+replace. The convergence was specified, not implemented, in the plan
+([#277](https://github.com/feasibleone/blong/issues/277)); the decisions it rests on now live in
+`core/lukaot`'s memory, and the identity one is @@D-889.
 
 Evidence: @@D-838 (0.631) @@F-542 (0.604) @@D-231 (0.600) @@T-554 @@T-360 @@T-650, plus two
 decisions @@T-590

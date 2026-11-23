@@ -12,7 +12,6 @@ active (17)
 - `D-702` · realm/blong-agent — blong-agent: a late answer is a database row, not a promise
 - `D-704` · realm/blong-agent — blong-agent: the worker is a group on the dispatch orchestrator
 - `D-705` · realm/blong-agent — blong-agent: a recovered session asks the channel before it writes
-- `D-706` · realm/blong-agent — blong-agent: the realm is realm/blong-agent, the blueprint is core
 - `D-707` · realm/blong-agent — blong-agent: the ticket is an adapter; fixtures now, blong-task
   later
 - `D-708` · realm/blong-agent — blong-agent: a session names its engine mode, step or native loop
@@ -32,6 +31,8 @@ active (17)
 - `D-729` · realm/blong-agent — A chat turn appends to the conversation session it continues
 - `D-933` · realm/blong-agent — The agent records which loop drove a session and whether a tick
   claimed
+- `D-706` · realm/blong-agent — blong-agent: the realm is realm/blong-agent, the blueprint is
+  core/blong-agent
 
 superseded (3)
 
@@ -93,17 +94,6 @@ crash may have interrupted a write. Confirmation resumes from the latest checkpo
 purges the directory and fails the ticket, and no answer leaves the session suspended for the next
 boot rather than destroying work nobody judged. The same confirmation covers a repeat ticket, so a
 resumed session states what it is about to do before it edits anything.
-
-### D-706 — blong-agent: the realm is realm/blong-agent, the blueprint is core
-
-> _2026-10-31 · realm/blong-agent · active_
-
-Two folders would otherwise share the name. core/blong-agent is an evaluation blueprint with no
-package manifest, and the new realm is the package feasibleone blong-agent under realm/blong-agent.
-The blueprint is worth adopting as a test inside the realm later, because it is the only measure of
-how well the instructions produce a realm, and that adoption is explicitly out of scope for this
-plan. Until someone does it, a path beginning with core/blong-agent means the blueprint and never
-the realm.
 
 ### D-707 — blong-agent: the ticket is an adapter; fixtures now, blong-task later
 
@@ -261,6 +251,17 @@ the session's mode line carries `agentEngineMode`. Sport's `sportGenderDerived` 
 same form — declared, with camelCase arms (`oneGender`) — because a bare string decision is accepted
 but its arms are never validated.
 
+### D-706 — blong-agent: the realm is realm/blong-agent, the blueprint is core/blong-agent
+
+> _2026-10-31 · realm/blong-agent · active_
+
+Two folders would otherwise share the name. core/blong-agent is an evaluation blueprint with no
+package manifest, and the new realm is the package feasibleone blong-agent under realm/blong-agent.
+The blueprint is worth adopting as a test inside the realm later, because it is the only measure of
+how well the instructions produce a realm, and that adoption is explicitly out of scope for this
+plan. Until someone does it, a path beginning with core/blong-agent means the blueprint and never
+the realm.
+
 ## Superseded
 
 ### D-699 — blong-agent: the engine port is one model turn, not one agent run
@@ -306,3 +307,8 @@ first pass: a build or test tool is a later capability that needs its own decisi
 the shell is allowed inside the container boundary
 
 Superseded by `D-710`.
+
+## Retired
+
+- D-966 — retired 2026-11-23 — A duplicate of D-706, created when the plan's decision list carried a
+  shifted id

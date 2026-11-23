@@ -8,25 +8,25 @@ anything cross-cutting belongs in the repository-root memory.
 
 done (18)
 
+- `T-704` · core/lukaot — Keep a compatibility logger for the packages that still call levels
+- `T-732` · core/lukaot — The kukum e2e browser leg reaches lukaot ambient storage
+- `T-735` · core/lukaot — Port the flow fault matrix
 - `T-697` · core/lukaot — Scaffold the lukaot package and register it with Rush
 - `T-698` · core/lukaot — Declare the signal vocabulary and infer each method's parameters
 - `T-699` · core/lukaot — Build the signal registry with wildcard policy overrides
 - `T-700` · core/lukaot — Capture the call site at property access and record the dependency edge
 - `T-701` · core/lukaot — Emit a record from a log signal with its parameters and identity
 - `T-702` · core/lukaot — Emit a typed error signal that records once and honours `silent`
-- `T-704` · core/lukaot — Keep a compatibility logger for the packages that still call levels
 - `T-703` · core/lukaot — Allow a vocabulary to be declared imperatively at assembly time
 - `T-705` · core/lukaot — Port identity, capability, progress points and the call channel into
   lukaot
 - `T-706` · core/lukaot — Write through pino, and keep the coloured human line beside it
 - `T-707` · core/lukaot — Port the ingest, the flow ledger and the diagram to lukaot records
 - `T-708` · core/lukaot — Serve templates, flows, search and digest from the lukaot service
-- `T-730` · core/lukaot — Implement capture: declared shapes, masked before retention
 - `T-721` · core/lukaot — Record the parity matrix of the semantic-log capabilities with a test
 - `T-719` · core/lukaot — Publish the work order for the deferred sweeps
-- `T-732` · core/lukaot — The kukum e2e browser leg reaches lukaot ambient storage
 - `T-720` · core/lukaot — Demonstrate the vocabulary over real HTTP with generated diagrams
-- `T-735` · core/lukaot — Port the flow fault matrix
+- `T-730` · core/lukaot — Implement capture: declared shapes, masked before retention
 
 <!-- /memory:index -->
 
@@ -34,11 +34,109 @@ done (18)
 
 ## Done
 
+### T-704 — Keep a compatibility logger for the packages that still call levels
+
+> _2026-11-18 · core/lukaot · done_
+
+`src/compat.ts` gives a package that still calls a level an identity without a level API: a
+(namespace, level, message) tuple becomes a signal named `legacy` plus the namespace plus the
+message's first four words, declared imperatively, marked `legacy: true`, and registered into the
+realm's own registry — so policy, counters and retention reach it exactly as they reach a declared
+method. The level binding keeps the framework's downwards contract (asking for `info` yields `info`
+through `fatal` and leaves `trace`/`debug` undefined, so an optional call at them is a no-op), two
+messages that reduce to one identifier are kept apart by a short hash, and `legacy()` lists every
+one with the package and its call count — the work order for the deferred sweeps, which shrinks to
+empty.
+
+Done: 121 assertions across the package green, `ci-lint` clean (the identifier `unswept` had to be
+added to the dictionary).
+
+### T-732 — The kukum e2e browser leg reaches lukaot ambient storage
+
+> _2026-11-19 · core/lukaot · done_
+
+`core/blong-kukum`'s `e2e.test.ts` fails its Playwright leg: the browser page logs
+`node:async_hooks` externalised for the browser, `AsyncLocalStorage` unreachable in client code with
+`core/lukaot/src/context.ts` named in the stack, and the suite then exits non-zero, which the test
+reports as `the Playwright suite exits 0`.
+
+What was done about it in T-718: `src/context.ts` used to build its `AsyncLocalStorage` at module
+scope, so importing the lukaot root in _any_ bundle that Vite externalises `node:async_hooks` for
+failed at evaluation. It is now built on first use, so a page that imports the root for a pure
+helper — `TRACE_HEADER` or `withoutCapabilities` through `Gateway.ts` — no longer touches it, and
+the whole lukaot suite (1575) and the framework suite (1230) still pass.
+
+What is still owed: find what the generated app's page actually evaluates. The candidates are
+`Gateway.ts` (loaded lazily on the browser platform from `load.ts:1009`, and the only importer of
+the lukaot root left on that path) and a page that calls a scoping helper (`currentContext`,
+`withIntent`, `withFlow`) rather than the attached facade — with the storage lazy, the second is now
+the only way to throw. Reproduce with
+`cd core/blong-kukum && blong-dev test e2e.test.ts --timeout 600`, which takes about four minutes,
+and read `.ci-report/tap.raw.tap` for the `[browser] error` lines. A first check is whether the
+failure predates the lukaot port at all: `git stash` is not how to find out — run the same command
+on a separate checkout of the commit before `T-705`.
+
+Fixed at the cause, which turned out to be two. The ambient store was built from a class a page's
+bundler rewrites into a throwing stub — and the page does reach a scope, because `Gateway` calls
+`withoutCapabilities` while it sets up, so "built on first use" was not far enough: `context.ts` now
+reads `AsyncLocalStorage` through `process.getBuiltinModule`, and keeps a flat one-frame store where
+there is no `process`, which still nests correctly in a page and does not survive an `await` there.
+
+Fixing that surfaced the rest of the same seam: `node:crypto`, `node:fs`, `node:os` and `node:path`
+arrived through the logger, its fingerprint and the store, all reachable from the root because the
+root re-exported them. A static import into a builtin cannot be guarded at the call site — the
+bundler's stub throws when the module graph is linked — so the root is now platform-free and
+`@feasibleone/lukaot/node` re-exports it whole beside those three modules; only `LukaotLog.ts` and
+one test imported them, and `src/package.test.ts` pins both halves (`@@D-912`). `core/blong-kukum`'s
+`e2e.test.ts` is 18/18, the browser leg included, and the probe that proves it is
+`esbuild --bundle --platform=browser` over the root, which now reports no `node:` edge at all.
+
+### T-735 — Port the flow fault matrix
+
+> _2026-11-19 · core/lukaot · done_
+
+The fixtures carry four faults and nothing exercises them at the fixture level any more. `flows.ts`
+takes `blockTransfers` (F1), `retries` (F2), `stallTransfers` (F4) and `declineRate` (F5), and the
+old `faults.test.ts` and `guards.test.ts` are where they were driven; neither was ported with T-720,
+whose ask was the observed-flow artifact.
+
+What each should assert, in the shape lukaot's own tests now use: F1 — the payee's
+`payeeTransferRefused` is the _originating_ record of the failure and the payer sees a 502 with the
+payee's reason rather than a timeout; F2 — `retries: 2` produces three executions of the same kind
+with one settled result, and one execution's records are never attributed to another; F4 — the
+payee's `payeeTransferStalled` precedes the hub's `hubSettlementFailed`, so the origin is the far
+end; F5 — the provider's `fxpRateDeclined` sits inside the `rate-within-limit` `alt` arm and the
+payer's `payerQuoteRefused` follows it.
+
+The last one worth keeping is the proxy installed with no corridor: it must answer 503 with
+`proxyNoRouteToTarget` rather than throwing, which is the only path where a participant holds
+instead of forwarding.
+
+`core/lukaot/test/flow/faults.test.ts` drives the four faults and the corridor-less proxy, and every
+assertion reads the records the participants wrote during the run: F1 the payee's
+`payeeTransferRefused` is the origin and the switch reports the refusal it was handed rather than
+one of its own; F2 three attempts are three executions, each with one flow id and one kind, and no
+record is attributed to another execution; F4 the payee's `payeeTransferStalled` precedes
+`hubSettlementFailed`, so the far end is the origin; F5 `fxpRateDeclined` is written **inside** the
+`rateWithinLimit` decision on its `decline` arm — asserted through the record's region, which is
+what puts it in the diagram's `alt` block — and the payer's quote refusal follows it; and the proxy
+installed with no corridor answers 503 with `proxyNoRouteToTarget` rather than throwing.
+
+The seam that made it possible is `startFlow({onRecord})`, which hands every record to the caller
+with the participant that wrote it. Neither shipped consumer can serve these assertions: the store
+folds a record into its shape unless it withheld something or carries an error, and the service
+counts per identifier rather than per participant.
+
+Getting there cost one false start: the standalone proxy participant was created with no vocabulary,
+so `proxyNoRouteToTarget` was a no-op and the run answered 503 while recording nothing — the
+degradation working exactly as designed, and a reminder that a fixture's participant needs its
+declarations as much as a realm's port does.
+
 ### T-697 — Scaffold the lukaot package and register it with Rush
 
 > _2026-11-18 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 Create `core/lukaot` from `core/semantic-log`'s conventions: `package.json` exporting `.`,
 `./context`, `./service` and `./inspect` (no `./emitter` split: the service stays behind its own
@@ -58,7 +156,7 @@ placeholder entry point and a scaffold test; project appended to rush.json and r
 
 > _2026-11-18 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 `declare({log, error})` in `src/declare.ts`: string shorthand is an error with only a message, an
 object is either kind by the keys it carries, an unknown key is rejected at declaration with the key
@@ -81,7 +179,7 @@ missing-placeholder check; 22 assertions green
 
 > _2026-11-18 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 `src/registry.ts`: one entry per declared method holding the declaration, the effective policy and
 the counters (reached, emitted, sampled out, suppressed); `patch()` merges overrides at runtime; a
@@ -99,7 +197,7 @@ resolved on read; 17 assertions green
 
 > _2026-11-18 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 `src/proxy.ts`: the vocabulary object is a `Proxy` whose `get` returns a callable for an enabled
 entry and `undefined` for a disabled one. The trap captures the first stack frame outside lukaot and
@@ -118,7 +216,7 @@ absent; 24 assertions green
 
 > _2026-11-18 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 `src/emit.ts`: build the record from the declaration, the call's params, the captured site and the
 ambient identity; interpolate `{placeholder}` with the declared message, marking a value that did
@@ -136,7 +234,7 @@ green
 
 > _2026-11-18 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 `src/error.ts`: constructing an error signal returns the `ITypedError`-shaped object the gateway,
 the expected-error matcher and the completion handler already understand — `type`, `message`,
@@ -151,28 +249,11 @@ src/error.ts: constructing returns the framework-shaped failure (type from the i
 message/print rendered, params, statusCode, silent, cause) and writes the record in the same call;
 silent records only when policy names it; isSignalError helper; 18 assertions green
 
-### T-704 — Keep a compatibility logger for the packages that still call levels
-
-> _2026-11-18 · core/lukaot · done_
-
-`src/compat.ts` gives a package that still calls a level an identity without a level API: a
-(namespace, level, message) tuple becomes a signal named `legacy` plus the namespace plus the
-message's first four words, declared imperatively, marked `legacy: true`, and registered into the
-realm's own registry — so policy, counters and retention reach it exactly as they reach a declared
-method. The level binding keeps the framework's downwards contract (asking for `info` yields `info`
-through `fatal` and leaves `trace`/`debug` undefined, so an optional call at them is a no-op), two
-messages that reduce to one identifier are kept apart by a short hash, and `legacy()` lists every
-one with the package and its call count — the work order for the deferred sweeps, which shrinks to
-empty.
-
-Done: 121 assertions across the package green, `ci-lint` clean (the identifier `unswept` had to be
-added to the dictionary).
-
 ### T-703 — Allow a vocabulary to be declared imperatively at assembly time
 
 > _2026-11-18 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 `declare()` is callable from code, not only from a layer file: a `library()` computing its keys and
 a handler group declaring inline both register into the same per-realm registry under the same
@@ -191,7 +272,7 @@ records its own origin); 7 assertions green
 
 > _2026-11-18 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 Move `context.ts`, `propagation.ts`, `capability.ts`, `decide.ts`, `refs.ts`, `level.ts`,
 `cache.ts`, `retention.ts` and `logger.ts` from `semantic-log`, renaming `mintRecordRef` to the
@@ -214,7 +295,7 @@ will re-host output on pino and retire them
 
 > _2026-11-18 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 `src/transport.ts`: an emitted record becomes one pino call at its effective level, so the JSON
 format, the transports and pino's own serialisers are pino's business; the coloured human line
@@ -238,7 +319,7 @@ scheme, and the scheme moves with the editor and the dev CLI there
 
 > _2026-11-18 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 Move `service/ingest.ts`, `service/flowLedger.ts`, `service/diagram.ts`, `service/digest.ts`,
 `service/search.ts`, `service/persistence.ts` and `service/transport.ts`, keying the registry by
@@ -258,7 +339,7 @@ gone. 1364 assertions pass, ci-lint clean. See D-901 for the four choices the co
 
 > _2026-11-18 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 `src/service/app.ts` exposes `/templates`, `/templates/:ref`, `/flows`, `/flows/:id`, `/search` and
 `/digest`; `/incidents` is gone. Search ranks declared signals and retained records by name, message
@@ -271,12 +352,107 @@ Routes /health, /events, /templates(/:ref, /retire), /records/:id, /flows(/:refe
 /search, /diff and /digest, plus startService; no /incidents and no anomaly or incident digest kind.
 1416 assertions, ci-lint clean.
 
+### T-721 — Record the parity matrix of the semantic-log capabilities with a test
+
+> _2026-11-18 · core/lukaot · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`test/parity.test.ts` records what the three libraries lukaot replaces could do — the semantic-log
+rationale's R1–R27, three pino capabilities the framework relied on, and two typed-error behaviours
+— each marked kept, kept-extended, replaced or dropped, with the consequence a reader sees and the
+assertions that hold it up. 32 rows, 105 assertions.
+
+Every `dropped` row states what a reader loses, because a matrix that only lists wins is marketing:
+no embedding provider, so "what is like this" is no longer answerable; no detectors, so nothing is
+flagged as anomalous; no incident surface, so grouping related failures is a reader's work again.
+Every row that is _not_ dropped names at least one test.
+
+The second test is the reason the file earns its place: it reads each cited test file and fails when
+the title it names is gone. Proved by renaming
+`a silent signal constructs the value and writes nothing` in `src/error.test.ts` — the matrix failed
+with `E2 cites "…" in src/error.test.ts, which is still there` and passed again when the title was
+restored. So a capability cannot quietly lose its assertion to a rename, a deletion or a rewrite.
+
+The old pages are still in the tree on purpose (`@@T-723` will replace them): every row cites the
+requirement id they use, so the two can be read side by side while the new docs are written.
+
+Gates: `lukaot` 1575 assertions (1470 + the matrix's 105), lint clean.
+
+32 rows / 105 assertions; a renamed cited test fails the matrix, proved by experiment.
+
+### T-719 — Publish the work order for the deferred sweeps
+
+> _2026-11-18 · core/lukaot · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+The work order is written and its number is now a measurement: `blong-dev legacy` counts the level
+calls left, grouped by package, and `blong-dev legacy sites` prints the file and line behind each.
+On 2026-11-19 it reported 37 calls in 8 packages — `realm/blong-kustomize` 13, `core/blong-mock` 10,
+`realm/blong-chat` 5, `core/blong-browser` 3, `core/blong-chain` 2, `realm/blong-core` 2,
+`core/blong-gogo` 1, `core/blong-server` 1 — down from the 46 the plan counted, the difference being
+what this plan itself converted.
+
+The follow-up sweep is `T-733` in the cross-cutting todo, one instruction per package with the sites
+named, so a sweeper needs no archaeology. It also states what the sweep must not do: fastify's own
+`request.log`, `fastify.log` and `app.log` and the pino-shaped `log.logger(level, …)` are not a
+caller's lines, and the tool excludes them with its help saying why.
+
+The census is over the source rather than over a run (D-910): a runtime list would only name calls
+that executed, and the framework does not route level calls through the compatibility logger yet, so
+it would have read empty while 37 calls remained.
+
+- verify: `blong-dev legacy` lists each package with a count and `blong-dev legacy check` exits
+  non-zero while anything remains; `blong-dev memory list --kind todo --area cross-cutting` finds
+  T-733; the dev CLI suite passes, 1882 assertions.
+
+blong-dev legacy lists 37 calls in 8 packages; the sweep is T-733 cross-cutting; dev CLI suite 1882
+pass.
+
+### T-720 — Demonstrate the vocabulary over real HTTP with generated diagrams
+
+> _2026-11-18 · core/lukaot · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Move `core/semantic-log/flow/` to `core/lukaot/flow/`: payer, payee, hub, two FXP legs and the
+proxy, each declaring its own vocabulary. A run writes the observed-flow artifacts and a test
+compares them to the committed files, so a topology change shows as a diff.
+
+- verify: `cd core/lukaot && blong-dev test` regenerates and compares the artifacts, and
+  `blong-dev lint --files core/lukaot/flow/*.ts` is clean.
+
+The fixtures live in `core/lukaot/flow/` and every participant declares its own names: the payer
+eight, the payee five, the switch thirteen, the originating switch nine, the provider two, the
+corridor's proxy three, plus the runtime's own `participantLegMisdeclared`. `createParticipant`
+builds a registry from `compose(runtime, participant)` and a view over that participant's logger, so
+a call site is `signal?.payerQuoteAccepted?.({rate})` and a record's identity is the declaration —
+which is what the artifact's labels are.
+
+`test/flow/observedFlows.test.ts` runs both topologies against an in-process service, renders
+`core/lukaot/docs/observed-flows.md` and compares its blocks with those embedded in
+`docs/blong/docs/patterns/lukaot-flows.md`; `LUKAOT_UPDATE_DIAGRAMS=1` regenerates both. Read the
+result and it is a real sequence diagram: seven calls and six arrows for `transfer.single`, thirteen
+for `transfer.inter`, each row naming the file and line that declares the leg.
+
+Two defects the port found, both fixed here: the package's own logger never promoted a record's
+identifier from its fields, so nothing this package wrote could reach a service at all (`@@D-909`
+now holds for `src/logger.ts` too, not only the framework's log); and the artifact's unobserved
+block wrote the short kind name into its markers, which made a page that had once been empty
+impossible to regenerate.
+
+The old behavioural suites (`happy`, `faults`, `guards`, `coverage`, `participant`, 2500 lines) are
+not ported: they assert on the library's own messages and on a fault matrix this task does not
+cover, and lukaot's 1630 tests already hold that ground. What is lost with them is fault coverage
+for F1, F2, F4 and F5 at the fixture's level — `faults`/`guards` are the only place the stall, the
+retry, the decline and the misdeclared leg were exercised end to end.
+
 ### T-730 — Implement capture: declared shapes, masked before retention
 
 > _2026-11-19 · core/lukaot · done_
 
-Planned in `plans/lukaot/plan.md`; design in `plans/lukaot/capture.md`, decisions in @@D-906
-@@D-904.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277); decisions in @@D-906 @@D-904.
 
 Implement `capture` as the third declaration kind, then convert the 11 payload-shaped sites.
 
@@ -324,180 +500,3 @@ rather than a gap.
 
 Wired end to end; 11 sites converted; retention via the emitter payload reference; suites 1216
 and 1470.
-
-### T-721 — Record the parity matrix of the semantic-log capabilities with a test
-
-> _2026-11-18 · core/lukaot · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-`test/parity.test.ts` records what the three libraries lukaot replaces could do — the semantic-log
-rationale's R1–R27, three pino capabilities the framework relied on, and two typed-error behaviours
-— each marked kept, kept-extended, replaced or dropped, with the consequence a reader sees and the
-assertions that hold it up. 32 rows, 105 assertions.
-
-Every `dropped` row states what a reader loses, because a matrix that only lists wins is marketing:
-no embedding provider, so "what is like this" is no longer answerable; no detectors, so nothing is
-flagged as anomalous; no incident surface, so grouping related failures is a reader's work again.
-Every row that is _not_ dropped names at least one test.
-
-The second test is the reason the file earns its place: it reads each cited test file and fails when
-the title it names is gone. Proved by renaming
-`a silent signal constructs the value and writes nothing` in `src/error.test.ts` — the matrix failed
-with `E2 cites "…" in src/error.test.ts, which is still there` and passed again when the title was
-restored. So a capability cannot quietly lose its assertion to a rename, a deletion or a rewrite.
-
-The old pages are still in the tree on purpose (`@@T-723` will replace them): every row cites the
-requirement id they use, so the two can be read side by side while the new docs are written.
-
-Gates: `lukaot` 1575 assertions (1470 + the matrix's 105), lint clean.
-
-32 rows / 105 assertions; a renamed cited test fails the matrix, proved by experiment.
-
-### T-719 — Publish the work order for the deferred sweeps
-
-> _2026-11-18 · core/lukaot · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-The work order is written and its number is now a measurement: `blong-dev legacy` counts the level
-calls left, grouped by package, and `blong-dev legacy sites` prints the file and line behind each.
-On 2026-11-19 it reported 37 calls in 8 packages — `realm/blong-kustomize` 13, `core/blong-mock` 10,
-`realm/blong-chat` 5, `core/blong-browser` 3, `core/blong-chain` 2, `realm/blong-core` 2,
-`core/blong-gogo` 1, `core/blong-server` 1 — down from the 46 the plan counted, the difference being
-what this plan itself converted.
-
-The follow-up sweep is `T-733` in the cross-cutting todo, one instruction per package with the sites
-named, so a sweeper needs no archaeology. It also states what the sweep must not do: fastify's own
-`request.log`, `fastify.log` and `app.log` and the pino-shaped `log.logger(level, …)` are not a
-caller's lines, and the tool excludes them with its help saying why.
-
-The census is over the source rather than over a run (D-910): a runtime list would only name calls
-that executed, and the framework does not route level calls through the compatibility logger yet, so
-it would have read empty while 37 calls remained.
-
-- verify: `blong-dev legacy` lists each package with a count and `blong-dev legacy check` exits
-  non-zero while anything remains; `blong-dev memory list --kind todo --area cross-cutting` finds
-  T-733; the dev CLI suite passes, 1882 assertions.
-
-blong-dev legacy lists 37 calls in 8 packages; the sweep is T-733 cross-cutting; dev CLI suite 1882
-pass.
-
-### T-732 — The kukum e2e browser leg reaches lukaot ambient storage
-
-> _2026-11-19 · core/lukaot · done_
-
-`core/blong-kukum`'s `e2e.test.ts` fails its Playwright leg: the browser page logs
-`node:async_hooks` externalised for the browser, `AsyncLocalStorage` unreachable in client code with
-`core/lukaot/src/context.ts` named in the stack, and the suite then exits non-zero, which the test
-reports as `the Playwright suite exits 0`.
-
-What was done about it in T-718: `src/context.ts` used to build its `AsyncLocalStorage` at module
-scope, so importing the lukaot root in _any_ bundle that Vite externalises `node:async_hooks` for
-failed at evaluation. It is now built on first use, so a page that imports the root for a pure
-helper — `TRACE_HEADER` or `withoutCapabilities` through `Gateway.ts` — no longer touches it, and
-the whole lukaot suite (1575) and the framework suite (1230) still pass.
-
-What is still owed: find what the generated app's page actually evaluates. The candidates are
-`Gateway.ts` (loaded lazily on the browser platform from `load.ts:1009`, and the only importer of
-the lukaot root left on that path) and a page that calls a scoping helper (`currentContext`,
-`withIntent`, `withFlow`) rather than the attached facade — with the storage lazy, the second is now
-the only way to throw. Reproduce with
-`cd core/blong-kukum && blong-dev test e2e.test.ts --timeout 600`, which takes about four minutes,
-and read `.ci-report/tap.raw.tap` for the `[browser] error` lines. A first check is whether the
-failure predates the lukaot port at all: `git stash` is not how to find out — run the same command
-on a separate checkout of the commit before `T-705`.
-
-Fixed at the cause, which turned out to be two. The ambient store was built from a class a page's
-bundler rewrites into a throwing stub — and the page does reach a scope, because `Gateway` calls
-`withoutCapabilities` while it sets up, so "built on first use" was not far enough: `context.ts` now
-reads `AsyncLocalStorage` through `process.getBuiltinModule`, and keeps a flat one-frame store where
-there is no `process`, which still nests correctly in a page and does not survive an `await` there.
-
-Fixing that surfaced the rest of the same seam: `node:crypto`, `node:fs`, `node:os` and `node:path`
-arrived through the logger, its fingerprint and the store, all reachable from the root because the
-root re-exported them. A static import into a builtin cannot be guarded at the call site — the
-bundler's stub throws when the module graph is linked — so the root is now platform-free and
-`@feasibleone/lukaot/node` re-exports it whole beside those three modules; only `LukaotLog.ts` and
-one test imported them, and `src/package.test.ts` pins both halves (`@@D-912`). `core/blong-kukum`'s
-`e2e.test.ts` is 18/18, the browser leg included, and the probe that proves it is
-`esbuild --bundle --platform=browser` over the root, which now reports no `node:` edge at all.
-
-### T-720 — Demonstrate the vocabulary over real HTTP with generated diagrams
-
-> _2026-11-18 · core/lukaot · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-Move `core/semantic-log/flow/` to `core/lukaot/flow/`: payer, payee, hub, two FXP legs and the
-proxy, each declaring its own vocabulary. A run writes the observed-flow artifacts and a test
-compares them to the committed files, so a topology change shows as a diff.
-
-- verify: `cd core/lukaot && blong-dev test` regenerates and compares the artifacts, and
-  `blong-dev lint --files core/lukaot/flow/*.ts` is clean.
-
-The fixtures live in `core/lukaot/flow/` and every participant declares its own names: the payer
-eight, the payee five, the switch thirteen, the originating switch nine, the provider two, the
-corridor's proxy three, plus the runtime's own `participantLegMisdeclared`. `createParticipant`
-builds a registry from `compose(runtime, participant)` and a view over that participant's logger, so
-a call site is `signal?.payerQuoteAccepted?.({rate})` and a record's identity is the declaration —
-which is what the artifact's labels are.
-
-`test/flow/observedFlows.test.ts` runs both topologies against an in-process service, renders
-`core/lukaot/docs/observed-flows.md` and compares its blocks with those embedded in
-`docs/blong/docs/patterns/lukaot-flows.md`; `LUKAOT_UPDATE_DIAGRAMS=1` regenerates both. Read the
-result and it is a real sequence diagram: seven calls and six arrows for `transfer.single`, thirteen
-for `transfer.inter`, each row naming the file and line that declares the leg.
-
-Two defects the port found, both fixed here: the package's own logger never promoted a record's
-identifier from its fields, so nothing this package wrote could reach a service at all (`@@D-909`
-now holds for `src/logger.ts` too, not only the framework's log); and the artifact's unobserved
-block wrote the short kind name into its markers, which made a page that had once been empty
-impossible to regenerate.
-
-The old behavioural suites (`happy`, `faults`, `guards`, `coverage`, `participant`, 2500 lines) are
-not ported: they assert on the library's own messages and on a fault matrix this task does not
-cover, and lukaot's 1630 tests already hold that ground. What is lost with them is fault coverage
-for F1, F2, F4 and F5 at the fixture's level — `faults`/`guards` are the only place the stall, the
-retry, the decline and the misdeclared leg were exercised end to end.
-
-### T-735 — Port the flow fault matrix
-
-> _2026-11-19 · core/lukaot · done_
-
-The fixtures carry four faults and nothing exercises them at the fixture level any more. `flows.ts`
-takes `blockTransfers` (F1), `retries` (F2), `stallTransfers` (F4) and `declineRate` (F5), and the
-old `faults.test.ts` and `guards.test.ts` are where they were driven; neither was ported with T-720,
-whose ask was the observed-flow artifact.
-
-What each should assert, in the shape lukaot's own tests now use: F1 — the payee's
-`payeeTransferRefused` is the _originating_ record of the failure and the payer sees a 502 with the
-payee's reason rather than a timeout; F2 — `retries: 2` produces three executions of the same kind
-with one settled result, and one execution's records are never attributed to another; F4 — the
-payee's `payeeTransferStalled` precedes the hub's `hubSettlementFailed`, so the origin is the far
-end; F5 — the provider's `fxpRateDeclined` sits inside the `rate-within-limit` `alt` arm and the
-payer's `payerQuoteRefused` follows it.
-
-The last one worth keeping is the proxy installed with no corridor: it must answer 503 with
-`proxyNoRouteToTarget` rather than throwing, which is the only path where a participant holds
-instead of forwarding.
-
-`core/lukaot/test/flow/faults.test.ts` drives the four faults and the corridor-less proxy, and every
-assertion reads the records the participants wrote during the run: F1 the payee's
-`payeeTransferRefused` is the origin and the switch reports the refusal it was handed rather than
-one of its own; F2 three attempts are three executions, each with one flow id and one kind, and no
-record is attributed to another execution; F4 the payee's `payeeTransferStalled` precedes
-`hubSettlementFailed`, so the far end is the origin; F5 `fxpRateDeclined` is written **inside** the
-`rateWithinLimit` decision on its `decline` arm — asserted through the record's region, which is
-what puts it in the diagram's `alt` block — and the payer's quote refusal follows it; and the proxy
-installed with no corridor answers 503 with `proxyNoRouteToTarget` rather than throwing.
-
-The seam that made it possible is `startFlow({onRecord})`, which hands every record to the caller
-with the participant that wrote it. Neither shipped consumer can serve these assertions: the store
-folds a record into its shape unless it withheld something or carries an error, and the service
-counts per identifier rather than per participant.
-
-Getting there cost one false start: the standalone proxy participant was created with no vocabulary,
-so `proxyNoRouteToTarget` was a no-op and the run answered 503 while recording nothing — the
-degradation working exactly as designed, and a reminder that a fixture's participant needs its
-declarations as much as a realm's port does.

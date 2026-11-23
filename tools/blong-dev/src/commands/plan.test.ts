@@ -10,12 +10,13 @@
  * nothing here touches a network.
  */
 
-import {mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {test} from 'tap';
 
 import {setHindsightStoreFactory} from '../memory/hindsight/hindsightRuntime.ts';
+import {issueBody, setIssueReader} from '../plan/planGithub.ts';
 import {memory} from './memory.ts';
 import {plan} from './plan.ts';
 
@@ -472,5 +473,297 @@ test('plan check names a positional title, and a title another entry already hol
     t.match(result.out, /# note: .*"Scaffold the realm" is already T-001's title/);
     t.match(result.out, /# note: .*"Group 3 verification" names a position in the plan/);
     t.match(result.out, /2 note\(s\)/);
+    t.end();
+});
+
+/**
+ * A plan with front matter and no issue: a claim on it stays local, so these cases never reach `gh`.
+ */
+const OWNED_PLAN = `---
+slug: demo
+title: Demo plan — a plan
+status: approved
+approved: 2026-11-23
+---
+
+# Demo plan
+
+## Work breakdown
+
+- [ ] Scaffold the realm · area: realm/blong-agent
+      Created with \`kukum realm add\`.
+`;
+
+test('plan init claims the plan for this host', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    const repo = tempRepo('# Demo plan\n\n## Work breakdown\n\n- [ ] One · area: docs\n');
+    t.teardown(repo.restore);
+
+    const result = await capture(() =>
+        plan(['init', 'demo', '--no-issue', '--no-slack', '--no-tasks', '--no-decisions']),
+    );
+    t.equal(result.code, undefined, `init succeeded: ${result.err}`);
+    t.match(result.out, /# claimed by \S+ on \d{4}-\d{2}-\d{2}/, 'the run says who holds it');
+    t.match(read(repo.file), /^claimed: \S+$/m, 'the front matter records the host');
+    t.match(
+        read(join(repo.dir, 'plans/active.json')),
+        /"slug": "demo"/,
+        'and the plan is the active one',
+    );
+    t.end();
+});
+
+/**
+ * A plan that already has an issue: the entry it creates should name the issue, not the folder.
+ */
+const PUBLISHED_PLAN = `---
+slug: demo
+title: Demo plan — a plan
+status: approved
+approved: 2026-11-23
+issue: 42
+issueUrl: https://github.com/feasibleone/blong/issues/42
+---
+
+# Demo plan
+
+## Work breakdown
+
+- [ ] Scaffold the realm · area: realm/blong-agent
+      Created with \`kukum realm add\`.
+`;
+
+test('an entry names the issue once the plan has one', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    const repo = tempRepo(PUBLISHED_PLAN);
+    t.teardown(repo.restore);
+
+    const result = await capture(() => plan(['tasks', 'demo', '--apply']));
+    t.equal(result.code, undefined, `tasks succeeded: ${result.err}`);
+    const todo = read(join(repo.dir, 'realm/blong-agent/.github/memory/todo.md'));
+    t.match(todo, /Planned in \[#42\]\(https:\/\/github\.com\/feasibleone\/blong\/issues\/42\)\./);
+    t.notMatch(todo, /Planned in `plans\/demo\/plan\.md`/, 'the folder is not named at all');
+    t.end();
+});
+
+test('plan sync points an entry that named the folder at the issue', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    const repo = tempRepo(OWNED_PLAN);
+    t.teardown(repo.restore);
+
+    await capture(() => plan(['tasks', 'demo', '--apply']));
+    const todo = join(repo.dir, 'realm/blong-agent/.github/memory/todo.md');
+    t.match(read(todo), /Planned in `plans\/demo\/plan\.md`\./, 'written before the issue existed');
+
+    // What `init` does when it publishes: the issue lands in the front matter.
+    writeFileSync(
+        repo.file,
+        read(repo.file).replace(
+            'approved: 2026-11-23',
+            'approved: 2026-11-23\nissue: 42\nissueUrl: https://github.com/feasibleone/blong/issues/42',
+        ),
+    );
+    const synced = await capture(() => plan(['sync', 'demo', '--no-issue']));
+    t.equal(synced.code, undefined, `sync succeeded: ${synced.err}`);
+    t.match(synced.out, /1 memory file\(s\) now name the issue/);
+    t.match(read(todo), /Planned in \[#42\]/, 'and the entry names the issue');
+    t.end();
+});
+
+test('plan claim records the host, and another host is refused', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    const repo = tempRepo(OWNED_PLAN);
+    t.teardown(repo.restore);
+
+    const first = await capture(() => plan(['claim', 'demo', '--host', 'ms-01']));
+    t.equal(first.code, undefined, `claim succeeded: ${first.err}`);
+    t.match(first.out, /# claimed by ms-01 on \d{4}-\d{2}-\d{2}/);
+    t.match(read(repo.file), /^claimed: ms-01$/m, 'the front matter holds the claim');
+    t.match(read(repo.file), /^claimedAt: \d{4}-\d{2}-\d{2}$/m, 'with the day it was taken');
+
+    const rival = await capture(() => plan(['claim', 'demo', '--host', 'ms-02']));
+    t.equal(rival.code, 1, 'a second host cannot take it');
+    t.match(rival.err, /claimed by "ms-01"/);
+    t.match(rival.err, /--force/, 'and is told how to say it means it');
+
+    const forced = await capture(() => plan(['claim', 'demo', '--host', 'ms-02', '--force']));
+    t.equal(forced.code, undefined, `--force takes it over: ${forced.err}`);
+    t.match(read(repo.file), /^claimed: ms-02$/m);
+    t.end();
+});
+
+test('a plan another host holds refuses the verbs that edit its memory', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    const repo = tempRepo(OWNED_PLAN);
+    t.teardown(repo.restore);
+
+    await capture(() => plan(['claim', 'demo', '--host', 'ms-01']));
+    const before = read(repo.file);
+
+    for (const [args, verb] of [
+        [['tasks', 'demo', '--apply'], 'plan tasks --apply'],
+        [['sync', 'demo'], 'plan sync'],
+        [['adopt', 'demo', 'T-999'], 'plan adopt'],
+    ] as const) {
+        const refused = await capture(() => plan([...args]));
+        t.equal(refused.code, 1, `${verb} refuses a plan it does not hold`);
+        t.match(refused.err, /claimed by "ms-01"/);
+        t.match(refused.err, new RegExp(verb.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    }
+    t.equal(read(repo.file), before, 'and nothing was written');
+
+    const status = await capture(() => plan(['status', 'demo']));
+    t.match(status.out, /# claimed: ms-01 .* — not this host/, 'status says whose it is');
+
+    const checked = await capture(() => plan(['check', 'demo']));
+    t.match(checked.out, /# note: this plan is claimed by "ms-01"/, 'and check reports it');
+    t.end();
+});
+
+test('plan release lets go, and --remove takes only the plan file', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    const repo = tempRepo(OWNED_PLAN);
+    t.teardown(repo.restore);
+    // A support file the folder keeps: the prompt is what the plan answers, and it is not a plan.
+    writeFileSync(join(repo.dir, 'plans/demo/plan.prompt.md'), '# the request\n');
+
+    await capture(() => plan(['claim', 'demo']));
+    const created = await capture(() => plan(['tasks', 'demo', '--apply']));
+    t.equal(created.code, undefined, `tasks succeeded: ${created.err}`);
+
+    const released = await capture(() => plan(['release', 'demo']));
+    t.equal(released.code, undefined, `release succeeded: ${released.err}`);
+    t.notMatch(read(repo.file), /^claimed:/m, 'the claim is gone');
+    t.notMatch(read(repo.file), /^claimedAt:/m);
+
+    await capture(() => plan(['claim', 'demo', '--host', 'ms-01']));
+    const removed = await capture(() =>
+        plan(['release', 'demo', '--remove', '--force', '--host', 'ms-01']),
+    );
+    t.equal(removed.code, undefined, `remove succeeded: ${removed.err}`);
+    t.notOk(existsSync(repo.file), 'plan.md is gone');
+    t.ok(existsSync(join(repo.dir, 'plans/demo')), 'the folder stays');
+    t.ok(existsSync(join(repo.dir, 'plans/demo/plan.prompt.md')), 'with its support files');
+
+    const todo = read(join(repo.dir, 'realm/blong-agent/.github/memory/todo.md'));
+    t.match(
+        todo,
+        /Planned in a plan folder whose `plan\.md` has since been removed\./,
+        'and the entry no longer points at a file that is gone',
+    );
+
+    const gone = await capture(() => plan(['check', 'demo']));
+    t.equal(gone.code, 1, 'a released plan is not a plan any more');
+    t.match(gone.err, /plans\/demo holds no plan/, 'and the prompt beside it is not read as one');
+    t.end();
+});
+
+test('plan release takes the issue number a claim was made from', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    const repo = tempRepo(PUBLISHED_PLAN);
+    t.teardown(repo.restore);
+
+    await capture(() => plan(['claim', 'demo', '--no-issue']));
+    // The number names the local plan that carries it: after a claim from an issue it is the handle
+    // a person still has at hand, so release reads the front matter and finds the file.
+    const released = await capture(() => plan(['release', '42', '--no-issue']));
+    t.equal(released.code, undefined, `release by issue succeeded: ${released.err}`);
+    t.notMatch(read(repo.file), /^claimed:/m, 'the claim is gone');
+    t.match(released.out, /# released/, 'and the run says so');
+
+    const unknown = await capture(() => plan(['release', '4242']));
+    t.equal(unknown.code, 1, 'a number no local plan carries is refused');
+    t.match(unknown.err, /no plan at "4242"/, 'naming the handle it could not resolve');
+    t.end();
+});
+
+/** The front matter a published issue carries: the keys a host with no checkout cannot invent. */
+const REMOVED_FRONT_MATTER = `slug: sport
+title: blong-sport — continuous deployment to the k3d dev cluster
+status: closed
+repo: feasibleone/blong
+issue: 296
+issueUrl: https://github.com/feasibleone/blong/issues/296
+platform: slack
+account: blong-bot
+channelName: plan-sport
+conversationId: C0CGRSZ633M
+channelUrl: https://example.slack.com/archives/C0CGRSZ633M
+created: 2026-11-01
+approved: 2026-11-02
+closed: 2026-11-20`;
+
+const ISSUE_BODY = '# blong-sport — continuous deployment\n\n- [ ] One · area: docs\n';
+
+/** An issue a rebuild reads instead of `gh`. */
+function serveIssue(frontMatter?: string, removedAt?: string): void {
+    const body = issueBody(ISSUE_BODY, 'sport', {
+        ...(frontMatter ? {frontMatter} : {}),
+        ...(removedAt ? {removedAt} : {}),
+    });
+    setIssueReader(() => ({
+        title: 'blong-sport — continuous deployment to the k3d dev cluster',
+        url: 'https://github.com/feasibleone/blong/issues/296',
+        body,
+        labels: ['plan'],
+    }));
+}
+
+test('a plan rebuilt from its issue comes back with the front matter it had', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    serveIssue(REMOVED_FRONT_MATTER, '2026-11-23');
+    t.teardown(() => setIssueReader(null));
+    const repo = tempRepo();
+    t.teardown(repo.restore);
+    rmSync(repo.file);
+
+    const result = await capture(() =>
+        plan(['claim', '296', '--repo', 'feasibleone/blong', '--slug', 'sport', '--no-issue']),
+    );
+    t.equal(result.code, undefined, `the claim succeeded: ${result.err}`);
+
+    const rebuilt = read(join(repo.dir, 'plans/sport/plan.md'));
+    t.match(rebuilt, /^status: closed$/m, 'the status the plan was released with, not `approved`');
+    t.match(rebuilt, /^approved: 2026-11-02$/m, 'the approval date');
+    t.match(rebuilt, /^closed: 2026-11-20$/m, 'and the day it closed');
+    t.match(rebuilt, /^conversationId: C0CGRSZ633M$/m, 'the Slack channel the plan works in');
+    t.match(rebuilt, /^channelUrl: https:\/\/example\.slack\.com/m, 'with where a person opens it');
+    t.match(rebuilt, /^recoveredAt: \d{4}-\d{2}-\d{2}$/m, 'and the day it was recovered');
+    t.match(rebuilt, /^issue: 296$/m, 'the coordinates are the issue it came from');
+    t.match(rebuilt, /^claimed: /m, 'the claim is the one this run just took');
+    t.notMatch(rebuilt, /^localRemovedAt:/m, 'a recovered plan is not a removed one');
+    t.match(rebuilt, /^# blong-sport — continuous deployment$/m, 'the body starts at the plan');
+    t.notMatch(rebuilt, /plan-front-matter/, 'the published comment is not part of the plan');
+    t.notMatch(rebuilt, /was removed on/, 'nor is the sentence above it');
+    t.end();
+});
+
+test('an issue published before the front-matter comment rebuilds from defaults', async t => {
+    setHindsightStoreFactory(() => null);
+    t.teardown(() => setHindsightStoreFactory(null));
+    serveIssue();
+    t.teardown(() => setIssueReader(null));
+    const repo = tempRepo();
+    t.teardown(repo.restore);
+    rmSync(repo.file);
+
+    const result = await capture(() =>
+        plan(['claim', '296', '--repo', 'feasibleone/blong', '--slug', 'sport', '--no-issue']),
+    );
+    t.equal(result.code, undefined, `the claim succeeded: ${result.err}`);
+    t.match(result.err, /carries no front matter/, 'the loss is stated rather than hidden');
+
+    const rebuilt = read(join(repo.dir, 'plans/sport/plan.md'));
+    t.match(rebuilt, /^status: approved$/m, 'a plan with no recovered status is approved');
+    t.match(rebuilt, /^slug: sport$/m, 'the slug is the one that was named');
+    t.notMatch(rebuilt, /^conversationId:/m, 'and there is no channel to invent');
     t.end();
 });

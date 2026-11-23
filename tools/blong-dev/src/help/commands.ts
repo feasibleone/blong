@@ -816,7 +816,11 @@ export const COMMANDS: readonly IHelpCommand[] = [
             'area: <area>` under `### Decisions this plan takes`. `tasks` moves that detail into ' +
             'memory — a todo per task, a decision entry per decision — and leaves the titles and ' +
             'their references behind; `init` also mirrors the plan into a GitHub issue and opens ' +
-            'its Slack channel; `sync` repairs the board from what the memory says.',
+            'its Slack channel, and claims the plan for this host; `sync` repairs the board from ' +
+            'what the memory says. A plan is a local folder, so only one host may work it: `claim` ' +
+            'records the owner in the front matter and in the issue, and the verbs that write ' +
+            'refuse a plan another host holds. `release` lets it go — and `--remove` drops the ' +
+            'local `plan.md` once the issue is the record.',
         helpOnBare: true,
         verbs: [
             {
@@ -834,14 +838,47 @@ export const COMMANDS: readonly IHelpCommand[] = [
             },
             {
                 name: 'init',
-                summary: 'Approve the plan: tasks, decisions, issue and Slack channel',
-                usage: 'blong-dev plan init <plan> [--repo <owner/name>] [--label plan] [--invite <userId,...>] [--dry-run]',
+                summary: 'Approve the plan: tasks, decisions, issue, channel and claim',
+                usage: 'blong-dev plan init <plan> [--repo <owner/name>] [--label plan] [--invite <userId,...>] [--no-claim] [--dry-run]',
                 description:
-                    "Records the issue and the channel in the plan's front matter. Pass `--invite` with " +
+                    "Records the issue and the channel in the plan's front matter, and claims the " +
+                    'plan for this host (`--no-claim` publishes it unowned). Pass `--invite` with ' +
                     "the owner's Slack **member id** (`U…`, not the email): a private channel nobody " +
                     'is invited to is invisible to them, and Slack answers `name_taken` afterwards, so ' +
                     'the invitation cannot be added later by this tool.',
                 examples: ['blong-dev plan init agent --repo feasibleone/blong --invite U123'],
+            },
+            {
+                name: 'claim',
+                summary: 'Take the plan for this host, so no other one edits its memory',
+                usage: 'blong-dev plan claim <plan|issue> [--host <name>] [--force] [--no-issue] [--slug <name>] [--repo <owner/name>]',
+                description:
+                    'The claim is written into the front matter and published into the issue as a ' +
+                    'marker, a sentence and two labels — `plan-claimed` and `plan-host:<name>` — ' +
+                    'because the local folder is the only thing gitignored: a second host reads ' +
+                    'the claim from the issue and refuses to work the plan. Given an issue instead ' +
+                    'of a plan, it rebuilds `plans/<slug>/plan.md` from the issue body first, which ' +
+                    'is how a host that never had the folder takes a plan over: the front matter ' +
+                    'comes back from the comment the issue carries, so the dates, the Slack channel ' +
+                    'and a `closed` status are not lost, and an issue published before that comment ' +
+                    'existed rebuilds from defaults and says so. The support files beside the plan ' +
+                    'do not travel, and `--slug` names the folder when the title suggests the wrong ' +
+                    'one. `--force` takes over a claim somebody else holds; `--host` names a ' +
+                    'machine other than the current one.',
+            },
+            {
+                name: 'release',
+                summary: 'Let the plan go, and optionally drop the local plan.md',
+                usage:
+                    'blong-dev plan release <plan> [--host <name>] [--remove] [--force] ' +
+                    '[--no-issue]',
+                description:
+                    'Clears the claim and rewrites the issue header. `--remove` deletes ' +
+                    '`plans/<slug>/plan.md` — the folder and its support files stay — and points ' +
+                    'every memory entry that said it was planned there at the issue instead. A plan ' +
+                    'is released when it is finished or suspended; it is refused when another host ' +
+                    'holds it, unless `--force` says you mean it. `<plan>` may also be the published ' +
+                    'issue number, which names the local plan that carries it.',
             },
             {
                 name: 'sync',
@@ -859,7 +896,7 @@ export const COMMANDS: readonly IHelpCommand[] = [
                 usage: 'blong-dev plan adopt <plan> <id...> [--issue <url|number>]',
             },
         ],
-        note: '<plan> is a file, a folder under plans/, or the folder name (e.g. `agent`). See the blong-plan skill.',
+        note: '<plan> is a file, a folder under plans/, or the folder name (e.g. `agent`) — or, for `claim`, the issue a plan is published in. See the blong-plan skill.',
     },
     {
         name: 'docs',

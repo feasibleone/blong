@@ -45,7 +45,7 @@ The spec no longer depends on either: it retries the produce-and-read pair (`exp
 
 > _2026-11-18 · core/blong-realm · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 Rename `adapter/semlog` to `adapter/observer` with its parameter substitution; keep the
 `blong.template.find`, `blong.flow.find`, `blong.flow.get`, `blong.search.find` and

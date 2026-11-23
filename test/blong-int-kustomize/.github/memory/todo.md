@@ -13,7 +13,7 @@ open (1)
 
 done (1)
 
-- `T-443` · test/blong-int-kustomize — Sport CD Group 2 local deploy
+- `T-443` · test/blong-int-kustomize — Run the local deploy cycle against the operator
 
 <!-- /memory:index -->
 
@@ -31,7 +31,7 @@ works or fails visibly.
 
 ## Done
 
-### T-443 — Sport CD Group 2 local deploy
+### T-443 — Run the local deploy cycle against the operator
 
 > _2026-10-27 · test/blong-int-kustomize · done_
 

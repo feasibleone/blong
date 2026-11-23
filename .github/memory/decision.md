@@ -122,14 +122,14 @@ active (115)
 - `D-862` · cross-cutting — Markdown is repaired by lint --fix, not by a script
 - `D-863` · cross-cutting — A memory title names the thing, within 100 characters
 - `D-877` · cross-cutting — A plan's body sits below a blank line, indented four spaces
-- `D-899` · cross-cutting — Reference scheme becomes `lukaot://`
-- `D-900` · cross-cutting — The framework's call sites are converted here; the rest are follow-ups
 - `D-911` · cross-cutting — The level-call sweep stops where packages own no port
 - `D-915` · docs — The lukaot docs are organised by kind, each with the old code beside the new
 - `D-918` · cross-cutting — A library contributes to the port that hosts it; a class with a logger
   builds a view
 - `D-942` · cross-cutting — tsconfig types: `["node"]` is free here and stays
 - `D-960` · cross-cutting — A lost log batch is an error, not a warning
+- `D-899` · cross-cutting — Reference scheme becomes `lukaot://`
+- `D-900` · cross-cutting — The framework's call sites are converted here; the rest are follow-ups
 
 superseded (9)
 
@@ -1817,33 +1817,6 @@ alone. A title wider than the print width still wraps, which is why `readWrapped
 `planParse.ts` joins every indented line up to the first blank back into the title and re-parses it;
 a task whose area genuinely does not arrive is still reported rather than guessed.
 
-### D-899 — Reference scheme becomes `lukaot://`
-
-> _2026-11-18 · cross-cutting · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-A v2 that still prints `semlog://` is a
-
-half rename that every later reader has to learn. The editor link handler and `blong-dev log` are
-the only two consumers, both in this repository, and both are updated in one task.
-
-### D-900 — The framework's call sites are converted here; the rest are follow-ups
-
-> _2026-11-18 · cross-cutting · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-All
-
-93 `this.log?.level` sites in `core/blong-gogo` become declared `framework.*` signals in this plan,
-and `realm/blong-agent` proves a realm's shape beside them. The other 46 sites — 13 in
-`realm/blong-kustomize`, 10 in `core/blong-mock`, 5 in `realm/blong-chat`, 3 each in
-`core/blong-browser` and `test/framework`, and one or two in four more — stay on `this.log` until
-their own sweep. That is why lukaot keeps a compatibility logger: a remaining call _declares_ a
-legacy signal per namespace, level and message on first use, so it has identity, policy and
-retention meanwhile, and the list of what it declared is the work order for the follow-ups.
-
 ### D-911 — The level-call sweep stops where packages own no port
 
 > _2026-11-19 · cross-cutting · active_
@@ -1947,6 +1920,33 @@ a declared identifier of its own (`frameworkLogDestinationFailed`, keyed on the 
 exports). The generic `frameworkProcessWarning` keeps the warn level that a deprecation or a
 listener leak deserves. Two identifiers rather than one because the level is the whole difference a
 reader sees, and a declaration carries exactly one level.
+
+### D-899 — Reference scheme becomes `lukaot://`
+
+> _2026-11-18 · cross-cutting · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+A v2 that still prints `semlog://` is a
+
+half rename that every later reader has to learn. The editor link handler and `blong-dev log` are
+the only two consumers, both in this repository, and both are updated in one task.
+
+### D-900 — The framework's call sites are converted here; the rest are follow-ups
+
+> _2026-11-18 · cross-cutting · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+All
+
+93 `this.log?.level` sites in `core/blong-gogo` become declared `framework.*` signals in this plan,
+and `realm/blong-agent` proves a realm's shape beside them. The other 46 sites — 13 in
+`realm/blong-kustomize`, 10 in `core/blong-mock`, 5 in `realm/blong-chat`, 3 each in
+`core/blong-browser` and `test/framework`, and one or two in four more — stay on `this.log` until
+their own sweep. That is why lukaot keeps a compatibility logger: a remaining call _declares_ a
+legacy signal per namespace, level and message on first use, so it has identity, policy and
+retention meanwhile, and the list of what it declared is the work order for the follow-ups.
 
 ## Superseded
 

@@ -107,7 +107,6 @@ active (122)
 - `D-850` · core/blong-gogo — An unknown-length stream reaches S3 through the SDK's uploader
 - `D-858` · core/blong-gogo — A bare positional is an intent; a target is spelled as a path
 - `D-860` · core/blong-gogo — A stream body is the route's request, not the process's
-- `D-896` · core/blong-gogo — The vocabulary lives in a `lukaot` layer of its own
 - `D-904` · core/blong-gogo — A level call that dumps a payload is not a signal, and stays one
 - `D-905` · core/blong-gogo — The logging facade and the emitter move in one step
 - `D-907` · core/blong-gogo — AdapterBase.error keeps its line until errors declare themselves
@@ -138,6 +137,7 @@ active (122)
 - `D-961` · core/blong-gogo — The schema generator reports what it writes, not what it scans
 - `D-964` · core/blong-gogo — A folder takes the operations whose object names it
 - `D-965` · core/blong-gogo — A stub is rewritten while its marker is in it
+- `D-896` · core/blong-gogo — The vocabulary lives in a `lukaot` layer of its own
 
 superseded (5)
 
@@ -1638,20 +1638,6 @@ The rule is pinned in `core/blong-gogo/src/rawBody.test.ts`: one route in a chil
 `image/png`, and the route beside it on the parent still refuses it. That is fastify's promise
 rather than ours, and the gateway's mounting depends on it, so it is asserted where it can break.
 
-### D-896 — The vocabulary lives in a `lukaot` layer of its own
-
-> _2026-11-18 · core/blong-gogo · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-A layer named for the
-
-package, holding `lukaot/error.ts` and `lukaot/signal.ts`, is where a reader looks for the signals a
-realm may emit — not a file called `error` that also declares logs. It costs a `WELL_KNOWN_LAYERS`
-entry carrying the `error` layer's activation, a loader case, a kukum primitive and a
-conventions-table row, which is the price of a name that does not lie. `error/` keeps loading as a
-legacy source of error signals until each realm is converted.
-
 ### D-904 — A level call that dumps a payload is not a signal, and stays one
 
 > _2026-11-18 · core/blong-gogo · active_
@@ -2266,6 +2252,20 @@ What this replaced is worth recording: the generator used to write only into fil
 exist or were empty, so a stub could never follow its document and every change to a published
 definition needed the stub deleting by hand — the opposite of the interactive loop the feature is
 for.
+
+### D-896 — The vocabulary lives in a `lukaot` layer of its own
+
+> _2026-11-18 · core/blong-gogo · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+A layer named for the
+
+package, holding `lukaot/error.ts` and `lukaot/signal.ts`, is where a reader looks for the signals a
+realm may emit — not a file called `error` that also declares logs. It costs a `WELL_KNOWN_LAYERS`
+entry carrying the `error` layer's activation, a loader case, a kukum primitive and a
+conventions-table row, which is the price of a name that does not lie. `error/` keeps loading as a
+legacy source of error signals until each realm is converted.
 
 ## Superseded
 

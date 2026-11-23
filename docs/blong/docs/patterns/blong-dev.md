@@ -332,10 +332,14 @@ the [memory pattern](./memory#searching-by-meaning) for the settings and the bac
 ```bash
 blong-dev plan check agent            # parse the work breakdown; report what would not create
 blong-dev plan tasks agent --apply    # one todo per task and one decision per decision, linked
-blong-dev plan init agent --repo feasibleone/blong --invite U123
+blong-dev plan init agent --repo feasibleone/blong --invite U123   # publish, and claim for this host
+blong-dev plan claim agent            # take a plan published earlier, before working it
+blong-dev plan claim <issue-url>      # …or rebuild it here from its issue, and claim it
 blong-dev plan status agent           # done / open, per area, with the issue and channel links
 blong-dev plan sync agent             # tick, align titles and links, republish the issue
 blong-dev plan sync agent --channel    # also re-apply the channel's topic (the issue link)
+blong-dev plan release agent          # finished or suspended: let another host take it
+blong-dev plan release 296 --remove   # …and drop the local plan.md; the issue is the record
 ```
 
 A plan is a board, not a document: the work breakdown is `- [ ] <title> · area: <area>` with the
@@ -349,6 +353,23 @@ editor and the issue published from it rewrites the same link to a github.com UR
 then ticks the box through that token, and `plan init` mirrors the plan into an issue and opens a
 private Slack channel whose id, and whose link, it records. See the
 [plan tracking pattern](./planning).
+
+**A plan belongs to one host at a time.** Its folder is gitignored, so it exists on the machine that
+created it and nowhere else, and two hosts working one plan would edit two memory trees that never
+meet. `plan init` therefore claims the plan for the host that publishes it, `plan claim` takes one
+published earlier, and every verb that writes — `tasks --apply`, `sync`, `adopt`, `init` — refuses a
+plan another host holds. The claim is in the front matter and, because that is the only place two
+checkouts can see each other, in the issue itself: the mirrored header names the host, a marker the
+tool reads back sits under it, and the `plan-claimed` and `plan-host:<name>` labels make the state
+visible in the issue list. `plan release` clears all of it when the work is finished or suspended,
+and `release --remove` deletes the local `plan.md` — keeping the folder and its support files — once
+the issue is the record a reader needs. Either verb takes the plan folder or the published issue
+number: a host that claimed from the issue never saw a folder, and the number is what it still has.
+
+The issue carries the plan's front matter as well, in an HTML comment under the header, so a rebuild
+from the board is not a fresh plan: the approval and close dates, the Slack channel and a `closed`
+status are read back from there, and a reader of the issue never sees them. Every republish writes
+the block, and an issue published before it existed rebuilds from defaults and says so.
 
 ## Why agents and people use the same commands
 

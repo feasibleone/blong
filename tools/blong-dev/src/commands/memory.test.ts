@@ -17,7 +17,7 @@
  */
 
 import {mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
-import {tmpdir} from 'node:os';
+import {hostname, tmpdir} from 'node:os';
 import {join} from 'node:path';
 import t from 'tap';
 
@@ -1190,7 +1190,20 @@ t.test('the memory command layer', async t => {
 });
 
 /** An approved plan under a throwaway repo's `plans/`, which is what makes it active. */
-function seedPlan(dir: string, slug = 'demo', status = 'approved'): string {
+/**
+ * A plan in a throwaway repository.
+ *
+ * An approved plan is claimed by this host unless the case says otherwise: a claim is what makes a
+ * plan the one being executed (see `planOwnership.ts`), so a repository whose plan is approved but
+ * claimed by nobody has nothing for a decision to belong to.
+ */
+function seedPlan(
+    dir: string,
+    slug = 'demo',
+    status = 'approved',
+    claimed: string | null | undefined = undefined,
+): string {
+    const claim = claimed === undefined ? (status === 'approved' ? hostname() : null) : claimed;
     const folder = join(dir, 'plans', slug);
     mkdirSync(folder, {recursive: true});
     const path = join(folder, 'plan.md');
@@ -1202,6 +1215,7 @@ function seedPlan(dir: string, slug = 'demo', status = 'approved'): string {
             `title: ${slug} — a plan`,
             `status: ${status}`,
             `approved: 2026-11-19`,
+            ...(claim ? [`claimed: ${claim}`, 'claimedAt: 2026-11-19'] : []),
             '---',
             '',
             `# ${slug}`,
@@ -1272,6 +1286,32 @@ t.test('a plan that is only a draft is not active', async t => {
             memory(['add', 'friction', '--title', 'A surprise', '--area', 'cross-cutting']),
         );
         t.notOk(added.code, 'there is nothing to belong to, so no flag is demanded');
+    } finally {
+        repo.restore();
+    }
+});
+
+t.test('an approved plan no host has claimed is not the active one', async t => {
+    const repo = tempRepo();
+    try {
+        seedPlan(repo.dir, 'unclaimed', 'approved', null);
+        const added = await capture(() =>
+            memory(['add', 'decision', '--title', 'A choice', '--area', 'cross-cutting']),
+        );
+        t.notOk(added.code, 'nothing is being executed, so no flag is demanded');
+    } finally {
+        repo.restore();
+    }
+});
+
+t.test('a plan another host claims is not this host\'s active plan either', async t => {
+    const repo = tempRepo();
+    try {
+        seedPlan(repo.dir, 'theirs', 'approved', 'another-machine');
+        const added = await capture(() =>
+            memory(['add', 'friction', '--title', 'A surprise', '--area', 'cross-cutting']),
+        );
+        t.notOk(added.code, 'work here would collide with theirs, and the claim says so');
     } finally {
         repo.restore();
     }

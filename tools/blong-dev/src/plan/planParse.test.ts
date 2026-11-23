@@ -11,6 +11,7 @@ import {test} from 'tap';
 import {entryLink, githubAnchor, issueLinks} from './planLinks.ts';
 import {
     bodyWithoutFrontMatter,
+    frontMatterWithout,
     LIST_GUARD,
     parsePlan,
     parseTaskLine,
@@ -449,5 +450,34 @@ test('a title that names its position rather than its subject is reported', asyn
     t.equal(positionalTitle('Group 2: the parser answers a bad type with 415'), undefined);
     t.equal(positionalTitle('Verify a mismatched content type answers 415'), undefined);
     t.equal(positionalTitle("The realm's tap groups"), undefined, 'a plural is not a position');
+    t.end();
+});
+
+test('the front matter an issue carries keeps every key but the claim', async t => {
+    const doc = parsePlan(
+        '---\nslug: demo\nstatus: closed\nclaimed: ms-02\nclaimedAt: 2026-11-23\n' +
+            'localRemovedAt: 2026-11-23\nsummary: >-\n    Two lines\n    of summary.\n---\n\n# Demo\n',
+    );
+
+    const published = frontMatterWithout(doc, [
+        'claimed',
+        'claimedAt',
+        'claimedBy',
+        'localRemovedAt',
+    ]);
+    t.match(published, /^slug: demo$/m, 'the plan keeps what it is');
+    t.match(published, /^status: closed$/m, 'and the status a rebuild cannot guess');
+    t.notMatch(published, /claimed/, 'the claim is in the header instead');
+    t.notMatch(published, /localRemovedAt/, 'and so is the removal date');
+    t.match(
+        published,
+        /^summary: >-\n {4}Two lines\n {4}of summary\.$/m,
+        'a folded scalar keeps the shape its author gave it',
+    );
+    t.equal(
+        frontMatterWithout(parsePlan('# Demo\n'), []),
+        '',
+        'a plan with no front matter has none',
+    );
     t.end();
 });

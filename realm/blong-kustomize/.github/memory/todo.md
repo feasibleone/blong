@@ -52,8 +52,6 @@ done (21)
 - `T-281` · realm/blong-kustomize — Decide how a deployment obtains a generated service's
   credentials
 - `T-282` · realm/blong-kustomize — A pass never sweeps the kinds its tree stopped naming
-- `T-444` · realm/blong-kustomize — Sport CD Group 3 release notify fields
-- `T-445` · realm/blong-kustomize — Sport CD Group 4 operator release trigger
 - `T-449` · realm/blong-kustomize — The committed base pins the image the CR is supposed to choose
 - `T-453` · realm/blong-kustomize — A release publishes no operator artifact to deploy from
 - `T-511` · realm/blong-kustomize — Honour adapter-contributed k8sIngresses in the plan
@@ -69,6 +67,9 @@ done (21)
 - `T-738` · realm/blong-kustomize — Deploy the log viewer from a BlongDeployment field
 - `T-739` · realm/blong-kustomize — Watch a whole namespace's records, not one process's
 - `T-747` · realm/blong-kustomize — Retire the standalone log viewer deployment the realm replaces
+- `T-444` · realm/blong-kustomize — Carry the artifact digest and framework version in
+  release-notify
+- `T-445` · realm/blong-kustomize — Add the token-gated operator release route
 
 <!-- /memory:index -->
 
@@ -480,34 +481,6 @@ objects out of obsolescence pruning so the volume-retirement step stays the one 
 the sweep covers the kinds a suite can own and version-named objects are left to the retention step
 (D-464); verified on the dev cluster, where the credentials copy is now pruned with the switch
 
-### T-444 — Sport CD Group 3 release notify fields
-
-> _2026-10-27 · realm/blong-kustomize · done_
-
-Extend release-notify with artifactDigest and frameworkVersion, patch the artifact member with url
-and digest and patch minFrameworkVersion, and update the CLI usage and the testReleaseNotify shapes.
-
-Done: IReleaseNotify and the CLI carry artifactDigest and frameworkVersion; releasePatch writes them
-inside /spec/suiteVolume/artifact and as /spec/minFrameworkVersion, and testReleaseNotify covers the
-digest-bearing artifact. 117 kustomize tests pass. The live CLI check is deferred to the token route
-because the local CR names the locally imported framework image.
-
-### T-445 — Sport CD Group 4 operator release trigger
-
-> _2026-10-27 · realm/blong-kustomize · done_
-
-Add the token-gated kustomize.release.approve gateway route and the kustomizeReleaseApprove
-orchestrator handler, typed expected errors, the BLONG_RELEASE_TOKEN from a blong-operator-release
-Secret on the operator Deployment, and the operator ingress with TLS at the host the installer
-configures. Republish the operator artifact and install tree, and verify a wrong token is refused
-before any cluster call.
-
-Done: kustomize.release.approve is a plain JSON-RPC route (auth false; login would demand MLE),
-gated by a constant-time token from BLONG_RELEASE_TOKEN and delegating to kustomizeReleaseNotify.
-The three typed errors are declared; the operator Deployment gets an optional secretKeyRef to
-blong-operator-release; the install tree is regenerated. A correct token answered 200 updated:true
-and a wrong one 401 tokenMismatch with the CR version unchanged; 121 kustomize tests pass.
-
 ### T-449 — The committed base pins the image the CR is supposed to choose
 
 > _2026-10-27 · realm/blong-kustomize · done_
@@ -786,6 +759,34 @@ regenerated CRD has none), the Dockerfile has one release stage, and the realm c
 Service through k8sPorts. The destination is the suite's own log.destination config rather than
 generated arguments, which is the same decision made in the place that owns it. Verified by a green
 deploy cycle with the viewer pod ready and the page serving records.
+
+### T-444 — Carry the artifact digest and framework version in release-notify
+
+> _2026-10-27 · realm/blong-kustomize · done_
+
+Extend release-notify with artifactDigest and frameworkVersion, patch the artifact member with url
+and digest and patch minFrameworkVersion, and update the CLI usage and the testReleaseNotify shapes.
+
+Done: IReleaseNotify and the CLI carry artifactDigest and frameworkVersion; releasePatch writes them
+inside /spec/suiteVolume/artifact and as /spec/minFrameworkVersion, and testReleaseNotify covers the
+digest-bearing artifact. 117 kustomize tests pass. The live CLI check is deferred to the token route
+because the local CR names the locally imported framework image.
+
+### T-445 — Add the token-gated operator release route
+
+> _2026-10-27 · realm/blong-kustomize · done_
+
+Add the token-gated kustomize.release.approve gateway route and the kustomizeReleaseApprove
+orchestrator handler, typed expected errors, the BLONG_RELEASE_TOKEN from a blong-operator-release
+Secret on the operator Deployment, and the operator ingress with TLS at the host the installer
+configures. Republish the operator artifact and install tree, and verify a wrong token is refused
+before any cluster call.
+
+Done: kustomize.release.approve is a plain JSON-RPC route (auth false; login would demand MLE),
+gated by a constant-time token from BLONG_RELEASE_TOKEN and delegating to kustomizeReleaseNotify.
+The three typed errors are declared; the operator Deployment gets an optional secretKeyRef to
+blong-operator-release; the install tree is regenerated. A correct token answered 200 updated:true
+and a wrong one 401 tokenMismatch with the CR version unchanged; 121 kustomize tests pass.
 
 ## Retired
 

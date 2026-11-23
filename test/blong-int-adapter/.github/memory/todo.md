@@ -35,7 +35,7 @@ moving it out of the layer would silence the warning.
 
 > _2026-11-14 · test/blong-int-adapter · done_
 
-Planned in `plans/blob/plan.md`.
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
 
 A group under `test/blong-int-adapter/s3/test/test/` — `testBlobStorageS3`, beside `testS3ObjectPut`
 and `testS3ObjectCrud` — wiring the blob realm's S3 backend into the suite's `adapter/storage.ts`

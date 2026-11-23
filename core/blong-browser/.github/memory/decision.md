@@ -69,7 +69,6 @@ active (104)
 - `D-574` · core/blong-browser — TestExecutor split and browser-local source
 - `D-577` · core/blong-browser — TestRun visual baselines use the frozen fixture stories
 - `D-581` · core/blong-browser — Suite portal menus extend the model menu
-- `D-570` · core/blong-browser — Test UI is fixture-first with a browser host
 - `D-573` · core/blong-browser — TestRun details panel and source pointers
 - `D-582` · core/blong-browser — Source links are build-injected for DEV and CI
 - `D-612` · core/blong-browser — A table column that names a dropdown renders the label
@@ -133,6 +132,7 @@ active (104)
 - `D-829` · core/blong-browser — A spec purges what the page can only deactivate through the handler
 - `D-852` · core/blong-browser — An asset field fills its sibling fields from the record
 - `D-875` · core/blong-browser — A parent path is read in full and matched by its leaf name
+- `D-570` · core/blong-browser — Test UI is fixture-first with a browser host
 
 superseded (5)
 
@@ -795,18 +795,6 @@ its generated groups with the configured groups through mergePortalConfigs. A me
 an explicit id. The Test group needs one because its first child is an access.test.run method, so
 the derived group id would otherwise be portal-menu-access and collide with the Access model group,
 making menuClick ambiguous.
-
-### D-570 — Test UI is fixture-first with a browser host
-
-> _2026-10-18 · core/blong-browser · active_
-
-The TestRun console landed in core/blong-browser with a recorded fixture before a runner existed.
-Browser-local execution is the primary host: browser/test groups dispatch through the HTTP adapter,
-so their steps never need to cross JSON-RPC and the executor can run in the page. A server-side
-runner with cursor polling is the fallback for server/test groups that need server features. The
-wire model was drafted before the Storybook review and is now confirmed by the component, the
-browser source and the polling source; the plan is plans/test-ui/PLAN.md and the model is
-plans/test-ui/DATA_MODEL.md.
 
 ### D-573 — TestRun details panel and source pointers
 
@@ -1605,6 +1593,18 @@ then wrote the wiped field back. A narrowing now invalidates the pick only when 
 already in force, which is a parent the reader replaced; a field moving from nothing to its saved
 value is the record loading, and the pick beside it came from that same record. optionsFilter fields
 clear on the same rule, so the explicit form behaves like the shorthand.
+
+### D-570 — Test UI is fixture-first with a browser host
+
+> _2026-10-18 · core/blong-browser · active_
+
+The TestRun console landed in core/blong-browser with a recorded fixture before a runner existed.
+Browser-local execution is the primary host: browser/test groups dispatch through the HTTP adapter,
+so their steps never need to cross JSON-RPC and the executor can run in the page. A server-side
+runner with cursor polling is the fallback for server/test groups that need server features. The
+wire model was drafted before the Storybook review and is now confirmed by the component, the
+browser source and the polling source; the plan is
+[#297](https://github.com/feasibleone/blong/issues/297) and the model is `src/types/testRun.ts`.
 
 ## Superseded
 

@@ -424,6 +424,7 @@ words:
   - Semlog
   - SEPA
   - serialisable
+  - serialiser
   - serialisers
   - servable
   - serviceaccount

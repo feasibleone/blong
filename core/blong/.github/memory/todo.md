@@ -34,7 +34,7 @@ from './feedback.ts'). Both blong-browser and realm/blong-feedback type-check ag
 
 > _2026-11-14 · core/blong · done_
 
-Planned in `plans/blob/plan.md`.
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
 
 A new `core/blong/blob.ts` exporting `IBlobMeta`, `blobUriParse('blob://party/<key>')`,
 `blobUriFormat`, and `blobScopeMatch(meta, scopes)`, with the `anonymous` and `authenticated` tokens
@@ -52,7 +52,7 @@ core/blong/blob.ts with IBlobMeta, URI parse/format and scope matching, re-expor
 
 > _2026-11-18 · core/blong · done_
 
-Planned in `plans/lukaot/plan.md`.
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
 
 Make `ITypedError`, the declared-vocabulary types and the signal method type come from
 `@feasibleone/lukaot`, keeping the names every realm imports. `IErrorFactory` stays the framework's

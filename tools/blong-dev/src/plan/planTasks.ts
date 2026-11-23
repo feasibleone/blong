@@ -63,15 +63,50 @@ export function planSlug(path: string): string {
     return basename(dirname(path));
 }
 
-/** The line that traces an entry back to the plan it came from. */
-function provenance(slug: string): string {
+/** The issue a plan is mirrored into, when it has one. */
+export interface IPlanIssueRef {
+    number?: number;
+    url: string;
+}
+
+/**
+ * The issue a plan's front matter records, if any.
+ *
+ * The number is read from `issue:` and the address from `issueUrl:`; a plan published before one of
+ * them was recorded still gets a sentence, because the URL is what makes it clickable.
+ */
+export function planIssue(
+    plan: IPlanDocument | {meta: Record<string, unknown>},
+): IPlanIssueRef | undefined {
+    const meta = plan.meta as Record<string, unknown>;
+    const url = typeof meta['issueUrl'] === 'string' ? meta['issueUrl'].trim() : '';
+    if (url === '') return undefined;
+    const raw = meta['issue'];
+    const number = typeof raw === 'number' ? raw : Number(raw);
+    return {url, ...(typeof raw !== 'undefined' && Number.isFinite(number) ? {number} : {})};
+}
+
+/**
+ * The sentence that traces an entry back to the plan it came from.
+ *
+ * A plan is a local folder and a board at once, and the folder is gitignored: once the plan has an
+ * issue, the issue is the thing any reader — and any other host — can open, and it says itself
+ * whether a local copy still exists. So the sentence names the issue from the moment it is
+ * published rather than waiting for the folder to be released (`@@D-967`).
+ */
+export function provenanceLine(slug: string, issue?: IPlanIssueRef): string {
+    if (issue) {
+        return issue.number === undefined
+            ? `Planned in [the plan](${issue.url}).`
+            : `Planned in [#${issue.number}](${issue.url}).`;
+    }
     return `Planned in \`plans/${slug}/plan.md\`.`;
 }
 
 /** The body a task's detail becomes. */
-export function taskEntryBody(slug: string, detail: string): string[] {
-    const text =
-        detail.trim() === '' ? provenance(slug) : `${provenance(slug)}\n\n${detail.trim()}`;
+export function taskEntryBody(slug: string, detail: string, issue?: IPlanIssueRef): string[] {
+    const line = provenanceLine(slug, issue);
+    const text = detail.trim() === '' ? line : `${line}\n\n${detail.trim()}`;
     return bodyLines(text);
 }
 
@@ -90,6 +125,7 @@ export async function createPlanTasks(
     options: {apply?: boolean; update?: boolean; area?: string; slug?: string; date?: string},
 ): Promise<ICreateTasksResult> {
     const slug = options.slug ?? plan.meta.slug ?? planSlug(plan.path);
+    const issue = planIssue(plan);
     const created: ITaskOutcome[] = [];
     const updated: ITaskOutcome[] = [];
     const failures: string[] = [];
@@ -118,7 +154,7 @@ export async function createPlanTasks(
                 if (options.apply) {
                     await replaceMemoryEntry(root, task.id, {
                         title: task.title,
-                        body: taskEntryBody(slug, detail),
+                        body: taskEntryBody(slug, detail, issue),
                     });
                 }
                 updated.push({task, id: task.id});
@@ -147,7 +183,7 @@ export async function createPlanTasks(
             kind: 'todo',
             title: task.title,
             area,
-            body: taskEntryBody(slug, detail),
+            body: taskEntryBody(slug, detail, issue),
             date: options.date,
         });
         ids.set(task, entry.id);
@@ -211,6 +247,7 @@ export async function createPlanDecisions(
     options: {apply?: boolean; update?: boolean; area?: string; slug?: string; date?: string},
 ): Promise<ICreateDecisionsResult> {
     const slug = options.slug ?? plan.meta.slug ?? planSlug(plan.path);
+    const issue = planIssue(plan);
     const created: IDecisionOutcome[] = [];
     const updated: IDecisionOutcome[] = [];
     const failures: string[] = [];
@@ -237,7 +274,7 @@ export async function createPlanDecisions(
                 if (options.apply) {
                     await replaceMemoryEntry(root, decision.id, {
                         title: decision.title,
-                        body: taskEntryBody(slug, detail),
+                        body: taskEntryBody(slug, detail, issue),
                     });
                 }
                 updated.push({decision, id: decision.id});
@@ -264,7 +301,7 @@ export async function createPlanDecisions(
             kind: 'decision',
             title: decision.title,
             area,
-            body: taskEntryBody(slug, detail),
+            body: taskEntryBody(slug, detail, issue),
             date: options.date,
         });
         ids.set(decision, entry.id);

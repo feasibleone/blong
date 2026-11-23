@@ -28,7 +28,6 @@ open (25)
 - `T-193` · core/blong-browser — Editor features page: three sections cannot be photographed yet
 - `T-288` · core/blong-browser — The page-capture helpers mask but cannot redact
 - `T-332` · core/blong-browser — The shared screenshot budget can hide a wrong baseline
-- `T-368` · core/blong-browser — TestRun phase 1 leftovers
 - `T-409` · core/blong-browser — Set the formatting layers from config and the profile
 - `T-410` · core/blong-browser — Format reports, Text and the date range through the shared
   formatter
@@ -37,8 +36,9 @@ open (25)
 - `T-438` · core/blong-browser — The harvest records record names as label keys
 - `T-605` · core/blong-browser — Cheaper Playwright boot: run the specs against a bundled build
 - `T-612` · core/blong-browser — The sherpa engine is untested against a real module and model
+- `T-368` · core/blong-browser — TestRun phase 1 leftovers
 
-done (42)
+done (43)
 
 - `T-369` · core/blong-browser — Resolve TestRun source pointers from a real run
 - `T-367` · core/blong-browser — Test UI phases 2-4: runner, host, Playwright
@@ -53,7 +53,6 @@ done (42)
 - `T-423` · core/blong-browser — Add the rendered-string collector
 - `T-424` · core/blong-browser — Write Playwright translation seeds safely in parallel
 - `T-426` · core/blong-browser — Keep the seed writer out of the app bundle
-- `T-422` · core/blong-browser — Move untranslated strings onto Text and useTranslate
 - `T-425` · core/blong-browser — Add the untranslated-strings page
 - `T-432` · core/blong-browser — Translate record names in the read, not in the widgets
 - `T-433` · core/blong-browser — Type the Playwright config's global hooks
@@ -70,19 +69,21 @@ done (42)
 - `T-488` · core/blong-browser — Buttons and toolbar controls are addressable
 - `T-489` · core/blong-browser — A callout is moved, resized, and points at its element
 - `T-490` · core/blong-browser — The submission picture is cropped to what matters
-- `T-491` · core/blong-browser — The mode's chrome gets out of the way
 - `T-603` · core/blong-browser — Choose how realm baselines stop colliding with the suite that hosts
   them
 - `T-602` · core/blong-browser — A browse filter on a joined column builds the wrong table alias
 - `T-611` · core/blong-browser — Enable dictation in a demo suite and refresh its baselines
-- `T-669` · core/blong-browser — The reference resolver and `BlobImage`
-- `T-671` · core/blong-browser — Register the widget, translate the labels, write the stories
-- `T-673` · core/blong-browser — Group 4 verification
-- `T-670` · core/blong-browser — The `AssetWidget`
 - `T-736` · core/blong-browser — Give the browser platform a vocabulary
 - `T-741` · core/blong-browser — Give the portal a menu entry that opens the log viewer
 - `T-749` · core/blong-browser — Give the browser a way to read a stream, and the page a wake
 - `T-753` · core/blong-browser — The portal names a font it does not ship
+- `T-491` · core/blong-browser — The mode's chrome gets out of the way
+- `T-758` · core/blong-browser — Build the TestRun console against the recorded fixture
+- `T-669` · core/blong-browser — The reference resolver and `BlobImage`
+- `T-671` · core/blong-browser — Register the widget, translate the labels, write the stories
+- `T-673` · core/blong-browser — Group 4 verification
+- `T-670` · core/blong-browser — The `AssetWidget`
+- `T-422` · core/blong-browser — Move untranslated strings onto Text and useTranslate
 
 <!-- /memory:index -->
 
@@ -293,16 +294,6 @@ documented answer for content that legitimately moves, or at least a warning whe
 passes with a diff close to the allowance, since that is exactly the state a stale baseline
 produces.
 
-### T-368 — TestRun phase 1 leftovers
-
-> _2026-10-18 · core/blong-browser · open_
-
-Open after the first Storybook milestone: add group bands to the dependency graph; expose the replay
-as a reusable FixtureRunSource instead of the story-local useReplay; replace the hand-authored
-fixture with a recorder that writes the recording format from a real run. Theme variants were
-explicitly left out of scope by the review. The component, stories, tests and the progress checklist
-are in core/blong-browser/src/components/TestRun and plans/test-ui/PLAN.md.
-
 ### T-409 — Set the formatting layers from config and the profile
 
 > _2026-10-25 · core/blong-browser · open_
@@ -404,6 +395,17 @@ heap and took the tab down when a probe built one; and the model is loaded befor
 opens, so a slow first phrase is a download rather than a hang. Serving the adapter needs
 `.storybook/main.ts` to keep the `public/` static directory; a deployment serves the same file from
 its own origin and names it in `portal.feedback.speech.sherpa.module`.
+
+### T-368 — TestRun phase 1 leftovers
+
+> _2026-10-18 · core/blong-browser · open_
+
+Open after the first Storybook milestone: add group bands to the dependency graph; expose the replay
+as a reusable FixtureRunSource instead of the story-local useReplay; replace the hand-authored
+fixture with a recorder that writes the recording format from a real run. Theme variants were
+explicitly left out of scope by the review. The component, stories, tests and the progress checklist
+are in core/blong-browser/src/components/TestRun, and the plan is
+[#297](https://github.com/feasibleone/blong/issues/297).
 
 ## Done
 
@@ -582,24 +584,6 @@ in the test comment.
 src/i18n/bundle.test.ts walks the static import graph from src/index.ts, fails on a node: specifier,
 and asserts the writer is absent and the collector present. Evidence: the test passes and the
 package exports keep . and ./playwright apart.
-
-### T-422 — Move untranslated strings onto Text and useTranslate
-
-> _2026-10-25 · core/blong-browser · done_
-
-Walk the inventory in section 7 of plans/i18n/plan.md and put every literal or computed visible
-string through Text or useTranslate at its render site, including aria-label, title, placeholder,
-tooltip and empty messages. Cover Editor, Commander, Explorer, Report, Deck, the Login family,
-Error, LanguageSwitcher, ThemeSwitcher and the TestRun family. Wrapping adds a span, so refresh the
-English baselines in the same change and review them.
-
-Toolbars, placeholders, empty messages and headings now translate through useTranslate at the render
-site: Editor toolbar, Commander, Explorer, Report, Deck,
-Login/LoginPopup/SelfRegistration/OAuthCallback, LanguageSwitcher and ThemeSwitcher; Error and
-LanguageSwitcher button labels already went through the Button wrapper. Evidence: 52 Editor tests
-and 702 blong-browser tests pass, the ValidationBG story expects the translated toolbar name, one
-English sport spec (16 tests) and the 46-test Bulgarian spec still match their baselines, and the
-skill plus i18n doc no longer claim the toolbars are untranslated.
 
 ### T-425 — Add the untranslated-strings page
 
@@ -812,22 +796,6 @@ outside it and moves or resizes with the same drag helper. captureScreen takes t
 frame by the surface ratio and stores anchor and callout as fractions of it, which also removed the
 review page's shotWidth/1000 guess.
 
-### T-491 — The mode's chrome gets out of the way
-
-> _2026-10-29 · core/blong-browser · done_
-
-Three small corrections to the overlay. The keyboard shortcut is F2 rather than Alt+f, because Alt
-combinations are claimed by the browser and the desktop. An outline badge shows the short tail of
-the identifier — the last named segment plus whatever unnamed parts follow it, as
-clubShortName.label — with the full path in its title attribute, so a badge is readable without
-being useless. A callout loses its separate borders: one solid bevel around the text area, thicker
-at the top so it reads as the handle it is, with the remove button and the resizer on it and no
-identifier line inside.
-
-Default shortcut is F2; the outline badge is shortTargetId with the full path in its title; the
-callout is one bevelled box — a thick top bevel as the drag handle, a borderless text area, the
-remove button and a corner resizer — with no identifier line inside.
-
 ### T-603 — Choose how realm baselines stop colliding with the suite that hosts them
 
 > _2026-11-03 · core/blong-browser · done_
@@ -896,84 +864,6 @@ Turned on in blong-sport with the webSpeech engine, added a live Dictation story
 decorator's own layer drives, and covered the mode with a stubbed-recogniser Playwright test in
 feedback.play.ts. The existing captures needed no new baselines because headless Chromium has no
 recogniser (D-759).
-
-### T-669 — The reference resolver and `BlobImage`
-
-> _2026-11-14 · core/blong-browser · done_
-
-Planned in `plans/blob/plan.md`.
-
-`src/blob/assetReference.ts` resolves a stored value to a `src`: `blob://<realm>/<key>` becomes
-`/a/<realm>/<key>`, an absolute or relative URL is left alone, and an empty value is `null`
-(@@D-842). `BlobImage` renders it at the size the caller asks for, falls back to the `thumbnail`
-variant, and to the initials of a name when there is nothing to show — the behaviour the account
-menu already has.
-
-- verify: `npm run ci-test` in `core/blong-browser` covers the three shapes and a blob URI with an
-  encoded key.
-
-`src/blob/assetReference.ts` resolves the three shapes (`blob://<ns>/<key>` -> `/a/<ns>/<key>`, a
-URL or relative path left alone, empty -> null) and refuses a reference the contract itself rejects;
-src/components/BlobImage/BlobImage.tsx renders the picture, its thumb variant when the record names
-one (one blob.blob.get, no state set from an effect), or the initials of a name and finally a
-generic person, with the box size and shape kept. deriveInitials moved from AccountMenu into
-src/lib/initials.ts so both use one behaviour. The browser build and vitest now alias
-@feasibleone/blong/blob to its source. Package: 838 tests pass, ci-lint clean.
-
-### T-671 — Register the widget, translate the labels, write the stories
-
-> _2026-11-14 · core/blong-browser · done_
-
-Planned in `plans/blob/plan.md`.
-
-`widgetRegistry` gains `asset` and the `WidgetType` union in `core/blong/widget.ts` gains it too,
-`schema.widget` accepting `accept`, `maxSize`, `variant` and `download`; the labels go through the
-`Text` component and the `translations` store like every other widget (**blong-i18n**). Stories in
-`src/widgets/stories/AssetWidget.stories.tsx` cover an empty widget, an image, a PDF and a read-only
-value, and the visual snapshots are captured.
-
-- verify: `npm run test && npm run storybook:test` in `core/blong-browser` passes, with the new
-  story in the snapshot list.
-
-AssetWidget registered under 'asset'; WidgetType union and IWidgetConfig (namespace, scopes,
-variant, accept, maxSize, download) carry it; four labels go through useText and the translations
-store. Snapshot exposed two real gaps, both fixed: a data: URI image showed a plain file icon
-(assetIcon now reads the media type before the bytes) and the whole base64 printed as the field's
-name (new assetLabel shortens a data URI to its type, a reference and a URL to their last segment).
-Stories: Empty, Picture, Document, ReadOnly; storybook build indexes all four, the test-runner suite
-(37 suites / 157 tests) passes with Widgets/AssetWidget among them, and widgets.test.tsx captures
-the three DOM snapshots this repo keeps. Storybook's main.ts gained the same
-'@feasibleone/blong/blob' alias vite and vitest carry, since the subpath's default condition points
-at a build artefact. 857 unit tests, ci-lint clean.
-
-### T-673 — Group 4 verification
-
-> _2026-11-14 · core/blong-browser · done_
-
-Planned in `plans/blob/plan.md`.
-
-The group is done when a realm's model can name `asset` as a widget and the storybook shows one.
-
-- verify: `npm run ci-test && npm run ci-storybook` in `core/blong-browser`.
-
-npm run ci-test: 84 files, 867 tests pass (the 'Error: no store' line is the expected-failure case
-the new scope test prints). npm run ci-storybook: builds, Widgets/AssetWidget among the indexed
-stories. A realm's model can name 'asset' as a widget (registry + WidgetType) and the storybook
-shows one.
-
-### T-670 — The `AssetWidget`
-
-> _2026-11-14 · core/blong-browser · done_
-
-Planned in `plans/blob/plan.md`.
-
-`src/widgets/AssetWidget.tsx` — a PrimeReact `FileUpload` that calls `blob.upload.prepare`, `PUT`s
-the file to the route it answers, commits, and hands the form the `blob://` reference. An unmount
-with no value discards the key it reserved, and so does a failure: a blob nobody references would
-sit in the store until the sweep found it (`@@D-840`). The picture comes back through `BlobImage`,
-whose record read says what the file is; a pasted link needs no store at all (`@@D-842`).
-`assetIcon` and `assetLabel` turn a type, a name or a `data:` URI into an icon and a readable name,
-and the field fills the sibling fields its model names from the committed record (`@@D-852`).
 
 ### T-736 — Give the browser platform a vocabulary
 
@@ -1071,3 +961,152 @@ Loader.css inherits the page font instead of naming Roboto, and the TestRun and 
 it too. A fourth viewer spec asserts the page asks no third party for a font, and it fails with the
 two cdn.svar.dev URLs when Roboto is put back. viewer Playwright 4/4, blong-log 135/135 and 27
 visual baselines unchanged, tsc/cspell/eslint clean on browser and log.
+
+### T-491 — The mode's chrome gets out of the way
+
+> _2026-10-29 · core/blong-browser · done_
+
+Three small corrections to the overlay. The keyboard shortcut is F2 rather than Alt+f, because Alt
+combinations are claimed by the browser and the desktop. An outline badge shows the short tail of
+the identifier — the last named segment plus whatever unnamed parts follow it, as
+`clubShortName.label` — with the full path in its title attribute, so a badge is readable without
+being useless. A callout loses its separate borders: one solid bevel around the text area, thicker
+at the top so it reads as the handle it is, with the remove button and the resizer on it and no
+identifier line inside.
+
+Default shortcut is F2; the outline badge is `shortTargetId` with the full path in its title; the
+callout is one bevelled box — a thick top bevel as the drag handle, a borderless text area, the
+remove button and a corner resizer — with no identifier line inside. The same pass settled its
+typography and size at article width: a callout is 212 by 128 pixels, set in the theme's font
+at 0.72rem rather than the user agent's, which is what removed the clutter the embedded story
+showed.
+
+### T-758 — Build the TestRun console against the recorded fixture
+
+> _2026-11-23 · core/blong-browser · done_
+
+Phase 1 of the plan: the console as a component, confirmed in the Storybook of `core/blong-browser`
+against a rich fixture rather than a live run. It added `src/types/testRun.ts` with the draft model,
+the event union and the view props; `src/components/TestRun/` with `TestRun.tsx`, `TestRun.css` and
+the subcomponents `TestRunStatusBar`, `TestRunTreeTable`, `TestRunBars`, `TestRunGraph` and
+`TestRunDetails`; `testRunModel.ts` with `reduceTestRunEvent`, `deriveTestRun`, `recordingFromRun`,
+`replayTo`, `progressTree` and the formatting helpers; and `testRunLayout.ts` with the graph levels
+and positions, the tree rows with envelope spans, the ticks and the scale helpers, as pure functions
+unit-tested before they were drawn.
+
+The fixture in `fixtures/sessionFlow.ts` was hand-authored from `testSessionFlow` — eleven steps,
+two dependency chains, wide parallelism, realistic durations and assertion counts — plus a failure
+variant, a pending variant and a dense synthetic variant; the story drives it with a replay (play,
+pause, speed, restart). The stories are `Replay`, `MidRun`, `Completed`, `Failure`, `Dense`,
+`Collapsed`, `Pending`, `Empty`, `Error`, `Narrow`, `Details`, `Live` and `Page`, and
+`TestRun.test.tsx`, `testRunModel.test.ts` and `testRunLayout.test.ts` cover render, selection, the
+details panel, log and assertions, source links, keyboard, collapse, failure and the empty state.
+
+The acceptance criteria it met: eleven fixture steps visible without page scroll at 1920x1080; a
+selection emphasised in both cards at once; the graph holding exactly the fixture's context edges;
+bars agreeing with the ruler with a now marker across every row; a collapsed group keeping its
+envelope bar; colours from theme variables only; a details panel that toggles at the bottom and is
+not closed by a step change or `Escape`; counters announced politely; reduced motion honoured; and
+`npm test` plus lint green for the package.
+
+Recorded while it was built: `@@D-571` (a custom treegrid instead of PrimeReact's TreeTable),
+`@@D-572` (parent bars and graph orientation), `@@D-573` (the bottom details panel, log first, and
+source pointers) and `@@F-567` (a hidden page throttles the replay clock while the replay is
+inspected).
+
+### T-669 — The reference resolver and `BlobImage`
+
+> _2026-11-14 · core/blong-browser · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`src/blob/assetReference.ts` resolves a stored value to a `src`: `blob://<realm>/<key>` becomes
+`/a/<realm>/<key>`, an absolute or relative URL is left alone, and an empty value is `null`
+(@@D-842). `BlobImage` renders it at the size the caller asks for, falls back to the `thumbnail`
+variant, and to the initials of a name when there is nothing to show — the behaviour the account
+menu already has.
+
+- verify: `npm run ci-test` in `core/blong-browser` covers the three shapes and a blob URI with an
+  encoded key.
+
+`src/blob/assetReference.ts` resolves the three shapes (`blob://<ns>/<key>` -> `/a/<ns>/<key>`, a
+URL or relative path left alone, empty -> null) and refuses a reference the contract itself rejects;
+src/components/BlobImage/BlobImage.tsx renders the picture, its thumb variant when the record names
+one (one blob.blob.get, no state set from an effect), or the initials of a name and finally a
+generic person, with the box size and shape kept. deriveInitials moved from AccountMenu into
+src/lib/initials.ts so both use one behaviour. The browser build and vitest now alias
+@feasibleone/blong/blob to its source. Package: 838 tests pass, ci-lint clean.
+
+### T-671 — Register the widget, translate the labels, write the stories
+
+> _2026-11-14 · core/blong-browser · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`widgetRegistry` gains `asset` and the `WidgetType` union in `core/blong/widget.ts` gains it too,
+`schema.widget` accepting `accept`, `maxSize`, `variant` and `download`; the labels go through the
+`Text` component and the `translations` store like every other widget (**blong-i18n**). Stories in
+`src/widgets/stories/AssetWidget.stories.tsx` cover an empty widget, an image, a PDF and a read-only
+value, and the visual snapshots are captured.
+
+- verify: `npm run test && npm run storybook:test` in `core/blong-browser` passes, with the new
+  story in the snapshot list.
+
+AssetWidget registered under 'asset'; WidgetType union and IWidgetConfig (namespace, scopes,
+variant, accept, maxSize, download) carry it; four labels go through useText and the translations
+store. Snapshot exposed two real gaps, both fixed: a data: URI image showed a plain file icon
+(assetIcon now reads the media type before the bytes) and the whole base64 printed as the field's
+name (new assetLabel shortens a data URI to its type, a reference and a URL to their last segment).
+Stories: Empty, Picture, Document, ReadOnly; storybook build indexes all four, the test-runner suite
+(37 suites / 157 tests) passes with Widgets/AssetWidget among them, and widgets.test.tsx captures
+the three DOM snapshots this repo keeps. Storybook's main.ts gained the same
+'@feasibleone/blong/blob' alias vite and vitest carry, since the subpath's default condition points
+at a build artefact. 857 unit tests, ci-lint clean.
+
+### T-673 — Group 4 verification
+
+> _2026-11-14 · core/blong-browser · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+The group is done when a realm's model can name `asset` as a widget and the storybook shows one.
+
+- verify: `npm run ci-test && npm run ci-storybook` in `core/blong-browser`.
+
+npm run ci-test: 84 files, 867 tests pass (the 'Error: no store' line is the expected-failure case
+the new scope test prints). npm run ci-storybook: builds, Widgets/AssetWidget among the indexed
+stories. A realm's model can name 'asset' as a widget (registry + WidgetType) and the storybook
+shows one.
+
+### T-670 — The `AssetWidget`
+
+> _2026-11-14 · core/blong-browser · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`src/widgets/AssetWidget.tsx` — a PrimeReact `FileUpload` that calls `blob.upload.prepare`, `PUT`s
+the file to the route it answers, commits, and hands the form the `blob://` reference. An unmount
+with no value discards the key it reserved, and so does a failure: a blob nobody references would
+sit in the store until the sweep found it (`@@D-840`). The picture comes back through `BlobImage`,
+whose record read says what the file is; a pasted link needs no store at all (`@@D-842`).
+`assetIcon` and `assetLabel` turn a type, a name or a `data:` URI into an icon and a readable name,
+and the field fills the sibling fields its model names from the committed record (`@@D-852`).
+
+### T-422 — Move untranslated strings onto Text and useTranslate
+
+> _2026-10-25 · core/blong-browser · done_
+
+Walk the inventory the plan recorded (section 7 of
+[#295](https://github.com/feasibleone/blong/issues/295)) and put every literal or computed visible
+string through Text or useTranslate at its render site, including aria-label, title, placeholder,
+tooltip and empty messages. Cover Editor, Commander, Explorer, Report, Deck, the Login family,
+Error, LanguageSwitcher, ThemeSwitcher and the TestRun family. Wrapping adds a span, so refresh the
+English baselines in the same change and review them.
+
+Toolbars, placeholders, empty messages and headings now translate through useTranslate at the render
+site: Editor toolbar, Commander, Explorer, Report, Deck,
+Login/LoginPopup/SelfRegistration/OAuthCallback, LanguageSwitcher and ThemeSwitcher; Error and
+LanguageSwitcher button labels already went through the Button wrapper. Evidence: 52 Editor tests
+and 702 blong-browser tests pass, the ValidationBG story expects the translated toolbar name, one
+English sport spec (16 tests) and the 46-test Bulgarian spec still match their baselines, and the
+skill plus i18n doc no longer claim the toolbars are untranslated.

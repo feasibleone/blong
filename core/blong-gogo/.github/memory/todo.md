@@ -50,24 +50,16 @@ done (49)
 - `T-505` · core/blong-gogo — Add the Viber port and its handler groups
 - `T-506` · core/blong-gogo — Test both platform ports
 - `T-507` · core/blong-gogo — Verify blong-gogo after the platform ports
-- `T-540` · core/blong-gogo — Group 2: Add IAgentMessage, IAgentTool, IAgentStepRequest
-- `T-541` · core/blong-gogo — Group 2: core/blong-gogo/src/adapter/server/agent.ts
-- `T-545` · core/blong-gogo — Group 2: agentSim.ts — the scripted kind in both modes, the only one
-- `T-542` · core/blong-gogo — Group 2: agentVercel.ts — VercelEngineAdapter
-- `T-544` · core/blong-gogo — Group 2: agentDeepseek.ts — DeepSeekEngineAdapter over
-- `T-546` · core/blong-gogo — Group 2: core/blong-gogo/package.json
-- `T-543` · core/blong-gogo — Group 2: agentMastra.ts — MastraEngineAdapter
-- `T-547` · core/blong-gogo — Group 2 verify: gogo tests and a lazy-import smoke
-- `T-548` · core/blong-gogo — Group 3: core/blong-gogo/src/adapter/server/workspace.ts and its group
-- `T-549` · core/blong-gogo — Group 3: The path jail
-- `T-550` · core/blong-gogo — Group 3: rollback and prepare git behaviour
-- `T-551` · core/blong-gogo — Group 3: run with the boundary
-- `T-552` · core/blong-gogo — Group 3: Realm instance adapter/workspace.ts with the activation
-- `T-553` · core/blong-gogo — Group 3 verify: gogo tests and lint
 - `T-593` · core/blong-gogo — Build thunk: lazy prototypes with their handler groups
 - `T-614` · core/blong-gogo — Give the adapter scan operation a gateway route
 - `T-524` · core/blong-gogo — Add slack.prompt.close to retire an expired prompt's controls
 - `T-630` · core/blong-gogo — Refuse an encrypted body on a route that needs no auth
+- `T-731` · core/blong-gogo — Review every AdapterBase.error call site and reduce them to one shape
+- `T-746` · core/blong-gogo — A capture policy change still needs the port rebuilt
+- `T-748` · core/blong-gogo — A log tail could stream, if a subscription were a realm method
+- `T-756` · core/blong-gogo — A quiet stream cannot be told from a dead one
+- `T-754` · core/blong-gogo — MLE seals an absent result as the text undefined
+- `T-752` · core/blong-gogo — A schema validation failure answers 500, not 400
 - `T-655` · core/blong-gogo — Raw bodies in the gateway
 - `T-664` · core/blong-gogo — A streaming get in the framework's S3 adapter
 - `T-711` · core/blong-gogo — Register the lukaot layer and route its declarations to the registry
@@ -77,12 +69,20 @@ done (49)
 - `T-710` · core/blong-gogo — Replace `SemanticLog` with lukaot and declare the framework's own
   signals
 - `T-722` · core/blong-gogo — Verify the framework's error and logging contract end to end
-- `T-731` · core/blong-gogo — Review every AdapterBase.error call site and reduce them to one shape
-- `T-746` · core/blong-gogo — A capture policy change still needs the port rebuilt
-- `T-748` · core/blong-gogo — A log tail could stream, if a subscription were a realm method
-- `T-756` · core/blong-gogo — A quiet stream cannot be told from a dead one
-- `T-754` · core/blong-gogo — MLE seals an absent result as the text undefined
-- `T-752` · core/blong-gogo — A schema validation failure answers 500, not 400
+- `T-540` · core/blong-gogo — Add the agent types to core/blong
+- `T-541` · core/blong-gogo — Add the agent adapter and its engine group to blong-gogo
+- `T-542` · core/blong-gogo — Add the Vercel engine kind
+- `T-543` · core/blong-gogo — Add the Mastra engine kind
+- `T-544` · core/blong-gogo — Add the DeepSeek Harness engine kind
+- `T-545` · core/blong-gogo — Add the scripted sim engine kind
+- `T-546` · core/blong-gogo — Declare the engine dependencies and test the adapter
+- `T-547` · core/blong-gogo — Verify blong-gogo after the agent adapter
+- `T-548` · core/blong-gogo — Add the workspace adapter
+- `T-549` · core/blong-gogo — Jail every workspace path
+- `T-550` · core/blong-gogo — Record the base commit and roll back with git
+- `T-551` · core/blong-gogo — Run a command inside the workspace boundary
+- `T-552` · core/blong-gogo — Instance the workspace adapter in the realm and test it
+- `T-553` · core/blong-gogo — Verify blong-gogo after the workspace adapter
 
 <!-- /memory:index -->
 
@@ -632,152 +632,6 @@ editing the dictionary by hand.
 blong-dev lint is clean (tsc, cspell, eslint) and blong-dev test in core/blong-gogo is 848 pass, 6
 skip, 0 fail; rush update refreshed the lockfile after the dependency removal.
 
-### T-540 — Group 2: Add IAgentMessage, IAgentTool, IAgentStepRequest
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 2 The agent adapter. Add `IAgentMessage`, `IAgentTool`,
-`IAgentStepRequest`, `IAgentStepResult`, `IAgentSessionRequest`, `IAgentEngineAccount` to
-`core/blong/types.ts`, with the TypeBox tool schema as the neutral form and
-`mode: 'step' | 'native'` on the account (`@@D-708`).
-
-types in core/blong/agent.ts, adapter.agent with the four method handlers, sim kind tested (19
-assertions)
-
-### T-541 — Group 2: core/blong-gogo/src/adapter/server/agent.ts
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 2 The agent adapter. `core/blong-gogo/src/adapter/server/agent.ts`: the
-`adapter.agent` base, the `accounts` map, lazy per-kind import, TypeBox-to-JSON-Schema conversion,
-and the four methods in an `engine/` group. Add the `agent` boolean to `src/adapter/server.ts` with
-default `false`.
-
-types in core/blong/agent.ts, adapter.agent with the four method handlers, sim kind tested (19
-assertions)
-
-### T-545 — Group 2: agentSim.ts — the scripted kind in both modes, the only one
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 2 The agent adapter. `agentSim.ts` — the scripted kind in both modes, the
-only one the realm's tests use.
-
-types in core/blong/agent.ts, adapter.agent with the four method handlers, sim kind tested (19
-assertions)
-
-### T-542 — Group 2: agentVercel.ts — VercelEngineAdapter
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 2 The agent adapter. `agentVercel.ts` — `VercelEngineAdapter`:
-`generateText` with tools declared without `execute`, mapping `toolCalls` into `IAgentStepResult`.
-
-agentVercel.ts: transcript and tool mapping exported pure, 11 assertions, tsc clean
-
-### T-544 — Group 2: agentDeepseek.ts — DeepSeekEngineAdapter over
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 2 The agent adapter. `agentDeepseek.ts` — `DeepSeekEngineAdapter` over
-`@deepseek-ai/dsh-sdk-client`: spawn the runtime with the ticket directory as its working directory,
-route `onUserQuestion` and `approval/request` to a configured handler, `resumeSession` from a stored
-id, and reap the subprocess in `session.close` (`@@D-711`).
-
-agentDeepseek.ts: launch spec pure and tested (8 assertions), one harness per account, sessionKey is
-the resume
-
-### T-546 — Group 2: core/blong-gogo/package.json
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 2 The agent adapter. `core/blong-gogo/package.json`: `ai` and
-`@ai-sdk/openai` as dependencies, while the harness client and `@mastra/core` are imported
-dynamically, so a deployment that configures neither carries neither; `rush update`; then unit tests
-for the conversion, the script, the missing-package error and `session.close`.
-
-ai, @ai-sdk/openai, @mastra/core and @deepseek-ai/dsh-sdk-client installed; the Mastra adapter
-itself is T-543
-
-### T-543 — Group 2: agentMastra.ts — MastraEngineAdapter
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 2 The agent adapter. `agentMastra.ts` — `MastraEngineAdapter`: an `Agent`
-per turn with tool stubs, reading the returned calls only.
-
-agentMastra.ts: prompt rendering and the two call shapes exported pure, 5 assertions; ai pinned to 6
-to sit beside Mastra
-
-### T-547 — Group 2 verify: gogo tests and a lazy-import smoke
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 2 The agent adapter. Verify: `blong-dev test` in `core/blong-gogo`,
-`blong-dev lint --files`, and a smoke that imports the module without loading any engine package.
-
-gogo 956 pass (950 + 6 skip), tsc clean, standalone import of agent.ts ok, lint clean
-
-### T-548 — Group 3: core/blong-gogo/src/adapter/server/workspace.ts and its group
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 3 The workspace adapter.
-`core/blong-gogo/src/adapter/server/workspace.ts` and its group: `prepare`, `read`, `write`, `list`,
-`run`, `rollback`, `remove`, plus the `workspace` boolean in `src/adapter/server.ts`.
-
-implemented and verified in this pass
-
-### T-549 — Group 3: The path jail
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 3 The workspace adapter. The path jail: resolve every path against the
-ticket root, refuse `..` and absolute paths with `agent.workspaceEscape`, and refuse a symlink that
-leaves the root.
-
-implemented and verified in this pass
-
-### T-550 — Group 3: rollback and prepare git behaviour
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 3 The workspace adapter. `rollback` and `prepare` git behaviour: record
-the base commit, restore with `git checkout` and `git clean`, and copy the template when the source
-is not a repository.
-
-implemented and verified in this pass
-
-### T-551 — Group 3: run with the boundary
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 3 The workspace adapter. `run` with the `@@D-710` boundary: `execFile`
-and an argv array, the ticket directory as cwd, a timeout that kills the process group, an output
-cap, an environment scrubbed to a configured allowlist, and `agent.commandDisabled` when the
-deployment switched the capability off.
-
-implemented and verified in this pass
-
-### T-552 — Group 3: Realm instance adapter/workspace.ts with the activation
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 3 The workspace adapter. Realm instance `adapter/workspace.ts` with the
-activation defaults; tests for the jail, the rollback, a template copy in a temp directory, and a
-command that times out and is killed.
-
-implemented and verified in this pass
-
-### T-553 — Group 3 verify: gogo tests and lint
-
-> _2026-10-31 · core/blong-gogo · done_
-
-plans/agent/plan.md, Group 3 The workspace adapter. Verify: `blong-dev test` in `core/blong-gogo`,
-`blong-dev lint --files`.
-
-implemented and verified in this pass
-
 ### T-593 — Build thunk: lazy prototypes with their handler groups
 
 > _2026-10-31 · core/blong-gogo · done_
@@ -838,310 +692,6 @@ route and the fix (send plain JSON, or require auth on the route). The hook is i
 
 routeDecodesMle, looksMleEncrypted and mleUndecoded in mle.ts; the hook refuses with
 gateway.mleUndecoded and a 400; 40 assertions in mle.test.ts, decision D-803.
-
-### T-655 — Raw bodies in the gateway
-
-> _2026-11-14 · core/blong-gogo · done_
-
-Planned in `plans/blob/plan.md`.
-
-`Gateway.ts` registers a catch-all content type parser that hands the handler a `Readable` when
-`gateway.rawBody` is on, and honours a `bodyLimit` a route declares, so a upload is not capped at
-fastify's 1 MiB (@@D-841). A raw route is a `GatewaySchema` of the `{method, path, response?}`
-shape, and its params come from `operation.parameters` — the path, query and header entries
-`operationParams` already reads. `RestFs` is the precedent for the parser; this is that pattern made
-reachable from a realm's own `gateway` layer.
-
-- verify: `blong-dev test` in `core/blong-gogo` posts 8 MiB through an `application/octet-stream`
-  route and receives it, and a route without `bodyLimit` still refuses 2 MiB.
-
-gateway.rawBody registers a stream parser (rawBody.ts), routes carry bodyLimit, and limitBytes
-enforces the ceiling a stream parser ignores (F-730); 7 assertions including 8 MiB accepted and 2
-MiB refused; docker manifests regenerated for the new package
-
-gateway.rawBody registers a stream parser (rawBody.ts), routes carry bodyLimit, and limitBytes
-enforces the ceiling a stream parser ignores (F-730); 7 assertions including 8 MiB accepted and 2
-MiB refused; docker manifests regenerated for the new package
-
-### T-664 — A streaming get in the framework's S3 adapter
-
-> _2026-11-14 · core/blong-gogo · done_
-
-Planned in `plans/blob/plan.md`.
-
-`core/blong-gogo/src/adapter/server/s3.ts` gains a `stream` operation beside `get`: it answers
-`{body: Readable, contentLength, contentType, etag, metadata}` instead of buffering
-`transformToByteArray`, and accepts `range` so the caller can ask for a slice (@@D-838). The
-existing `get` stays as it is — `release` and `commander` call it and expect a buffer.
-
-- verify: `blong-dev test` in `core/blong-gogo` asserts a 4 MiB object arrives as a stream with its
-  length, and `get` still answers a buffer.
-
-core/blong-gogo/src/adapter/server/s3.ts gains a stream operation beside get: it asks
-GetObjectCommand with an optional Range and answers {body: Readable, contentType, contentLength,
-contentRange, acceptRanges, metadata, lastModified, etag}; get is untouched and still buffers
-through transformToByteArray. Both answers come from exported shapers (s3BufferAnswer,
-s3StreamAnswer) so the test pins them: a 4 MiB object arrives as a stream with its length and every
-byte, and get still answers a 2048-byte array. Framework suite 1218 assertions, 0 failures.
-
-### T-711 — Register the lukaot layer and route its declarations to the registry
-
-> _2026-11-18 · core/blong-gogo · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-Add `lukaot` to `WELL_KNOWN_LAYERS` in `core/blong-lib/layers.ts` with the `error` layer's
-activation (`microservice`, `k8s`, `upgrade`), a row in the conventions layer table, and the kukum
-primitive that scaffolds `lukaot/{error,signal}.ts`. Then find the seam that makes `error/error.ts`
-reach `ErrorFactory.register`: its default export is a plain object, so `kind()` is empty and no
-branch of `layerProxy`'s switch matches it — pin the current behaviour with a test first, then hand
-both folders' declaration objects to the same registrar.
-
-- verify: a framework test asserts a declaration in `lukaot/error.ts` and one in `lukaot/signal.ts`
-  are both reachable from a handler's destructure, and that `error/error.ts` still registers.
-
-Progress (2026-11-18): the layer is registered, the conventions table and the generated page carry
-it, the kukum primitive scaffolds both declaration files, and the registrar now exists.
-
-`declare()` sets the framework's kind symbol (`Symbol.for('blong:kind')`, non-enumerable) so a
-declaration arrives as `object:vocabulary`; lukaot still imports nothing from blong. `layerProxy`
-gained that case — the error half goes to `target.error` (the bound `ErrorFactory.register`) and the
-whole declaration is pushed onto `result.vocabulary`, where the proxy will be built from it — and a
-fallback case for a bare `object:` whose file is `error.ts`, which is what registers the legacy map.
-
-That fallback is a behaviour change and it was worth making: `Errors.get(type)` returns a lazily
-built default for an unregistered name, so every realm's `error/error.ts` has been silently ignored
-— it threw with a generated message and no declared status. With the map registered, `blong-gogo`
-(1241 assertions), `realm/blong-chat` (111) and `realm/blong-kustomize` (149) all still pass, so
-nothing depended on the generated default.
-
-What remains: the `signal` half. It needs a proxy a handler reaches as `this.signal`, built from the
-vocabularies the loader collected and emitting through the port's log — and that runs into a bundle
-question the next run must settle first: `layerProxy` and `Watch` are shared with the browser
-loader, and lukaot's root reaches `node:async_hooks`, so the wiring has to be constructed where the
-log is (the port's init, which is already server-side) rather than imported into the shared loader.
-A unit test that drove `layerProxy` directly was attempted and abandoned — the closure it builds is
-not invocable without the port — so the pin belongs at the loader level, in a fixture realm, which
-is the same test the verify asks for.
-
-lukaot is a well-known layer; declare() marks a declaration with the framework's kind symbol;
-layerProxy registers a vocabulary's errors with ErrorFactory and keeps it on the layer result, and
-registers a legacy error/error.ts map too (which had been silently dropped since the folder existed
-— Errors.get builds a default for an unregistered name). signals.ts builds the flat vocabulary a
-handler calls as this.signal from the layer's declarations, writing each record through the port's
-own logger; the attacher is resolved lazily and never in the browser, so a process that declares
-nothing loads nothing. blong-gogo 1255 assertions, blong-chat 111, kukum 669, blong-lib 224,
-lukaot 21.
-
-### T-712 — Load declared vocabularies and hand them to the runtime proxy
-
-> _2026-11-18 · core/blong-gogo · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-`src/lukaotVocabulary.ts` composes the declarations found in each realm's `lukaot` layer — and,
-until a realm is converted, in its `error` layer — into one registry per realm, merges the realm's
-`lukaot.policy` config, and hands `Registry._createHandlers` the `signal` and `errors` proxies. The
-`lib` proxy gains `signal`; `errors` keeps the camelCase lookup, the `errorX` spelling unconverted
-realms use, and the "available errors" message.
-
-- verify: a framework test asserts a handler reaches `signal` and `errors` by destructuring, and
-  that an undeclared method is absent rather than throwing.
-
-Progress (2026-11-18): the composition and the proxy exist, under a different name and a narrower
-scope than the plan expected, and the difference is worth stating before the rest is built.
-
-`core/blong-gogo/src/signals.ts` (not `lukaotVocabulary.ts`) composes the declarations a layer
-shipped into one registry and attaches the **flat** vocabulary to the port as `port.signal` — flat
-because the plan's call sites are `this.signal?.agentTicketSkipped?.({...})`, and the full proxy,
-with `reachable`/`sites`/`dependencies`, is returned to whoever asks the coverage questions. Each
-record is written through the port's own logger at the level the policy resolved to, with the
-identifier and the values as bindings, so a signal stays a log line where logs already go. An error
-signal returns the failure to throw.
-
-The scope is one **layer**, not one realm, and that is deliberate rather than a shortcut: a port
-serves one namespace, a namespace is one layer's handlers, and a handler calling a name its own
-layer did not declare is the mistake the vocabulary exists to catch. A realm that spreads its
-declarations across `lukaot/error.ts` and `lukaot/signal.ts` still gets one registry, because both
-files arrive through the same `lukaot` folder; what it does not get is a registry shared with a
-_different_ layer of the same realm.
-
-What is left for this task: merging the realm's `lukaot.policy` config into the registry (nothing
-reads it yet, so a configured level or sample has no effect), the `lib.signal` half (a `library()`
-function has no port), and the test at the loader level — a fixture realm whose handler destructures
-`signal` and `errors` and whose undeclared method is absent. The seam those need is in place: the
-declarations reach `attachSignals` with the port, and the config is on `layerApi.config`.
-
-signals.ts composes a layer's declarations into one registry, merges the realm's lukaot.policy
-(raising, sampling, switching off; an unmatched key warns through the port's log) and attaches the
-flat vocabulary as port.signal, with the same object on lib so a library() function calls
-lib.signal.x. The full proxy is returned for the coverage questions. signals.test.ts pins 21
-assertions: a line at the declared level with the identifier bound, an error signal returning the
-declared type and status, no signal for a layer that declared nothing, two vocabularies composing, a
-repeated name refused, policy applied, and an undeclared identifier absent rather than throwing.
-blong-gogo 1266 assertions.
-
-### T-713 — Re-point identity, progress points and the call channel at lukaot
-
-> _2026-11-18 · core/blong-gogo · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-Rename `semanticContext.ts` to `responseContext.ts` and re-point `checkpoint.ts`, `callTrace.ts`,
-`AdapterBase.ts`, `Gateway.ts` and `Registry.ts`'s progress pair at lukaot. Nothing about the wire
-changes: the header, its capability field and `$meta.forward` behaviour stay as they are.
-
-- verify: the existing trace/leg/checkpoint tests pass unchanged, and a cross-process test still
-  reads one flow drawn in the receiving process.
-
-Done (2026-11-19): the rename. `semanticContext.ts` → `responseContext.ts`, its test beside it, and
-every importer switched (`Watch`, `RpcServer`, `handlerProxy`, `Gateway`, `AdapterBase`,
-`orchestrator/common/dispatch`, `loadServer`, plus the comments that named the file).
-
-Not done, deliberately: the package re-point. The facade (`@feasibleone/semantic-log/attachable`'s
-`vocabulary`), the capability helpers and `TRACE_HEADER` all stay on the old package until the
-emitter moves (T-715) — each package owns its own `AsyncLocalStorage`, so identity bound through one
-is invisible to records written by the other, and the flow and leg would vanish from every record
-with no error (@@D-905). Suite green at 1262 after the rename, unchanged from before it.
-
-Renamed to `responseContext.ts` with every importer; the package re-point rides with T-715
-(@@D-905).
-
-### T-715 — Point the loader at lukaot and take pino out of the framework
-
-> _2026-11-18 · core/blong-gogo · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-`load.ts` selects lukaot as the server's log, and `core/blong-gogo`'s dependencies no longer name
-`@feasibleone/semantic-log`, `pino`, `pino-pretty` or `cacache`.
-
-- verify: `cd core/blong-gogo && blong-dev test` passes, and `grep -rF 'semantic-log'` and
-  `grep -rF '"pino"'` over the package both find nothing. **Both hold** (2026-11-19): the package's
-  suite is 1203 assertions, and neither name appears in its source or its `package.json`.
-
-DONE (2026-11-19). `src/LukaotLog.ts` is the framework's `ILog` over lukaot: one function translates
-the two calling conventions, `$meta` is _moved_ onto `messageId`/`operation` rather than copied (a
-copy printed the envelope twice — on the header and again as a detail block), `fatal` maps to
-`error` because lukaot's `fatal` exits the process by contract, and `child` answers a pino-shaped
-face because two components hand it to fastify as `loggerInstance`. It opens lukaot's cache from the
-`{dir, limit}` block and starts the cluster service lazily, publishing `clusterUrl` so a realm's
-port learns where to read its flows — the half whose absence made `blong.flow.find` fail before. One
-service per process, its listener `unref`fed: a service per log instance gave every reader a
-different ledger and kept a test process alive past its last assertion.
-
-Deleted with the two variants: `SemanticLog.ts`, `SemanticLog.test.ts`, `semanticRecord.ts`,
-`Log.ts`, `pino-pretty.ts`/`.mjs`, `pino-cacache.ts`/`.mjs`, `pino-pretty.test.ts`. The tests worth
-keeping were ported to the new implementation (`log.level.test.ts`, `log.progress.test.ts`), and the
-ones whose subject no longer exists (`SemanticLog.test.ts`) went with it — the suite lost 78
-assertions and gained the 19 in `LukaotLog.test.ts`.
-
-The facade moved in the same step (@@D-905): `responseContext.ts`, `checkpoint.ts` and `Registry.ts`
-read `@feasibleone/lukaot/context`, `Gateway.ts` reads `TRACE_HEADER`/`withoutCapabilities` from
-lukaot, and `loadServer.ts` attaches lukaot's own root as the vocabulary — one `AsyncLocalStorage`,
-so an identity bound where a call is made is the one the emitter reads.
-
-`core/blong` stopped borrowing pino's types: `Level`, `LevelWithSilent`, `LogFn` and `IChildLogger`
-are declared there. `LogFn` had to become `(...args: unknown[]) => void` rather than a typed
-two-argument shape — the framework's own helpers ask for `(...args: unknown[]) => void`, and a
-narrower signature is not assignable to it despite accepting everything in practice.
-`IChildLogger`'s members are required, not optional, because fastify's `FastifyBaseLogger` requires
-them and an optional `child` is not a `FastifyBaseLogger`.
-
-Two things stayed, and are recorded rather than quietly dropped. `log.impl` is still accepted and
-ignored, because every deployment in the tree names `semantic` and refusing it would break them for
-a word that now means nothing. And `AdapterBase.error()` keeps its line: the original task removed
-it on the grounds that an error records itself when it is constructed, which is true of a lukaot
-_error signal_ and not of an `ITypedError` from the framework's own factory — removing it would have
-made a port's failures silent (@@D-907).
-
-Suite 1203 green; `semantic-log` and `pino` appear nowhere in the package; the facade moved with the
-emitter (@@D-905) and the de-logging of `AdapterBase.error()` was dropped with its reason (@@D-907).
-
-### T-710 — Replace `SemanticLog` with lukaot and declare the framework's own signals
-
-> _2026-11-18 · core/blong-gogo · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-The framework's `this.log?.level?.(…)` sites in `core/blong-gogo` become declared `framework.*`
-signals — the watcher's file events, the registry's port lifecycle, the gateway's key resolution —
-in a vocabulary file the package owns, because a level call is no longer part of the API.
-`ErrorFactory`'s notice becomes `frameworkErrorDeprecated`.
-
-Scope, restated 2026-11-19, because two halves of it belong to other tasks and the title kept
-promising them: the **11 payload-shaped sites** went to T-730 (`browser/http` 2, `webhook` 2, `loop`
-5, `k8s` 1, `mle/ready` 1) because they are captures and not signals (@@D-906);
-the **`SemanticLog.ts` and `semanticRecord.ts` deletions**, and the de-logging of
-`AdapterBase.error()`, went to T-715 — the facade and the emitter move in one step (@@D-905), and
-the de-logging rests on an error recording itself when it is constructed, which is only true once
-the emitter is lukaot's (@@F-763).
-
-DONE (2026-11-19): the call sites are finished. Fourteen conversions, one identifier each, so an
-operator can silence a single case — `frameworkTcpConnectionLimit`, `frameworkS3ReportFetchFailed`,
-`frameworkRedisDispatchFailed`, `frameworkRedisSubscribeFailed`, `frameworkViberSendRefused`,
-`frameworkViberSendFailed`, `frameworkSlackRequestAccountMissing`,
-`frameworkWebhookDestinationSlow`, `frameworkWebhookDestinationFailed`,
-`frameworkWebhookHandlerFailed`, `frameworkLoopDisconnectedFailed`, `frameworkSlackAuthUnreachable`,
-`frameworkSlackStoreRetryFailed`, `frameworkSlackMaintainFailed`. The seven that used to hand a
-caught `Error` to `warn` now name the case that caught it, which was the point: the error could not
-say what had failed, so it arrived as a payload. `frameworkErrorDeprecated` became the registration
-notice, keeping its `deprecation` mtid and the callee's method in the header. Two narrowed port
-types in `redis.ts` and `slackInIdentity.ts` gained `signal?: VocabularyProxy` — they had declared
-only the `log` member they used, which is why the conversion did not type-check until the shape was
-widened.
-
-`grep -rn 'log?\.[a-z]*?\.\?(' core/blong-gogo/src` now finds the 11 captures T-730 owns and nothing
-else. Suite green at 1262, `ci-lint` clean.
-
-Progress (2026-11-18): 59 sites converted before this pass: `Watch.ts` (11), `slack.ts` (21),
-`kafka.ts` (14), `knex.ts` (5), `runServer.ts` (2), `Remote.ts` (2), `ApiSchema.ts` (2),
-`SystemDebug.ts` (1), `Mcp.ts` (1).
-
-The seams, each found by something breaking: one registry with a child view per writer
-(`signalView`), because identifiers, policy, counters and sites belong to the process while context
-belongs to the binding; the envelope (`mtid`, `method`) declared on the entry and printed where the
-printer looks (@@F-764); and `signal` reaching code two ways, `Internal.signal` for a component and
-`IAdapter` for a port's own body, with a helper handed the vocabulary itself rather than a logger
-face carrying it — `ILogger.signal` existed for one batch and was deleted once the helpers took the
-object directly, since a face is levels and a name binding and building one per face made
-`signalFor` recurse into `logger()` until the stack overflowed.
-
-Its call sites were finished earlier; the two deletions it named went with T-715, and its de-logging
-clause is superseded by @@D-907.
-
-### T-722 — Verify the framework's error and logging contract end to end
-
-> _2026-11-18 · core/blong-gogo · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-`src/contract.test.ts` holds the framework's error contract against the emitter that now writes it —
-four promises, each of which a rewrite could quietly break. An expected error (`$meta.expect` names
-it) is demoted to `debug`, and at `info` it is filtered exactly as it always was. An unexpected one
-records at `error` with `type` and `statusCode` on the record, and with the message and stack in the
-logger's error slot — the two things that were lost when the error was handed over as a
-_bag of fields_: `Error`'s members are not enumerable, so the record had an empty message and no
-stack at all (@@D-907). The caller gets back the very object it handed over, stamped with
-`$meta.method`, so a caller can rethrow what was recorded. And a `silent` error writes no line and
-retains nothing.
-
-The method is exercised through `AdapterBase.prototype` rather than through a constructed adapter:
-what is under test is `error()` and the log it writes through, and a full adapter would bring an
-API, a registry and a queue to a question about one method. 14 assertions.
-
-Building it found a real regression, and the fix is in the implementation rather than in the test.
-Giving a level face only the members its threshold allowed looked tidier and broke the demotion:
-`error()` asks a face bound at `info` for `debug`, found no such method, and wrote _nothing_ — so an
-expected failure vanished instead of being filtered by the threshold. A level face now carries every
-member and the logger decides, which is what the face promised before this implementation existed.
-Three tests moved with it: the two that asserted the absent member, and the level test that read the
-same shape.
-
-Gates: `blong-gogo` 1230 assertions, lint clean.
-
-Four promises asserted, 14 assertions; found and fixed a level-face regression where a demoted
-expected error wrote nothing.
 
 ### T-731 — Review every AdapterBase.error call site and reduce them to one shape
 
@@ -1314,5 +864,439 @@ the list of field-and-message pairs the browser's Editor paints, and the problem
 gatewayValidation.ts holds the conversion with its own tests. portalChecks now judges the refusal by
 status and type and declares it in expect, so the deployment's log stays quiet. blong-gogo 1392 with
 0 failures; blong-int-kustomize 15/15.
+
+### T-655 — Raw bodies in the gateway
+
+> _2026-11-14 · core/blong-gogo · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`Gateway.ts` registers a catch-all content type parser that hands the handler a `Readable` when
+`gateway.rawBody` is on, and honours a `bodyLimit` a route declares, so a upload is not capped at
+fastify's 1 MiB (@@D-841). A raw route is a `GatewaySchema` of the `{method, path, response?}`
+shape, and its params come from `operation.parameters` — the path, query and header entries
+`operationParams` already reads. `RestFs` is the precedent for the parser; this is that pattern made
+reachable from a realm's own `gateway` layer.
+
+- verify: `blong-dev test` in `core/blong-gogo` posts 8 MiB through an `application/octet-stream`
+  route and receives it, and a route without `bodyLimit` still refuses 2 MiB.
+
+gateway.rawBody registers a stream parser (rawBody.ts), routes carry bodyLimit, and limitBytes
+enforces the ceiling a stream parser ignores (F-730); 7 assertions including 8 MiB accepted and 2
+MiB refused; docker manifests regenerated for the new package
+
+gateway.rawBody registers a stream parser (rawBody.ts), routes carry bodyLimit, and limitBytes
+enforces the ceiling a stream parser ignores (F-730); 7 assertions including 8 MiB accepted and 2
+MiB refused; docker manifests regenerated for the new package
+
+### T-664 — A streaming get in the framework's S3 adapter
+
+> _2026-11-14 · core/blong-gogo · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`core/blong-gogo/src/adapter/server/s3.ts` gains a `stream` operation beside `get`: it answers
+`{body: Readable, contentLength, contentType, etag, metadata}` instead of buffering
+`transformToByteArray`, and accepts `range` so the caller can ask for a slice (@@D-838). The
+existing `get` stays as it is — `release` and `commander` call it and expect a buffer.
+
+- verify: `blong-dev test` in `core/blong-gogo` asserts a 4 MiB object arrives as a stream with its
+  length, and `get` still answers a buffer.
+
+core/blong-gogo/src/adapter/server/s3.ts gains a stream operation beside get: it asks
+GetObjectCommand with an optional Range and answers {body: Readable, contentType, contentLength,
+contentRange, acceptRanges, metadata, lastModified, etag}; get is untouched and still buffers
+through transformToByteArray. Both answers come from exported shapers (s3BufferAnswer,
+s3StreamAnswer) so the test pins them: a 4 MiB object arrives as a stream with its length and every
+byte, and get still answers a 2048-byte array. Framework suite 1218 assertions, 0 failures.
+
+### T-711 — Register the lukaot layer and route its declarations to the registry
+
+> _2026-11-18 · core/blong-gogo · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Add `lukaot` to `WELL_KNOWN_LAYERS` in `core/blong-lib/layers.ts` with the `error` layer's
+activation (`microservice`, `k8s`, `upgrade`), a row in the conventions layer table, and the kukum
+primitive that scaffolds `lukaot/{error,signal}.ts`. Then find the seam that makes `error/error.ts`
+reach `ErrorFactory.register`: its default export is a plain object, so `kind()` is empty and no
+branch of `layerProxy`'s switch matches it — pin the current behaviour with a test first, then hand
+both folders' declaration objects to the same registrar.
+
+- verify: a framework test asserts a declaration in `lukaot/error.ts` and one in `lukaot/signal.ts`
+  are both reachable from a handler's destructure, and that `error/error.ts` still registers.
+
+Progress (2026-11-18): the layer is registered, the conventions table and the generated page carry
+it, the kukum primitive scaffolds both declaration files, and the registrar now exists.
+
+`declare()` sets the framework's kind symbol (`Symbol.for('blong:kind')`, non-enumerable) so a
+declaration arrives as `object:vocabulary`; lukaot still imports nothing from blong. `layerProxy`
+gained that case — the error half goes to `target.error` (the bound `ErrorFactory.register`) and the
+whole declaration is pushed onto `result.vocabulary`, where the proxy will be built from it — and a
+fallback case for a bare `object:` whose file is `error.ts`, which is what registers the legacy map.
+
+That fallback is a behaviour change and it was worth making: `Errors.get(type)` returns a lazily
+built default for an unregistered name, so every realm's `error/error.ts` has been silently ignored
+— it threw with a generated message and no declared status. With the map registered, `blong-gogo`
+(1241 assertions), `realm/blong-chat` (111) and `realm/blong-kustomize` (149) all still pass, so
+nothing depended on the generated default.
+
+What remains: the `signal` half. It needs a proxy a handler reaches as `this.signal`, built from the
+vocabularies the loader collected and emitting through the port's log — and that runs into a bundle
+question the next run must settle first: `layerProxy` and `Watch` are shared with the browser
+loader, and lukaot's root reaches `node:async_hooks`, so the wiring has to be constructed where the
+log is (the port's init, which is already server-side) rather than imported into the shared loader.
+A unit test that drove `layerProxy` directly was attempted and abandoned — the closure it builds is
+not invocable without the port — so the pin belongs at the loader level, in a fixture realm, which
+is the same test the verify asks for.
+
+lukaot is a well-known layer; declare() marks a declaration with the framework's kind symbol;
+layerProxy registers a vocabulary's errors with ErrorFactory and keeps it on the layer result, and
+registers a legacy error/error.ts map too (which had been silently dropped since the folder existed
+— Errors.get builds a default for an unregistered name). signals.ts builds the flat vocabulary a
+handler calls as this.signal from the layer's declarations, writing each record through the port's
+own logger; the attacher is resolved lazily and never in the browser, so a process that declares
+nothing loads nothing. blong-gogo 1255 assertions, blong-chat 111, kukum 669, blong-lib 224,
+lukaot 21.
+
+### T-712 — Load declared vocabularies and hand them to the runtime proxy
+
+> _2026-11-18 · core/blong-gogo · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`src/lukaotVocabulary.ts` composes the declarations found in each realm's `lukaot` layer — and,
+until a realm is converted, in its `error` layer — into one registry per realm, merges the realm's
+`lukaot.policy` config, and hands `Registry._createHandlers` the `signal` and `errors` proxies. The
+`lib` proxy gains `signal`; `errors` keeps the camelCase lookup, the `errorX` spelling unconverted
+realms use, and the "available errors" message.
+
+- verify: a framework test asserts a handler reaches `signal` and `errors` by destructuring, and
+  that an undeclared method is absent rather than throwing.
+
+Progress (2026-11-18): the composition and the proxy exist, under a different name and a narrower
+scope than the plan expected, and the difference is worth stating before the rest is built.
+
+`core/blong-gogo/src/signals.ts` (not `lukaotVocabulary.ts`) composes the declarations a layer
+shipped into one registry and attaches the **flat** vocabulary to the port as `port.signal` — flat
+because the plan's call sites are `this.signal?.agentTicketSkipped?.({...})`, and the full proxy,
+with `reachable`/`sites`/`dependencies`, is returned to whoever asks the coverage questions. Each
+record is written through the port's own logger at the level the policy resolved to, with the
+identifier and the values as bindings, so a signal stays a log line where logs already go. An error
+signal returns the failure to throw.
+
+The scope is one **layer**, not one realm, and that is deliberate rather than a shortcut: a port
+serves one namespace, a namespace is one layer's handlers, and a handler calling a name its own
+layer did not declare is the mistake the vocabulary exists to catch. A realm that spreads its
+declarations across `lukaot/error.ts` and `lukaot/signal.ts` still gets one registry, because both
+files arrive through the same `lukaot` folder; what it does not get is a registry shared with a
+_different_ layer of the same realm.
+
+What is left for this task: merging the realm's `lukaot.policy` config into the registry (nothing
+reads it yet, so a configured level or sample has no effect), the `lib.signal` half (a `library()`
+function has no port), and the test at the loader level — a fixture realm whose handler destructures
+`signal` and `errors` and whose undeclared method is absent. The seam those need is in place: the
+declarations reach `attachSignals` with the port, and the config is on `layerApi.config`.
+
+signals.ts composes a layer's declarations into one registry, merges the realm's lukaot.policy
+(raising, sampling, switching off; an unmatched key warns through the port's log) and attaches the
+flat vocabulary as port.signal, with the same object on lib so a library() function calls
+lib.signal.x. The full proxy is returned for the coverage questions. signals.test.ts pins 21
+assertions: a line at the declared level with the identifier bound, an error signal returning the
+declared type and status, no signal for a layer that declared nothing, two vocabularies composing, a
+repeated name refused, policy applied, and an undeclared identifier absent rather than throwing.
+blong-gogo 1266 assertions.
+
+### T-713 — Re-point identity, progress points and the call channel at lukaot
+
+> _2026-11-18 · core/blong-gogo · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Rename `semanticContext.ts` to `responseContext.ts` and re-point `checkpoint.ts`, `callTrace.ts`,
+`AdapterBase.ts`, `Gateway.ts` and `Registry.ts`'s progress pair at lukaot. Nothing about the wire
+changes: the header, its capability field and `$meta.forward` behaviour stay as they are.
+
+- verify: the existing trace/leg/checkpoint tests pass unchanged, and a cross-process test still
+  reads one flow drawn in the receiving process.
+
+Done (2026-11-19): the rename. `semanticContext.ts` → `responseContext.ts`, its test beside it, and
+every importer switched (`Watch`, `RpcServer`, `handlerProxy`, `Gateway`, `AdapterBase`,
+`orchestrator/common/dispatch`, `loadServer`, plus the comments that named the file).
+
+Not done, deliberately: the package re-point. The facade (`@feasibleone/semantic-log/attachable`'s
+`vocabulary`), the capability helpers and `TRACE_HEADER` all stay on the old package until the
+emitter moves (T-715) — each package owns its own `AsyncLocalStorage`, so identity bound through one
+is invisible to records written by the other, and the flow and leg would vanish from every record
+with no error (@@D-905). Suite green at 1262 after the rename, unchanged from before it.
+
+Renamed to `responseContext.ts` with every importer; the package re-point rides with T-715
+(@@D-905).
+
+### T-715 — Point the loader at lukaot and take pino out of the framework
+
+> _2026-11-18 · core/blong-gogo · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`load.ts` selects lukaot as the server's log, and `core/blong-gogo`'s dependencies no longer name
+`@feasibleone/semantic-log`, `pino`, `pino-pretty` or `cacache`.
+
+- verify: `cd core/blong-gogo && blong-dev test` passes, and `grep -rF 'semantic-log'` and
+  `grep -rF '"pino"'` over the package both find nothing. **Both hold** (2026-11-19): the package's
+  suite is 1203 assertions, and neither name appears in its source or its `package.json`.
+
+DONE (2026-11-19). `src/LukaotLog.ts` is the framework's `ILog` over lukaot: one function translates
+the two calling conventions, `$meta` is _moved_ onto `messageId`/`operation` rather than copied (a
+copy printed the envelope twice — on the header and again as a detail block), `fatal` maps to
+`error` because lukaot's `fatal` exits the process by contract, and `child` answers a pino-shaped
+face because two components hand it to fastify as `loggerInstance`. It opens lukaot's cache from the
+`{dir, limit}` block and starts the cluster service lazily, publishing `clusterUrl` so a realm's
+port learns where to read its flows — the half whose absence made `blong.flow.find` fail before. One
+service per process, its listener `unref`fed: a service per log instance gave every reader a
+different ledger and kept a test process alive past its last assertion.
+
+Deleted with the two variants: `SemanticLog.ts`, `SemanticLog.test.ts`, `semanticRecord.ts`,
+`Log.ts`, `pino-pretty.ts`/`.mjs`, `pino-cacache.ts`/`.mjs`, `pino-pretty.test.ts`. The tests worth
+keeping were ported to the new implementation (`log.level.test.ts`, `log.progress.test.ts`), and the
+ones whose subject no longer exists (`SemanticLog.test.ts`) went with it — the suite lost 78
+assertions and gained the 19 in `LukaotLog.test.ts`.
+
+The facade moved in the same step (@@D-905): `responseContext.ts`, `checkpoint.ts` and `Registry.ts`
+read `@feasibleone/lukaot/context`, `Gateway.ts` reads `TRACE_HEADER`/`withoutCapabilities` from
+lukaot, and `loadServer.ts` attaches lukaot's own root as the vocabulary — one `AsyncLocalStorage`,
+so an identity bound where a call is made is the one the emitter reads.
+
+`core/blong` stopped borrowing pino's types: `Level`, `LevelWithSilent`, `LogFn` and `IChildLogger`
+are declared there. `LogFn` had to become `(...args: unknown[]) => void` rather than a typed
+two-argument shape — the framework's own helpers ask for `(...args: unknown[]) => void`, and a
+narrower signature is not assignable to it despite accepting everything in practice.
+`IChildLogger`'s members are required, not optional, because fastify's `FastifyBaseLogger` requires
+them and an optional `child` is not a `FastifyBaseLogger`.
+
+Two things stayed, and are recorded rather than quietly dropped. `log.impl` is still accepted and
+ignored, because every deployment in the tree names `semantic` and refusing it would break them for
+a word that now means nothing. And `AdapterBase.error()` keeps its line: the original task removed
+it on the grounds that an error records itself when it is constructed, which is true of a lukaot
+_error signal_ and not of an `ITypedError` from the framework's own factory — removing it would have
+made a port's failures silent (@@D-907).
+
+Suite 1203 green; `semantic-log` and `pino` appear nowhere in the package; the facade moved with the
+emitter (@@D-905) and the de-logging of `AdapterBase.error()` was dropped with its reason (@@D-907).
+
+### T-710 — Replace `SemanticLog` with lukaot and declare the framework's own signals
+
+> _2026-11-18 · core/blong-gogo · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+The framework's `this.log?.level?.(…)` sites in `core/blong-gogo` become declared `framework.*`
+signals — the watcher's file events, the registry's port lifecycle, the gateway's key resolution —
+in a vocabulary file the package owns, because a level call is no longer part of the API.
+`ErrorFactory`'s notice becomes `frameworkErrorDeprecated`.
+
+Scope, restated 2026-11-19, because two halves of it belong to other tasks and the title kept
+promising them: the **11 payload-shaped sites** went to T-730 (`browser/http` 2, `webhook` 2, `loop`
+5, `k8s` 1, `mle/ready` 1) because they are captures and not signals (@@D-906);
+the **`SemanticLog.ts` and `semanticRecord.ts` deletions**, and the de-logging of
+`AdapterBase.error()`, went to T-715 — the facade and the emitter move in one step (@@D-905), and
+the de-logging rests on an error recording itself when it is constructed, which is only true once
+the emitter is lukaot's (@@F-763).
+
+DONE (2026-11-19): the call sites are finished. Fourteen conversions, one identifier each, so an
+operator can silence a single case — `frameworkTcpConnectionLimit`, `frameworkS3ReportFetchFailed`,
+`frameworkRedisDispatchFailed`, `frameworkRedisSubscribeFailed`, `frameworkViberSendRefused`,
+`frameworkViberSendFailed`, `frameworkSlackRequestAccountMissing`,
+`frameworkWebhookDestinationSlow`, `frameworkWebhookDestinationFailed`,
+`frameworkWebhookHandlerFailed`, `frameworkLoopDisconnectedFailed`, `frameworkSlackAuthUnreachable`,
+`frameworkSlackStoreRetryFailed`, `frameworkSlackMaintainFailed`. The seven that used to hand a
+caught `Error` to `warn` now name the case that caught it, which was the point: the error could not
+say what had failed, so it arrived as a payload. `frameworkErrorDeprecated` became the registration
+notice, keeping its `deprecation` mtid and the callee's method in the header. Two narrowed port
+types in `redis.ts` and `slackInIdentity.ts` gained `signal?: VocabularyProxy` — they had declared
+only the `log` member they used, which is why the conversion did not type-check until the shape was
+widened.
+
+`grep -rn 'log?\.[a-z]*?\.\?(' core/blong-gogo/src` now finds the 11 captures T-730 owns and nothing
+else. Suite green at 1262, `ci-lint` clean.
+
+Progress (2026-11-18): 59 sites converted before this pass: `Watch.ts` (11), `slack.ts` (21),
+`kafka.ts` (14), `knex.ts` (5), `runServer.ts` (2), `Remote.ts` (2), `ApiSchema.ts` (2),
+`SystemDebug.ts` (1), `Mcp.ts` (1).
+
+The seams, each found by something breaking: one registry with a child view per writer
+(`signalView`), because identifiers, policy, counters and sites belong to the process while context
+belongs to the binding; the envelope (`mtid`, `method`) declared on the entry and printed where the
+printer looks (@@F-764); and `signal` reaching code two ways, `Internal.signal` for a component and
+`IAdapter` for a port's own body, with a helper handed the vocabulary itself rather than a logger
+face carrying it — `ILogger.signal` existed for one batch and was deleted once the helpers took the
+object directly, since a face is levels and a name binding and building one per face made
+`signalFor` recurse into `logger()` until the stack overflowed.
+
+Its call sites were finished earlier; the two deletions it named went with T-715, and its de-logging
+clause is superseded by @@D-907.
+
+### T-722 — Verify the framework's error and logging contract end to end
+
+> _2026-11-18 · core/blong-gogo · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`src/contract.test.ts` holds the framework's error contract against the emitter that now writes it —
+four promises, each of which a rewrite could quietly break. An expected error (`$meta.expect` names
+it) is demoted to `debug`, and at `info` it is filtered exactly as it always was. An unexpected one
+records at `error` with `type` and `statusCode` on the record, and with the message and stack in the
+logger's error slot — the two things that were lost when the error was handed over as a
+_bag of fields_: `Error`'s members are not enumerable, so the record had an empty message and no
+stack at all (@@D-907). The caller gets back the very object it handed over, stamped with
+`$meta.method`, so a caller can rethrow what was recorded. And a `silent` error writes no line and
+retains nothing.
+
+The method is exercised through `AdapterBase.prototype` rather than through a constructed adapter:
+what is under test is `error()` and the log it writes through, and a full adapter would bring an
+API, a registry and a queue to a question about one method. 14 assertions.
+
+Building it found a real regression, and the fix is in the implementation rather than in the test.
+Giving a level face only the members its threshold allowed looked tidier and broke the demotion:
+`error()` asks a face bound at `info` for `debug`, found no such method, and wrote _nothing_ — so an
+expected failure vanished instead of being filtered by the threshold. A level face now carries every
+member and the logger decides, which is what the face promised before this implementation existed.
+Three tests moved with it: the two that asserted the absent member, and the level test that read the
+same shape.
+
+Gates: `blong-gogo` 1230 assertions, lint clean.
+
+Four promises asserted, 14 assertions; found and fixed a level-face regression where a demoted
+expected error wrote nothing.
+
+### T-540 — Add the agent types to core/blong
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`IAgentMessage`, `IAgentTool`, `IAgentStepRequest`, `IAgentStepResult`, `IAgentSessionRequest` and
+`IAgentEngineAccount` in `types.ts`, with the TypeBox tool schema as the neutral form and
+`mode: 'step' | 'native'` on the account (`@@D-708`).
+
+### T-541 — Add the agent adapter and its engine group to blong-gogo
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`src/adapter/server/agent.ts`: the `adapter.agent` base, the `accounts` map, lazy per-kind import,
+TypeBox-to-JSON-Schema conversion and the four methods in an `engine/` group; plus the `agent`
+boolean in `src/adapter/server.ts`, default `false`.
+
+### T-542 — Add the Vercel engine kind
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`VercelEngineAdapter`: `generateText` with tools declared **without** `execute`, so the SDK returns
+the calls instead of running them, mapped into `IAgentStepResult`.
+
+### T-543 — Add the Mastra engine kind
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`MastraEngineAdapter`: an `Agent` per turn with stub `execute` functions whose return value is
+ignored, reading only the calls it reports.
+
+### T-544 — Add the DeepSeek Harness engine kind
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`DeepSeekEngineAdapter` over `@deepseek-ai/dsh-sdk-client`: spawn the runtime with the ticket
+directory as its working directory, route `onUserQuestion` and `approval/request` to a configured
+handler, `resumeSession` from a stored id, and reap the subprocess in `session.close` (`@@D-711`).
+
+### T-545 — Add the scripted sim engine kind
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`agentSim.ts`: the scripted kind in both modes, and the only one the realm's tests use. A turn in
+the script is `{text}` or `{toolCall: {name, args}}`.
+
+### T-546 — Declare the engine dependencies and test the adapter
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`ai` and `@ai-sdk/openai` as dependencies, while the harness client and `@mastra/core` are imported
+dynamically, so a deployment that configures neither carries neither; `rush update`; then unit tests
+for the conversion, the script, the missing-package error and `session.close`.
+
+### T-547 — Verify blong-gogo after the agent adapter
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`blong-dev test` in `core/blong-gogo`, `blong-dev lint --files`, and a smoke that imports the module
+without loading any engine package.
+
+### T-548 — Add the workspace adapter
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`src/adapter/server/workspace.ts` and its group: `prepare`, `read`, `write`, `list`, `run`,
+`rollback`, `remove`, plus the `workspace` boolean in `src/adapter/server.ts`.
+
+### T-549 — Jail every workspace path
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+Resolve every path against the ticket root, refuse `..` and absolute paths with
+`agent.workspaceEscape`, and refuse a symlink that leaves the root.
+
+### T-550 — Record the base commit and roll back with git
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`prepare` records the base commit and copies the template when the source is not a repository;
+`rollback` restores with `git checkout` and `git clean` in the ticket directory.
+
+### T-551 — Run a command inside the workspace boundary
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`run` with the `@@D-710` boundary: `execFile` and an argv array, the ticket directory as cwd, a
+timeout that kills the process group, an output cap, an environment scrubbed to a configured
+allowlist, and `agent.commandDisabled` when the deployment switched the capability off.
+
+### T-552 — Instance the workspace adapter in the realm and test it
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`adapter/workspace.ts` with the activation defaults, and tests for the jail, the rollback, a
+template copy in a temp directory, and a command that times out and is killed.
+
+### T-553 — Verify blong-gogo after the workspace adapter
+
+> _2026-10-31 · core/blong-gogo · done_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`blong-dev test` in `core/blong-gogo`, `blong-dev lint --files`.
 
 ## Retired

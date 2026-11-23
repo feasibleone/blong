@@ -20,32 +20,20 @@ open (16)
 - `T-395` · realm/blong-sport — Derive personName so no producer can forget it
 - `T-396` · realm/blong-sport — Move the document and attachment tables into blong-document
 - `T-397` · realm/blong-sport — Turn the rules.md acceptance criteria into automated tests
-- `T-400` · realm/blong-sport — Assert one resource row and a person with two roles
 - `T-618` · realm/blong-sport — Import the full club and coach registers in the upgrade intent
 - `T-620` · realm/blong-sport — A second Playwright run leaves deactivated classifier rows
 - `T-621` · realm/blong-sport — Re-run the sport Playwright baselines after the logo and font change
+- `T-400` · realm/blong-sport — Assert one resource row and a person with two roles
 
 done (32)
 
-- `T-374` · realm/blong-sport — sport P1 scaffold and boot
-- `T-376` · realm/blong-sport — sport P3 schema and seeds
-- `T-377` · realm/blong-sport — sport P4 profile handlers and dropdowns
 - `T-385` · realm/blong-sport — Derive conferral recipientKind in a pre-write hook
-- `T-383` · realm/blong-sport — sport P10 playwright tests and screenshots
-- `T-378` · realm/blong-sport — sport P5 classifier and organisation models
-- `T-379` · realm/blong-sport — sport P6 people models and layouts
-- `T-380` · realm/blong-sport — sport P7 competition models
-- `T-381` · realm/blong-sport — sport P8 olympic records and relationship models
-- `T-382` · realm/blong-sport — sport P9 portal and fixture
-- `T-375` · realm/blong-sport — sport P2 party contribution
 - `T-398` · realm/blong-sport — Capture the athlete Results tab from a record with a participation
-- `T-384` · realm/blong-sport — sport P11 verification and close-out
 - `T-412` · realm/blong-sport — Three sport browse shots are still unfiltered and empty
 - `T-427` · realm/blong-sport — Wire sport to core translations and the collector
 - `T-429` · realm/blong-sport — Capture the Bulgarian model screenshots
 - `T-428` · realm/blong-sport — Translate sport labels to Bulgarian
 - `T-434` · realm/blong-sport — One pinned row per Bulgarian browse capture
-- `T-442` · realm/blong-sport — Sport CD Group 1 deployable realm
 - `T-459` · realm/blong-sport — Add the feedback realm to the sport suite
 - `T-476` · realm/blong-sport — Show the mode against real model pages
 - `T-478` · realm/blong-sport — Prove the flow end to end with Playwright
@@ -56,9 +44,21 @@ done (32)
 - `T-615` · realm/blong-sport — Cover the four deletion modes with a Playwright spec
 - `T-399` · realm/blong-sport — Cascade sport, discipline and category from the BOC nomenclature
 - `T-598` · realm/blong-sport — Swap the sport logo for an approved Olympic asset
-- `T-677` · realm/blong-sport — sport: the document model attaches a file
-- `T-683` · realm/blong-sport — Playwright: the sport document
 - `T-696` · realm/blong-sport — Cover the sport discipline cascade with a Playwright pick
+- `T-442` · realm/blong-sport — Make blong-sport a deployable suite entry
+- `T-677` · realm/blong-sport — sport: the document model attaches a file
+- `T-374` · realm/blong-sport — Scaffold realm/blong-sport and boot it
+- `T-375` · realm/blong-sport — Contribute the three identity columns and personName to blong-party
+- `T-376` · realm/blong-sport — Write the sport schema and its seeds
+- `T-377` · realm/blong-sport — Add the shared-PK profile handlers and the sport dropdown
+- `T-378` · realm/blong-sport — Build the classifier and organisation models
+- `T-379` · realm/blong-sport — Build the people models and their tabbed layouts
+- `T-380` · realm/blong-sport — Build the competition models
+- `T-381` · realm/blong-sport — Build the Olympic, records and relationship models
+- `T-382` · realm/blong-sport — Wire the portal and write the fixture
+- `T-383` · realm/blong-sport — Prove the models with Playwright
+- `T-384` · realm/blong-sport — Verify the POC and close the plan
+- `T-683` · realm/blong-sport — Playwright: the sport document
 
 <!-- /memory:index -->
 
@@ -161,18 +161,6 @@ rules.md states 211 acceptance rules and none of them is executed. Take the sect
 handler invariant and write them as server-side tap steps, so the rules document and the suite
 cannot drift apart.
 
-### T-400 — Assert one resource row and a person with two roles
-
-> _2026-10-23 · realm/blong-sport · open_
-
-Section 12 of plans/sport/plan.md asks that add create exactly one person, one resource and one
-profile row, and that a person with two roles end at two profile rows and one resource.
-server/test/test/testAthlete.ts proves the person, the profile row and the shared id, but asserts
-neither the resource row nor the second role, while profileRemove already refuses to delete a party
-row another profile still holds. Extend the tap test with a resource count and with an athlete and a
-coach created under one person id, then remove the athlete and expect the person and the resource to
-survive.
-
 ### T-618 — Import the full club and coach registers in the upgrade intent
 
 > _2026-11-07 · realm/blong-sport · open_
@@ -218,36 +206,19 @@ black changed. Run the suite once with `--update-snapshots` when the dev databas
 colour change alone is inside Playwright's default `threshold` of 0.2 and is not expected to fail
 anything, but the regeneration is what proves it.
 
+### T-400 — Assert one resource row and a person with two roles
+
+> _2026-10-23 · realm/blong-sport · open_
+
+The plan ([#298](https://github.com/feasibleone/blong/issues/298), section 12) asks that add create
+exactly one person, one resource and one profile row, and that a person with two roles end at two
+profile rows and one resource. server/test/test/testAthlete.ts proves the person, the profile row
+and the shared id, but asserts neither the resource row nor the second role, while profileRemove
+already refuses to delete a party row another profile still holds. Extend the tap test with a
+resource count and with an athlete and a coach created under one person id, then remove the athlete
+and expect the person and the resource to survive.
+
 ## Done
-
-### T-374 — sport P1 scaffold and boot
-
-> _2026-10-23 · realm/blong-sport · done_
-
-See phase in plans/sport/plan.md section 11; task checkboxes there are the authority for what
-remains.
-
-Scaffolded with kukum (23 tables, seeds, party and gateway children); boot green, 23 sport tables
-with keys.
-
-### T-376 — sport P3 schema and seeds
-
-> _2026-10-23 · realm/blong-sport · done_
-
-See phase in plans/sport/plan.md section 11; task checkboxes there are the authority for what
-remains.
-
-23 tables, dependency-ordered; 12 sports, 3 cycles, 4 areas, 3 awards, 3 test documents seeded.
-
-### T-377 — sport P4 profile handlers and dropdowns
-
-> _2026-10-23 · realm/blong-sport · done_
-
-See phase in plans/sport/plan.md section 11; task checkboxes there are the authority for what
-remains.
-
-profile.ts library + 20 handlers + dropdown list + 10 add/edit overrides; tap 9/9, typecheck and
-lint clean.
 
 ### T-385 — Derive conferral recipientKind in a pre-write hook
 
@@ -261,71 +232,6 @@ sportConferralModel and the two cross-check labels from the sport.recipient drop
 Done: sportConferralAdd/Edit derive recipientKind via recipientKindOf in adapter/db/recipientKind.ts
 and delegate with super.exec; recipientKind is readOnly again.
 
-### T-383 — sport P10 playwright tests and screenshots
-
-> _2026-10-23 · realm/blong-sport · done_
-
-See phase in plans/sport/plan.md section 11; task checkboxes there are the authority for what
-remains.
-
-Eight specs plus the athlete tab captures: 103 Playwright tests pass in 1.3 min, WebP baselines,
-duplicate captures silenced, athlete tabs reachable through openLayout.
-
-### T-378 — sport P5 classifier and organisation models
-
-> _2026-10-23 · realm/blong-sport · done_
-
-See phase in plans/sport/plan.md section 11; task checkboxes there are the authority for what
-remains.
-
-Classifiers and organisations modelled; fixture and stories added (P5.3).
-
-### T-379 — sport P6 people models and layouts
-
-> _2026-10-23 · realm/blong-sport · done_
-
-See phase in plans/sport/plan.md section 11; task checkboxes there are the authority for what
-remains.
-
-People models with the tabbed Open page (openLayout), fixture rows, and the three-layout story set.
-
-### T-380 — sport P7 competition models
-
-> _2026-10-23 · realm/blong-sport · done_
-
-See phase in plans/sport/plan.md section 11; task checkboxes there are the authority for what
-remains.
-
-Competition chain modelled, dropdowns and get-projection in place, stories added.
-
-### T-381 — sport P8 olympic records and relationship models
-
-> _2026-10-23 · realm/blong-sport · done_
-
-See phase in plans/sport/plan.md section 11; task checkboxes there are the authority for what
-remains.
-
-Olympic, records and relationships modelled; stories added.
-
-### T-382 — sport P9 portal and fixture
-
-> _2026-10-23 · realm/blong-sport · done_
-
-See phase in plans/sport/plan.md section 11; task checkboxes there are the authority for what
-remains.
-
-Portal groups, 23-object fixture and the portal story.
-
-### T-375 — sport P2 party contribution
-
-> _2026-10-23 · realm/blong-sport · done_
-
-See phase in plans/sport/plan.md section 11; task checkboxes there are the authority for what
-remains.
-
-P2.4 done: party tap tests 77/77, ci-lint clean, Playwright captures re-baselined after the table
-widget and integer grouping changes.
-
 ### T-398 — Capture the athlete Results tab from a record with a participation
 
 > _2026-10-23 · realm/blong-sport · done_
@@ -337,16 +243,6 @@ page, so the capture shows a row instead of the empty state.
 
 The tab spec builds its own competition, edition and participation, so the Results tab captures a
 row; the edition, format and status cells render their labels.
-
-### T-384 — sport P11 verification and close-out
-
-> _2026-10-23 · realm/blong-sport · done_
-
-See phase in plans/sport/plan.md section 11; task checkboxes there are the authority for what
-remains.
-
-P11.1 to P11.4 are all ticked in plans/sport/plan.md and section 12 is checked off item by item; the
-one clause left (one resource row, a person with two roles) is its own todo, T-400.
 
 ### T-412 — Three sport browse shots are still unfiltered and empty
 
@@ -408,23 +304,6 @@ database carrying earlier runs' rows.
 
 pinnedRow + NO_MATCH in bgModels.play.ts; 46 tests pass twice on a database with earlier runs'
 leftovers.
-
-### T-442 — Sport CD Group 1 deployable realm
-
-> _2026-10-27 · realm/blong-sport · done_
-
-Make realm/blong-sport deployable through the existing index.ts: add pkg and the kustomize.deploy
-suite definition, the release block with the blong-sport database connection, party and sport config
-blocks, k8s and upgrade blocks, k8sRealmRole service, the runtime dependencies and vite build, the
-deploy-sport scenario, release-please registration, the gitignore and npmignore entries, the
-blong-sport MySQL user and grant, and the operator and portal TLS and issuer annotations. Verify the
-flat tree, the artifact and dist.
-
-Done: index.ts carries pkg, the kustomize.deploy suite (version from package.json), release db
-config, k8s/upgrade blocks, role service, vite build, deploy-sport scenario, release-please entry,
-ignores, MySQL user and operator/portal TLS. Verified the flat tree (one Deployment), the sport.zip
-artifact (entry, dist, core) and 117 passing kustomize tests; lint added letsencrypt to the
-dictionary.
 
 ### T-459 — Add the feedback realm to the sport suite
 
@@ -616,11 +495,45 @@ square or landscape asset both fit without touching the layout.
 sport-logo.svg is the BOC lockup extracted from plans/sport/Logo BOC_BG.pdf; sport-logo-mark.svg
 carries the emblem for the menubar.
 
+### T-696 — Cover the sport discipline cascade with a Playwright pick
+
+> _2026-11-17 · realm/blong-sport · done_
+
+A Playwright spec should pick a discipline after a sport and assert the narrowed list, so the realm
+proves its own cascade end to end rather than leaning on the blong-browser unit test. The obvious
+home is competition.play.ts: after 'competition.sportId' is set to Athletics, select
+'competition.disciplineId' and expect only Athletics disciplines in the open list — the created
+competition does not have to keep it, choosing and clearing is enough, or pick a real seeded
+discipline and let the row keep it. The reachable option list is in the dropdown answer from
+sport.dropdown.list, which attaches sportId to every discipline option (D-789, D-875). Mind the
+snapshots: the competition new/edit screenshots would change if the field is left filled.
+
+competition.play.ts opens the create page, picks Athletics and asserts the open discipline list
+equals that sport subset of the dropdown answer, naming Marathon in and 200 m Butterfly out. The
+whole file passes, 17 tests.
+
+### T-442 — Make blong-sport a deployable suite entry
+
+> _2026-10-27 · realm/blong-sport · done_
+
+Make realm/blong-sport deployable through the existing index.ts: add pkg and the kustomize.deploy
+suite definition, the release block with the blong-sport database connection, party and sport config
+blocks, k8s and upgrade blocks, k8sRealmRole service, the runtime dependencies and vite build, the
+deploy-sport scenario, release-please registration, the gitignore and npmignore entries, the
+blong-sport MySQL user and grant, and the operator and portal TLS and issuer annotations. Verify the
+flat tree, the artifact and dist.
+
+Done: index.ts carries pkg, the kustomize.deploy suite (version from package.json), release db
+config, k8s/upgrade blocks, role service, vite build, deploy-sport scenario, release-please entry,
+ignores, MySQL user and operator/portal TLS. Verified the flat tree (one Deployment), the sport.zip
+artifact (entry, dist, core) and 117 passing kustomize tests; lint added letsencrypt to the
+dictionary.
+
 ### T-677 — sport: the document model attaches a file
 
 > _2026-11-14 · realm/blong-sport · done_
 
-Planned in `plans/blob/plan.md`.
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
 
 `meta/model/sportDocumentModel.ts` keeps `referenceUrl` — titled "File or Reference URL" — and gives
 it `widget: {type: 'asset', accept: '.pdf,.doc,.docx,.xls,.xlsx,.xml,.json,.txt'}`, beside
@@ -640,12 +553,174 @@ is 868 tests with ci-lint clean. Sport ci-lint clean; its tap run is 16/17 with 
 pre-existing F-732 nomenclature failure on the reused database. The 'opens a document and shows the
 attached file' proof is T-683's Playwright spec.
 
+### T-374 — Scaffold realm/blong-sport and boot it
+
+> _2026-10-23 · realm/blong-sport · done_
+
+Planned in [#298](https://github.com/feasibleone/blong/issues/298).
+
+`kukum realm add --subject=sport --target=./realm/blong-sport --object=athlete` — there is no global
+`kukum`, so run `node core/blong-kukum/bin/kukum.ts realm add …` — then rename the scaffolded
+`entry`/`line` files to `athlete`. The target already holds `.github/memory`, and a probe scaffold
+confirmed it writes alongside and leaves those files untouched. Append the package to `rush.json`
+(**at the end**: Playwright ports derive from the index) and run `rush update`. Boot check:
+`blong <abs path>/realm/blong-sport/index.ts dev --exit=true` must print "Completed running …
+Waiting for file changes", and `blong-dev sql "SHOW TABLES LIKE 'sport_%'"` must show the tables and
+an empty `core_resource`. Wire `party` into `index.ts` and `index.browser.ts` with a `party: {}`
+block, and attach `gateway`: party's `dbTest` ACL-matrix seeds grant an application its scope and
+fail on the missing gateway tables without it (`@@F-581`).
+
+### T-375 — Contribute the three identity columns and personName to blong-party
+
+> _2026-10-23 · realm/blong-sport · done_
+
+Planned in [#298](https://github.com/feasibleone/blong/issues/298).
+
+`internationalName`, `citizenship`, `photoUrl` and `personName` on `party.person` (`@@D-601`,
+`@@D-602`), cited in the schema file; the four fields in `partyPersonModel`'s `personal` card with
+`personName` first; `'party.person'` pointed at `resource: {nameColumn: 'personName'}` with
+`personName` filled in the party seeds and `partyFixture`. Then party's own gates —
+`node --run test` in `realm/blong-party` (77/77 tap assertions) and `ci-lint` — and a re-baseline of
+its Playwright captures, which carry the person label in the browse table and in the ACL targets.
+The re-baseline was needed again once the table widget rendered option labels and kept an ungrouped
+integer (`@@D-612`, `@@D-613`).
+
+### T-376 — Write the sport schema and its seeds
+
+> _2026-10-23 · realm/blong-sport · done_
+
+Planned in [#298](https://github.com/feasibleone/blong/issues/298).
+
+The 23 tables with their constraints in `meta/type/schema.ts` and their orders and
+`resource: {nameColumn}` in `meta/db/db.ts`, plus `meta/db/0-coreTypeMerge.yaml` carrying the eight
+type aliases. The asset's method name decides the target table, so the file must be named for
+`core.type`; a `0-sportTypeMerge.yaml` asks for a `sport.type` table that does not exist. Then the
+production seeds and the test seeds, resolving the shared-PK merge question as it goes and recording
+the outcome (a friction entry, if YAML cannot express it). Verified with `blong-dev sql`: 23 tables,
+the intended FK graph, and a `core_resource` row per seed for every resource-backed table.
+
+### T-377 — Add the shared-PK profile handlers and the sport dropdown
+
+> _2026-10-23 · realm/blong-sport · done_
+
+Planned in [#298](https://github.com/feasibleone/blong/issues/298).
+
+`adapter/db/profile.ts` as one library file (`profileFind`, `profileGet`, `profileCreate`,
+`profileUpdate`) shared by the twenty thin handlers (`sportAthleteFind` … `sportClubEdit`), each one
+file; `adapter/db/dropdownList.ts` serving `sport.dropdown.list`; the twenty gateway overrides in
+`gateway/sport/`; and a server-side tap test `server/test/test/testAthlete.ts` — add → get (person
+fields present) → edit (person changed, id stable) → find (search by last name) → remove. The
+phase's frictions for the shared PK's cost and for the boot and seed traps are `@@F-581` …
+`@@F-584`.
+
+### T-378 — Build the classifier and organisation models
+
+> _2026-10-23 · realm/blong-sport · done_
+
+Planned in [#298](https://github.com/feasibleone/blong/issues/298).
+
+`sportSportModel`, `sportDisciplineModel`, `sportCycleModel`, `sportAreaModel`,
+`sportFederationModel` and `sportClubModel`, with a `browse` card of 4–6 columns and an `identity`
+card that mirrors the schema. Party fixture rows for the two organisation profiles and Storybook
+stories for the seven models (`Reference.stories.tsx`, `Organisations.stories.tsx`). The fixture
+serves all 23 entities; the sports and disciplines are the real Olympic programme and the people,
+clubs and federations are invented and marine-themed, so no screenshot can be mistaken for a real
+record.
+
+### T-379 — Build the people models and their tabbed layouts
+
+> _2026-10-23 · realm/blong-sport · done_
+
+Planned in [#298](https://github.com/feasibleone/blong/issues/298).
+
+`sportAthleteModel` with the `editThumbIndex` of the plan: identification, sports profile, results,
+Olympic status, awards and documents, the last four as read-only lists fed by `profileGet`'s
+projection, and the potential-assessment tab waiting for the qualification reading (`@@D-606`).
+`sportCoachModel` and `sportSpecialistModel` with their tab sets. Fixture rows covering an active
+athlete, a retired athlete and a coach who holds a second role. Stories for the tabbed Open page,
+the flat grid and the split layout; the tabs render in the declared order and the person fields
+appear in identification. The child lists stay empty under the mock — `@@T-386`.
+
+### T-380 — Build the competition models
+
+> _2026-10-23 · realm/blong-sport · done_
+
+Planned in [#298](https://github.com/feasibleone/blong/issues/298).
+
+`sportCompetitionModel` and `sportEditionModel` with the `competitionId` dropdown first — the
+competition page lists its editions, which `sportCompetitionGet` supplies as an array, because a
+resource-backed get returns the row alone — then `sportParticipationModel` and `sportResultModel`.
+The three time-bound tables are not resource-backed, so `sport.dropdown.list` reads `sport.edition`
+and `sport.participation` straight from their tables. Stories for the four, with the fixture
+carrying the chain competition → edition → participation → result so the dropdowns have something to
+show.
+
+### T-381 — Build the Olympic, records and relationship models
+
+> _2026-10-23 · realm/blong-sport · done_
+
+Planned in [#298](https://github.com/feasibleone/blong/issues/298).
+
+`sportCampaignModel` and `sportQualificationModel` (quota card marked TBD in its label);
+`sportDocumentModel`, `sportAttachmentModel`, `sportAwardModel` and `sportConferralModel`, with
+`recipientKind` derived in `sportConferralAdd`/`Edit` — both hand the write to the generic CRUD
+through `super.exec`, and a gateway override stops validation demanding the derived field; then
+`sportCoachingModel`, `sportSupportModel` and `sportAffiliationModel`. Stories for the nine.
+
+### T-382 — Wire the portal and write the fixture
+
+> _2026-10-23 · realm/blong-sport · done_
+
+Planned in [#298](https://github.com/feasibleone/blong/issues/298).
+
+`component/sport.portal.ts` with the seven menu groups (people, organisations, reference,
+competition, Olympic and awards, documents, relationships), `meta/fixture/sportFixture.ts` covering
+all 23 objects and globbed in `browser.ts`, and a portal smoke story — the same shell the Playwright
+portal spec photographs.
+
+### T-383 — Prove the models with Playwright
+
+> _2026-10-23 · realm/blong-sport · done_
+
+Planned in [#298](https://github.com/feasibleone/blong/issues/298).
+
+The eight specs (people, organisations, reference, competition, Olympic, records, relationships,
+portal), each browse + create/edit, minting its own `ENT-PLAY-<prefix>` names and cleaning the
+object before creating it in dependency order (result → participation → edition → competition;
+conferral → attachment → athlete), because a retry re-evaluates the file and a name minted per run
+would change under it. Athlete tab captures and the portal capture; the tabs had to be reachable
+first — the generated Open page asked the editor for `edit`, so a layout declared under
+`editThumbIndex` was never rendered until `IModelSpec.openLayout` named it (`@@D-610`). Final state:
+100 tests green in one run of 1.3 minutes, against the live dev server, with the baseline
+regenerated several times as the layout and the validations changed.
+
+### T-384 — Verify the POC and close the plan
+
+> _2026-10-23 · realm/blong-sport · done_
+
+Planned in [#298](https://github.com/feasibleone/blong/issues/298).
+
+`blong-dev lint --files` on every touched file and `rush build --to` both packages; `ci-lint` clean
+in `blong`, `blong-browser`, `blong-party` and `blong-sport`; the Playwright suites of the other
+nine packages that own captures re-run after the widget changes (access, gateway, commander, realm,
+kopi, suite and marine unchanged, party re-baselined). `blong-dev memory refs --dangling`,
+`refs --sites`, `comply` and `check`: 561 references resolve and `check` reports 0 errors, though
+the realm was untracked at the time, so its own citations are only read once the package is
+committed (`@@F-590`). Then a screenshot review with the owner over 187 captures, whose defect list
+was fixed rather than deferred: the base64 columns (`@@D-612`), the empty child tabs, the year
+thousands separator (`@@D-613`) and the inconsistent athlete tabs (`@@D-611`) — the last also
+applied to the coach and specialist editors. The fifth, the empty Results tab, was the spec's and is
+fixed in `@@T-398`; the stale picture that hid the fix is why the pixel budget is worth revisiting
+(`@@F-591`). The cascade the POC set out to prove landed as `@@T-399`, and the discipline became the
+only classifier under a sport when the category was dropped (`@@D-787`).
+
 ### T-683 — Playwright: the sport document
 
 > _2026-11-14 · realm/blong-sport · done_
 
-Planned in `plans/blob/plan.md`, and done: `test/documentFile.play.ts` attaches a PDF to a document,
-saves it, reopens the record, proves the bytes are served, removes the file and then the record.
+Planned in [#261](https://github.com/feasibleone/blong/issues/261), and done:
+`test/documentFile.play.ts` attaches a PDF to a document, saves it, reopens the record, proves the
+bytes are served, removes the file and then the record.
 
 What it asserts, in the order a person does it: the widget's three calls commit a file and the
 store's own measurements fill `documentFormat` and `checksumValue` (`@@D-852`); the saved record
@@ -666,20 +741,3 @@ with one retry), so the captures repeat.
 
 Spec written and green; the deletion-mode change (D-859) is what unblocked it, and two
 state-dependent captures were replaced with deterministic ones.
-
-### T-696 — Cover the sport discipline cascade with a Playwright pick
-
-> _2026-11-17 · realm/blong-sport · done_
-
-A Playwright spec should pick a discipline after a sport and assert the narrowed list, so the realm
-proves its own cascade end to end rather than leaning on the blong-browser unit test. The obvious
-home is competition.play.ts: after 'competition.sportId' is set to Athletics, select
-'competition.disciplineId' and expect only Athletics disciplines in the open list — the created
-competition does not have to keep it, choosing and clearing is enough, or pick a real seeded
-discipline and let the row keep it. The reachable option list is in the dropdown answer from
-sport.dropdown.list, which attaches sportId to every discipline option (D-789, D-875). Mind the
-snapshots: the competition new/edit screenshots would change if the field is left filled.
-
-competition.play.ts opens the create page, picks Athletics and asserts the open discipline list
-equals that sport subset of the dropdown answer, naming Marathon in and 200 m Butterfly out. The
-whole file passes, 17 tests.

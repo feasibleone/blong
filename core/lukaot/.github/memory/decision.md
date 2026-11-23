@@ -8,6 +8,15 @@ Decisions that were taken, with the reasoning the code does not show. Entries he
 
 active (27)
 
+- `D-901` · core/lukaot — Port the service by identifier, and drop the machinery a declared name
+  makes pointless
+- `D-910` · core/lukaot — The legacy work order is a source census, not a run-time list
+- `D-912` · core/lukaot — The lukaot root stays importable in a page; the logger and store move to
+  ./node
+- `D-913` · core/lukaot — The rewording fault is gone: a message is a declaration now
+- `D-914` · core/lukaot — A decision is declared, and declaring it never changes control flow
+- `D-930` · core/lukaot — The record sink ships in lukaot, not in the viewer
+- `D-940` · core/lukaot — A record that names a flow is attributable without a signal
 - `D-878` · core/lukaot — The declared identifier is the signal's identity, and it carries no
   punctuation
 - `D-879` · core/lukaot — An error signal records when it is created, and throwing is the caller's
@@ -38,257 +47,11 @@ active (27)
 - `D-895` · core/lukaot — The cluster service keeps declared identity, the flow ledger, diagrams and
   search
 - `D-897` · core/lukaot — `pino` leaves the framework and becomes lukaot's transport
-- `D-901` · core/lukaot — Port the service by identifier, and drop the machinery a declared name
-  makes pointless
 - `D-906` · core/lukaot — Payload shapes become declared captures, masked before retention
-- `D-910` · core/lukaot — The legacy work order is a source census, not a run-time list
-- `D-912` · core/lukaot — The lukaot root stays importable in a page; the logger and store move to
-  ./node
-- `D-913` · core/lukaot — The rewording fault is gone: a message is a declaration now
-- `D-914` · core/lukaot — A decision is declared, and declaring it never changes control flow
-- `D-930` · core/lukaot — The record sink ships in lukaot, not in the viewer
-- `D-940` · core/lukaot — A record that names a flow is attributable without a signal
 
 <!-- /memory:index -->
 
 ## Active
-
-### D-878 — The declared identifier is the signal's identity, and it carries no punctuation
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Identity is one camelCase token — `agentTicketNotFound`, `agentTicketSkipped` — so the declaration
-key, the call site, the policy override, the counter and the reference are the same string, and one
-search finds every one of them without quoting. It reads as the semantic triple (subject, object,
-predicate) the rest of the framework is named with, and a dotted form is derived by `methodParts`
-only where a view wants a namespace. Alternative rejected: a dotted key, which needs quotes at every
-site and gives one signal two spellings.
-
-### D-879 — An error signal records when it is created, and throwing is the caller's statement
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-`throw errors.agentTicketNotFound({ticketId})` is one call because construction is the record; the
-gateway's existing handling of `ITypedError` is untouched. `silent: true` declares control flow — a
-nested early exit — that records nothing by default, which is the shape typed errors already had.
-Alternative rejected: a `throw` that reaches the logger, which cannot be detected without wrapping
-caller code.
-
-### D-880 — A vocabulary may be declared imperatively; a signal is never emitted imperatively
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Some names are only known at assembly time — a library computing its keys, a handler group declaring
-inline — so `declare()` may be called from code as well as from a layer file. What the prompt does
-not allow is an imperative _call_: lukaot has no level API, the level is a policy rather than an
-argument, and every emission is a method of a declared vocabulary (`signal?.x?.(…)`). Consequence:
-`log?.(…)` disappears from the tree rather than being given a compatibility identity, which is also
-why no message-derived identity survives anywhere.
-
-### D-881 — The call site is captured at property access, file only by default
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Destructuring the vocabulary through the proxy is the one moment the source is known, so a `get`
-trap records `{file, line, function}` and the dependency edge before the call happens.
-`captureStack: false` keeps it to the file (and line when the frame reports one), which the owner
-chose as sufficient; a full stack is opt-in for a session that is debugging. Capture is skipped for
-a disabled signal, so the cost follows what is switched on.
-
-### D-882 — The declared identifier is the signal's identity, and it carries no punctuation
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Identity is one camelCase token — `agentTicketNotFound`, `agentTicketSkipped` — so the declaration
-key, the call site, the policy override, the counter and the reference are the same string, and one
-search finds every one of them without quoting. It reads as the semantic triple (subject, object,
-predicate) the rest of the framework is named with, and a dotted form is derived by `methodParts`
-only where a view wants a namespace. Alternative rejected: a dotted key, which needs quotes at every
-site and gives one signal two spellings.
-
-### D-883 — An error signal records when it is created, and throwing is the caller's statement
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-`throw errors.agentTicketNotFound({ticketId})` is one call because construction is the record; the
-gateway's existing handling of `ITypedError` is untouched. `silent: true` declares control flow — a
-nested early exit — that records nothing by default, which is the shape typed errors already had.
-Alternative rejected: a `throw` that reaches the logger, which cannot be detected without wrapping
-caller code.
-
-### D-884 — A vocabulary may be declared imperatively; a signal is never emitted imperatively
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Some names are only known at assembly time — a library computing its keys, a handler group declaring
-inline — so `declare()` may be called from code as well as from a layer file. What the prompt does
-not allow is an imperative _call_: lukaot has no level API, the level is a policy rather than an
-argument, and every emission is a method of a declared vocabulary (`signal?.x?.(…)`). Consequence:
-`log?.(…)` disappears from the tree rather than being given a compatibility identity, which is also
-why no message-derived identity survives anywhere.
-
-### D-885 — The call site is captured at property access, file only by default
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Destructuring the vocabulary through the proxy is the one moment the source is known, so a `get`
-trap records `{file, line, function}` and the dependency edge before the call happens.
-`captureStack: false` keeps it to the file (and line when the frame reports one), which the owner
-chose as sufficient; a full stack is opt-in for a session that is debugging. Capture is skipped for
-a disabled signal, so the cost follows what is switched on.
-
-### D-886 — A disabled log signal is absent from the proxy
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Optional chaining is the
-
-discipline the prompt asks for, and it only skips work if the member can be `undefined`: a log
-signal below threshold, disabled by configuration or sampled out resolves to `undefined`, so
-`signal?.x?.({…})` never assembles the record it would not emit. An error signal is never absent —
-it has to return the value the caller throws — so policy can silence its record but never its
-construction.
-
-### D-887 — Policy is an in-process registry, patched by configuration and hot reload
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Declared defaults, then a namespace override (`agent` covers every signal whose identifier begins
-with it) and an exact one (`agentTicketSkipped`), then a runtime patch; the effective policy is read
-at call time. A database-backed store is deferred with a recorded todo, because it needs a schema
-per database and a load path that the in-process registry does not.
-
-### D-888 — The cluster service keeps declared identity, the flow ledger, diagrams and search
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Identity is now a name, so the registry is a counter table keyed by method name; the flow ledger and
-the diagrams are ported unchanged in shape. The embedding provider, centroid geometry, drift and
-incident correlation are dropped: with identity declared, novelty and rate become counts on a name,
-and the geometry was the weakest-evidenced part of v1.
-
-### D-889 — The declared identifier is the signal's identity, and it carries no punctuation
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Identity is one camelCase token — `agentTicketNotFound`, `agentTicketSkipped` — so the declaration
-key, the call site, the policy override, the counter and the reference are the same string, and one
-search finds every one of them without quoting. It reads as the semantic triple (subject, object,
-predicate) the rest of the framework is named with, and a dotted form is derived by `methodParts`
-only where a view wants a namespace. Alternative rejected: a dotted key, which needs quotes at every
-site and gives one signal two spellings.
-
-### D-890 — An error signal records when it is created, and throwing is the caller's statement
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-`throw errors.agentTicketNotFound({ticketId})` is one call because construction is the record; the
-gateway's existing handling of `ITypedError` is untouched. `silent: true` declares control flow — a
-nested early exit — that records nothing by default, which is the shape typed errors already had.
-Alternative rejected: a `throw` that reaches the logger, which cannot be detected without wrapping
-caller code.
-
-### D-891 — A vocabulary may be declared imperatively; a signal is never emitted imperatively
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Some names are only known at assembly time — a library computing its keys, a handler group declaring
-inline — so `declare()` may be called from code as well as from a layer file. What the prompt does
-not allow is an imperative _call_: lukaot has no level API, the level is a policy rather than an
-argument, and every emission is a method of a declared vocabulary (`signal?.x?.(…)`). Consequence:
-`log?.(…)` disappears from the tree rather than being given a compatibility identity, which is also
-why no message-derived identity survives anywhere.
-
-### D-892 — The call site is captured at property access, file only by default
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Destructuring the vocabulary through the proxy is the one moment the source is known, so a `get`
-trap records `{file, line, function}` and the dependency edge before the call happens.
-`captureStack: false` keeps it to the file (and line when the frame reports one), which the owner
-chose as sufficient; a full stack is opt-in for a session that is debugging. Capture is skipped for
-a disabled signal, so the cost follows what is switched on.
-
-### D-893 — A disabled log signal is absent from the proxy
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Optional chaining is the
-
-discipline the prompt asks for, and it only skips work if the member can be `undefined`: a log
-signal below threshold, disabled by configuration or sampled out resolves to `undefined`, so
-`signal?.x?.({…})` never assembles the record it would not emit. An error signal is never absent —
-it has to return the value the caller throws — so policy can silence its record but never its
-construction.
-
-### D-894 — Policy is an in-process registry, patched by configuration and hot reload
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Declared defaults, then a namespace override (`agent` covers every signal whose identifier begins
-with it) and an exact one (`agentTicketSkipped`), then a runtime patch; the effective policy is read
-at call time. A database-backed store is deferred with a recorded todo, because it needs a schema
-per database and a load path that the in-process registry does not.
-
-### D-895 — The cluster service keeps declared identity, the flow ledger, diagrams and search
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-Identity is now a name, so the registry is a counter table keyed by method name; the flow ledger and
-the diagrams are ported unchanged in shape. The embedding provider, centroid geometry, drift and
-incident correlation are dropped: with identity declared, novelty and rate become counts on a name,
-and the geometry was the weakest-evidenced part of v1.
-
-### D-897 — `pino` leaves the framework and becomes lukaot's transport
-
-> _2026-11-18 · core/lukaot · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-`Log.ts`,
-
-`pino-cacache.ts`, `pino-pretty.ts` and the `pino` dependency move out of `core/blong-gogo` and into
-the library, so one component owns the wire format: lukaot decides that a signal was emitted, pino
-writes it, and lukaot supplies both renderings — the JSON line and the coloured human line
-`semantic-log` prints today — plus the on-disk cache `blong-dev     log` reads. The framework keeps
-no opinion about format, and a third-party sink is a pino transport rather than an `ILog`
-implementation.
 
 ### D-901 — Port the service by identifier, and drop the machinery a declared name makes pointless
 
@@ -326,41 +89,6 @@ One field was widened rather than worked around: FlowState.kind is optional on a
 identity a call inherits may name a flow execution and no kind, and the ledger already treats a
 kindless flow as an execution whose steps are retained but which contributes to no per-kind union.
 Requiring the field forced either a fabricated kind or a flow the type could not express.
-
-### D-906 — Payload shapes become declared captures, masked before retention
-
-> _2026-11-19 · core/lukaot · active_
-
-The payload-shaped sites D-904 left un-converted become **captures**: a declared identifier with a
-shape, a detail rung and an optional note, rendered by a per-shape renderer and masked before
-anything is retained. The design is written up in `plans/lukaot/capture.md`; this entry keeps the
-choices that the code will not show.
-
-A capture resolves **per adapter instance**, not per adapter type, and a shape can be switched off
-on its own. The view is built when the port instance is built, from that instance's own
-configuration, so an instance that turned a shape off has no member for it at all and the call chain
-runs through the optional chaining without a call, a closure or a payload. That is the grain an
-operator needs: capture is turned on for the one adapter being debugged, and its siblings of the
-same type pay nothing.
-
-Masking reuses `redact.ts`'s path language and, more importantly, its position before every sink, so
-a withheld value is absent from the ring buffer and the retained store rather than only from output.
-It gains partial and hash modes, case-insensitive header names and byte ranges for fixed-offset
-frames; a shape ships a floor of rules and a scope may only add to it, never remove it.
-
-The payload is never constructed for a call that will not record. The slot is absent per instance
-and per shape (D-893), and the payload itself rides a thunk that the policy decides whether to
-invoke — which is what lets a selector target one method of one adapter without paying for the
-packet at the other call sites of the same port.
-
-A capture earns its own entry in the store instead of folding into a shape, because a captured
-payload is one-of-a-kind and the store's denoise would otherwise keep the newest one and a count.
-Over the 1024 byte threshold its bulk rides the existing payload reference.
-
-Error objects are not captures — a failure is already a signal (D-890) — but they showed what the
-vocabulary must support for them: **one declared identifier per case**, not a shared fallback. The
-seven `warn(error)` sites are seven different failures, and silencing one of them must not silence
-the others.
 
 ### D-910 — The legacy work order is a source census, not a run-time list
 
@@ -515,5 +243,278 @@ the level API at debug, so a process configured at info produced none at all. Wh
 calls is the calls capability, not the level threshold - @@D-223 says so and says there is no
 fallback if they stop being produced - so the channel now binds its own logger at debug and the
 write path skips the terminal for a call record unless log.calls.stdout asks for it.
+
+### D-878 — The declared identifier is the signal's identity, and it carries no punctuation
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Identity is one camelCase token — `agentTicketNotFound`, `agentTicketSkipped` — so the declaration
+key, the call site, the policy override, the counter and the reference are the same string, and one
+search finds every one of them without quoting. It reads as the semantic triple (subject, object,
+predicate) the rest of the framework is named with, and a dotted form is derived by `methodParts`
+only where a view wants a namespace. Alternative rejected: a dotted key, which needs quotes at every
+site and gives one signal two spellings.
+
+### D-879 — An error signal records when it is created, and throwing is the caller's statement
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`throw errors.agentTicketNotFound({ticketId})` is one call because construction is the record; the
+gateway's existing handling of `ITypedError` is untouched. `silent: true` declares control flow — a
+nested early exit — that records nothing by default, which is the shape typed errors already had.
+Alternative rejected: a `throw` that reaches the logger, which cannot be detected without wrapping
+caller code.
+
+### D-880 — A vocabulary may be declared imperatively; a signal is never emitted imperatively
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Some names are only known at assembly time — a library computing its keys, a handler group declaring
+inline — so `declare()` may be called from code as well as from a layer file. What the prompt does
+not allow is an imperative _call_: lukaot has no level API, the level is a policy rather than an
+argument, and every emission is a method of a declared vocabulary (`signal?.x?.(…)`). Consequence:
+`log?.(…)` disappears from the tree rather than being given a compatibility identity, which is also
+why no message-derived identity survives anywhere.
+
+### D-881 — The call site is captured at property access, file only by default
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Destructuring the vocabulary through the proxy is the one moment the source is known, so a `get`
+trap records `{file, line, function}` and the dependency edge before the call happens.
+`captureStack: false` keeps it to the file (and line when the frame reports one), which the owner
+chose as sufficient; a full stack is opt-in for a session that is debugging. Capture is skipped for
+a disabled signal, so the cost follows what is switched on.
+
+### D-882 — The declared identifier is the signal's identity, and it carries no punctuation
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Identity is one camelCase token — `agentTicketNotFound`, `agentTicketSkipped` — so the declaration
+key, the call site, the policy override, the counter and the reference are the same string, and one
+search finds every one of them without quoting. It reads as the semantic triple (subject, object,
+predicate) the rest of the framework is named with, and a dotted form is derived by `methodParts`
+only where a view wants a namespace. Alternative rejected: a dotted key, which needs quotes at every
+site and gives one signal two spellings.
+
+### D-883 — An error signal records when it is created, and throwing is the caller's statement
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`throw errors.agentTicketNotFound({ticketId})` is one call because construction is the record; the
+gateway's existing handling of `ITypedError` is untouched. `silent: true` declares control flow — a
+nested early exit — that records nothing by default, which is the shape typed errors already had.
+Alternative rejected: a `throw` that reaches the logger, which cannot be detected without wrapping
+caller code.
+
+### D-884 — A vocabulary may be declared imperatively; a signal is never emitted imperatively
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Some names are only known at assembly time — a library computing its keys, a handler group declaring
+inline — so `declare()` may be called from code as well as from a layer file. What the prompt does
+not allow is an imperative _call_: lukaot has no level API, the level is a policy rather than an
+argument, and every emission is a method of a declared vocabulary (`signal?.x?.(…)`). Consequence:
+`log?.(…)` disappears from the tree rather than being given a compatibility identity, which is also
+why no message-derived identity survives anywhere.
+
+### D-885 — The call site is captured at property access, file only by default
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Destructuring the vocabulary through the proxy is the one moment the source is known, so a `get`
+trap records `{file, line, function}` and the dependency edge before the call happens.
+`captureStack: false` keeps it to the file (and line when the frame reports one), which the owner
+chose as sufficient; a full stack is opt-in for a session that is debugging. Capture is skipped for
+a disabled signal, so the cost follows what is switched on.
+
+### D-886 — A disabled log signal is absent from the proxy
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Optional chaining is the
+
+discipline the prompt asks for, and it only skips work if the member can be `undefined`: a log
+signal below threshold, disabled by configuration or sampled out resolves to `undefined`, so
+`signal?.x?.({…})` never assembles the record it would not emit. An error signal is never absent —
+it has to return the value the caller throws — so policy can silence its record but never its
+construction.
+
+### D-887 — Policy is an in-process registry, patched by configuration and hot reload
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Declared defaults, then a namespace override (`agent` covers every signal whose identifier begins
+with it) and an exact one (`agentTicketSkipped`), then a runtime patch; the effective policy is read
+at call time. A database-backed store is deferred with a recorded todo, because it needs a schema
+per database and a load path that the in-process registry does not.
+
+### D-888 — The cluster service keeps declared identity, the flow ledger, diagrams and search
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Identity is now a name, so the registry is a counter table keyed by method name; the flow ledger and
+the diagrams are ported unchanged in shape. The embedding provider, centroid geometry, drift and
+incident correlation are dropped: with identity declared, novelty and rate become counts on a name,
+and the geometry was the weakest-evidenced part of v1.
+
+### D-889 — The declared identifier is the signal's identity, and it carries no punctuation
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Identity is one camelCase token — `agentTicketNotFound`, `agentTicketSkipped` — so the declaration
+key, the call site, the policy override, the counter and the reference are the same string, and one
+search finds every one of them without quoting. It reads as the semantic triple (subject, object,
+predicate) the rest of the framework is named with, and a dotted form is derived by `methodParts`
+only where a view wants a namespace. Alternative rejected: a dotted key, which needs quotes at every
+site and gives one signal two spellings.
+
+### D-890 — An error signal records when it is created, and throwing is the caller's statement
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`throw errors.agentTicketNotFound({ticketId})` is one call because construction is the record; the
+gateway's existing handling of `ITypedError` is untouched. `silent: true` declares control flow — a
+nested early exit — that records nothing by default, which is the shape typed errors already had.
+Alternative rejected: a `throw` that reaches the logger, which cannot be detected without wrapping
+caller code.
+
+### D-891 — A vocabulary may be declared imperatively; a signal is never emitted imperatively
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Some names are only known at assembly time — a library computing its keys, a handler group declaring
+inline — so `declare()` may be called from code as well as from a layer file. What the prompt does
+not allow is an imperative _call_: lukaot has no level API, the level is a policy rather than an
+argument, and every emission is a method of a declared vocabulary (`signal?.x?.(…)`). Consequence:
+`log?.(…)` disappears from the tree rather than being given a compatibility identity, which is also
+why no message-derived identity survives anywhere.
+
+### D-892 — The call site is captured at property access, file only by default
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Destructuring the vocabulary through the proxy is the one moment the source is known, so a `get`
+trap records `{file, line, function}` and the dependency edge before the call happens.
+`captureStack: false` keeps it to the file (and line when the frame reports one), which the owner
+chose as sufficient; a full stack is opt-in for a session that is debugging. Capture is skipped for
+a disabled signal, so the cost follows what is switched on.
+
+### D-893 — A disabled log signal is absent from the proxy
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Optional chaining is the
+
+discipline the prompt asks for, and it only skips work if the member can be `undefined`: a log
+signal below threshold, disabled by configuration or sampled out resolves to `undefined`, so
+`signal?.x?.({…})` never assembles the record it would not emit. An error signal is never absent —
+it has to return the value the caller throws — so policy can silence its record but never its
+construction.
+
+### D-894 — Policy is an in-process registry, patched by configuration and hot reload
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Declared defaults, then a namespace override (`agent` covers every signal whose identifier begins
+with it) and an exact one (`agentTicketSkipped`), then a runtime patch; the effective policy is read
+at call time. A database-backed store is deferred with a recorded todo, because it needs a schema
+per database and a load path that the in-process registry does not.
+
+### D-895 — The cluster service keeps declared identity, the flow ledger, diagrams and search
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+Identity is now a name, so the registry is a counter table keyed by method name; the flow ledger and
+the diagrams are ported unchanged in shape. The embedding provider, centroid geometry, drift and
+incident correlation are dropped: with identity declared, novelty and rate become counts on a name,
+and the geometry was the weakest-evidenced part of v1.
+
+### D-897 — `pino` leaves the framework and becomes lukaot's transport
+
+> _2026-11-18 · core/lukaot · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`Log.ts`,
+
+`pino-cacache.ts`, `pino-pretty.ts` and the `pino` dependency move out of `core/blong-gogo` and into
+the library, so one component owns the wire format: lukaot decides that a signal was emitted, pino
+writes it, and lukaot supplies both renderings — the JSON line and the coloured human line
+`semantic-log` prints today — plus the on-disk cache `blong-dev     log` reads. The framework keeps
+no opinion about format, and a third-party sink is a pino transport rather than an `ILog`
+implementation.
+
+### D-906 — Payload shapes become declared captures, masked before retention
+
+> _2026-11-19 · core/lukaot · active_
+
+The payload-shaped sites D-904 left un-converted become **captures**: a declared identifier with a
+shape, a detail rung and an optional note, rendered by a per-shape renderer and masked before
+anything is retained. The design was written up beside the plan, which has since been archived; this
+entry keeps the choices that the code will not show, and the issue is
+[#277](https://github.com/feasibleone/blong/issues/277).
+
+A capture resolves **per adapter instance**, not per adapter type, and a shape can be switched off
+on its own. The view is built when the port instance is built, from that instance's own
+configuration, so an instance that turned a shape off has no member for it at all and the call chain
+runs through the optional chaining without a call, a closure or a payload. That is the grain an
+operator needs: capture is turned on for the one adapter being debugged, and its siblings of the
+same type pay nothing.
+
+Masking reuses `redact.ts`'s path language and, more importantly, its position before every sink, so
+a withheld value is absent from the ring buffer and the retained store rather than only from output.
+It gains partial and hash modes, case-insensitive header names and byte ranges for fixed-offset
+frames; a shape ships a floor of rules and a scope may only add to it, never remove it.
+
+The payload is never constructed for a call that will not record. The slot is absent per instance
+and per shape (D-893), and the payload itself rides a thunk that the policy decides whether to
+invoke — which is what lets a selector target one method of one adapter without paying for the
+packet at the other call sites of the same port.
+
+A capture earns its own entry in the store instead of folding into a shape, because a captured
+payload is one-of-a-kind and the store's denoise would otherwise keep the newest one and a count.
+Over the 1024 byte threshold its bulk rides the existing payload reference.
+
+Error objects are not captures — a failure is already a signal (D-890) — but they showed what the
+vocabulary must support for them: **one declared identifier per case**, not a shared fallback. The
+seven `warn(error)` sites are seven different failures, and silencing one of them must not silence
+the others.
 
 ## Superseded

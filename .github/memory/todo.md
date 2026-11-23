@@ -69,10 +69,7 @@ open (72)
 - `T-414` · docs — Translate typed error messages from the error type
 - `T-415` · docs — Seed an RBAC role for translation editors
 - `T-435` · cross-cutting — Prove a translated read with a database test
-- `T-440` · ci — Sport CD deferred scope
 - `T-493` · cross-cutting — Four refusals cannot be declared until they are typed
-- `T-583` · docs — Group 8: docs/blong/docs/patterns/agent-engine.md — the engine port
-- `T-584` · skills — Group 8: .github/skills/blong-agent/SKILL.md so a later agent finds
 - `T-061` · cross-cutting — `ext/rest-fs` could move under `tools/` once the CI globs land
 - `T-619` · cross-cutting — Schema sync drops constraints the schema no longer declares
 - `T-622` · cross-cutting — The dev MySQL is pinned at its 768Mi limit, which stalls every query
@@ -80,6 +77,9 @@ open (72)
 - `T-646` · cross-cutting — A PDF preview needs a rasteriser in the image
 - `T-647` · cross-cutting — The blob store cannot be chosen per namespace yet
 - `T-688` · cross-cutting — lintFix should say when prettier skipped a path
+- `T-440` · ci — Track the sport CD work this plan leaves out
+- `T-583` · docs — Write the agent-engine pattern page
+- `T-584` · skills — Write the blong-agent skill
 
 done (58)
 
@@ -89,15 +89,10 @@ done (58)
 - `T-356` · ci — Make red mean a failed test, not a flaky one
 - `T-355` · ci — Build blong-dev ci, the publisher fix and the blong-ci skill
 - `T-407` · docs — Document the label-column pattern in the doc site
-- `T-446` · ci — Sport CD Group 5 generic release pipeline
-- `T-448` · docs — Sport CD Group 7 documentation
-- `T-447` · ci — Sport CD Group 6 operator endpoint wiring
-- `T-441` · ci — Sport CD Group 0 cluster substrate
 - `T-480` · docs — Write the feedback concept page
 - `T-481` · docs — Write the feedback pattern page
 - `T-482` · docs — Describe the feature in the skills and the glossary
 - `T-483` · docs — Write the blog post for the feature
-- `T-484` · cross-cutting — Close the feedback plan tasks with their evidence
 - `T-521` · docs — Document the webhook port and correct the affected skills
 - `T-338` · cross-cutting — The memory files mention 57 ids whose entries are gone
 - `T-597` · docs — Count ArchifyDiagram embeds in docs verify
@@ -107,12 +102,24 @@ done (58)
 - `T-641` · ci — Skip the declaration bundle when not publishing
 - `T-642` · ci — Decide how dependency releases reach the deploy workflow
 - `T-643` · docs — Redraw the deployment diagram for the batch trigger
+- `T-654` · cross-cutting — Group 1 verification
+- `T-678` · cross-cutting — Suite wiring and the claim each realm declares
+- `T-691` · ci — Regenerate and gate every committed kustomize tree, not only the suite the e2e
+  deploys
+- `T-695` · cross-cutting — Thirteen packages typecheck everything except their server test flows
+- `T-726` · cross-cutting — Create the lukaot plan's Slack channel once a call target exists
+- `T-727` · cross-cutting — Invite the owner into the plan-lukaot channel
+- `T-733` · cross-cutting — Sweep the level calls the lukaot plan left behind
+- `T-734` · cross-cutting — A package-scoped vocabulary seam, then the last 15 level calls
+- `T-441` · ci — Recreate the dev cluster with Traefik and cert-manager
+- `T-446` · ci — Add the config-driven release deployment workflow
+- `T-447` · ci — Wire the operator endpoint secret and certificate
+- `T-448` · docs — Document the sport deployment and the operator install
 - `T-648` · cross-cutting — Register the `blong-blob` package and scaffold the realm
 - `T-650` · cross-cutting — The filesystem store behind one adapter vocabulary
 - `T-651` · cross-cutting — Encryption and integrity as injected library functions
 - `T-652` · cross-cutting — The error layer
 - `T-653` · cross-cutting — `blob.blob.add` and `blob.blob.get`, the embedded path
-- `T-654` · cross-cutting — Group 1 verification
 - `T-656` · cross-cutting — The upload session: `prepare`, `commit`, `discard`
 - `T-657` · cross-cutting — The streaming upload route
 - `T-658` · cross-cutting — The streaming read route
@@ -128,20 +135,13 @@ done (58)
 - `T-679` · cross-cutting — Group 5 verification
 - `T-680` · cross-cutting — The secrets the companion carries
 - `T-681` · cross-cutting — The realm's tap groups
-- `T-678` · cross-cutting — Suite wiring and the claim each realm declares
 - `T-684` · docs — Glossary, concept and pattern pages
 - `T-685` · cross-cutting — The package README
-- `T-691` · ci — Regenerate and gate every committed kustomize tree, not only the suite the e2e
-  deploys
-- `T-695` · cross-cutting — Thirteen packages typecheck everything except their server test flows
-- `T-726` · cross-cutting — Create the lukaot plan's Slack channel once a call target exists
-- `T-727` · cross-cutting — Invite the owner into the plan-lukaot channel
 - `T-716` · cross-cutting — Rename the reference scheme to `lukaot://` in the editor and the dev CLI
 - `T-724` · cross-cutting — Retire `core/semantic-log` and every reference to it
 - `T-725` · cross-cutting — Follow the cache into lukaot in `blong-dev log`
-- `T-733` · cross-cutting — Sweep the level calls the lukaot plan left behind
 - `T-723` · docs — Rewrite the semantic-log docs as lukaot pages
-- `T-734` · cross-cutting — A package-scoped vocabulary seam, then the last 15 level calls
+- `T-484` · cross-cutting — Close the feedback plan tasks with their evidence
 
 <!-- /memory:index -->
 
@@ -870,18 +870,6 @@ language, so a regression fails in seconds instead of needing a browser. test/bl
 group in realm/blong-sport are the natural homes; the join helpers in knex.ts are not exported,
 which is why no unit test exists.
 
-### T-440 — Sport CD deferred scope
-
-> _2026-10-27 · ci · open_
-
-The first deployment deploys one monolith from a `blong-sport-v<version>` release. Still open:
-pull-request preview deployments with their own namespace and lifecycle; automatic deployment on a
-framework-only release, since a suite release or workflow_dispatch is the trigger; shared volumes
-and an RWX provider instead of nodeLocal; a real gitops adapter behind kustomizeGitopsPush, because
-the seam is a no-op; and a pipeline for the operator's own kustomize.zip, which remains manual. The
-trigger, artifact, transport and cluster-ingress choices are settled by D-639, D-642, D-643 and
-D-644.
-
 ### T-493 — Four refusals cannot be declared until they are typed
 
 > _2026-10-30 · cross-cutting · open_
@@ -898,21 +886,6 @@ To find the rest, grep for `assert.rejects` and `assert.fail(` across realm, cor
 and check each site's failing call for an `expect`. Already declared after build 648: the access
 browser flows, the feedback flow, the sport and kopi templates (so every scaffolded realm inherits
 it) and the handler-test-poc order invariants.
-
-### T-583 — Group 8: docs/blong/docs/patterns/agent-engine.md — the engine port
-
-> _2026-10-31 · docs · open_
-
-plans/agent/plan.md, Group 8 Docs. `docs/blong/docs/patterns/agent-engine.md` — the agent adapter,
-step and native modes, checkpoint and resume, the task adapter and `blong-task`, the wake-up broker,
-and `blong-chat` as the interruption surface (via **blong-docs**).
-
-### T-584 — Group 8: .github/skills/blong-agent/SKILL.md so a later agent finds
-
-> _2026-10-31 · skills · open_
-
-plans/agent/plan.md, Group 8 Docs. `.github/skills/blong-agent/SKILL.md` so a later agent finds the
-realm by its description.
 
 ### T-061 — `ext/rest-fs` could move under `tools/` once the CI globs land
 
@@ -1017,6 +990,36 @@ file's mtime or hash before and after and print a line saying it was skipped, or
 return the files it actually rewrote so the caller can say
 `· <path> was ignored by prettier — nothing repaired`. The second is what `explain` needs anyway,
 and the instruction's "confirm with `git diff`" becomes advice rather than a required step.
+
+### T-440 — Track the sport CD work this plan leaves out
+
+> _2026-10-27 · ci · open_
+
+The first deployment deploys one monolith from a `blong-sport-v<version>` release. Still open:
+pull-request preview deployments with their own namespace and lifecycle; automatic deployment on a
+framework-only release, since a suite release or workflow_dispatch is the trigger; shared volumes
+and an RWX provider instead of nodeLocal; a real gitops adapter behind kustomizeGitopsPush, because
+the seam is a no-op; and a pipeline for the operator's own kustomize.zip, which remains manual. The
+trigger, artifact, transport and cluster-ingress choices are settled by D-639, D-642, D-643 and
+D-644.
+
+### T-583 — Write the agent-engine pattern page
+
+> _2026-10-31 · docs · open_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`docs/blong/docs/patterns/agent-engine.md` — the agent adapter, step and native modes, checkpoint
+and resume, the task adapter and `blong-task`, the wake-up broker, and `blong-chat` as the
+interruption surface (via **blong-docs**).
+
+### T-584 — Write the blong-agent skill
+
+> _2026-10-31 · skills · open_
+
+Planned in [#299](https://github.com/feasibleone/blong/issues/299).
+
+`.github/skills/blong-agent/SKILL.md` so a later agent finds the realm by its description.
 
 ## Done
 
@@ -1162,66 +1165,6 @@ docs/blong/docs/patterns/foreign-key-labels.md describes the body/labels contrac
 column comes from, the two-keys-to-one-table alias, the super.exec caveat for a read override, and a
 table of the column options.
 
-### T-446 — Sport CD Group 5 generic release pipeline
-
-> _2026-10-27 · ci · done_
-
-Add .github/deployments.json as a map of deployment aliases with the sport entry, and
-.github/workflows/deploy.yaml triggered by release published and workflow_dispatch. Resolve the
-alias, tag, package, scenario and version, read the framework version from the release manifest,
-wait for the public image, build and attach the artifact to the release, and call DEPLOY_ENDPOINT
-with DEPLOY_TOKEN. A second suite must be addable by config alone.
-
-Done: .github/deployments.json maps aliases to release/package/scenario/artifact and
-.github/workflows/deploy.yaml resolves a `<component>-v<version>` release (or dispatch), reads the
-framework version from the manifest, waits for the GHCR image, builds and attaches the scenario zip
-with its sha256, and calls the token-gated route with jq-built JSON-RPC. The tag-to-alias jq binding
-was corrected and the arithmetic verified for blong-sport-v0.1.0; a real run waits for the first
-sport release and the DEPLOY\_\* secrets.
-
-### T-448 — Sport CD Group 7 documentation
-
-> _2026-10-27 · docs · done_
-
-Document the sport deployment. realm/blong-sport/README.md (the realm had none) documents the
-artifact, the entry, the namespace, the portal, the certificate, the database, the release trigger
-and the local cycle, and the test-seed rule. docs/blong/docs/patterns/deployment.md documents
-.github/deployments.json, the generic deploy.yaml, the token-gated route, where an address comes
-from and the cluster prerequisites, with the sport entry as the worked example of adding another
-suite. The kustomize skill gains the sport scenario and realm/blong-kustomize/README.md gains the
-operator install section. Lint is clean and the Docusaurus build succeeds.
-
-### T-447 — Sport CD Group 6 operator endpoint wiring
-
-> _2026-10-27 · ci · done_
-
-The local half is done: blong-operator-release exists in blong-system with a generated token, the
-operator ingress certificate blong-operator-tls is Ready on the production issuer, and the public
-release route answered 200 with the token and 401 tokenMismatch without it. The address is not in
-the repository: it comes from kustomize.deploy.operator.ingress.host in the local .blong_k8src.
-
-Both repository secrets now exist. The endpoint is the operator's release route over the production
-certificate, and the token matches the one the blong-operator-release Secret carries; the workflow
-also no-ops on a release that names no deployment, so a release-please batch cannot turn Deploy red.
-
-### T-441 — Sport CD Group 0 cluster substrate
-
-> _2026-10-27 · ci · done_
-
-Recreate dev-cluster with Traefik enabled and 80/443 published from /home/kalin/k3d-create. Install
-cert-manager v1.21.3 in test/integration/cert-manager as its own kustomization, because the
-integration tree rewrites namespaces, and from its Helm chart rather than a vendored manifest:
-`helmCharts:` with a pinned version plus the Namespace the chart does not create, applied as
-`kubectl kustomize --enable-helm … | kubectl apply -f -`. Add staging and production Let's Encrypt
-HTTP-01 ClusterIssuers on the traefik class, apply the issuer after the webhook, and prove a staging
-certificate for a probe host reaches Ready. Record the ACME order and challenge result, remove the
-temporary Ingress and Secret, and confirm Traefik has an external address. Stop before the
-production issuer if the challenge cannot reach the host.
-
-k3d-create now maps host 8080/8443 to Traefik 80/443 and keeps ServiceLB; cert-manager v1.21.3 comes
-from its chart and staging/production issuers are installed; a staging certificate for the probe
-host reached Ready with a valid ACME order, and the temporary test objects were removed.
-
 ### T-480 — Write the feedback concept page
 
 > _2026-10-28 · docs · done_
@@ -1275,22 +1218,6 @@ URL), why the identifier is a path (with a mermaid flow from click to agent), wh
 does, and a quoted blong-feedback v1 document. Two pictures, copied from the spec's baselines by
 D-668. Also fixed the last stale editor segment the prose renderer still printed, in prose.ts, the
 tap flow's ids and the review fixture; the realm's tap suite is 7/7 and the docs site builds.
-
-### T-484 — Close the feedback plan tasks with their evidence
-
-> _2026-10-28 · cross-cutting · done_
-
-Close every todo of the feedback plan with a note, and finish on a clean memory check refs and
-memory comply. Plan section 9.
-
-Every box in plans/feedback/plan.md is ticked: the six implementation groups, the seven UI
-revisions, the off-path optimisation, the stories and the Playwright spec, and the four
-documentation tasks. Evidence: core/blong-browser 74 files / 733 tests, realm/blong-feedback tap
-7/7, sport stories 70/70, feedback.play.ts green three times with four fresh baselines,
-portal.play.ts and people.play.ts 9/9 on the off path, the docs site builds, blong-dev lint clean on
-every touched file, memory check --refs 0 errors, 714 references resolve, comply clean. The only
-entry left from the plan is T-486, the dev-only purge handler, which the spec's mark-processed queue
-emptying made unnecessary.
 
 ### T-521 — Document the webhook port and correct the affected skills
 
@@ -1462,106 +1389,6 @@ zips and posts, and the `approve` route beside it as the same leg. Both posters 
 the Archify CLI through `stage-diagrams --only=blong-deployment`, and the renderer's validate,
 deliver, check and browser-check gates pass.
 
-### T-648 — Register the `blong-blob` package and scaffold the realm
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`blong realm blong-blob` from the `blong-kopi` template into `realm/blong-blob`, the empty
-`realm/blong-asset/` folder removed, the project added to `rush.json` after `core/blong-asset`, and
-`server.ts` declaring `k8s: {k8sRealmRole: 'companion'}` (@@D-845). The package exports
-`./server.ts`, `./browser.ts` and `./index.ts` the way `realm/blong-sport` does, and its
-`tsconfig.json` allows `.ts` import extensions. Nothing else is scaffolded: no `adapter/db`, no
-`meta/type`, no `subject` orchestrator (@@D-837).
-
-- verify: `node common/scripts/install-run-rush.js update` exits 0 and
-  `grep -c '"projectFolder": "realm/blong-blob"' rush.json` is 1.
-
-realm/blong-blob scaffolded from kopi, model/db layers removed, registered in rush.json after
-core/blong-asset, role companion; package lints clean
-
-### T-650 — The filesystem store behind one adapter vocabulary
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`realm/blong-blob/adapter/storage.ts` activating the store, and the handler group under
-`adapter/storage/`: `storageStorePut`, `storageStoreGet`, `storageStoreHead`, `storageStoreFind`,
-`storageStoreRemove`, plus the `storageMetaMerge` library that writes and reads `IBlobMeta`. `put`
-and `get` take and return a `Readable` — `cacache.put.stream` and `cacache.get.stream` — and never
-buffer a whole file. Metadata rides in cacache's index, so `head` is `cacache.get.info` and `find`
-is `cacache.ls` filtered by prefix (@@D-838). The store answers for one namespace at a time, its
-directory being `<blob.filesystem.directory>/<namespace>`, and refuses a namespace the configuration
-does not name (@@D-845).
-
-- verify: `cd realm/blong-blob && blong-dev test` stores 1 byte, 16 bytes and 1 MiB, streams each
-  back byte-identical, and answers the same metadata from `head` as from `get`.
-
-cacache store in adapter/storage (blobStoragePut/Get/Head/Find/Remove + storageLib), mechanics in
-storageCache.ts so the round trip is proven by tap: 1 byte, 16 bytes and 1 MiB byte-identical, head
-equals get; unnamed namespace refused. The framework tap entry hangs (F-728), so the package test
-runs the tap file until the tap-groups task
-
-### T-651 — Encryption and integrity as injected library functions
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`adapter/storage/storageCipher.ts` and `storageDigest.ts`: a `library()` that builds
-`crypto.createCipheriv` / `createDecipheriv` from `ut-function.cbc`, generates a random 16-byte IV
-per blob, records `{algorithm, iv}` in the metadata and returns a `Transform` the store pipes
-content through (@@D-839). The plaintext SHA-256 is computed on the way in and verified on the way
-out, destroying the stream on a mismatch. `ut-function.cbc` needs the module declaration the other
-packages carry — a `types/ut-function.cbc/index.d.ts` copied from `realm/blong-login/types/`.
-
-- verify: `blong-dev test` round-trips 1 byte (a partial final block), 16 bytes and 1 MiB; two
-  identical files produce different ciphertext; a flipped ciphertext byte surfaces `blob.corrupt`.
-
-storageCipher (node AES-256-CBC stream, random IV per blob, key from config) and storageDigest
-(tap + verify to blob.corrupt) exposed through storageLib; 55 assertions over 1 byte, 16 bytes and 1
-MiB, identical files differing, wrong key refused (D-846 refines D-839)
-
-### T-652 — The error layer
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`realm/blong-blob/error/error.ts` with `blob.notFound` (404), `blob.scopeDenied` (403),
-`blob.tooLarge` (413), `blob.extensionNotAllowed` (415), `blob.contentTypeMismatch` (415),
-`blob.uploadExpired` (410), `blob.uploadIncomplete` (409), `blob.storageFailed` (502) and
-`blob.corrupt` (500). Each carries the parameters it needs to name the key it failed on, so a log
-line identifies the blob without the caller repeating it.
-
-- verify: `blong-dev test` asserts the status code and the rendered message of each.
-
-error/error.ts with the nine planned errors plus namespaceUnknown and the two crypto ones; every
-message parameterised and rendered without a leftover placeholder, status codes asserted
-(404/403/413/415/410/409/502/500)
-
-### T-653 — `blob.blob.add` and `blob.blob.get`, the embedded path
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-The two handlers that carry a small file inside a JSON call: `add` accepts
-`{namespace, contentBase64, contentType, filename, scopes, temporary}` up to
-`blob.upload.base64MaxBytes` and answers `{key, uri, size, digest}`; `get` answers the metadata, and
-the content as base64 when `content: 'base64'` (@@D-840). Both validate the extension against the
-built-in table
-(`bin, csv, doc, docx, html, jpeg, jpg, pdf, png, txt, xls, xlsx, xml, json, yaml, mp3, mp4`) and
-its content types, the table `ut-document` carries, extended with the two media types.
-
-- verify: `blong-dev test` adds a 64 KiB PNG and reads it back byte-identical; a `.exe` and a
-  `text/plain` declaring a `.pdf` are both refused.
-
-blob.blob.add and blob.blob.get with the ut-document content-type table extended by mp3/mp4; 64 KiB
-PNG round-trips byte-identical through cipher+store+digest, .exe and a text/plain .pdf refused
-
 ### T-654 — Group 1 verification
 
 > _2026-11-14 · cross-cutting · done_
@@ -1574,339 +1401,6 @@ the five store handlers, the cipher, the digest and the embedded `add`/`get` pai
 tap assertions under `adapter/`, `orchestrator/` and `error/`; `npm run ci-lint` and `npm test` both
 exit 0 in the package. The framework tap entry is not yet made to run — that is F-728, owned by the
 tap-groups task.
-
-### T-656 — The upload session: `prepare`, `commit`, `discard`
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`orchestrator/upload/` — `prepare` takes `{namespace, contentType, filename, size, scopes}`, mints a
-ULID key, writes `state: 'pending'` metadata with the caller's scopes, `expiresAt = now + tempTtl`
-and the allowed size and content type, and answers `{key, uploadUrl}`; `commit` checks that the
-bytes arrived and their digest, derives the variants and flips the state; `discard` removes whatever
-exists (@@D-840). `commit` also accepts `scopes`, `temporary` and `cacheControl` so the form can
-settle them at submit time rather than at upload time. A namespace the configuration does not name
-is refused in `prepare`, so the decision is made once rather than at every later step (@@D-845).
-
-- verify: `blong-dev test` walks prepare → discard, prepare → commit, and prepare → expire →
-  `blob.uploadExpired` on commit.
-
-blob.upload.prepare writes a pending record before any byte arrives, commit refuses
-expired/incomplete and flips the record through a metadata-only index write, discard removes content
-and record; blobStorageMetaPut + cacache entry-index, 58 store assertions include the content
-surviving a metadata update
-
-### T-657 — The streaming upload route
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`gateway/blob/blobUploadWrite.ts` — `PUT /a/:namespace/u/:uploadId` with the bearer auth the gateway
-applies by default, `bodyLimit: blob.upload.maxBytes`, piping the request stream through the cipher
-into the store and answering `204` (@@D-841). The namespace and key come from
-`operation.parameters`; a key whose metadata names another namespace is refused, so a caller cannot
-write into one it did not prepare (@@D-845).
-
-- verify: `server/test` injects a 8 MiB body and asserts the stored size and digest; a second `PUT`
-  to a committed key answers `409`.
-
-PUT /a/:namespace/u/:uploadId (bearer auth by default, bodyLimit declared, body stream handed to the
-handler by the gateway), handler counts/hashes/encrypts into the store through a PassThrough and
-corrects the record in place; 147 package assertions, the upload test streams 8 MiB and reads it
-back through the digest
-
-### T-658 — The streaming read route
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`gateway/blob/blobRead.ts` and `gateway/blob/blobReadHead.ts` — `GET /a/:namespace/:key`,
-`HEAD /a/:namespace/:key` and `GET /a/:namespace/:key/thumb` with `auth: false`, setting
-`Content-Type`, `Content-Length`, `ETag`, `Cache-Control` and `Content-Disposition` from the blob's
-metadata through `$meta.httpResponse`, answering `304` for a matching `If-None-Match` and `206` for
-a `Range` (@@D-836 @@D-845). A range on encrypted content is served by decrypting and discarding the
-bytes before the offset, aligned to the cipher block — S3 answers a range natively where the backend
-offers it.
-
-- verify: `server/test` asserts inline and `?download=1`, `304`, `206` with a correct
-  `Content-Range`, and that no query builder is touched on the path.
-
-GET/HEAD /a/:namespace/:key and /thumb, auth false, scope cookie verified in-process, ETag/304,
-Range/206 with Content-Range, download disposition, decrypt+digest in the serving pipeline; 27
-assertions over headers, ranges, tampering and the cookie
-
-### T-659 — The scope cookie
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`orchestrator/scope/scopeIssue.ts` sets the signed cookie through `$meta.httpResponse.state` with
-`Path=/a/`; `scopeTokenSign` and `scopeTokenVerify` live in a library, HMAC-SHA256 over the payload
-with `blob.cookie.secret`, and `scopeCollect` calls the configured providers in order (@@D-836). An
-expired or badly signed cookie is ignored rather than refused, so an anonymous blob still opens and
-a scoped one answers `403`.
-
-- verify: `blong-dev test` issues, verifies, rejects a tampered token, rejects an expired one, and
-  serves an `anonymous` blob with no cookie.
-
-blob.scope.issue collects the configured providers' scopes (provider order kept, actor from
-$meta.auth, authenticated added), signs an HMAC-SHA256 cookie in blobScopeSign and sets it through
-$meta.httpResponse.state scoped to /a/; blob/blobSettings.ts is the one place a group slice plus the
-port block becomes settings, and orchestrator/blobDispatch.ts is the port that serves blob.\*; 211
-assertions across 10 files, ci-lint clean.
-
-### T-660 — Scope providers in the consuming realms
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`party.scope.grant` in `realm/blong-party/orchestrator/scope/` answering `party:person:<id>`,
-`party:org:<id>` for every organisation the person belongs to, and `party:unit:<id>` for every unit;
-`sport.scope.grant` in `realm/blong-sport` answering the club and federation scopes the person
-holds. Both take the actor from `$meta.auth.actorId` and read the triples the party graph already
-holds — no new table (@@D-836).
-
-- verify: `blong-dev test` in each package asserts the tokens for a seeded person and an empty list
-  for a person with no edges.
-
-party.scope.grant walks user --hasProfile--> person, person --belongsTo--> unit, unit --isPartOf-->
-unit up the tree and unit --belongsTo--> organisation, answering party:person/unit/org tokens;
-sport.scope.grant reads the athlete and coach profile rows the person's id owns, answering
-party:person, sport:club and sport:federation tokens. Both take the actor from $meta.auth and accept
-personId only on a system call; both check the person row exists. party test.scope is green (81
-assertions), sport test.scope adds 4 passing assertions (the package's pre-existing nomenclature
-failure is recorded as F-732).
-
-### T-661 — Temporary cleanup
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`orchestrator/temp/blobTempCleanup.ts` walks `blob.blob.find` for everything whose `expiresAt` has
-passed in every namespace, removes it with `blob.blob.remove`, and answers `{removed, bytes}`. It is
-a handler, not a timer: the schedule is the deployment's, because a realm that schedules its own
-cleanup runs it once per replica (@@D-840).
-
-- verify: `blong-dev test` creates three expired and one live blob and asserts that only the three
-  are gone and the live one still serves.
-
-blob.temp.cleanup sweeps every namespace the store configures (storage.blob.namespace.find), removes
-each record past its expiresAt before a given now through blob.blob.remove and answers {removed,
-bytes}. The cleanup needed two handlers the plan's vocabulary named but no task built, so
-blob.blob.find and blob.blob.remove were written here: find wraps the store's listing
-(prefix/expiredBefore) and remove takes the record, its variants (each a key of its own) and counts
-the bytes. gateway/temp/blobTempCleanup.ts is the route a deployment's scheduler calls. 214
-assertions green.
-
-### T-662 — Image variants at commit
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`orchestrator/upload/uploadVariants.ts` runs `sharp` over a `jpeg`/`png` blob when
-`blob.variants.enabled`, writes a `thumb` — and a `normal` or a `crop` when the metadata asks — as
-derived blobs with the parent in their `originalFilename`, and records their keys in the parent's
-metadata (@@D-844). `sharp` is a native module: it goes in the realm's dependencies, and the image's
-Debian base already carries what its prebuilt binary needs.
-
-- verify: `blong-dev test` commits a 1200x800 PNG and asserts a 160x160 thumbnail whose bytes differ
-  from the original's, and that a `txt` blob produces no variant.
-
-orchestrator/upload/uploadVariants.ts (sharp) derives thumb 160x160 always and normal/crop on
-request, decrypting the parent into memory, encoding to the parent's format, encrypting each result
-as a blob of its own (key `<parent>-<variant>`, parent's filename and scopes) and answering the
-variant map blob.upload.commit writes onto the record. blob/blobVariants.ts holds the settings and
-the pure decisions; variants are off by default and switched on in the run's config. sharp 0.34.5
-added as a dependency with its build approved in common/config/rush/pnpm-config.json. The commit no
-longer keeps the upload window's expiresAt (D-848). 216 assertions green.
-
-### T-663 — Group 2 verification
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-The group is done when a browser could stream a file in and a browser client could stream it out
-with only a cookie.
-
-- verify: `cd realm/blong-blob && blong-dev test && npm run ci-lint`.
-
-realm/blong-blob: npm run ci-lint clean (tsc, cspell, eslint) and blong-dev test exit 0 with 216
-assertions across 11 files — the storage round trip, the embedded add/get, the upload session, the
-streaming write and read routes, the scope cookie round trip, the temp sweep and the image variants.
-The gateway routes PUT /a/:ns/u/:id and GET /a/:ns/:key[/thumb] are registered and covered by the
-read/write groups.
-
-### T-665 — The S3 store with sidecar metadata
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`adapter/s3.ts` declaring `extends: 'adapter.s3'` and the group under `adapter/s3/`: `s3StorePut`,
-`s3StoreGet`, `s3StoreHead`, `s3StoreFind`, `s3StoreRemove` and `s3MetaMerge`, writing the content
-under `<prefix><key>` and the metadata under `<prefix><key>.meta.json`, so one head and one get
-answer a read (@@D-838). The adapter is configured with `forcePathStyle: true` for MinIO; the
-protocol detail stays in the adapter, and the orchestrator picks a backend by config alone.
-
-- verify: `blong-dev test` in `realm/blong-blob` with `blob.store: s3` against the dev MinIO passes
-  the Group 1 and Group 2 suites unchanged.
-
-adapter/s3Store.ts (extends adapter.s3, namespace storage, forcePathStyle) plus the adapter/s3Store/
-group answer the same storage.blob.put/get/head/find/remove/meta.put the orchestrator calls, so no
-handler names a backend (D-849). Every blob is two objects — `<prefix><namespace>/<key>` and the
-same name with .meta.json — so head and get are one small read plus (for get) a streamed body; find
-follows the continuation token and skips records. The backend is the config: the realm's default
-block sets s3Store:false and a deployment names blob.s3Store and sets blob.store:false. The
-framework's s3 add now sends unknown-length streams through @aws-sdk/lib-storage's Upload (D-850).
-Verified: blong-dev test with BLOB_BACKEND=s3 against the dev MinIO passes 234 assertions, the same
-234 pass on the filesystem default, and the framework suite is 1218/0.
-
-### T-666 — Backend selection and `blob.storage.info`
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`orchestrator/storage/blobStorageInfo.ts` answers the configured backend, whether it streams
-natively, whether it ranges, its metadata ceiling and its last failure — which is what a deployment
-probe and the widget use to decide between a stream and a base64 call. The selection is one config
-key with a TypeBox union, so a typo fails at load rather than at the first upload.
-
-- verify: `blong-dev test` asserts both backends answer their capabilities, and a bad `store` value
-  fails activation with a message naming the allowed values.
-
-blob.storage.info calls the active backend's own storage.info (both groups answer it: cacache and s3
-say {backend, streams: true, ranges: true, metadataCeiling: null}) and adds the realm's
-base64Ceiling; the s3 store reports the last failure it noted through one s3StoreExec wrapper, kept
-on the adapter's context. The backend choice is the pair of blocks (blob.store / blob.s3Store, the
-other false) and the realm now validates them with a TypeBox union, so a wrong value fails at load
-with 'Invalid configuration for blob: blob.s3Store: expected object, found true' (verified by
-running the suite with s3Store: true), while a mistyped key is refused by the loader's unknown-key
-check. Verified: 242 assertions on the filesystem backend and 242 on MinIO, both exit 0.
-
-### T-668 — Group 3 verification
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-The group is done when the store is a configuration value rather than a code path.
-
-- verify: `cd realm/blong-blob && blong-dev test && npm run ci-lint`, then the same suite with
-  `blob.store: s3`.
-
-Group 3 verified: realm/blong-blob is lint clean and its suite is 242/242 on the filesystem backend
-and 242/242 with BLOB_BACKEND=s3 against the dev MinIO (identical assertions, only the config
-differs), and test/blong-int-adapter blob.test.ts is 6/6 against the same bucket. The store is a
-configuration value: blob.store false + blob.s3Store names the bucket, the other way round names a
-directory, and neither reaches a handler.
-
-### T-672 — The browser session orchestrator
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`realm/blong-blob/browser.ts` and `browser/orchestrator/scope/blobScopeIssue.ts` — after the app has
-a session, call `blob.scope.issue` once and again when the user's roles or profile change, so the
-cookie is never older than the session it was minted from (@@D-836). The call is best-effort: a
-suite that has no blob realm is unaffected, and a failure leaves the images broken rather than the
-page.
-
-- verify: `npm run ci-test` in `realm/blong-blob` (browser) asserts one issue call per login and a
-  second after a role change.
-
-The realm publishes the cookie's method through portalConfigGet
-(browser/orchestrator/scope/blobScopeIssue.ts) so a suite that attaches blong-blob gets the cookie
-with no configuration, and the shell mints it: a new IPortalConfig.blob.issue block (carried by
-mergePortalConfigs), and an App effect that issues once per session and again when the actor or its
-grants change — keyed on a new sessionKey helper so a re-render is not a second cookie — best
-effort, no method no call, failure logged away. Four App tests cover once-per-session, again after a
-grant, none without a method, and the page staying up on failure; sessionKey and the blob block have
-their own tests. Deviation recorded as D-851: a realm browser test group cannot call a sibling port
-(findHandlers walks the calling port's importedMap), so the cadence is proven in blong-browser and
-the realm's tap run is untouched at 242/242. blong-browser 867 tests, ci-lint clean; realm ci-lint
-clean. The gateway denies blob.scope.issue over HTTP (Authorization denied) — no claim grants it;
-folded into T-678 with a verify line.
-
-### T-679 — Group 5 verification
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-- verify: `npm run ci-test` exits 0 in `realm/blong-party`, `realm/blong-access` and
-  `realm/blong-sport`.
-
-npm run ci-test exits 0 in all three realms: party (tap 85/85, Playwright 16/16), access (tap 70/70,
-Playwright 32/32), sport (tap 17/17, Playwright 134/134). The party and sport visual baselines were
-regenerated for the intended changes and the pictures confirm them: the person editor shows the
-'Photograph' asset field and the document editor 'File or Reference URL' with Format and Checksum
-beside it. Two environment problems had to be dealt with first: the access profile spec inherits the
-language the tap suite leaves (F-734, reset before the run) and sport's F-732 turned out to be its
-own test finding an athlete by surname alone — now filtered by the run's stamp and green twice on
-the same database.
-
-### T-680 — The secrets the companion carries
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-The realm declares `k8sSecrets` as a generator entry — `blobSecrets`, an `envs` reference to a file
-the suite owns, never a literal — and `k8sEnv` mapping `BLOB_CBC_KEY` and `BLOB_COOKIE_SECRET` from
-it, so every process that carries the companion can both write and verify (@@D-839 @@D-836). It
-declares no volume and no port of its own: the claim belongs to the realm that writes and the route
-rides the host process's gateway (@@D-845).
-
-- verify: `blong-dev test` in `realm/blong-kustomize` renders one `blobSecrets` generator entry and
-  both variables in a process that carries the realm.
-
-The companion carries its credentials as references. orchestrator/blobDispatch.ts declares k8sEnv
-for BLOB_CBC_KEY and BLOB_COOKIE_SECRET, each a secretKeyRef into blobSecrets, and blobSettings
-falls back to those variables when the config names no key — so a released process gets its key and
-cookie secret from the cluster without either entering the tree. The Secret itself is the suite's
-(kustomize.deploy.secrets, a generator entry over a file the deployment owns): a companion cannot
-declare one, because the plan collects secrets only from ports of realms that own a process. Proof:
-sport's generated deployment carries both variables from blobSecrets, and a new case in
-realm/blong-kustomize's plan-find test (140/140) asserts one blobSecrets generator entry plus both
-variables for a process carrying the realm. The tree's secrets/ folder itself is not written
-although the root kustomization lists it — recorded as F-739.
-
-### T-681 — The realm's tap groups
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`server/test/test/` gains one group per capability — storage, crypto, upload, read, scope, cleanup,
-variants, s3 — wired into `integration.watch.test` in the realm's `index.ts`, because a group that
-is not listed there silently never runs (**blong-test-api**). Each group asserts the behaviour and
-the refusal, not only the happy path.
-
-- verify: `cd realm/blong-blob && blong-dev test --coverage` reports every group and no uncovered
-  handler.
-
-server/test/test/ now has one group per capability, all seven listed in integration.watch.test:
-test.storage, test.crypto, test.upload, test.read, test.scope, test.temp, test.variants. The three
-new ones assert behaviour and refusal: crypto round-trips the plaintext, shows the bytes at rest are
-not it (aes-256-cbc with a per-blob IV, two equal files encrypted differently) and catches a digest
-that no longer matches the plaintext; upload walks prepare → write → commit, a stored key refusing a
-second write, an unprepared key refused at both write and commit, and a discarded reservation gone;
-read answers the record's type and plaintext length, the bytes for a named download, a missing key
-as notFound, and a scope the cookie does not hold as denied. blob.thumb — the only handler with no
-coverage — is now exercised from the variants group (100% functions). 256/256 on cacache and 256/256
-with BLOB_BACKEND=s3 (that run is the s3 capability, on top of the s3Store unit test); every
-handler's functions are covered, the remaining uncovered lines being the S3 failure branch and the
-cleanup refusals.
 
 ### T-678 — Suite wiring and the claim each realm declares
 
@@ -1923,40 +1417,6 @@ grant because the route carries `auth: false` and the scope cookie instead.
 Superseded in part by T-686: the value the cookie needs is now generated by the operator into the
 suite's own secret document (`@@D-856`), so the `blobSecrets` generator entry this task placed in
 the suite is gone and F-739 no longer applies.
-
-### T-684 — Glossary, concept and pattern pages
-
-> _2026-11-14 · docs · done_
-
-Planned in `plans/blob/plan.md`.
-
-`blong-dev glossary add` for `blob`, `blob store`, `blob reference` and `scope cookie`, then a
-concept page (`docs/blong/docs/concepts/blob.md`) for what a stored blob is and a pattern page
-(`docs/blong/docs/patterns/blob.md`) for wiring one: the vocabulary, the three-phase upload, the
-cookie, the two backends and their different limits. The `asset server` entry gains one clause
-saying it is not this, so the two names cannot be confused again (@@D-835).
-
-- verify: `blong-dev glossary check` and
-  `blong-dev lint --files docs/blong/docs/concepts/blob.md docs/blong/docs/patterns/blob.md` exit 0.
-
-docs/blong/docs/concepts/blob.md and docs/blong/docs/patterns/blob.md written; glossary gained blob,
-blob store, blob reference and scope cookie (42 entries, check green) and the asset server entry now
-says it is not the blob store. blong-dev lint clean on all four files.
-
-### T-685 — The package README
-
-> _2026-11-14 · cross-cutting · done_
-
-Planned in `plans/blob/plan.md`.
-
-`realm/blong-blob/README.md` in the shape `core/blong-asset` and `realm/blong-gateway` use: what the
-realm is, the wire names, the routes, the configuration block, the two backends and the scaling
-limit of each.
-
-- verify: `blong-dev lint --files realm/blong-blob/README.md` exits 0.
-
-realm/blong-blob/README.md written in the shape the other packages use: wire names, routes,
-configuration, the two backends and the scaling limit that separates them; blong-dev lint clean.
 
 ### T-691 — Regenerate and gate every committed kustomize tree, not only the suite the e2e deploys
 
@@ -2055,90 +1515,6 @@ the omission cannot repeat.
 The orphaned first channel is left in the workspace with only the bot in it; the owner can archive
 it from Slack's admin console.
 
-### T-716 — Rename the reference scheme to `lukaot://` in the editor and the dev CLI
-
-> _2026-11-18 · cross-cutting · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-`ext/rest-fs/src/extension.ts` resolves `lukaot://r/<id>` and `lukaot://p/<id>` links, and
-`tools/blong-dev/src/commands/log.ts` recognises them when it prints and rewrites entries. The
-cspell entries follow.
-
-- verify: `cd tools/blong-dev && blong-dev test` passes, and a link printed by a dev run opens the
-  record in the editor.
-
-REF_SCHEME is lukaot; the editor resolves `lukaot://r|p|t` links (`p` added, `x` deliberately not a
-link since nothing is retained under a trace); the dev CLI's log comment follows; lukaot 1416
-assertions, blong-dev 1868, rest-fs lint and types clean.
-
-Correction (2026-11-19): `semlog://` is matched _as well_, not nowhere. A smoke run of
-`demo/blong-hello` still prints `[semlog://t/<ref>]` on every line, because the process logs through
-`@feasibleone/semantic-log` until the emitter is swapped (T-715) and both packages read the same
-`~/.blong/log-cache`. Dropping the old spelling stopped a freshly printed line from opening
-anything, so the provider registers both schemes and the regex accepts both; the old spelling goes
-when T-715 does (@@F-765).
-
-### T-724 — Retire `core/semantic-log` and every reference to it
-
-> _2026-11-18 · cross-cutting · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-`core/semantic-log` is out of the tree: the folder is deleted, its `rush.json` project entry is
-gone, and `rush update` relinked the workspace at 55 projects. Nothing imports it — no
-`package.json` in the repository named it, and the two code files that still mentioned it in prose
-(`callTrace.ts`, `lukaot/src/attachable.ts`) now describe lukaot. `core/lukaot/src/cache.ts`'s guard
-message said "semantic-log cache: unsafe … id" and now names the package that guards it.
-
-What the deletion cost, and the repair. Thirteen `@@` citations in _other_ packages' memory pointed
-at entries that lived in the retired package (`T-102`, `D-249`, `D-230`, `D-226`, `D-279`, `D-500`)
-and were therefore dangling. Each was detached rather than retargeted, because the reasoning
-travelled out with the package: the sentence now says what happened ("a decision retired with the
-semantic-log package") and the citation is gone, so a reader knows the detail is not in the tree
-rather than being sent to an id that resolves to nothing. `Q-001` in `core/blong-gogo`'s faq had
-lost its only citation that way and now points at `@@D-889`, which holds the identity decision
-lukaot was founded on.
-
-The lesson is worth keeping: a package's memory is cited by its neighbours, so retiring the package
-is also a migration of the citations. `blong-dev memory refs --dangling` is what found all thirteen,
-and it should be run _before_ the deletion to see what will break.
-
-Gates: `lukaot` 1470 assertions, `blong-gogo` 1216, both lint clean; `memory check` 0 errors in 105
-files (three fewer than before, one per deleted memory file); 1151 references resolve.
-
-Package deleted, rush.json and lockfile updated, docker manifests regenerated, 13 citations detached
-with the reason, both suites green.
-
-### T-725 — Follow the cache into lukaot in `blong-dev log`
-
-> _2026-11-18 · cross-cutting · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-`blong-dev log` reads the store lukaot writes — the same cacache directory (`index-v5`/`content-v2`)
-and the same record shape, so the command needed no re-pointing; what it lacked was the _identity_.
-A converted call site no longer writes a sentence as its identity, so a reader grepping the CLI's
-output for `frameworkWatchFileChanged` found nothing: the identifier lives in the record's fields
-under `signal`, and a capture's under `capture` with its `shape` and `rung`.
-
-Done (2026-11-19): the compact line prints them (`signal=frameworkDebugEnabled`,
-`capture=frameworkHttpExchange shape=http.exchange rung=headers`), and two filters name them —
-`--signal <id>` and `--capture <id>` — so one declared identifier's records are reachable from the
-CLI rather than by piping the whole cache through grep. Verified against the real cache:
-`--signal frameworkDebugEnabled` answers 3 of 10000 entries across both emitters' records.
-
-Found on the way, and fixed: `core/lukaot`'s `exports` map declares `types: ./dist/*.d.ts` but
-nothing in the package forced `dist` into a published tarball — `dist` is gitignored, so `npm pack`
-dropped it. The publish guard (`publishGuard.test.ts`) reported the four declaration entry points as
-declared, built and _unpublished_, which is the same failure F-488 records for `semantic-log`. A
-`files` array now names the entry shims, `src`, `dist` and the README, and the guard is green.
-
-Gates: `blong-dev` 1868 assertions, the publish guard 16/16, `lukaot` lint clean.
-
-Identities printed and filterable; lukaot now publishes its declared declarations (publish guard
-green).
-
 ### T-733 — Sweep the level calls the lukaot plan left behind
 
 > _2026-11-19 · cross-cutting · done_
@@ -2202,48 +1578,6 @@ are in `core/blong-mock`, `core/blong-browser` and `core/blong-chain` — packag
 so a declared name has nowhere to be attached; that is T-734 and the decision behind it is D-911,
 not an unfinished conversion.
 
-### T-723 — Rewrite the semantic-log docs as lukaot pages
-
-> _2026-11-18 · docs · done_
-
-Planned in `plans/lukaot/plan.md`.
-
-`concepts/semantic-log.md`, `patterns/semantic-log.md`, `patterns/semantic-log-flows.md` and
-`rationale/semantic-log.md` become the lukaot concept, pattern, flows and rationale pages: the
-vocabulary replaces the masked hash as the identity, the policy block replaces the level argument,
-and the dropped detectors are recorded as deliberately not built with the reasoning. Update every
-page that links them —
-`concepts/{dependencies,memory,playwright,naming,api,     glossary,checkpoint}.md` and
-`patterns/{test,memory,rbac,playwright}.md` — and check the glossary through the tool, not by hand.
-
-- verify: `cd docs/blong && node --run build` succeeds and `blong-dev docs check` is clean.
-
-The four `semantic-log` pages are gone and four `lukaot` pages replace them, one per tier, plus a
-blog post. The structure the user asked for is by **kind**: the concept page is one page with a
-four-row table, the pattern page has a dedicated section per kind, and each section puts the code a
-service writes today beside the declaration — log, error, capture, decision — then the field
-reference and the property the declaration buys. The rationale page is the evolution: a sentence,
-structured logging, the previous package's derived identity, then declared identity, with what was
-kept and what was dropped named rather than implied.
-
-Detail was carried over rather than dropped: the masking/simplification tables of the flow fixtures,
-the column-by-column legend of the generated diagrams, the fault table (F3 removed, with the
-reason), the "what the flows do not draw" table, the runner commands, and the honest statements
-about what is not built. Two sections of the old pattern page were **not** carried: the
-retention/cache design notes and the requirement-to-test register, because both described the
-retired package's internals and its parity matrix test, neither of which exists under `core/lukaot`.
-That is the one place this rewrite loses detail, and it is detail about code that is gone.
-
-The artifact register was repointed too — `flows.artifact`, `flows.transfer-single` and
-`flows.transfer-inter` now run in `core/lukaot` with `LUKAOT_UPDATE_DIAGRAMS=1`, and
-`blong-dev docs check --only` reports all three up to date. `blong-dev docs check` also regenerated
-`concepts/layer.md`'s activation diagram, which now lists `lukaot` among the layers the
-microservice, k8s and upgrade intents load — a diff worth having.
-
-Every link in the tree was retargeted (six pages, two older blog posts) and the site builds with
-`onBrokenLinks: 'throw'`, which is the proof. The glossary term `semantic log` became `lukaot`,
-added through `blong-dev glossary add` so it landed in sorted position.
-
 ### T-734 — A package-scoped vocabulary seam, then the last 15 level calls
 
 > _2026-11-19 · cross-cutting · done_
@@ -2287,8 +1621,679 @@ One thing worth carrying: the standalone proxy in the new fault test was created
 and answered 503 while recording nothing — the degradation working as designed, and the reminder
 that a fixture's participant needs its declarations as much as a realm's port does (`@@T-735`).
 
+### T-441 — Recreate the dev cluster with Traefik and cert-manager
+
+> _2026-10-27 · ci · done_
+
+Recreate dev-cluster with Traefik enabled and 80/443 published from /home/kalin/k3d-create. Install
+cert-manager v1.21.3 in test/integration/cert-manager as its own kustomization, because the
+integration tree rewrites namespaces, and from its Helm chart rather than a vendored manifest:
+`helmCharts:` with a pinned version plus the Namespace the chart does not create, applied as
+`kubectl kustomize --enable-helm … | kubectl apply -f -`. Add staging and production Let's Encrypt
+HTTP-01 ClusterIssuers on the traefik class, apply the issuer after the webhook, and prove a staging
+certificate for a probe host reaches Ready. Record the ACME order and challenge result, remove the
+temporary Ingress and Secret, and confirm Traefik has an external address. Stop before the
+production issuer if the challenge cannot reach the host.
+
+k3d-create now maps host 8080/8443 to Traefik 80/443 and keeps ServiceLB; cert-manager v1.21.3 comes
+from its chart and staging/production issuers are installed; a staging certificate for the probe
+host reached Ready with a valid ACME order, and the temporary test objects were removed.
+
+### T-446 — Add the config-driven release deployment workflow
+
+> _2026-10-27 · ci · done_
+
+Add .github/deployments.json as a map of deployment aliases with the sport entry, and
+.github/workflows/deploy.yaml triggered by release published and workflow_dispatch. Resolve the
+alias, tag, package, scenario and version, read the framework version from the release manifest,
+wait for the public image, build and attach the artifact to the release, and call DEPLOY_ENDPOINT
+with DEPLOY_TOKEN. A second suite must be addable by config alone.
+
+Done: .github/deployments.json maps aliases to release/package/scenario/artifact and
+.github/workflows/deploy.yaml resolves a `<component>-v<version>` release (or dispatch), reads the
+framework version from the manifest, waits for the GHCR image, builds and attaches the scenario zip
+with its sha256, and calls the token-gated route with jq-built JSON-RPC. The tag-to-alias jq binding
+was corrected and the arithmetic verified for blong-sport-v0.1.0; a real run waits for the first
+sport release and the DEPLOY\_\* secrets.
+
+### T-447 — Wire the operator endpoint secret and certificate
+
+> _2026-10-27 · ci · done_
+
+The local half is done: blong-operator-release exists in blong-system with a generated token, the
+operator ingress certificate blong-operator-tls is Ready on the production issuer, and the public
+release route answered 200 with the token and 401 tokenMismatch without it. The address is not in
+the repository: it comes from kustomize.deploy.operator.ingress.host in the local .blong_k8src.
+
+Both repository secrets now exist. The endpoint is the operator's release route over the production
+certificate, and the token matches the one the blong-operator-release Secret carries; the workflow
+also no-ops on a release that names no deployment, so a release-please batch cannot turn Deploy red.
+
+### T-448 — Document the sport deployment and the operator install
+
+> _2026-10-27 · docs · done_
+
+Document the sport deployment. realm/blong-sport/README.md (the realm had none) documents the
+artifact, the entry, the namespace, the portal, the certificate, the database, the release trigger
+and the local cycle, and the test-seed rule. docs/blong/docs/patterns/deployment.md documents
+.github/deployments.json, the generic deploy.yaml, the token-gated route, where an address comes
+from and the cluster prerequisites, with the sport entry as the worked example of adding another
+suite. The kustomize skill gains the sport scenario and realm/blong-kustomize/README.md gains the
+operator install section. Lint is clean and the Docusaurus build succeeds.
+
+### T-648 — Register the `blong-blob` package and scaffold the realm
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`blong realm blong-blob` from the `blong-kopi` template into `realm/blong-blob`, the empty
+`realm/blong-asset/` folder removed, the project added to `rush.json` after `core/blong-asset`, and
+`server.ts` declaring `k8s: {k8sRealmRole: 'companion'}` (@@D-845). The package exports
+`./server.ts`, `./browser.ts` and `./index.ts` the way `realm/blong-sport` does, and its
+`tsconfig.json` allows `.ts` import extensions. Nothing else is scaffolded: no `adapter/db`, no
+`meta/type`, no `subject` orchestrator (@@D-837).
+
+- verify: `node common/scripts/install-run-rush.js update` exits 0 and
+  `grep -c '"projectFolder": "realm/blong-blob"' rush.json` is 1.
+
+realm/blong-blob scaffolded from kopi, model/db layers removed, registered in rush.json after
+core/blong-asset, role companion; package lints clean
+
+### T-650 — The filesystem store behind one adapter vocabulary
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`realm/blong-blob/adapter/storage.ts` activating the store, and the handler group under
+`adapter/storage/`: `storageStorePut`, `storageStoreGet`, `storageStoreHead`, `storageStoreFind`,
+`storageStoreRemove`, plus the `storageMetaMerge` library that writes and reads `IBlobMeta`. `put`
+and `get` take and return a `Readable` — `cacache.put.stream` and `cacache.get.stream` — and never
+buffer a whole file. Metadata rides in cacache's index, so `head` is `cacache.get.info` and `find`
+is `cacache.ls` filtered by prefix (@@D-838). The store answers for one namespace at a time, its
+directory being `<blob.filesystem.directory>/<namespace>`, and refuses a namespace the configuration
+does not name (@@D-845).
+
+- verify: `cd realm/blong-blob && blong-dev test` stores 1 byte, 16 bytes and 1 MiB, streams each
+  back byte-identical, and answers the same metadata from `head` as from `get`.
+
+cacache store in adapter/storage (blobStoragePut/Get/Head/Find/Remove + storageLib), mechanics in
+storageCache.ts so the round trip is proven by tap: 1 byte, 16 bytes and 1 MiB byte-identical, head
+equals get; unnamed namespace refused. The framework tap entry hangs (F-728), so the package test
+runs the tap file until the tap-groups task
+
+### T-651 — Encryption and integrity as injected library functions
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`adapter/storage/storageCipher.ts` and `storageDigest.ts`: a `library()` that builds
+`crypto.createCipheriv` / `createDecipheriv` from `ut-function.cbc`, generates a random 16-byte IV
+per blob, records `{algorithm, iv}` in the metadata and returns a `Transform` the store pipes
+content through (@@D-839). The plaintext SHA-256 is computed on the way in and verified on the way
+out, destroying the stream on a mismatch. `ut-function.cbc` needs the module declaration the other
+packages carry — a `types/ut-function.cbc/index.d.ts` copied from `realm/blong-login/types/`.
+
+- verify: `blong-dev test` round-trips 1 byte (a partial final block), 16 bytes and 1 MiB; two
+  identical files produce different ciphertext; a flipped ciphertext byte surfaces `blob.corrupt`.
+
+storageCipher (node AES-256-CBC stream, random IV per blob, key from config) and storageDigest
+(tap + verify to blob.corrupt) exposed through storageLib; 55 assertions over 1 byte, 16 bytes and 1
+MiB, identical files differing, wrong key refused (D-846 refines D-839)
+
+### T-652 — The error layer
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`realm/blong-blob/error/error.ts` with `blob.notFound` (404), `blob.scopeDenied` (403),
+`blob.tooLarge` (413), `blob.extensionNotAllowed` (415), `blob.contentTypeMismatch` (415),
+`blob.uploadExpired` (410), `blob.uploadIncomplete` (409), `blob.storageFailed` (502) and
+`blob.corrupt` (500). Each carries the parameters it needs to name the key it failed on, so a log
+line identifies the blob without the caller repeating it.
+
+- verify: `blong-dev test` asserts the status code and the rendered message of each.
+
+error/error.ts with the nine planned errors plus namespaceUnknown and the two crypto ones; every
+message parameterised and rendered without a leftover placeholder, status codes asserted
+(404/403/413/415/410/409/502/500)
+
+### T-653 — `blob.blob.add` and `blob.blob.get`, the embedded path
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+The two handlers that carry a small file inside a JSON call: `add` accepts
+`{namespace, contentBase64, contentType, filename, scopes, temporary}` up to
+`blob.upload.base64MaxBytes` and answers `{key, uri, size, digest}`; `get` answers the metadata, and
+the content as base64 when `content: 'base64'` (@@D-840). Both validate the extension against the
+built-in table
+(`bin, csv, doc, docx, html, jpeg, jpg, pdf, png, txt, xls, xlsx, xml, json, yaml, mp3, mp4`) and
+its content types, the table `ut-document` carries, extended with the two media types.
+
+- verify: `blong-dev test` adds a 64 KiB PNG and reads it back byte-identical; a `.exe` and a
+  `text/plain` declaring a `.pdf` are both refused.
+
+blob.blob.add and blob.blob.get with the ut-document content-type table extended by mp3/mp4; 64 KiB
+PNG round-trips byte-identical through cipher+store+digest, .exe and a text/plain .pdf refused
+
+### T-656 — The upload session: `prepare`, `commit`, `discard`
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`orchestrator/upload/` — `prepare` takes `{namespace, contentType, filename, size, scopes}`, mints a
+ULID key, writes `state: 'pending'` metadata with the caller's scopes, `expiresAt = now + tempTtl`
+and the allowed size and content type, and answers `{key, uploadUrl}`; `commit` checks that the
+bytes arrived and their digest, derives the variants and flips the state; `discard` removes whatever
+exists (@@D-840). `commit` also accepts `scopes`, `temporary` and `cacheControl` so the form can
+settle them at submit time rather than at upload time. A namespace the configuration does not name
+is refused in `prepare`, so the decision is made once rather than at every later step (@@D-845).
+
+- verify: `blong-dev test` walks prepare → discard, prepare → commit, and prepare → expire →
+  `blob.uploadExpired` on commit.
+
+blob.upload.prepare writes a pending record before any byte arrives, commit refuses
+expired/incomplete and flips the record through a metadata-only index write, discard removes content
+and record; blobStorageMetaPut + cacache entry-index, 58 store assertions include the content
+surviving a metadata update
+
+### T-657 — The streaming upload route
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`gateway/blob/blobUploadWrite.ts` — `PUT /a/:namespace/u/:uploadId` with the bearer auth the gateway
+applies by default, `bodyLimit: blob.upload.maxBytes`, piping the request stream through the cipher
+into the store and answering `204` (@@D-841). The namespace and key come from
+`operation.parameters`; a key whose metadata names another namespace is refused, so a caller cannot
+write into one it did not prepare (@@D-845).
+
+- verify: `server/test` injects a 8 MiB body and asserts the stored size and digest; a second `PUT`
+  to a committed key answers `409`.
+
+PUT /a/:namespace/u/:uploadId (bearer auth by default, bodyLimit declared, body stream handed to the
+handler by the gateway), handler counts/hashes/encrypts into the store through a PassThrough and
+corrects the record in place; 147 package assertions, the upload test streams 8 MiB and reads it
+back through the digest
+
+### T-658 — The streaming read route
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`gateway/blob/blobRead.ts` and `gateway/blob/blobReadHead.ts` — `GET /a/:namespace/:key`,
+`HEAD /a/:namespace/:key` and `GET /a/:namespace/:key/thumb` with `auth: false`, setting
+`Content-Type`, `Content-Length`, `ETag`, `Cache-Control` and `Content-Disposition` from the blob's
+metadata through `$meta.httpResponse`, answering `304` for a matching `If-None-Match` and `206` for
+a `Range` (@@D-836 @@D-845). A range on encrypted content is served by decrypting and discarding the
+bytes before the offset, aligned to the cipher block — S3 answers a range natively where the backend
+offers it.
+
+- verify: `server/test` asserts inline and `?download=1`, `304`, `206` with a correct
+  `Content-Range`, and that no query builder is touched on the path.
+
+GET/HEAD /a/:namespace/:key and /thumb, auth false, scope cookie verified in-process, ETag/304,
+Range/206 with Content-Range, download disposition, decrypt+digest in the serving pipeline; 27
+assertions over headers, ranges, tampering and the cookie
+
+### T-659 — The scope cookie
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`orchestrator/scope/scopeIssue.ts` sets the signed cookie through `$meta.httpResponse.state` with
+`Path=/a/`; `scopeTokenSign` and `scopeTokenVerify` live in a library, HMAC-SHA256 over the payload
+with `blob.cookie.secret`, and `scopeCollect` calls the configured providers in order (@@D-836). An
+expired or badly signed cookie is ignored rather than refused, so an anonymous blob still opens and
+a scoped one answers `403`.
+
+- verify: `blong-dev test` issues, verifies, rejects a tampered token, rejects an expired one, and
+  serves an `anonymous` blob with no cookie.
+
+blob.scope.issue collects the configured providers' scopes (provider order kept, actor from
+$meta.auth, authenticated added), signs an HMAC-SHA256 cookie in blobScopeSign and sets it through
+$meta.httpResponse.state scoped to /a/; blob/blobSettings.ts is the one place a group slice plus the
+port block becomes settings, and orchestrator/blobDispatch.ts is the port that serves blob.\*; 211
+assertions across 10 files, ci-lint clean.
+
+### T-660 — Scope providers in the consuming realms
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`party.scope.grant` in `realm/blong-party/orchestrator/scope/` answering `party:person:<id>`,
+`party:org:<id>` for every organisation the person belongs to, and `party:unit:<id>` for every unit;
+`sport.scope.grant` in `realm/blong-sport` answering the club and federation scopes the person
+holds. Both take the actor from `$meta.auth.actorId` and read the triples the party graph already
+holds — no new table (@@D-836).
+
+- verify: `blong-dev test` in each package asserts the tokens for a seeded person and an empty list
+  for a person with no edges.
+
+party.scope.grant walks user --hasProfile--> person, person --belongsTo--> unit, unit --isPartOf-->
+unit up the tree and unit --belongsTo--> organisation, answering party:person/unit/org tokens;
+sport.scope.grant reads the athlete and coach profile rows the person's id owns, answering
+party:person, sport:club and sport:federation tokens. Both take the actor from $meta.auth and accept
+personId only on a system call; both check the person row exists. party test.scope is green (81
+assertions), sport test.scope adds 4 passing assertions (the package's pre-existing nomenclature
+failure is recorded as F-732).
+
+### T-661 — Temporary cleanup
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`orchestrator/temp/blobTempCleanup.ts` walks `blob.blob.find` for everything whose `expiresAt` has
+passed in every namespace, removes it with `blob.blob.remove`, and answers `{removed, bytes}`. It is
+a handler, not a timer: the schedule is the deployment's, because a realm that schedules its own
+cleanup runs it once per replica (@@D-840).
+
+- verify: `blong-dev test` creates three expired and one live blob and asserts that only the three
+  are gone and the live one still serves.
+
+blob.temp.cleanup sweeps every namespace the store configures (storage.blob.namespace.find), removes
+each record past its expiresAt before a given now through blob.blob.remove and answers {removed,
+bytes}. The cleanup needed two handlers the plan's vocabulary named but no task built, so
+blob.blob.find and blob.blob.remove were written here: find wraps the store's listing
+(prefix/expiredBefore) and remove takes the record, its variants (each a key of its own) and counts
+the bytes. gateway/temp/blobTempCleanup.ts is the route a deployment's scheduler calls. 214
+assertions green.
+
+### T-662 — Image variants at commit
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`orchestrator/upload/uploadVariants.ts` runs `sharp` over a `jpeg`/`png` blob when
+`blob.variants.enabled`, writes a `thumb` — and a `normal` or a `crop` when the metadata asks — as
+derived blobs with the parent in their `originalFilename`, and records their keys in the parent's
+metadata (@@D-844). `sharp` is a native module: it goes in the realm's dependencies, and the image's
+Debian base already carries what its prebuilt binary needs.
+
+- verify: `blong-dev test` commits a 1200x800 PNG and asserts a 160x160 thumbnail whose bytes differ
+  from the original's, and that a `txt` blob produces no variant.
+
+orchestrator/upload/uploadVariants.ts (sharp) derives thumb 160x160 always and normal/crop on
+request, decrypting the parent into memory, encoding to the parent's format, encrypting each result
+as a blob of its own (key `<parent>-<variant>`, parent's filename and scopes) and answering the
+variant map blob.upload.commit writes onto the record. blob/blobVariants.ts holds the settings and
+the pure decisions; variants are off by default and switched on in the run's config. sharp 0.34.5
+added as a dependency with its build approved in common/config/rush/pnpm-config.json. The commit no
+longer keeps the upload window's expiresAt (D-848). 216 assertions green.
+
+### T-663 — Group 2 verification
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+The group is done when a browser could stream a file in and a browser client could stream it out
+with only a cookie.
+
+- verify: `cd realm/blong-blob && blong-dev test && npm run ci-lint`.
+
+realm/blong-blob: npm run ci-lint clean (tsc, cspell, eslint) and blong-dev test exit 0 with 216
+assertions across 11 files — the storage round trip, the embedded add/get, the upload session, the
+streaming write and read routes, the scope cookie round trip, the temp sweep and the image variants.
+The gateway routes PUT /a/:ns/u/:id and GET /a/:ns/:key[/thumb] are registered and covered by the
+read/write groups.
+
+### T-665 — The S3 store with sidecar metadata
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`adapter/s3.ts` declaring `extends: 'adapter.s3'` and the group under `adapter/s3/`: `s3StorePut`,
+`s3StoreGet`, `s3StoreHead`, `s3StoreFind`, `s3StoreRemove` and `s3MetaMerge`, writing the content
+under `<prefix><key>` and the metadata under `<prefix><key>.meta.json`, so one head and one get
+answer a read (@@D-838). The adapter is configured with `forcePathStyle: true` for MinIO; the
+protocol detail stays in the adapter, and the orchestrator picks a backend by config alone.
+
+- verify: `blong-dev test` in `realm/blong-blob` with `blob.store: s3` against the dev MinIO passes
+  the Group 1 and Group 2 suites unchanged.
+
+adapter/s3Store.ts (extends adapter.s3, namespace storage, forcePathStyle) plus the adapter/s3Store/
+group answer the same storage.blob.put/get/head/find/remove/meta.put the orchestrator calls, so no
+handler names a backend (D-849). Every blob is two objects — `<prefix><namespace>/<key>` and the
+same name with .meta.json — so head and get are one small read plus (for get) a streamed body; find
+follows the continuation token and skips records. The backend is the config: the realm's default
+block sets s3Store:false and a deployment names blob.s3Store and sets blob.store:false. The
+framework's s3 add now sends unknown-length streams through @aws-sdk/lib-storage's Upload (D-850).
+Verified: blong-dev test with BLOB_BACKEND=s3 against the dev MinIO passes 234 assertions, the same
+234 pass on the filesystem default, and the framework suite is 1218/0.
+
+### T-666 — Backend selection and `blob.storage.info`
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`orchestrator/storage/blobStorageInfo.ts` answers the configured backend, whether it streams
+natively, whether it ranges, its metadata ceiling and its last failure — which is what a deployment
+probe and the widget use to decide between a stream and a base64 call. The selection is one config
+key with a TypeBox union, so a typo fails at load rather than at the first upload.
+
+- verify: `blong-dev test` asserts both backends answer their capabilities, and a bad `store` value
+  fails activation with a message naming the allowed values.
+
+blob.storage.info calls the active backend's own storage.info (both groups answer it: cacache and s3
+say {backend, streams: true, ranges: true, metadataCeiling: null}) and adds the realm's
+base64Ceiling; the s3 store reports the last failure it noted through one s3StoreExec wrapper, kept
+on the adapter's context. The backend choice is the pair of blocks (blob.store / blob.s3Store, the
+other false) and the realm now validates them with a TypeBox union, so a wrong value fails at load
+with 'Invalid configuration for blob: blob.s3Store: expected object, found true' (verified by
+running the suite with s3Store: true), while a mistyped key is refused by the loader's unknown-key
+check. Verified: 242 assertions on the filesystem backend and 242 on MinIO, both exit 0.
+
+### T-668 — Group 3 verification
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+The group is done when the store is a configuration value rather than a code path.
+
+- verify: `cd realm/blong-blob && blong-dev test && npm run ci-lint`, then the same suite with
+  `blob.store: s3`.
+
+Group 3 verified: realm/blong-blob is lint clean and its suite is 242/242 on the filesystem backend
+and 242/242 with BLOB_BACKEND=s3 against the dev MinIO (identical assertions, only the config
+differs), and test/blong-int-adapter blob.test.ts is 6/6 against the same bucket. The store is a
+configuration value: blob.store false + blob.s3Store names the bucket, the other way round names a
+directory, and neither reaches a handler.
+
+### T-672 — The browser session orchestrator
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`realm/blong-blob/browser.ts` and `browser/orchestrator/scope/blobScopeIssue.ts` — after the app has
+a session, call `blob.scope.issue` once and again when the user's roles or profile change, so the
+cookie is never older than the session it was minted from (@@D-836). The call is best-effort: a
+suite that has no blob realm is unaffected, and a failure leaves the images broken rather than the
+page.
+
+- verify: `npm run ci-test` in `realm/blong-blob` (browser) asserts one issue call per login and a
+  second after a role change.
+
+The realm publishes the cookie's method through portalConfigGet
+(browser/orchestrator/scope/blobScopeIssue.ts) so a suite that attaches blong-blob gets the cookie
+with no configuration, and the shell mints it: a new IPortalConfig.blob.issue block (carried by
+mergePortalConfigs), and an App effect that issues once per session and again when the actor or its
+grants change — keyed on a new sessionKey helper so a re-render is not a second cookie — best
+effort, no method no call, failure logged away. Four App tests cover once-per-session, again after a
+grant, none without a method, and the page staying up on failure; sessionKey and the blob block have
+their own tests. Deviation recorded as D-851: a realm browser test group cannot call a sibling port
+(findHandlers walks the calling port's importedMap), so the cadence is proven in blong-browser and
+the realm's tap run is untouched at 242/242. blong-browser 867 tests, ci-lint clean; realm ci-lint
+clean. The gateway denies blob.scope.issue over HTTP (Authorization denied) — no claim grants it;
+folded into T-678 with a verify line.
+
+### T-679 — Group 5 verification
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+- verify: `npm run ci-test` exits 0 in `realm/blong-party`, `realm/blong-access` and
+  `realm/blong-sport`.
+
+npm run ci-test exits 0 in all three realms: party (tap 85/85, Playwright 16/16), access (tap 70/70,
+Playwright 32/32), sport (tap 17/17, Playwright 134/134). The party and sport visual baselines were
+regenerated for the intended changes and the pictures confirm them: the person editor shows the
+'Photograph' asset field and the document editor 'File or Reference URL' with Format and Checksum
+beside it. Two environment problems had to be dealt with first: the access profile spec inherits the
+language the tap suite leaves (F-734, reset before the run) and sport's F-732 turned out to be its
+own test finding an athlete by surname alone — now filtered by the run's stamp and green twice on
+the same database.
+
+### T-680 — The secrets the companion carries
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+The realm declares `k8sSecrets` as a generator entry — `blobSecrets`, an `envs` reference to a file
+the suite owns, never a literal — and `k8sEnv` mapping `BLOB_CBC_KEY` and `BLOB_COOKIE_SECRET` from
+it, so every process that carries the companion can both write and verify (@@D-839 @@D-836). It
+declares no volume and no port of its own: the claim belongs to the realm that writes and the route
+rides the host process's gateway (@@D-845).
+
+- verify: `blong-dev test` in `realm/blong-kustomize` renders one `blobSecrets` generator entry and
+  both variables in a process that carries the realm.
+
+The companion carries its credentials as references. orchestrator/blobDispatch.ts declares k8sEnv
+for BLOB_CBC_KEY and BLOB_COOKIE_SECRET, each a secretKeyRef into blobSecrets, and blobSettings
+falls back to those variables when the config names no key — so a released process gets its key and
+cookie secret from the cluster without either entering the tree. The Secret itself is the suite's
+(kustomize.deploy.secrets, a generator entry over a file the deployment owns): a companion cannot
+declare one, because the plan collects secrets only from ports of realms that own a process. Proof:
+sport's generated deployment carries both variables from blobSecrets, and a new case in
+realm/blong-kustomize's plan-find test (140/140) asserts one blobSecrets generator entry plus both
+variables for a process carrying the realm. The tree's secrets/ folder itself is not written
+although the root kustomization lists it — recorded as F-739.
+
+### T-681 — The realm's tap groups
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`server/test/test/` gains one group per capability — storage, crypto, upload, read, scope, cleanup,
+variants, s3 — wired into `integration.watch.test` in the realm's `index.ts`, because a group that
+is not listed there silently never runs (**blong-test-api**). Each group asserts the behaviour and
+the refusal, not only the happy path.
+
+- verify: `cd realm/blong-blob && blong-dev test --coverage` reports every group and no uncovered
+  handler.
+
+server/test/test/ now has one group per capability, all seven listed in integration.watch.test:
+test.storage, test.crypto, test.upload, test.read, test.scope, test.temp, test.variants. The three
+new ones assert behaviour and refusal: crypto round-trips the plaintext, shows the bytes at rest are
+not it (aes-256-cbc with a per-blob IV, two equal files encrypted differently) and catches a digest
+that no longer matches the plaintext; upload walks prepare → write → commit, a stored key refusing a
+second write, an unprepared key refused at both write and commit, and a discarded reservation gone;
+read answers the record's type and plaintext length, the bytes for a named download, a missing key
+as notFound, and a scope the cookie does not hold as denied. blob.thumb — the only handler with no
+coverage — is now exercised from the variants group (100% functions). 256/256 on cacache and 256/256
+with BLOB_BACKEND=s3 (that run is the s3 capability, on top of the s3Store unit test); every
+handler's functions are covered, the remaining uncovered lines being the S3 failure branch and the
+cleanup refusals.
+
+### T-684 — Glossary, concept and pattern pages
+
+> _2026-11-14 · docs · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`blong-dev glossary add` for `blob`, `blob store`, `blob reference` and `scope cookie`, then a
+concept page (`docs/blong/docs/concepts/blob.md`) for what a stored blob is and a pattern page
+(`docs/blong/docs/patterns/blob.md`) for wiring one: the vocabulary, the three-phase upload, the
+cookie, the two backends and their different limits. The `asset server` entry gains one clause
+saying it is not this, so the two names cannot be confused again (@@D-835).
+
+- verify: `blong-dev glossary check` and
+  `blong-dev lint --files docs/blong/docs/concepts/blob.md docs/blong/docs/patterns/blob.md` exit 0.
+
+docs/blong/docs/concepts/blob.md and docs/blong/docs/patterns/blob.md written; glossary gained blob,
+blob store, blob reference and scope cookie (42 entries, check green) and the asset server entry now
+says it is not the blob store. blong-dev lint clean on all four files.
+
+### T-685 — The package README
+
+> _2026-11-14 · cross-cutting · done_
+
+Planned in [#261](https://github.com/feasibleone/blong/issues/261).
+
+`realm/blong-blob/README.md` in the shape `core/blong-asset` and `realm/blong-gateway` use: what the
+realm is, the wire names, the routes, the configuration block, the two backends and the scaling
+limit of each.
+
+- verify: `blong-dev lint --files realm/blong-blob/README.md` exits 0.
+
+realm/blong-blob/README.md written in the shape the other packages use: wire names, routes,
+configuration, the two backends and the scaling limit that separates them; blong-dev lint clean.
+
+### T-716 — Rename the reference scheme to `lukaot://` in the editor and the dev CLI
+
+> _2026-11-18 · cross-cutting · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`ext/rest-fs/src/extension.ts` resolves `lukaot://r/<id>` and `lukaot://p/<id>` links, and
+`tools/blong-dev/src/commands/log.ts` recognises them when it prints and rewrites entries. The
+cspell entries follow.
+
+- verify: `cd tools/blong-dev && blong-dev test` passes, and a link printed by a dev run opens the
+  record in the editor.
+
+REF_SCHEME is lukaot; the editor resolves `lukaot://r|p|t` links (`p` added, `x` deliberately not a
+link since nothing is retained under a trace); the dev CLI's log comment follows; lukaot 1416
+assertions, blong-dev 1868, rest-fs lint and types clean.
+
+Correction (2026-11-19): `semlog://` is matched _as well_, not nowhere. A smoke run of
+`demo/blong-hello` still prints `[semlog://t/<ref>]` on every line, because the process logs through
+`@feasibleone/semantic-log` until the emitter is swapped (T-715) and both packages read the same
+`~/.blong/log-cache`. Dropping the old spelling stopped a freshly printed line from opening
+anything, so the provider registers both schemes and the regex accepts both; the old spelling goes
+when T-715 does (@@F-765).
+
+### T-724 — Retire `core/semantic-log` and every reference to it
+
+> _2026-11-18 · cross-cutting · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`core/semantic-log` is out of the tree: the folder is deleted, its `rush.json` project entry is
+gone, and `rush update` relinked the workspace at 55 projects. Nothing imports it — no
+`package.json` in the repository named it, and the two code files that still mentioned it in prose
+(`callTrace.ts`, `lukaot/src/attachable.ts`) now describe lukaot. `core/lukaot/src/cache.ts`'s guard
+message said "semantic-log cache: unsafe … id" and now names the package that guards it.
+
+What the deletion cost, and the repair. Thirteen `@@` citations in _other_ packages' memory pointed
+at entries that lived in the retired package (`T-102`, `D-249`, `D-230`, `D-226`, `D-279`, `D-500`)
+and were therefore dangling. Each was detached rather than retargeted, because the reasoning
+travelled out with the package: the sentence now says what happened ("a decision retired with the
+semantic-log package") and the citation is gone, so a reader knows the detail is not in the tree
+rather than being sent to an id that resolves to nothing. `Q-001` in `core/blong-gogo`'s faq had
+lost its only citation that way and now points at `@@D-889`, which holds the identity decision
+lukaot was founded on.
+
+The lesson is worth keeping: a package's memory is cited by its neighbours, so retiring the package
+is also a migration of the citations. `blong-dev memory refs --dangling` is what found all thirteen,
+and it should be run _before_ the deletion to see what will break.
+
+Gates: `lukaot` 1470 assertions, `blong-gogo` 1216, both lint clean; `memory check` 0 errors in 105
+files (three fewer than before, one per deleted memory file); 1151 references resolve.
+
+Package deleted, rush.json and lockfile updated, docker manifests regenerated, 13 citations detached
+with the reason, both suites green.
+
+### T-725 — Follow the cache into lukaot in `blong-dev log`
+
+> _2026-11-18 · cross-cutting · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`blong-dev log` reads the store lukaot writes — the same cacache directory (`index-v5`/`content-v2`)
+and the same record shape, so the command needed no re-pointing; what it lacked was the _identity_.
+A converted call site no longer writes a sentence as its identity, so a reader grepping the CLI's
+output for `frameworkWatchFileChanged` found nothing: the identifier lives in the record's fields
+under `signal`, and a capture's under `capture` with its `shape` and `rung`.
+
+Done (2026-11-19): the compact line prints them (`signal=frameworkDebugEnabled`,
+`capture=frameworkHttpExchange shape=http.exchange rung=headers`), and two filters name them —
+`--signal <id>` and `--capture <id>` — so one declared identifier's records are reachable from the
+CLI rather than by piping the whole cache through grep. Verified against the real cache:
+`--signal frameworkDebugEnabled` answers 3 of 10000 entries across both emitters' records.
+
+Found on the way, and fixed: `core/lukaot`'s `exports` map declares `types: ./dist/*.d.ts` but
+nothing in the package forced `dist` into a published tarball — `dist` is gitignored, so `npm pack`
+dropped it. The publish guard (`publishGuard.test.ts`) reported the four declaration entry points as
+declared, built and _unpublished_, which is the same failure F-488 records for `semantic-log`. A
+`files` array now names the entry shims, `src`, `dist` and the README, and the guard is green.
+
+Gates: `blong-dev` 1868 assertions, the publish guard 16/16, `lukaot` lint clean.
+
+Identities printed and filterable; lukaot now publishes its declared declarations (publish guard
+green).
+
+### T-723 — Rewrite the semantic-log docs as lukaot pages
+
+> _2026-11-18 · docs · done_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+`concepts/semantic-log.md`, `patterns/semantic-log.md`, `patterns/semantic-log-flows.md` and
+`rationale/semantic-log.md` become the lukaot concept, pattern, flows and rationale pages: the
+vocabulary replaces the masked hash as the identity, the policy block replaces the level argument,
+and the dropped detectors are recorded as deliberately not built with the reasoning. Update every
+page that links them —
+`concepts/{dependencies,memory,playwright,naming,api,     glossary,checkpoint}.md` and
+`patterns/{test,memory,rbac,playwright}.md` — and check the glossary through the tool, not by hand.
+
+- verify: `cd docs/blong && node --run build` succeeds and `blong-dev docs check` is clean.
+
+The four `semantic-log` pages are gone and four `lukaot` pages replace them, one per tier, plus a
+blog post. The structure the user asked for is by **kind**: the concept page is one page with a
+four-row table, the pattern page has a dedicated section per kind, and each section puts the code a
+service writes today beside the declaration — log, error, capture, decision — then the field
+reference and the property the declaration buys. The rationale page is the evolution: a sentence,
+structured logging, the previous package's derived identity, then declared identity, with what was
+kept and what was dropped named rather than implied.
+
+Detail was carried over rather than dropped: the masking/simplification tables of the flow fixtures,
+the column-by-column legend of the generated diagrams, the fault table (F3 removed, with the
+reason), the "what the flows do not draw" table, the runner commands, and the honest statements
+about what is not built. Two sections of the old pattern page were **not** carried: the
+retention/cache design notes and the requirement-to-test register, because both described the
+retired package's internals and its parity matrix test, neither of which exists under `core/lukaot`.
+That is the one place this rewrite loses detail, and it is detail about code that is gone.
+
+The artifact register was repointed too — `flows.artifact`, `flows.transfer-single` and
+`flows.transfer-inter` now run in `core/lukaot` with `LUKAOT_UPDATE_DIAGRAMS=1`, and
+`blong-dev docs check --only` reports all three up to date. `blong-dev docs check` also regenerated
+`concepts/layer.md`'s activation diagram, which now lists `lukaot` among the layers the
+microservice, k8s and upgrade intents load — a diff worth having.
+
+Every link in the tree was retargeted (six pages, two older blog posts) and the site builds with
+`onBrokenLinks: 'throw'`, which is the proof. The glossary term `semantic log` became `lukaot`,
+added through `blong-dev glossary add` so it landed in sorted position.
+
+### T-484 — Close the feedback plan tasks with their evidence
+
+> _2026-10-28 · cross-cutting · done_
+
+Close every todo of the feedback plan with a note, and finish on a clean memory check refs and
+memory comply. Section 9 of the plan ([#294](https://github.com/feasibleone/blong/issues/294)).
+
+Every box in the plan ([#294](https://github.com/feasibleone/blong/issues/294)) is ticked: the six
+implementation groups, the seven UI revisions, the off-path optimisation, the stories and the
+Playwright spec, and the four documentation tasks. Evidence: core/blong-browser 74 files / 733
+tests, realm/blong-feedback tap 7/7, sport stories 70/70, feedback.play.ts green three times with
+four fresh baselines, portal.play.ts and people.play.ts 9/9 on the off path, the docs site builds,
+blong-dev lint clean on every touched file, memory check --refs 0 errors, 714 references resolve,
+comply clean. The only entry left from the plan is T-486, the dev-only purge handler, which the
+spec's mark-processed queue emptying made unnecessary.
+
 ## Retired
 
-- T-526 — retired 2026-11-10 — The post is written from the Slack deployment alone under T-523; a
   real Viber bot is not available
+
 - T-689 — retired 2026-11-15
+- T-526 — retired 2026-11-23 — The post is written from the Slack deployment alone under T-523; a
+  second entry would track the same article twice

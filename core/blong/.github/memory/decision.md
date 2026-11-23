@@ -15,9 +15,9 @@ active (8)
 - `D-280` · core/blong — Progress reports double their gap, up to five minutes
 - `D-869` · core/blong — A stream helper a handler needs is published by the shared package, not the
   runtime
-- `D-898` · core/blong — `ITypedError` becomes lukaot's error shape, re-exported by `core/blong`
 - `D-903` · core/blong — The vocabulary types reach blong through lukaot's declarations, not its
   sources
+- `D-898` · core/blong — `ITypedError` becomes lukaot's error shape, re-exported by `core/blong`
 
 <!-- /memory:index -->
 
@@ -108,20 +108,6 @@ the same reason. The entry needed the two things this repository has learnt an e
 exports map, and a line in .npmignore, because that file starts by excluding everything and a
 declared entry that is not brought back ships nothing (@@F-746). The publish guard passes over it.
 
-### D-898 — `ITypedError` becomes lukaot's error shape, re-exported by `core/blong`
-
-> _2026-11-18 · core/blong · active_
-
-Planned in `plans/lukaot/plan.md`.
-
-The
-
-gateway, the expected-error matcher and every unconverted realm read the type from
-`@feasibleone/blong/types`. lukaot defines it (a library usable outside the framework must own its
-contract) and `core/blong` re-exports it, so one shape reaches both worlds and no realm changes an
-import. `ILog` and `ILogger` keep their declarations so existing imports still compile, but no level
-is called anywhere after this plan; deleting them is deferred.
-
 ### D-903 — The vocabulary types reach blong through lukaot's declarations, not its sources
 
 > _2026-11-18 · core/blong · active_
@@ -151,6 +137,20 @@ then need blong's declarations to describe its own error.
 `code`, `req`, `res`) in lukaot rather than in the re-export, because a realm that catches one reads
 them there; `params` widened from `object` to `unknown` with the shape, which is the change most
 likely to surface in a realm that assumed otherwise.
+
+### D-898 — `ITypedError` becomes lukaot's error shape, re-exported by `core/blong`
+
+> _2026-11-18 · core/blong · active_
+
+Planned in [#277](https://github.com/feasibleone/blong/issues/277).
+
+The
+
+gateway, the expected-error matcher and every unconverted realm read the type from
+`@feasibleone/blong/types`. lukaot defines it (a library usable outside the framework must own its
+contract) and `core/blong` re-exports it, so one shape reaches both worlds and no realm changes an
+import. `ILog` and `ILogger` keep their declarations so existing imports still compile, but no level
+is called anywhere after this plan; deleting them is deferred.
 
 ## Superseded
 

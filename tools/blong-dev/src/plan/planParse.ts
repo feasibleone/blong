@@ -152,6 +152,12 @@ export interface IPlanMeta {
     channelUrl?: string;
     created?: string;
     approved?: string;
+    /** The host that holds the plan, and since when — see `planOwnership.ts`. */
+    claimed?: string;
+    claimedAt?: string;
+    claimedBy?: string;
+    /** The day the local `plan.md` was removed, when the plan was released from its folder. */
+    localRemovedAt?: string;
     [key: string]: string | number | undefined;
 }
 
@@ -813,9 +819,20 @@ function collapseBlankRuns(lines: readonly string[]): string[] {
     return out;
 }
 
-/** Rewrite a plan's front matter, merging over what is there. */
-export function writeMeta(doc: IPlanDocument, patch: IPlanMeta): IPlanDocument {
-    const meta: IPlanMeta = {...doc.meta, ...patch};
+/**
+ * Rewrite a plan's front matter, merging over what is there.
+ *
+ * `clear` names keys to drop rather than set: a claim is released by the absence of `claimed`,
+ * not by an empty string, so a release deletes the three fields the claim wrote.
+ */
+export function writeMeta(
+    doc: IPlanDocument,
+    patch: IPlanMeta,
+    clear: readonly string[] = [],
+): IPlanDocument {
+    const merged: IPlanMeta = {...doc.meta, ...patch};
+    for (const key of clear) delete merged[key];
+    const meta: IPlanMeta = merged;
     const end = frontMatterEnd(doc.lines);
     const body = doc.lines.slice(end + 1);
     const text = stringifyYaml(meta, {lineWidth: 100}).trimEnd().split('\n');
@@ -848,4 +865,34 @@ export function bodyWithoutFrontMatter(doc: IPlanDocument): string {
         .slice(end + 1)
         .join('\n')
         .replace(/^\n+/, '')}\n`;
+}
+
+/** The front matter as the document holds it, without the `---` fences; empty when it has none. */
+export function frontMatterText(doc: IPlanDocument): string {
+    const end = frontMatterEnd(doc.lines);
+    return end < 0 ? '' : doc.lines.slice(1, end).join('\n');
+}
+
+/**
+ * The front matter a published issue carries: every key except the named ones.
+ *
+ * The lines are copied rather than re-serialised, so a folded `summary` keeps the shape its author
+ * gave it, and a key's indented continuation lines travel with the key (@@T-760).
+ */
+export function frontMatterWithout(doc: IPlanDocument, keys: readonly string[]): string {
+    const skip = new Set(keys);
+    const kept: string[] = [];
+    let dropping = false;
+    for (const line of frontMatterText(doc).split('\n')) {
+        const key = /^([A-Za-z][A-Za-z0-9_-]*):/.exec(line)?.[1];
+        if (key !== undefined) dropping = skip.has(key);
+        if (!dropping) kept.push(line);
+    }
+    return kept.join('\n').trim();
+}
+
+/** A plan's text, from its front matter and its body. */
+export function planText(meta: IPlanMeta, body: string): string {
+    const text = stringifyYaml(meta, {lineWidth: 100}).trimEnd().split('\n');
+    return ['---', ...text, '---', '', body.trimEnd(), ''].join('\n');
 }

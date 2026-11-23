@@ -24,26 +24,55 @@
  * a side effect, so `sync` is the repair and the publish, not the usual path.
  */
 
-import {existsSync, readdirSync, statSync, writeFileSync} from 'node:fs';
+import {
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    readdirSync,
+    statSync,
+    unlinkSync,
+    writeFileSync,
+} from 'node:fs';
 import {join, relative, resolve} from 'node:path';
 
 import {loadCallRc} from '../callRc.ts';
 import {listEntries, type IMemoryEntryView} from '../memory/memoryView.ts';
 import {
     ghAvailable,
+    ghLogin,
     issueBody,
     issueComment,
     issueCreate,
     issueEdit,
     issueFind,
+    issueFrontMatter,
+    issueTrack,
+    issueView,
     labelEnsure,
     originRepo,
+    stripIssueHeader,
 } from '../plan/planGithub.ts';
-import {planFiles, plansRoot, writeActivePlan} from '../plan/planLink.ts';
+import {planFiles, plansRoot, readActivePlan, writeActivePlan} from '../plan/planLink.ts';
 import {entryLink, issueLinks} from '../plan/planLinks.ts';
+import {
+    CLAIM_FIELDS,
+    CLAIM_LABEL,
+    claimOf,
+    claimPatch,
+    hostLabel,
+    isHostLabel,
+    isMine,
+    parseClaimMarker,
+    thisHost,
+    today,
+    type IPlanClaim,
+} from '../plan/planOwnership.ts';
 import {
     blockIsRendered,
     bodyWithoutFrontMatter,
+    frontMatterWithout,
+    parsePlan,
+    planText,
     planTitle,
     positionalTitle,
     readPlan,
@@ -53,6 +82,7 @@ import {
     spaceOutPlan,
     writeMeta,
     type IPlanDocument,
+    type IPlanMeta,
 } from '../plan/planParse.ts';
 import {
     PLAN_ENTRIES_HEADING,
@@ -66,14 +96,30 @@ import {
     planChannelUrl,
     updatePlanChannelTopic,
 } from '../plan/planSlack.ts';
-import {createPlanDecisions, createPlanTasks, planSlug} from '../plan/planTasks.ts';
+import type {IPlanIssueRef} from '../plan/planTasks.ts';
+import {
+    createPlanDecisions,
+    createPlanTasks,
+    planIssue,
+    planSlug,
+    provenanceLine,
+} from '../plan/planTasks.ts';
 import {repoRoot} from '../report/reportPaths.ts';
 import {usageHint} from '../usage.ts';
 import {UsageError} from '../utils/usageError.ts';
 import {parseArgs} from './log.ts';
 
 /** The verbs {@link usageHint} may name when a call fails. */
-const PLAN_VERBS = new Set(['check', 'tasks', 'init', 'sync', 'status', 'adopt']);
+const PLAN_VERBS = new Set([
+    'check',
+    'tasks',
+    'init',
+    'sync',
+    'status',
+    'adopt',
+    'claim',
+    'release',
+]);
 
 /** Flags that take no value, so the argument after them is not theirs. */
 const BOOLEAN_FLAGS = new Set([
@@ -89,6 +135,9 @@ const BOOLEAN_FLAGS = new Set([
     'no-slack',
     'no-tasks',
     'no-decisions',
+    'no-claim',
+    'force',
+    'remove',
     'plain',
 ]);
 
@@ -115,24 +164,36 @@ function on(flags: Set<string>, options: Map<string, string>, name: string): boo
     return flags.has(name) || options.get(name) === 'true';
 }
 
-/** The file a plan argument names. */
-export function resolvePlanFile(root: string, argument: string | undefined): string {
+/**
+ * The file a plan argument names, or `undefined` when it names nothing on this disk.
+ *
+ * The same three forms `resolvePlanFile` accepts, without the refusal: `plan claim` needs to know
+ * whether an argument is a plan or an issue, and only the caller can say what to do when it is
+ * neither.
+ */
+export function findPlanFile(root: string, argument: string | undefined): string | undefined {
     if (argument) {
         const direct = resolve(argument);
-        if (existsSync(direct)) {
-            if (statSync(direct).isDirectory()) return onlyPlanIn(direct);
-            return direct;
-        }
+        if (existsSync(direct)) return statSync(direct).isDirectory() ? onlyPlanIn(direct) : direct;
         const inPlans = join(plansRoot(root), argument);
         if (existsSync(inPlans)) {
             return statSync(inPlans).isDirectory() ? onlyPlanIn(inPlans) : inPlans;
         }
         const withExtension = join(plansRoot(root), `${argument}.md`);
-        if (existsSync(withExtension)) return withExtension;
+        return existsSync(withExtension) ? withExtension : undefined;
+    }
+    const files = planFiles(root);
+    return files.length === 1 ? files[0] : undefined;
+}
+
+/** The file a plan argument names. */
+export function resolvePlanFile(root: string, argument: string | undefined): string {
+    const found = findPlanFile(root, argument);
+    if (found !== undefined) return found;
+    if (argument) {
         fail(`no plan at "${argument}" — it is a file, a folder under plans/, or a folder name`);
     }
     const files = planFiles(root);
-    if (files.length === 1) return files[0]!;
     if (files.length === 0) fail('there is no plan under plans/ — name one');
     fail(`name a plan: ${files.map(file => relative(root, file)).join(', ')}`);
 }
@@ -143,7 +204,11 @@ function onlyPlanIn(dir: string): string {
         const path = join(dir, name);
         if (existsSync(path)) return path;
     }
-    const markdown = readdirSync(dir).filter(name => name.toLowerCase().endsWith('.md'));
+    // A `plan.prompt.md` is not a plan: it is the request a plan answers, and it stays beside the
+    // plan after a release removes the board (`planLink.planFiles` makes the same distinction).
+    const markdown = readdirSync(dir)
+        .filter(name => name.toLowerCase().endsWith('.md'))
+        .filter(name => !name.toLowerCase().endsWith('.prompt.md'));
     if (markdown.length === 1) return join(dir, markdown[0]!);
     if (markdown.length === 0) fail(`${dir} holds no plan`);
     fail(`${dir} holds several plans: ${markdown.join(', ')}`);
@@ -183,9 +248,28 @@ function supportingEntries(
     return ids.map(id => ({id, ...entryFor(entries, id)}));
 }
 
+/**
+ * The local plan a published issue number names.
+ *
+ * `plan claim <issue>` rebuilds a plan from its issue, so the two handles name one plan and only
+ * the caller knows which one it was given: release accepts both, and after a claim the number is
+ * the handle a person still has at hand.
+ */
+function findPlanByIssue(root: string, argument: string | undefined): string | undefined {
+    const digits = argument?.trim().replace(/^#/, '');
+    if (!digits || !/^\d+$/.test(digits)) return undefined;
+    const number = Number(digits);
+    return planFiles(root).find(file => readPlan(file).meta.issue === number);
+}
+
 /** Read a plan, refusing one the parser could not describe. */
 function load(root: string, argument: string | undefined): IPlanDocument {
-    const doc = loadRaw(root, argument);
+    return loadAt(resolvePlanFile(root, argument));
+}
+
+/** Read a plan by the file it lives in, refusing one the parser could not describe. */
+function loadAt(path: string): IPlanDocument {
+    const doc = readPlan(path);
     if (doc.problems.length > 0) {
         fail(`the plan has problems:\n${doc.problems.map(line => `  ${line}`).join('\n')}`);
     }
@@ -195,6 +279,88 @@ function load(root: string, argument: string | undefined): IPlanDocument {
 /** Read a plan as it is, problems and all, for the verbs whose job is to report them. */
 function loadRaw(root: string, argument: string | undefined): IPlanDocument {
     return readPlan(resolvePlanFile(root, argument));
+}
+
+/** The host a run acts as: `--host` names it, for a test or a second checkout on one machine. */
+function hostOf(options: Map<string, string>): string {
+    const named = options.get('host')?.trim();
+    return named !== undefined && named !== '' ? named : thisHost();
+}
+
+/**
+ * Refuse a plan another host holds, and say so when no host holds it at all.
+ *
+ * The claim exists because a plan is a local folder: two hosts working one plan edit two memory
+ * trees that only agree by accident, and neither can see the other's `memory close`. A mutating
+ * verb on a plan another host holds is therefore an error rather than a warning, and `--force` is
+ * the sentence that says the operator knows (`@@D-967`).
+ */
+function assertOwned(
+    root: string,
+    plan: IPlanDocument,
+    verb: string,
+    options: Map<string, string>,
+    flags: Set<string>,
+): IPlanClaim | undefined {
+    const host = hostOf(options);
+    const claim = claimOf(plan.meta);
+    if (claim && !isMine(claim, host)) {
+        if (!on(flags, options, 'force')) {
+            fail(
+                `this plan is claimed by "${claim.host}"${claim.at ? ` since ${claim.at}` : ''} — ` +
+                    `\`${verb}\` would edit the memory files that host is working. Release it ` +
+                    'there (`blong-dev plan release <plan>`) before taking it, or pass --force.',
+            );
+        }
+        process.stdout.write(`# --force: taking over a plan claimed by "${claim.host}"\n`);
+    }
+    if (!claim) {
+        process.stdout.write(
+            `# note: no host has claimed this plan — \`blong-dev plan claim ${planSlug(
+                plan.path,
+            )}\` records that it is being worked here\n`,
+        );
+    }
+    return claim;
+}
+
+/** What a published issue says about the plan: its claim, and the labels it carries. */
+function issueState(root: string, plan: IPlanDocument): {claim?: IPlanClaim; labels: string[]} {
+    const number = plan.meta.issue;
+    const empty: {claim?: IPlanClaim; labels: string[]} = {labels: []};
+    if (!number || !ghAvailable()) return empty;
+    const repo = plan.meta.repo ?? originRepo(root);
+    if (!repo) return empty;
+    const state = issueView(repo, number);
+    if (!state) return empty;
+    const claim = state.body ? parseClaimMarker(state.body) : undefined;
+    return {labels: state.labels ?? [], ...(claim ? {claim} : {})};
+}
+
+/**
+ * Point the entries a plan created at its issue.
+ *
+ * The provenance sentence is what an entry says to explain itself. While the plan is unpublished it
+ * names the folder, which is the only record there is; once the issue exists it names the issue,
+ * because that is what any reader can open and what says whether a local copy still exists — the
+ * same reason a release rewrites the sentence when it removes the file (`@@D-967`). Only that exact
+ * sentence is replaced: an entry that mentions the plan in prose keeps its words.
+ */
+function rewriteProvenance(root: string, slug: string, issue: IPlanIssueRef | undefined): number {
+    const sentence = provenanceLine(slug);
+    const replacement = issue
+        ? provenanceLine(slug, issue)
+        : 'Planned in a plan folder whose `plan.md` has since been removed.';
+    let changed = 0;
+    for (const path of new Set(listEntries(root).map(entry => entry.path))) {
+        const file = join(root, path);
+        if (!existsSync(file)) continue;
+        const text = readFileSync(file, 'utf8');
+        if (!text.includes(sentence)) continue;
+        writeFileSync(file, text.split(sentence).join(replacement), 'utf8');
+        changed += 1;
+    }
+    return changed;
 }
 
 /** Print the plan's progress without opening the file. */
@@ -249,6 +415,12 @@ function status(
     process.stdout.write(`# ${planTitle(plan)}\n`);
     process.stdout.write(`# ${relative(root, plan.path)}\n`);
     process.stdout.write(`# status: ${plan.meta.status ?? 'unapproved'}\n`);
+    const claim = claimOf(plan.meta);
+    process.stdout.write(
+        claim
+            ? `# claimed: ${claim.host}${claim.by ? ` (${claim.by})` : ''} since ${claim.at || 'an unrecorded day'}${isMine(claim, hostOf(options)) ? '' : ' — not this host'}\n`
+            : '# claimed: nobody\n',
+    );
     if (plan.meta.issueUrl) process.stdout.write(`# issue: ${plan.meta.issueUrl}\n`);
     if (plan.meta.conversationId) {
         process.stdout.write(
@@ -375,6 +547,12 @@ function check(
     // leaves two entries nobody can tell apart. Both are reported rather than refused — the plan is
     // still executable, and an old plan is not worth rewriting for a name (@@D-863).
     const notes: string[] = [];
+    const held = claimOf(plan.meta);
+    if (held && !isMine(held, hostOf(options))) {
+        notes.push(
+            `this plan is claimed by "${held.host}" — work it there, or release it before taking it`,
+        );
+    }
     const items = [
         ...plan.tasks.map(task => ({title: task.title, line: task.line, id: task.id})),
         ...plan.decisions.map(decision => ({
@@ -437,6 +615,7 @@ async function tasks(
     flags: Set<string>,
 ): Promise<void> {
     const apply = on(flags, options, 'apply');
+    if (apply) assertOwned(root, plan, 'plan tasks --apply', options, flags);
     const result = await createPlanTasks(root, plan, {
         apply,
         update: on(flags, options, 'update'),
@@ -522,7 +701,16 @@ function publishIssue(
     const title = planTitle(plan);
     if (!title) fail('the plan has no title — add a `title:` in its front matter or an H1');
     const slug = plan.meta.slug ?? planSlug(plan.path);
-    const body = issueBody(issueLinks(bodyWithoutFrontMatter(plan), repo), slug);
+    const claim = claimOf(plan.meta);
+    const body = issueBody(issueLinks(bodyWithoutFrontMatter(plan), repo), slug, {
+        ...(claim ? {claim} : {}),
+        ...(typeof plan.meta.localRemovedAt === 'string'
+            ? {removedAt: plan.meta.localRemovedAt}
+            : {}),
+        // What a rebuild cannot invent: the approval and close dates, the Slack channel, a summary.
+        // The claim and the removal date are left out because the header already says both.
+        frontMatter: frontMatterWithout(plan, [...CLAIM_FIELDS, 'localRemovedAt']),
+    });
     const label = options.get('label')?.trim() || 'plan';
 
     const existing =
@@ -579,10 +767,30 @@ async function init(
         );
     }
 
+    // A plan is claimed by the host that publishes it: from here on the local folder is the source
+    // and no other host may edit the memory it drives. The claim goes into the document before the
+    // issue is published, so the body carries its marker in the same write (`@@D-967`).
+    let claim: IPlanClaim | undefined;
+    if (!on(flags, options, 'no-claim')) {
+        // The login is only asked for when there is an issue to publish to: a run that skips the
+        // issue must not wait on a network call to record a claim.
+        const by = on(flags, options, 'no-issue') ? undefined : ghLogin();
+        claim = {host: hostOf(options), at: today(), ...(by ? {by} : {})};
+        current = writeMeta(current, claimPatch(claim));
+    }
+
     const slug = current.meta.slug ?? planSlug(current.path);
     const title = planTitle(current);
     const issue = publishIssue(root, current, options, flags);
     if (issue) process.stdout.write(`# ${issue.repo}#${issue.number} ${issue.url}\n`);
+    // The entries created above name the plan file, because that was the only record when they were
+    // written; now the plan has an issue, and that is what any reader can open (`@@D-967`).
+    if (issue) {
+        const rewritten = rewriteProvenance(root, slug, {number: issue.number, url: issue.url});
+        if (rewritten > 0) {
+            process.stdout.write(`# ${rewritten} memory file(s) now name the issue\n`);
+        }
+    }
 
     let channel:
         | {platform: string; account: string; channelName: string; conversationId: string}
@@ -687,11 +895,17 @@ async function init(
     writeFileSync(patched.path, renderPlan(patched), 'utf8');
     // The plan being executed is a fact on disk from here on: a decision or a friction the work
     // produces must say whether it belongs to this plan, and `memory add` refuses to guess
-    // (@@D-916). A draft is not recorded, because nothing is being executed yet.
-    if (approved) writeActivePlan(root, {slug, path: relative(root, patched.path)});
+    // (@@D-916). A draft is not recorded, and neither is a plan nobody claimed — nothing is being
+    // executed until a host holds it (`@@D-967`).
+    if (approved && claim) writeActivePlan(root, {slug, path: relative(root, patched.path)});
     process.stdout.write(
         `# ${relative(root, patched.path)} ${approved ? 'approved' : 'drafted'}\n`,
     );
+    if (claim && approved) {
+        process.stdout.write(
+            `# claimed by ${claim.host}${claim.by ? ` (${claim.by})` : ''} on ${claim.at}\n`,
+        );
+    }
 }
 
 /** Re-read the memory and make the plan (and its issue) say what the entries say. */
@@ -701,6 +915,7 @@ async function sync(
     options: Map<string, string>,
     flags: Set<string>,
 ): Promise<void> {
+    assertOwned(root, plan, 'plan sync', options, flags);
     const entries = listEntries(root);
     const lines = [...plan.lines];
     let ticked = 0;
@@ -781,8 +996,9 @@ async function sync(
 
     const updated: IPlanDocument = {...plan, lines: spaceOutPlan(lines)};
     // Refreshed on every sync: a plan re-approved after a rename, or one resumed after another was
-    // finished, is the active one — and `memory add` reads this rather than scanning (@@D-916).
-    if (updated.meta.status === 'approved') {
+    // finished, is the active one — and `memory add` reads this rather than scanning (@@D-916). Only
+    // a plan this host claims is being executed (`@@D-967`).
+    if (updated.meta.status === 'approved' && claimOf(updated.meta)?.host === hostOf(options)) {
         writeActivePlan(root, {slug: updated.meta.slug ?? '', path: relative(root, plan.path)});
     }
     // A plan approved before the link was recorded gets it on the next sync, so the front
@@ -834,6 +1050,16 @@ async function sync(
         const issue = publishIssue(root, current, options, flags);
         if (issue) process.stdout.write(`# issue updated ${issue.url}\n`);
     }
+    // An entry that still names the plan file is rewritten to name the issue: the plan may be
+    // released at any time, and the issue is the record that survives (`@@D-967`).
+    if (!on(flags, options, 'check') && current.meta.issueUrl) {
+        const changed = rewriteProvenance(
+            root,
+            current.meta.slug ?? planSlug(current.path),
+            planIssue(current),
+        );
+        if (changed > 0) process.stdout.write(`# ${changed} memory file(s) now name the issue\n`);
+    }
     // A channel opened before its issue existed carries a topic with no link in it, and a
     // channel opened for a plan that was retitled carries the old title. The create is spent
     // (`name_taken`), so the topic is what this repairs (`@@D-812`).
@@ -882,9 +1108,11 @@ function adopt(
     plan: IPlanDocument,
     ids: string[],
     options: Map<string, string>,
+    flags: Set<string>,
 ): void {
     const issueValue = options.get('issue');
     if (ids.length === 0 && !issueValue) fail('plan adopt needs at least one id, or --issue <url>');
+    assertOwned(root, plan, 'plan adopt', options, flags);
 
     let current = plan;
     if (issueValue) {
@@ -966,6 +1194,272 @@ function adopt(
     process.stdout.write(`# ${relative(root, current.path)} updated\n`);
 }
 
+/**
+ * Take the plan for this host, so no other one edits the memory it drives.
+ *
+ * The plan is a local folder and the folder is gitignored, so a claim recorded in the front matter
+ * is only a copy: the issue is where two hosts can see each other, and a claim already published
+ * there wins over this checkout's front matter. A stale copy must never take a plan somebody else is
+ * working, which is why the refusal comes from the marker and not from the file.
+ */
+/** The GitHub issue an argument names, with the repository it lives in. */
+export function parseIssueArgument(
+    root: string,
+    argument: string | undefined,
+    options: Map<string, string>,
+): {repo: string; number: number} | undefined {
+    const text = (argument ?? '').trim();
+    const url =
+        /^https?:\/\/github\.com\/(?<owner>[^/]+)\/(?<name>[^/]+)\/issues\/(?<number>\d+)\/?$/.exec(
+            text,
+        );
+    if (url?.groups) {
+        return {
+            repo: `${url.groups['owner']}/${url.groups['name']}`,
+            number: Number(url.groups['number']),
+        };
+    }
+    const bare = /^#?(?<number>\d+)$/.exec(text);
+    if (!bare?.groups) return undefined;
+    const repo = options.get('repo')?.trim() || originRepo(root);
+    return repo === undefined ? undefined : {repo, number: Number(bare.groups['number'])};
+}
+
+/**
+ * The folder name a plan's title suggests.
+ *
+ * A recovered plan has no folder name to take: the issue carries a title and nothing else. The part
+ * before the first dash or colon is what a plan is usually named after (`blong-chat — …`), so that
+ * is the guess; `--slug` is there for the titles the guess gets wrong.
+ */
+export function slugFromTitle(title: string): string {
+    const head = title.split(/\s+[—–-]\s+|:\s+/)[0] ?? title;
+    const slug = head
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 40)
+        .replace(/-$/, '');
+    return slug === '' ? 'plan' : slug;
+}
+
+/**
+ * Rebuild a plan from its published issue and claim it.
+ *
+ * A plan's folder lives on the host that created it, so a second host has the issue and nothing else.
+ * The issue body is the plan without its front matter, behind the sentences that say where the plan
+ * is worked — so taking the plan over is: read the issue, strip the header, write the folder under a
+ * slug the title suggests, and then claim the file the way any other claim does. The front matter
+ * comes back from the comment the issue carries, because the issue is the source of record and the
+ * approval date, the Slack channel and a `closed` status are nowhere else (@@T-761); an issue
+ * published before that comment existed rebuilds from defaults, and the run says so. What does not
+ * travel is said rather than assumed: the support files beside the plan (`plan.prompt.md`,
+ * `model.md`) are not in the issue, and a body GitHub truncated comes back partial (`@@T-759`).
+ */
+function claimFromIssue(
+    root: string,
+    argument: string | undefined,
+    options: Map<string, string>,
+    flags: Set<string>,
+): void {
+    if (!argument) {
+        fail('name a plan, or the issue a plan is published in');
+    }
+    const target = parseIssueArgument(root, argument, options);
+    if (!target) {
+        fail(
+            `"${argument}" is neither a plan on this disk nor a GitHub issue — pass a plan, or ` +
+                'https://github.com/<owner>/<name>/issues/<n> (a bare number needs --repo)',
+        );
+    }
+    if (!ghAvailable()) {
+        fail('`gh` is not installed — an issue cannot be read without it');
+    }
+    const issue = issueView(target.repo, target.number);
+    if (!issue || typeof issue.body !== 'string') {
+        fail(`issue ${target.repo}#${target.number} could not be read`);
+    }
+    const body = stripIssueHeader(issue.body!);
+    if (body.trim() === '') {
+        fail(`issue ${target.repo}#${target.number} carries no plan body to rebuild from`);
+    }
+    if (/Truncated at GitHub's issue-body limit/.test(body)) {
+        process.stderr.write(
+            'blong-dev: the issue body was truncated at GitHub’s limit — the recovered plan is ' +
+                'partial\n',
+        );
+    }
+    const title = issue.title?.trim() || `Plan ${target.repo}#${target.number}`;
+    const slug = options.get('slug')?.trim() || slugFromTitle(title);
+    const path = join(plansRoot(root), slug, 'plan.md');
+    if (existsSync(path)) {
+        fail(`plans/${slug}/plan.md already exists — pass --slug <name> to rebuild it elsewhere`);
+    }
+    const url = issue.url ?? `https://github.com/${target.repo}/issues/${target.number}`;
+    const published = issueFrontMatter(issue.body!);
+    if (published === undefined) {
+        process.stderr.write(
+            'blong-dev: the issue carries no front matter — the rebuild uses defaults ' +
+                '(status: approved, today as the recovered date)\n',
+        );
+    }
+    // The issue's own coordinates and the claim are decided here, not carried over: a rebuild names
+    // the folder it writes and starts unclaimed, and the claim that follows is what records a host.
+    const meta: IPlanMeta = published ? parsePlan(`---\n${published}\n---\n`).meta : {};
+    for (const key of [...CLAIM_FIELDS, 'localRemovedAt']) delete meta[key];
+    meta.slug = slug;
+    meta.title = meta.title ?? title;
+    meta.status = meta.status ?? 'approved';
+    meta.repo = target.repo;
+    meta.issue = target.number;
+    meta.issueUrl = url;
+    meta.recoveredAt = today();
+    mkdirSync(join(plansRoot(root), slug), {recursive: true});
+    writeFileSync(path, planText(meta, body), 'utf8');
+    process.stdout.write(`# ${relative(root, path)} rebuilt from ${url}\n`);
+    claim(root, readPlan(path), options, flags);
+}
+
+function claim(
+    root: string,
+    plan: IPlanDocument,
+    options: Map<string, string>,
+    flags: Set<string>,
+): void {
+    const host = hostOf(options);
+    const force = on(flags, options, 'force');
+    const remote = issueState(root, plan);
+    const local = claimOf(plan.meta);
+    const held =
+        remote.claim && !isMine(remote.claim, host)
+            ? remote.claim
+            : local && !isMine(local, host)
+              ? local
+              : undefined;
+    if (held && !force) {
+        fail(
+            `this plan is claimed by "${held.host}"${held.at ? ` since ${held.at}` : ''} — ` +
+                'release it there (`blong-dev plan release <plan>`) before taking it, or pass ' +
+                '--force.',
+        );
+    }
+    if (held) process.stdout.write(`# --force: taking over a plan claimed by "${held.host}"\n`);
+
+    const number = plan.meta.issue;
+    // The login only matters where it is published: a local-only plan must not wait on a network
+    // call to record a claim.
+    const by = number && !on(flags, options, 'no-issue') ? ghLogin() : undefined;
+    const taken: IPlanClaim = {host, at: today(), ...(by ? {by} : {})};
+    const patched = writeMeta(plan, claimPatch(taken));
+    writeFileSync(patched.path, renderPlan(patched), 'utf8');
+    // Only a plan being executed is the active one, so a claim on an approved plan is what
+    // `memory add` reads when it asks which plan a decision belongs to (`@@D-916`).
+    if (patched.meta.status === 'approved') {
+        writeActivePlan(root, {
+            slug: patched.meta.slug ?? planSlug(patched.path),
+            path: relative(root, patched.path),
+        });
+    }
+    process.stdout.write(`# claimed by ${host}${by ? ` (${by})` : ''} on ${taken.at}\n`);
+
+    const repo = patched.meta.repo ?? originRepo(root);
+    if (number && !on(flags, options, 'no-issue')) {
+        if (!repo || !ghAvailable()) {
+            process.stderr.write(
+                'blong-dev: the issue was not updated — the claim holds on this checkout only\n',
+            );
+        } else {
+            // A label that does not exist makes `gh issue edit --add-label` fail, and a claim that
+            // silently loses its visible mark is worse than one with no label at all. The host gets
+            // a label of its own, so the issue list says who holds the plan rather than only that
+            // somebody does (`@@D-967`).
+            labelEnsure(repo, CLAIM_LABEL);
+            const label = hostLabel(host);
+            labelEnsure(repo, label, `Plan claimed by the host \`${host}\``, '0E8A16');
+            // A takeover (`--force`) leaves the previous host's label behind unless it is taken off
+            // in the same call, and two host labels would be two answers to one question.
+            const stale = remote.labels.filter(other => isHostLabel(other) && other !== label);
+            issueTrack(repo, number, {
+                addLabels: [CLAIM_LABEL, label],
+                ...(stale.length > 0 ? {removeLabels: stale} : {}),
+                ...(by ? {assignee: by} : {}),
+            });
+            publishIssue(root, patched, options, flags);
+        }
+    }
+}
+
+/**
+ * Let the plan go, and optionally take the local `plan.md` with it.
+ *
+ * Releasing is the other half of a claim: a finished or suspended plan is nobody's, so another host
+ * may take it and the checkout that wrote it may drop the board. `--remove` deletes the plan file;
+ * entries it created already name the issue once the plan has one, and any that still name the file
+ * are rewritten as the file goes. The folder itself stays, with whatever support files it holds.
+ */
+function release(
+    root: string,
+    plan: IPlanDocument,
+    options: Map<string, string>,
+    flags: Set<string>,
+): void {
+    const host = hostOf(options);
+    const force = on(flags, options, 'force');
+    const claim = claimOf(plan.meta);
+    if (claim && !isMine(claim, host) && !force) {
+        fail(
+            `this plan is claimed by "${claim.host}"${claim.at ? ` since ${claim.at}` : ''} — ` +
+                'only that host releases it, or pass --force.',
+        );
+    }
+    const remove = on(flags, options, 'remove');
+    const number = plan.meta.issue;
+    const repo = plan.meta.repo ?? originRepo(root);
+    if (remove && !number && !force) {
+        fail(
+            '--remove deletes the local plan, and without a published issue nothing of it would ' +
+                'be left — publish it first (`plan init`), or pass --force.',
+        );
+    }
+
+    const slug = plan.meta.slug ?? planSlug(plan.path);
+    const active = readActivePlan(root);
+    const released = writeMeta(plan, {}, CLAIM_FIELDS);
+    let published = released;
+    if (remove) {
+        const rewritten = rewriteProvenance(root, slug, planIssue(plan));
+        published = writeMeta(released, {localRemovedAt: today()});
+        unlinkSync(released.path);
+        process.stdout.write(
+            `# ${relative(root, released.path)} removed — ${rewritten} memory file(s) now name ` +
+                'the issue\n',
+        );
+    } else {
+        writeFileSync(released.path, renderPlan(released), 'utf8');
+    }
+    if (active && (active.slug === slug || active.path === relative(root, plan.path))) {
+        writeActivePlan(root, undefined);
+    }
+    process.stdout.write(`# released${claim ? ` (was claimed by ${claim.host})` : ''}\n`);
+
+    if (number && !on(flags, options, 'no-issue')) {
+        if (!repo || !ghAvailable()) {
+            process.stderr.write(
+                'blong-dev: the issue was not updated — this checkout no longer claims the plan\n',
+            );
+        } else {
+            issueTrack(repo, number, {
+                // The claim label and whichever host label the issue carries: a release must not
+                // leave a host named on a plan nobody holds.
+                removeLabels: [CLAIM_LABEL, ...issueState(root, plan).labels.filter(isHostLabel)],
+                ...(claim?.by ? {unassign: claim.by} : {}),
+            });
+            publishIssue(root, published, options, flags);
+        }
+    }
+}
+
 export async function plan(args: string[]): Promise<void> {
     const parsed = parseArgs(guardBooleans(args));
     const root = repoRoot(process.cwd());
@@ -1001,7 +1495,27 @@ export async function plan(args: string[]): Promise<void> {
             }
             case 'adopt': {
                 const doc = load(root, rest[0]);
-                adopt(root, doc, rest.slice(1), options);
+                adopt(root, doc, rest.slice(1), options, flags);
+                return;
+            }
+            case 'claim': {
+                const local = findPlanFile(root, rest[0]);
+                if (local !== undefined) {
+                    claim(root, readPlan(local), options, flags);
+                } else {
+                    claimFromIssue(root, rest[0], options, flags);
+                }
+                return;
+            }
+            case 'release': {
+                const local = findPlanFile(root, rest[0]) ?? findPlanByIssue(root, rest[0]);
+                if (local === undefined) {
+                    fail(
+                        `no plan at "${rest[0] ?? ''}" — it is a file, a folder under plans/, or a ` +
+                            'published issue number',
+                    );
+                }
+                release(root, loadAt(local), options, flags);
                 return;
             }
             default:

@@ -13,6 +13,8 @@
 
 import {execFileSync, spawnSync} from 'node:child_process';
 
+import {claimMarker, type IPlanClaim} from './planOwnership.ts';
+
 /** GitHub's own limit on an issue body. */
 export const ISSUE_BODY_LIMIT = 65_536;
 
@@ -65,7 +67,12 @@ export function originRepo(root: string): string | undefined {
 }
 
 /** Ensure a label exists, creating it when it does not. Never fatal. */
-export function labelEnsure(repo: string, label: string): void {
+export function labelEnsure(
+    repo: string,
+    label: string,
+    description = 'Tracked by a plan in plans/',
+    color = '5319E7',
+): void {
     gh([
         'label',
         'create',
@@ -73,9 +80,9 @@ export function labelEnsure(repo: string, label: string): void {
         '--repo',
         repo,
         '--description',
-        'Tracked by a plan in plans/',
+        description,
         '--color',
-        '5319E7',
+        color,
         '--force',
     ]);
 }
@@ -156,18 +163,42 @@ export function issueComment(repo: string, issue: number, body: string): void {
     if (!result.ok) throw new Error(`gh issue comment failed: ${result.err || result.out}`);
 }
 
+/** What an issue says about the plan behind it. */
+export interface IIssueOwnership {
+    /** The host holding the plan, when one does. */
+    claim?: IPlanClaim;
+    /** The day the local `plan.md` was removed, when it was. */
+    removedAt?: string;
+    /**
+     * The plan's front matter, published as a block a host reads back.
+     *
+     * The issue is the source of record once the local file is gone, so what a rebuild needs must
+     * travel with it: the approval date, the Slack channel and a `closed` status are in no other
+     * place (@@T-761). It goes inside an HTML comment, so a reader of the issue does not see it.
+     */
+    frontMatter?: string;
+}
+
+/** How the published front matter opens, and the token that ends it. */
+const FRONT_MATTER_OPEN = '<!-- plan-front-matter';
+const COMMENT_CLOSE = '-->';
+
 /**
- * The body an issue carries: a short provenance line and the plan without its front
- * matter.
+ * The body an issue carries: a header that says where the plan is being worked, the plan's front
+ * matter in a comment a host reads back, and the plan itself.
  *
- * A plan longer than GitHub's limit is cut at the limit with a note naming the local
- * file, because refusing to publish leaves the team with no record at all — and the
- * note says which half is missing.
+ * The header is the one place both hosts can see the same fact. A plan is a local folder, and the
+ * folder is gitignored, so two hosts working one plan edit two memory trees that never meet; the
+ * claim is what stops that, and it has to live where both can read it. So the issue says who holds
+ * the plan, carries a marker a machine reads back (`<!-- plan-claim host="…" -->`), and — once the
+ * local file has been removed — says that this issue is the source of record.
+ *
+ * A plan longer than GitHub's limit is cut at the limit with a note naming the local file, because
+ * refusing to publish leaves the team with no record at all — and the note says which half is
+ * missing.
  */
-export function issueBody(planBody: string, slug: string): string {
-    const header =
-        `> Mirrored from \`plans/${slug}/plan.md\` by \`blong-dev plan\`. ` +
-        'Progress is updated as its tasks close; the local plan is the source.\n\n';
+export function issueBody(planBody: string, slug: string, ownership: IIssueOwnership = {}): string {
+    const header = issueHeader(slug, ownership) + frontMatterBlock(ownership.frontMatter);
     const room = SAFE_BODY - header.length;
     if (planBody.length <= room) return header + planBody;
     const cut = planBody.slice(0, room);
@@ -177,6 +208,170 @@ export function issueBody(planBody: string, slug: string): string {
         `\n\n---\n\n_Truncated at GitHub's issue-body limit. The full plan is ` +
         `\`plans/${slug}/plan.md\`._\n`
     );
+}
+
+/**
+ * The front matter as the issue carries it: a comment, so it does not reach the rendered page.
+ *
+ * A YAML value may hold `-->`, which would end the comment early and spill the rest into the body;
+ * the token is written as an entity and put back when the block is read.
+ */
+function frontMatterBlock(frontMatter: string | undefined): string {
+    const text = frontMatter?.trim();
+    if (!text) return '';
+    const safe = text.replaceAll(COMMENT_CLOSE, '--&gt;');
+    return `${FRONT_MATTER_OPEN}\n${safe}\n${COMMENT_CLOSE}\n\n`;
+}
+
+/**
+ * The front matter an issue carries, as YAML text, or `undefined` when it carries none.
+ *
+ * A body published before the block existed answers `undefined`, and a rebuild then falls back to
+ * defaults it names.
+ */
+export function issueFrontMatter(body: string): string | undefined {
+    const lines = body.replace(/\r\n/g, '\n').split('\n');
+    const open = lines.findIndex(line => line.trimStart().startsWith(FRONT_MATTER_OPEN));
+    if (open < 0) return undefined;
+    const rest = lines.slice(open + 1);
+    const close = rest.findIndex(line => line.trim() === COMMENT_CLOSE);
+    if (close < 0) return undefined;
+    return rest.slice(0, close).join('\n').trim().replaceAll('--&gt;', COMMENT_CLOSE);
+}
+
+/** The sentences a reader sees, and the marker a host reads. */
+function issueHeader(slug: string, ownership: IIssueOwnership): string {
+    if (ownership.removedAt) {
+        return (
+            `> The local \`plans/${slug}/plan.md\` was removed on ${ownership.removedAt}, when the ` +
+            'plan was released. This issue is the source of record: every task below links to the ' +
+            'memory entry that holds its detail.\n\n'
+        );
+    }
+    const claim = ownership.claim;
+    if (claim) {
+        const who = claim.by ? `\`${claim.host}\` (${claim.by})` : `\`${claim.host}\``;
+        return (
+            `> Mirrored from \`plans/${slug}/plan.md\`, claimed by ${who} on ${claim.at}. While ` +
+            'that host works the plan the local copy is the source and this issue is its mirror; ' +
+            'progress is updated as its tasks close.\n\n' +
+            `${claimMarker(claim)}\n\n`
+        );
+    }
+    return (
+        `> Planned here, with its working copy in \`plans/${slug}/plan.md\`. No host has claimed ` +
+        'it yet: a claim is what stops two hosts from editing the same memory files, and nothing ' +
+        'below advances until one does.\n\n'
+    );
+}
+
+/** One issue as the ownership check needs it. */
+export interface IIssueState {
+    body?: string;
+    labels?: string[];
+    title?: string;
+    url?: string;
+}
+
+/** A reader of one issue, so a test can answer without `gh`. */
+export type IssueReader = (repo: string, issue: number) => IIssueState | undefined;
+
+let injectedIssueReader: IssueReader | undefined;
+
+/**
+ * Replace the issue reader, or put the `gh`-backed one back.
+ *
+ * The claim reads the issue before it writes anything, and a test of a claim on a plan it has no
+ * checkout of cannot reach GitHub — so the read is the one seam it needs. Nothing else in this
+ * module is injected: a write is asserted by what it publishes.
+ */
+export function setIssueReader(reader: IssueReader | null): void {
+    injectedIssueReader = reader ?? undefined;
+}
+
+/** Read an issue's body, labels, title and address, or `undefined` when it cannot be read. */
+export function issueView(repo: string, issue: number): IIssueState | undefined {
+    if (injectedIssueReader) return injectedIssueReader(repo, issue);
+    const result = gh([
+        'issue',
+        'view',
+        String(issue),
+        '--repo',
+        repo,
+        '--json',
+        'body,labels,title,url',
+    ]);
+    if (!result.ok) return undefined;
+    try {
+        const parsed = JSON.parse(result.out) as {
+            body?: string;
+            labels?: {name?: string}[];
+            title?: string;
+            url?: string;
+        };
+        return {
+            ...(typeof parsed.body === 'string' ? {body: parsed.body} : {}),
+            ...(typeof parsed.title === 'string' ? {title: parsed.title} : {}),
+            ...(typeof parsed.url === 'string' ? {url: parsed.url} : {}),
+            labels: (parsed.labels ?? [])
+                .map(label => label.name ?? '')
+                .filter(name => name !== ''),
+        };
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Drop the header a published issue carries above the plan.
+ *
+ * An issue body is the plan without its front matter, preceded by the sentences that say where the
+ * plan is being worked, the marker a host reads back and the front-matter comment a rebuild restores
+ * from. Rebuilding a local plan from the issue therefore starts by taking that preamble off: the
+ * leading blockquote block, the blank lines around it, the `plan-claim` marker when a claim left
+ * one, and the front-matter comment. Only the leading block is touched — a blockquote further down
+ * belongs to the plan.
+ */
+export function stripIssueHeader(body: string): string {
+    const lines = body.replace(/\r\n/g, '\n').split('\n');
+    let index = 0;
+    const skipBlank = (): void => {
+        while (index < lines.length && (lines[index] ?? '').trim() === '') index += 1;
+    };
+    skipBlank();
+    while (index < lines.length && (lines[index] ?? '').trimStart().startsWith('>')) index += 1;
+    skipBlank();
+    while (index < lines.length && /^\s*<!--\s*plan-claim[^>]*-->\s*$/.test(lines[index] ?? '')) {
+        index += 1;
+        skipBlank();
+    }
+    if (index < lines.length && (lines[index] ?? '').trimStart().startsWith(FRONT_MATTER_OPEN)) {
+        index += 1;
+        while (index < lines.length && (lines[index] ?? '').trim() !== COMMENT_CLOSE) index += 1;
+        index += 1;
+        skipBlank();
+    }
+    return lines.slice(index).join('\n');
+}
+
+/** Add or remove labels and assignees on an issue. Never fatal: the body is the record. */
+export function issueTrack(
+    repo: string,
+    issue: number,
+    change: {addLabels?: string[]; removeLabels?: string[]; assignee?: string; unassign?: string},
+): void {
+    const args = ['issue', 'edit', String(issue), '--repo', repo];
+    for (const label of change.addLabels ?? []) args.push('--add-label', label);
+    for (const label of change.removeLabels ?? []) args.push('--remove-label', label);
+    if (change.assignee) args.push('--add-assignee', change.assignee);
+    if (change.unassign) args.push('--remove-assignee', change.unassign);
+    if (args.length > 5) gh(args);
+}
+
+/** The login `gh` is authenticated as, when it can say. */
+export function ghLogin(): string | undefined {
+    const result = gh(['api', 'user', '--jq', '.login']);
+    return result.ok && result.out !== '' ? result.out : undefined;
 }
 
 /** A short answer for a caller that wants one line: the issue's own URL. */

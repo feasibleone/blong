@@ -60,12 +60,17 @@ conversationId: C0CGV5Y70LS
 channelUrl: https://slack.com/app_redirect?channel=C0CGV5Y70LS
 created: 2026-11-11
 approved: 2026-11-11
+claimed: ms-02 # the host working it; `claim` writes this, `release` drops it
+claimedAt: 2026-11-11
+claimedBy: kalin # the GitHub login, when `gh` can say
 ```
 
 `conversationId` is what `chat.prompt.ask` addresses and `channelUrl` is where a person opens the
 channel; both are recorded so the plan answers "where is the conversation" without a lookup. The
 issue link leads the channel's topic, so a reader who lands in Slack can click straight to it. A
-plan whose `status` is `approved` is the active one; the newest is the one being executed.
+plan whose `status` is `approved` is the active one; the newest is the one being executed. The three
+claim keys are the exception to "approved is active": a plan nobody has claimed is not being worked
+(see [Who works a plan](#who-works-a-plan)).
 
 ## The plan document
 
@@ -251,10 +256,10 @@ of contents than a link. `plan check` reports a task that names its entry withou
 so the issue is navigable too. To change the detail, change the memory entry (`memory edit`), never
 the plan.
 
-The `<!-- prettier-ignore -->` above a list is written by `spaceOutPlan` and never by hand: a
-long title makes a long line, and a formatter that re-wrapped it would split the link across two
-lines, which the board reads as two tasks. One guard covers a whole list; prose, headings and
-tables stay the formatter's.
+The `<!-- prettier-ignore -->` above a list is written by `spaceOutPlan` and never by hand: a long
+title makes a long line, and a formatter that re-wrapped it would split the link across two lines,
+which the board reads as two tasks. One guard covers a whole list; prose, headings and tables stay
+the formatter's.
 
 ### What a good task says
 
@@ -284,12 +289,67 @@ themselves from the channel's _Add people_ dialog once somebody has opened it.
 It creates a memory todo per task and a `D-` entry per decision, trims the plan to titles plus
 linked `@@T-…` / `@@D-…` references, mirrors the plan into a GitHub issue, opens the plan's private
 Slack channel and records the issue, the conversation id and the channel link in the front matter.
-From then on the plan is the board and the memory is the detail. An issue that already exists is
-adopted with `--issue <url>` instead of being created. `blong-dev plan init --help` lists the rest —
-the issue label, the channel (name, target, account), `--draft`, and the skips (`--no-issue`,
-`--no-slack`, `--no-tasks`, `--no-decisions`).
+It also **claims the plan for this host** — the section below says what that buys (`--no-claim`
+publishes it unowned). From then on the plan is the board and the memory is the detail. An issue
+that already exists is adopted with `--issue <url>` instead of being created.
+`blong-dev plan init --help` lists the rest — the issue label, the channel (name, target, account),
+`--draft`, and the skips (`--no-issue`, `--no-slack`, `--no-tasks`, `--no-decisions`).
+
+## Who works a plan
+
+A plan's folder is gitignored, so it exists on the machine that created it and nowhere else. Two
+hosts working one plan therefore edit two memory trees that only agree by accident: a `memory close`
+on one is invisible to the other, and both go on ticking a board the other cannot see. The claim is
+what stops that.
+
+- **`blong-dev plan claim <plan>`** takes it: the host and the day go into the front matter, the
+  plan becomes the active one (`memory add` then demands `--plan` for a decision or a friction), and
+  the issue is republished with a header that names the host, a marker line
+  (`<!-- plan-claim host="…" -->`) a machine reads back, and two labels — `plan-claimed` and
+  `plan-host:<name>` — so the issue list says who holds the plan without opening it. `--host` names
+  another machine, `--force` takes over a claim somebody else holds (and takes the previous host's
+  label off).
+- **`blong-dev plan claim <issue>`** takes a plan this host has no folder for: it reads the issue,
+  strips the preamble the tool published above the plan, writes `plans/<slug>/plan.md` with its front
+  matter restored from the comment the issue carries — the approval and close dates, the Slack
+  channel, a `closed` status, because a rebuild cannot invent them and the issue is the source of
+  record (`@@T-761`) — and claims it. The slug is guessed from the title (`--slug` when the guess is
+  wrong) and the claim is this run's. An issue published before that comment existed rebuilds from
+  defaults, and the run says so. The support files beside the plan (`plan.prompt.md`, `model.md`) do
+  not travel with the issue, and a body GitHub truncated comes back partial — both are said rather
+  than assumed.
+- **A plan the issue says nobody holds** can be claimed from either side: locally, or from the issue
+  after a release removed the file.
+- **A plan another host holds is refused by every verb that writes** — `tasks --apply`, `sync`,
+  `adopt`, `init`, `claim` and `release` — with the host and since when named in the error. The
+  check reads the marker out of the issue first, because the issue is the only place two checkouts
+  can see each other; a stale local copy must never take a plan somebody else is working.
+  `plan check` and `plan status` report the claim without refusing.
+- **`blong-dev plan release <plan>`** lets it go: the claim is cleared, the issue header says no
+  host holds it, and the active pointer is cleared if it named this plan. Release it when the plan
+  is finished or when it is suspended for somebody else. `<plan>` is the folder, or the published
+  issue number the local plan carries in its front matter — the handle a host that claimed from the
+  issue still has at hand.
+- **`blong-dev plan release <plan> --remove`** also deletes `plans/<slug>/plan.md` — the folder and
+  its support files (`plan.prompt.md`, `model.md`, …) stay — and its header says the issue is the
+  source of record. A plan with no issue cannot be removed without `--force`, because nothing would
+  be left of it.
+
+The provenance sentence an entry opens with names the plan's **issue** from the moment it is
+published — `plan init` rewrites what `tasks` wrote a moment earlier, `plan sync` catches plans
+published before that rule, and only an entry written for a plan with no issue yet names the folder.
+The issue is the record a reader can open from anywhere, and it says itself whether a local copy
+exists, so the entry does not wait for a release to stop pointing at a file.
+
+The workflow is therefore: `init` (or `claim`, for a plan published earlier) on one host, work it
+with `--plan <slug>` on every decision and friction, `sync` as you go, then `release` — with
+`--remove` once the issue carries everything a reader needs.
 
 ## Executing it: one task at a time
+
+Before the first task the plan must be claimed by this host: `plan init` does it, and a plan
+published earlier is taken with `blong-dev plan claim <slug>`. Working a plan another host holds is
+refused rather than warned about, because the two would tick two memory trees that never meet.
 
 1. **Read the detail** from the entry, not from the plan: `blong-dev memory show @@T-xxx`. After
    approval the plan keeps titles; the reasoning is in the entry. A decision the entry cites is
@@ -383,6 +443,12 @@ blong-dev call chat.prompt.ask '{conversationId: C0ABCDEF, kind: confirm, text: 
 
 The answer's `value` is what code switches on, so the plan names it once and never rewords it; the
 shapes and the rest of the rules are in the [blong-ask skill](../blong-ask/SKILL.md).
+
+Closing the plan also releases it, because a finished plan is nobody's and another host may need the
+board: `blong-dev plan release <slug>` clears the claim and the header stops naming a host. Once the
+issue carries everything a reader needs, `blong-dev plan release <slug> --remove` deletes the local
+`plan.md` (the folder and its support files stay) and points every entry that said it was planned
+there at the issue — see [Who works a plan](#who-works-a-plan).
 
 ## Adopting work that exists
 
