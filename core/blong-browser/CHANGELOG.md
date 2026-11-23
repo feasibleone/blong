@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.39.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.39.0...blong-browser-v1.39.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* upgrade to mermaid 12 ([d0a413a](https://github.com/feasibleone/blong/commit/d0a413a6147cdc187add5203c91228c5a3373aeb))
+
 ## [1.39.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.38.1...blong-browser-v1.39.0) (2026-11-23)
 
 

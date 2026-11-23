@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.22.0...blong-dev-v1.23.0) (2026-11-23)
+
+
+### Features
+
+* Copilot agent ([9df1ecc](https://github.com/feasibleone/blong/commit/9df1eccaa7e430d42fcc8cea3d008b1a65393c87))
+
 ## [1.22.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.21.1...blong-dev-v1.22.0) (2026-11-23)
 
 
