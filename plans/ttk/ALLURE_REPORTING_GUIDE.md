@@ -3,6 +3,7 @@
 ## Overview
 
 blong-ttk uses Allure 3 for comprehensive test reporting with built-in support for:
+
 - Test hierarchy visualization
 - Parallel execution timeline
 - Trace link integration
@@ -15,6 +16,7 @@ blong-ttk uses Allure 3 for comprehensive test reporting with built-in support f
 ### 1. Test Hierarchy (Nested Steps)
 
 Tests are organized in a tree structure showing:
+
 - Collections → Groups → Steps → Substeps
 
 ```typescript
@@ -36,6 +38,7 @@ group('P2P Transfer')([
 ### 2. Execution Timeline
 
 Allure Timeline tab visualizes parallel execution:
+
 - Horizontal bars show test duration
 - Overlapping bars indicate parallel steps
 - Useful for identifying bottlenecks
@@ -59,16 +62,16 @@ allure: {
 
 Tests are automatically categorized by failure type using `categories.json`:
 
-| Category | Matches |
-|----------|---------|
-| Transfer Failures | Failed transfer operations |
-| Quote Failures | Failed quote operations |
-| Timeout Errors | Operations exceeding timeout |
-| Callback Not Received | Missing expected callbacks |
-| HTTP 400/404/500 | HTTP error codes |
-| Validation Errors | Schema/data validation |
-| Provisioning Failures | Failed entity creation |
-| Network Errors | Connection issues |
+| Category              | Matches                      |
+| --------------------- | ---------------------------- |
+| Transfer Failures     | Failed transfer operations   |
+| Quote Failures        | Failed quote operations      |
+| Timeout Errors        | Operations exceeding timeout |
+| Callback Not Received | Missing expected callbacks   |
+| HTTP 400/404/500      | HTTP error codes             |
+| Validation Errors     | Schema/data validation       |
+| Provisioning Failures | Failed entity creation       |
+| Network Errors        | Connection issues            |
 
 **Configuration**: `config/categories.json` with regex patterns
 
@@ -77,6 +80,7 @@ Tests are automatically categorized by failure type using `categories.json`:
 ### 5. History Tracking
 
 Allure tracks test results across runs:
+
 - Trend charts (pass rate over time)
 - Duration trends
 - Flaky test detection
@@ -124,17 +128,18 @@ Edit `config/categories.json`:
 
 ```json
 [
-  {
-    "name": "Custom Failure Type",
-    "description": "Description of this failure class",
-    "matchedStatuses": ["failed", "broken"],
-    "messageRegex": ".*keyword.*",
-    "traceRegex": ".*handlerName.*"
-  }
+    {
+        "name": "Custom Failure Type",
+        "description": "Description of this failure class",
+        "matchedStatuses": ["failed", "broken"],
+        "messageRegex": ".*keyword.*",
+        "traceRegex": ".*handlerName.*"
+    }
 ]
 ```
 
 **Fields**:
+
 - `name`: Category name
 - `matchedStatuses`: Which statuses to match (`failed`, `broken`, `passed`, `skipped`)
 - `messageRegex`: Regex for error message
@@ -143,6 +148,7 @@ Edit `config/categories.json`:
 ### Environment Metadata
 
 Automatically captured in `environment.properties`:
+
 - Framework: blong
 - Language: typescript
 - Node version
@@ -156,7 +162,7 @@ Automatically captured in `environment.properties`:
 
 ```bash
 # Run tests (writes results to allure-results/)
-node -e "import('@feasibleone/blong-ttk').then(m => 
+node -e "import('@feasibleone/blong-ttk').then(m =>
     m.engineCollectionRun({collection: './p2p.ts'}, {})
 )"
 
@@ -177,48 +183,55 @@ allure open allure-report
 - name: Generate Allure Report
   if: always()
   run: |
-    npm install -g allure-commandline
-    allure generate allure-results -o allure-report --clean
+      npm install -g allure-commandline
+      allure generate allure-results -o allure-report --clean
 
 - name: Publish Report
   if: always()
   uses: peaceiris/actions-gh-pages@v3
   with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-    publish_dir: ./allure-report
+      github_token: ${{ secrets.GITHUB_TOKEN }}
+      publish_dir: ./allure-report
 ```
 
 ## Report Sections
 
 ### Overview
+
 - Total/passed/failed/broken/skipped counts
 - Success rate
 - Duration
 - Trend charts (if history enabled)
 
 ### Categories
+
 - Failure type distribution
 - Click category → see affected tests
 
 ### Suites
+
 - Tests grouped by suite/collection
 - Tree view of hierarchy
 
 ### Graphs
+
 - Status breakdown pie chart
 - Duration chart
 - Timeline chart
 
 ### Timeline
+
 - Horizontal Gantt-style view
 - Shows parallel execution
 - Hover for details
 
 ### Behaviors
+
 - Tests grouped by feature/story
 - Based on labels
 
 ### Packages
+
 - Tests grouped by package/realm
 
 ## Best Practices
@@ -237,8 +250,11 @@ async function test1(assert, {...}) { }
 
 ```typescript
 // Good
-assert.equal(transfer.state, 'COMMITTED', 
-    `Expected COMMITTED but got ${transfer.state} for transfer ${transfer.id}`);
+assert.equal(
+    transfer.state,
+    'COMMITTED',
+    `Expected COMMITTED but got ${transfer.state} for transfer ${transfer.id}`,
+);
 
 // Basic
 assert.equal(transfer.state, 'COMMITTED');
@@ -250,10 +266,10 @@ assert.equal(transfer.state, 'COMMITTED');
 group('Feature')([
     // Setup steps
     async function setup(...) { },
-    
+
     // Action steps
     async function performAction(...) { },
-    
+
     // Verification steps
     async function verifyResult(...) { },
 ])
@@ -294,7 +310,8 @@ git add .allure/history.jsonl
 
 **Problem**: Tests not classified
 
-**Solution**: 
+**Solution**:
+
 1. Check `categories.json` syntax
 2. Verify regex patterns match error messages
 3. Test regex at https://regex101.com
@@ -303,7 +320,8 @@ git add .allure/history.jsonl
 
 **Problem**: No trend charts
 
-**Solution**: 
+**Solution**:
+
 1. Ensure `historyPath` is set
 2. History file must persist between runs
 3. Generate report with `--clean` only on first run
@@ -313,6 +331,7 @@ git add .allure/history.jsonl
 **Problem**: Clicking trace link fails
 
 **Solution**:
+
 1. Ensure blong-log server is running
 2. Check `logUrl` pattern in config
 3. Verify `{traceId}` is replaced correctly
@@ -337,7 +356,7 @@ const attachment = {
 parameters: [
     {name: 'amount', value: '100'},
     {name: 'currency', value: 'USD'},
-]
+];
 ```
 
 ### Retry Information
@@ -353,6 +372,7 @@ statusDetails: {
 ## Examples
 
 See:
+
 - `examples/collections/mojaloop/onboarding.ts` - Parallel provisioning
 - `examples/collections/mojaloop/p2p-transfer.ts` - E2E flow with callbacks
 - `config/categories.json` - Failure classification patterns

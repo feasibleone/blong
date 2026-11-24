@@ -129,28 +129,11 @@ export default adapter<
         // because that is the scripted account `integration` claims with, and the maps merge.
         copilot: {
             accounts: {
-                srv1: {
-                    kind: 'copilot',
-                    runtimeUrl: '10.0.1.10:4321',
-                    runtimeTokenEnv: 'COPILOT_CONNECTION_TOKEN',
-                    workspaceRoot: '/srv/blong-agent/workspaces',
-                    modelName: 'deepseek-flash',
-                    baseUrl: 'https://api.deepseek.com/v1',
-                    apiKeyEnv: 'AGENT_ENGINE_API_KEY',
-                },
-                srv2: {
-                    kind: 'copilot',
-                    runtimeUrl: '10.0.1.11:4321',
-                    runtimeTokenEnv: 'COPILOT_CONNECTION_TOKEN',
-                    workspaceRoot: '/srv/blong-agent/workspaces',
-                    modelName: 'deepseek-flash',
-                    baseUrl: 'https://api.deepseek.com/v1',
-                    apiKeyEnv: 'AGENT_ENGINE_API_KEY',
-                },
                 laptop: {
                     kind: 'copilot',
                     runtimeUrl: '127.0.0.1:4321',
-                    workspaceRoot: '/srv/blong-agent/workspaces',
+                    // the folder a hand-started runtime is given; it must exist before a claim
+                    workspaceRoot: '/tmp/blong-agent/workspaces',
                     modelName: 'deepseek-flash',
                     baseUrl: 'https://api.deepseek.com/v1',
                     apiKeyEnv: 'AGENT_ENGINE_API_KEY',

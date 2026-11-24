@@ -342,6 +342,9 @@ export const copilotSession = async (
     };
 };
 
+/** A host this process can reach without the runtime's non-loopback rule. */
+const LOOPBACK = /^(127\.0\.0\.1|localhost|::1|\[::1\])$/;
+
 /** The client for an account's endpoint, started once and reused. */
 export const clientOf = async (account: IAgentEngineAccount): Promise<CopilotClient> => {
     if (!account.runtimeUrl)
@@ -354,6 +357,20 @@ export const clientOf = async (account: IAgentEngineAccount): Promise<CopilotCli
     const sdk = await sdkOf();
     const {host, port} = copilotEndpoint(account.runtimeUrl);
     const token = tokenOf(account);
+    // A runtime on a non-loopback address refuses a client with no token, and the handshake answers
+    // AUTHENTICATION_FAILED — which reads as a wrong token. The likelier cause is no token at all,
+    // and the likelier reason is a token value written into `runtimeTokenEnv`, which is a variable
+    // name: say which it was, and never echo the value that was put there.
+    if (!token && !LOOPBACK.test(host)) {
+        const named = account.runtimeTokenEnv;
+        throw new Error(
+            `the copilot account for ${account.runtimeUrl} sends no runtime token: set ` +
+                `runtimeToken, or runtimeTokenEnv naming a variable that holds one` +
+                (named && /^[A-Za-z_]\w*$/.test(named)
+                    ? ` (${named} is not set)`
+                    : ' (runtimeTokenEnv is not a variable name)'),
+        );
+    }
     const client = new sdk.CopilotClient({
         // `coding-agent` is the CLI's own default set of tools and behaviour; `empty` is for a shared
         // multi-tenant service, which one ticket per runtime is not.

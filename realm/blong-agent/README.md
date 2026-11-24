@@ -122,7 +122,7 @@ agent:
                 kind: copilot
                 runtimeUrl: 10.0.1.10:4321
                 runtimeTokenEnv: COPILOT_CONNECTION_TOKEN
-                workspaceRoot: /srv/blong-agent/workspaces
+                workspaceRoot: /var/lib/blong/workspaces
                 # The provider's own model id (`GET /v1/models` answers `deepseek-flash`,
                 # `deepseek-v4-pro`; `deepseek-chat` is the retired name DeepSeek still answers), and
                 # a baseUrl in the shape `provider` names: `/v1` for the default OpenAI wire,
@@ -216,14 +216,23 @@ one respect that matters — the ticket's workspace is **on the runtime host**, 
 
 What the runtime host needs:
 
-- **A working folder** — `/srv/blong-agent/workspaces` in the examples — writable by the runtime's
+- **A working folder** — `/var/lib/blong/workspaces` in the examples — writable by the runtime's
   user, and existing before the first claim: the runtime refuses a session whose `workingDirectory`
   is not a directory, and nothing on this side can create one on another host. An account names it
   as `workspaceRoot`, the claim records it as the session's workspace and prepares nothing locally,
   and one folder per host is enough because one worker runs on each.
-- **A git credential and a trusted working root.** The agent does the clone, the pull and the push
-  itself, with the harness's tools, so the user the runtime runs as must be able to reach the
-  repository and must trust the folder (`git config --global --add safe.directory <workspaceRoot>`).
+- **GitHub access** — one fine-grained token for the git work and the API work both. The agent
+  clones, pulls and pushes with the harness's git, and the harness's bundled skills shell out to the
+  `gh` CLI for pull requests, issues, `gh api` and CI status, so a deploy key is not enough: it
+  reaches git and nothing else. The token goes into the worker's environment as `GH_TOKEN` —
+  GitHub's own guidance for a fine-grained token, rather than `gh auth login --with-token` — and git
+  presents it through gh's credential helper, so no second secret is needed. Grant it only the
+  repositories this worker serves, with Contents read/write, Pull requests read/write, Issues
+  read/write, Checks read and Actions read — plus Workflows read/write only where a ticket may push
+  a workflow file — and let it expire: the agent runs as the user that owns the token, so a ticket
+  that reads its own environment can read the token too.
+- **A trusted working root.** The agent does the clone, the pull and the push itself, so the folder
+  it works in must be trusted: `git config --global --add safe.directory <workspaceRoot>`.
 - **The runtime itself**, from the release archive of the CLI (`package/prebuilds/<platform>/`
   inside a `github-copilot-<version>-<platform>.tgz`), versioned to match the SDK, or the
   `ghcr.io/github/copilot-cli` image.
@@ -231,30 +240,81 @@ What the runtime host needs:
   realm's `questionTimeoutMs` by a wide margin: a parked ticket's runtime session must outlive a
   person thinking, or the resume names a session the runtime has reaped.
 
-The server runs headless and is reached over plain TCP:
+The token itself is not something `gh` can mint: `gh auth token` only prints the broad OAuth token
+the CLI already holds, which reaches every repository its user can write and is a workable stand-in
+on a developer host rather than a server credential. A fine-grained token comes from the web, at
+`Settings → Developer settings → Personal access tokens → Fine-grained tokens` — an organisation
+issues its own, which may need approval — or, where those are unavailable, a classic token with the
+`repo` and `workflow` scopes.
+
+**One script provisions all of it**: `realm/blong-agent/copilot-runtime.sh` creates the user, the
+workspace and state directories, the git defaults and the trusted working root, installs `gh`,
+writes the unit and its environment file (`/etc/blong/copilot-worker.env`, root-only, holding the
+connection and GitHub tokens), proves both credentials against their APIs, and verifies the worker
+answers before reporting success. It pins the runtime to the version the SDK declares — and `gh` to
+a version of its own — checks both archives against their published checksums, and keeps each
+runtime version under `/opt/copilot/releases/` with `/opt/copilot/current` pointing at the active
+one, so an upgrade is reversible. Re-running it upgrades, keeps the secrets the file already holds,
+and applies a new one when the file carries it.
+
+```bash
+# the secrets first, in the file the worker keeps anyway; nothing secret on the command line
+sudo install -d -m 750 /etc/blong
+sudo install -m 600 /dev/null /etc/blong/copilot-worker.env
+sudo -e /etc/blong/copilot-worker.env     # GH_TOKEN=... and COPILOT_PROVIDER_API_KEY=...
+sudo bash realm/blong-agent/copilot-runtime.sh 192.168.8.100
+```
+
+The script reads `GH_TOKEN` and `COPILOT_PROVIDER_API_KEY` out of that file before it writes it
+back, so a secret seeded there needs no flag, and rotation is an edited line and a re-run. A file is
+also the only quiet way to carry one. `sudo GH_TOKEN=... bash ...` does work — Ubuntu's default
+`%sudo ALL=(ALL:ALL) ALL` implies the `SETENV` tag, so sudo hands the assignment to the script — but
+the assignment sits in sudo's own argument list, which `/proc/<pid>/cmdline` leaves readable to
+every user on the host, and sudo waits for the script, so that is the whole install; the line you
+typed is in your shell history besides. Neither is where a repository or model token belongs.
+
+The GitHub token is written into that environment file as `GH_TOKEN`, so `git pull`, `git push`,
+`gh pr create` and `gh run list` authenticate with it; editing that line and re-running rotates it.
+The provider key is different: it is stored for running the CLI by hand, and a realm session carries
+its own from the account's `apiKeyEnv`, so a worker without one still serves tickets. Both are
+checked before the worker starts: the token against the API, and with `GH_REPO=owner/name` push
+rights and CI read on that repository as well; the provider key against the provider's model list,
+which costs no tokens. A key given on this run has to work or the script stops; one it finds in the
+file only warns, because a realm session carries its own. The server runs headless and is reached
+over plain TCP:
 
 ```bash
 # a token every client must present; a non-loopback bind refuses to start without one
 export COPILOT_CONNECTION_TOKEN="$(openssl rand -hex 32)"
 export COPILOT_HOME=/var/lib/blong/copilot-state
-copilot-runtime --server --host 0.0.0.0 --port 4321 --session-idle-timeout 604800
+/opt/copilot/current/package/prebuilds/linux-x64/copilot-runtime --server --host 0.0.0.0 \
+    --port 4321 --session-idle-timeout 604800
 ```
 
 ```ini
-# /etc/systemd/system/copilot-worker.service
+# /etc/systemd/system/copilot-worker.service — the shape copilot-runtime.sh writes
 [Unit]
 Description=Copilot runtime for blong-agent
-After=network.target
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
 
 [Service]
 User=copilot
+Group=copilot
 WorkingDirectory=/var/lib/blong/workspaces
-Environment=COPILOT_HOME=/var/lib/blong/copilot-state
-Environment=COPILOT_CONNECTION_TOKEN=change-me
-ExecStart=/opt/copilot/copilot-runtime --server --host 0.0.0.0 --port 4321 \
-    --session-idle-timeout 604800
+EnvironmentFile=/etc/blong/copilot-worker.env
+ExecStartPre=/usr/bin/test -d /var/lib/blong/workspaces
+ExecStart=/opt/copilot/current/package/prebuilds/linux-x64/copilot-runtime --server \
+    --host 0.0.0.0 --port 4321 --session-idle-timeout 604800
 Restart=always
 RestartSec=5
+TimeoutStopSec=60
+UMask=0077
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
 
 [Install]
 WantedBy=multi-user.target
@@ -263,14 +323,50 @@ WantedBy=multi-user.target
 - **Keep the port private.** The connection is plaintext JSON-RPC over TCP and the token is sent
   unencrypted, so the port belongs on a private network with a firewall rule naming the realm's
   source addresses — never on a public interface. `--host 127.0.0.1` and a local runtime is the
-  developer setup; the `copilot` intent carries a `laptop` account for it.
+  developer setup: the `copilot` intent's `laptop` account names `/tmp/blong-agent/workspaces`, so
+  start the runtime in that folder before `integration copilot` claims against it.
 - **One account per host.** A session lives in the runtime that holds it, and a resume has to reach
   that runtime, so `srv1` and `srv2` are two accounts rather than a pool inside one.
-- **The token as a client-side secret.** The account names `runtimeTokenEnv`; a deployment fills
-  that variable from its own Secret. The model key travels separately, as `apiKeyEnv`.
-- **A check before believing it:** `blong-dev call engine.account.check --account srv1` answers
-  `{reachable, kind: 'copilot', mode: 'native', tools}` after a ping, and `{reachable: false}` when
-  the runtime does not answer.
+- **The token as a client-side secret.** The account names `runtimeTokenEnv`, which is the _name_ of
+  a variable a deployment fills from its own Secret; an account that carries the value itself says
+  `runtimeToken` instead. A token pasted into `runtimeTokenEnv` resolves to nothing — the client
+  looks for a variable with that name — and the runtime answers `AUTHENTICATION_FAILED`, which is
+  why the client refuses an account with no token on a remote endpoint and names the field rather
+  than the value. The model key travels separately, as `apiKeyEnv`.
+- **A check before believing it:** `blong-dev call engine.account.check --payload.account=srv1`
+  answers `{reachable, kind: 'copilot', mode: 'native', tools}` after a ping, and
+  `{reachable: false, error}` when the runtime does not answer — the reason travels with the
+  verdict, because a refused token, a missing token and a dead host otherwise read the same. Two
+  things about that command: the option is `--payload.account`, because everything else on the line
+  is the command's own flags, and the call must name the run it asks. The method is the engine
+  adapter's, and `gateway/engine/engine.account.check.ts` is what publishes it — a path nobody
+  serves answers `Not Found`, or `gateway.mleUndecoded` when the params arrive encrypted, which
+  reads as a cipher problem and is a missing route.
+
+```yaml
+# .blong_callrc beside this file — git-ignored, because it carries a password. It is what makes the
+# call reach the local run, and `route` is what keeps `engine.*` from falling through to another
+# file's server.
+server:
+    local:
+        url: http://localhost:8080
+        username: testAdmin
+        password: testPassword
+route:
+    engine.: local
+```
+
+```bash
+blong-dev call engine.account.check --payload.account=srv1
+```
+
+`--target http://localhost:8080` names the same run without a file, but it carries no credentials of
+its own: the login then has to come from the file's top-level `username`/`password` or from
+`MLE_USERNAME`/`MLE_PASSWORD`.
+
+Without a target or a route the command falls back to the only server the repository's own rc
+declares, which is a deployment that has no such method — and its refusal is the same
+`gateway.mleUndecoded`.
 
 ## Running it
 

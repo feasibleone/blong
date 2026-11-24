@@ -84,6 +84,7 @@ words:
   - clusterrolebinding
   - clusterrolebindings
   - clusterroles
+  - cmdline
   - CMYK
   - codegen
   - comesa
@@ -309,6 +310,7 @@ words:
   - node-rdkafka
   - nodedir
   - NODERAWFS
+  - NOFILE
   - nohup
   - nomic
   - nosniff

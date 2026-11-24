@@ -34,9 +34,12 @@ npm run test -- migration.test.ts
 import {migrateMigrateCollectionAnalyze} from '@feasibleone/blong-ttk';
 
 // Analyze a ml-testing-toolkit JSON collection
-const result = await migrateMigrateCollectionAnalyze({
-    sourcePath: './collections/hub/p2p.json',
-}, $meta);
+const result = await migrateMigrateCollectionAnalyze(
+    {
+        sourcePath: './collections/hub/p2p.json',
+    },
+    $meta,
+);
 
 // Output shows:
 // - Total requests
@@ -51,10 +54,13 @@ const result = await migrateMigrateCollectionAnalyze({
 import {migrateMigrateCollectionConvert} from '@feasibleone/blong-ttk';
 
 // Convert ml-testing-toolkit JSON to TypeScript
-const result = await migrateMigrateCollectionConvert({
-    sourcePath: './collections/hub/p2p.json',
-    targetPath: './collections/hub/p2p.ts',
-}, $meta);
+const result = await migrateMigrateCollectionConvert(
+    {
+        sourcePath: './collections/hub/p2p.json',
+        targetPath: './collections/hub/p2p.ts',
+    },
+    $meta,
+);
 
 // Generated TypeScript follows Blong patterns:
 // - Handler wrapper with semantic triple naming
@@ -69,13 +75,16 @@ const result = await migrateMigrateCollectionConvert({
 import {engineCollectionRun} from '@feasibleone/blong-ttk';
 
 // Run a TypeScript test collection
-const result = await engineCollectionRun({
-    collection: './collections/hub/p2p.ts',
-    concurrency: 10,
-    timeout: 60000,
-    realm: 'mojaloop',
-    logUrl: 'http://localhost:9998/trace/{traceId}',
-}, $meta);
+const result = await engineCollectionRun(
+    {
+        collection: './collections/hub/p2p.ts',
+        concurrency: 10,
+        timeout: 60000,
+        realm: 'mojaloop',
+        logUrl: 'http://localhost:9998/trace/{traceId}',
+    },
+    $meta,
+);
 
 // Result includes:
 // - success: boolean
@@ -102,29 +111,34 @@ allure open allure-report
 import {handler} from '@feasibleone/blong';
 import type {IAssert, IMeta} from '@feasibleone/blong';
 
-export default handler(({lib: {group}, handler: {
-    // Import handler functions you need
-    transferTransferCreate,
-    callbackWait,
-}}) => ({
-    testMyFeature: ({name = 'My Feature Test'}, $meta: IMeta) =>
-        group(name)([
-            // Test steps as async functions
-            async function step1(assert: IAssert, {$meta}: {$meta: IMeta}) {
-                // Your test logic
-                const result = await someOperation();
-                assert.ok(result);
-                return result;
-            },
+export default handler(
+    ({
+        lib: {group},
+        handler: {
+            // Import handler functions you need
+            transferTransferCreate,
+            callbackWait,
+        },
+    }) => ({
+        testMyFeature: ({name = 'My Feature Test'}, $meta: IMeta) =>
+            group(name)([
+                // Test steps as async functions
+                async function step1(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                    // Your test logic
+                    const result = await someOperation();
+                    assert.ok(result);
+                    return result;
+                },
 
-            async function step2(assert: IAssert, {step1, $meta}: {step1: any, $meta: IMeta}) {
-                // Depends on step1 via parameter
-                const data = await step1;
-                // More test logic
-                return data;
-            },
-        ]),
-}));
+                async function step2(assert: IAssert, {step1, $meta}: {step1: any; $meta: IMeta}) {
+                    // Depends on step1 via parameter
+                    const data = await step1;
+                    // More test logic
+                    return data;
+                },
+            ]),
+    }),
+);
 ```
 
 ### Callback Pattern
@@ -134,16 +148,22 @@ For async flows (POST → 202 → PUT callback):
 ```typescript
 async function createTransfer(assert: IAssert, {$meta}: {$meta: IMeta}) {
     // Make API call
-    const result = await transferTransferCreate({
-        amount: {amount: '100', currency: 'USD'},
-    }, $meta);
+    const result = await transferTransferCreate(
+        {
+            amount: {amount: '100', currency: 'USD'},
+        },
+        $meta,
+    );
 
     // Wait for async callback
-    const callback = await callbackWait({
-        correlationId: result.transferId,
-        type: 'PUT /transfers/{ID}',
-        timeout: 30000,
-    }, $meta);
+    const callback = await callbackWait(
+        {
+            correlationId: result.transferId,
+            type: 'PUT /transfers/{ID}',
+            timeout: 30000,
+        },
+        $meta,
+    );
 
     // Verify callback
     assert.equal(callback.status, 200);
@@ -174,12 +194,17 @@ group('Parallel Provisioning')([
     // This runs after all DFSPs are created
     async function setupRouting(
         assert: IAssert,
-        {createDfsp1, createDfsp2, createDfsp3, $meta}: {createDfsp1: any, createDfsp2: any, createDfsp3: any, $meta: IMeta}
+        {
+            createDfsp1,
+            createDfsp2,
+            createDfsp3,
+            $meta,
+        }: {createDfsp1: any; createDfsp2: any; createDfsp3: any; $meta: IMeta},
     ) {
         const dfsps = await Promise.all([createDfsp1, createDfsp2, createDfsp3]);
         // Setup routing between DFSPs
     },
-])
+]);
 ```
 
 ## Handler Naming Reference
@@ -187,18 +212,18 @@ group('Parallel Provisioning')([
 The migration emitter maps HTTP operations to semantic triple handler names
 (`subjectObjectPredicate`). The following table shows the naming rules:
 
-| Method | Path pattern              | Handler name               |
-|--------|---------------------------|----------------------------|
-| POST   | `/transfers`              | `transferTransferCreate`   |
-| GET    | `/transfers/{id}`         | `transferTransferGet`      |
-| PUT    | `/transfers/{id}`         | `transferTransferUpdate`   |
-| DELETE | `/transfers/{id}`         | `transferTransferRemove`   |
-| PATCH  | `/transfers/{id}`         | `transferTransferPatch`    |
-| GET    | `/transfers`              | `transferTransferFind`     |
-| POST   | `/quotes`                 | `quoteQuoteCreate`         |
-| GET    | `/parties/{type}/{id}`    | `partyPartyGet`            |
-| POST   | `/participants`           | `participantParticipantCreate` |
-| POST   | `/participants/{n}/limits`| `limitLimitCreate`         |
+| Method | Path pattern               | Handler name                   |
+| ------ | -------------------------- | ------------------------------ |
+| POST   | `/transfers`               | `transferTransferCreate`       |
+| GET    | `/transfers/{id}`          | `transferTransferGet`          |
+| PUT    | `/transfers/{id}`          | `transferTransferUpdate`       |
+| DELETE | `/transfers/{id}`          | `transferTransferRemove`       |
+| PATCH  | `/transfers/{id}`          | `transferTransferPatch`        |
+| GET    | `/transfers`               | `transferTransferFind`         |
+| POST   | `/quotes`                  | `quoteQuoteCreate`             |
+| GET    | `/parties/{type}/{id}`     | `partyPartyGet`                |
+| POST   | `/participants`            | `participantParticipantCreate` |
+| POST   | `/participants/{n}/limits` | `limitLimitCreate`             |
 
 Rules:
 
@@ -212,11 +237,11 @@ Rules:
 
 The emitter transforms variable references automatically:
 
-| TTK syntax                          | Generated TypeScript         | Notes                                 |
-|-------------------------------------|------------------------------|---------------------------------------|
-| `{$environment.TRANSFER_ID}`        | `inputs.TRANSFER_ID`         | Passed via `inputs` param to function |
-| `{$prev.1.response.body.amount}`    | `` `${undefined}` ``         | Requires manual wiring to step result |
-| `{$request.body.transferId}`        | `` `${undefined}` ``         | Requires manual wiring                |
+| TTK syntax                       | Generated TypeScript | Notes                                 |
+| -------------------------------- | -------------------- | ------------------------------------- |
+| `{$environment.TRANSFER_ID}`     | `inputs.TRANSFER_ID` | Passed via `inputs` param to function |
+| `{$prev.1.response.body.amount}` | `` `${undefined}` `` | Requires manual wiring to step result |
+| `{$request.body.transferId}`     | `` `${undefined}` `` | Requires manual wiring                |
 
 The generated function signature includes `inputs = {}` for environment variables:
 
@@ -230,7 +255,7 @@ Search the generated code for `` `${undefined}` `` to find placeholders that nee
 
 ### Complete Migration Workflow
 
-```
+```text
 ml-testing-toolkit JSON  →  TypeScript  →  Review & wire  →  Run  →  Allure report
 ```
 
@@ -263,21 +288,24 @@ import('@feasibleone/blong-ttk').then(({migrateMigrateCollectionConvert}) => {
 
 ### Step 2b: Extract Shared Helpers from Multiple Collections
 
-When migrating several related collections, use `migrateMigrateHelperExtract` first to
-identify operations that appear in multiple collections and generate a shared `helpers.ts`:
+When migrating several related collections, use `migrateMigrateHelperExtract` first to identify
+operations that appear in multiple collections and generate a shared `helpers.ts`:
 
 ```typescript
 import {migrateMigrateHelperExtract} from '@feasibleone/blong-ttk';
 
-const result = await migrateMigrateHelperExtract({
-    sourcePaths: [
-        './collections/hub/p2p.json',
-        './collections/hub/onboarding.json',
-        './collections/hub/regression.json',
-    ],
-    targetDir: './collections/hub/shared',
-    minCollections: 2, // include op if it appears in ≥2 collections
-}, $meta);
+const result = await migrateMigrateHelperExtract(
+    {
+        sourcePaths: [
+            './collections/hub/p2p.json',
+            './collections/hub/onboarding.json',
+            './collections/hub/regression.json',
+        ],
+        targetDir: './collections/hub/shared',
+        minCollections: 2, // include op if it appears in ≥2 collections
+    },
+    $meta,
+);
 
 // Generated: ./collections/hub/shared/helpers.ts
 // Contents:
@@ -295,75 +323,81 @@ If your collection uses a `response_rules.json` file for callback dispatch, conv
 ```typescript
 import {migrateMigrateRuleConvert} from '@feasibleone/blong-ttk';
 
-await migrateMigrateRuleConvert({
-    sourcePath: './response_rules.json',    // json-rules-engine format
-    targetPath: './callback-rules.yaml',   // @infitx/decision format
-}, $meta);
+await migrateMigrateRuleConvert(
+    {
+        sourcePath: './response_rules.json', // json-rules-engine format
+        targetPath: './callback-rules.yaml', // @infitx/decision format
+    },
+    $meta,
+);
 ```
 
 The converted YAML can be passed directly to `callbackRuleDispatch`:
 
 ```typescript
 // In callbackRuleDispatch handler:
-const rules = './callback-rules.yaml';  // or inline DecisionConfig object
+const rules = './callback-rules.yaml'; // or inline DecisionConfig object
 ```
 
 ### Step 3: Review and Refactor
 
 1. **Wire `$prev` references:** Search for `` `${undefined}` `` in the output — each is a
-   `{$prev.X}` or `{$request.X}` reference that needs to be replaced with the actual step
-   result from the previous async function:
+   `{$prev.X}` or `{$request.X}` reference that needs to be replaced with the actual step result
+   from the previous async function:
 
-   ```typescript
-   // Generated (needs manual wiring):
-   transferId: `${undefined}`,
+    ```typescript
+    // Generated (needs manual wiring):
+    transferId: `${undefined}`,
 
-   // Fixed (after wiring):
-   const priorResult = await createQuote;
-   // ...
-   transferId: priorResult.transferId,
-   ```
+    // Fixed (after wiring):
+    const priorResult = await createQuote;
+    // ...
+    transferId: priorResult.transferId,
+    ```
 
-2. **Check variable references:** `inputs.VAR_NAME` references are already wired through
-   the `inputs` parameter. Make sure callers pass the right values:
+2. **Check variable references:** `inputs.VAR_NAME` references are already wired through the
+   `inputs` parameter. Make sure callers pass the right values:
 
-   ```typescript
-   // Caller provides environment values:
-   await myCollection({inputs: {TRANSFER_ID: uuid(), CURRENCY: 'USD'}}, $meta);
-   ```
+    ```typescript
+    // Caller provides environment values:
+    await myCollection({inputs: {TRANSFER_ID: uuid(), CURRENCY: 'USD'}}, $meta);
+    ```
 
-3. **Review script comments:** Converted scripts appear as inline comments. Check them for
-   logic that needs to be implemented as TypeScript (e.g., UUID generation, token setting).
+3. **Review script comments:** Converted scripts appear as inline comments. Check them for logic
+   that needs to be implemented as TypeScript (e.g., UUID generation, token setting).
 
-4. **Add callbacks where needed:** If a request returns 202 Accepted and expects a callback,
-   add `callbackCallbackRegister` + `callbackCallbackWait`:
+4. **Add callbacks where needed:** If a request returns 202 Accepted and expects a callback, add
+   `callbackCallbackRegister` + `callbackCallbackWait`:
 
-   ```typescript
-   async function createTransfer(assert, {$meta}) {
-       await callbackCallbackRegister({correlationId: inputs.TRANSFER_ID, type: 'PUT /transfers/{ID}'}, $meta);
-       const result = await transferTransferCreate({...}, $meta);
-       assert.equal(result.status, 202);
-       return result;
-   },
-   async function waitForCallback(assert, {createTransfer, $meta}) {
-       const callback = await callbackCallbackWait({correlationId: inputs.TRANSFER_ID}, $meta);
-       assert.equal(callback.body.transferState, 'COMMITTED');
-       return callback;
-   },
-   ```
+    ```typescript
+    async function createTransfer(assert, {$meta}) {
+        await callbackCallbackRegister({correlationId: inputs.TRANSFER_ID, type: 'PUT /transfers/{ID}'}, $meta);
+        const result = await transferTransferCreate({...}, $meta);
+        assert.equal(result.status, 202);
+        return result;
+    },
+    async function waitForCallback(assert, {createTransfer, $meta}) {
+        const callback = await callbackCallbackWait({correlationId: inputs.TRANSFER_ID}, $meta);
+        assert.equal(callback.body.transferState, 'COMMITTED');
+        return callback;
+    },
+    ```
 
-5. **Extract shared helpers:** Move repeated provisioning steps to separate reusable
-   handler files (see Step 2b).
+5. **Extract shared helpers:** Move repeated provisioning steps to separate reusable handler files
+   (see Step 2b).
 
 ### Step 4: Run and Validate
 
 ```typescript
 import {engineCollectionRun} from '@feasibleone/blong-ttk';
 
-const result = await engineCollectionRun({
-    collection: './your-collection.ts',
-    concurrency: 5,
-}, $meta);
+const result = await engineCollectionRun(
+    {
+        collection: './your-collection.ts',
+        concurrency: 5,
+    },
+    $meta,
+);
 
 console.log(`Passed: ${result.passed}/${result.totalTests}`);
 ```
@@ -402,11 +436,11 @@ The callback realm starts a webhook server to receive async callbacks:
 
 - Default port: 5050
 - Routes:
-  - `PUT /transfers/:id`
-  - `PUT /quotes/:id`
-  - `PUT /parties/:type/:id`
-  - `PUT /transfers/:id/error`
-  - `PUT /quotes/:id/error`
+    - `PUT /transfers/:id`
+    - `PUT /quotes/:id`
+    - `PUT /parties/:type/:id`
+    - `PUT /transfers/:id/error`
+    - `PUT /quotes/:id/error`
 
 Configure your services to send callbacks to: `http://localhost:5050`
 
@@ -417,10 +451,13 @@ Configure your services to send callbacks to: `http://localhost:5050`
 Increase timeout in collection run:
 
 ```typescript
-await engineCollectionRun({
-    collection: './your-collection.ts',
-    timeout: 120000, // 2 minutes
-}, $meta);
+await engineCollectionRun(
+    {
+        collection: './your-collection.ts',
+        timeout: 120000, // 2 minutes
+    },
+    $meta,
+);
 ```
 
 ### Callback Not Received
@@ -449,7 +486,7 @@ npx tsc --noEmit
 
 ## Architecture
 
-```
+```text
 Test Collection (TypeScript)
     ↓
 TestExecutor (blong-chain)

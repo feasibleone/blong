@@ -293,13 +293,17 @@ export default adapter<IConfig>(api => {
                 };
                 try {
                     return await copilotCheck(account);
-                } catch {
-                    // A runtime that is down is an account nobody can claim on, not a crash (`@@D-970`).
+                } catch (error) {
+                    // A runtime that is down is an account nobody can claim on, not a crash
+                    // (`@@D-970`). The reason travels with it: a refused token, a missing token and a
+                    // dead host all read as `reachable: false` otherwise, and the first question a
+                    // deployment asks is which one it was.
                     return {
                         reachable: false,
                         kind: 'copilot',
                         mode: 'native',
                         tools: [],
+                        error: error instanceof Error ? error.message : String(error),
                         ...(account.workspaceRoot && {workspaceRoot: account.workspaceRoot}),
                     };
                 }

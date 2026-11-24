@@ -5,8 +5,10 @@ import {test} from 'tap';
 import {
     COPILOT_SHELL_TOOLS,
     COPILOT_TOOL_NAMES,
+    clientOf,
     copilotEndpoint,
     copilotPermissionFor,
+    copilotReset,
     copilotSession,
     copilotSessionConfig,
     copilotToolOf,
@@ -357,6 +359,25 @@ test('copilot.session refuses an account without a model', async t => {
         }),
         /needs modelName/,
         'BYOK requires a model and the account did not name one',
+    );
+    t.end();
+});
+
+test('copilot.client names a missing runtime token rather than letting the handshake refuse it', async t => {
+    copilotReset();
+    const remote: IAgentEngineAccount = {kind: 'copilot', runtimeUrl: '10.0.1.10:4321'};
+    await t.rejects(
+        clientOf(remote),
+        /sends no runtime token: set runtimeToken/,
+        'an account with no token on a remote endpoint says which field it wanted',
+    );
+    // The mistake that costs an afternoon: a token value where the field wants the *name* of a
+    // variable. The message must name the field without echoing the value.
+    const tokenValue = '63ddd756e8ded31e83bd37cda17d1e034e3fec998e006908393454db87fa3162';
+    await t.rejects(
+        clientOf({...remote, runtimeTokenEnv: tokenValue}),
+        /runtimeTokenEnv is not a variable name/,
+        'a token written into runtimeTokenEnv is named as the mistake',
     );
     t.end();
 });
