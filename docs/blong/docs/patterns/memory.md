@@ -212,13 +212,13 @@ blong-dev memory search "…" --no-record      # a lookup that should leave no t
 A question is filed under the area its best hit names, else `cross-cutting`.
 
 Asking the same question again updates the entry it already has instead of adding a second one: the
-`Asked:` line counts how often it was asked at the latest date, and the new result set is folded into
-the evidence. The answer already on an entry is never touched by a later search. "The same question"
-is decided twice, because neither signal is enough on its own: the words of the two spellings decide
-it when they agree (a `move` and a `moves` are one word, and so is an identical query), and otherwise
-the bank's own best question decides it when it clears a floor — a paraphrase shares almost no
-vocabulary with the terse title of the entry that answers it, but the semantic arm knows it is the
-same question.
+`Asked:` line counts how often it was asked at the latest date, and the new result set is folded
+into the evidence. The answer already on an entry is never touched by a later search. "The same
+question" is decided twice, because neither signal is enough on its own: the words of the two
+spellings decide it when they agree (a `move` and a `moves` are one word, and so is an identical
+query), and otherwise the bank's own best question decides it when it clears a floor — a paraphrase
+shares almost no vocabulary with the terse title of the entry that answers it, but the semantic arm
+knows it is the same question.
 
 Below that floor the question is recorded, and the one it resembles is printed beside it — with the
 answer it already has, not a pointer to it, and with the single command that folds the two:
@@ -244,9 +244,9 @@ reader is answered by the search rather than sent to a second command:
 # the whole entry: blong-dev memory show Q-002
 ```
 
-`merge` is the repair for a pair the floor let through: it folds the `Asked:` lines, the evidence and
-a missing answer into the entry kept, and leaves the other's id in the file's `## Retired` ledger.
-`audit` lists the pairs whose titles agree closely enough to be one question.
+`merge` is the repair for a pair the floor let through: it folds the `Asked:` lines, the evidence
+and a missing answer into the entry kept, and leaves the other's id in the file's `## Retired`
+ledger. `audit` lists the pairs whose titles agree closely enough to be one question.
 
 Both the fold and the ranking come from the index, so the index must hold nothing but the tree:
 `memory index --semantic --prune` removes the documents the tree no longer holds, and `--stats`
@@ -416,6 +416,12 @@ blong-dev memory export --out .github/memory/references.json   # the index the e
 
 `refs --dangling` exits non-zero on an error; a retired id is a warning. `comply` compares the
 memory files with a git ref (`--since`, default `HEAD`) and names the code to re-read.
+
+A token on an entry's `Evidence:` line is a **record**, not a citation: it is the list of what a
+search returned, so a hit that has since been resolved or superseded is exactly what belongs there,
+and `comply` leaves it out of its live set. `refs` still resolves it — an evidence id that no longer
+exists is worth knowing about — and `--sites` marks it `(record)` so a reader can tell the two
+apart.
 
 A citation of a **superseded decision** is reported in two ways: an error when the entry names the
 successor its reasoning moved to (the paragraph `close --by` writes), because

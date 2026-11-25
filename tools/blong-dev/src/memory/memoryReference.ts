@@ -484,6 +484,42 @@ export interface IReferenceSite {
     text: string;
     target: ReferenceTarget;
     resolution: IReferenceResolution;
+    /**
+     * The token sits in a record rather than in a citation of live reasoning.
+     *
+     * A FAQ's `Evidence:` line is the list of what a search returned, so a hit that has since been
+     * resolved or superseded is exactly what it is meant to hold — `comply` must not read it as a
+     * lead somebody has to re-read (`@@T-817`).
+     */
+    record?: boolean;
+}
+
+/** The labels an FAQ body opens a field with; a value runs on until the next one. */
+const FAQ_LABEL = /^(?:Asked|Answer|Evidence|Certainty|Confirmed):/;
+
+/**
+ * The lines a `Evidence:` value occupies, as 1-based line numbers.
+ *
+ * The value wraps at a hundred columns, so a continuation line belongs to the label that opened it
+ * until a blank line, another label, an entry heading or an entry's status quote ends it.
+ */
+export function evidenceRecordLines(lines: readonly string[]): Set<number> {
+    const inside = new Set<number>();
+    let open = false;
+    lines.forEach((line, index) => {
+        const text = line.trim();
+        if (/^(?:#{2,3}\s|>\s*_.*_$)/.test(text) || text === '') {
+            open = false;
+            return;
+        }
+        if (FAQ_LABEL.test(text)) {
+            open = text.startsWith('Evidence:');
+            if (open) inside.add(index + 1);
+            return;
+        }
+        if (open) inside.add(index + 1);
+    });
+    return inside;
 }
 
 /** Every `@@` reference in the given files, resolved. */
@@ -506,6 +542,7 @@ export function scanSites(
     for (const scanned of readScannedFiles(root, files)) {
         // A file may opt out — a fixture that carries a deliberately broken example.
         if (scanned.lines.slice(0, 8).some(line => /memory-refs:\s*ignore/.test(line))) continue;
+        const records = evidenceRecordLines(scanned.lines);
         for (const token of parseReferences(scanned.lines)) {
             references.push({
                 file: scanned.file,
@@ -515,6 +552,7 @@ export function scanSites(
                 text: (scanned.lines[token.line - 1] ?? '').trim(),
                 target: token.target,
                 resolution: resolveReference(token.target, index),
+                ...(records.has(token.line) ? {record: true} : {}),
             });
         }
         if (scanned.file.endsWith('.md')) {

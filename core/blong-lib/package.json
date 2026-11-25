@@ -6,6 +6,7 @@
     "exports": {
         ".": "./index.ts",
         "./layers": "./layers.ts",
+        "./perf": "./perf.ts",
         "./template": "./template.ts"
     },
     "scripts": {

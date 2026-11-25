@@ -1360,7 +1360,9 @@ function recordedQuestionLines(question: IRecordedQuestion): string {
     for (const candidate of question.candidates ?? []) {
         lines.push(
             `# already on file: ${candidate.id} · ${candidate.area} — ${candidate.status}` +
-                (candidate.similarity === null ? '' : ` (match ${candidate.similarity.toFixed(3)})`),
+                (candidate.similarity === null
+                    ? ''
+                    : ` (match ${candidate.similarity.toFixed(3)})`),
         );
         lines.push(...commentBlock(candidate.title, '  '));
         if (candidate.answer.length > 0)
@@ -2214,6 +2216,8 @@ function refs(root: string, args: string[], options: Options, flags: Set<string>
                 status: site.resolution.status ?? site.resolution.code,
                 successor: site.resolution.successor,
                 title: site.resolution.title ?? site.resolution.message,
+                // What a search returned, not a citation: `comply` leaves it out of its live set.
+                record: site.record ?? false,
             }));
         if (flags.has('json')) {
             process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`);
@@ -2221,7 +2225,8 @@ function refs(root: string, args: string[], options: Options, flags: Set<string>
         }
         for (const row of rows) {
             process.stdout.write(
-                `${row.file}:${row.line}  ${row.raw}  → ${row.title}${statusNote(row)}\n` +
+                `${row.file}:${row.line}  ${row.raw}  → ${row.title}${statusNote(row)}` +
+                    `${row.record ? ' (record)' : ''}\n` +
                     `    ${row.text}\n`,
             );
         }
@@ -2641,13 +2646,15 @@ function changedMemoryEntries(root: string, since: string): IComplianceChange[] 
  *
  * An `edit` is a warning — re-read it. A `removed` or superseded/resolved entry is an
  * error, because a site still cites it as live reasoning and the comment now says
- * something the entry no longer supports.
+ * something the entry no longer supports. A site on a record line — a FAQ's `Evidence:`
+ * list of what a search returned — is neither: it is history, and there is nothing to
+ * re-read (`@@T-817`).
  */
 function comply(root: string, options: Options, flags: Set<string>): void {
     const since = options.get('since')?.trim() ?? 'HEAD';
     const changes = changedMemoryEntries(root, since);
     const index = buildReferenceIndex(root);
-    const sites = referenceSites(root, trackedFiles(root), index);
+    const sites = referenceSites(root, trackedFiles(root), index).filter(site => !site.record);
 
     const rows: Array<{
         file: string;

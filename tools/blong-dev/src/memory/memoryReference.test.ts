@@ -277,6 +277,64 @@ t.test('a file can opt out with `memory-refs: ignore`', t => {
     t.end();
 });
 
+t.test('an evidence line records what a search returned, so it is not a citation', t => {
+    const repo = tempRepo();
+    try {
+        write(
+            repo.dir,
+            '.github/memory/faq.md',
+            [
+                '# FAQ',
+                '',
+                '## Open',
+                '',
+                '### Q-001 — Where does a record go?',
+                '',
+                '> _2026-11-25 · cross-cutting · answered_',
+                '',
+                'Asked: 2026-11-25 — where does a record go?',
+                '',
+                'Answer: In the evidence list, which is history and not a lead.',
+                '',
+                'Evidence: @@F-316 (0.742) @@doc:patterns/memory#searching-by-meaning (0.611)',
+                'and a wrapped continuation citing @@T-799.',
+                '',
+                'Certainty: high',
+                '',
+                'The body still cites @@F-014 as live reasoning.',
+                '',
+                'Confirmed: checked by the run that cites @@F-014 again.',
+                '',
+            ].join('\n'),
+        );
+        const index: IReferenceIndex = {
+            entries: new Map(),
+            docs: new Map(),
+            skills: new Map(),
+            ledger: new Map(),
+        };
+        const scanned = scanSites(repo.dir, ['.github/memory/faq.md'], index);
+        const on = (line: number) => scanned.references.filter(site => site.line === line);
+        t.equal(on(13).length, 2, 'the evidence line carries two tokens');
+        t.ok(
+            on(13).every(site => site.record),
+            'and both are records',
+        );
+        t.equal(on(14).length, 1, 'a wrapped continuation carries one');
+        t.ok(
+            on(14).every(site => site.record),
+            'which is part of the same record',
+        );
+        t.equal(on(18).length, 1, 'the body cites one');
+        t.notOk(on(18)[0]?.record, 'and the body is a citation');
+        t.equal(on(20).length, 1, 'so does the confirmed note');
+        t.notOk(on(20)[0]?.record, 'which is prose about the check, not a record');
+    } finally {
+        repo.restore();
+    }
+    t.end();
+});
+
 t.test('a superseded decision resolves as a warning that names its successor', t => {
     const repo = tempRepo();
     try {

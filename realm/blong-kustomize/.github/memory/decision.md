@@ -205,7 +205,8 @@ active (148)
 - `D-944` · realm/blong-kustomize — A viewer is part of the deployment, not a second workload
 - `D-951` · realm/blong-kustomize — The deployment engine knows no realm by name, only a realm
   switch
-- `D-529` · realm/blong-kustomize — The session answers itself here, and the tree grows a file
+- `D-529` · realm/blong-kustomize — The session answers itself here, and a suite's tree carries the
+  identity Service
 
 superseded (15)
 
@@ -2608,7 +2609,7 @@ framework's again — one entry point, one dependency tree — and the viewer tr
 artifact like every other realm, with `realm/blong-viewer`'s own `k8sPorts` as the only statement
 about its address.
 
-### D-529 — The session answers itself here, and the tree grows a file
+### D-529 — The session answers itself here, and a suite's tree carries the identity Service
 
 > _2026-10-11 · realm/blong-kustomize · active_
 
@@ -2619,10 +2620,16 @@ GatewayCodec.session reads, and the identity port answers in the same process th
 token. This needs no login realm, no user store and no cluster round trip, and it leaves the cluster
 token as the credential. The cost is that identity.checkInternal is the framework's own hook name
 and nothing in the framework declares its contract, so the reply shape is pinned by test.session
-rather than by a type. The operator's install tree gains one object, services/identity.yaml, so the
-tree count moves from twenty-one files to twenty-two and the fingerprint steps of test.tree.generate
-and test.plan.find fail until the committed tree is regenerated (T-811 records that the fixtures,
-the docs and both committed trees are the owner's call).
+rather than by a type.
+
+The operator's own install tree carries no `services/identity.yaml`, and that is the finished state
+rather than a gap: the entry names the method in `remote.skipGateway`, so the call never reaches a
+gateway and the name has nothing to resolve to, while a Service beside it would select a pod label
+for an address no caller asks for (`@@F-494`). A _suite_ tree still writes one Service per namespace
+its own containers answer, `identity` among them when a realm there calls it, because that is the
+generic path — the operator serves every tenant from its own namespace, so the address belongs to
+the cluster and not to a tenant. The committed trees were regenerated and produce no byte of diff,
+so nothing here is waiting on a person (`T-811` closed on that check).
 
 ## Superseded
 

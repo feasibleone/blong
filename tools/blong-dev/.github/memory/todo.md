@@ -33,7 +33,7 @@ open (21)
 - `T-737` · tools/blong-dev — Give plan a close verb
 - `T-760` · tools/blong-dev — A release re-serialises front matter it did not change
 
-done (8)
+done (9)
 
 - `T-346` · tools/blong-dev — Name the projects that ran no tests in the CI report
 - `T-358` · tools/blong-dev — Render the killing signal in the failure message
@@ -45,6 +45,7 @@ done (8)
 - `T-761` · tools/blong-dev — A rebuilt plan loses the front matter the issue never had
 - `T-807` · tools/blong-dev — Four-digit memory ids are parsed as three, so check and show misread
   them
+- `T-817` · tools/blong-dev — memory comply treats a FAQ's Evidence line as live citations
 
 <!-- /memory:index -->
 
@@ -466,6 +467,26 @@ any-length and take the largest number rather than the first match. Three tests 
 and `memoryReference.test.ts` (the tokens `@@D-1002` and `@@D-100` resolve as different targets).
 The repository's own allocation answers `D-1012`, `F-839`, `T-816` and `Q-003`, and memory check is
 green.
+
+### T-817 — memory comply treats a FAQ's Evidence line as live citations
+
+> _2026-11-25 · tools/blong-dev · done_
+
+`blong-dev memory comply` reads every `@@` reference in the tree, so the `Evidence:` line
+`memory answer` writes into a FAQ entry counts as a citation of each hit it lists. A hit that is a
+done todo or a resolved friction is exactly what an evidence list should contain — the record of
+what the search returned — but the next change to that entry's status turns the line into a comply
+error, and the advice it prints ("re-read it") asks for something the reader cannot do, because the
+line is history rather than a lead. The fix is one of two: treat a citation on an entry's
+`Evidence:` line as a record and leave it out of comply's live set, or write the evidence
+identifiers as plain text rather than `@@` so the scanner never sees them.
+`realm/blong-agent/.github/memory/faq.md:39` is the case that surfaced it — `@@T-799` there names
+the scanner the answer replaced.
+
+scanSites marks a token on an entry's Evidence value as a record (wrapped continuations included),
+comply filters records out of its live set, and refs --sites prints (record) so the audit view still
+shows them. Proved over HEAD~40: 5 evidence sites in faq.md files disappeared while the one body
+citation on gogo faq.md:31 stayed, and memoryReference.test.ts pins the flag.
 
 ## Retired
 

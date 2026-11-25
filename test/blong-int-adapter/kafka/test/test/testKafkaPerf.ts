@@ -1,5 +1,5 @@
 import {handler, type IMeta} from '@feasibleone/blong';
-import {perfReport, perfSample, perfStats, perfWrite} from '@feasibleone/blong/perf';
+import {perfReport, perfSample, perfStats, perfWrite} from '@feasibleone/blong-lib/perf';
 import type Assert from 'node:assert';
 import {join} from 'node:path';
 
@@ -99,7 +99,7 @@ const payloadOf = (record: WatchRecord): {sentAt?: number} => {
 
 /**
  * The Kafka measurement the session UI rests on (`T-802` `T-803` `T-804`, `D-995`,
- * `@@D-1006`).
+ * `@@D-1016`).
  *
  * What a page needs is not "does Kafka work" — the produce and round-trip groups already say that —
  * but whether a broker on this machine answers fast enough for a live session, and whether the first

@@ -254,8 +254,13 @@ Every namespace a process answers reaches the Service that answers it, at `/rpc/
 rule is the namespace's Service and not the deployment's name, because a realm need not own a
 process to own a namespace: `core/blong-realm` declares `k8sRealmRole: 'attached'` against `core`,
 so its `blong.*` reads ride a process the suite already runs, that pod labels itself for the
-namespace and the tree writes `services/blong.yaml` beside the path. The catch-all `/rpc/` stays
-behind those rules for a namespace no Service carries.
+namespace and the tree writes `services/blong.yaml` beside the path. `identity` is the second name
+of that shape and it appears only where it is called: a suite whose realms ask the framework for the
+session step gets `services/identity.yaml` beside `services/blong.yaml`, while the operator's own
+install tree deliberately carries none — the entry resolves the method in the process that verified
+the token, so the name has nothing to resolve to and a Service there would select a pod for an
+address no caller asks for. The catch-all `/rpc/` stays behind those rules for a namespace no
+Service carries.
 
 A realm that rides others is carried by every process unless a realm names it, and a store is worth
 naming: `blob` serves a `party` record, so `party` and `sport` declare `k8sNeeds: ['blob']` in their

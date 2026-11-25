@@ -43,7 +43,7 @@ open (25)
 - `T-639` · realm/blong-kustomize — Regenerate the kustomize operator deployments baseline
 - `T-645` · realm/blong-kustomize — A deployment still has no semantic-log service to read
 
-done (21)
+done (22)
 
 - `T-279` · realm/blong-kustomize — The operator reports obsolete objects and never deletes them
 - `T-277` · realm/blong-kustomize — The plan resolves no databases, so the init script creates none
@@ -70,6 +70,8 @@ done (21)
 - `T-444` · realm/blong-kustomize — Carry the artifact digest and framework version in
   release-notify
 - `T-445` · realm/blong-kustomize — Add the token-gated operator release route
+- `T-811` · realm/blong-kustomize — The identity.yaml object needs its fixtures, docs and both
+  committed trees regenerated
 
 <!-- /memory:index -->
 
@@ -787,6 +789,27 @@ gated by a constant-time token from BLONG_RELEASE_TOKEN and delegating to kustom
 The three typed errors are declared; the operator Deployment gets an optional secretKeyRef to
 blong-operator-release; the install tree is regenerated. A correct token answered 200 updated:true
 and a wrong one 401 tokenMismatch with the CR version unchanged; 121 kustomize tests pass.
+
+### T-811 — The identity.yaml object needs its fixtures, docs and both committed trees regenerated
+
+> _2026-11-24 · realm/blong-kustomize · done_
+
+D-529 makes the operator write services/identity.yaml, so the install tree is twenty-two objects and
+the fingerprint steps of `test.tree.generate` and `test.plan.find` fail until the committed tree is
+regenerated. The regeneration also touches the fixtures and the docs, so it is the owner's call
+rather than an autonomous one: nothing here is broken, it is waiting on a person to accept the new
+tree. When that person regenerates it, the fingerprint steps go green and this todo closes with the
+commit that carried the new trees.
+
+Regenerated every committed tree with the CI's own command — the operator install tree (npm run
+sync-install-tree) and the base trees of suite/blong-suite, realm/blong-sport and realm/blong-chat —
+and each produced no diff, so the tree, the fixtures and the fingerprints were already current:
+test.tree.generate (tree generate, treeIsReproducible) and test.plan.find are green, and the
+operator's install tree deliberately carries no services/identity.yaml because
+identity.checkInternal resolves in the process that verified the token. What was actually stale was
+the prose: D-529's claim that the install tree grows the file is corrected, and
+docs/blong/docs/patterns/kustomize.md now says which tree gets services/identity.yaml and why the
+other does not.
 
 ## Retired
 

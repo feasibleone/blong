@@ -2606,6 +2606,9 @@ importers:
       '@feasibleone/blong-dev':
         specifier: workspace:*
         version: link:../../tools/blong-dev
+      '@feasibleone/blong-lib':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-lib
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)

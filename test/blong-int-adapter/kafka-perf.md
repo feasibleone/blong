@@ -6,7 +6,7 @@ saw, so a regression is a red group rather than a page that feels slow (`D-995`)
 
 Every run also leaves a **report**: the distribution of each series, a plain-text histogram and an
 SVG chart, written beside the test and attached to the Allure result. The toolkit that builds it is
-`@feasibleone/blong/perf`, so the next transport measured gets the same report for free.
+`@feasibleone/blong-lib/perf`, so the next transport measured gets the same report for free.
 
 ## What is measured
 
