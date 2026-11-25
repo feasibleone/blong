@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.48.0](https://github.com/feasibleone/blong/compare/blong-v1.47.0...blong-v1.48.0) (2026-11-25)
+
+
+### Features
+
+* agent session UI ([ee74722](https://github.com/feasibleone/blong/commit/ee747220fb431bef36ac091ded8f01d112eb4f34))
+
+
+### Bug Fixes
+
+* agent session follow-ups ([869d4c4](https://github.com/feasibleone/blong/commit/869d4c46269dc87d72d2acb0ee521eb043fa517e))
+
 ## [1.47.0](https://github.com/feasibleone/blong/compare/blong-v1.46.0...blong-v1.47.0) (2026-11-23)
 
 
