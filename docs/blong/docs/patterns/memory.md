@@ -209,11 +209,50 @@ blong-dev memory answer Q-012 --answer "See @@doc:patterns/memory#adding-and-cor
 blong-dev memory search "…" --no-record      # a lookup that should leave no trace
 ```
 
-A question is filed under the area its best hit names, else `cross-cutting`. Asking the same thing
-again — including a rephrasing, since `move`, `moves` and `moving` compare as one word — updates the
-entry it matches instead of adding a second one: the `Asked:` line counts how often it was asked at
-the latest date, and the new result set is folded into the evidence. The answer already on an entry
-is never touched by a later search.
+A question is filed under the area its best hit names, else `cross-cutting`.
+
+Asking the same question again updates the entry it already has instead of adding a second one: the
+`Asked:` line counts how often it was asked at the latest date, and the new result set is folded into
+the evidence. The answer already on an entry is never touched by a later search. "The same question"
+is decided twice, because neither signal is enough on its own: the words of the two spellings decide
+it when they agree (a `move` and a `moves` are one word, and so is an identical query), and otherwise
+the bank's own best question decides it when it clears a floor — a paraphrase shares almost no
+vocabulary with the terse title of the entry that answers it, but the semantic arm knows it is the
+same question.
+
+Below that floor the question is recorded, and the one it resembles is printed beside it — with the
+answer it already has, not a pointer to it, and with the single command that folds the two:
+
+```text
+# question Q-004 · realm/blong-agent — recorded in realm/blong-agent/.github/memory/faq.md
+# answer it with: blong-dev memory answer Q-004 --answer "…" --certainty 0.7
+# already on file: Q-002 · realm/blong-agent — answered (match 0.736)
+#   Syntax highlighting highlighter code colouring dependency?
+# it is answered (confirmed 0.85):
+#   Settled: the transcript colours code with `@speed-highlight/core` v2 rather than a scanner of
+#   its own, and `@@D-1011` holds the reasoning …
+# same question? fold this one in: blong-dev memory merge Q-002 Q-004
+```
+
+A question asked again that folds on the bank's ranking prints its answer where it was asked, so a
+reader is answered by the search rather than sent to a second command:
+
+```text
+# question Q-002 · realm/blong-agent — already asked 3 times — evidence refreshed
+# it is answered (confirmed 0.85):
+#   Settled: the transcript colours code with `@speed-highlight/core` v2 …
+# the whole entry: blong-dev memory show Q-002
+```
+
+`merge` is the repair for a pair the floor let through: it folds the `Asked:` lines, the evidence and
+a missing answer into the entry kept, and leaves the other's id in the file's `## Retired` ledger.
+`audit` lists the pairs whose titles agree closely enough to be one question.
+
+Both the fold and the ranking come from the index, so the index must hold nothing but the tree:
+`memory index --semantic --prune` removes the documents the tree no longer holds, and `--stats`
+prints the drift without changing anything. A test process builds no bank at all — the write path
+ingests whatever it writes, and a suite that reached the real server would leave its fixtures there
+for the next search to answer with.
 
 The answer is prose that **points at** its evidence, plus the certainty it is held with:
 

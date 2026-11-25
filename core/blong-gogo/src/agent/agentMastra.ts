@@ -6,6 +6,7 @@
  * with no `mastra` account never loads the framework behind it (`@@T-593`).
  */
 import type {
+    AgentTelemetryReport,
     IAgentEngineAccount,
     IAgentMessage,
     IAgentStepRequest,
@@ -96,6 +97,7 @@ export const mastraTools = async (
 export const mastraStep = async (
     account: IAgentEngineAccount,
     request: IAgentStepRequest,
+    report: AgentTelemetryReport = () => undefined,
 ): Promise<IAgentStepResult> => {
     const {Agent} = (await loadMastra('@mastra/core/agent')) as {
         Agent: new (config: unknown) => {
@@ -117,9 +119,16 @@ export const mastraStep = async (
         maxSteps: 1,
     });
     const result = await agent.generate(mastraPrompt(request.history), {maxSteps: 1});
+    const toolCalls = mastraToolCalls(result);
+    // Mastra's streaming surface is not the AI SDK's
+    // `fullStream` this module already knows, so the turn is reported once it has answered rather
+    // than delta by delta: a step engine's turn is one model call, and its text and calls are
+    // what a reader needs from it (`@@D-994`).
+    if (result.text !== undefined) report('message', {text: result.text});
+    for (const call of toolCalls) report('tool', call);
     return {
         ...(result.text !== undefined && {text: result.text}),
-        toolCalls: mastraToolCalls(result),
+        toolCalls,
         finishReason: 'tool-calls',
     };
 };

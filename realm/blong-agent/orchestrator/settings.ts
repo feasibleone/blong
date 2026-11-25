@@ -47,6 +47,32 @@ export interface IAgentDispatchSettings {
      * (`@@D-726`).
      */
     personaPresets?: Record<string, IAgentPersonaPreset>;
+    /**
+     * Where a session's telemetry goes (`@@D-988`).
+     *
+     * `kafka` wherever a broker exists, which is dev, CI and every deployment; `memory` is the test
+     * instrument a Playwright run chooses so it needs no broker at all.
+     */
+    telemetry?: {
+        source?: 'kafka' | 'memory';
+        /** The Kafka instance this realm publishes through, and the topic it names. */
+        adapter?: string;
+        topic?: string;
+    };
+    /**
+     * The wake-up channel, when a broker is deployed (`@@D-709`).
+     *
+     * `channel` empty is a deployment with no subscription: the tick is the mechanism and a wake only
+     * shortens the wait, so a realm with no broker must start and run without one. `adapter` is the
+     * instance the channel is watched through — the subscription is opened by the orchestrator, which
+     * is the layer that decides what a message means (`@@T-816`).
+     */
+    wake?: {
+        adapter?: string;
+        channel?: string;
+        /** The realm method one wake is dispatched to. */
+        method?: string;
+    };
 }
 
 /** One shipped persona, as a deployment declares it. */
@@ -106,4 +132,17 @@ export const agentSettings = (config: IAgentDispatchSettings | undefined) => ({
     maxToolCalls: config?.maxToolCalls ?? 12,
     continuationMinutes: config?.continuationMinutes ?? 1440,
     personaPresets: config?.personaPresets ?? {},
+    telemetry: {
+        source: config?.telemetry?.source ?? 'kafka',
+        adapter: config?.telemetry?.adapter ?? 'kafka',
+        // `<topicPrefix>.<namespace>.<feed>`, which is what the adapter's own guard expects (`D-990`).
+        topic: config?.telemetry?.topic ?? 'blong.agent.telemetry',
+    },
+    wake: {
+        adapter: config?.wake?.adapter ?? 'notify',
+        // Empty by default: the channel is a deployment's, and a realm with no broker subscribes to
+        // nothing rather than to a channel nobody publishes on.
+        channel: config?.wake?.channel ?? '',
+        method: config?.wake?.method ?? 'agent.answer.wake',
+    },
 });

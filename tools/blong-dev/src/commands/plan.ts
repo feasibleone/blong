@@ -242,7 +242,7 @@ function supportingEntries(
     const text = plan.lines.join('\n');
     const ids = [
         ...new Set(
-            [...text.matchAll(/@@(?<id>[FD]-\d{3})/g)].map(match => match.groups?.['id'] ?? ''),
+            [...text.matchAll(/@@(?<id>[FD]-\d{3,})/g)].map(match => match.groups?.['id'] ?? ''),
         ),
     ].filter(Boolean);
     return ids.map(id => ({id, ...entryFor(entries, id)}));
@@ -1173,7 +1173,7 @@ function adopt(
     const already = new Set(current.tasks.map(task => task.id).filter(Boolean));
     for (const raw of ids) {
         const id = raw.trim().toUpperCase();
-        if (!/^[FTD]-\d{3}$/.test(id)) fail(`"${raw}" is not a memory id`);
+        if (!/^[FTD]-\d{3,}$/.test(id)) fail(`"${raw}" is not a memory id`);
         if (already.has(id)) {
             process.stdout.write(`# ${id} is already in the plan\n`);
             continue;

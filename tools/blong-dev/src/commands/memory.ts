@@ -105,9 +105,11 @@ import {
 } from '../memory/memoryEdit.ts';
 import {
     DUPLICATE_SIMILARITY,
+    MAX_EVIDENCE,
     answerQuestion,
     confirmQuestion,
     mergeFaqEntries,
+    paragraphsOf,
     parseFaqBody,
     questionBody,
     questionSimilarity,
@@ -776,7 +778,7 @@ async function retire(
 }
 
 /** The paragraph `close` writes when a decision is superseded by another. */
-const SUPERSEDED_BY = /^Superseded by `[A-Z]-\d{3}`\.$/;
+const SUPERSEDED_BY = /^Superseded by `[A-Z]-\d{3,}`\.$/;
 
 /**
  * Drop the machine-written supersession line from a body.
@@ -1233,7 +1235,7 @@ async function search(
     // the next reader finds what the bank returned here, and the answer written against it.
     const recorded = flags.has('no-record')
         ? null
-        : await recordSearch(root, query, outcome.hits, options.get('area'));
+        : await recordSearch(root, store, query, outcome.hits, options.get('area'));
 
     if (flags.has('json')) {
         process.stdout.write(
@@ -1269,17 +1271,67 @@ async function search(
  */
 async function recordSearch(
     root: string,
+    store: IHindsightStore,
     query: string,
     hits: readonly IHindsightHit[],
     area: string | undefined,
 ): Promise<IRecordedQuestion | null> {
     try {
-        return await recordQuestion(root, {query, hits, ...(area ? {area} : {}), date: today()});
+        return await recordQuestion(root, {
+            query,
+            hits,
+            questionHits: await questionHitsOf(store, query),
+            ...(area ? {area} : {}),
+            date: today(),
+        });
     } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         process.stderr.write(`blong-dev: the question was not recorded — ${reason}\n`);
         return null;
     }
+}
+
+/**
+ * A paragraph as comment lines, so an answer fits the `#` block a search prints.
+ *
+ * The answer is shown rather than pointed at: the search was the question, and a reader who is told
+ * "read it with `memory show`" has to ask again to be answered (`@@F-840`).
+ */
+function commentBlock(text: string, indent = ''): string[] {
+    return wrapText(text, `# ${indent}`, `# ${indent}`).map(line => line.trimEnd());
+}
+
+/** What an answered question says, with how much it is worth. */
+function answerLines(
+    answer: readonly string[],
+    certainty: number | null | undefined,
+    confirmed: boolean | null | undefined,
+): string[] {
+    const score = certainty === null || certainty === undefined ? '' : ` ${certainty.toFixed(2)}`;
+    const checked =
+        confirmed === true ? 'confirmed' : confirmed === false ? 'not confirmed' : 'unconfirmed';
+    const lines = [`# it is answered (${checked}${score}):`];
+    for (const paragraph of answer) lines.push(...commentBlock(paragraph, '  '));
+    return lines;
+}
+
+/**
+ * The same query asked of the questions alone.
+ *
+ * The recording step needs the questions the query matched, and the unfiltered search returns a
+ * fixed number of results that prose fills: whether the entry which answers a question is among them
+ * depends on how much else the query touched, so it is asked separately (`@@F-840`). A bank that
+ * cannot answer this leaves the fold to the unfiltered hits rather than failing the search.
+ */
+async function questionHitsOf(
+    store: IHindsightStore,
+    query: string,
+): Promise<IHindsightHit[] | undefined> {
+    const outcome = await store.recall(query, {
+        tags: [SOURCE_TAG.entry, kindTag('faq')],
+        limit: MAX_EVIDENCE,
+    });
+    return outcome.ok ? [...outcome.hits] : undefined;
 }
 
 /** What a search recorded, in the form the next command can be copied from. */
@@ -1288,11 +1340,39 @@ function recordedQuestionLines(question: IRecordedQuestion): string {
         ? `recorded in ${question.path}`
         : `already asked ${question.asked} times — evidence refreshed`;
     const lines = [`# question ${question.id} · ${question.area} — ${what}`];
+
+    if (!question.created && question.status === 'answered' && (question.answer ?? []).length > 0) {
+        // The question it is a repeat of, then what that question says: a reader who rephrased it
+        // gets the wording on file and the answer in one place (`@@D-1012`).
+        if (question.title !== undefined) lines.push(...commentBlock(question.title, '  '));
+        lines.push(...answerLines(question.answer ?? [], question.certainty, question.confirmed));
+        lines.push(`# the whole entry: blong-dev memory show ${question.id}\n`);
+        return lines.join('\n');
+    }
     lines.push(
         question.status === 'open'
-            ? `# answer it with: blong-dev memory answer ${question.id} --answer "…" --certainty 0.7\n`
-            : `# it is ${question.status} — read it with: blong-dev memory show ${question.id}\n`,
+            ? `# answer it with: blong-dev memory answer ${question.id} --answer "…" --certainty 0.7`
+            : `# it is ${question.status} — read it with: blong-dev memory show ${question.id}`,
     );
+
+    // A question already on file that this search matched: shown with its answer, and the one
+    // command that folds the two together (`@@D-1012`).
+    for (const candidate of question.candidates ?? []) {
+        lines.push(
+            `# already on file: ${candidate.id} · ${candidate.area} — ${candidate.status}` +
+                (candidate.similarity === null ? '' : ` (match ${candidate.similarity.toFixed(3)})`),
+        );
+        lines.push(...commentBlock(candidate.title, '  '));
+        if (candidate.answer.length > 0)
+            lines.push(...answerLines(candidate.answer, candidate.certainty, candidate.confirmed));
+        if (question.created && question.status === 'open') {
+            lines.push(
+                `# same question? fold this one in: blong-dev memory merge ${candidate.id} ` +
+                    `${question.id}`,
+            );
+        }
+    }
+    lines.push('');
     return lines.join('\n');
 }
 
@@ -1355,11 +1435,13 @@ async function answer(
     const confirmed = flags.has('confirmed') || confirmedBy !== undefined;
 
     const result = await answerQuestion(root, locationOf(found), {
-        answer: bodyLines(text),
+        // Paragraphs, not lines: the entry's writer wraps each paragraph, and a wrapped line handed
+        // back to it became a paragraph of its own (`@@F-839`).
+        answer: paragraphsOf(text),
         certainty,
-        rationale: bodyLines(options.get('note') ?? ''),
+        rationale: paragraphsOf(options.get('note') ?? ''),
         confirmed,
-        ...(confirmedBy ? {confirmation: bodyLines(confirmedBy)} : {}),
+        ...(confirmedBy ? {confirmation: paragraphsOf(confirmedBy)} : {}),
     });
     process.stdout.write(
         `# ${result.id} answered · certainty ${certainty.toFixed(2)} · ` +
@@ -1882,7 +1964,7 @@ function migrate(root: string, args: string[], options: Options, flags: Set<stri
 async function renumber(root: string, id: string | undefined, options: Options): Promise<void> {
     if (!id) fail('memory renumber <id|id@scope> --to <id>');
     const to = options.get('to')?.trim().toUpperCase();
-    if (!to || !new RegExp(String.raw`^[${ID_PREFIXES}]-\d{3}$`).test(to)) {
+    if (!to || !new RegExp(String.raw`^[${ID_PREFIXES}]-\d{3,}$`).test(to)) {
         fail('memory renumber needs --to <F-000>-style id');
     }
     const found = findEntry(root, id);

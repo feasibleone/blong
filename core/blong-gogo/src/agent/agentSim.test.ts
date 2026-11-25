@@ -99,3 +99,28 @@ test('sim.session parks a native run on a scripted question', t => {
     );
     t.end();
 });
+
+test('sim.session reports a scripted run into the feed, in the same vocabulary', t => {
+    const account = 'feed';
+    const reported: Array<{kind: string; payload?: unknown}> = [];
+    const run = simSession(
+        [{text: 'Reading the diff.'}, {toolCall: {toolName: 'bash', args: {cmd: 'git diff'}}}],
+        account,
+        {account, prompt: 'Fix it.', tools: [], workspacePath: '/tmp/ws'},
+        (kind, payload) => reported.push({kind, payload}),
+    );
+    t.same(
+        reported.map(entry => entry.kind),
+        ['message', 'tool', 'status'],
+        'a scripted run reports what a model would, in the same order',
+    );
+    t.same(reported[0].payload, {text: 'Reading the diff.'}, 'the script line is a message');
+    t.same(
+        reported[1].payload,
+        {toolName: 'bash', args: {cmd: 'git diff'}},
+        'and the call is a tool event',
+    );
+    t.same(reported[2].payload, {state: 'finished'}, 'the run says how it ended');
+    t.equal(run.text, 'Reading the diff.', 'the result still carries the transcript');
+    t.end();
+});

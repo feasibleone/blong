@@ -15,11 +15,15 @@ flowchart TB
 ```
 
 Orchestrators are the place where the API namespaces are defined; usually there is one orchestrator
-per namespace. The orchestrators can call adapters within the same realm or orchestrators in another
-realm. Calling adapters from another realm is discouraged and is only feasible in isolated cases
-where maximizing performance is needed. The namespaces of the orchestrators are used for service
-discovery and also become the service names in Kubernetes. So the orchestrator is the place where
-the server side solution is glued together by reusing the functionality of the different realms.
+per namespace. They are also the only layer that sequences work: an orchestrator calls the adapters
+it needs, in the order the process needs them, and an adapter calls neither another adapter nor an
+orchestrator (see [adapter](./adapter.md#what-an-adapter-does-not-do)). A handler that reads one
+system, asks a second, and writes a third is an orchestrator wherever it was filed. The
+orchestrators can call adapters within the same realm or orchestrators in another realm. Calling
+adapters from another realm is discouraged and is only feasible in isolated cases where maximizing
+performance is needed. The namespaces of the orchestrators are used for service discovery and also
+become the service names in Kubernetes. So the orchestrator is the place where the server side
+solution is glued together by reusing the functionality of the different realms.
 
 The orchestrator is the typical place where the logic of a
 [sequence diagram](https://en.wikipedia.org/wiki/Sequence_diagram) resides, where each vertical line

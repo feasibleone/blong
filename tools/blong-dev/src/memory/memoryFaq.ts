@@ -93,13 +93,23 @@ const ASKED = /^(?<date>\d{4}-\d{2}-\d{2})(?:\s*×\s*(?<count>\d+))?\s*(?:—\s*
 const CITATION = new RegExp(REFERENCE.source);
 
 /** A memory id, as an evidence target can be. */
-const MEMORY_ID = new RegExp(String.raw`^[${ID_PREFIXES}]-\d{3}$`);
+const MEMORY_ID = new RegExp(String.raw`^[${ID_PREFIXES}]-\d{3,}$`);
 
 /** How similar two questions must be to be the same one, by token overlap. */
 export const SAME_QUESTION_SIMILARITY = 0.85;
 
 /** How similar two questions must be before `audit` calls them duplicates. */
 export const DUPLICATE_SIMILARITY = 0.6;
+
+/**
+ * The score at which the bank's own best question is taken as the one being asked again.
+ *
+ * Measured against this repository's bank: two paraphrases of one question scored 0.736 and 0.841
+ * against its entry, while four unrelated questions peaked between 0.503 and 0.655 against every
+ * entry on file. The margin is thin, so a fold is visible — it appends an `Asked:` line and shows
+ * the answer — and the merge it prevents is one command either way (`@@D-1012`).
+ */
+export const FOLD_SIMILARITY = 0.7;
 
 /** Evidence targets kept per entry: the best-scoring ones, in score order. */
 export const MAX_EVIDENCE = 8;
@@ -209,6 +219,14 @@ export interface IEntryLocation {
 export interface IRecordQuestionInput {
     query: string;
     hits: readonly IHindsightHit[];
+    /**
+     * The same query asked of the questions alone, when the caller asked it.
+     *
+     * A search returns a fixed number of hits and prose fills them, so whether the entry that
+     * answers a question appears among them is a matter of how much else the query matched — and a
+     * fold that depends on that is a fold that works one day and not the next (`@@F-840`).
+     */
+    questionHits?: readonly IHindsightHit[];
     /** The area the search was filtered to, when it named one. */
     area?: string;
     /** `YYYY-MM-DD`. */
@@ -216,6 +234,22 @@ export interface IRecordQuestionInput {
 }
 
 /** What recording a question produced. */
+/** A question the bank surfaced for a query, as the entry stands. */
+export interface IQuestionCandidate {
+    id: string;
+    /** Where it lives, so a candidate can be used where a location is wanted. */
+    path: string;
+    scope: string;
+    title: string;
+    area: string;
+    status: string;
+    /** The answer, when the question has one, so a reader is not sent to another command for it. */
+    answer: string[];
+    certainty: number | null;
+    confirmed: boolean | null;
+    similarity: number | null;
+}
+
 export interface IRecordedQuestion {
     id: string;
     /** Repository-relative path of the file it lives in. */
@@ -226,6 +260,17 @@ export interface IRecordedQuestion {
     /** How many times it has now been asked. */
     asked: number;
     status: string;
+    /** The wording the entry was filed under, which is what a repeat is a repeat *of*. */
+    title?: string;
+    /** What the entry itself answers, when it is answered — shown in place of a pointer to it. */
+    answer?: string[];
+    certainty?: number | null;
+    confirmed?: boolean | null;
+    /**
+     * Other questions the same search matched, best first — what tells a reader their question may
+     * already be answered, and what `memory merge` folds away (`@@D-1012`).
+     */
+    candidates?: IQuestionCandidate[];
 }
 
 /** An answer to set on a question. */
@@ -412,6 +457,30 @@ export function renderFaqBody(parts: Partial<IFaqBody>): string[] {
 
     for (const text of parts.other ?? []) paragraph(text);
     return lines;
+}
+
+/**
+ * A text as the paragraphs an answer is made of.
+ *
+ * A body is lines and gets wrapped line by line, but an answer is prose: `renderFaqBody` wraps
+ * each paragraph itself, so what it is given has to be whole sentences. Passing an answer through
+ * the body helper turned every wrapped line into its own paragraph — the entry came out one sentence
+ * fragment per line with a blank line between each (`@@F-839`). Blank lines are the separator, and a
+ * single newline inside a paragraph is a soft break.
+ */
+export function paragraphsOf(text: string): string[] {
+    return text
+        .replace(/\r\n/g, '\n')
+        .split(/\n\s*\n/)
+        .map(block =>
+            block
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line !== '')
+                .join(' ')
+                .trim(),
+        )
+        .filter(block => block !== '');
 }
 
 /**
@@ -636,6 +705,45 @@ export function findQuestion(root: string, query: string): IQuestionMatch | null
 }
 
 /**
+ * The questions a search matched, best first.
+ *
+ * The bank is asked a question, so the entries it ranks among the answers are the ones a reader may
+ * already have been given — and a question that has an answer is worth showing rather than pointing
+ * at. Its score is carried but not trusted: `similarity` cannot tell a paraphrase from an unrelated
+ * query in a small bank, which is why this is a list to read and not a threshold to fold on
+ * (`@@D-1012`, `@@F-840`).
+ */
+export function questionCandidates(
+    root: string,
+    hits: readonly IHindsightHit[],
+    exclude?: string,
+): IQuestionCandidate[] {
+    const byId = new Map<string, {location: IEntryLocation; entry: IMemoryEntry}>();
+    for (const item of faqEntries(root)) byId.set(item.entry.id, item);
+    const found = new Map<string, IQuestionCandidate>();
+    for (const hit of hits) {
+        const id = targetOfHit(hit);
+        if (!id || id === exclude || found.has(id)) continue;
+        const item = byId.get(id);
+        if (!item) continue;
+        const body = parseFaqBody(item.entry.body);
+        found.set(id, {
+            id,
+            path: item.location.path,
+            scope: item.location.scope,
+            title: item.entry.title,
+            area: item.entry.meta?.area ?? 'cross-cutting',
+            status: item.entry.meta?.status ?? 'open',
+            answer: [...body.answer],
+            certainty: body.certainty,
+            confirmed: body.confirmed,
+            similarity: hit.similarity,
+        });
+    }
+    return [...found.values()];
+}
+
+/**
  * Record a search as a question, updating the entry it already has.
  *
  * A new question starts `open` — it has been asked and not yet answered — and carries
@@ -650,7 +758,12 @@ export async function recordQuestion(
     const query = input.query.replace(/\s+/g, ' ').trim();
     if (query === '') throw new UsageError('a question needs text to record');
     const evidence = evidenceOfHits(input.hits);
-    const match = findQuestion(root, query);
+    // Two ways to recognise the question already on file: the words of its title, which is
+    // deterministic but blind to a paraphrase, and the bank's own best question, which understands
+    // one but scores on a compressed scale — so it needs a floor, and the floor is measured
+    // (`@@D-1012`).
+    const questionHits = input.questionHits ?? input.hits;
+    const match = findQuestion(root, query) ?? foldTarget(root, questionHits);
 
     if (match) {
         const {doc, entry} = entryOf(match);
@@ -671,8 +784,15 @@ export async function recordQuestion(
             path: relative(root, doc.path),
             area: entry.meta!.area,
             created: false,
-            asked: count,
+            // Every asking of the entry, not the count of this wording: a paraphrase folded in is
+            // one more asking of the question, and "already asked 1 times" would hide that.
+            asked: asked.reduce((total, item) => total + item.count, 0),
             status: entry.meta!.status,
+            title: entry.title,
+            answer: [...body.answer],
+            certainty: body.certainty,
+            confirmed: body.confirmed,
+            candidates: questionCandidates(root, questionHits, entry.id),
         };
     }
 
@@ -695,6 +815,33 @@ export async function recordQuestion(
         created: true,
         asked: 1,
         status: result.status,
+        // What a new question owes a reader: the questions this search already touched, so a
+        // duplicate is visible at the moment it is made rather than at the next audit (`@@F-840`).
+        candidates: questionCandidates(root, questionHits),
+    };
+}
+
+/**
+ * The question a search is a rephrasing of, when the bank ranked one high enough to say so.
+ *
+ * A turn of phrase the title comparison cannot see — "which highlighting library colours the code
+ * fences" against "Syntax highlighting highlighter code colouring dependency?" — is what the
+ * semantic arm is for; the floor keeps a merely topical match from swallowing a new question
+ * (`@@D-1012`).
+ */
+function foldTarget(root: string, hits: readonly IHindsightHit[]): IQuestionMatch | null {
+    const [best] = questionCandidates(root, hits);
+    if (!best || best.similarity === null || best.similarity < FOLD_SIMILARITY) return null;
+    return {
+        path: best.path,
+        kind: 'faq',
+        scope: best.scope,
+        id: best.id,
+        title: best.title,
+        area: best.area,
+        status: best.status,
+        similarity: best.similarity,
+        exact: false,
     };
 }
 

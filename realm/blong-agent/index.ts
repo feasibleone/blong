@@ -244,8 +244,35 @@ export default server(() => ({
                     // A runtime account answers one turn where one is reachable, and says nothing
                     // where it is not (`@@T-777`).
                     'test.agent.copilot',
+                    // The list and the tail a session page reads (`@@T-792` `@@T-793`).
+                    'test.agent.feed',
                 ],
             },
+        },
+        // The browser run: `blong-dev playwright` starts this suite beside the Vite dev server and
+        // drives the session page (`@@T-801`). Telemetry comes from the ring rather than a topic,
+        // because a Playwright machine has no broker and the page must not be the thing that
+        // notices (`@@D-988`, `@@D-1008`). The group below is the only one a browser may start, and
+        // it exists to give the page a conversation to draw.
+        playwright: {
+            rpcServer: {port: 0},
+            gateway: {port: 0},
+            srv: {},
+            core: {},
+            access: {},
+            login: {},
+            agent: {
+                agentDispatch: {
+                    questionMethod: 'test.agent.question.echo',
+                    questionTimeoutMs: 5_000,
+                    telemetry: {source: 'memory'},
+                },
+            },
+            testRealm: {testRun: {serverGroups: ['test.agent.ui']}},
+            // The conversation the page is opened on. It is written at boot, through the same two
+            // handlers an engine uses, so the spec needs no seeding surface of its own: it opens the
+            // page and reads what this run published (`@@T-801`).
+            watch: {test: ['test.agent.ui']},
         },
     },
 }));

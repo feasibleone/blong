@@ -9,6 +9,7 @@ import {adapter, type Adapter} from '@feasibleone/blong/types';
 
 import type {CopilotDispatch} from '../../agent/agentCopilot.ts';
 import {simReset, simSession, simStep} from '../../agent/agentSim.ts';
+import {agentTelemetry} from '../../agent/agentTelemetry.ts';
 
 /**
  * `adapter.engine` — the engine adapter: one turn in, tool calls out, and a native run for the engines
@@ -90,6 +91,8 @@ const nativeAsStep = async (
             instructions: request.instructions,
             allowShell: request.allowShell,
             toolDispatch: request.toolDispatch,
+            // The turn's feed is the session's, so the one dispatch the realm named serves both.
+            ...(request.eventDispatch && {eventDispatch: request.eventDispatch}),
         },
         dispatch,
     );
@@ -103,33 +106,49 @@ const stepOf = async (
 ): Promise<IAgentStepResult> => {
     const account = accountOf(self, request.account);
     if (!account) throw new Error(`engine account ${request.account} is not configured`);
-    switch (account.kind) {
-        case 'sim':
-            return simStep(account.script ?? [], request.account, request);
-        case 'vercel': {
-            const {vercelStep} = (await loadKind('Vercel').catch(() => unavailable(account))) as {
-                vercelStep: (
-                    a: IAgentEngineAccount,
-                    r: IAgentStepRequest,
-                ) => Promise<IAgentStepResult>;
-            };
-            return vercelStep(account, request);
+    const telemetry = agentTelemetry(dispatch, request.eventDispatch);
+    try {
+        // The start of the call is the adapter's to report, so a turn is counted the same way
+        // whichever kind answered it; how it ended is the kind's, because only it knows.
+        telemetry.report('status', {state: 'running', mode: 'step'});
+        switch (account.kind) {
+            case 'sim':
+                return simStep(account.script ?? [], request.account, request);
+            case 'vercel': {
+                const {vercelStep} = (await loadKind('Vercel').catch(() =>
+                    unavailable(account),
+                )) as {
+                    vercelStep: (
+                        a: IAgentEngineAccount,
+                        r: IAgentStepRequest,
+                        report?: typeof telemetry.report,
+                    ) => Promise<IAgentStepResult>;
+                };
+                return vercelStep(account, request, telemetry.report);
+            }
+            case 'mastra': {
+                const {mastraStep} = (await loadKind('Mastra').catch(() =>
+                    unavailable(account),
+                )) as {
+                    mastraStep: (
+                        a: IAgentEngineAccount,
+                        r: IAgentStepRequest,
+                        report?: typeof telemetry.report,
+                    ) => Promise<IAgentStepResult>;
+                };
+                return mastraStep(account, request, telemetry.report);
+            }
+            case 'deepseek':
+            case 'copilot':
+                // The harness owns its loop, so a one-turn request becomes a session with one prompt.
+                return nativeAsStep(self, request, dispatch);
+            default:
+                return unavailable(account);
         }
-        case 'mastra': {
-            const {mastraStep} = (await loadKind('Mastra').catch(() => unavailable(account))) as {
-                mastraStep: (
-                    a: IAgentEngineAccount,
-                    r: IAgentStepRequest,
-                ) => Promise<IAgentStepResult>;
-            };
-            return mastraStep(account, request);
-        }
-        case 'deepseek':
-        case 'copilot':
-            // The harness owns its loop, so a one-turn request becomes a session with one prompt.
-            return nativeAsStep(self, request, dispatch);
-        default:
-            return unavailable(account);
+    } finally {
+        // Whatever the turn reported goes out before the call answers, so a batch is never held
+        // by a run that has already finished.
+        await telemetry.flush();
     }
 };
 
@@ -140,53 +159,65 @@ const sessionOf = async (
 ): Promise<IAgentSessionResult> => {
     const account = accountOf(self, request.account);
     if (!account) throw new Error(`engine account ${request.account} is not configured`);
-    switch (account.kind) {
-        case 'sim':
-            return simSession(account.script ?? [], request.account, request);
-        case 'deepseek': {
-            const {deepseekSession} = (await loadKind('Deepseek').catch(() =>
-                unavailable(account),
-            )) as {
-                deepseekSession: (
-                    a: IAgentEngineAccount,
-                    r: IAgentSessionRequest,
-                ) => Promise<IAgentSessionResult>;
-            };
-            return deepseekSession(account, request);
+    const telemetry = agentTelemetry(dispatch, request.eventDispatch);
+    try {
+        // A run is a turn too, and its start is reported here for the same reason.
+        telemetry.report('status', {state: 'running', mode: 'native'});
+        switch (account.kind) {
+            case 'sim':
+                return simSession(account.script ?? [], request.account, request, telemetry.report);
+            case 'deepseek': {
+                const {deepseekSession} = (await loadKind('Deepseek').catch(() =>
+                    unavailable(account),
+                )) as {
+                    deepseekSession: (
+                        a: IAgentEngineAccount,
+                        r: IAgentSessionRequest,
+                        report?: typeof telemetry.report,
+                    ) => Promise<IAgentSessionResult>;
+                };
+                return deepseekSession(account, request, telemetry.report);
+            }
+            case 'copilot': {
+                copilotStarted = true;
+                const {copilotSession} = (await loadKind('Copilot').catch(() =>
+                    unavailable(account),
+                )) as {
+                    copilotSession: (
+                        a: IAgentEngineAccount,
+                        r: IAgentSessionRequest,
+                        d: CopilotDispatch,
+                        deps?: {report?: typeof telemetry.report},
+                    ) => Promise<IAgentSessionResult>;
+                };
+                return copilotSession(account, request, dispatch, {report: telemetry.report});
+            }
+            case 'vercel':
+            case 'mastra':
+                // A step engine has no loop of its own: one prompt is one turn.
+                return {
+                    text: (
+                        await stepOf(
+                            self,
+                            {
+                                account: request.account,
+                                instructions: '',
+                                history: [{role: 'user', text: request.prompt}],
+                                tools: request.tools,
+                                ...(request.eventDispatch && {
+                                    eventDispatch: request.eventDispatch,
+                                }),
+                            },
+                            dispatch,
+                        )
+                    ).text,
+                    finishReason: 'step',
+                };
+            default:
+                return unavailable(account);
         }
-        case 'copilot': {
-            copilotStarted = true;
-            const {copilotSession} = (await loadKind('Copilot').catch(() =>
-                unavailable(account),
-            )) as {
-                copilotSession: (
-                    a: IAgentEngineAccount,
-                    r: IAgentSessionRequest,
-                    d: CopilotDispatch,
-                ) => Promise<IAgentSessionResult>;
-            };
-            return copilotSession(account, request, dispatch);
-        }
-        case 'vercel':
-        case 'mastra':
-            // A step engine has no loop of its own: one prompt is one turn.
-            return {
-                text: (
-                    await stepOf(
-                        self,
-                        {
-                            account: request.account,
-                            instructions: '',
-                            history: [{role: 'user', text: request.prompt}],
-                            tools: request.tools,
-                        },
-                        dispatch,
-                    )
-                ).text,
-                finishReason: 'step',
-            };
-        default:
-            return unavailable(account);
+    } finally {
+        await telemetry.flush();
     }
 };
 
@@ -196,9 +227,15 @@ export default adapter<IConfig>(api => {
      *
      * A native engine's custom tool handler runs in this process, so the call is local even when the
      * model runs on another host; the `$meta` method is what names the handler.
+     *
+     * `remote.dispatch` rather than `api.dispatch`: this module is always *extended* by a realm's
+     * own instance, and the context an `extends` chain hands a parent carries `remote`, `registry`,
+     * `rpc`, `local`, `schema` and the error registrar — not `dispatch`. The call answered
+     * `api.dispatch is not a function` at the moment a feed asked it to publish, which is the first
+     * time anything used it (`@@F-832`).
      */
     const dispatch: CopilotDispatch = (params, meta) =>
-        Promise.resolve(api.dispatch(params, meta)) as Promise<unknown>;
+        Promise.resolve(api.remote.dispatch(params, meta)) as Promise<unknown>;
 
     return {
         activation: {

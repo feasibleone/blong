@@ -6,6 +6,7 @@
  * because every test and every deployment without a key runs it (`@@T-593`).
  */
 import type {
+    AgentTelemetryReport,
     IAgentScriptEntry,
     IAgentSessionRequest,
     IAgentSessionResult,
@@ -74,6 +75,7 @@ export const simSession = (
     script: IAgentScriptEntry[],
     account: string,
     request: IAgentSessionRequest,
+    report: AgentTelemetryReport = () => undefined,
 ): IAgentSessionResult => {
     const events: Array<{kind: string; payload?: unknown}> = [];
     const key = cursorKey(account, request.workspacePath);
@@ -88,18 +90,25 @@ export const simSession = (
             // The run parked on a question: the rest of the script is what the resume would say.
             suspended = entry.suspend;
             events.push({kind: 'suspend', payload: entry.suspend});
+            report('status', {state: 'awaiting-human', question: entry.suspend.question});
             cursors.set(key, index + 1);
             break;
         }
         if ('toolCall' in entry) {
             events.push({kind: 'tool', payload: entry.toolCall});
+            report('tool', entry.toolCall);
             continue;
         }
         text = entry.text;
         events.push({kind: 'text', payload: {text: entry.text}});
+        // The script is what a model would have said, so it is reported the way a delta would be.
+        report('message', {text: entry.text});
     }
     // A finished dialogue starts over next time; a parked one keeps its cursor for the resume.
-    if (!suspended) cursors.delete(key);
+    if (!suspended) {
+        cursors.delete(key);
+        report('status', {state: 'finished'});
+    }
     return {
         text,
         sessionKey: `sim-${key}`,

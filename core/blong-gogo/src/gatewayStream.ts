@@ -35,6 +35,7 @@
 
 import {
     STREAM_BINARY_TYPE,
+    STREAM_FLAG_BATCH,
     STREAM_FLAG_BINARY,
     STREAM_FLAG_KEEPALIVE,
     STREAM_FLAG_SEALED,
@@ -52,6 +53,9 @@ export const FLAG_SEALED = STREAM_FLAG_SEALED;
 
 /** A frame whose payload is bytes rather than JSON. */
 export const FLAG_BINARY = STREAM_FLAG_BINARY;
+
+/** A frame that carries several values, as a JSON array. */
+export const FLAG_BATCH = STREAM_FLAG_BATCH;
 
 /** A frame that carries no value, written so a reader can tell quiet from dead @@D-955. */
 export const FLAG_KEEPALIVE = STREAM_FLAG_KEEPALIVE;
@@ -105,11 +109,31 @@ export function envelopeOf(accept: string | undefined): StreamEnvelope | undefin
     return undefined;
 }
 
-/** What one value becomes: its bytes, and whether those bytes are JSON. */
-export function payloadOf(value: unknown): {bytes: Uint8Array; binary: boolean} {
-    if (value instanceof Uint8Array) return {bytes: value, binary: true};
+/**
+ * Values a producer asks to send together.
+ *
+ * A brand rather than a bare array, because `@@D-949` fixes the rule the other way: a handler that
+ * yields an array sends **one** value. Only a value of this type carries the batch flag, so a route
+ * whose payload happens to be a list is never flattened into its elements by a reader.
+ */
+export class StreamBatch {
+    readonly values: unknown[];
+    constructor(values: unknown[]) {
+        this.values = values;
+    }
+}
+
+/** What one value becomes: its bytes, whether those bytes are JSON, and whether it is a batch. */
+export function payloadOf(value: unknown): {bytes: Uint8Array; binary: boolean; batch: boolean} {
+    if (value instanceof StreamBatch)
+        return {
+            bytes: new TextEncoder().encode(JSON.stringify(value.values)),
+            binary: false,
+            batch: true,
+        };
+    if (value instanceof Uint8Array) return {bytes: value, binary: true, batch: false};
     const json = typeof value === 'string' ? value : JSON.stringify(value ?? null);
-    return {bytes: new TextEncoder().encode(json), binary: false};
+    return {bytes: new TextEncoder().encode(json), binary: false, batch: false};
 }
 
 /** One value as one `data:` frame, escaped so a newline cannot end it early. */
@@ -142,7 +166,14 @@ export function errorPayload(error: unknown): unknown {
  * is sealed is a decision the gateway makes once per stream.
  */
 export interface IFrameEncoder {
-    encode(value: unknown, seq: number): Promise<string | Uint8Array>;
+    /**
+     * The frames one value becomes: one, or several when a batch has to be flattened.
+     *
+     * The binary envelope carries a batch in one flagged frame, but the text envelope has no flags —
+     * its reader parses one `data:` block into one value — so a batch sent readably is written as one
+     * frame per value, which is what `@@D-949` says the readable envelope does.
+     */
+    encode(value: unknown, seq: number): Promise<string | Uint8Array | (string | Uint8Array)[]>;
     /** The last frame, written after a producer failed. */
     error(error: unknown, seq: number): Promise<string | Uint8Array>;
     /**
@@ -167,9 +198,12 @@ export function plainEncoder(envelope: StreamEnvelope): IFrameEncoder {
     return {
         // An unsealed frame needs no sequence: nothing about it is a nonce.
         encode: async (value: unknown) => {
-            if (envelope === 'text') return dataFrame(value);
-            const {bytes, binary} = payloadOf(value);
-            return binaryFrame(binary ? FLAG_BINARY : 0, bytes);
+            const {bytes, binary, batch} = payloadOf(value);
+            if (envelope === 'text')
+                return batch
+                    ? (value as StreamBatch).values.map(one => dataFrame(one))
+                    : dataFrame(value);
+            return binaryFrame((batch ? FLAG_BATCH : 0) | (binary ? FLAG_BINARY : 0), bytes);
         },
         error: async (error: unknown) => {
             if (envelope === 'text') return dataFrame(errorPayload(error));
@@ -197,9 +231,20 @@ export function sealedEncoder(
     });
     return {
         encode: async (value: unknown, seq: number) => {
-            const {sealed} = await seal(value, seq);
-            if (envelope === 'binary') return binaryFrame(FLAG_SEALED, sealed);
-            return `data: ${toBase64(sealed)}\n\n`;
+            const {batch} = payloadOf(value);
+            if (envelope === 'binary') {
+                const {sealed} = await seal(value, seq);
+                return binaryFrame(batch ? FLAG_SEALED | FLAG_BATCH : FLAG_SEALED, sealed);
+            }
+            // A batch is one value per readable event, and a sealed one spends a sequence on each, so
+            // the writer advances `seq` by the number of frames it is handed.
+            const values = batch ? (value as StreamBatch).values : [value];
+            const frames: string[] = [];
+            for (const [index, one] of values.entries()) {
+                const {sealed} = await seal(one, seq + index);
+                frames.push(`data: ${toBase64(sealed)}\n\n`);
+            }
+            return frames;
         },
         error: async (error: unknown, seq: number) => {
             const {sealed} = await seal(errorPayload(error), seq);
@@ -237,6 +282,14 @@ export interface IEventStreamOptions {
     heartbeat?: boolean;
     /** The most one frame may occupy. A producer above it ends the stream. */
     maxFrameBytes?: number;
+}
+
+/** One frame, or the several a batch becomes on the readable envelope. */
+export function framesOf(
+    frame: string | Uint8Array | (string | Uint8Array)[],
+): (string | Uint8Array)[] {
+    if (typeof frame === 'string' || frame instanceof Uint8Array) return [frame];
+    return frame;
 }
 
 /**
@@ -288,21 +341,24 @@ export async function writeEventStream({
     try {
         for await (const value of iterate) {
             if (signal.aborted) break;
-            const frame = await encoder.encode(value, seq);
-            if (frameByteLength(frame) > maxFrameBytes) {
-                // A reader would refuse this frame's prefix, so sending it would
-                // end the stream at the far end with nothing to explain it. The
-                // producer's own failure is reported here and the stream closes.
-                throw Object.assign(
-                    new Error(
-                        `a stream frame of ${frameByteLength(frame)} bytes exceeds the ` +
-                            `${maxFrameBytes}-byte limit: the route must split what it sends`,
-                    ),
-                    {type: 'stream.frameTooLarge', statusCode: 413},
-                );
+            const frames = framesOf(await encoder.encode(value, seq));
+            for (const frame of frames) {
+                if (frameByteLength(frame) > maxFrameBytes) {
+                    // A reader would refuse this frame's prefix, so sending it would
+                    // end the stream at the far end with nothing to explain it. The
+                    // producer's own failure is reported here and the stream closes.
+                    throw Object.assign(
+                        new Error(
+                            `a stream frame of ${frameByteLength(frame)} bytes exceeds the ` +
+                                `${maxFrameBytes}-byte limit: the route must split what it sends`,
+                        ),
+                        {type: 'stream.frameTooLarge', statusCode: 413},
+                    );
+                }
+                await write(frame);
+                if (signal.aborted) break;
             }
-            await write(frame);
-            seq += 1;
+            seq += frames.length;
             if (signal.aborted) break;
         }
     } catch (error) {
@@ -320,6 +376,102 @@ export function frameByteLength(frame: string | Uint8Array): number {
     // base64 or JSON between the markers, and it is the payload that has a limit.
     const match = /^data: (.*)\n\n$/s.exec(frame);
     return match ? match[1].length : frame.length;
+}
+
+/** How a producer asks for its values to travel together. */
+export interface ICoalesceOptions {
+    /** How long a value may wait for company. `0` sends each value alone. */
+    maxWaitMs?: number;
+    /** The most values one batch may carry. */
+    maxValues?: number;
+    /** The most one batch may occupy, in bytes of its payload. */
+    maxFrameBytes?: number;
+}
+
+/**
+ * Hold a burst of values into batches, so a delta stream costs one frame per window.
+ *
+ * A model emits hundreds of one- and two-character deltas a second, and one frame each is one frame
+ * each on the wire, in the reader and in whatever keeps the stream. This holds what arrives for at
+ * most `maxWaitMs` — imperceptible to a reader — and lets go sooner when `maxValues` arrive or when
+ * the next value would push the batch past the frame cap.
+ *
+ * The cap is checked here as well as in the writer because a batch that grew over it would end the
+ * stream with one error frame at the far end (`@@D-950`). Here it is split instead; a single value
+ * over the cap is refused with the writer's own typed error, naming the producer's value.
+ *
+ * What comes out is a `StreamBatch`, so the writer marks it as a batch rather than mistaking a
+ * handler's own array for one (`@@D-949`).
+ */
+export async function* coalesceStream(
+    values: AsyncIterable<unknown>,
+    {maxWaitMs = 75, maxValues = 64, maxFrameBytes = MAX_FRAME_BYTES}: ICoalesceOptions = {},
+): AsyncIterable<StreamBatch> {
+    const iterator = values[Symbol.asyncIterator]();
+    /** The next value, already asked for, so a window that closes does not lose what it found. */
+    let pending: Promise<IteratorResult<unknown>> | undefined;
+    /** A value a full or oversized batch displaced, sent first on the next turn. */
+    let heldBack: IteratorResult<unknown> | undefined;
+
+    /** The next result, or `'timeout'` when the window closed first. */
+    const next = async (windowMs: number): Promise<IteratorResult<unknown> | 'timeout'> => {
+        pending ??= iterator.next();
+        if (windowMs <= 0) {
+            const result = await pending;
+            pending = undefined;
+            return result;
+        }
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const closed = new Promise<'timeout'>(resolve => {
+            timer = setTimeout(() => resolve('timeout'), windowMs);
+        });
+        const outcome = await Promise.race([pending.then(result => ({result})), closed]);
+        if (timer) clearTimeout(timer);
+        if (outcome === 'timeout') return 'timeout';
+        pending = undefined;
+        return (outcome as {result: IteratorResult<unknown>}).result;
+    };
+
+    const sized = (batch: StreamBatch): number => payloadOf(batch).bytes.length;
+    const tooLarge = (bytes: number): Error =>
+        Object.assign(
+            new Error(
+                `a stream value of ${bytes} bytes exceeds the ${maxFrameBytes}-byte limit: ` +
+                    'the route must send it in pieces',
+            ),
+            {type: 'stream.frameTooLarge', statusCode: 413},
+        );
+
+    try {
+        for (;;) {
+            const first = heldBack ?? (await next(0));
+            heldBack = undefined;
+            if (first === 'timeout' || first.done) return;
+            const batch: unknown[] = [first.value];
+            for (;;) {
+                if (batch.length >= maxValues) break;
+                const more = await next(maxWaitMs);
+                if (more === 'timeout') break;
+                if (more.done) {
+                    heldBack = more;
+                    break;
+                }
+                batch.push(more.value);
+                if (sized(new StreamBatch(batch)) > maxFrameBytes) {
+                    batch.pop();
+                    heldBack = more;
+                    break;
+                }
+            }
+            const single = new StreamBatch(batch);
+            if (batch.length === 1 && sized(single) > maxFrameBytes) throw tooLarge(sized(single));
+            yield single;
+            if (heldBack?.done) return;
+        }
+    } finally {
+        pending?.catch(() => undefined);
+        await iterator.return?.();
+    }
 }
 
 /**

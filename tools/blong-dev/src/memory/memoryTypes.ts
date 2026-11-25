@@ -60,11 +60,43 @@ export const KIND_STATUSES: Record<MemoryKind, readonly string[]> = {
 export const RETIRED_SECTION = 'Retired';
 
 /** A `## Retired` ledger line: `- F-101 — superseded by F-090 (2026-08-01)`. */
-export const LEDGER_LINE = new RegExp(String.raw`^-\s*(?<id>[${ID_PREFIXES}]-\d{3})\s*—\s*\S`);
+export const LEDGER_LINE = new RegExp(String.raw`^-\s*(?<id>[${ID_PREFIXES}]-\d{3,})\s*—\s*\S`);
 
 /** The id a ledger line records, or `null` when the line is not one. */
 export function ledgerIdOf(line: string): string | null {
     return LEDGER_LINE.exec(line.trim())?.groups?.['id'] ?? null;
+}
+
+/** `renumbered to D-1004 (2026-11-24)`, optionally naming several successors. */
+const RENUMBER_FATE = new RegExp(
+    String.raw`^renumbered to (?<to>[${ID_PREFIXES}]-\d{3,}(?:, [${ID_PREFIXES}]-\d{3,})*)(?: \((?<date>[^)]*)\))?$`,
+);
+
+/**
+ * Fold a second `renumbered to X (date)` fate into the ledger line that already holds one.
+ *
+ * A ledger line says where a number went, so an id that left more than once - a first
+ * successor that was itself renumbered away - keeps one line listing every successor
+ * rather than repeating the id, which `check` refuses. Only renumber fates merge:
+ * `retired` and `superseded by` describe a single event, so they return `undefined` and
+ * the caller writes a line of its own.
+ */
+export function mergeRenumberFate(line: string, fate: string): string | undefined {
+    const suffix = RENUMBER_FATE.exec(fate.trim());
+    const at = line.indexOf('—');
+    if (!suffix || at < 0) return undefined;
+    const current = RENUMBER_FATE.exec(line.slice(at + 1).trim());
+    if (!current) return undefined;
+    const successors = [
+        ...new Set([
+            ...(current.groups?.['to'] ?? '').split(', '),
+            ...(suffix.groups?.['to'] ?? '').split(', '),
+        ]),
+    ];
+    const date = suffix.groups?.['date'] ?? current.groups?.['date'];
+    return `${line.slice(0, at)}— renumbered to ${successors.join(', ')}${
+        date ? ` (${date})` : ''
+    }`;
 }
 
 /** Sections a kind may use, in file order. */
@@ -148,7 +180,7 @@ export const INDEX_START = '<!-- memory:index -->';
 export const INDEX_END = '<!-- /memory:index -->';
 
 /** `### F-014 — realm add is not idempotent`. */
-export const ENTRY_HEADING = /^###\s+(?<id>[A-Z]-\d{3})\s*(?:—|-)?\s*(?<title>.*)$/;
+export const ENTRY_HEADING = /^###\s+(?<id>[A-Z]-\d{3,})\s*(?:—|-)?\s*(?<title>.*)$/;
 
 /** Section heading: `## Open`. */
 export const SECTION_HEADING = /^##\s+(?<heading>.+?)\s*$/;
@@ -162,7 +194,7 @@ export const KIND_BY_PREFIX: Record<string, MemoryKind> = {
 };
 
 /** Any memory id mentioned in prose. */
-export const ID_REFERENCE = new RegExp(String.raw`\b[${ID_PREFIXES}]-\d{3}\b`, 'g');
+export const ID_REFERENCE = new RegExp(String.raw`\b[${ID_PREFIXES}]-\d{3,}\b`, 'g');
 
 /**
  * A cross-reference token written outside a memory file: `@@F-014`, an entry id;
@@ -176,7 +208,7 @@ export const ID_REFERENCE = new RegExp(String.raw`\b[${ID_PREFIXES}]-\d{3}\b`, '
  * two files hold is an error a `memory renumber` fixes.
  */
 export const REFERENCE = new RegExp(
-    String.raw`@@(?:(?<id>[${ID_PREFIXES}]-\d{3})|doc:(?<docTier>[a-z0-9-]+)\/(?<docName>[a-z0-9.-]+)(?:#(?<docAnchor>[a-z0-9-]+))?|skill:(?<skillName>[a-z0-9-]+)(?:#(?<skillAnchor>[a-z0-9-]+))?)`,
+    String.raw`@@(?:(?<id>[${ID_PREFIXES}]-\d{3,})|doc:(?<docTier>[a-z0-9-]+)\/(?<docName>[a-z0-9.-]+)(?:#(?<docAnchor>[a-z0-9-]+))?|skill:(?<skillName>[a-z0-9-]+)(?:#(?<skillAnchor>[a-z0-9-]+))?)`,
     'g',
 );
 

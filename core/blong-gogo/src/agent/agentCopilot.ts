@@ -12,6 +12,7 @@
  * dispatch back into the realm's tool boundary (`@@D-975`).
  */
 import type {
+    AgentTelemetryReport,
     IAgentEngineAccount,
     IAgentSessionRequest,
     IAgentSessionResult,
@@ -63,10 +64,12 @@ type Sdk = {
 /** The SDK's shape as this module uses it, so a test can hand over a stand-in. */
 export type CopilotSdk = Sdk;
 
-/** What a test may substitute for the two things this module would otherwise create itself. */
+/** What a test may substitute for the things this module would otherwise create, and where it reports. */
 export interface CopilotDeps {
     sdk?: Sdk;
     client?: CopilotClient;
+    /** The realm's feed (`@@D-994`); absent in a test that asserts only the result. */
+    report?: AgentTelemetryReport;
 }
 
 let loaded: Promise<Sdk> | undefined;
@@ -300,14 +303,25 @@ export const copilotSession = async (
     sessions.set(key, current);
 
     const events: Array<{kind: string; payload?: unknown}> = [];
+    // The feed the realm watches is the deltas; `events` stays what the checkpoint and the resume
+    // trace carry, so the two do not compete for one list (`@@D-993`).
+    const report = deps.report ?? (() => undefined);
     const offMessage = current.on('assistant.message', event => {
         events.push({kind: 'text', payload: {text: event.data.content}});
     });
+    const offDelta = current.on('assistant.message_delta', event => {
+        report('message', {text: event.data.deltaContent});
+    });
+    const offReasoning = current.on('assistant.reasoning_delta', event => {
+        report('reasoning', {text: event.data.deltaContent});
+    });
     const offTool = current.on('tool.execution_start', event => {
         events.push({kind: 'tool', payload: event.data});
+        report('tool', event.data);
     });
     const offToolDone = current.on('tool.execution_complete', event => {
         events.push({kind: 'tool-result', payload: event.data});
+        report('tool-result', event.data);
     });
 
     let final: {data?: {content?: string}} | undefined;
@@ -321,6 +335,8 @@ export const copilotSession = async (
         if (!run.aborted) throw error;
     } finally {
         offMessage?.();
+        offDelta?.();
+        offReasoning?.();
         offTool?.();
         offToolDone?.();
     }
@@ -333,6 +349,7 @@ export const copilotSession = async (
                 | undefined
         )?.text;
 
+    report('status', {state: parked.promptId ? 'awaiting-human' : 'finished', text});
     return {
         text,
         sessionKey: current.sessionId,

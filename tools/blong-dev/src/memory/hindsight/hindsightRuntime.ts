@@ -20,7 +20,17 @@ export interface IResolvedHindsight {
 /** How a store is built; replaceable through {@link setHindsightStoreFactory}. */
 export type StoreFactory = (config: IHindsightConfig) => IHindsightStore | null;
 
-const defaultFactory: StoreFactory = config => createHindsightStore(config);
+/**
+ * A test process never reaches a real bank.
+ *
+ * The unit suite writes memory entries in throwaway repositories, and an ingest is not part of what
+ * a test asserts — it is a side effect of the write path. When a case did not install a store of its
+ * own, that side effect landed in the developer's own bank, which then answered real searches with
+ * fixtures (`@@F-841`). Tap marks its children with `TAP=1`; a case that wants a bank installs one
+ * through {@link setHindsightStoreFactory}, which bypasses this default.
+ */
+const defaultFactory: StoreFactory = config =>
+    process.env['TAP'] === undefined ? createHindsightStore(config) : null;
 
 let factory: StoreFactory = defaultFactory;
 

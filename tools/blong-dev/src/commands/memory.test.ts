@@ -47,6 +47,8 @@ interface IFakeBehaviour {
     documents?: IHindsightDocumentRef[];
     /** What a search answers with. */
     hits?: IHindsightHit[];
+    /** What the questions-only search answers with, when it differs. */
+    questionHits?: IHindsightHit[];
 }
 
 /** A store that records instead of talking, and fails on demand. */
@@ -60,9 +62,12 @@ function fakeStore(calls: IStoreCalls, behaviour: IFakeBehaviour = {}): IHindsig
         },
         recall: async (query, options) => {
             calls.recalled.push({query, options});
-            return behaviour.fail
-                ? {ok: false, reason: behaviour.fail}
-                : {ok: true, hits: behaviour.hits ?? []};
+            if (behaviour.fail) return {ok: false, reason: behaviour.fail};
+            const questions = options?.tags?.includes('kind:faq') === true;
+            return {
+                ok: true,
+                hits: (questions ? (behaviour.questionHits ?? behaviour.hits) : behaviour.hits) ?? [],
+            };
         },
         list: async () => {
             const reason = behaviour.listFail ?? behaviour.fail;
@@ -172,9 +177,11 @@ async function capture(run: () => Promise<void>): Promise<ICaptured> {
 
 t.test('the memory command layer', async t => {
     t.beforeEach(() => {
-        // Each case installs its own store; the default is restored so a failing
-        // case cannot leak a fake into the next one.
-        setHindsightStoreFactory(null);
+        // Offline by default, and this is the point of the hook: a case that writes without
+        // installing a store of its own used to reach the developer's real bank and leave its
+        // fixtures there, where a later `memory search` returned them as answers (`@@F-841`). A
+        // case that wants a bank installs a fake, which wins because it runs after this.
+        setHindsightStoreFactory(() => null);
     });
     t.afterEach(() => setHindsightStoreFactory(null));
 
@@ -262,7 +269,12 @@ t.test('the memory command layer', async t => {
         );
 
         t.equal(code, undefined, 'a search that worked sets no failure');
-        t.equal(calls.recalled.length, 1, 'one recall');
+        t.equal(calls.recalled.length, 2, 'the search, and the questions asked of their own');
+        t.same(
+            calls.recalled[1]!.options?.tags,
+            ['memory', 'kind:faq'],
+            'the second looks at questions only',
+        );
         t.equal(calls.recalled[0]!.query, 'connection pool', 'the query reaches the store');
         t.same(
             calls.recalled[0]!.options?.tags,
@@ -283,6 +295,79 @@ t.test('the memory command layer', async t => {
         t.equal(code, 1, 'the command fails');
         t.match(err, /unknown kind/, 'and says why');
         t.equal(calls.recalled.length, 0, 'nothing was sent to the server');
+    });
+
+    await t.test('a question already on file is shown with its answer, and folded when it is asked again', async t => {
+        // What a search is for: the answer, not a pointer to it. A rephrasing the bank ranks above
+        // the fold floor lands on the entry; anything else is recorded and shown beside it, with the
+        // one command that puts the two together (`@@D-1012`).
+        const calls: IStoreCalls = {retained: [], recalled: [], removed: []};
+        const repo = tempRepo();
+        t.teardown(repo.restore);
+        setHindsightStoreFactory(() =>
+            fakeStore(calls, {hits: [searchHit(['memory', 'kind:friction', 'id:F-001'], 0.4)]}),
+        );
+
+        const asked = await capture(() => memory(['search', 'syntax highlighting dependency']));
+        t.match(asked.out, /question Q-001/, 'the first search records the question');
+
+        await capture(() =>
+            memory([
+                'answer',
+                'Q-001',
+                '--answer',
+                'The highlighter is a grammar library; see @@doc:patterns/memory.',
+                '--certainty',
+                'high',
+                '--confirmed',
+                'read the code and ran the tests',
+            ]),
+        );
+
+        // The same question in other words. The prose results fill the search's limit and none of
+        // them is a question — which is what happens when an entry is asked about much — so the fold
+        // has to come from the questions-only recall rather than from what the search returned.
+        setHindsightStoreFactory(() =>
+            fakeStore(calls, {
+                hits: [searchHit(['memory', 'kind:friction', 'id:F-003'], 0.9)],
+                questionHits: [searchHit(['memory', 'kind:faq', 'id:Q-001'], 0.82)],
+            }),
+        );
+        const folded = await capture(() =>
+            memory(['search', 'which library colours the code fences']),
+        );
+        t.match(
+            folded.out,
+            /question Q-001 .* already asked 2 times/,
+            'the paraphrase is the same question',
+        );
+        t.match(
+            folded.out,
+            /it is answered \(confirmed 0\.85\):/,
+            'and the answer is shown, not pointed at',
+        );
+        t.match(folded.out, /The highlighter is a grammar library/, 'in the words it was written in');
+        t.notMatch(folded.out, /question Q-002/, 'no second question was written');
+
+        // A question the bank only puts near it: recorded, with the resemblance named.
+        setHindsightStoreFactory(() =>
+            fakeStore(calls, {questionHits: [searchHit(['memory', 'kind:faq', 'id:Q-001'], 0.5)]}),
+        );
+        const apart = await capture(() =>
+            memory(['search', 'how long does the semantic index keep a document']),
+        );
+        t.match(apart.out, /question Q-002/, 'below the floor it is its own question');
+        t.match(apart.out, /already on file: Q-001/, 'and the question it resembles is named');
+        t.match(
+            apart.out,
+            /it is answered \(confirmed 0\.85\):/,
+            'with the answer it already has',
+        );
+        t.match(
+            apart.out,
+            /blong-dev memory merge Q-001 Q-002/,
+            'and the command that folds the two together',
+        );
     });
 
     await t.test('prune takes the entry out of the bank too', async t => {

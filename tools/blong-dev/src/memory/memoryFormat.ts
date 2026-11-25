@@ -9,7 +9,14 @@
  * and a two-space continuation indent.
  */
 
-import {INDEX_END, INDEX_START, MAX_LINE_LENGTH} from './memoryTypes.ts';
+import {
+    INDEX_END,
+    INDEX_START,
+    MAX_LINE_LENGTH,
+    RETIRED_SECTION,
+    ledgerIdOf,
+    mergeRenumberFate,
+} from './memoryTypes.ts';
 
 /** Placeholder that keeps the spaces inside an inline span out of the wrapper. */
 const NO_SPACE = '\u0000';
@@ -170,6 +177,43 @@ function splitListItem(line: string): {prefix: string; text: string; indent: str
 }
 
 /**
+ * Collapse repeats of a `## Retired` ledger line for one id into the first one.
+ *
+ * The ledger says where a number went, so two lines for one id say the same thing twice, and
+ * `check` refuses the file. A tool that renumbered an id more than once wrote exactly that, so the
+ * repair belongs in the pass that fixes a file rather than in a hand edit: a succeeding renumber
+ * fate extends the line, and any other duplicate is left for `check` to report, because a
+ * `retired` and a `superseded by` for one id are two statements and not a repetition.
+ */
+function collapseLedgerRepeats(lines: readonly string[]): string[] {
+    const out: string[] = [];
+    const at = new Map<string, number>();
+    let inRetired = false;
+    for (const line of lines) {
+        if (/^##\s/.test(line)) inRetired = line.trim() === `## ${RETIRED_SECTION}`;
+        const id = inRetired ? ledgerIdOf(line) : null;
+        if (!id) {
+            out.push(line);
+            continue;
+        }
+        const first = at.get(id);
+        if (first === undefined) {
+            at.set(id, out.length);
+            out.push(line);
+            continue;
+        }
+        const separator = line.indexOf('—');
+        const merged = mergeRenumberFate(out[first]!, line.slice(separator + 1));
+        if (merged) {
+            out[first] = merged;
+            continue;
+        }
+        out.push(line);
+    }
+    return out;
+}
+
+/**
  * Re-wrap a whole document.
  *
  * Consecutive plain lines form one paragraph, which is what lets the legacy
@@ -201,7 +245,7 @@ export function formatLines(lines: readonly string[], width = MAX_LINE_LENGTH): 
         paragraphIsItem = false;
     };
 
-    for (const line of lines) {
+    for (const line of collapseLedgerRepeats(lines)) {
         if (MANUAL_HEADING.test(line)) inManual = true;
         else if (inManual && /^##\s/.test(line)) inManual = false;
         else if (inManual) {

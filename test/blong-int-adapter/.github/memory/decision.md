@@ -44,10 +44,9 @@ documented in the blong-schema skill.
 
 > _2026-11-24 · test/blong-int-adapter · active_
 
-Planned in [#307](https://github.com/feasibleone/blong/issues/307).
-
 A number asserted in a test and explained nowhere is a number somebody loosens. The measurement
-method, the topic shape and the accepted throughput and p95 are written in `performance.md`; the
-test asserts them and prints the measured values.
+method, the topic shape and the accepted throughput and p95 are written in `kafka-perf.md` beside
+this package; the test asserts them and prints the measured values, and every run writes a report
+with the distribution and a chart.
 
 ## Superseded

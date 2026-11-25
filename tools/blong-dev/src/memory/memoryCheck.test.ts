@@ -214,6 +214,51 @@ Body.
     t.end();
 });
 
+test('a four-digit id is one id, and is not the three-digit one it starts with', async t => {
+    // The repository passed 999 in every kind, and the pattern that read a heading was written for
+    // three digits: `D-1000` came back as `D-100`, so three unrelated entries collided on one id and
+    // the check called them duplicates (`@@T-807`). The number is any length; the id is whole.
+    const long = docFrom(`# Frictions
+
+## Open
+
+### F-1000 — the thousandth
+
+> _2026-01-01 · cross-cutting · open_
+
+Body.
+`);
+    t.same(
+        parseDoc(long.lines).entries.map(entry => entry.id),
+        ['F-1000'],
+        'the parser keeps four digits',
+    );
+
+    // `F-1000` belongs to this file and `F-100` to another: two ids, neither a duplicate.
+    const context: ICheckContext = {
+        ids: new Map([
+            ['F-100', 'a.md'],
+            ['F-1000', long.path],
+        ]),
+        packages: new Set(['core/x']),
+    };
+    t.same(messages(long, context), [], 'a three-digit neighbour is a different id');
+
+    // And a duplicate four-digit id is reported with the whole id, so the reader can act on it.
+    const clash: ICheckContext = {
+        ids: new Map([
+            ['F-100', 'a.md'],
+            ['F-1000', 'c.md'],
+        ]),
+        packages: new Set(['core/x']),
+    };
+    t.ok(
+        messages(long, clash).some(message => message.includes('id F-1000 is also used in')),
+        'the report names F-1000, not F-100',
+    );
+    t.end();
+});
+
 test('checkDoc flags a stale index', async t => {
     const lines = splitLines(
         [

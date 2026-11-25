@@ -26,6 +26,7 @@ skill is the map of where each idea lives and what to check before changing it.
 | The question and the wait             | `orchestrator/session/agentQuestionAsk.ts`                                                 |
 | Suspend, resume                       | `orchestrator/session/agentSessionSuspend.ts`, `agentSessionResume.ts`                     |
 | Answers, wake                         | `orchestrator/answer/agentAnswerReceive.ts`, `agentAnswerWake.ts`                          |
+| The wake subscription                 | `orchestrator/agentDispatch.ts` `ready()` + `adapter/notify.ts` (`notify.sub.watch`)       |
 | Recovery                              | `orchestrator/recovery/agentRecoveryScan.ts`                                               |
 | One pass                              | `orchestrator/worker/agentWorkerTick.ts`                                                   |
 | The engine instance and its accounts  | `adapter/engine.ts` (implementation in `core/blong-gogo/src/adapter/server/agent.ts`)      |
@@ -50,6 +51,9 @@ skill is the map of where each idea lives and what to check before changing it.
   account through the step loop.
 - **A session belongs to a host.** Resume and wake compare `workerId` with `HOSTNAME`; a lookup by
   session should name the worker too. (`@@F-656`)
+- **The wake subscription belongs to the orchestrator, not to the adapter.** `agentDispatch` opens it
+  in `ready()` through `notify.sub.watch` and dispatches `agent.answer.wake` itself; the adapter only
+  carries the channel, and a forwarding adapter method must not come back. (`@@T-816`)
 - **The pending checkpoint goes in before the question.** Writing it after the ask makes the
   interruption safe only while the asker survives.
 

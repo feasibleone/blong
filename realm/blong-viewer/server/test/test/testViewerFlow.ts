@@ -1,5 +1,5 @@
 /* spell-checker: disable */
-import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
+import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 import {getWriter, type LogRecord} from '@feasibleone/lukaot/node';
 
 /**
@@ -30,155 +30,190 @@ import {getWriter, type LogRecord} from '@feasibleone/lukaot/node';
 interface IWatch {
     last?: string;
     size: number;
+    entries?: Array<{id: string; fields?: {marker?: string}}>;
 }
 
-export default handler(
-    ({lib: {group}, handler: {viewerEntryFind, viewerEntrySearch}}) => ({
-        testViewerFlow: ({name = 'viewer flow'}: {name?: string} = {}) =>
-            group(name)([
-                // 1. A record written by this process reaches the buffer.
-                async function writeRecord(assert: IAssert) {
-                    const marker = `viewer-flow-${Date.now()}`;
-                    emit(marker, 'a record the viewer should hold');
-                    const answer = await waitFor(async () => {
-                        const found = await viewerEntryFind<{entries: Array<{id: string}>}>(
-                            {search: marker},
-                            {} as IMeta,
-                        );
-                        return found.entries.length > 0 ? found : undefined;
-                    });
-                    assert.ok(answer, 'the record this process wrote reaches the buffer');
-                    assert.ok(answer!.entries[0].id, 'it carries the id a poll continues from');
-                    return {marker, id: answer!.entries[0].id};
-                },
+export default handler(({lib: {group}, handler: {viewerEntryFind, viewerEntrySearch}}) => ({
+    testViewerFlow: ({name = 'viewer flow'}: {name?: string} = {}) =>
+        group(name)([
+            // 1. A record written by this process reaches the buffer.
+            async function writeRecord(assert: IAssert) {
+                const marker = `viewer-flow-${Date.now()}`;
+                emit(marker, 'a record the viewer should hold');
+                const answer = await waitFor(async () => {
+                    const found = await viewerEntryFind<{entries: Array<{id: string}>}>(
+                        {search: marker},
+                        {} as IMeta,
+                    );
+                    return found.entries.length > 0 ? found : undefined;
+                });
+                assert.ok(answer, 'the record this process wrote reaches the buffer');
+                assert.ok(answer!.entries[0].id, 'it carries the id a poll continues from');
+                return {marker, id: answer!.entries[0].id};
+            },
 
-                // 2. `after` is a cursor: an old id answers only what came later.
-                async function afterIsACursor(
-                    assert: IAssert,
-                    {$meta, writeRecord}: {$meta: IMeta; writeRecord: Promise<unknown>},
-                ) {
-                    const {id} = (await writeRecord) as {id: string};
-                    const marker = `viewer-cursor-${Date.now()}`;
-                    emit(marker, 'a record written after the cursor');
-                    await waitFor(async () => {
-                        const found = await viewerEntryFind<{entries: Array<{id: string}>}>(
-                            {search: marker},
-                            $meta,
-                        );
-                        return found.entries.length > 0 ? found : undefined;
-                    });
-                    const again = await viewerEntryFind<{entries: Array<{id: string}>}>(
-                        {after: id},
+            // 2. `after` is a cursor: an old id answers only what came later.
+            async function afterIsACursor(
+                assert: IAssert,
+                {$meta, writeRecord}: {$meta: IMeta; writeRecord: Promise<unknown>},
+            ) {
+                const {id} = (await writeRecord) as {id: string};
+                const marker = `viewer-cursor-${Date.now()}`;
+                emit(marker, 'a record written after the cursor');
+                await waitFor(async () => {
+                    const found = await viewerEntryFind<{entries: Array<{id: string}>}>(
+                        {search: marker},
                         $meta,
                     );
-                    assert.ok(
-                        !again.entries.some(entry => entry.id <= id),
-                        'a cursor answers only what came after it',
-                    );
-                },
+                    return found.entries.length > 0 ? found : undefined;
+                });
+                const again = await viewerEntryFind<{entries: Array<{id: string}>}>(
+                    {after: id},
+                    $meta,
+                );
+                assert.ok(
+                    !again.entries.some(entry => entry.id <= id),
+                    'a cursor answers only what came after it',
+                );
+            },
 
-                // 3. The search reads the whole buffer, and narrows on its own words.
-                async function searchNarrows(assert: IAssert, {$meta}: {$meta: IMeta}) {
-                    const marker = `viewer-search-${Date.now()}`;
-                    emit(marker, 'a record only a search should find');
-                    const answer = await waitFor(async () => {
-                        const found = await viewerEntrySearch<{entries: Array<{id: string}>}>(
-                            {search: marker},
-                            $meta,
-                        );
-                        return found.entries.length > 0 ? found : undefined;
-                    });
-                    assert.ok(answer, 'search finds the record it was written for');
-
-                    const nothing = await viewerEntrySearch<{entries: unknown[]}>(
-                        {search: `${marker}-nobody-wrote-this`},
+            // 3. The search reads the whole buffer, and narrows on its own words.
+            async function searchNarrows(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                const marker = `viewer-search-${Date.now()}`;
+                emit(marker, 'a record only a search should find');
+                const answer = await waitFor(async () => {
+                    const found = await viewerEntrySearch<{entries: Array<{id: string}>}>(
+                        {search: marker},
                         $meta,
                     );
-                    assert.equal(
-                        nothing.entries.length,
-                        0,
-                        'a search that matches nothing answers nothing',
-                    );
-                },
+                    return found.entries.length > 0 ? found : undefined;
+                });
+                assert.ok(answer, 'search finds the record it was written for');
 
-                // 4. The wake starts at the position, wakes on a record, ends on abort.
-                async function watchWakes(assert: IAssert, {$meta}: {$meta: IMeta}) {
-                    // Called through the group's own factory rather than the handler
-                    // proxy: an async iterable is not a value the request/response
-                    // machinery can carry (the proxy serialises what it answers), so
-                    // the handler is exercised where the gateway reaches it — directly,
-                    // with the store this process's adapter filled (`@@D-948`).
-                    const {default: watchFactory} = await import(
-                        '../../../adapter/log/viewerEntryWatch.ts'
-                    );
-                    const {storeOf} = await import('../../../adapter/log/store.ts');
-                    const factory = watchFactory as unknown as (api: unknown) => unknown;
-                    const wakeSource = factory({lib: {store: storeOf}}) as {
-                        viewerEntryWatch: (
-                            params: {after?: string},
-                            $meta: IMeta,
-                        ) => AsyncIterable<IWatch>;
-                    };
-                    const controller = new AbortController();
-                    const iterator = wakeSource
-                        .viewerEntryWatch({}, {...$meta, abort: controller.signal})
+                const nothing = await viewerEntrySearch<{entries: unknown[]}>(
+                    {search: `${marker}-nobody-wrote-this`},
+                    $meta,
+                );
+                assert.equal(
+                    nothing.entries.length,
+                    0,
+                    'a search that matches nothing answers nothing',
+                );
+            },
+
+            // 4. The wake starts at the position, wakes on a record, ends on abort.
+            async function watchWakes(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                // Called through the group's own factory rather than the handler
+                // proxy: an async iterable is not a value the request/response
+                // machinery can carry (the proxy serialises what it answers), so
+                // the handler is exercised where the gateway reaches it — directly,
+                // with the store this process's adapter filled (`@@D-948`).
+                const {default: watchFactory} =
+                    await import('../../../adapter/log/viewerEntryWatch.ts');
+                const {storeOf} = await import('../../../adapter/log/store.ts');
+                const factory = watchFactory as unknown as (api: unknown) => unknown;
+                const wakeSource = factory({lib: {store: storeOf}}) as {
+                    viewerEntryWatch: (
+                        params: {after?: string; details?: boolean},
+                        $meta: IMeta,
+                    ) => AsyncIterable<IWatch>;
+                };
+                /** A stream of this handler, opened the way the gateway opens one. */
+                const streamOf = (
+                    params: {after?: string; details?: boolean},
+                    signal: AbortSignal,
+                ): AsyncIterator<IWatch> =>
+                    wakeSource
+                        .viewerEntryWatch(params, {...$meta, abort: signal})
                         [Symbol.asyncIterator]();
 
-                    const first = await within(iterator, 'the first frame');
-                    assert.ok(
-                        !first.done && first.value?.last !== undefined,
-                        'the first frame says where the buffer stands',
-                    );
+                // The default frame carries the records (`@@D-986`): that is what a session view
+                // reads, and it is what saves it a find per packet.
+                const controller = new AbortController();
+                const iterator = streamOf({}, controller.signal);
 
-                    const before = first.value!.last;
-                    emit(`viewer-watch-${Date.now()}`, 'a record the woken reader is told about');
-                    const woken = await within(iterator, 'a wake');
-                    assert.ok(!woken.done, 'a record wakes the reader');
-                    assert.ok(
-                        woken.value!.last !== before,
-                        'and the wake carries a cursor that moved',
-                    );
-                    assert.equal(
-                        Object.keys(woken.value!).sort().join(','),
-                        'last,size',
-                        'a frame carries the cursor and the size, never a record',
-                    );
+                const first = await within(iterator, 'the first frame');
+                assert.ok(
+                    !first.done && first.value?.last !== undefined,
+                    'the first frame says where the buffer stands',
+                );
+                assert.ok(
+                    Array.isArray(first.value!.entries),
+                    'and carries what the buffer already holds',
+                );
 
-                    controller.abort();
-                    const ended = await within(iterator, 'the end of the stream');
-                    assert.ok(ended.done, 'the wake ends when the reader leaves');
+                const before = first.value!.last;
+                const marker = `viewer-watch-${Date.now()}`;
+                emit(marker, 'a record the woken reader is told about');
+                const woken = await within(iterator, 'a wake');
+                assert.ok(!woken.done, 'a record wakes the reader');
+                assert.ok(woken.value!.last !== before, 'and the wake carries a cursor that moved');
+                const carried = woken.value!.entries ?? [];
+                assert.ok(
+                    carried.some(entry => entry.fields?.marker === marker),
+                    'the frame carries the record that arrived',
+                );
+                assert.equal(
+                    woken.value!.last,
+                    carried[carried.length - 1]?.id,
+                    'and its cursor is the last record it carried, so rendering it is current',
+                );
 
-                    // A reader that says where it got to is told nothing it already knows. This is
-                    // the half a reconnect depends on: the page keeps the last id it has and hands it
-                    // to the stream it opens again, so the stream does not answer with a cursor the
-                    // page already read — which cost one find per reconnect (`@@F-798`). The cursor
-                    // is the one the reader was woken with, which is where its own find left it.
-                    const again = new AbortController();
-                    const resumed = wakeSource
-                        .viewerEntryWatch({after: woken.value!.last}, {
-                            ...$meta,
-                            abort: again.signal,
-                        })
-                        [Symbol.asyncIterator]();
-                    let told = false;
-                    try {
-                        await within(resumed, 'a frame a reader already has', 300);
-                        told = true;
-                    } catch {
-                        told = false;
-                    } finally {
-                        again.abort();
-                        await resumed.return?.(undefined);
-                    }
-                    assert.equal(
-                        told,
-                        false,
-                        'a stream asked for from a cursor the buffer already holds stays quiet',
-                    );
-                },
-            ]),
-    }),
-);
+                controller.abort();
+                const ended = await within(iterator, 'the end of the stream');
+                assert.ok(ended.done, 'the wake ends when the reader leaves');
+
+                // The cursor-only mode is what this realm's own page asks for: the records come
+                // from `viewer.entry.find`, so a frame that carried them would be a second read.
+                const cursorOnly = new AbortController();
+                const cursorIterator = streamOf({details: false}, cursorOnly.signal);
+                const opening = await within(cursorIterator, 'a cursor frame');
+                assert.ok(
+                    !opening.done && opening.value?.last !== undefined,
+                    'a cursor frame arrives',
+                );
+                assert.deepEqual(
+                    Object.keys(opening.value!).sort(),
+                    ['last', 'size'],
+                    'and it carries the cursor and the size and no record',
+                );
+                const known = opening.value!.last;
+                emit(`${marker}-cursor`, 'a record the cursor reader is only told about');
+                const moved = await within(cursorIterator, 'a moved cursor');
+                assert.ok(moved.value!.last !== known, 'a record moves the cursor');
+                assert.deepEqual(
+                    Object.keys(moved.value!).sort(),
+                    ['last', 'size'],
+                    'and that frame still carries no record',
+                );
+                cursorOnly.abort();
+                await cursorIterator.return?.(undefined);
+
+                // A reader that says where it got to is told nothing it already knows. This is
+                // the half a reconnect depends on: the page keeps the last id it has and hands it
+                // to the stream it opens again, so the stream does not answer with a cursor the
+                // page already read — which cost one find per reconnect (`@@F-798`). The cursor
+                // is the one the reader was woken with, which is where its own find left it.
+                const again = new AbortController();
+                const resumed = streamOf({after: moved.value!.last, details: false}, again.signal);
+                let told = false;
+                try {
+                    await within(resumed, 'a frame a reader already has', 300);
+                    told = true;
+                } catch {
+                    told = false;
+                } finally {
+                    again.abort();
+                    await resumed.return?.(undefined);
+                }
+                assert.equal(
+                    told,
+                    false,
+                    'a stream asked for from a cursor the buffer already holds stays quiet',
+                );
+            },
+        ]),
+}));
 
 /**
  * Write one record the way a process does — through the sink `log.destination`

@@ -1,10 +1,12 @@
-import {deriveStreamKey, newStreamSalt, openFrame} from '@feasibleone/blong-mle';
+import {deriveStreamKey, newStreamSalt, openFrame, valuesOfFrame} from '@feasibleone/blong-mle';
 import {exportJWK, generateKeyPair} from 'jose';
 import {test} from 'tap';
 
 import {
     binaryFrame,
+    coalesceStream,
     envelopeOf,
+    FLAG_BATCH,
     FLAG_BINARY,
     FLAG_KEEPALIVE,
     FLAG_SEALED,
@@ -13,6 +15,7 @@ import {
     sealedEncoder,
     STREAM_BINARY_TYPE,
     STREAM_TEXT_TYPE,
+    StreamBatch,
     writeEventStream,
     type IFrameSink,
 } from './gatewayStream.ts';
@@ -343,5 +346,104 @@ test('a silent stream keeps saying it is alive', async t => {
         'a proxy holding an idle connection open is told again and again, not once',
     );
     t.equal(sink.frames.length, keepalives.length + 1, 'and the one value still arrives once');
+    t.end();
+});
+
+/** A source that yields its values, optionally with a gap between them. */
+async function* over(items: unknown[], gapMs = 0): AsyncIterable<unknown> {
+    for (const item of items) {
+        if (gapMs) await new Promise(resolve => setTimeout(resolve, gapMs));
+        yield item;
+    }
+}
+
+test('coalesceStream holds a burst into one batch', async t => {
+    const batches: unknown[][] = [];
+    for await (const batch of coalesceStream(over([1, 2, 3]), {maxWaitMs: 50}))
+        batches.push(batch.values);
+    t.same(batches, [[1, 2, 3]], 'three values that arrive together travel as one');
+    t.ok(batches[0] instanceof Array, 'and the batch is what the writer sees');
+    t.end();
+});
+
+test('coalesceStream lets go at the value limit', async t => {
+    const batches: unknown[][] = [];
+    for await (const batch of coalesceStream(over([1, 2, 3]), {maxWaitMs: 50, maxValues: 2}))
+        batches.push(batch.values);
+    t.same(batches, [[1, 2], [3]], 'a full batch leaves before the window closes');
+    t.end();
+});
+
+test('coalesceStream lets go when the window closes', async t => {
+    const batches: unknown[][] = [];
+    for await (const batch of coalesceStream(over([1, 2], 20), {maxWaitMs: 5}))
+        batches.push(batch.values);
+    t.same(batches, [[1], [2]], 'a value with no company does not wait for one forever');
+    t.end();
+});
+
+test('coalesceStream splits a batch that would cross the frame cap', async t => {
+    const big = 'x'.repeat(40);
+    const batches: unknown[][] = [];
+    for await (const batch of coalesceStream(over([big, big, big]), {
+        maxWaitMs: 50,
+        maxFrameBytes: 60,
+    }))
+        batches.push(batch.values);
+    t.equal(batches.length, 3, 'each value that would overflow the cap starts a batch');
+    t.ok(
+        batches.every(([value]) => value === big),
+        'and nothing is dropped between the batches',
+    );
+    t.end();
+});
+
+test('coalesceStream refuses one value above the cap', async t => {
+    await t.rejects(
+        async () => {
+            for await (const batch of coalesceStream(over(['x'.repeat(80)]), {maxFrameBytes: 40}))
+                t.fail(`a batch of ${batch.values.length} should not have been produced`);
+        },
+        /exceeds the 40-byte limit/,
+        'a value the writer would refuse is refused here, naming the producer',
+    );
+    t.end();
+});
+
+test('a batch is one flagged frame on the binary envelope and one event per value on the text one', async t => {
+    const binary = sinkOf();
+    await writeEventStream({
+        sink: binary,
+        iterate: coalesceStream(over(['a', 'b']), {maxWaitMs: 50}),
+        signal: new AbortController().signal,
+        encoder: plainEncoder('binary'),
+        heartbeat: false,
+    });
+    t.equal(binary.frames.length, 1, 'one frame for the batch');
+    const frame = binary.frames[0] as Uint8Array;
+    t.equal(frame[4], FLAG_BATCH, 'and it is flagged as a batch');
+    t.same(
+        valuesOfFrame(frame[4] as number, frame.subarray(5)),
+        ['a', 'b'],
+        'the reader flattens it back into the values that were sent',
+    );
+
+    const text = sinkOf();
+    await writeEventStream({
+        sink: text,
+        iterate: coalesceStream(over(['a', 'b']), {maxWaitMs: 50}),
+        signal: new AbortController().signal,
+        encoder: plainEncoder('text'),
+        heartbeat: false,
+    });
+    t.equal(text.frames.length, 2, 'the readable envelope keeps one event per value');
+    t.equal(text.frames[0], 'data: a\n\n', 'in order');
+    t.equal(text.frames[1], 'data: b\n\n', 'and complete');
+    t.end();
+});
+
+test('a handler array is one value, a batch is several', async t => {
+    t.equal(payloadOf(['a', 'b']).batch, false, 'an array a route yielded is its own payload');
+    t.equal(payloadOf(new StreamBatch(['a', 'b'])).batch, true, 'only a StreamBatch is a batch');
     t.end();
 });

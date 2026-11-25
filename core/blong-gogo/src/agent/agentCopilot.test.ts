@@ -381,3 +381,46 @@ test('copilot.client names a missing runtime token rather than letting the hands
     );
     t.end();
 });
+
+test('copilot.session reports its deltas, tools and state into the feed', async t => {
+    const reported: Array<{kind: string; payload?: unknown}> = [];
+    const session = stubSession('Wrote NOTES.md.', async () => {
+        session.emitted('assistant.reasoning_delta', {data: {deltaContent: 'look first '}});
+        session.emitted('assistant.message_delta', {data: {deltaContent: 'Wrote '}});
+        session.emitted('assistant.message_delta', {data: {deltaContent: 'NOTES.md.'}});
+        session.emitted('assistant.message', {data: {content: 'Wrote NOTES.md.'}});
+        session.emitted('tool.execution_start', {data: {toolName: 'bash'}});
+        session.emitted('tool.execution_complete', {data: {toolName: 'bash', success: true}});
+    });
+    const client = {
+        createSession: async () => session,
+        resumeSession: async () => session,
+    } as unknown as CopilotClient;
+    const result = await copilotSession(account, request(), async () => ({result: {}}), {
+        sdk: stubSdk(),
+        client,
+        report: (kind, payload) => reported.push({kind, payload}),
+    });
+    t.same(
+        reported.map(entry => entry.kind),
+        ['reasoning', 'message', 'message', 'tool', 'tool-result', 'status'],
+        'one vocabulary, in the order the run produced it',
+    );
+    t.same(reported[0].payload, {text: 'look first '}, 'reasoning is the thinking delta');
+    t.same(reported[1].payload, {text: 'Wrote '}, 'a message is a text delta, not the whole reply');
+    t.same(
+        reported[3].payload,
+        {toolName: 'bash'},
+        'a tool call carries what the harness reported',
+    );
+    t.same(
+        reported[5].payload,
+        {state: 'finished', text: 'Wrote NOTES.md.'},
+        'and the run ends by saying how it ended',
+    );
+    t.same(
+        result.events?.map(event => event.kind),
+        ['text', 'tool', 'tool-result'],
+        'the resume trace keeps the shapes it always had',
+    );
+});

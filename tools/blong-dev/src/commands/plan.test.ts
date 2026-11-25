@@ -321,7 +321,7 @@ test('a decision added with --plan is listed on the board, and its line follows 
         ]),
     );
     t.equal(added.code, undefined, `add succeeded: ${added.err}`);
-    const decisionId = /# (?<id>D-\d{3}) active/.exec(added.out)?.groups?.['id'] ?? '';
+    const decisionId = /# (?<id>D-\d{3,}) active/.exec(added.out)?.groups?.['id'] ?? '';
     t.ok(decisionId, 'the entry has an id');
     t.match(
         read(repo.file),
@@ -355,7 +355,7 @@ test('a decision added with --plan is listed on the board, and its line follows 
             'demo',
         ]),
     );
-    const frictionId = /# (?<id>F-\d{3}) open/.exec(friction.out)?.groups?.['id'] ?? '';
+    const frictionId = /# (?<id>F-\d{3,}) open/.exec(friction.out)?.groups?.['id'] ?? '';
     await capture(() => memory(['close', frictionId, '--note', 'resolved by hand']));
     t.match(
         read(repo.file),

@@ -85,6 +85,7 @@ words:
   - clusterrolebindings
   - clusterroles
   - cmdline
+  - cmnt
   - CMYK
   - codegen
   - comesa
@@ -92,6 +93,7 @@ words:
   - configmap
   - confirmdialog
   - confirmpopup
+  - containerfile
   - CONTRIB
   - cordis
   - coredns
@@ -238,6 +240,7 @@ words:
   - keepalive
   - Keirin
   - keyblock
+  - keyset
   - kindless
   - Kinesiotherapy
   - knex
@@ -334,6 +337,7 @@ words:
   - openebs
   - OpenRouter
   - openxmlformats
+  - oper
   - overlaypanel
   - panelmenu
   - PANTONE
@@ -418,6 +422,7 @@ words:
   - romeovs
   - roundtrip
   - rushstack
+  - Ryzen
   - SAMEORIGIN
   - sasl
   - savepoint
@@ -499,6 +504,7 @@ words:
   - treeselect
   - treetable
   - typebox
+  - udiff
   - ulidx
   - unactivated
   - unannounce

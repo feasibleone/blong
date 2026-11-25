@@ -33,7 +33,7 @@ open (21)
 - `T-737` · tools/blong-dev — Give plan a close verb
 - `T-760` · tools/blong-dev — A release re-serialises front matter it did not change
 
-done (7)
+done (8)
 
 - `T-346` · tools/blong-dev — Name the projects that ran no tests in the CI report
 - `T-358` · tools/blong-dev — Render the killing signal in the failure message
@@ -43,6 +43,8 @@ done (7)
 - `T-638` · tools/blong-dev — Trim remaining blong-dev usage from the skills
 - `T-759` · tools/blong-dev — Take a plan from its issue when this host has no folder
 - `T-761` · tools/blong-dev — A rebuilt plan loses the front matter the issue never had
+- `T-807` · tools/blong-dev — Four-digit memory ids are parsed as three, so check and show misread
+  them
 
 <!-- /memory:index -->
 
@@ -444,6 +446,26 @@ defaults, and the run prints that. Proved on #250 and #261: every key came back 
 order, with `recoveredAt` the only addition, and #261 returned `closed: 2026-11-19`, its channel id
 and its summary. All nine released plans carry the block now, republished from the pre-removal
 copies kept in `dev/released-plans/`.
+
+### T-807 — Four-digit memory ids are parsed as three, so check and show misread them
+
+> _2026-11-24 · tools/blong-dev · done_
+
+`blong-dev memory` reads a heading id with a three-digit pattern, so the first four-digit id the
+repository reached is taken for `D-100`: `memory show D-1002` answers "no entry", `memory add`
+reuses `D-1000` for a second entry, and `memory check` reports the same id held by three files — the
+two new decisions in `realm/blong-agent` and the one in `core/blong-gogo`, all correct in the file
+and all mis-read by the tool. The id pattern needs to accept any digit count, and the append should
+take the highest numeric id in the file rather than the first match. Until it does, no new decision
+can be recorded without the check going red.
+
+The parser, the reference scanner, the allocator and the duplicate check all read an id as
+any-length and take the largest number rather than the first match. Three tests now pin it:
+`memoryCheck.test.ts` (a four-digit id is one id, and a three-digit neighbour is a different one),
+`memoryEdit.test.ts` (a file holding `F-999`, `F-1000` and a retired `F-1002` allocates `F-1003`),
+and `memoryReference.test.ts` (the tokens `@@D-1002` and `@@D-100` resolve as different targets).
+The repository's own allocation answers `D-1012`, `F-839`, `T-816` and `Q-003`, and memory check is
+green.
 
 ## Retired
 

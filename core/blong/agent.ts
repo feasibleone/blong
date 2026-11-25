@@ -158,6 +158,8 @@ export interface IAgentStepRequest {
      */
     allowShell?: boolean;
     toolDispatch?: IAgentToolDispatch;
+    /** Where what the turn reports goes, when the realm wants to watch it (`@@D-994`). */
+    eventDispatch?: IAgentEventDispatch;
 }
 
 /** What a `step` engine answers: what it said, and the calls it wants run. Nothing is executed. */
@@ -182,7 +184,66 @@ export interface IAgentSessionRequest {
     allowShell?: boolean;
     /** How the engine's own tool call reaches the realm's tool boundary (`@@D-975`). */
     toolDispatch?: IAgentToolDispatch;
+    /** Where what the run reports goes, when the realm wants to watch it (`@@D-994`). */
+    eventDispatch?: IAgentEventDispatch;
 }
+
+/**
+ * What an engine reports while it works — one vocabulary for every kind (`@@D-994`).
+ *
+ * A kind maps its own SDK's events into these, and nothing downstream has to know which kind ran:
+ * `reasoning` is a delta of the model's thinking, `message` a delta of what it says, `tool` a call
+ * starting, `tool-result` what came back, `status` a change of state, and `note` a step the realm or
+ * the engine took that has no other shape.
+ */
+export type AgentTelemetryKind =
+    | 'status'
+    | 'reasoning'
+    | 'message'
+    | 'tool'
+    | 'tool-result'
+    | 'note';
+
+/** One thing an engine did, as a feed carries it. */
+export interface IAgentTelemetryEvent {
+    /** The session it belongs to — the partition key, so one session's events stay in order. */
+    sessionId: string;
+    /**
+     * Its place among the events of one batch.
+     *
+     * Batches are ordered by where the broker put them (the offset), so this only says how the
+     * events inside one message are read; a counter per batch is enough and survives a process
+     * restart that a session-wide number would not.
+     */
+    seq: number;
+    kind: AgentTelemetryKind;
+    payload?: unknown;
+    /** When the engine reported it, as epoch milliseconds. */
+    at: number;
+}
+
+/**
+ * Where a run's events go (`@@D-994`).
+ *
+ * A function cannot cross a port — and this one crosses one, because the engine adapter may live in
+ * another process — so the realm names a method and the identifiers the call needs instead.
+ */
+export interface IAgentEventDispatch {
+    /** The method a batch is dispatched to — `agent.telemetry.insert`. */
+    method: string;
+    sessionId: string;
+    /** The call's metadata, forwarded so a batch is recorded under the same trace. */
+    meta?: Record<string, unknown>;
+}
+
+/** What one dispatch carries: the events of one session, in the order the engine reported them. */
+export interface IAgentEventBatch {
+    sessionId: string;
+    events: IAgentTelemetryEvent[];
+}
+
+/** How a kind reports: called as it works, once per event. */
+export type AgentTelemetryReport = (kind: AgentTelemetryKind, payload?: unknown) => void;
 
 /**
  * Where a native engine's custom tool call goes (`@@D-975`).

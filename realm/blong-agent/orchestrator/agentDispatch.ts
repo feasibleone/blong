@@ -1,6 +1,27 @@
 import {orchestrator} from '@feasibleone/blong';
+import type {VocabularyProxy} from '@feasibleone/blong/types';
 
-import type {IAgentDispatchSettings} from './settings.ts';
+import {agentSettings, type IAgentDispatchSettings} from './settings.ts';
+
+/**
+ * What a wake's message names, when it parses.
+ *
+ * The channel carries the session and the prompt an answer belongs to; anything else — a message
+ * that is not JSON, or one from a publisher this realm does not know — names nothing and a wake that
+ * names nothing is one the answer handler declines (`@@D-709`).
+ */
+const wakeParamsOf = (message: string): {sessionId?: string; promptId?: string} => {
+    try {
+        const payload = JSON.parse(message) as {sessionId?: unknown; promptId?: unknown} | null;
+        if (!payload || typeof payload !== 'object') return {};
+        return {
+            ...(payload.sessionId === undefined ? {} : {sessionId: String(payload.sessionId)}),
+            ...(payload.promptId === undefined ? {} : {promptId: String(payload.promptId)}),
+        };
+    } catch {
+        return {};
+    }
+};
 
 /**
  * `orchestrator/agentDispatch.ts` — the realm's one namespace.
@@ -13,6 +34,11 @@ import type {IAgentDispatchSettings} from './settings.ts';
  * The worker is a group on this orchestrator rather than an orchestrator of its own: the loop and the
  * methods it calls have to answer on one namespace, and a broker is a wake-up rather than the
  * transport that carries work (`@@D-704`).
+ *
+ * The wake-up channel is opened here for the same reason: a subscription is a read of a broker and
+ * what a message means is a decision, so the subscription is the orchestrator's and the adapter it is
+ * opened through only carries it (`@@T-816`). A message is dispatched to `agent.answer.wake` by the
+ * loop below, which is where the decision to resume already is.
  *
  * The settings below are read by the handlers through `this.config` — the orchestrator's own slice,
  * `agent.agentDispatch` — which is the rule `@@F-641` records.
@@ -51,6 +77,12 @@ export default orchestrator<IAgentDispatchSettings & {workerStart?: boolean}>(({
             workerStart: false,
             engineAccount: 'local',
         },
+        notify: {
+            // The wake-up channel (`@@D-709`). Only this intent turns it on, because only this intent
+            // loads the broker the subscription is opened through: a deployment with no broker runs
+            // without one and loses a wait rather than the resume, which the tick still makes.
+            wake: {channel: 'agent.answer.wake'},
+        },
     },
     /**
      * The port owns the worker's clock, and it is the port rather than a timer in the realm because a
@@ -88,9 +120,71 @@ export default orchestrator<IAgentDispatchSettings & {workerStart?: boolean}>(({
         return started;
     },
     stop() {
-        const self = this as unknown as {workerTimer?: ReturnType<typeof setInterval>};
+        const self = this as unknown as {
+            workerTimer?: ReturnType<typeof setInterval>;
+            wakeWatch?: AbortController;
+        };
         if (self.workerTimer) clearInterval(self.workerTimer);
         self.workerTimer = undefined;
+        // The subscription ends with the process: an abort is the reader saying it stopped reading, and
+        // the adapter's own loop closes the subscriber when it arrives.
+        self.wakeWatch?.abort();
+        self.wakeWatch = undefined;
         return super.stop?.();
+    },
+    /**
+     * Open the wake subscription, once every port has started.
+     *
+     * Here rather than in `start()` because the subscription is opened *through* an adapter, and a
+     * port registers itself while it starts: a call made from `start()` may find nothing to answer
+     * it, depending on which layer the loader reached first. `ready()` is the phase that runs after
+     * all of them.
+     *
+     * A subscription that cannot be opened is a warning, never a failure: the answer row is the truth
+     * and the worker tick is what makes progress, so a wake is the shortening of a wait (`@@D-709`).
+     * Each message is dispatched to the realm and not read here — what a wake names is the answer
+     * handler's business, and it declines a session this host does not hold.
+     */
+    async ready() {
+        const ready = await super.ready();
+        const self = this as unknown as {
+            config?: IAgentDispatchSettings;
+            wakeWatch?: AbortController;
+            signal?: VocabularyProxy;
+        };
+        const wake = agentSettings(self.config).wake;
+        if (!wake.channel) return ready;
+        const controller = new AbortController();
+        self.wakeWatch = controller;
+        const method = `${wake.adapter}.sub.watch`;
+        void (async () => {
+            try {
+                const source = (await remote.remote(method)(
+                    {channel: wake.channel},
+                    {
+                        method,
+                        mtid: 'request',
+                        stream: true,
+                        abort: controller.signal,
+                    } as never,
+                )) as AsyncIterable<{channel: string; message: string}>;
+                for await (const entry of source) {
+                    // A wake is a nudge: a dispatch that fails is recorded by the port that failed it,
+                    // and the next tick picks the work up anyway.
+                    void Promise.resolve(
+                        remote.dispatch(wakeParamsOf(entry.message), {
+                            method: wake.method,
+                            mtid: 'request',
+                        } as never),
+                    ).catch(() => undefined);
+                }
+            } catch (error) {
+                self.signal?.agentAnswerWakeUnsubscribed?.({
+                    channel: wake.channel,
+                    error: String((error as Error)?.message ?? error),
+                });
+            }
+        })();
+        return ready;
     },
 }));

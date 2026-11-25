@@ -26,6 +26,10 @@ export interface IConfig {
      * A broker is a wake-up, not a transport: the message becomes one ordinary dispatch, so the realm
      * decides what it means and a message that reaches the wrong process changes nothing (`@@D-709`).
      * A subscriber cannot serve commands on its own connection, so it is a duplicate of the client.
+     *
+     * This block is the adapter answering by calling back into its own vocabulary. Where the realm
+     * wants to decide what a message means, it opens `{ns}.sub.watch` instead and reads the channel
+     * itself — the subscription is then the caller's, and nothing an adapter may not reach is called.
      */
     notify?: {channel?: string; method?: string};
 }
@@ -62,7 +66,87 @@ export interface IRedisClient {
     unsubscribe(...channels: string[]): Promise<unknown>;
     duplicate(): IRedisClient;
     on(event: 'message', listener: (channel: string, message: string) => void): unknown;
+    /** ioredis raises a connection failure on the client's own emitter, which throws unhandled. */
+    on(event: 'error', listener: (error: Error) => void): unknown;
     quit(): Promise<unknown>;
+}
+
+/**
+ * `{ns}.sub.watch` — one channel's messages, as a sequence the caller reads.
+ *
+ * The redis sibling of `topic.watch`: a subscriber cannot serve commands on its own connection, so
+ * it is a duplicate of the client, and what arrives is yielded as `{channel, message}`. Nothing here
+ * knows what a message means — the caller that asked for the channel decides, which is what keeps a
+ * delivery from becoming a call the adapter makes into a layer it may not reach (`@@T-816`).
+ *
+ * The subscription is opened when the reader starts and closed when it leaves (`$meta.abort`) or the
+ * loop ends, so a watch nobody reads subscribes to nothing.
+ */
+export async function* subWatch(
+    client: IRedisClient,
+    params: {channel?: unknown},
+    $meta?: IMeta,
+): AsyncIterable<{channel: string; message: string}> {
+    const channel = String(params.channel ?? '');
+    if (!channel) throw new Error('redis.sub.watch needs a channel');
+    // The duplicate inherits the connection options, including the offline queue this adapter turns
+    // off for commands; a subscriber has to connect by itself, so it is switched back on for it alone.
+    const subscriber = client.duplicate();
+    (subscriber as unknown as {options?: Record<string, unknown>}).options ??= {};
+    (subscriber as unknown as {options: Record<string, unknown>}).options.enableOfflineQueue = true;
+    const queue: Array<{channel: string; message: string}> = [];
+    let wake: (() => void) | null = null;
+    let ended = false;
+    let failure: Error | null = null;
+    const nudge = (): void => {
+        const waiting = wake;
+        wake = null;
+        waiting?.();
+    };
+    let closed = false;
+    const close = (): void => {
+        if (closed) return;
+        closed = true;
+        // Deferred, and never awaited: a reader that has left must not have its last frame held for
+        // a round trip it will not read the answer of.
+        setImmediate(() => {
+            void subscriber.quit().catch(() => undefined);
+        });
+    };
+    subscriber.on('message', (from, message) => {
+        queue.push({channel: from, message});
+        nudge();
+    });
+    subscriber.on('error', (error: Error) => {
+        failure = error;
+        ended = true;
+        nudge();
+    });
+    const abort = (): void => {
+        ended = true;
+        // The pump may be parked at a `yield` when this fires: nothing will resume the loop, so the
+        // close is the abort's own work rather than the loop's.
+        close();
+        nudge();
+    };
+    $meta?.abort?.addEventListener('abort', abort, {once: true});
+    try {
+        await subscriber.subscribe(channel);
+        while (!ended || queue.length > 0) {
+            const next = queue.shift();
+            if (next) {
+                yield next;
+                continue;
+            }
+            await new Promise<void>(resolve => {
+                wake = resolve;
+            });
+        }
+        if (failure) throw failure;
+    } finally {
+        $meta?.abort?.removeEventListener('abort', abort);
+        close();
+    }
 }
 
 export default adapter<IConfig>(({utError}) => {
@@ -309,8 +393,8 @@ export default adapter<IConfig>(({utError}) => {
         },
         async exec(this: Adapter<IConfig>, params: Record<string, unknown>, $meta: IMeta) {
             // Generic redis vocabulary: `redis.<object>.<operation>` where
-            // object ∈ {key, hash, script} and operation is the verb, e.g.
-            // `redis.key.get`, `redis.hash.getAll`, `redis.script.eval`.
+            // object ∈ {key, hash, script, pub, sub} and operation is the verb, e.g.
+            // `redis.key.get`, `redis.hash.getAll`, `redis.sub.watch`.
             const parts = ($meta.method ?? '').split('.');
             const object = parts[1];
             const operation = parts[2];
@@ -321,6 +405,12 @@ export default adapter<IConfig>(({utError}) => {
                 if (object === 'database' && operation === 'list') {
                     const db = (this.config as {redis?: IConfig}).redis?.db ?? 0;
                     return {items: [{db}]};
+                }
+                // `{ns}.sub.watch` — answered with a sequence rather than a value: the caller reads
+                // the channel and decides what a message means, so no dispatch happens here
+                // (`@@T-816`).
+                if (object === 'sub' && operation === 'watch') {
+                    return subWatch(redis, params, $meta);
                 }
                 const ops =
                     object === 'key'

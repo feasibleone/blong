@@ -1,7 +1,7 @@
 import type {IAgentEngineAccount} from '@feasibleone/blong/types';
 import {test} from 'tap';
 
-import {deepseekClose, deepseekOptions} from './agentDeepseek.ts';
+import {deepseekClose, deepseekOptions, deepseekTelemetry} from './agentDeepseek.ts';
 
 /**
  * The launch spec a DeepSeek session is spawned with, without spawning anything.
@@ -54,5 +54,25 @@ test('deepseek.close on an account nothing opened is harmless', t => {
         () => deepseekClose(account, '/nowhere'),
         'a close for a runtime that was never spawned does nothing',
     );
+    t.end();
+});
+
+test('deepseek.events become the one vocabulary the feed carries', t => {
+    t.same(
+        deepseekTelemetry({kind: 'reasoning', payload: {text: 'thinking'}}),
+        {kind: 'reasoning', payload: {text: 'thinking'}},
+        'a kind the vocabulary knows passes through',
+    );
+    t.same(
+        deepseekTelemetry({type: 'tool-call', toolName: 'bash'}),
+        {kind: 'tool', payload: {type: 'tool-call', toolName: 'bash'}},
+        'a harness event that names a known kind is carried as one',
+    );
+    t.same(
+        deepseekTelemetry({kind: 'harness.step', detail: 1}),
+        {kind: 'note', payload: {kind: 'harness.step', detail: 1}},
+        'a step only the harness knows is a note, not a guess at its shape',
+    );
+    t.equal(deepseekTelemetry('a string'), undefined, 'and nothing at all is skipped quietly');
     t.end();
 });

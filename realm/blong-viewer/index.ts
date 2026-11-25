@@ -72,6 +72,12 @@ export default server(() => ({
             // listener the platform owns asks for a port the kernel chooses.
             rpcServer: {port: 0},
             gateway: {port: 0},
+            // The realm's own block: a child without one is not configured, so its
+            // adapters never attach and the group below resolves to nothing. The
+            // suite started, the gateway listened, and the run failed inside the
+            // chain with `undefined.name` — which reads as a harness fault rather
+            // than as a realm that never loaded.
+            viewer: {},
             watch: {test: ['test.viewer.flow']},
             testRealm: {
                 testRun: {serverGroups: ['test.viewer.flow']},

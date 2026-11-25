@@ -22,6 +22,7 @@ export default handler(() => ({
                 'agent.checkpoint': 501,
                 'agent.answer': 502,
                 'agent.event': 503,
+                'agent.sessionMetric': 504,
             },
         },
     },

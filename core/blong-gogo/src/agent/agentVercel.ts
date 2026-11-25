@@ -6,6 +6,7 @@
  * with no `vercel` account never loads the SDK behind it (`@@T-593`).
  */
 import type {
+    AgentTelemetryReport,
     IAgentEngineAccount,
     IAgentMessage,
     IAgentStepRequest,
@@ -13,7 +14,7 @@ import type {
     IAgentToolCall,
     IAgentToolDefinition,
 } from '@feasibleone/blong/types';
-import {agentLanguageModel, agentCallSettings} from './agentProvider.ts';
+import {agentCallSettings, agentLanguageModel} from './agentProvider.ts';
 
 /**
  * The Vercel AI SDK as a `step` engine.
@@ -184,12 +185,21 @@ export const vercelSalvage = (
     return undefined;
 };
 
-/** One model turn through the AI SDK. */
+/**
+ * One model turn through the AI SDK, read as it arrives.
+ *
+ * `streamText` rather than `generateText` because a step engine's turn is the one place the realm
+ * can watch a model work: the parts carry the same content the finished result does, but a reader
+ * sees the thinking and the sentence as they are produced instead of after the turn (`@@D-994`).
+ * The result is still assembled from the same call — `text`, `toolCalls` and `finishReason` are
+ * awaited once the stream ends — so nothing about the answer changes.
+ */
 export const vercelStep = async (
     account: IAgentEngineAccount,
     request: IAgentStepRequest,
+    report: AgentTelemetryReport = () => undefined,
 ): Promise<IAgentStepResult> => {
-    const {generateText} = await import('ai');
+    const {streamText} = await import('ai');
     // The model comes from the account's provider — an OpenAI-compatible endpoint, Anthropic, or a
     // gateway — and the settings from the account's parameters. Nothing here names a vendor.
     const model = await agentLanguageModel(account);
@@ -197,24 +207,67 @@ export const vercelStep = async (
     const instructions = [request.instructions, split.instructions]
         .filter((text): text is string => typeof text === 'string' && text.length > 0)
         .join('\n');
-    const result = await generateText({
+    const streamed = streamText({
         model: model as never,
         ...(instructions && {system: instructions}),
         messages: split.messages as never,
         tools: (await vercelTools(request.tools)) as never,
         ...agentCallSettings(account),
     } as never);
-    const calls = (result.toolCalls ?? []) as Array<{
+    // The parts this vocabulary carries; anything else the SDK reports is its own bookkeeping.
+    for await (const part of streamed.fullStream as AsyncIterable<{
+        type: string;
+        text?: string;
+        toolName?: string;
+        toolCallId?: string;
+        input?: unknown;
+        output?: unknown;
+        error?: unknown;
+    }>) {
+        switch (part.type) {
+            case 'reasoning-delta':
+                report('reasoning', {text: part.text});
+                break;
+            case 'text-delta':
+                report('message', {text: part.text});
+                break;
+            case 'tool-call':
+                report('tool', {
+                    toolName: part.toolName,
+                    ...(part.toolCallId !== undefined && {toolCallId: part.toolCallId}),
+                    ...(part.input !== undefined && {args: part.input}),
+                });
+                break;
+            case 'tool-result':
+                report('tool-result', {
+                    toolName: part.toolName,
+                    ...(part.toolCallId !== undefined && {toolCallId: part.toolCallId}),
+                    ...(part.output !== undefined && {result: part.output}),
+                });
+                break;
+            case 'error':
+                report('status', {state: 'failed', error: part.error});
+                break;
+            default:
+                break;
+        }
+    }
+    const [text, reported, finishReason] = await Promise.all([
+        streamed.text,
+        streamed.toolCalls,
+        streamed.finishReason,
+    ]);
+    const calls = (reported ?? []) as Array<{
         toolName: string;
         toolCallId?: string;
         input?: unknown;
     }>;
     if (calls.length === 0) {
-        const salvaged = vercelSalvage(result.text, request.tools);
-        if (salvaged) return {toolCalls: [salvaged], finishReason: result.finishReason};
+        const salvaged = vercelSalvage(text, request.tools);
+        if (salvaged) return {toolCalls: [salvaged], finishReason};
     }
     return {
-        ...(result.text !== undefined && {text: result.text}),
+        ...(text !== undefined && {text}),
         toolCalls: calls.map(
             (call): IAgentToolCall => ({
                 toolName: call.toolName,
@@ -222,6 +275,6 @@ export const vercelStep = async (
                 ...(call.input !== undefined && {args: call.input}),
             }),
         ),
-        finishReason: result.finishReason,
+        finishReason,
     };
 };

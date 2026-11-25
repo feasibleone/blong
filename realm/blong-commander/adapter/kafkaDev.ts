@@ -71,6 +71,9 @@ export default adapter<{
             // one-off message reads) instead of the produce/consume stream.
             mode: 'admin',
             namespace: 'kafka-dev',
+            // The explorer reads whatever the broker holds, and those topics belong to no
+            // namespace of this realm, so the namespace guard would refuse every one of them.
+            allowForeignTopic: true,
         },
     },
 }));

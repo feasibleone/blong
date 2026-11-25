@@ -27,6 +27,11 @@
             "blong-dev": "./stream.ts",
             "types": "./stream.ts",
             "default": "./dist/stream.js"
+        },
+        "./perf": {
+            "blong-dev": "./perf.ts",
+            "types": "./perf.ts",
+            "default": "./dist/perf.js"
         }
     },
     "scripts": {

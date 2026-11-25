@@ -47,11 +47,7 @@ export default server(blong => ({
         'adapter.mongodb': {
             mongodb: {},
             watch: {
-                test: [
-                    'test.mongodb.documentInsert',
-                    'test.mongodb.crud',
-                    'test.mongodb.list',
-                ],
+                test: ['test.mongodb.documentInsert', 'test.mongodb.crud', 'test.mongodb.list'],
             },
         },
         'adapter.redis': {
@@ -67,11 +63,7 @@ export default server(blong => ({
         'adapter.s3': {
             s3: {},
             watch: {
-                test: [
-                    'test.s3.objectPut',
-                    'test.s3.objectCrud',
-                    'test.s3.bucketList',
-                ],
+                test: ['test.s3.objectPut', 'test.s3.objectCrud', 'test.s3.bucketList'],
             },
         },
         'adapter.blob': {
@@ -85,6 +77,8 @@ export default server(blong => ({
                     'test.kafka.messageProduce',
                     'test.kafka.messageRoundtrip',
                     'test.kafka.topicList',
+                    'test.kafka.perf',
+                    'test.kafka.perfIsolated',
                 ],
             },
         },

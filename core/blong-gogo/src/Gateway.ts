@@ -593,7 +593,12 @@ export default class Gateway extends Internal implements IGateway {
         meta: IMeta,
         signal: AbortSignal,
     ): AsyncIterable<unknown> {
-        const produced = unwrapPortPacket(await method(params, {...meta, abort: signal}));
+        // `stream` travels with the meta, not only beside it: a route that hands the call on to a
+        // port forwards `$meta` unchanged, and the port reads this flag to know that an async
+        // iterable is a sequence rather than a value its codec should encode (`@@F-799`).
+        const produced = unwrapPortPacket(
+            await method(params, {...meta, stream: true, abort: signal}),
+        );
         if (
             produced &&
             typeof (produced as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function'

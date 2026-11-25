@@ -4,7 +4,7 @@ import {hostname} from 'node:os';
 import {handler, type IMeta} from '@feasibleone/blong';
 
 import type {IAgentSessionRunResult} from '../session/agentSessionRun.ts';
-import type {IAgentDispatchPort} from '../settings.ts';
+import {agentSettings, type IAgentDispatchPort} from '../settings.ts';
 
 /**
  * `agent.answer.receive` — an answer to a question, stored once and acted on when this host can.
@@ -83,12 +83,14 @@ export default handler(
                         : `other-host:${String(session.workerId ?? '')}!==${thisHost()}`;
                 // The host that holds the session is the one that can act on this, so it is told — when
                 // a broker is configured. No broker, no publish, and the answer waits for that host's
-                // worker tick instead: the row is already the truth (`@@D-709`).
-                if (sessionId && reason.startsWith('other-host') && port.dispatch) {
+                // worker tick instead: the row is already the truth (`@@D-709`). The channel is the
+                // deployment's, read from the same settings the subscription that reads it uses.
+                const channel = agentSettings(port.config).wake.channel;
+                if (sessionId && channel && reason.startsWith('other-host') && port.dispatch) {
                     try {
                         await port.dispatch(
                             {
-                                channel: 'agent.answer.wake',
+                                channel,
                                 message: JSON.stringify({sessionId, promptId: params.promptId}),
                             },
                             {...$meta, method: 'notify.pub.publish', mtid: 'request'},

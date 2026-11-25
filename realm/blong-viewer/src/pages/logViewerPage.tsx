@@ -66,9 +66,15 @@ export function LogViewerPage(): React.ReactElement {
             subscribe: async ({signal}) => {
                 // The machine envelope: this reader is a program, and the route seals
                 // its frames. `after` is where this reader already is, so a stream that
-                // is opened again says nothing it has already said.
+                // is opened again says nothing it has already said. `details: false` is
+                // this page's own choice: it reads the records through
+                // `viewer.entry.find`, so a frame that carried them would be a second
+                // read of the same bytes, and a log line is not worth a frame.
                 const frames = (await call['viewer.entry.watch']?.(
-                    cursorRef.current ? {after: cursorRef.current} : {},
+                    {
+                        ...(cursorRef.current ? {after: cursorRef.current} : {}),
+                        details: false,
+                    },
                     {stream: 'binary'},
                 )) as AsyncIterable<unknown> | undefined;
                 if (!frames) return undefined;

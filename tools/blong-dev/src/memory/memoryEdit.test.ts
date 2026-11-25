@@ -6,7 +6,7 @@
  * and id allocation across a workspace.
  */
 
-import {existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
@@ -19,6 +19,7 @@ import {
     canonicalise,
     ensureDoc,
     entryLines,
+    highestId,
     insertEntry,
     nextId,
     removeEntry,
@@ -184,6 +185,43 @@ test('ensureDoc writes the skeleton with a current index, and nextId scans the w
     writeDoc(doc);
     t.equal(nextId(dir, 'friction'), 'F-002', 'ids advance with the file');
     t.equal(nextId(dir, 'todo'), 'T-001', 'ids are per kind');
+    t.end();
+});
+
+test('ids are allocated by value, not by width or by first match', async t => {
+    // The id pattern was written for three digits, so `F-1000` was read as `F-100` and the next
+    // allocation handed out a number already in use (`@@T-807`). What the allocator has to do is
+    // read every number it finds as a number and keep the largest.
+    const dir = workspace();
+    t.teardown(() => rmSync(dir, {recursive: true, force: true}));
+    mkdirSync(join(dir, '.github', 'memory'), {recursive: true});
+    writeFileSync(
+        join(dir, '.github', 'memory', 'friction.md'),
+        [
+            '# Frictions',
+            '',
+            '## Open',
+            '',
+            '### F-999 — nine hundred and ninety-nine',
+            '',
+            '> _2026-01-01 · cross-cutting · open_',
+            '',
+            'Body.',
+            '',
+            '### F-1000 — one thousand',
+            '',
+            '> _2026-01-01 · cross-cutting · open_',
+            '',
+            'Body.',
+            '',
+            '## Retired',
+            '',
+            '- F-1002 — superseded by F-090 (2026-08-01)',
+            '',
+        ].join('\n'),
+    );
+    t.equal(highestId(dir, 'friction'), 1002, 'the largest is numeric, not the first match');
+    t.equal(nextId(dir, 'friction'), 'F-1003', 'and a retired number stays allocated');
     t.end();
 });
 

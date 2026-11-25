@@ -219,6 +219,14 @@ export default handler(
                                 sessionId: params.sessionId,
                                 channel: params.channel,
                             },
+                            // Where what the engine reports goes (`@@D-994`). The adapter batches it
+                            // and dispatches `agent.telemetry.insert`, which publishes the batch and
+                            // folds it into the session's summary (`@@D-987`).
+                            eventDispatch: {
+                                method: 'agent.telemetry.insert',
+                                sessionId: params.sessionId,
+                                meta: $meta as unknown as Record<string, unknown>,
+                            },
                             sessionKey: session.engineSessionId
                                 ? String(session.engineSessionId)
                                 : undefined,
@@ -286,7 +294,18 @@ export default handler(
                 }
                 for (let step = 0; step < settings.maxSteps; step += 1) {
                     const turn = (await engineStepRun(
-                        {account, instructions, history, tools},
+                        {
+                            account,
+                            instructions,
+                            history,
+                            tools,
+                            // A turn's telemetry is the session's: the same feed, one batch at a time.
+                            eventDispatch: {
+                                method: 'agent.telemetry.insert',
+                                sessionId: params.sessionId,
+                                meta: $meta as unknown as Record<string, unknown>,
+                            },
+                        },
                         $meta,
                     )) as IAgentStepResult;
                     history.push({

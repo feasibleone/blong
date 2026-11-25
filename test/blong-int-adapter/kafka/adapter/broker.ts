@@ -53,6 +53,9 @@ export default adapter<{
             },
             codec: KafkaJsonCodec,
             namespace: 'broker',
+            // `blong-integration` belongs to the test cluster, not to a realm, so the namespace
+            // guard would refuse the topic these tests read and write.
+            allowForeignTopic: true,
         },
     },
 }));

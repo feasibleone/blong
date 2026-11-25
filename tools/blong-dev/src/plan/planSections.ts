@@ -27,7 +27,7 @@ const HEADING_LINE = /^##\s+Decisions and frictions\s*$/;
 const ANY_H2 = /^##\s/;
 
 /** A line this module owns: `- [@@D-811](link) title · status`. */
-const ENTRY_LINE = /^-\s+\[?@@(?<id>[FD]-\d{3})\b/;
+const ENTRY_LINE = /^-\s+\[?@@(?<id>[FD]-\d{3,})\b/;
 
 /** The part of an entry this module reads. */
 export type IPlanEntryView = Pick<IMemoryEntryView, 'id' | 'title' | 'status' | 'path'>;

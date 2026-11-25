@@ -6,6 +6,8 @@
  * `deepseek` account never looks for the harness binary or its client (`@@T-593`).
  */
 import type {
+    AgentTelemetryKind,
+    AgentTelemetryReport,
     IAgentEngineAccount,
     IAgentSessionRequest,
     IAgentSessionResult,
@@ -74,15 +76,57 @@ const harnessOf = async (
     return created;
 };
 
+/** The kinds a feed carries, so a harness event that names one passes through unchanged. */
+const KNOWN_KINDS: Record<string, AgentTelemetryKind> = {
+    status: 'status',
+    reasoning: 'reasoning',
+    message: 'message',
+    tool: 'tool',
+    'tool-call': 'tool',
+    'tool-result': 'tool-result',
+    note: 'note',
+    // The harness's own spellings of a delta, which are the two the vocabulary renames.
+    text: 'message',
+    'text-delta': 'message',
+    'reasoning-delta': 'reasoning',
+};
+
+/**
+ * One harness event, as the feed carries it.
+ *
+ * The harness names its own steps, so a name this vocabulary knows travels as itself, a name it
+ * spells differently is translated, and anything else is a `note` — a reader sees that something
+ * happened without the framework pretending to understand a shape it does not define.
+ */
+export const deepseekTelemetry = (
+    event: unknown,
+): {kind: AgentTelemetryKind; payload?: unknown} | undefined => {
+    if (!event || typeof event !== 'object') return undefined;
+    const candidate = event as {kind?: unknown; type?: unknown; payload?: unknown};
+    const named = typeof candidate.kind === 'string' ? candidate.kind : candidate.type;
+    if (typeof named !== 'string') return undefined;
+    const kind = KNOWN_KINDS[named];
+    return kind ? {kind, payload: candidate.payload ?? event} : {kind: 'note', payload: event};
+};
+
 /** One native run. `sessionKey` is what makes the second call a resume rather than a new session. */
 export const deepseekSession = async (
     account: IAgentEngineAccount,
     request: IAgentSessionRequest,
+    report: AgentTelemetryReport = () => undefined,
 ): Promise<IAgentSessionResult> => {
     const harness = await harnessOf(account, request);
     const result = await harness.run(request.prompt, {
         ...(request.sessionKey && {sessionId: request.sessionKey}),
     });
+    // The harness answers its events with the run rather than through a callback, so the feed gets
+    // them in one go after it: the client this kind drives publishes no per-event stream.
+    for (const event of result.events ?? []) {
+        const mapped = deepseekTelemetry(event);
+        if (mapped) report(mapped.kind, mapped.payload);
+    }
+    if (result.finalResponse) report('message', {text: result.finalResponse});
+    report('status', {state: 'finished', text: result.finalResponse});
     return {
         text: result.finalResponse,
         sessionKey: result.sessionId,

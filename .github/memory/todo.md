@@ -156,6 +156,7 @@ done (58)
 - T-276
 - F-490
 - portal analytics
+- check is start() called connect()
 - doc publishing
 - second SIGINT received, forcing exit
 - check the zip artifact - dependencies
@@ -2317,7 +2318,7 @@ spec's mark-processed queue emptying made unnecessary.
 
 ## Retired
 
-  real Viber bot is not available
+real Viber bot is not available
 
 - T-689 — retired 2026-11-15
 - T-526 — retired 2026-11-23 — The post is written from the Slack deployment alone under T-523; a

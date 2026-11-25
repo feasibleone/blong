@@ -63,7 +63,7 @@ const DECISION = /^-\s+(?!\[[ xX]\]\s)(?<rest>.*)$/;
  * Scaffold the realm` is the form `plan tasks` writes, because a token a reader has to
  * search for is a worse table of contents than a link.
  */
-const ID_PREFIX = /^\[?@@(?<id>[FTD]-\d{3})\]?(?:\((?<link>[^)]*)\))?\s+(?<title>.*)$/;
+const ID_PREFIX = /^\[?@@(?<id>[FTD]-\d{3,})\]?(?:\((?<link>[^)]*)\))?\s+(?<title>.*)$/;
 
 /**
  * A created item whose whole text is the link: `[@@T-531 Scaffold the realm](…/todo.md#t-531--…)`.
@@ -75,7 +75,7 @@ const ID_PREFIX = /^\[?@@(?<id>[FTD]-\d{3})\]?(?:\((?<link>[^)]*)\))?\s+(?<title
  * nothing left to wrap: GitHub wraps the link's text, which is one paragraph however long it is.
  */
 const LINKED_TITLE =
-    /^\[@@(?<id>[FTD]-\d{3})\s+(?<title>[^\]]*)\]\((?<link>[^)]*)\)\s*(?<rest>.*)$/;
+    /^\[@@(?<id>[FTD]-\d{3,})\s+(?<title>[^\]]*)\]\((?<link>[^)]*)\)\s*(?<rest>.*)$/;
 
 /** The area suffix, which is stripped from the title. */
 const AREA_SUFFIX = /\s+·\s+area:\s*(?<area>\S.*?)\s*$/;
@@ -329,7 +329,7 @@ function readWrappedTitle(
     const marker = /·\s*(?:area:\s*)?$/.test(rest.trim());
     // A line that is only the entry's link: the title was pushed entirely onto the next line because
     // the link is wider than the print width.
-    const bareId = /^\[?@@[FTD]-\d{3}\]?(\([^)]*\))?\s*$/.test(rest.trim());
+    const bareId = /^\[?@@[FTD]-\d{3,}\]?(\([^)]*\))?\s*$/.test(rest.trim());
     // Joining is for three shapes and no more: a line whose ` · area:` value wrapped, a line that
     // carries its id and whose title wrapped, and a line that is only the link. A task that names no
     // area at all has none of those markers, keeps its detail where it was, and is still reported.
@@ -765,7 +765,7 @@ function guardLists(lines: readonly string[]): string[] {
     for (const line of lines) {
         const fence = /^\s*(?:```|~~~)/.test(line);
         if (fence) inFence = !inFence;
-        const item = !inFence && /^- (?:\[[ xX]\] )?\[?@@[FTD]-\d{3}/.test(line);
+        const item = !inFence && /^- (?:\[[ xX]\] )?\[?@@[FTD]-\d{3,}/.test(line);
         if (item && !guarded && out[out.length - 1] !== LIST_GUARD) out.push(LIST_GUARD);
         if (item) guarded = true;
         else if (line.trim() !== '' && !line.startsWith(' ')) guarded = false;

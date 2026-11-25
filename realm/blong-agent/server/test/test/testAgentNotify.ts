@@ -11,6 +11,12 @@ import {handler} from '@feasibleone/blong';
  * transport and the routing rather than the resume itself: the session has an answer already stored, and
  * nothing but the wake is going to act on it before the next tick. The second step is the other half of
  * the rule — a wake delivered to a pod that does not hold the workspace must change nothing.
+ *
+ * The first step runs with no adapter handler anywhere in the path: the channel is read through
+ * `notify.sub.watch`, and the subscription that reads it is the orchestrator's own, opened in its
+ * `ready()` (`@@T-816`). The group therefore also asserts that `notify.answer.wake` is not a method
+ * this realm answers — a forwarding handler reappearing would pass the steps below while putting the
+ * layer rule back where it was.
  */
 interface IClaimResult {
     ticket?: {ticketId?: string};
@@ -34,6 +40,19 @@ export default handler(context => {
         params: unknown,
         $meta: unknown,
     ) => Promise<unknown>;
+    /** Any method by name, which is how a test reaches one that is gone as well as one that is here. */
+    const call = (method: string, params: unknown): Promise<unknown> =>
+        (handlers[method] as (params: unknown, $meta: unknown) => Promise<unknown>)(params, $meta);
+    /** What a call failed with, or nothing when it answered — the shape the workspace group uses. */
+    const refuse = async (run: Promise<unknown>): Promise<string> => {
+        try {
+            await run;
+            return '';
+        } catch (error) {
+            const failure = error as {code?: string; message?: string};
+            return String(failure.code ?? failure.message ?? 'refused');
+        }
+    };
     const $meta = {} as IMeta;
     const statusOf = async (sessionId: string): Promise<string> => {
         const found = (await agentSessionGet({sessionId}, $meta)) as {
@@ -76,6 +95,14 @@ export default handler(context => {
     return {
         testAgentNotify: ({name = 'agent notify'}: {name?: string} = {}) =>
             group(name)([
+                async function aWakeIsReadByTheRealmWithNoAdapterHandlerInThePath(assert: IAssert) {
+                    // The one forwarding handler this realm had is gone, so the method it answered is
+                    // refused rather than answered: the adapter reads the channel and the realm
+                    // dispatches, which is what the two steps below exercise.
+                    const refusal = await refuse(call('notify.answer.wake', {sessionId: 'none'}));
+                    assert.ok(refusal, 'no handler answers a forwarded wake any more');
+                },
+
                 async function aWakeResumesASuspendedSessionBeforeTheNextTick(assert: IAssert) {
                     const {sessionId, promptId} = await park(thisHost());
                     assert.equal(await statusOf(sessionId), 'suspended', 'the session is parked');

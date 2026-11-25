@@ -1,21 +1,19 @@
 import type {IMeta} from '@feasibleone/blong';
 
 import {handler} from './handlerGroup.ts';
+import type {LogEntry} from './store.ts';
 
 /**
- * `viewer.entry.watch` — a wake when a record arrives (`@@D-948`).
+ * `viewer.entry.watch` — what arrived, and where a reader now is (`@@D-948`).
  *
- * A frame carries **a cursor and nothing else**: the id the page should read
- * from. The records themselves still travel over `viewer.entry.find`, which is
- * an ordinary call on the ordinary transport — so a stream moves the *latency* of
- * a tail and never a record, and what leaves the process in a frame is a ULID
- * that names nothing on its own.
+ * The default frame carries the records: `{entries, last, size}`, where `entries` is what the buffer
+ * received after the id the reader was last told (`@@D-986`). A reader that can afford a second call
+ * says `details: false` and is sent `{last, size}` alone — the mode this realm's own page uses,
+ * because a log line is not worth a frame of its own and the records it wants come from
+ * `viewer.entry.find`.
  *
- * That split is deliberate, and it is the rule a stream lives under: a response
- * that arrives as a sequence has no single body for the gateway to sign and
- * encrypt, so a frame is protected by the connection and the caller's
- * authorization rather than by the per-response envelope every other answer gets.
- * A wake is what fits under that ceiling; a stream of records would not.
+ * Both modes live in one handler because they are one stream with one cursor: what the flag changes
+ * is what a frame carries, never when a frame is sent.
  *
  * The same shape as `realm/blong-agent/adapter/notify.ts`: a wake is a nudge, not
  * a transport, and the store is the truth (`@@D-709`).
@@ -28,11 +26,17 @@ import {handler} from './handlerGroup.ts';
  */
 export default handler(({lib: {store}}) => ({
     async *viewerEntryWatch(
-        params: {after?: string},
+        params: {after?: string; details?: boolean},
         $meta: IMeta,
-    ): AsyncIterable<{last?: string; size: number}> {
+    ): AsyncIterable<{last?: string; size: number; entries?: LogEntry[]}> {
         const window = store();
         const signal = $meta?.abort;
+        // A frame carries what arrived, and a reader that can afford the second call asks for the
+        // cursor alone with `details: false` (`@@D-986`). This page does: a log line is not worth a
+        // frame of its own, and the records it wants are the ones `viewer.entry.find` already pages.
+        const details = params?.details !== false;
+        // Where this reader already is, so a frame says only what it has not been told.
+        let seen = params?.after;
 
         let woken = false;
         let wake: (() => void) | undefined;
@@ -50,15 +54,28 @@ export default handler(({lib: {store}}) => ({
         };
         signal?.addEventListener('abort', leave, {once: true});
 
+        /**
+         * What this reader has not been told yet, or `undefined` when it is current.
+         *
+         * The cursor moves with the frame, so two records arriving inside one wake are one frame
+         * only if nothing asked in between — which is the point of carrying them: the reader gets
+         * what arrived, once.
+         */
+        const frame = (): {last: string; size: number; entries?: LogEntry[]} | undefined => {
+            const last = window.last();
+            if (last === undefined || last === seen) return undefined;
+            const entries = details ? window.recent({after: seen}) : undefined;
+            seen = last;
+            return {...(entries === undefined ? {} : {entries}), last, size: window.size};
+        };
+
         try {
             // A reader that has just opened the page is told where the buffer
             // stands, so it does not need a first call to learn whether it is
             // already behind. A reader that says where it got to is not told
             // again: that is what makes a reconnect free of a needless find.
-            const last = window.last();
-            if (last !== undefined && last !== params?.after) {
-                yield {last, size: window.size};
-            }
+            const opening = frame();
+            if (opening) yield opening;
             while (!signal?.aborted) {
                 if (!woken) {
                     await new Promise<void>(resolve => {
@@ -68,8 +85,8 @@ export default handler(({lib: {store}}) => ({
                 }
                 if (signal?.aborted) break;
                 woken = false;
-                const id = window.last();
-                if (id !== undefined) yield {last: id, size: window.size};
+                const next = frame();
+                if (next) yield next;
             }
         } finally {
             signal?.removeEventListener('abort', leave);

@@ -20,6 +20,8 @@ export default handler(({lib: {uuidBuf}}) => ({
                 lastActivityAt?: string;
                 compactedAt?: string | null;
                 compactionCount?: number;
+                /** The partition the session's telemetry landed on, learned once (`@@D-987`). */
+                kafkaPartition?: number | null;
             };
         },
         _$meta: IMeta,
@@ -41,6 +43,8 @@ export default handler(({lib: {uuidBuf}}) => ({
                 : null;
         if (params.patch.compactionCount !== undefined)
             patch.compactionCount = params.patch.compactionCount;
+        if (params.patch.kafkaPartition !== undefined)
+            patch.kafkaPartition = params.patch.kafkaPartition;
         const updated = await qb('agent_session')
             .where('sessionId', uuidBuf(params.sessionId))
             .update(patch);

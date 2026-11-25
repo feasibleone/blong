@@ -16,6 +16,17 @@ export default declare({
             level: 'warn',
             message: 'a wake for session {sessionId} was not published: {error}',
         },
+        /**
+         * The wake subscription could not be opened, so every wake is a tick away instead.
+         *
+         * The subscription is the realm's own, opened through the broker adapter (`@@T-816`), so a
+         * failure here is a misconfigured channel or an unreachable broker rather than a resume that
+         * did not happen: the answer row is still the truth and the tick still finds it.
+         */
+        agentAnswerWakeUnsubscribed: {
+            level: 'warn',
+            message: 'the wake subscription on {channel} is not open: {error}',
+        },
         /** A suspended session carried no checkpoint, so the tick skipped it. */
         agentSessionUnrecoverable: {
             level: 'warn',

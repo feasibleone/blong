@@ -94,6 +94,14 @@ export default schema(async ({lib: {type}}) => ({
              */
             workspaceKind: type.stringNull({maxLength: 16}),
             baseCommit: type.stringNull({maxLength: 64}),
+            /**
+             * The Kafka partition this session's telemetry landed on (`@@D-987`).
+             *
+             * Learned once, from the delivery report of the first batch, because the adapter names no
+             * partitioner: a hash recomputed by a reader would point it at another session's events.
+             * Null is a session whose feed never reached a broker.
+             */
+            kafkaPartition: type.integerNull(),
             turnCount: type.integerNull(),
             lastActivityAt: type.dateTimeNull(),
             compactedAt: type.dateTimeNull(),
@@ -192,6 +200,35 @@ export default schema(async ({lib: {type}}) => ({
                 index: {
                     sessionId: {},
                 },
+                foreign: {
+                    sessionId: 'agent.session.sessionId',
+                },
+            },
+        },
+    ),
+
+    /**
+     * What a session's feed adds up to, so a list and a header need no replay (`@@D-992`).
+     *
+     * Written by the projector from the events as they are published, which is why it can be read
+     * without a broker, and why a session older than the topic's retention still renders a summary.
+     */
+    sessionMetric: type.Object(
+        {
+            sessionId: type.uuid(),
+            /** Turns the engines reported, which is a `status` event each. */
+            turnCount: type.integerNotNull(),
+            /** An estimate from the message deltas: characters over four, the usual rule of thumb. */
+            messageTokens: type.integerNotNull(),
+            /** How many tool calls finished, and how long each name took in total. */
+            toolCount: type.integerNotNull(),
+            toolsJSON: type.stringNotNull({maxLength: 8000}),
+            lastEventAt: type.dateTimeNotNull(),
+            updatedAt: type.dateTimeNotNull(),
+        },
+        {
+            constraints: {
+                primaryKey: 'sessionId',
                 foreign: {
                     sessionId: 'agent.session.sessionId',
                 },

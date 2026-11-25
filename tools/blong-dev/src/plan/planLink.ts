@@ -25,7 +25,7 @@ import {thisHost} from './planOwnership.ts';
  * and both have to be ticked by `memory close`, so the brackets and the target between
  * them are optional here rather than a second pattern.
  */
-const TASK_WITH_ID = /^(- \[)(?<mark>[ xX])(\]\s+\[?@@(?<id>[FTD]-\d{3})\b)/;
+const TASK_WITH_ID = /^(- \[)(?<mark>[ xX])(\]\s+\[?@@(?<id>[FTD]-\d{3,})\b)/;
 
 /** Where a plan names a task. */
 export interface IPlanTaskSite {

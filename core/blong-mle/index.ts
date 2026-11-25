@@ -24,6 +24,7 @@ export {
     type IReadStreamOptions,
     type IStreamResponse,
 } from './src/streamRead.ts';
+export {subscribeStream, type ISubscribeOptions} from './src/streamSubscribe.ts';
 export {streamInfoOf} from './src/streamFrame.ts';
 export {
     STREAM_BINARY_TYPE,

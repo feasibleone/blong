@@ -138,7 +138,6 @@ active (148)
   page with its API
 - `D-525` · realm/blong-kustomize — The page fails on routing, not on a database hop
 - `D-527` · realm/blong-kustomize — The operator authenticates the cluster issuer only
-- `D-529` · realm/blong-kustomize — The session answers itself here, and the tree grows a file
 - `D-531` · realm/blong-kustomize — canSkipSocket stays boolean in the operator entry
 - `D-532` · realm/blong-kustomize — The operator own node source is the kubernetes.io/hostname
   selector
@@ -206,6 +205,7 @@ active (148)
 - `D-944` · realm/blong-kustomize — A viewer is part of the deployment, not a second workload
 - `D-951` · realm/blong-kustomize — The deployment engine knows no realm by name, only a realm
   switch
+- `D-529` · realm/blong-kustomize — The session answers itself here, and the tree grows a file
 
 superseded (15)
 
@@ -1614,22 +1614,6 @@ live in the `remote` slice, because that is the codec own configuration — the 
 exchange, no session service. Authentication is what the portal needs, and the cluster is the
 authority the login already consults through a `TokenReview`.
 
-### D-529 — The session answers itself here, and the tree grows a file
-
-> _2026-10-11 · realm/blong-kustomize · active_
-
-A cluster token can carry no enc/sig claim, so the keys a caller's calls are signed with reach the
-gateway only if the realm supplies them. The realm does: login.token.create records the handshake
-the login call carried in its JWE header, identity.checkInternal hands the pair back as the session
-GatewayCodec.session reads, and the identity port answers in the same process that verifies the
-token. This needs no login realm, no user store and no cluster round trip, and it leaves the cluster
-token as the credential. The cost is that identity.checkInternal is the framework's own hook name
-and nothing in the framework declares its contract, so the reply shape is pinned by test.session
-rather than by a type. The operator's install tree gains one object, services/identity.yaml, so the
-tree count moves from twenty-one files to twenty-two and the fingerprint steps of test.tree.generate
-and test.plan.find fail until the committed tree is regenerated (D-1867 records that the fixtures,
-the docs and both committed trees are the owner's call).
-
 ### D-531 — canSkipSocket stays boolean in the operator entry
 
 > _2026-10-12 · realm/blong-kustomize · active_
@@ -2623,6 +2607,22 @@ the `viewer` stage and the `@feasibleone/blong-log` deploy closure it existed fo
 framework's again — one entry point, one dependency tree — and the viewer travels in the suite
 artifact like every other realm, with `realm/blong-viewer`'s own `k8sPorts` as the only statement
 about its address.
+
+### D-529 — The session answers itself here, and the tree grows a file
+
+> _2026-10-11 · realm/blong-kustomize · active_
+
+A cluster token can carry no enc/sig claim, so the keys a caller's calls are signed with reach the
+gateway only if the realm supplies them. The realm does: login.token.create records the handshake
+the login call carried in its JWE header, identity.checkInternal hands the pair back as the session
+GatewayCodec.session reads, and the identity port answers in the same process that verifies the
+token. This needs no login realm, no user store and no cluster round trip, and it leaves the cluster
+token as the credential. The cost is that identity.checkInternal is the framework's own hook name
+and nothing in the framework declares its contract, so the reply shape is pinned by test.session
+rather than by a type. The operator's install tree gains one object, services/identity.yaml, so the
+tree count moves from twenty-one files to twenty-two and the fingerprint steps of test.tree.generate
+and test.plan.find fail until the committed tree is regenerated (T-811 records that the fixtures,
+the docs and both committed trees are the owner's call).
 
 ## Superseded
 

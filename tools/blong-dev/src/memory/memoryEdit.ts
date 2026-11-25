@@ -25,6 +25,7 @@ import {
     SECTION_FOR_STATUS,
     SKELETON_SECTIONS,
     ledgerIdOf,
+    mergeRenumberFate,
     type IMemoryDoc,
     type IMemoryEntry,
     type IMemoryMeta,
@@ -133,6 +134,18 @@ export function removeEntry(doc: IMemoryDoc, entry: IMemoryEntry): void {
  * silently pointing at a later entry that took the number.
  */
 export function retireEntry(doc: IMemoryDoc, id: string, fate: string): void {
+    // One ledger line per id: `check` refuses a ledger that records an id twice, because the line
+    // says where the number went rather than logging every move. An id that leaves more than once -
+    // a number whose first successor was itself renumbered away - therefore extends the line it
+    // already has instead of writing a second one.
+    const existing = doc.lines.findIndex(line => ledgerIdOf(line) === id.toUpperCase());
+    if (existing >= 0) {
+        const merged = mergeRenumberFate(doc.lines[existing]!, fate);
+        if (merged) {
+            doc.lines[existing] = merged;
+            return;
+        }
+    }
     let structure = parseDoc(doc.lines);
     let section = structure.sections.find(candidate => candidate.heading === RETIRED_SECTION);
     if (!section) {
@@ -158,12 +171,7 @@ export function clearRetired(doc: IMemoryDoc, id: string): string | undefined {
     let fate: string | undefined;
     doc.lines = doc.lines.filter(line => {
         if (ledgerIdOf(line) !== wanted) return true;
-        fate = line
-            .trim()
-            .split('—')
-            .slice(1)
-            .join('—')
-            .trim();
+        fate = line.trim().split('—').slice(1).join('—').trim();
         return false;
     });
     return fate || undefined;
@@ -426,7 +434,7 @@ export function highestId(root: string, kind: MemoryKind): number {
     const prefix = KIND_PREFIX[kind];
     // Entries (`### F-014`) and retired ids (`- F-101 — …`): a number that outlived its
     // entry stays allocated, so it is never handed to a later entry.
-    const pattern = new RegExp(`^(?:###\\s+|-\\s*)(${prefix}-\\d{3})\\b`, 'gm');
+    const pattern = new RegExp(`^(?:###\\s+|-\\s*)(${prefix}-\\d{3,})\\b`, 'gm');
     let highest = 0;
     for (const file of listMemoryFiles(root)) {
         if (file.kind !== kind) continue;

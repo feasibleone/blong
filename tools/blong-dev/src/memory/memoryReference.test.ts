@@ -128,6 +128,38 @@ t.test('an entry resolves, and a collision is ambiguous', t => {
     t.end();
 });
 
+t.test('a four-digit token resolves like any other', t => {
+    // The reference scan reads an id with the same pattern the parser does, so a repository that
+    // has passed 999 in a kind cites `D-1002` and expects it to resolve, not to be read as `D-100`
+    // (`@@T-807`).
+    const repo = tempRepo();
+    try {
+        write(
+            repo.dir,
+            '.github/memory/decision.md',
+            `# Decisions\n\n## Active\n\n${entry('D-1002', 'Late')}`,
+        );
+        const tokens = parseReferences(['see @@D-1002 and @@D-100 for contrast']);
+        t.same(
+            tokens.map(token => token.target),
+            [
+                {kind: 'entry', id: 'D-1002'},
+                {kind: 'entry', id: 'D-100'},
+            ],
+            'both numbers are whole',
+        );
+        const index = buildReferenceIndex(repo.dir);
+        t.equal(resolveReference({kind: 'entry', id: 'D-1002'}, index).title, 'Late');
+        t.notOk(
+            resolveReference({kind: 'entry', id: 'D-100'}, index).title,
+            'and the nine-hundred-and-ninety-one earlier number is not it',
+        );
+    } finally {
+        repo.restore();
+    }
+    t.end();
+});
+
 t.test('a retired id is a warning that names its successor', t => {
     const repo = tempRepo();
     try {

@@ -1,0 +1,619 @@
+/**
+ * agentSession.css — the transcript's own look (`@@T-797` … `@@T-800`).
+ *
+ * The page is a chat, so it is laid out like one: a compact bar across the top that says what the
+ * session is and what it has cost, and a single column of events under it. Everything is expressed in
+ * the portal's own custom properties with a fallback, so the page follows the theme it is opened in
+ * instead of asserting a palette of its own.
+ *
+ * The three shapes a reader has to tell apart are named, not implied: a collapsed section shows only
+ * its header, an expanded one shows a body, and the caret says which way it will go.
+ */
+
+.agent-session-page {
+    --agent-fg: var(--text-color, #1f2328);
+    --agent-muted: var(--text-color-secondary, #656d76);
+    --agent-line: var(--surface-border, rgba(128, 128, 128, 0.28));
+    --agent-surface: var(--surface-card, transparent);
+    --agent-sunken: rgba(128, 128, 128, 0.08);
+    --agent-accent: var(--primary-color, #2f81f7);
+    --agent-warn: #b7791f;
+    --agent-radius: 10px;
+
+    /* The code palette, in two sets: a fence sits on the theme's own sunken surface, so a colour
+       that reads on white is a colour that disappears on the dark palette. The names are the kinds
+       the highlighter emits, so a rule below is one `var()` and the second set is the whole of the
+       dark theme. */
+    --tok-comment: #6e7781;
+    --tok-string: #1a7f37;
+    --tok-number: #8250df;
+    --tok-keyword: #cf222e;
+    --tok-builtin: #0550ae;
+    --tok-variable: #953800;
+    --tok-type: #6639ba;
+    --tok-tag: #116329;
+    --tok-attribute: #0550ae;
+    --tok-insert: #1a7f37;
+    --tok-deleted: #cf222e;
+    --tok-error: #cf222e;
+
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    color: var(--agent-fg);
+    font-size: 0.94rem;
+    line-height: 1.55;
+}
+
+/* ── the bar ─────────────────────────────────────────────────────────────── */
+
+.agent-statusbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.75rem;
+    padding: 0.45rem 0.9rem;
+    border-bottom: 1px solid var(--agent-line);
+    background: var(--agent-surface, #fff);
+    font-size: 0.8rem;
+    line-height: 1.2;
+}
+
+.agent-session-title {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+    max-width: 26ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agent-statusbar .agent-pill {
+    padding: 0.1rem 0.45rem;
+    border: 1px solid var(--agent-line);
+    border-radius: 999px;
+    color: var(--agent-muted);
+    text-transform: lowercase;
+}
+
+.agent-statusbar .agent-pill[data-status='running'] {
+    border-color: var(--agent-accent);
+    color: var(--agent-accent);
+}
+
+.agent-statusbar .agent-pill[data-status='failed'] {
+    border-color: #d1242f;
+    color: #d1242f;
+}
+
+.agent-statusbar .agent-pill[data-status='awaiting'] {
+    border-color: var(--agent-warn);
+    color: var(--agent-warn);
+}
+
+.agent-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15rem 0.9rem;
+    margin: 0 0 0 auto;
+    padding: 0;
+}
+
+.agent-metrics>div {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+}
+
+.agent-metrics dt {
+    color: var(--agent-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.agent-metrics dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.agent-metrics>div[data-metric='running'] dd {
+    color: var(--agent-warn);
+}
+
+.agent-statusbar[data-metrics='settled'] .agent-metrics>div::after {
+    content: '';
+}
+
+/* ── the column ──────────────────────────────────────────────────────────── */
+
+.blong-app-dark .agent-session-page {
+    --tok-comment: #8b949e;
+    --tok-string: #a5d6ff;
+    --tok-number: #79c0ff;
+    --tok-keyword: #ff7b72;
+    --tok-builtin: #d2a8ff;
+    --tok-variable: #ffa657;
+    --tok-type: #d2a8ff;
+    --tok-tag: #7ee787;
+    --tok-attribute: #79c0ff;
+    --tok-insert: #7ee787;
+    --tok-deleted: #ff7b72;
+    --tok-error: #ff7b72;
+}
+
+.agent-session-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.agent-transcript {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1rem 1.1rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.agent-transcript>.agent-section,
+.agent-transcript>.agent-error,
+.agent-transcript>.agent-session-footnote {
+    width: 100%;
+    max-width: 78ch;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.agent-transcript>.agent-back {
+    align-self: flex-start;
+}
+
+.agent-session-footnote {
+    align-self: center;
+    color: var(--agent-muted);
+    font-size: 0.78rem;
+    text-align: center;
+}
+
+/* ── one event ───────────────────────────────────────────────────────────── */
+
+.agent-section {
+    border: 1px solid transparent;
+    border-radius: var(--agent-radius);
+}
+
+.agent-section[data-open='yes'] {
+    border-color: var(--agent-line);
+    background: var(--agent-surface);
+}
+
+.agent-section-head {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    padding: 0.3rem 0.5rem;
+    border: 0;
+    border-radius: var(--agent-radius);
+    background: none;
+    color: var(--agent-fg);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.agent-section-head:hover {
+    background: var(--agent-sunken);
+}
+
+.agent-section-head .agent-caret {
+    flex: none;
+    width: 1rem;
+    color: var(--agent-muted);
+    transition: transform 120ms ease;
+}
+
+.agent-section[data-open='yes'] .agent-caret {
+    transform: rotate(90deg);
+}
+
+.agent-section-head .agent-icon {
+    flex: none;
+    color: var(--agent-muted);
+}
+
+.agent-section-label {
+    padding-left: 0.1rem;
+    color: var(--agent-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.agent-section-title {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agent-section-summary {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--agent-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+}
+
+.agent-section-time {
+    margin-left: auto;
+    flex: none;
+    color: var(--agent-muted);
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.agent-section-body {
+    padding: 0.1rem 0.6rem 0.65rem 1.95rem;
+}
+
+/* A tool is a card: its name and time in the header, its arguments and result in the body. */
+.agent-section-tool .agent-section-title {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.86rem;
+}
+
+.agent-section-tool[data-done='no'] .agent-section-title::after {
+    content: ' ·';
+    color: var(--agent-warn);
+}
+
+/* Reasoning is the session thinking aloud: quieter, and never the thing the eye lands on. */
+.agent-section-reasoning {
+    border-left: 2px solid var(--agent-line);
+    border-radius: 0 var(--agent-radius) var(--agent-radius) 0;
+    background: var(--agent-sunken);
+}
+
+.agent-section-reasoning .agent-section-title {
+    font-weight: 500;
+    color: var(--agent-muted);
+}
+
+.agent-section-reasoning .agent-section-text {
+    color: var(--agent-muted);
+    font-style: italic;
+}
+
+/* A message is the answer: no card, no border, just prose. */
+.agent-section-message {
+    border: 0;
+    background: none;
+}
+
+.agent-section-message .agent-section-head {
+    padding: 0.1rem 0.1rem 0;
+    cursor: default;
+}
+
+.agent-section-message .agent-section-body {
+    padding-left: 0.1rem;
+}
+
+/* A run of tool calls: one row for the work, one line per call inside it. */
+.agent-tools .agent-section-title {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.86rem;
+}
+
+.agent-tools-row {
+    border-top: 1px solid var(--agent-line);
+}
+
+.agent-tools-row-head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0.22rem 0.2rem;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--agent-fg);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.agent-tools-row-head:hover {
+    background: var(--agent-sunken);
+}
+
+.agent-tools-row-name {
+    flex: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.agent-tools-row-command {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--agent-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.78rem;
+}
+
+.agent-tools-row-body {
+    padding: 0 0 0.3rem 1.4rem;
+}
+
+/* A note is what the session reported outside a turn — a state, a question, a warning. */
+.agent-section-note {
+    border: 1px dashed var(--agent-line);
+    background: none;
+}
+
+.agent-section-note[data-title='awaiting'] {
+    border-style: solid;
+    border-color: var(--agent-warn);
+}
+
+.agent-section-note .agent-section-title {
+    color: var(--agent-warn);
+    text-transform: lowercase;
+}
+
+/* ── prose ───────────────────────────────────────────────────────────────── */
+
+.agent-message p,
+.agent-section-text {
+    margin: 0.35rem 0;
+}
+
+.agent-message h3,
+.agent-message h4,
+.agent-message h5,
+.agent-message h6 {
+    margin: 0.9rem 0 0.35rem;
+    font-size: 1rem;
+}
+
+.agent-message ul,
+.agent-message ol {
+    margin: 0.35rem 0;
+    padding-left: 1.4rem;
+}
+
+.agent-message blockquote {
+    margin: 0.45rem 0;
+    padding: 0.2rem 0.8rem;
+    border-left: 3px solid var(--agent-line);
+    color: var(--agent-muted);
+}
+
+.agent-message hr {
+    border: 0;
+    border-top: 1px solid var(--agent-line);
+    margin: 0.9rem 0;
+}
+
+.agent-message a {
+    color: var(--agent-accent);
+}
+
+.agent-inline-code {
+    padding: 0.05rem 0.3rem;
+    border-radius: 4px;
+    background: var(--agent-sunken);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.86em;
+}
+
+.agent-table {
+    width: 100%;
+    margin: 0.5rem 0;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.agent-table th,
+.agent-table td {
+    padding: 0.28rem 0.6rem;
+    border: 1px solid var(--agent-line);
+    text-align: left;
+    vertical-align: top;
+}
+
+.agent-table thead th {
+    background: var(--agent-sunken);
+    font-weight: 600;
+}
+
+/* ── code and diagrams ───────────────────────────────────────────────────── */
+
+.agent-code {
+    position: relative;
+    margin: 0.45rem 0;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--agent-line);
+    border-radius: 6px;
+    background: var(--agent-sunken);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+.agent-code::before {
+    content: attr(data-language);
+    position: absolute;
+    top: 0.15rem;
+    right: 0.45rem;
+    color: var(--agent-muted);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.agent-code .tok-comment {
+    color: var(--tok-comment);
+    font-style: italic;
+}
+
+.agent-code .tok-string {
+    color: var(--tok-string);
+}
+
+.agent-code .tok-number {
+    color: var(--tok-number);
+}
+
+.agent-code .tok-keyword {
+    color: var(--tok-keyword);
+}
+
+.agent-code .tok-builtin {
+    color: var(--tok-builtin);
+}
+
+.agent-code .tok-variable {
+    color: var(--tok-variable);
+}
+
+.agent-code .tok-type {
+    color: var(--tok-type);
+}
+
+.agent-code .tok-tag {
+    color: var(--tok-tag);
+}
+
+.agent-code .tok-attribute {
+    color: var(--tok-attribute);
+}
+
+/* A diff's two halves: the line that was added and the line it replaced. */
+.agent-code .tok-insert {
+    color: var(--tok-insert);
+}
+
+.agent-code .tok-deleted {
+    color: var(--tok-deleted);
+}
+
+.agent-code .tok-error {
+    color: var(--tok-error);
+    text-decoration: underline wavy;
+}
+
+.agent-diagram {
+    margin: 0.6rem 0;
+    padding: 0.5rem;
+    border: 1px solid var(--agent-line);
+    border-radius: 6px;
+    background: var(--agent-surface);
+    overflow-x: auto;
+}
+
+.agent-diagram svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* The chat is still working: the mark CopilotKit draws as a cursor, for the same reason. */
+.agent-cursor {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin: 0 auto 0.6rem;
+    border-radius: 50%;
+    background: var(--agent-accent);
+    animation: agent-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes agent-pulse {
+    0%,
+    100% {
+        opacity: 0.25;
+        transform: scale(0.85);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .agent-cursor {
+        animation: none;
+        opacity: 0.8;
+    }
+}
+
+/* ── the list ────────────────────────────────────────────────────────────── */
+
+.agent-session-list {
+    padding: 1rem 1.1rem;
+    overflow-y: auto;
+}
+
+.agent-session-filters {
+    display: flex;
+    gap: 1.1rem;
+    align-items: center;
+    margin-bottom: 0.7rem;
+    font-size: 0.85rem;
+    color: var(--agent-muted);
+}
+
+.agent-session-table tbody tr {
+    cursor: pointer;
+}
+
+.agent-session-table tbody tr:hover {
+    background: var(--agent-sunken);
+}
+
+.agent-empty,
+.agent-error {
+    margin: 0.6rem 0;
+    color: var(--agent-muted);
+}
+
+.agent-error {
+    color: #d1242f;
+}
+
+.agent-back,
+.agent-more {
+    margin: 0 0 0.4rem;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--agent-line);
+    border-radius: 6px;
+    background: none;
+    color: var(--agent-muted);
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.agent-back:hover,
+.agent-more:hover {
+    background: var(--agent-sunken);
+}
