@@ -164,6 +164,67 @@ test('dumpDatabase writes DDL, rows in batches and the restore switches', async 
     t.end();
 });
 
+test('dumpDatabase writes every table before any view', async t => {
+    // The server lists its objects by name, so a view that reads a table sorting after it comes
+    // first — and the server validates a view's definition when the statement runs, which is what
+    // made a real dump unrestorable (`access_effectiveActionPath` reads `core_triple`).
+    const objects = ['access_effectiveActionPath', 'item'];
+    const sql = await dumpDatabase(
+        {
+            async query<T>(query: string): Promise<[T, unknown]> {
+                if (query.startsWith('SELECT VERSION'))
+                    return [[{v: '8.0.42'}] as unknown as T, undefined];
+                if (query.startsWith('SHOW FULL TABLES')) {
+                    return [
+                        objects.map(name => ({
+                            Tables_in_demo: name,
+                            Table_type: name === 'item' ? 'BASE TABLE' : 'VIEW',
+                        })) as unknown as T,
+                        undefined,
+                    ];
+                }
+                if (query.startsWith('SHOW CREATE VIEW')) {
+                    return [
+                        [
+                            {
+                                View: 'access_effectiveActionPath',
+                                'Create View':
+                                    'CREATE ALGORITHM=UNDEFINED VIEW `access_effectiveActionPath` AS ' +
+                                    'select `item`.`itemId` AS `id` from `item`',
+                            },
+                        ] as unknown as T,
+                        undefined,
+                    ];
+                }
+                if (query.startsWith('SHOW CREATE TABLE')) {
+                    return [
+                        [
+                            {
+                                Table: 'item',
+                                'Create Table': 'CREATE TABLE `item` (\n  `itemId` int NOT NULL\n)',
+                            },
+                        ] as unknown as T,
+                        undefined,
+                    ];
+                }
+                if (query.startsWith('SELECT *')) return [[] as unknown as T, undefined];
+                throw new Error(`unexpected query: ${query}`);
+            },
+        },
+        'demo',
+        {now: new Date('2026-11-06T13:45:02Z')},
+    );
+    const table = sql.indexOf('DROP TABLE IF EXISTS `item`;');
+    const view = sql.indexOf('DROP VIEW IF EXISTS `access_effectiveActionPath`;');
+    t.ok(table > 0 && view > 0, 'both objects are in the dump');
+    t.ok(table < view, 'the table is written before the view that reads it');
+    t.ok(
+        sql.indexOf('SET FOREIGN_KEY_CHECKS=1;') > view,
+        'and the switches are restored after the last object',
+    );
+    t.end();
+});
+
 test('backupFileName is safe and sorts chronologically', async t => {
     const when = new Date('2026-11-06T13:45:02Z');
     t.equal(stamp(when), '20261106-134502');

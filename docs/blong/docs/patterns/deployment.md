@@ -73,9 +73,10 @@ image, and `core/blong-browser`, which the portal bundle is built from. The depl
 `release` is always a trigger and is not repeated in the list, and a name that no component answers
 fails the run instead of waiting for a release that will never come.
 
-The two tenant deployments are `sport` (one process, the `monolith` profile) and `suite` — the
-framework's own full-stack suite, deployed with the default `realm` profile, so each realm that
-serves something is a process of its own:
+The tenant deployments are `agent` — the chat realm's Slack and Viber paths with the agents behind
+them, one process in the `monolith` profile — `sport` (one process, the `monolith` profile) and
+`suite` — the framework's own full-stack suite, deployed with the default `realm` profile, so each
+realm that serves something is a process of its own:
 
 ```json
 {

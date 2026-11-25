@@ -24,20 +24,21 @@
             "blong-server"
         ]
     },
-    "chat": {
-        "release": "blong-chat",
-        "package": "@feasibleone/blong-chat",
-        "packagePath": "realm/blong-chat",
-        "scenario": "chat",
-        "artifact": "chat.zip",
-        "namespace": "blong-chat",
-        "suite": "blong-chat",
+    "agent": {
+        "release": "blong-agent",
+        "package": "@feasibleone/blong-agent",
+        "packagePath": "realm/blong-agent",
+        "scenario": "agent",
+        "artifact": "agent.zip",
+        "namespace": "blong-agent",
+        "suite": "blong-agent",
         "entry": "./index.ts",
         "profile": "monolith",
         "follows": [
             "blong",
             "blong-access",
             "blong-browser",
+            "blong-chat",
             "blong-core",
             "blong-gateway",
             "blong-gogo",

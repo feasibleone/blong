@@ -1,0 +1,36 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-agent
+    app.kubernetes.io/part-of: blong-agent
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: a97ff3598828419f
+  name: jobs
+rules:
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+      - apps
+      - networking.k8s.io
+    resources:
+      - pods
+      - services
+      - endpoints
+      - deployments
+      - daemonsets
+      - replicasets
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch

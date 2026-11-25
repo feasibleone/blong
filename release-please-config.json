@@ -19,6 +19,7 @@
         "realm/blong-kustomize": {},
         "realm/blong-login": {},
         "realm/blong-chat": {},
+        "realm/blong-agent": {},
         "realm/blong-sport": {},
         "core/blong-mock": {},
         "core/blong-mle": {},

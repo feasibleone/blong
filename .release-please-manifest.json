@@ -26,6 +26,7 @@
     "realm/blong-party": "1.20.0",
     "realm/blong-sport": "0.14.0",
     "realm/blong-chat": "0.7.0",
+    "realm/blong-agent": "0.1.0",
     "core/blong-server": "1.9.0",
     "demo/marine-data": "1.0.1",
     "realm/blong-gateway": "1.10.2",

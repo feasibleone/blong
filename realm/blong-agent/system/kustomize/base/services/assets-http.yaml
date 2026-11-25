@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: blong-kustomize
+    app.kubernetes.io/name: blong-agent
+    app.kubernetes.io/part-of: blong-agent
+    app.kubernetes.io/version: PLACEHOLDER
+    blong.feasible.one/spec-hash: 209dc3264dd31325
+  name: assets-http
+spec:
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: http
+  selector:
+    app.kubernetes.io/instance: assets
+    app.kubernetes.io/part-of: blong-agent
+  type: ClusterIP

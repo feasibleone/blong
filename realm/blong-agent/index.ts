@@ -20,6 +20,26 @@ export default server(() => ({
         async function agent() {
             return import('./server.ts');
         },
+        /**
+         * The public JSON-RPC surface the portal and a caller address.
+         *
+         * It is a child rather than left to `srv` because a component loads only when its config
+         * block exists, and this is the gateway that authorizes every route: the account page is an
+         * administrator's, so the caller is checked against the access realm before a handler runs.
+         */
+        async function gateway() {
+            return import('@feasibleone/blong-gateway/server.ts');
+        },
+        /**
+         * The records this deployment's own processes wrote: the `viewer` realm's UDP receiver and
+         * the gateway routes the page reads through (`@@D-946`). A deployable realm, so a profile
+         * that splits gives it a process of its own and a Service named after it; in this suite's
+         * `monolith` profile it rides the one process, and its Service is what the log destination
+         * names all the same (`@@D-950`).
+         */
+        async function viewer() {
+            return import('@feasibleone/blong-viewer/server.ts');
+        },
         // The server-hosted test runner, so the integration intent can drive the realm's groups.
         async function testRealm() {
             return import('@feasibleone/blong-test/server.ts');
@@ -58,7 +78,6 @@ export default server(() => ({
                     },
                 },
             },
-            gateway: {port: 8080},
             // The suite definition the `k8s` generator and the operator read. The profile is a monolith
             // because the worker and the methods it calls have to answer on one namespace and share one
             // workspace volume — a split tree would give the ticket's files to a pod that never sees the
@@ -69,25 +88,132 @@ export default server(() => ({
                         name: 'blong-agent',
                         namespace: 'blong-agent',
                         entry: '/opt/deploy/suite/realm/blong-agent/index.ts',
+                        frameworkImage: 'docker.io/library/blong-gogo',
+                        minFrameworkVersion: '1',
                     },
                     profile: 'monolith',
+                    // The database is the chat deployment's, restored under this deployment's name
+                    // before the first converge: its rows are the Slack accounts nobody wants to set
+                    // up again, and the migration Job adds the `agent` schema beside them rather than
+                    // replacing them (`@@D-857`).
+                    externalServices: {
+                        db: {
+                            externalName: 'mysql.blong-integration.svc.cluster.local',
+                            ports: [{name: 'mysql', port: 3306}],
+                        },
+                    },
+                    // The host is the deployment's, not the suite's: it comes from
+                    // `kustomize.deploy.portal.web` in the rc file of the `k8s` intent and from the
+                    // CR, so the source names only the Secret its certificate lands in. The Secret
+                    // name stays the chat one for the same reason the host does: a DNS record and a
+                    // Slack app's request URL are what a tenant already has (`@@D-796`).
+                    portal: {
+                        web: {
+                            tls: {secretName: 'chat-tls'},
+                            annotations: {
+                                'cert-manager.io/cluster-issuer': 'letsencrypt-prod',
+                            },
+                        },
+                    },
+                    suiteVolume: {
+                        backend: 'nodeLocal',
+                        artifact: {
+                            source: 'url',
+                            url: 'http://blong-artifact.default.svc.cluster.local/agent.zip',
+                        },
+                    },
+                    crd: true,
                 },
             },
         },
+        // The deployment: how a served process reaches another realm, where its records go, and which
+        // database it owns.
+        release: {
+            // How a deployed process finds another realm's process: the Service of that name.
+            resolution: {impl: 'kubernetes'},
+            // Every process of this deployment sends its records to the `viewer` realm, at the name its
+            // port is published under (`@@D-950`).
+            log: {destination: {host: 'viewer', port: 9999}},
+            // The gateway a deployment serves through: the account page is an administrator's, so
+            // the caller is checked against the access realm before a handler runs. It lives here
+            // rather than in `default` because a test run must serve without RBAC, and a child
+            // loads only where its block exists.
+            gateway: {
+                authorize: 'access.authorization.list',
+                port: 8080,
+                static: {root: '/opt/deploy/suite/realm/blong-agent/dist'},
+            },
+            srv: {
+                db: {
+                    knex: {
+                        connection: {
+                            host: 'db',
+                            port: 3306,
+                            // The pair comes from the tenant's own file, not from a source tree
+                            // (`@@D-857`): Secret `blong-releaserc-etc`, mounted at
+                            // `/etc/blong_releaserc` and merged by `rc`.
+                            database: 'blong-agent',
+                        },
+                    },
+                },
+            },
+            // The account store the deployment keeps: the portal adds an account, the next maintenance
+            // pass serves it. It lives here rather than in `default` because a test or simulator run
+            // must answer from its configuration and never from a database (`@@D-797`, `@@F-641`).
+            chat: {
+                chatDispatch: {
+                    // A channel remembers which persona it talks to, which is what makes a
+                    // conversation outlive one message (`@@D-727`).
+                    channelStore: 'db',
+                    // And a message that arrives is a turn for this realm: keyed by `*` because the
+                    // realm asks for the account that received it, so a `slack` key would never
+                    // match and every message would take the fallback and be dropped.
+                    forward: {'*': 'agent.chat.receive'},
+                },
+                slack: {
+                    accountsMethod: 'chat.credential.list',
+                    accountsSaveMethod: 'chat.credential.provision',
+                },
+            },
+        },
+        // A planning run and the migration Job each need every realm the suite can deploy. The webhook
+        // hosts are declared here rather than in `default` because only a tree reads them: a test or
+        // simulator run must not load the chat realm for an Ingress it will never write (`@@D-800`).
+        k8s: {
+            agent: {},
+            chat: {
+                slack: {
+                    k8sIngresses: {
+                        chatSlack: {
+                            tls: {secretName: 'chat-hook-tls'},
+                            // The host's annotations, so the Viber path beside this one inherits them
+                            // (`@@D-799`). An Ingress with a TLS secret nothing issues answers no
+                            // handshake, and Slack cannot reach a request URL it cannot open.
+                            annotations: {'cert-manager.io/cluster-issuer': 'letsencrypt-prod'},
+                        },
+                    },
+                },
+                viber: {
+                    k8sIngresses: {
+                        chatViber: {
+                            tls: {secretName: 'chat-hook-tls'},
+                        },
+                    },
+                },
+            },
+            login: {},
+            core: {},
+            access: {},
+            gateway: {},
+            viewer: {},
+        },
+        upgrade: {agent: {}, chat: {}, login: {}, core: {}, access: {}, gateway: {}, viewer: {}},
         dev: {
             srv: {},
             core: {},
             access: {},
             login: {},
             agent: {},
-        },
-        // The upgrade intent reads this block to know which realms a migration process carries.
-        upgrade: {
-            agent: {},
-            chat: {},
-            login: {},
-            core: {},
-            access: {},
         },
         // Carried beside `integration` when a real model is being exercised: a 14B model on a 32k
         // context wanders if the loop is left open, so the run caps the steps and the calls it may make

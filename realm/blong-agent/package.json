@@ -1,7 +1,7 @@
 {
     "name": "@feasibleone/blong-agent",
     "version": "0.1.0",
-    "description": "agent realm \u2014 a ticket pool, an engine-neutral coding loop and a per-ticket workspace",
+    "description": "agent realm — a ticket pool, an engine-neutral coding loop and a per-ticket workspace",
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"
     },
@@ -19,7 +19,7 @@
     "scripts": {
         "blong": "blong",
         "blong-watch": "blong-watch",
-        "build": "true",
+        "build": "vite build",
         "ci-lint": "blong-dev lint",
         "ci-test": "blong-dev test && blong-dev playwright --coverage",
         "dev": "vite",
@@ -30,22 +30,23 @@
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-access": "workspace:^1.0.0",
+        "@feasibleone/blong-chat": "workspace:^1.0.0",
+        "@feasibleone/blong-core": "workspace:^1.0.0",
+        "@feasibleone/blong-gateway": "workspace:^1.0.0",
         "@feasibleone/blong-kustomize": "workspace:^0.1.0",
+        "@feasibleone/blong-login": "workspace:^1.0.0",
+        "@feasibleone/blong-server": "workspace:^1.0.0",
+        "@feasibleone/blong-viewer": "workspace:^0.1.0",
         "@feasibleone/lukaot": "workspace:^",
         "@speed-highlight/core": "^2.1.0",
         "typebox": "^1.1.5"
     },
     "devDependencies": {
-        "@feasibleone/blong-access": "workspace:^1.0.0",
         "@feasibleone/blong-browser": "workspace:^1.0.0",
-        "@feasibleone/blong-chat": "workspace:^1.0.0",
-        "@feasibleone/blong-core": "workspace:^1.0.0",
         "@feasibleone/blong-dev": "workspace:*",
-        "@feasibleone/blong-gateway": "workspace:^1.0.0",
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
-        "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-realm": "workspace:^1.0.0",
-        "@feasibleone/blong-server": "workspace:^1.0.0",
         "@feasibleone/blong-test": "workspace:^1.0.0",
         "@playwright/test": "^1.63.0",
         "@types/node": "^24",

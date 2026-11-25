@@ -84,7 +84,7 @@ open (70)
 - `F-759` · cross-cutting — An answered prompt is dropped when the asking process was killed
 - `F-782` · cross-cutting — TSServer SIGABRT is heap OOM at the 3072 MB default
 
-resolved (56)
+resolved (57)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -148,6 +148,8 @@ resolved (56)
   to find out
 - `F-850` · docs — A diagram with two targets and two sources is a crossing the gates cannot route
   away
+- `F-851` · cross-cutting — Three runs reported nothing because npx at the repository root was
+  prompting
 
 <!-- /memory:index -->
 
@@ -2139,6 +2141,30 @@ target whose endpoint side is perpendicular, the second needs the target directl
 
 The test-loop diagram now renders as a star: the model in its own bottom lane, three token edges
 separated by bias, and the broker in its own column.
+
+### F-851 — Three runs reported nothing because npx at the repository root was prompting
+
+> _2026-11-25 · cross-cutting · resolved_
+
+Three runs of one unit-test file reported nothing, and none of them had failed: the command was
+`npx tap --disable-coverage src/db/db.test.ts` started in the repository root, where no package
+declares `tap`, so `npx` asked
+`Need to install the following packages: tap@21.8.1 — Ok to proceed? (y)` and waited. The first run
+piped that into `tail -4`, so the prompt was swallowed and the visible result was the tail of
+nothing; the second wrapped it in `timeout 600`, which the runner then moved to the background and
+returned empty; the third redirected it to a log and asked for the tail, which hung the same way.
+What finally named the cause was reading the log file the third run wrote, where the prompt had been
+sitting the whole time (`@@D-1018`).
+
+Two lessons, and only the second is about piping. The first is where a command runs: a package's
+devDependency is resolvable from that package and from nowhere else, and `blong-dev` exists to
+resolve it from the package you are standing in. The second is that a prompt and a discarded output
+are the same silence from outside, so a run that is meant to be waited on must keep its stdout
+visible — `tee`, not `>` — and must report the exit code in the same invocation, because `| tail -3`
+reports the status of `tail`.
+
+The command now runs from tools/blong-dev, where tap is declared: 32/32 assertions pass. The rule it
+cost is the [CRITICAL_COMMANDS] block of .github/copilot-instructions.md (@@D-1018).
 
 ## Retired
 

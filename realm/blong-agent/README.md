@@ -206,6 +206,61 @@ The realm contributes what it can from its own layer files, so a tree generated 
 - **A question channel.** In the cluster that is `blong-chat` and its `chat.prompt.ask`; a
   deployment that points `questionMethod` at nothing will suspend every question after the timeout.
 
+### Cutting the tenant over from the chat deployment
+
+`blong-chat` has been the deployment that answered Slack, kept the accounts and served the portal.
+This realm takes that place, and the tenant's two addresses do not move with it: the portal stays on
+`chat.feasible.one` and the webhook on `chat-hook.feasible.one`, because a DNS record, a certificate
+and a Slack app's request URL are what the tenant already has. The order matters at exactly one
+point — the data has to be in the new database before the first converge, because the migration Job
+adds a schema beside it rather than filling a workspace and its accounts.
+
+**1. Copy the database, once.** Dump `blong-chat` and restore it under this deployment's name.
+Everything the Slack app needs is in it: the workspace's signing secret, the account rows and the
+channel memory, so nothing has to be set up again.
+
+```bash
+kubectl -n blong-integration exec deploy/mysql -- sh -c \
+    'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines --triggers blong-chat' \
+    > chat.sql
+kubectl -n blong-integration exec -i deploy/mysql -- sh -c \
+    'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS blong-agent CHARACTER SET utf8mb4"'
+kubectl -n blong-integration exec -i deploy/mysql -- sh -c \
+    'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" blong-agent' < chat.sql
+```
+
+The migration Job of the first converge then creates the `agent` tables beside the chat ones: it is
+the `upgrade` intent, and the entry lists every realm that answers a namespace, `agent` first.
+
+**2. Give the tenant its file.** `blong-releaserc-etc` in the new namespace, key `blong_releaserc`,
+mounted at `/etc/blong_releaserc`: the database pair (host `db`, the database named above), the
+broker the session page reads (`agent.telemetry.kafka.connection.metadata.broker.list`), the account
+a persona inherits (`agent.agentDispatch.engineAccount`) and that account itself under
+`agent.engine.accounts.<alias>`. The key is an environment variable, not a value:
+`AGENT_ENGINE_API_KEY` comes from the Secret `blong-agent-engine`.
+
+**3. Create the deployment with the hosts it already serves.** The sample beside the base
+(`system/kustomize/example/blongdeployment.yaml`) is the shape; the two addresses are copied from
+the chat CR unchanged — `spec.ingresses.chatSlack` and `spec.ingresses.chatViber` on
+`chat-hook.feasible.one` with their paths, Secret `chat-hook-tls` and issuer, and `spec.portal.web`
+on `chat.feasible.one` with Secret `chat-tls`. The suite's own names are the only thing the new CR
+states differently.
+
+**4. Retire the chat CR in the same pass.** One Ingress per host:
+`kubectl -n blong-chat delete blongdeployment blong-chat`, and the namespace after the new portal
+answers. Nothing is lost with it — the rows are the copy above, and the old namespace held only the
+pods, the old Ingresses and the certificate Secret whose place the new one takes.
+
+**5. Check the two doors the deployment has.** `/health` on the new process, the portal at
+`https://chat.feasible.one`, a message to the Slack app (its request URL does not change), and the
+call a developer's machine makes against `https://chat.feasible.one` — `chat.*` is served by this
+deployment because the chat realm is a child of its entry, which is also why the artifact carries
+it.
+
+From here the two realms are one deployment rather than two: an agent asks through `chat.prompt.ask`
+and a person answers in Slack, and the dispatch that answers a question is also what a future Slack
+trigger calls to start a task.
+
 ### A Copilot runtime server
 
 A `copilot` account does not run a model in the realm's process: it attaches to a runtime server

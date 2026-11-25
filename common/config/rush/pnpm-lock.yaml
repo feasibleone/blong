@@ -1535,9 +1535,30 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../../core/blong
+      '@feasibleone/blong-access':
+        specifier: workspace:^1.0.0
+        version: link:../blong-access
+      '@feasibleone/blong-chat':
+        specifier: workspace:^1.0.0
+        version: link:../blong-chat
+      '@feasibleone/blong-core':
+        specifier: workspace:^1.0.0
+        version: link:../blong-core
+      '@feasibleone/blong-gateway':
+        specifier: workspace:^1.0.0
+        version: link:../blong-gateway
       '@feasibleone/blong-kustomize':
         specifier: workspace:^0.1.0
         version: link:../blong-kustomize
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-server
+      '@feasibleone/blong-viewer':
+        specifier: workspace:^0.1.0
+        version: link:../blong-viewer
       '@feasibleone/lukaot':
         specifier: workspace:^
         version: link:../../core/lukaot
@@ -1548,36 +1569,18 @@ importers:
         specifier: ^1.1.5
         version: 1.1.8
     devDependencies:
-      '@feasibleone/blong-access':
-        specifier: workspace:^1.0.0
-        version: link:../blong-access
       '@feasibleone/blong-browser':
         specifier: workspace:^1.0.0
         version: link:../../core/blong-browser
-      '@feasibleone/blong-chat':
-        specifier: workspace:^1.0.0
-        version: link:../blong-chat
-      '@feasibleone/blong-core':
-        specifier: workspace:^1.0.0
-        version: link:../blong-core
       '@feasibleone/blong-dev':
         specifier: workspace:*
         version: link:../../tools/blong-dev
-      '@feasibleone/blong-gateway':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gateway
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
         version: link:../../core/blong-gogo
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../blong-login
       '@feasibleone/blong-realm':
         specifier: workspace:^1.0.0
         version: link:../../core/blong-realm
-      '@feasibleone/blong-server':
-        specifier: workspace:^1.0.0
-        version: link:../../core/blong-server
       '@feasibleone/blong-test':
         specifier: workspace:^1.0.0
         version: link:../blong-test

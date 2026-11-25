@@ -18,6 +18,10 @@ export default browser(blong => ({
     },
     validation: blong.type.Object({
         agent: blong.type.Object({}),
+        access: blong.type.Object({}),
+        chat: blong.type.Object({}),
+        viewer: blong.type.Object({}),
+        ui: blong.type.Object({}),
     }),
     children: [
         async function blong() {
@@ -29,8 +33,38 @@ export default browser(blong => ({
         async function login() {
             return import('@feasibleone/blong-login/browser.ts');
         },
+        /**
+         * The account menu's own pages, which this realm does not own.
+         *
+         * `access` is a child even though the agent owns no user of its own: the profile page and
+         * the password form live there, and a portal without it has no way to change either — the
+         * chat deployment named it for this reason and the agent inherits the deployment.
+         */
+        async function access() {
+            return import('@feasibleone/blong-access/browser.ts');
+        },
         async function agent() {
             return import('./browser.ts');
+        },
+        /**
+         * The workspaces and the accounts this deployment serves.
+         *
+         * They are the chat realm's model pages, and they stay in the portal because the account
+         * store does: an account added there is what the next maintenance pass serves to Slack, so
+         * a deployment that kept the store and dropped the page would leave it writable only by a
+         * call.
+         */
+        async function chat() {
+            return import('@feasibleone/blong-chat/browser.ts');
+        },
+        /**
+         * The records this deployment's own processes wrote: Observability → Logs.
+         *
+         * The page reads `viewer.entry.*` from the gateway that served it, and the capability
+         * that opens it is seeded by the deployment's migration (`@@D-946`).
+         */
+        async function viewer() {
+            return import('@feasibleone/blong-viewer/browser.ts');
         },
         // The test realm's browser half: it is what binds `test.*` in the page, which the spec needs
         // to start the seeding run, and what routes the page's calls to the server over HTTP.
@@ -44,12 +78,22 @@ export default browser(blong => ({
                 portal: {
                     portal: {
                         title: 'Blong Agent',
+                        // The self-service profile page, opened from the account menu.
+                        profile: {
+                            page: 'access.user.profile',
+                            get: 'access.profile.get',
+                        },
                     },
                 },
             },
             blong: {},
             login: {},
+            access: {},
             agent: {},
+            chat: {},
+            // A child realm loads only when the merged config names it, so an empty block is what
+            // loads the realm at all: `viewer` is the Logs page over this deployment's own records.
+            viewer: {},
         },
         // TEST-ONLY: the `integration` intent (active in a browser run) exposes the wrapped handler
         // as `window.__blongHandler`, which the spec reads to start the seeding group — the one

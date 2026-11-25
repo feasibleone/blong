@@ -309,6 +309,27 @@ Unless otherwise evident, you are operating in the DEV environment, where the fo
 - Avoid ambient stash operations, only scope them to what you touched
 - You operate in automatic context compaction environment, do not worry about budget
 
+## [CRITICAL_COMMANDS]
+
+A command that reports nothing is not a command that succeeded: silence is either a prompt nobody
+answered or output that was thrown away, and the two are indistinguishable from the outside
+(`@@F-851`).
+
+- **Run a package's tool from that package**, or through `blong-dev`, which resolves the binary from
+  the nearest package. `npx <tool>` at the repository root finds no such package and asks
+  `Ok to proceed? (y)` — a prompt that blocks forever.
+- **Never pipe or redirect a command you intend to wait on** unless the output stays visible:
+  `cmd 2>&1 | tee /tmp/<name>.log`, then narrow it with `tail`/`grep` — the pipe keeps a prompt on
+  screen and the log keeps what scrolled past.
+- **Print the exit code in the same invocation** — `cmd > /tmp/<name>.log 2>&1; echo "EXIT=$?";
+  tail -20 /tmp/<name>.log` — because the code is what says whether the tail mattered, and a bare
+  `| tail -3` reports the tail's status rather than the command's.
+- **Do not wrap a long command in `timeout`.** The runner moves a command that goes quiet to the
+  background and returns nothing with it; let it run and let the runner's own idle detection bound
+  it.
+- **When a command is moved to the background, read its log** (`get_terminal_output`, or the file it
+  was redirected to) rather than running it again: the answer is in the run that already happened.
+
 ## [CORE_PARADIGMS]
 
 - **Handler-runtime pattern.** Handlers = isolated functions; framework adds config, validation, API

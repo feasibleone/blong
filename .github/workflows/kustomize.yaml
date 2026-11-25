@@ -56,6 +56,7 @@ jobs:
               # that drifts it is a change to the realm.
               - 'realm/blong-sport/**'
               - 'realm/blong-chat/**'
+              - 'realm/blong-agent/**'
               - 'test/integration/**'
               # The runbook every step below runs, and the trees it generates: its image import and
               # its two generations per tree are what put the suite on the cluster, so a change
@@ -148,6 +149,7 @@ jobs:
           --to @feasibleone/blong-suite
           --to @feasibleone/blong-sport
           --to @feasibleone/blong-chat
+          --to @feasibleone/blong-agent
       - name: The committed trees are the trees their plans produce
         # The artifact ships the base the repository committed beside its entry, and the operator
         # writes its overlay *beside that base* rather than beside a fresh one — deliberately, so a
@@ -171,7 +173,7 @@ jobs:
         # not a host put back into an rc is what turns this red (F-752).
         run: |
           failed=0
-          for package in suite/blong-suite realm/blong-sport realm/blong-chat; do
+          for package in suite/blong-suite realm/blong-sport realm/blong-chat realm/blong-agent; do
             if [ ! -f "$package/system/kustomize/base/kustomization.yaml" ]; then
               continue
             fi

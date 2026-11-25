@@ -95,6 +95,14 @@ export async function dumpDatabase(
             type: String(row.Table_type ?? Object.values(row)[1] ?? 'BASE TABLE'),
         }))
         .filter(entry => entry.name);
+    // Every table before any view: a view's definition names the tables it reads, and the server
+    // validates that when the statement runs, so a dump that interleaved them by name could not be
+    // loaded at all — `access_effectiveActionPath` reads `core_triple`, which sorts after it. The
+    // order within each group stays the server's, so a table's rows are still dumped together.
+    const ordered = [
+        ...entries.filter(entry => entry.type !== 'VIEW'),
+        ...entries.filter(entry => entry.type === 'VIEW'),
+    ];
 
     const parts: string[] = [
         `-- ${options.tool ?? 'blong-dev db backup'}`,
@@ -109,7 +117,7 @@ export async function dumpDatabase(
         '',
     ];
 
-    for (const entry of entries) {
+    for (const entry of ordered) {
         if (entry.type === 'VIEW') {
             const [rows] = await connection.query<Array<Record<string, unknown>>>(
                 `SHOW CREATE VIEW ${quote(database)}.${quote(entry.name)}`,
