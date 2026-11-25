@@ -408,8 +408,14 @@ test('redis-dev — database index and keys', async ({portal}) => {
 
 test('kafka-dev — topics and message viewer', async ({portal}) => {
     await openCommander(portal);
-    // `blong-integration` is the only non-internal topic in the dev broker.
+    // `blong-integration` is the seeded topic, and it is no longer the only one: every
+    // realm that publishes a feed creates its own on start (`blong.agent.telemetry`,
+    // `blong.telemetry.perf`, …), so the broker's topic list is the one level here whose
+    // row set belongs to other suites. Filter to the seeded name before the shot — the
+    // same narrowing the keycloak realm and the mongo database get — and the baseline
+    // shows the UI working rather than how many feeds happen to run beside it.
     await selectSource(portal.page, 'Kafka', 'blong-integration');
+    await filterRows(portal.page, 'blong-integration');
     await expect(portal.page).toHaveScreenshot('explore-kafka-topics.png');
     // The `message` level is what this drill is for. The topic is *named*, not "the first
     // row that has children", for the reason the keycloak realm is (D-494@root): the walk
@@ -417,8 +423,8 @@ test('kafka-dev — topics and message viewer', async ({portal}) => {
     // topic list. Naming it reaches the level, whose rows come from a read that waits for
     // its consumer group to join first (D-497@core/blong-gogo) and from a topic the broker
     // seeds on every start rather than only once (D-498) — either fault alone left the
-    // level empty.
-    await filterRows(portal.page, 'blong-integration');
+    // level empty. The filter the topics shot left up is still in place, so the row that
+    // gets drilled is the seeded one whatever else the broker carries.
     await openRowByText(portal.page, 'blong-integration');
     await clearFilter(portal.page);
     // A message row is the only proof the level was reached: a topic row carries a name
@@ -435,19 +441,20 @@ test('kafka-dev — topics and message viewer', async ({portal}) => {
     // deterministic parts: the value is the seed's own JSON.
     await filterRows(portal.page, 'hello from blong-integration');
     await redactCellParts(portal.page, [1, 5], [VOLATILE_NUMBER]);
-    // The message level's tree nodes are labelled by offset, and the filter narrows
-    // the table only: every message `blong-int-adapter`'s producer tests append to
-    // this topic becomes another child. Collapse the drilled topic for the reason
-    // the redis-keys shot does, leaving the highlighted topic as the drill evidence.
-    // @@D-262 @@D-622
-    await collapseSelectedNode(portal.page);
+    // The tree is the second place another realm shows up: the Kafka root lists every topic
+    // the broker carries, so it now lists `blong.agent.telemetry` and `blong.telemetry.perf`
+    // beside the seeded one, and the topic node under it lists every message any suite
+    // appended. Collapse the root rather than the selected topic — one collapse hides both
+    // lists — and leave the breadcrumb (`Kafka (dev) / blong-integration`) as the evidence
+    // that the drill happened, beside the messages in the table. @@D-262 @@D-622
+    await collapseNodeByLabel(portal.page, 'Kafka (dev)');
     await expect(portal.page).toHaveScreenshot('explore-kafka-messages.png');
 });
 
 test('s3-dev — buckets and objects', async ({portal}) => {
     await openCommander(portal);
-    // `blong-integration` is the seeded bucket (the bucket list shows only its
-    // name → deterministic).
+    // `blong-integration` is the seeded bucket, and the bucket list is the only level here
+    // nothing else writes to — no test creates a bucket — so this shot needs no filter.
     await selectSource(portal.page, 'S3', 'blong-integration');
     await expect(portal.page).toHaveScreenshot('explore-s3-buckets.png');
     const bucket = await openFirstRowWithChildren(portal.page, 'S3 (dev)');
@@ -462,6 +469,12 @@ test('s3-dev — buckets and objects', async ({portal}) => {
                 .filter({hasText: 'commander/hello.txt'})
                 .first(),
         ).toBeVisible({timeout: 15_000});
+        // The filter narrows the table, never the navigator, and this bucket is written by
+        // another suite: `blong-int-adapter`'s round-trip puts `test/blong-test.txt` in it, so
+        // the tree would carry an object the seed never wrote. Collapse the S3 root — one
+        // collapse hides the bucket list and the objects under it — and leave the breadcrumb
+        // (`S3 (dev) / blong-integration`) as the evidence of the drill. @@D-262 @@D-622
+        await collapseNodeByLabel(portal.page, 'S3 (dev)');
         await expect(portal.page).toHaveScreenshot('explore-s3-objects.png');
     }
 });

@@ -13,9 +13,11 @@ open (3)
   neighbours list
 - `T-287` · realm/blong-commander — The row filter is invisible in the observed flow
 
-done (1)
+done (2)
 
 - `T-411` · realm/blong-commander — Vault and Kafka explore trees list the other job's data
+- `T-828` · realm/blong-commander — The s3-objects shot still lists a shared bucket's objects in the
+  navigator
 
 <!-- /memory:index -->
 
@@ -81,3 +83,24 @@ tests are compared.
 Both shots collapse the drilled node (D-622), and the kafka-topic-init Job no longer seeds, leaving
 the postStart hook as the only seeder. Verified with 8 extra topic messages and an extra
 secret/blong-test key present: both shots pass. Baselines re-captured.
+
+### T-828 — The s3-objects shot still lists a shared bucket's objects in the navigator
+
+> _2026-11-25 · realm/blong-commander · done_
+
+`explore-s3-objects` filters the table to `commander/` before the shot, but the navigator is not
+filtered by the same input: after `openFirstRowWithChildren` drills the seeded bucket, the tree
+lists every object the bucket holds, and `blong-int-adapter` writes into that same bucket. The kafka
+shots were hardened for exactly this — the topics table is filtered to the seeded name and the
+message shot collapses the Kafka root, because a broker's topic list belongs to every realm that
+publishes a feed — so the same two lines belong here: collapse the drilled bucket with
+`collapseNodeByLabel` before `toHaveScreenshot`, and leave the breadcrumb as the evidence of the
+drill. The other drilled trees were checked and are stable: `kube-system`'s pods, `admin`'s
+collections, the `master` realm's users and the access schema's tables are not written by another
+suite, and the vault and redis shots already collapse their expanded node.
+
+explore-s3-objects now collapses the S3 root before the shot, so the navigator no longer lists the
+shared bucket's objects (blong-int-adapter puts test/blong-test.txt in it) — one collapse hides the
+bucket list and the objects under it, and the breadcrumb S3 (dev) / blong-integration stays as the
+drill evidence. The bucket list itself needed no filter: no test creates a bucket. Baseline
+regenerated and the whole file runs 10/10.

@@ -104,7 +104,7 @@ done (74)
 - `T-827` · realm/blong-agent — A success is a tick, a slow call is the only time, and a silent
   command shows no JSON
 - `T-826` · realm/blong-agent — The browser spec attaches to a dev server on 8080 and waits for a
-  seed that server never ran
+  seed that never ran
 - `T-815` · realm/blong-agent — Capture the transcript in the light palette as well, so both token
   sets are checked
 
@@ -358,9 +358,9 @@ placeholders. The realm's own catch compared `code` where a declared error carri
 two share one table, plus `resolveReference`, `inspectLine` and `inspectStore`, with the store
 opened read-only because resolving a reference must not be what evicts an entry.
 
-- verify: `cd realm/blong-agent && blong-dev test` passes, 48 assertions; the tick is covered
-  to 96.96% of statements. What remains is the ticket's optional chat channel and one range at the
-  end of the claim path — pass-through reads of optional fixture data, not logic.
+- verify: `cd realm/blong-agent && blong-dev test` passes, 48 assertions; the tick is covered to
+  96.96% of statements. What remains is the ticket's optional chat channel and one range at the end
+  of the claim path — pass-through reads of optional fixture data, not logic.
 
 ### T-532 — Register the agent package in rush.json
 
@@ -990,7 +990,7 @@ Planned in [#307](https://github.com/feasibleone/blong/issues/307).
 browser.ts, browser/orchestrator/{subject/init,portal/portalConfigGet,component/agentSession}.ts,
 index.browser.ts, index.html.ts, vite.config.ts and playwright.config.ts are in, with the page's
 dependencies added to the realm (react, @feasibleone/blong-browser, vite, @playwright/test).
-Verified: npx vite build in realm/blong-agent emits dist/assets/agentSessionPage-*.js as a chunk of
+Verified: npx vite build in realm/blong-agent emits dist/assets/agentSessionPage-\*.js as a chunk of
 its own, so the page and everything it imports stay out of the portal bundle, and npx tsc --noEmit
 is clean.
 
@@ -1296,7 +1296,7 @@ realm with `{toolName, args}` alone, so the SDK tool call id never reaches `agen
 Find whether the realm answer object is dropped by the local dispatch or by the SDK tool envelope,
 then assert in a tap test against `agentToolRun` that `answerText` reaches the caller.
 
-The adapter's dispatch answers with the framework pair [payload, meta], and the engine read result
+The adapter's dispatch answers with the framework pair `[payload, meta]`, and the engine read result
 off the pair: engineDispatchResult now unpacks it, and the runtime's toolCallId travels into
 agent.tool.run. A live run shows the answer reaching the model and the checkpoint naming the pending
 call.
@@ -1350,7 +1350,7 @@ is open, thinking is an icon over italic prose with no title or surface, a lone 
 card a run holds, and an understood shell never falls back to its JSON. The browser spec expands a
 shell, an edit, a read, a question and a write and pins every one of those marks in both palettes.
 
-### T-826 — The browser spec attaches to a dev server on 8080 and waits for a seed that server never ran
+### T-826 — The browser spec attaches to a dev server on 8080 and waits for a seed that never ran
 
 > _2026-11-25 · realm/blong-agent · done_
 
