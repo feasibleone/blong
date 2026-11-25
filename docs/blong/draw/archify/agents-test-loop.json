@@ -1,0 +1,310 @@
+{
+    "schema_version": 2,
+    "diagram_type": "workflow",
+    "meta": {
+        "title": "How the loop was tested: three agents, one script, one page",
+        "output": "docs/blong/static/diagrams/agents-test-loop.html",
+        "locale": "en",
+        "quality_profile": "showcase",
+        "views": [
+            {
+                "id": "run",
+                "label": "A watched run",
+                "focus": ["copilot", "tour", "runTask", "backend", "host1", "kafka", "page"],
+                "note": "A task file becomes a prompt, the script claims a ticket, one runtime works it, and the feed reaches the browser."
+            },
+            {
+                "id": "other",
+                "label": "The other runtime",
+                "focus": ["backend", "host2", "kafka"],
+                "note": "The same run against the second host: the account is chosen, not implied."
+            },
+            {
+                "id": "tokens",
+                "label": "Three agents, one model",
+                "focus": ["copilot", "host1", "host2", "model"],
+                "note": "Each agent reaches the same model with its own token, which is what keeps the bill and the limits separable."
+            }
+        ]
+    },
+    "lanes": [
+        {
+            "id": "author",
+            "label": "Copilot, in VS Code"
+        },
+        {
+            "id": "tooling",
+            "label": "This repository"
+        },
+        {
+            "id": "backend",
+            "label": "The realm, running"
+        },
+        {
+            "id": "runtimes",
+            "label": "Copilot runtimes, on the LAN"
+        },
+        {
+            "id": "broker",
+            "label": "Broker"
+        },
+        {
+            "id": "ui",
+            "label": "Vite and the page"
+        },
+        {
+            "id": "model",
+            "label": "DeepSeek, a token per agent"
+        }
+    ],
+    "phases": [
+        {
+            "id": "write",
+            "label": "Write the task",
+            "fromCol": 0,
+            "toCol": 1
+        },
+        {
+            "id": "dispatch",
+            "label": "Claim and run",
+            "fromCol": 2,
+            "toCol": 3,
+            "variant": "emphasis"
+        },
+        {
+            "id": "work",
+            "label": "Two hosts",
+            "fromCol": 4,
+            "toCol": 5,
+            "variant": "security"
+        }
+    ],
+    "mainPath": ["copilot", "tour", "runTask", "backend", "host1", "kafka", "page"],
+    "nodes": [
+        {
+            "id": "copilot",
+            "lane": "author",
+            "col": 0,
+            "type": "external",
+            "label": "Copilot in VS Code",
+            "sublabel": "writes, restarts, reads",
+            "tag": "an agent too",
+            "icon": "person"
+        },
+        {
+            "id": "tour",
+            "lane": "tooling",
+            "col": 1,
+            "type": "backend",
+            "label": "scripts/tasks/ui-tour.md",
+            "sublabel": "nine steps, a sleep each",
+            "tag": "the prompt",
+            "icon": "neutral"
+        },
+        {
+            "id": "runTask",
+            "lane": "tooling",
+            "col": 2,
+            "type": "backend",
+            "label": "scripts/runTask.sh",
+            "sublabel": "claim, then run in front",
+            "tag": "one ticket",
+            "icon": "flag"
+        },
+        {
+            "id": "backend",
+            "lane": "backend",
+            "col": 3,
+            "type": "backend",
+            "label": "blong-watch",
+            "sublabel": "microservice integration dev",
+            "tag": ":8080",
+            "icon": "backend"
+        },
+        {
+            "id": "host1",
+            "lane": "runtimes",
+            "col": 4,
+            "type": "cloud",
+            "label": "copilot runtime",
+            "sublabel": "host-1, port 4321",
+            "tag": "its own token",
+            "icon": "cloud"
+        },
+        {
+            "id": "host2",
+            "lane": "runtimes",
+            "col": 5,
+            "type": "cloud",
+            "label": "copilot runtime",
+            "sublabel": "host-2, port 4321",
+            "tag": "its own token",
+            "icon": "cloud"
+        },
+        {
+            "id": "model",
+            "lane": "model",
+            "col": 2,
+            "type": "external",
+            "label": "deepseek-flash",
+            "sublabel": "an OpenAI-compatible wire",
+            "tag": "a token per agent",
+            "icon": "cloud"
+        },
+        {
+            "id": "kafka",
+            "lane": "broker",
+            "col": 5,
+            "type": "messagebus",
+            "label": "Kafka, :9092",
+            "sublabel": "the feed both read",
+            "tag": "partition on the row",
+            "icon": "messagebus"
+        },
+        {
+            "id": "vite",
+            "lane": "ui",
+            "col": 4,
+            "type": "frontend",
+            "label": "Vite dev server",
+            "sublabel": ":5173, serves /s/",
+            "tag": "the page's own origin",
+            "icon": "frontend"
+        },
+        {
+            "id": "page",
+            "lane": "ui",
+            "col": 5,
+            "type": "frontend",
+            "label": "Your browser",
+            "sublabel": "the session page",
+            "tag": "watch it live",
+            "icon": "frontend"
+        }
+    ],
+    "edges": [
+        {
+            "id": "write",
+            "from": "copilot",
+            "to": "tour",
+            "label": "writes it",
+            "variant": "default"
+        },
+        {
+            "id": "hand",
+            "from": "tour",
+            "to": "runTask",
+            "label": "as the prompt",
+            "variant": "default"
+        },
+        {
+            "id": "run",
+            "from": "runTask",
+            "to": "backend",
+            "label": "agent.session.run",
+            "variant": "emphasis"
+        },
+        {
+            "id": "host1-account",
+            "from": "backend",
+            "to": "host1",
+            "label": "an account per host",
+            "variant": "emphasis"
+        },
+        {
+            "id": "host2-account",
+            "from": "backend",
+            "to": "host2",
+            "label": "or the other host",
+            "variant": "security"
+        },
+        {
+            "id": "host1-feed",
+            "from": "host1",
+            "to": "kafka",
+            "label": "telemetry",
+            "variant": "default"
+        },
+        {
+            "id": "host2-feed",
+            "from": "host2",
+            "to": "kafka",
+            "label": "telemetry",
+            "variant": "default"
+        },
+        {
+            "id": "tail",
+            "from": "kafka",
+            "to": "page",
+            "label": "the tail, then live",
+            "variant": "emphasis"
+        },
+        {
+            "id": "serve",
+            "from": "vite",
+            "to": "page",
+            "label": "serves /s/",
+            "variant": "default"
+        },
+        {
+            "id": "copilot-token",
+            "from": "copilot",
+            "to": "model",
+            "label": "its own token",
+            "variant": "dashed",
+            "role": "async",
+            "bias": 0.15
+        },
+        {
+            "id": "host1-token",
+            "from": "host1",
+            "to": "model",
+            "label": "its own token",
+            "variant": "dashed",
+            "role": "async",
+            "bias": 0.5
+        },
+        {
+            "id": "host2-token",
+            "from": "host2",
+            "to": "model",
+            "label": "its own token",
+            "variant": "dashed",
+            "role": "async",
+            "bias": 0.85
+        }
+    ],
+    "cards": [
+        {
+            "dot": "cyan",
+            "title": "Three agents, not one",
+            "items": [
+                "The agent in VS Code is the third: it writes the tour, restarts the backend, calls the routes and reads the pictures",
+                "The other two are copilot runtimes on separate LAN hosts, each with its own token, its own model name and its own workspace",
+                "One account per host is the rule, so a run names which machine worked it and a second run can use the other",
+                "The same task file is the prompt for every run, which is what makes two runs comparable"
+            ]
+        },
+        {
+            "dot": "emerald",
+            "title": "The script is a harness you can watch",
+            "items": [
+                "runTask.sh claims the first free ticket and prints the account, the ticket, the session id and where to look",
+                "It checks the account's kind and mode before claiming, so a runtime that is down is told apart from a token that is wrong",
+                "It leaves the run in the foreground: Ctrl-C parks the session instead of losing it",
+                "The task it runs sleeps between steps on purpose, so a person has two minutes to watch rather than a transcript that arrives whole"
+            ]
+        },
+        {
+            "dot": "violet",
+            "title": "What proves it ran",
+            "items": [
+                "The partition on the session row is a broker delivery report: a run through the in-memory ring has none",
+                "The page replays the same session after a reload, which is the topic retaining it rather than a client remembering it",
+                "It is served by its own Vite dev server on 5173, so what the screenshots show is a real origin rather than a fixture",
+                "The transcript's cards are the payloads read once: a command and its exit code, a diff, a question and the answer a person gave",
+                "The browser spec drives its own ports and compares both palettes, so a rendering defect fails a run instead of a review"
+            ]
+        }
+    ]
+}

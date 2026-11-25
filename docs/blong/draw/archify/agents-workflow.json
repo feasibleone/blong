@@ -1,0 +1,370 @@
+{
+    "schema_version": 2,
+    "diagram_type": "workflow",
+    "meta": {
+        "title": "Agents developing agents: one ticket, one runtime, one transcript",
+        "output": "docs/blong/static/diagrams/agents-workflow.html",
+        "locale": "en",
+        "quality_profile": "showcase",
+        "views": [
+            {
+                "id": "run",
+                "label": "A run somebody watches",
+                "focus": [
+                    "tick",
+                    "session",
+                    "engine",
+                    "host",
+                    "tools",
+                    "telemetry",
+                    "topic",
+                    "page"
+                ],
+                "note": "A ticket is claimed, a remote runtime works it, and the transcript arrives while the work happens."
+            },
+            {
+                "id": "ask",
+                "label": "It needs a person",
+                "focus": ["custom", "question", "answer", "wake"],
+                "note": "askHuman parks the run; the answer arrives as a row and a wake resumes the same runtime session."
+            },
+            {
+                "id": "keys",
+                "label": "What is on the wire",
+                "focus": ["host", "topic", "page"],
+                "note": "The runtime token, the broker on localhost, and a sealed frame per event."
+            }
+        ]
+    },
+    "lanes": [
+        {
+            "id": "database",
+            "label": "MySQL"
+        },
+        {
+            "id": "realm",
+            "label": "realm/blong-agent"
+        },
+        {
+            "id": "engine",
+            "label": "Engine adapter"
+        },
+        {
+            "id": "runtime",
+            "label": "Runtime host, on the LAN"
+        },
+        {
+            "id": "inference",
+            "label": "DeepSeek, BYOK"
+        },
+        {
+            "id": "broker",
+            "label": "Broker and channel"
+        },
+        {
+            "id": "browser",
+            "label": "Session page"
+        }
+    ],
+    "phases": [
+        {
+            "id": "dispatch",
+            "label": "Claim and open",
+            "fromCol": 0,
+            "toCol": 1
+        },
+        {
+            "id": "run",
+            "label": "Work the ticket",
+            "fromCol": 2,
+            "toCol": 3,
+            "variant": "emphasis"
+        },
+        {
+            "id": "ask",
+            "label": "Ask, then answer",
+            "fromCol": 4,
+            "toCol": 4,
+            "variant": "security"
+        },
+        {
+            "id": "observe",
+            "label": "Publish and watch",
+            "fromCol": 5,
+            "toCol": 5
+        }
+    ],
+    "mainPath": ["tick", "session", "engine", "host", "telemetry", "topic", "page"],
+    "nodes": [
+        {
+            "id": "tick",
+            "lane": "realm",
+            "col": 0,
+            "type": "backend",
+            "label": "agent.worker.tick",
+            "sublabel": "claims one ticket",
+            "tag": "lease",
+            "icon": "decision"
+        },
+        {
+            "id": "session",
+            "lane": "realm",
+            "col": 1,
+            "type": "backend",
+            "label": "agent.session.run",
+            "sublabel": "one run, a checkpoint",
+            "tag": "per step",
+            "icon": "backend"
+        },
+        {
+            "id": "engine",
+            "lane": "engine",
+            "col": 2,
+            "type": "backend",
+            "label": "engine.ts",
+            "sublabel": "the account's kind",
+            "tag": "by account",
+            "icon": "neutral"
+        },
+        {
+            "id": "host",
+            "lane": "runtime",
+            "col": 2,
+            "type": "cloud",
+            "label": "Copilot runtime",
+            "sublabel": "two hosts, :4321",
+            "tag": "runtime token",
+            "icon": "cloud"
+        },
+        {
+            "id": "tools",
+            "lane": "runtime",
+            "col": 3,
+            "type": "cloud",
+            "label": "Its own tools",
+            "sublabel": "bash · create · edit · view",
+            "tag": "/var/lib/blong/workspaces",
+            "icon": "briefcase"
+        },
+        {
+            "id": "model",
+            "lane": "inference",
+            "col": 2,
+            "type": "external",
+            "label": "DeepSeek",
+            "sublabel": "deepseek-flash",
+            "tag": "api.deepseek.com/v1",
+            "icon": "cloud"
+        },
+        {
+            "id": "custom",
+            "lane": "realm",
+            "col": 3,
+            "type": "security",
+            "label": "agent.tool.run",
+            "sublabel": "askHuman · finish",
+            "tag": "the realm's",
+            "icon": "security"
+        },
+        {
+            "id": "answer",
+            "lane": "realm",
+            "col": 4,
+            "type": "security",
+            "label": "agent.answer.receive",
+            "sublabel": "the person's reply",
+            "tag": "one row",
+            "icon": "waiting"
+        },
+        {
+            "id": "wake",
+            "lane": "broker",
+            "col": 4,
+            "type": "messagebus",
+            "label": "agent.answer.wake",
+            "sublabel": "a channel in Redis",
+            "tag": "resumes the run",
+            "icon": "messagebus"
+        },
+        {
+            "id": "telemetry",
+            "lane": "realm",
+            "col": 5,
+            "type": "backend",
+            "label": "agent.telemetry.insert",
+            "sublabel": "batch, publish, project",
+            "tag": "batched",
+            "icon": "backend"
+        },
+        {
+            "id": "topic",
+            "lane": "broker",
+            "col": 5,
+            "type": "messagebus",
+            "label": "blong.agent.telemetry",
+            "sublabel": "one topic, keyed by session",
+            "tag": "delivery report",
+            "icon": "messagebus"
+        },
+        {
+            "id": "page",
+            "lane": "browser",
+            "col": 5,
+            "type": "frontend",
+            "label": "Session page",
+            "sublabel": "sections, cards, diffs",
+            "tag": "sealed frames",
+            "icon": "frontend"
+        },
+        {
+            "id": "metric",
+            "lane": "database",
+            "col": 5,
+            "type": "database",
+            "label": "agent_session + metric",
+            "sublabel": "the list, not the history",
+            "tag": "MySQL",
+            "icon": "database"
+        }
+    ],
+    "edges": [
+        {
+            "id": "claim",
+            "from": "tick",
+            "to": "session",
+            "label": "claim, then open",
+            "variant": "default"
+        },
+        {
+            "id": "hand-over",
+            "from": "session",
+            "to": "engine",
+            "label": "one run",
+            "variant": "emphasis"
+        },
+        {
+            "id": "dial",
+            "from": "engine",
+            "to": "host",
+            "label": "TCP, token, 600 s",
+            "variant": "default"
+        },
+        {
+            "id": "infer",
+            "from": "host",
+            "to": "model",
+            "label": "BYOK completions",
+            "variant": "dashed",
+            "role": "async"
+        },
+        {
+            "id": "work",
+            "from": "host",
+            "to": "tools",
+            "label": "runs them itself",
+            "variant": "default"
+        },
+        {
+            "id": "ask",
+            "from": "tools",
+            "to": "custom",
+            "label": "askHuman, finish",
+            "variant": "security"
+        },
+        {
+            "id": "reply",
+            "from": "custom",
+            "to": "answer",
+            "label": "a person answers",
+            "variant": "security"
+        },
+        {
+            "id": "publish",
+            "from": "answer",
+            "to": "wake",
+            "label": "publish",
+            "variant": "default"
+        },
+        {
+            "id": "produce",
+            "from": "telemetry",
+            "to": "topic",
+            "label": "produce, keyed",
+            "variant": "emphasis"
+        },
+        {
+            "id": "watch",
+            "from": "topic",
+            "to": "page",
+            "label": "watch: SSE, sealed",
+            "variant": "emphasis"
+        },
+        {
+            "id": "report",
+            "from": "host",
+            "to": "telemetry",
+            "label": "events, in batches",
+            "variant": "default"
+        },
+        {
+            "id": "project",
+            "from": "telemetry",
+            "to": "metric",
+            "label": "fold the summary",
+            "variant": "default"
+        }
+    ],
+    "cards": [
+        {
+            "dot": "cyan",
+            "title": "A stream, not a poll",
+            "items": [
+                "agent.session.watch answers an async iterable, so a handler that streams is the same handler shape as one that returns",
+                "The caller picks the envelope with Accept: text/event-stream for a readable one, application/vnd.blong.stream for a binary one",
+                "Every frame is sealed with the caller's key, because a transcript is what the connection exists to protect",
+                "A keepalive frame keeps an idle proxy from closing a connection the reader still wants, and tells a quiet session from a dead one",
+                "A frame carries at most 1 MiB, and the cursor partition:offset is how a reader reconnects without a gap or a repeat"
+            ]
+        },
+        {
+            "dot": "emerald",
+            "title": "One topic, one order",
+            "items": [
+                "Telemetry is produced to one topic keyed by session id, so a session's events share a partition and keep their order",
+                "The first batch of a session waits for its delivery report, because the report is the only place a partition is a fact",
+                "Kafka is the history; MySQL holds the projection the list and the header read, so a page never replays a topic to draw a row",
+                "A deployment with no broker sets the source to memory and the same contract is read from a ring"
+            ]
+        },
+        {
+            "dot": "violet",
+            "title": "The runtime owns the loop",
+            "items": [
+                "A copilot runtime on another host runs its own bash, create, edit and view, against the directory the ticket may touch",
+                "One account per host, each with its own runtime token; a kind that cannot be reached is an account nobody claims on",
+                "The runtime's session id is kept on the session row, so a later resume continues the same conversation rather than a new one",
+                "The account carries the wait (timeoutMs), because the SDK's own 60 s for session.idle is shorter than a task that sleeps"
+            ]
+        },
+        {
+            "dot": "amber",
+            "title": "The realm answers what the runtime cannot",
+            "items": [
+                "askHuman and finish are the realm's tools, offered to the runtime as custom tools that dispatch back into agent.tool.run",
+                "The adapter's dispatch answers with the framework's payload-and-meta pair, and the tool call id travels with it so a resume matches the pending call",
+                "A question that parks a run writes the prompt, the tool call and the history into a checkpoint before it waits",
+                "The answer's arrival publishes on a wake channel, and the orchestrator that listens resumes the run in the same process that parked it"
+            ]
+        },
+        {
+            "dot": "rose",
+            "title": "Bounded by the workspace, the clock and the grammar",
+            "items": [
+                "Every file and process goes through one workspace adapter: a path outside the ticket's directory is refused before it is opened",
+                "A deployment can switch commands off, and the switch removes the runtime's shell tools rather than trusting a permission prompt",
+                "Telemetry is a plain vocabulary, so the page, the projection and a test read one shape whichever kind wrote it",
+                "A tool call is read into what it did - command, exit code, output, diff, answer - so the page draws a card rather than JSON"
+            ]
+        }
+    ]
+}

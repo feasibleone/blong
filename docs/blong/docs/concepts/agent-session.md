@@ -21,3 +21,5 @@ the header — so a settled session and a running one are one list read two ways
 
 - **To watch a real run:** see [watching an agent session](../patterns/agent-session.md).
 - **Where the events come from:** see [the agent engine](../patterns/agent-engine.md).
+- **Why it is shaped this way:** see
+  [agents developing agents](../rationale/agents-developing-agents.md).

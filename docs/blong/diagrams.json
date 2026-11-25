@@ -116,6 +116,30 @@
             },
             "height": "700px",
             "page": "docs/rationale/ci-report.md"
+        },
+        "agents-workflow": {
+            "title": "Agents developing agents: from a ticket to a watched transcript",
+            "type": "workflow",
+            "candidate": "draw/archify/agents-workflow.json",
+            "output": "static/diagrams/agents-workflow.html",
+            "poster": {
+                "light": "docs/rationale/img/diagrams/agents-workflow-light.png",
+                "dark": "docs/rationale/img/diagrams/agents-workflow-dark.png"
+            },
+            "height": "760px",
+            "page": "docs/rationale/agents-developing-agents.md"
+        },
+        "agents-test-loop": {
+            "title": "How the agent loop was tested: three agents, one script, one page",
+            "type": "workflow",
+            "candidate": "draw/archify/agents-test-loop.json",
+            "output": "static/diagrams/agents-test-loop.html",
+            "poster": {
+                "light": "docs/rationale/img/diagrams/agents-test-loop-light.png",
+                "dark": "docs/rationale/img/diagrams/agents-test-loop-dark.png"
+            },
+            "height": "820px",
+            "page": "docs/rationale/agents-developing-agents.md"
         }
     }
 }

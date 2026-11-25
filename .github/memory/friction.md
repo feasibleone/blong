@@ -84,7 +84,7 @@ open (70)
 - `F-759` · cross-cutting — An answered prompt is dropped when the asking process was killed
 - `F-782` · cross-cutting — TSServer SIGABRT is heap OOM at the 3072 MB default
 
-resolved (54)
+resolved (56)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -144,6 +144,10 @@ resolved (54)
 - `F-810` · ci — The e2e deployment had no tenant rc, so no login could be provisioned
 - `F-827` · cross-cutting — A new dependency's version hoisted over an undeclared one and broke two
   browser builds
+- `F-849` · docs — A workflow diagram is six columns wide, and a nine-column draft cost four renders
+  to find out
+- `F-850` · docs — A diagram with two targets and two sources is a crossing the gates cannot route
+  away
 
 <!-- /memory:index -->
 
@@ -2091,6 +2095,50 @@ SDK. Five Playwright snapshots of mermaid drawings were re-baselined for the new
 is that rush update can change resolution for packages nobody edited, so a red setup job is worth
 reading for the module it names before the change that was just made — and the durable fix for a
 transitive deep import is to stop depending on the package that has it.
+
+### F-849 — A workflow diagram is six columns wide, and a nine-column draft cost four renders to find out
+
+> _2026-11-25 · docs · resolved_
+
+The first attempt at the agent workflow diagram was authored as if a workflow could be as wide as
+the story needed: nine columns, a phase per beat, and a return arrow from the wake to the session.
+Three gates refused it in turn — a phase past column 5, a main path whose pairs had no edges, and a
+canvas 1343px wide where the sublabels fell below the eight-pixel floor — and each refusal named one
+symptom, so repairing them one at a time took four renders.
+
+What would have saved the renders: the readable layout builds exactly six columns (columns 0 to 5),
+so a workflow is six beats and no more, and a return arrow crossing four columns will always find a
+row occupied somewhere. Folding the resume into the wake node's tag, merging the question and the
+answer into one edge, and dropping a node the card already explained took the picture to six columns
+and one screen. The constraints are now in the `blong-docs` skill beside the pipeline it documents.
+
+The constraint and the three gates it produced are now in the docs skill, so the next author starts
+from six columns; the entry keeps the why beside the entry that documents it.
+
+### F-850 — A diagram with two targets and two sources is a crossing the gates cannot route away
+
+> _2026-11-25 · docs · resolved_
+
+The test-loop diagram draws three agents and, under them, one model each reaches with a token of its
+own, and every attempt to put the model beside the two runtimes failed the composition gates. The
+shape is the reason: two runtimes that each reach the same model and the same broker is a K2,2, and
+no drawing of straight edges lays that out without a crossing, so the gate named a pair of edges
+each time rather than the shape. Four layouts were tried — the model above the runtimes, below them,
+beside them, and Kafka stacked in the runtimes' own column — and each failed on a different pair:
+the first runtime's feed over the second's token edge, an account edge over a token edge, and two
+edges sharing a 364px corridor.
+
+What renders is a star: the model in its own lane at the bottom, the author's token edge straight
+down the empty left column, and the two runtimes' edges routed around the outside. A star is always
+drawable — three sources, one target — so the shape to author is "one shared target, everybody else
+a column of their own", and the broker has to stop sharing a column with the model. The corridor
+gate also needs authored `bias` on the token edges (0.15, 0.5 and 0.85) because auto routing
+otherwise puts two of them in the same channel, which the gate reports as a merge rather than a
+crossing. `route: outside-right` and `route: drop` cannot be used to escape: the first refuses a
+target whose endpoint side is perpendicular, the second needs the target directly below.
+
+The test-loop diagram now renders as a star: the model in its own bottom lane, three token edges
+separated by bias, and the broker in its own column.
 
 ## Retired
 

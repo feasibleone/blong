@@ -141,6 +141,10 @@ from a run that cost nothing.
 
 ## Migrating the view
 
+The design reasoning behind the feed, the boundaries and the trade-offs is in
+[agents developing agents](../rationale/agents-developing-agents.md), and the first real run is the
+blog post [agents developing agents](/blog/agents-developing-agents).
+
 `sessionMessages.ts` maps rows onto the `user | assistant | reasoning | activity` shape a chat
 component such as CopilotKit's `CopilotChatMessageView` takes, with a run of calls as one assistant
 message carrying them. It exists so a migration is a dependency swap: pinning the seam before

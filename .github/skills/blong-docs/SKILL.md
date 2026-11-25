@@ -211,11 +211,11 @@ searchable and reviewable in a diff. Reach for an image only for a real screensh
 
 Two kinds of visual live side by side, and the difference matters when you edit a page:
 
-| Kind             | Where it comes from                                                                                                                       | How you change it                                                                          |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| **Generated**    | A test or script renders it: sequence diagrams from a real run, screenshots from Playwright, architecture diagrams from the live registry | Edit the **generator** or the code it reads, then regenerate. Never edit the file by hand. |
-| **Hand-written** | Authored mermaid written into the page while reading the code and the surrounding docs                                                    | Edit the markdown, the same as prose.                                                      |
-| **Embedded**     | A Storybook story, served live from the published Storybook that ships beside the site                                                    | Edit the tag's attributes; publish with `blong-dev docs storybook`.                        |
+| Kind             | Where it comes from                                                                                                                              | How you change it                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| **Generated**    | A test or script renders it: sequence diagrams from a real run, screenshots from Playwright, architecture diagrams from their Archify candidates | Edit the **generator** or the code it reads, then regenerate. Never edit the file by hand.      |
+| **Hand-written** | Authored mermaid written into the page while reading the code and the surrounding docs                                                           | Edit the markdown, the same as prose.                                                           |
+| **Embedded**     | A Storybook story served live from the published Storybook, or an Archify diagram framed from the site's own `static/diagrams/`                  | Edit the tag's attributes; publish with `blong-dev docs storybook` or `blong-dev docs diagram`. |
 
 Generated artefacts are committed to the repository and refreshed on demand, so the docs build stays
 a plain Docusaurus build. The register is
@@ -230,6 +230,63 @@ blong-dev docs --help    # the other verbs: generate, verify, storybook, diagram
 
 Run `blong-dev docs check` before you call a docs change done, and commit the diff if it reports an
 artefact as stale. It restores what it found, so it is safe on a dirty tree.
+
+#### Architecture diagrams (Archify)
+
+A high-level architecture or an end-to-end workflow is drawn with **Archify**, not with mermaid: it
+renders to a standalone interactive page (pan and zoom, focus, Live/Still motion) that the site
+frames on its own origin. The hand-written mermaid rules below still apply to everything that stays
+inline in a page; reach for Archify when the picture is one a reader must explore, and mermaid when
+one glance is enough.
+
+| What                                   | Where                                                                                                            |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| The diagram source, the truth to edit  | `docs/blong/draw/archify/<slug>.json` — an Archify candidate                                                     |
+| Its registration                       | `docs/blong/diagrams.json` — title, `type`, candidate, output, both posters, height, the page that embeds it     |
+| The rendered page                      | `docs/blong/static/diagrams/<slug>.html` — a build output, gitignored; never edit it                             |
+| What a reader sees before it is staged | the committed posters, `docs/blong/docs/concepts/img/diagrams/<slug>-{light,dark}.png`, one per theme            |
+| The embed                              | `<ArchifyDiagram slug="<slug>" title="…" height="620px" posterLight={require('…')} posterDark={require('…')} />` |
+
+```bash
+blong-dev docs diagram --only <slug>   # render the HTML and capture both posters
+blong-dev docs diagram --dry-run       # what it would render, and where
+blong-dev docs diagram --no-posters    # a layout iteration: HTML only, no picture churn
+```
+
+The tag needs no import — `docs/blong/src/theme/MDXComponents.jsx` registers it for every MDX page,
+so a blog post uses it exactly as a docs page does. `linked` shows the poster as a link to the full
+diagram instead of framing it, which is what a map too wide to read inside a column wants.
+
+Authoring rules that each cost a round trip when missed:
+
+- **Read the skill's own references before writing the candidate**: its
+  `references/authoring-defaults.md`, the mode schema under `schemas/<type>.schema.json`, and the
+  matching example. Examples teach shape, not facts — write fresh ids, wording and layout.
+- **Pick the type by the question**: `architecture` for components and trust boundaries, `workflow`
+  for a stepped process with lanes and phases, `sequence` for the order of calls, `dataflow` for
+  what moves and where it lands, `lifecycle` for states.
+- **A workflow is six columns wide, and that is a hard limit.** The readable layout builds columns 0
+  to 5, so a `phase` whose `toCol` is 6 fails validation and a seventh step has nowhere to go: plan
+  the cast to six beats and fold a secondary route into a node's tag or a card. Every consecutive
+  pair in `mainPath` also needs an edge, and the canvas is capped at 1240px unless it is at least
+  1.55 times as wide as it is tall — past that width the sublabels drop below the readable floor.
+- **Author a star, never a K2,2.** Two sources that each reach the same two targets (two hosts that
+  both talk to a model and a broker) cannot be drawn without a crossing, and the composition gates
+  report the crossing edge pair rather than the shape — so no amount of reordering fixes it. Keep one
+  shared target and give every other node a column of its own; where edges must converge, separate
+  their corridors with authored `bias` (0.15, 0.5, 0.85 for three), because auto routing otherwise
+  puts two of them in one channel and the corridor gate calls it a merge. `route: outside-right` and
+  `route: drop` are not escapes: the first refuses a target whose endpoint side is perpendicular,
+  the second needs the target directly below.
+- **`meta.output` is the portable path from the repository root**, and `meta.quality_profile` is
+  `"showcase"` unless a dense map is asked for. Omit `meta.viewBox` on a fresh candidate: the
+  renderer measures the real footprint.
+- **Run the command, not the Archify CLI by hand.** `blong-dev docs diagram` resolves the binary
+  (`--archify`, then `ARCHIFY_BIN`, then `docs/blong/node_modules/archify`, then the agent skills
+  under `~/.agents`, `~/.claude` and `~/.codex`) and supplies the browser the renderer needs —
+  `ARCHIFY_CHROME` from the package's own Chromium, `ARCHIFY_CHROME_NO_SANDBOX` on a container.
+- **A failed gate is never success**: repair the candidate and rerun the whole command; the receipt
+  names the gate that stopped it.
 
 #### Marker convention
 
