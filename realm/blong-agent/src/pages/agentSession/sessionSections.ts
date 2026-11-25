@@ -36,6 +36,8 @@ export interface ISessionSection {
     args?: string;
     /** A tool's result, once it has one. */
     result?: string;
+    /** What the call did, read from its payloads instead of printed as JSON (`@@T-824`). */
+    detail?: ISessionToolDetail;
     /** The tool call this section answers, so a result finds its own card. */
     toolCallId?: string;
     /** Whether the card shows its body. Only the newest section is open. */
@@ -50,6 +52,188 @@ export interface ISessionSection {
      * card is complete once its result arrived. */
     done: boolean;
 }
+
+/**
+ * A tool call as the page draws it, rather than as the JSON it arrived in.
+ *
+ * The two engines name the same work differently and their payloads carry different shapes: the realm
+ * tools take `path`/`content`, the copilot runtime's take `path`/`file_text` for a write and
+ * `old_str`/`new_str` for an edit, and a shell call's answer holds its exit code beside its output
+ * with a `<shellId: …>` trailer glued on. This is that difference read once, so a row can say "bash,
+ * exit 0, four lines" instead of showing braces (`@@T-824`).
+ */
+export interface ISessionToolDetail {
+    /** The command line a shell tool was asked to run. */
+    command?: string;
+    /** What the model said the call was for. */
+    description?: string;
+    /** The shell's exit code, where the runtime reported one. */
+    exitCode?: number;
+    /** Whether the tool called itself successful. */
+    success?: boolean;
+    /** The file the call touched. */
+    path?: string;
+    /** What a write put in the file. */
+    content?: string;
+    /** The two sides an edit named. */
+    oldText?: string;
+    newText?: string;
+    /** The unified diff the runtime returned for a write or an edit. */
+    diff?: string;
+    /** A shell's output, without the runtime's own trailer. */
+    output?: string;
+    /** A question put to a person, the options it offered, and what they answered. */
+    question?: string;
+    options?: string[];
+    answer?: string;
+}
+
+const stringAt = (
+    record: Record<string, unknown> | undefined,
+    ...keys: string[]
+): string | undefined => {
+    for (const key of keys) {
+        const value = record?.[key];
+        if (typeof value === 'string' && value !== '') return value;
+    }
+    return undefined;
+};
+
+const recordAt = (value: unknown): Record<string, unknown> | undefined =>
+    value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
+
+/** A call's arguments, in either vocabulary the engine kinds use. */
+const argumentsOf = (payload: unknown): Record<string, unknown> | undefined => {
+    const record = recordAt(payload);
+    return recordAt(record?.arguments) ?? recordAt(record?.args);
+};
+
+/**
+ * A shell's answer with the runtime's trailer removed.
+ *
+ * A copilot shell result ends with `<shellId: 13 completed with exit code 0>`, which is the runtime
+ * talking to itself: the exit code is a field of the same payload and belongs in a pill, not in the
+ * output a reader is reading. The id is a number for one runtime and a name for another, so the
+ * trailer is matched on its shape.
+ */
+export const shellOutputOf = (text: string): string =>
+    text
+        .split('\n')
+        .filter(line => !/^\s*<shellId: .*completed with exit code -?\d+>\s*$/.test(line))
+        .join('\n')
+        .replace(/\n+$/, '');
+
+/** Whether a result's `detailedContent` is a unified diff rather than prose. */
+const looksLikeDiff = (text: string): boolean => /(^|\n)(diff --git |@@ -)/.test(text);
+
+/**
+ * A result whose `content` is a JSON object as text.
+ *
+ * The copilot runtime reports whatever a custom tool returned as a stringified object —
+ * `{"promptId":…,"answerText":"yes"}` — so a person's answer is one parse away rather than a field
+ * beside the content (`@@T-824`).
+ */
+const wrappedOf = (content: string | undefined): Record<string, unknown> | undefined => {
+    if (content === undefined || !content.trimStart().startsWith('{')) return undefined;
+    try {
+        return recordAt(JSON.parse(content));
+    } catch {
+        return undefined;
+    }
+};
+
+/** The lines a diff adds and removes, which is the size of a change at a glance. */
+export const diffStatsOf = (diff: string): {added: number; removed: number} => {
+    let added = 0;
+    let removed = 0;
+    for (const line of diff.split('\n')) {
+        if (line.startsWith('+++') || line.startsWith('---')) continue;
+        if (line.startsWith('+')) added += 1;
+        else if (line.startsWith('-')) removed += 1;
+    }
+    return {added, removed};
+};
+
+/** What a tool call's arguments say about it, before its result arrives. */
+export const toolDetailOf = (payload: unknown): ISessionToolDetail | undefined => {
+    const args = argumentsOf(payload);
+    if (!args) return undefined;
+    const options = Array.isArray(args.options) ? args.options.map(String) : undefined;
+    const detail: ISessionToolDetail = {
+        ...(stringAt(args, 'command') !== undefined && {command: stringAt(args, 'command')}),
+        ...(stringAt(args, 'description') !== undefined && {
+            description: stringAt(args, 'description'),
+        }),
+        ...(stringAt(args, 'path', 'filePath') !== undefined && {
+            path: stringAt(args, 'path', 'filePath'),
+        }),
+        ...(stringAt(args, 'file_text', 'content', 'text') !== undefined && {
+            content: stringAt(args, 'file_text', 'content', 'text'),
+        }),
+        ...(stringAt(args, 'old_str', 'old_string') !== undefined && {
+            oldText: stringAt(args, 'old_str', 'old_string'),
+        }),
+        ...(stringAt(args, 'new_str', 'new_string') !== undefined && {
+            newText: stringAt(args, 'new_str', 'new_string'),
+        }),
+        ...(stringAt(args, 'question') !== undefined && {question: stringAt(args, 'question')}),
+        ...(options && options.length > 0 && {options}),
+    };
+    return Object.keys(detail).length > 0 ? detail : undefined;
+};
+
+/** What a tool call's result adds: an exit code, a diff, the output, the file it touched. */
+export const toolResultDetailOf = (
+    payload: unknown,
+    current: ISessionToolDetail | undefined,
+): ISessionToolDetail | undefined => {
+    const record = recordAt(payload);
+    if (!record) return current;
+    const result = recordAt(record.result);
+    const shell = recordAt(record.shellExecution);
+    const edits = Array.isArray(record.fileEdits) ? record.fileEdits : [];
+    const edited = recordAt(edits[0]);
+    // A copilot shell reports its code inside `shellExecution`; the realm's own `runCommand` returns
+    // it at the top level, and a page that knew only one shape showed no exit code for the other.
+    const exitCode =
+        typeof shell?.exitCode === 'number'
+            ? shell.exitCode
+            : typeof record.exitCode === 'number'
+              ? record.exitCode
+              : undefined;
+    const content = stringAt(result ?? record, 'content');
+    const detailed = stringAt(result ?? record, 'detailedContent');
+    const diff = detailed !== undefined && looksLikeDiff(detailed) ? detailed.trim() : undefined;
+    const output =
+        content === undefined
+            ? stringAt(result ?? record, 'stdout', 'output')
+            : shellOutputOf(content);
+    const answer =
+        stringAt(result, 'answerText', 'answer') ??
+        stringAt(wrappedOf(content), 'answerText', 'answer');
+    // A read answers with the file as a diff-shaped snapshot, so the file itself is what its card
+    // shows: the prose the runtime wrote about a write is not (`@@T-824`).
+    const readText = content !== undefined && content !== '' ? content : undefined;
+    const detail: ISessionToolDetail = {
+        ...current,
+        ...(exitCode !== undefined && {exitCode}),
+        ...(typeof record.success === 'boolean' && {success: record.success}),
+        ...(current?.path === undefined && stringAt(edited, 'path') !== undefined
+            ? {path: stringAt(edited, 'path')}
+            : {}),
+        ...(diff !== undefined && {diff}),
+        ...(answer !== undefined && {answer}),
+        ...(current?.content === undefined &&
+            readText !== undefined &&
+            readText !== '' && {
+                content: readText,
+            }),
+        // A shell's answer is its output; a file tool's is the prose the runtime wrote about it,
+        // which says nothing a reader cannot see from the diff it also returned.
+        ...(output !== undefined && exitCode !== undefined && output !== '' && {output}),
+    };
+    return Object.keys(detail).length > 0 ? detail : undefined;
+};
 
 const textOf = (payload: unknown): string => {
     if (typeof payload === 'string') return payload;
@@ -79,23 +263,54 @@ const NOTABLE_STATES = ['awaiting', 'failed', 'error', 'suspended', 'aborted', '
 /**
  * What a note says: the words a payload carries, or the payload itself.
  *
- * A state event is the one thing a session reports that a person has to act on — the question it is
- * waiting for is in `question` or `text`, and printing the envelope around it would hide the question
- * behind braces. Anything else is shown as the JSON it arrived as, so nothing is lost.
+ * Anything else is shown as the JSON it arrived as, so nothing is lost — a kind the page does not
+ * model still says what the engine reported. A state does not come through here: it has a title
+ * already, and its body is `stateDetailOf`.
  */
 const noteTextOf = (payload: unknown): string => {
-    const said = (payload as {text?: unknown; question?: unknown; message?: unknown} | undefined)
-        ?.text;
-    const question = (payload as {question?: unknown} | undefined)?.question;
-    const message = (payload as {message?: unknown} | undefined)?.message;
-    if (typeof said === 'string' && said !== '') return said;
-    if (typeof question === 'string' && question !== '') return question;
-    if (typeof message === 'string' && message !== '') return message;
+    const words = wordsOf(payload);
+    if (words !== '') return words;
     // A state and nothing else is already the title: printing `{"state":"running"}` under a heading
     // that says `running` is the envelope read aloud.
     const keys = Object.keys((payload as Record<string, unknown> | undefined) ?? {});
     if (keys.length > 0 && keys.every(key => key === 'state')) return '';
     return renderOf(payload) ?? '';
+};
+
+/** The words a payload carries, when it carries any. */
+const wordsOf = (payload: unknown): string => {
+    const record = (payload as Record<string, unknown> | undefined) ?? {};
+    for (const key of ['text', 'question', 'message', 'note']) {
+        const said = record[key];
+        if (typeof said === 'string' && said !== '') return said;
+    }
+    return '';
+};
+
+/**
+ * What a state says beside its name, as one line (`@@T-820`).
+ *
+ * `{state: 'running', mode: 'native'}` is one fact worth reading and an envelope worth losing: the
+ * title already says the state, so the body is the words the payload carries or its remaining
+ * scalars as `key value` pairs — never the JSON, which is what a reader of the first native run was
+ * shown. A state with nothing beside its name answers nothing, and the status bar is where it
+ * already is.
+ */
+const stateDetailOf = (payload: unknown): string => {
+    const words = wordsOf(payload);
+    if (words !== '') return words;
+    const record = payload as Record<string, unknown> | undefined;
+    if (!record || typeof record !== 'object') return '';
+    return Object.entries(record)
+        .filter(
+            ([key, value]) =>
+                key !== 'state' &&
+                (typeof value === 'string' ||
+                    typeof value === 'number' ||
+                    typeof value === 'boolean'),
+        )
+        .map(([key, value]) => `${key} ${String(value)}`)
+        .join(' · ');
 };
 
 const toolNameOf = (payload: unknown): string | undefined => {
@@ -128,7 +343,13 @@ export const sessionSectionsReduce = (
 ): ISessionSection[] => {
     const next = sections.map(section => ({...section}));
     const collapse = (): void => {
-        for (const section of next) section.open = false;
+        for (const section of next) {
+            section.open = false;
+            // A text section grows until another kind interrupts it, and the interruption is what
+            // completes it: a reasoning or a message that reported itself unfinished forever made a
+            // chat view draw a cursor under every answer ever given (`@@T-814`).
+            if (section.kind === 'reasoning' || section.kind === 'message') section.done = true;
+        }
     };
     const kind = APPENDS[event.kind];
     if (kind) {
@@ -153,6 +374,7 @@ export const sessionSectionsReduce = (
 
     if (event.kind === 'tool') {
         collapse();
+        const detail = toolDetailOf(event.payload);
         next.push({
             key: `tool-${toolCallIdOf(event.payload) ?? event.seq ?? next.length}`,
             kind: 'tool',
@@ -162,6 +384,7 @@ export const sessionSectionsReduce = (
                 (event.payload as {args?: unknown; arguments?: unknown} | undefined)?.args ??
                     (event.payload as {arguments?: unknown} | undefined)?.arguments,
             ),
+            ...(detail && {detail}),
             toolCallId: toolCallIdOf(event.payload),
             open: true,
             done: false,
@@ -183,6 +406,8 @@ export const sessionSectionsReduce = (
             target.result = renderOf(
                 (event.payload as {result?: unknown} | undefined)?.result ?? event.payload,
             );
+            const detail = toolResultDetailOf(event.payload, target.detail);
+            if (detail) target.detail = detail;
             target.done = true;
             // A card that answered folds to one line, which is the newest section's rule applied to
             // it: the reader asked for a result, not for a second body.
@@ -208,20 +433,36 @@ export const sessionSectionsReduce = (
 
     if (event.kind === 'status') {
         const state = (event.payload as {state?: unknown} | undefined)?.state;
-        // A state that carries nothing but its name is already on the status bar, so a
-        // transcript that drew it too would say "running" twice and bury the work between.
-        // A state carrying words — the question a run stopped on, why it failed — is the
-        // one thing a reader has to act on, and it is drawn as a callout (`@@D-1010`).
-        if (typeof state === 'string' && NOTABLE_STATES.indexOf(state) < 0) {
-            const text = noteTextOf(event.payload);
-            if (text === '') return next;
+        const notable = typeof state === 'string' && NOTABLE_STATES.indexOf(state) >= 0;
+        // A finished engine hands its answer to the status event, and that answer is the assistant's
+        // message — headings, tables and fences included. Read as a note it was one plain paragraph
+        // of literal markdown, so it is filed as a message and the page renders it as one
+        // (`@@T-821`).
+        const answer = state === 'finished' ? wordsOf(event.payload) : '';
+        if (answer !== '') {
+            collapse();
+            next.push({
+                key: `message-${event.seq ?? next.length}`,
+                kind: 'message',
+                text: answer,
+                open: true,
+                done: true,
+                startedAt: event.at,
+            });
+            return next;
         }
+        // A state carrying nothing but its name is already on the status bar, so a transcript that
+        // drew it too would say "running" twice and bury the work between (`@@D-1010`). A state a
+        // person has to act on keeps its row even when it says nothing else, because the state is
+        // the news (`@@T-820`).
+        const text = stateDetailOf(event.payload);
+        if (text === '' && !notable) return next;
         collapse();
         next.push({
             key: `status-${event.seq ?? next.length}`,
             kind: 'note',
             title: typeof state === 'string' ? state : 'status',
-            text: noteTextOf(event.payload),
+            text,
             open: true,
             done: true,
             startedAt: event.at,
@@ -249,6 +490,31 @@ export const sessionSectionsOf = (
     events: readonly ISessionEvent[],
     seed: readonly ISessionSection[] = [],
 ): ISessionSection[] => events.reduce(sessionSectionsReduce, [...seed]);
+
+/**
+ * Append a frame's events to the ones already read, dropping an event that arrived twice (`@@T-822`).
+ *
+ * A page reads a tail and then a subscription, and the two can overlap: the same `seq` delivered
+ * again becomes a second section carrying the same React key, which the browser reports as a
+ * duplicate and may render twice or drop. The topic's order is the only identity an event has —
+ * without a `seq` a repeat cannot be told from a twin, so such an event is kept.
+ */
+export const sessionEventsMerge = (
+    current: readonly ISessionEvent[],
+    incoming: readonly ISessionEvent[],
+): ISessionEvent[] => {
+    const seen = new Set<number>();
+    for (const event of current) if (event.seq !== undefined) seen.add(event.seq);
+    const fresh: ISessionEvent[] = [];
+    for (const event of incoming) {
+        if (event.seq !== undefined) {
+            if (seen.has(event.seq)) continue;
+            seen.add(event.seq);
+        }
+        fresh.push(event);
+    }
+    return fresh.length === 0 ? [...current] : [...current, ...fresh];
+};
 
 /** How many sections carry text the reader can see without expanding a card. */
 export const sessionSectionsOpen = (sections: readonly ISessionSection[]): number =>

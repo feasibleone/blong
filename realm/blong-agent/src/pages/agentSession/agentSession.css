@@ -280,16 +280,13 @@
     color: var(--agent-warn);
 }
 
-/* Reasoning is the session thinking aloud: quieter, and never the thing the eye lands on. */
+/* Reasoning is the session thinking aloud: quieter, and never the thing the eye lands on.
+
+   It is a tone, not a surface (`@@T-827`): a tinted box behind every thought competed with the answer
+the reader came for, and the italic plus the muted colour already say what it is. */
 .agent-section-reasoning {
     border-left: 2px solid var(--agent-line);
     border-radius: 0 var(--agent-radius) var(--agent-radius) 0;
-    background: var(--agent-sunken);
-}
-
-.agent-section-reasoning .agent-section-title {
-    font-weight: 500;
-    color: var(--agent-muted);
 }
 
 .agent-section-reasoning .agent-section-text {
@@ -547,6 +544,7 @@
 }
 
 @keyframes agent-pulse {
+
     0%,
     100% {
         opacity: 0.25;
@@ -616,4 +614,138 @@
 .agent-back:hover,
 .agent-more:hover {
     background: var(--agent-sunken);
+}
+
+/* ── a tool call's own surfaces ──────────────────────────────────────────── */
+
+/**
+ * What a call was, in a badge (`@@T-824`): a shell's exit code, the size of a file change, and the
+ * options a question offered. These are not the status bar's pills, so they carry their own border
+ * and size rather than inheriting a bar's rule.
+ */
+.agent-tools-row-head .agent-pill,
+.agent-ask-options .agent-pill {
+    flex: none;
+    padding: 0 0.4rem;
+    border: 1px solid var(--agent-line);
+    border-radius: 999px;
+    color: var(--agent-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.72rem;
+    line-height: 1.6;
+}
+
+.agent-exit-bad {
+    border-color: var(--tok-keyword);
+    color: var(--tok-keyword);
+}
+
+/* A zero exit is the tick alone (`@@T-827`): the border turned a page of successes into a page of
+   pills, and the one call that failed is what a reader has to find. The tick still has to sit on the
+   row's baseline at the row's size, so it keeps the type the pill had and loses only the border. */
+.agent-exit-ok {
+    flex: none;
+    padding: 0 0.1rem;
+    color: var(--tok-string);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.72rem;
+    line-height: 1.6;
+}
+
+/* A time nobody needs to read is a time that is not drawn; the one that is slow says so. */
+.agent-section-time[data-slow='yes'] {
+    color: var(--agent-warn);
+    font-weight: 600;
+}
+
+/* A caret is the affordance, not a fixture (`@@T-827`): it appears under the pointer, and stays while
+the section it opened is open, which is the only time the direction means something. */
+.agent-section-head .agent-caret,
+.agent-tools-row-head .agent-caret {
+    opacity: 0;
+    transition: opacity 120ms ease-in-out;
+}
+
+.agent-section-head:hover .agent-caret,
+.agent-tools-row-head:hover .agent-caret,
+.agent-section[data-open='yes']>.agent-section-head .agent-caret,
+.agent-tools-row[data-open='yes']>.agent-tools-row-head .agent-caret {
+    opacity: 1;
+}
+
+.agent-tools-row-stats {
+    flex: none;
+    color: var(--agent-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.74rem;
+}
+
+/* A file change as the runtime returned it: one line per diff line, coloured by what it does. */
+.agent-diff {
+    margin: 0.3rem 0;
+    padding: 0.4rem 0.6rem;
+    overflow-x: auto;
+    border: 1px solid var(--agent-line);
+    border-radius: 6px;
+    background: var(--agent-sunken);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.agent-diff-line {
+    white-space: pre;
+}
+
+.agent-diff-add {
+    background: rgba(26, 127, 55, 0.12);
+    color: var(--tok-string);
+}
+
+.agent-diff-del {
+    background: rgba(207, 34, 46, 0.12);
+    color: var(--tok-keyword);
+}
+
+.agent-diff-hunk,
+.agent-diff-file {
+    color: var(--agent-muted);
+}
+
+.agent-diff-file {
+    font-weight: 600;
+}
+
+.agent-diff-context {
+    color: var(--agent-fg);
+}
+
+/* A question a call put to a person: the question, the choices, and what came back. */
+.agent-ask-question {
+    margin: 0.3rem 0;
+    font-weight: 600;
+}
+
+.agent-ask-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.3rem 0;
+}
+
+.agent-ask-answer {
+    margin: 0.3rem 0;
+}
+
+.agent-ask-answer-label {
+    margin-right: 0.45rem;
+    color: var(--agent-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* A lone call is the same card a run holds, so its own top rule would double the section's. */
+.agent-section-tool>.agent-tools-row:first-child {
+    border-top: 0;
 }

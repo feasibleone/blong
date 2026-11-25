@@ -71,6 +71,9 @@ export default handler(({lib: {rowOut, uuidBuf}}) => ({
                 's.workerId',
                 's.modelName',
                 's.kafkaPartition',
+                // Where the session works, which is what lets a page show a tool's path the way the
+                // runtime sees it rather than as an absolute one (`@@T-820`).
+                's.workspacePath',
                 's.turnCount',
                 's.lastActivityAt',
                 's.updatedAt',

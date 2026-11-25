@@ -1,7 +1,15 @@
 import t from 'tap';
 
 import {sessionSectionsOf, type ISessionEvent, type ISessionSection as ICodeSection} from './sessionSections.ts';
-import {sessionRowsOf, toolRunSummary} from './toolGrouping.ts';
+import {
+    elapsedOf,
+    isSlow,
+    languageOfPath,
+    sessionRowsOf,
+    toolKindOf,
+    toolRunSummary,
+    toolStatsOf,
+} from './toolGrouping.ts';
 
 /**
  * Runs of tool calls, as rows (`@@D-1010`).
@@ -120,4 +128,73 @@ t.test('a run sums the durations the tools reported', async t => {
     ]);
     const [row] = sessionRowsOf(sections);
     t.equal((row as {durationMs: number}).durationMs, 600, 'the reported sum');
+});
+
+t.test('a tool is read as what it does, in either engine vocabulary', async t => {
+    // A step engine names the realm's tools and a copilot runtime names its own, and a page that
+    // drew both as JSON drew neither (`@@T-824`).
+    t.equal(toolKindOf('bash'), 'shell', 'the runtime calls a shell bash');
+    t.equal(toolKindOf('runCommand'), 'shell', 'the realm calls it runCommand');
+    t.equal(toolKindOf('create'), 'write', 'a write is a create on the runtime');
+    t.equal(toolKindOf('writeFile'), 'write', 'and writeFile in the realm');
+    t.equal(toolKindOf('edit'), 'edit', 'an edit is an edit');
+    t.equal(toolKindOf('view'), 'read', 'a read is a view');
+    t.equal(toolKindOf('askHuman'), 'ask', 'and a question is askHuman');
+    t.equal(toolKindOf('finish'), 'other', 'a tool nobody modelled stays other');
+    t.equal(toolKindOf(undefined), 'other', 'and so does a call with no name');
+    t.end();
+});
+
+t.test('a call is summarised by what it did, not by its JSON', async t => {
+    const diff = [
+        'diff --git a/notes.md b/notes.md',
+        '--- a/notes.md',
+        '+++ b/notes.md',
+        '@@ -1,2 +1,4 @@',
+        ' first',
+        '-old',
+        '+new',
+        '+third',
+        '',
+    ].join('\n');
+    t.equal(
+        toolStatsOf('bash', {exitCode: 0}),
+        'exit 0',
+        'a shell says whether it worked',
+    );
+    t.equal(
+        toolStatsOf('edit', {diff}),
+        '+2 −1',
+        'an edit says how much it changed',
+    );
+    t.equal(
+        toolStatsOf('create', {content: 'one\ntwo\n'}),
+        '3 lines · 8 B',
+        'a write with no diff to count says how big it is',
+    );
+    t.equal(
+        toolStatsOf('view', {content: 'only one line'}),
+        '1 line · 13 B',
+        'a read says how long the file is',
+    );
+    t.equal(toolStatsOf('bash', undefined), '', 'and an unanswered call says nothing');
+    t.equal(toolStatsOf('finish', {success: true}), '', 'a tool with nothing to size says nothing');
+    t.equal(languageOfPath('/w/notes.md'), 'md', 'a file names its own grammar');
+    t.equal(languageOfPath('/w/stats.py'), 'py', 'by its extension');
+    t.equal(languageOfPath(undefined), 'text', 'and a call with no file asks for plain text');
+    t.end();
+});
+
+t.test('a time is shown only when it is worth reading, and a slow one is marked', async t => {
+    // A transcript is mostly quick calls, and a duration on every one of them is noise (`@@T-827`).
+    t.equal(elapsedOf(0), '', 'nothing took no time worth printing');
+    t.equal(elapsedOf(999), '', 'a sub-second call shows no time at all');
+    t.equal(elapsedOf(1_000), '1.0s', 'a second is where the clock starts');
+    t.equal(elapsedOf(15_004), '15.0s', 'and it is counted in seconds');
+    t.equal(elapsedOf(59_400), '59.4s', 'up to the minute');
+    t.equal(elapsedOf(120_417), '2m 0s', 'past it, in minutes and seconds');
+    t.equal(elapsedOf(undefined), '', 'and an unstamped call says nothing');
+    t.equal(isSlow(29_000), false, 'under thirty seconds is not slow');
+    t.equal(isSlow(30_001), true, 'over it is');
+    t.end();
 });

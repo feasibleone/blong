@@ -221,6 +221,23 @@ const sessionOf = async (
     }
 };
 
+/**
+ * What a dispatch answered, once the framework's own envelope is off it.
+ *
+ * A local request answers with the pair a decoded result is packed into — `[payload, meta]`, the meta
+ * carrying `mtid: 'response'` — and a kind that read `result` off the pair found nothing: a question
+ * put to a person reached the model as `{ok: true}` while the answer sat in the first element
+ * (`@@T-823`). Anything that is not that pair is handed over as it came, because a handler is free to
+ * return an array of its own.
+ */
+export const engineDispatchResult = (answered: unknown): unknown => {
+    if (!Array.isArray(answered) || answered.length !== 2) return answered;
+    const envelope = answered[1] as {mtid?: unknown} | undefined;
+    return envelope !== null && typeof envelope === 'object' && envelope.mtid === 'response'
+        ? answered[0]
+        : answered;
+};
+
 export default adapter<IConfig>(api => {
     /**
      * The realm's tool boundary, reached by name (`@@D-975`).
@@ -234,8 +251,8 @@ export default adapter<IConfig>(api => {
      * `api.dispatch is not a function` at the moment a feed asked it to publish, which is the first
      * time anything used it (`@@F-832`).
      */
-    const dispatch: CopilotDispatch = (params, meta) =>
-        Promise.resolve(api.remote.dispatch(params, meta)) as Promise<unknown>;
+    const dispatch: CopilotDispatch = async (params, meta) =>
+        engineDispatchResult(await api.remote.dispatch(params, meta));
 
     return {
         activation: {

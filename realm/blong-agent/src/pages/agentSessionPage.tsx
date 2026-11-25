@@ -34,11 +34,41 @@ import {
     sessionToolsOf,
 } from './agentSession/sessionMetrics.js';
 import {
+    sessionEventsMerge,
     sessionSectionsOf,
     type ISessionEvent,
     type ISessionSection,
+    type ISessionToolDetail,
 } from './agentSession/sessionSections.js';
-import {sessionRowsOf, type SessionRow} from './agentSession/toolGrouping.js';
+import {
+    elapsedOf,
+    isSlow,
+    languageOfPath,
+    sessionRowsOf,
+    toolKindOf,
+    toolStatsOf,
+    type SessionRow,
+} from './agentSession/toolGrouping.js';
+
+/**
+ * How long a call or a run took (`@@T-827`).
+ *
+ * A time under a second is not drawn at all, and a slow one is marked so the eye finds it: a
+ * transcript full of `0 ms` says nothing about which command is the expensive one.
+ */
+function Elapsed({ms}: {ms: number | undefined}): React.ReactElement | null {
+    const label = elapsedOf(ms);
+    if (label === '') return null;
+    return (
+        <span
+            className="agent-section-time"
+            data-slow={isSlow(ms) ? 'yes' : undefined}
+            title={ms === undefined ? undefined : `${ms} ms`}
+        >
+            {label}
+        </span>
+    );
+}
 
 /** The handler proxy, typed for a two-argument call. */
 type ICall = (params: object, meta: object) => Promise<unknown>;
@@ -52,6 +82,8 @@ interface ISessionRow {
     workerId?: string;
     personaId?: string;
     modelName?: string;
+    /** The directory the session works in, so a tool's absolute path can be shown relative to it. */
+    workspacePath?: string;
     turnCount?: number;
     lastActivityAt?: string;
     updatedAt?: string;
@@ -117,18 +149,34 @@ const since = (at: string | undefined): string => {
  * A tool's arguments are JSON, and the JSON a person wants to read is the command inside it — the
  * braces are the shape of the record, not the thing the tool was asked to do. A note's title already
  * says what it is, so it summarises as nothing rather than as its own payload.
+ *
+ * A path under the session's own workspace is shown relative to it: a remote run reports
+ * `/var/lib/blong/workspaces/ping.py`, and every row of that session would repeat the prefix the
+ * header already implies (`@@T-820`).
  */
-const summaryOf = (section: ISessionSection): string => {
+const summaryOf = (section: ISessionSection, workspace?: string): string => {
     if (section.kind === 'note') return '';
     if (section.kind === 'tool') {
+        // The detail is the payload read once, so a command or a path is named from the field that
+        // holds it rather than by matching a regex against the JSON (`@@T-824`).
+        const detail = section.detail;
+        const named = detail?.command ?? detail?.path ?? detail?.question;
+        if (named !== undefined) return within(named, workspace);
         const args = section.args ?? '';
         const command = /"(?:command|cmd|path|query)"\s*:\s*"([^"]+)"/.exec(args)?.[1];
-        if (command !== undefined) return command;
+        if (command !== undefined) return within(command, workspace);
         return args.replace(/\s+/g, ' ').trim().slice(0, 160);
     }
     const source = section.result ?? section.text;
     const first = (source ?? '').split('\n').find(line => line.trim() !== '') ?? '';
     return first.trim().slice(0, 160);
+};
+
+/** A path inside the session's workspace, named from the workspace down. */
+const within = (path: string, workspace: string | undefined): string => {
+    if (workspace === undefined || workspace === '') return path;
+    const prefix = workspace.endsWith('/') ? workspace : `${workspace}/`;
+    return path.startsWith(prefix) ? path.slice(prefix.length) : path;
 };
 
 /** One coloured line of code, as the tokens the highlighter produced for it. */
@@ -340,11 +388,14 @@ function Section({
     open,
     onToggle,
     latest,
+    workspace,
 }: {
     section: ISessionSection;
     open: boolean;
     onToggle: () => void;
     latest: boolean;
+    /** The directory the session works in, so a tool's path is shown from the workspace down. */
+    workspace?: string;
 }): React.ReactElement {
     // A message is the answer and a note is the thing a person has to act on — a question, a state —
     // so both are always shown. A tool and a reasoning block are the working out, and their header is
@@ -368,20 +419,24 @@ function Section({
                     <span className="agent-caret" />
                 )}
                 <i className={`agent-icon ${ICONS[section.kind]}`} />
-                <span className="agent-section-title">{section.title ?? section.kind}</span>
-                {!shown && summaryOf(section) !== '' && (
-                    <span className="agent-section-summary">{summaryOf(section)}</span>
+                {/* Thinking is not a section a reader scans for by name: the icon says it, and a
+                    heading reading "reasoning" above every thought is noise (`@@T-827`). */}
+                {section.kind !== 'reasoning' && (
+                    <span className="agent-section-title">{section.title ?? section.kind}</span>
                 )}
-                {duration !== undefined && (
-                    <span className="agent-section-time">{duration} ms</span>
+                {!shown && summaryOf(section, workspace) !== '' && (
+                    <span className="agent-section-summary">{summaryOf(section, workspace)}</span>
                 )}
+                <Elapsed ms={duration} />
             </div>
         );
     return (
         <section
             className={`agent-section agent-section-${section.kind}`}
             data-done={section.done ? 'yes' : 'no'}
-            data-interrupt={section.kind === 'note' && section.title === 'awaiting' ? 'yes' : undefined}
+            data-interrupt={
+                section.kind === 'note' && section.title === 'awaiting' ? 'yes' : undefined
+            }
             data-kind={section.kind}
             data-latest={latest ? 'yes' : 'no'}
             data-open={shown ? 'yes' : 'no'}
@@ -396,13 +451,15 @@ function Section({
                 >
                     <i className={`agent-caret pi ${open ? 'pi-angle-down' : 'pi-angle-right'}`} />
                     <i className={`agent-icon ${ICONS[section.kind]}`} />
-                    <span className="agent-section-title">{section.title ?? section.kind}</span>
-                    {!open && summaryOf(section) !== '' && (
-                        <span className="agent-section-summary">{summaryOf(section)}</span>
+                    {section.kind !== 'reasoning' && (
+                        <span className="agent-section-title">{section.title ?? section.kind}</span>
                     )}
-                    {duration !== undefined && (
-                        <span className="agent-section-time">{duration} ms</span>
+                    {!open && summaryOf(section, workspace) !== '' && (
+                        <span className="agent-section-summary">
+                            {summaryOf(section, workspace)}
+                        </span>
                     )}
+                    <Elapsed ms={duration} />
                 </button>
             ) : (
                 head
@@ -446,42 +503,48 @@ function ToolRun({
     open,
     onToggle,
     latest,
+    workspace,
 }: {
     run: Extract<SessionRow, {kind: 'tools'}>;
     open: boolean;
     onToggle: () => void;
     latest: boolean;
+    workspace?: string;
 }): React.ReactElement {
     return (
         <section
-            className='agent-section agent-tools'
+            className="agent-section agent-tools"
             data-done={run.done ? 'yes' : 'no'}
-            data-kind='tools'
+            data-kind="tools"
             data-latest={latest ? 'yes' : 'no'}
             data-open={open ? 'yes' : 'no'}
-            data-role='tool'
+            data-role="tool"
         >
             <button
-                className='agent-section-head'
+                className="agent-section-head"
                 onClick={onToggle}
-                type='button'
+                type="button"
             >
                 <i className={`agent-caret pi ${open ? 'pi-angle-down' : 'pi-angle-right'}`} />
-                <i className='agent-icon pi pi-wrench' />
-                <span className='agent-section-title'>{run.title}</span>
+                <i className="agent-icon pi pi-wrench" />
+                <span className="agent-section-title">{run.title}</span>
                 {!open && (
-                    <span className='agent-section-summary'>
-                        {run.calls.map(call => summaryOf(call)).filter(Boolean).join(' · ')}
+                    <span className="agent-section-summary">
+                        {run.calls
+                            .map(call => summaryOf(call, workspace))
+                            .filter(Boolean)
+                            .join(' · ')}
                     </span>
                 )}
-                <span className='agent-section-time'>{run.durationMs} ms</span>
+                <Elapsed ms={run.durationMs} />
             </button>
             {open && (
-                <div className='agent-section-body'>
+                <div className="agent-section-body">
                     {run.calls.map(call => (
                         <ToolCallRow
                             call={call}
                             key={call.key}
+                            workspace={workspace}
                         />
                     ))}
                 </div>
@@ -490,48 +553,219 @@ function ToolRun({
     );
 }
 
-/** One call inside a run: its name and command, then — opened — its arguments and result. */
-function ToolCallRow({call}: {call: ISessionSection}): React.ReactElement {
+/**
+ * Whether the call worked (`@@T-824`, `@@T-827`).
+ *
+ * A shell's exit code is the answer, and almost every one is zero: a bordered pill reading `✓ 0` on
+ * every row was nine-tenths of the marks on the page, so a zero is the tick alone and a failure is
+ * the one that keeps its pill and its number.
+ */
+function ExitPill({detail}: {detail?: ISessionToolDetail}): React.ReactElement | null {
+    const code = detail?.exitCode;
+    const failed = code !== undefined ? code !== 0 : detail?.success === false;
+    const said =
+        code !== undefined
+            ? String(code)
+            : detail?.success === undefined
+              ? undefined
+              : failed
+                ? 'failed'
+                : 'ok';
+    if (said === undefined) return null;
+    return (
+        <span
+            className={failed ? 'agent-pill agent-exit agent-exit-bad' : 'agent-exit agent-exit-ok'}
+            data-exit={code ?? (failed ? 1 : 0)}
+            title={code !== undefined ? `exit ${code}` : said}
+        >
+            {failed ? `✗${code !== undefined ? ` ${said}` : ''}` : '✓'}
+        </span>
+    );
+}
+
+/** A unified diff, coloured by what each line does (`@@T-824`). */
+function Diff({text}: {text: string}): React.ReactElement {
+    const lines = useMemo(() => text.split('\n'), [text]);
+    return (
+        <pre className="agent-diff">
+            {lines.map((line, index) => {
+                const mark = /^\+\+\+|^---/.test(line)
+                    ? 'file'
+                    : line.startsWith('+')
+                      ? 'add'
+                      : line.startsWith('-')
+                        ? 'del'
+                        : line.startsWith('@@')
+                          ? 'hunk'
+                          : 'context';
+                return (
+                    <div
+                        className={`agent-diff-line agent-diff-${mark}`}
+                        key={index}
+                    >
+                        {line === '' ? '\u00a0' : line}
+                    </div>
+                );
+            })}
+        </pre>
+    );
+}
+
+/** One call inside a run: what it was asked to do, then — opened — what it did. */
+function ToolCallRow({
+    call,
+    workspace,
+}: {
+    call: ISessionSection;
+    workspace?: string;
+}): React.ReactElement {
     const [open, setOpen] = useState(false);
+    const detail = call.detail;
+    const kind = toolKindOf(call.title);
+    const stats = toolStatsOf(call.title, detail);
     const duration =
         call.durationMs ??
         (call.startedAt !== undefined && call.endedAt !== undefined
             ? call.endedAt - call.startedAt
             : undefined);
-    return (
-        <div
-            className='agent-tools-row'
-            data-done={call.done ? 'yes' : 'no'}
-            data-open={open ? 'yes' : 'no'}
-        >
-            <button
-                className='agent-tools-row-head'
-                onClick={() => setOpen(current => !current)}
-                type='button'
-            >
-                <i className={`agent-caret pi ${open ? 'pi-angle-down' : 'pi-angle-right'}`} />
-                <span className='agent-tools-row-name'>{call.title ?? 'tool'}</span>
-                <span className='agent-tools-row-command'>{summaryOf(call)}</span>
-                {duration !== undefined && (
-                    <span className='agent-section-time'>{duration} ms</span>
+    // A call whose payload the page understood never falls back to its raw result (`@@T-827`): the
+    // runtime's answer for a silent command is a JSON envelope, and a reader who asked for
+    // `sleep 15` was shown `{"content":"\n", "detailedContent":…}` under it.
+    const output = detail === undefined ? (call.result ?? '') : (detail.output ?? '');
+    const body =
+        kind === 'shell' ? (
+            <>
+                {detail?.command !== undefined && (
+                    <CodeBlock
+                        language="bash"
+                        text={detail.command}
+                    />
                 )}
-            </button>
-            {open && (
-                <div className='agent-tools-row-body'>
+                {output !== '' && (
+                    <CodeBlock
+                        language="text"
+                        text={output}
+                    />
+                )}
+            </>
+        ) : kind === 'write' ? (
+            detail?.content !== undefined ? (
+                <CodeBlock
+                    language={languageOfPath(detail.path)}
+                    text={detail.content}
+                />
+            ) : detail?.diff !== undefined ? (
+                <Diff text={detail.diff} />
+            ) : (
+                <>
                     {call.args !== undefined && (
                         <CodeBlock
-                            language='json'
+                            language="json"
                             text={call.args}
                         />
                     )}
-                    {call.result !== undefined && (
+                </>
+            )
+        ) : kind === 'edit' ? (
+            detail?.diff !== undefined ? (
+                <Diff text={detail.diff} />
+            ) : (
+                <>
+                    {detail?.oldText !== undefined && (
                         <CodeBlock
-                            language='text'
-                            text={call.result}
+                            language={languageOfPath(detail.path)}
+                            text={detail.oldText}
                         />
                     )}
-                </div>
-            )}
+                    {detail?.newText !== undefined && (
+                        <CodeBlock
+                            language={languageOfPath(detail.path)}
+                            text={detail.newText}
+                        />
+                    )}
+                    {detail?.oldText === undefined && call.args !== undefined && (
+                        <CodeBlock
+                            language="json"
+                            text={call.args}
+                        />
+                    )}
+                </>
+            )
+        ) : kind === 'read' ? (
+            <CodeBlock
+                language={languageOfPath(detail?.path)}
+                text={detail?.content ?? call.result ?? ''}
+            />
+        ) : kind === 'ask' ? (
+            <>
+                {detail?.question !== undefined ? (
+                    <p className="agent-ask-question">{detail.question}</p>
+                ) : (
+                    call.args !== undefined && (
+                        <CodeBlock
+                            language="json"
+                            text={call.args}
+                        />
+                    )
+                )}
+                {detail?.options !== undefined && (
+                    <div className="agent-ask-options">
+                        {detail.options.map(option => (
+                            <span
+                                className="agent-pill"
+                                key={option}
+                            >
+                                {option}
+                            </span>
+                        ))}
+                    </div>
+                )}
+                {detail?.answer !== undefined && (
+                    <p className="agent-ask-answer">
+                        <span className="agent-ask-answer-label">answer</span>
+                        {detail.answer}
+                    </p>
+                )}
+            </>
+        ) : (
+            <>
+                {call.args !== undefined && (
+                    <CodeBlock
+                        language="json"
+                        text={call.args}
+                    />
+                )}
+                {call.result !== undefined && (
+                    <CodeBlock
+                        language="text"
+                        text={call.result}
+                    />
+                )}
+            </>
+        );
+    return (
+        <div
+            className="agent-tools-row"
+            data-done={call.done ? 'yes' : 'no'}
+            data-kind={kind}
+            data-open={open ? 'yes' : 'no'}
+            data-tool={call.title ?? 'tool'}
+        >
+            <button
+                className="agent-tools-row-head"
+                onClick={() => setOpen(current => !current)}
+                type="button"
+            >
+                <i className={`agent-caret pi ${open ? 'pi-angle-down' : 'pi-angle-right'}`} />
+                <span className="agent-tools-row-name">{call.title ?? 'tool'}</span>
+                <span className="agent-tools-row-command">{summaryOf(call, workspace)}</span>
+                <ExitPill detail={detail} />
+                {stats !== '' && kind !== 'shell' && (
+                    <span className="agent-tools-row-stats">{stats}</span>
+                )}
+                <Elapsed ms={duration} />
+            </button>
+            {open && <div className="agent-tools-row-body">{body}</div>}
         </div>
     );
 }
@@ -562,10 +796,12 @@ function StatusBar({row, events}: {row: ISessionRow | undefined; events: ISessio
     );
     const cells = [
         {label: 'turns', value: String(header.turns)},
-        {label: 'tokens', value: String(header.tokensOut)},
-        {label: 'context', value: String(header.contextLength)},
+        // An em dash is a cell the engine never answered, which is not the same fact as a run that
+        // cost nothing (`@@T-820`).
+        {label: 'tokens', value: header.tokensReported ? String(header.tokensOut) : '—'},
+        {label: 'context', value: header.tokensReported ? String(header.contextLength) : '—'},
         {label: 'tools', value: String(header.tools.reduce((sum, tool) => sum + tool.count, 0))},
-        {label: 'tool time', value: `${header.toolTotalMs} ms`},
+        {label: 'tool time', value: elapsedOf(header.toolTotalMs) || '0s'},
         ...(header.runningTool
             ? [
                   {
@@ -645,7 +881,9 @@ function SessionView({row, onBack}: {row: ISessionRow; onBack: () => void}): Rea
                     if (cancelled) return;
                     cursorRef.current = frame.last;
                     if (!frame.events || frame.events.length === 0) continue;
-                    setEvents(current => [...current, ...(frame.events ?? [])]);
+                    // A tail and a subscription overlap, and a repeated event becomes a second
+                    // section under one key (`@@T-822`).
+                    setEvents(current => sessionEventsMerge(current, frame.events ?? []));
                 }
                 setStream({open: false, end: 'ended'});
             } catch (problem) {
@@ -689,7 +927,27 @@ function SessionView({row, onBack}: {row: ISessionRow; onBack: () => void}): Rea
                 )}
                 {rows.map((displayRow, index) => {
                     const latest = index === rows.length - 1;
-                    if (displayRow.kind === "tools")
+                    // A lone call is a card, not a group of one, but it is the same card: the row's
+                    // header, its badges and its body are what a call *is*, and a section that drew
+                    // its arguments as JSON again would undo every shape the run card learned
+                    // (`@@T-827`).
+                    if (displayRow.kind === 'section' && displayRow.section.kind === 'tool')
+                        return (
+                            <section
+                                className="agent-section agent-section-tool"
+                                data-done={displayRow.section.done ? 'yes' : 'no'}
+                                data-kind="tool"
+                                data-latest={latest ? 'yes' : 'no'}
+                                data-role="tool"
+                                key={displayRow.key}
+                            >
+                                <ToolCallRow
+                                    call={displayRow.section}
+                                    workspace={row.workspacePath}
+                                />
+                            </section>
+                        );
+                    if (displayRow.kind === 'tools')
                         return (
                             <ToolRun
                                 key={displayRow.key}
@@ -702,6 +960,7 @@ function SessionView({row, onBack}: {row: ISessionRow; onBack: () => void}): Rea
                                 }
                                 open={toggled[displayRow.key] ?? false}
                                 run={displayRow}
+                                workspace={row.workspacePath}
                             />
                         );
                     return (
@@ -711,11 +970,14 @@ function SessionView({row, onBack}: {row: ISessionRow; onBack: () => void}): Rea
                             onToggle={() =>
                                 setToggled(current => ({
                                     ...current,
-                                    [displayRow.key]: !(current[displayRow.key] ?? displayRow.section.open),
+                                    [displayRow.key]: !(
+                                        current[displayRow.key] ?? displayRow.section.open
+                                    ),
                                 }))
                             }
                             open={toggled[displayRow.key] ?? displayRow.section.open}
                             section={displayRow.section}
+                            workspace={row.workspacePath}
                         />
                     );
                 })}
@@ -725,8 +987,8 @@ function SessionView({row, onBack}: {row: ISessionRow; onBack: () => void}): Rea
                  * when the last section is reasoning, which is itself the sign of work in progress —
                  * the rule CopilotKit's message view uses, and the reason it exists.
                  */}
-                {row.status === "running" &&
-                    sections[sections.length - 1]?.kind !== "reasoning" && (
+                {row.status === 'running' &&
+                    sections[sections.length - 1]?.kind !== 'reasoning' && (
                         <span
                             aria-label="working"
                             className="agent-cursor"

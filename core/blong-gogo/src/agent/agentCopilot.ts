@@ -186,10 +186,15 @@ export const copilotToolOf = (
         // The call is the realm's to interpret, including the question that parks it, so the handler
         // does nothing but hand it over and translate the answer back.
         skipPermission: true,
-        handler: async (args: unknown) => {
+        handler: async (args: unknown, invocation?: {toolCallId?: unknown}) => {
+            // The runtime's own id for the call travels with the invocation and the realm stores it
+            // as the pending call, which is what a resume and a card both match on (`@@T-823`).
+            const toolCallId =
+                typeof invocation?.toolCallId === 'string' ? invocation.toolCallId : undefined;
             const ran = await call({
                 toolName: definition.toolName,
                 args: args ?? {},
+                ...(toolCallId !== undefined && {toolCallId}),
             });
             const result = ran?.result as {suspended?: boolean; promptId?: string} | undefined;
             if (result?.suspended) {
@@ -303,25 +308,104 @@ export const copilotSession = async (
     sessions.set(key, current);
 
     const events: Array<{kind: string; payload?: unknown}> = [];
+    /**
+     * The calls that have started and not answered, so a result can name its tool and say how long
+     * it took.
+     *
+     * The SDK's `tool.execution_complete` carries neither — the start carries `toolName`, and the
+     * gap between the two events is the only duration a native run has. Attaching them here, where
+     * both are in hand, is what lets a projection and a page read one shape whichever engine wrote
+     * it, instead of each of them learning this kind's payload (`@@T-819`).
+     */
+    const started = new Map<string, {toolName?: string; at: number}>();
     // The feed the realm watches is the deltas; `events` stays what the checkpoint and the resume
     // trace carry, so the two do not compete for one list (`@@D-993`).
     const report = deps.report ?? (() => undefined);
+    /**
+     * Whether this runtime streams deltas, which decides where a message is reported from.
+     *
+     * A runtime either streams a message in deltas or hands it over whole, and a session that
+     * reported both would show every sentence twice. Measured against runtime 1.0.114 there are no
+     * delta events at all — the narration between tool calls is one `assistant.message` per turn —
+     * so the whole message is the source, and a delta is used where a runtime sends them
+     * (`@@T-824`).
+     */
+    const streamed = {message: false, reasoning: false};
+    // What the model cost, from the usage the runtime reports per model call: the prompt size of the
+    // last call is what the next one starts from, so the largest is the context, and the outputs add
+    // up (`@@T-594`).
+    const usage = {inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, reasoningTokens: 0};
+    /**
+     * The last message this run put in the feed, so the final answer is not said twice.
+     *
+     * `sendAndWait` answers with the last assistant message, which is also the `assistant.message`
+     * that already reached the feed: reporting it on the state as well gave a page two copies of one
+     * paragraph (`@@T-825`).
+     */
+    let lastMessageText = '';
     const offMessage = current.on('assistant.message', event => {
-        events.push({kind: 'text', payload: {text: event.data.content}});
+        const text = event.data.content;
+        if (typeof text !== 'string' || text === '') return;
+        events.push({kind: 'text', payload: {text}});
+        lastMessageText = text;
+        if (!streamed.message) report('message', {text});
     });
     const offDelta = current.on('assistant.message_delta', event => {
+        streamed.message = true;
+        lastMessageText += String(event.data.deltaContent ?? '');
         report('message', {text: event.data.deltaContent});
     });
-    const offReasoning = current.on('assistant.reasoning_delta', event => {
+    const offReasoning = current.on('assistant.reasoning', event => {
+        const text = event.data.content;
+        if (typeof text !== 'string' || text === '') return;
+        if (!streamed.reasoning) report('reasoning', {text});
+    });
+    const offReasoningDelta = current.on('assistant.reasoning_delta', event => {
+        streamed.reasoning = true;
         report('reasoning', {text: event.data.deltaContent});
     });
+    const offUsage = current.on('assistant.usage', event => {
+        const data = event.data as
+            | {
+                  inputTokens?: unknown;
+                  outputTokens?: unknown;
+                  cacheReadTokens?: unknown;
+                  reasoningTokens?: unknown;
+              }
+            | undefined;
+        const size = (value: unknown): number =>
+            typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
+        usage.inputTokens = Math.max(usage.inputTokens, size(data?.inputTokens));
+        usage.outputTokens += size(data?.outputTokens);
+        usage.cacheReadTokens += size(data?.cacheReadTokens);
+        usage.reasoningTokens += size(data?.reasoningTokens);
+    });
     const offTool = current.on('tool.execution_start', event => {
+        const data = event.data as {toolCallId?: unknown; toolName?: unknown} | undefined;
+        if (typeof data?.toolCallId === 'string')
+            started.set(data.toolCallId, {
+                at: Date.now(),
+                ...(typeof data.toolName === 'string' ? {toolName: data.toolName} : {}),
+            });
         events.push({kind: 'tool', payload: event.data});
         report('tool', event.data);
     });
     const offToolDone = current.on('tool.execution_complete', event => {
-        events.push({kind: 'tool-result', payload: event.data});
-        report('tool-result', event.data);
+        const data = event.data as
+            | {toolCallId?: unknown; toolName?: unknown; durationMs?: unknown}
+            | undefined;
+        const call =
+            typeof data?.toolCallId === 'string' ? started.get(data.toolCallId) : undefined;
+        if (typeof data?.toolCallId === 'string') started.delete(data.toolCallId);
+        const payload: Record<string, unknown> = {
+            ...(event.data as unknown as Record<string, unknown>),
+            // What the start knew and the completion does not, so a consumer never has to pair the
+            // two events to name the tool or time it.
+            ...(data?.toolName === undefined && call?.toolName ? {toolName: call.toolName} : {}),
+            ...(data?.durationMs === undefined && call ? {durationMs: Date.now() - call.at} : {}),
+        };
+        events.push({kind: 'tool-result', payload});
+        report('tool-result', payload);
     });
 
     let final: {data?: {content?: string}} | undefined;
@@ -337,6 +421,8 @@ export const copilotSession = async (
         offMessage?.();
         offDelta?.();
         offReasoning?.();
+        offReasoningDelta?.();
+        offUsage?.();
         offTool?.();
         offToolDone?.();
     }
@@ -349,7 +435,25 @@ export const copilotSession = async (
                 | undefined
         )?.text;
 
-    report('status', {state: parked.promptId ? 'awaiting-human' : 'finished', text});
+    const reported = usage.inputTokens > 0 || usage.outputTokens > 0;
+    // The message already carried the answer where the runtime sent one, and a state exists to say
+    // how the run ended, not to repeat what was read (`@@T-825`).
+    const alreadySaid =
+        typeof text === 'string' && text !== '' && lastMessageText.trim() === text.trim();
+    report('status', {
+        state: parked.promptId ? 'awaiting-human' : 'finished',
+        ...(typeof text === 'string' && !alreadySaid && {text}),
+        // The runtime counts what the model cost, and a header that said "no usage" for every native
+        // run was reporting the harness's silence rather than a free session (`@@T-594`).
+        ...(reported && {
+            usage: {
+                inputTokens: usage.inputTokens,
+                outputTokens: usage.outputTokens,
+                cacheReadTokens: usage.cacheReadTokens,
+                reasoningTokens: usage.reasoningTokens,
+            },
+        }),
+    });
     return {
         text,
         sessionKey: current.sessionId,

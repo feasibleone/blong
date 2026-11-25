@@ -36,8 +36,8 @@ matched to predate the change: `@@T-799` is the scanner `@@D-1011` replaced, and
 the grammars arrive as one registry instead of one subpath per language. Nothing about a
 code-colouring dependency is still open to decide.
 
-Evidence: @@Q-002 (0.772) @@D-1011 (0.752) @@T-815 (0.708) @@F-521 (0.687) @@T-470 (0.662) @@F-647
-(0.652) @@F-001 (0.647)
+Evidence: @@Q-002 (0.772) @@D-1011 (0.752) @@F-521 (0.687) @@T-470 (0.662) @@F-647 (0.652) @@F-001
+(0.647)
 
 Certainty: 0.85
 

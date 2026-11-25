@@ -35,7 +35,7 @@ role:
   Agent Customer: agentView,loginCapability
   Agent Guest: agentView,loginCapability
 capability:
-  agentManage: agentSessionGet,agentSessionRun,agentTicketClaim,agentTicketRelease,agentAnswerReceive,agentRecoveryScan
-  agentMaintain: agentSessionGet,agentTicketClaim,agentTicketRelease,agentAnswerReceive
-  agentView: agentSessionGet
+  agentManage: agentSessionGet,agentSessionFind,agentSessionWatch,agentSessionRun,agentTicketClaim,agentTicketRelease,agentAnswerReceive,agentRecoveryScan
+  agentMaintain: agentSessionGet,agentSessionFind,agentSessionWatch,agentTicketClaim,agentTicketRelease,agentAnswerReceive
+  agentView: agentSessionGet,agentSessionFind,agentSessionWatch
 

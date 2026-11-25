@@ -29,6 +29,14 @@ export interface ISessionHeader {
     tokensOut: number;
     /** What the context holds: in plus out, which is what a window is measured against. */
     contextLength: number;
+    /**
+     * Whether anything a token count could come from was reported at all.
+     *
+     * A native run whose harness streams whole messages and no deltas reports no usage, and the
+     * page cannot tell that from a run that cost nothing — so the cell says which it is
+     * (`@@T-820`).
+     */
+    tokensReported: boolean;
     tools: ISessionToolUse[];
     /** The total time spent inside tools, which is where a session's wall clock goes. */
     toolTotalMs: number;
@@ -65,6 +73,7 @@ export const sessionHeaderOf = (
     let tokensIn = 0;
     let tokensOut = 0;
     let usageSeen = false;
+    let textSeen = false;
     const tools = new Map<string, ISessionToolUse>();
     let running: {name: string; startedAt: number} | undefined;
 
@@ -83,7 +92,9 @@ export const sessionHeaderOf = (
             continue;
         }
         if (event.kind === 'message' || event.kind === 'text') {
-            tokensOut += Math.ceil(textOf(event.payload).length / CHARS_PER_TOKEN);
+            const text = textOf(event.payload);
+            if (text !== '') textSeen = true;
+            tokensOut += Math.ceil(text.length / CHARS_PER_TOKEN);
             continue;
         }
         if (event.kind === 'tool') {
@@ -119,6 +130,7 @@ export const sessionHeaderOf = (
         tokensIn,
         tokensOut,
         contextLength: tokensIn + tokensOut,
+        tokensReported: usageSeen || textSeen,
         tools: [...tools.values()].sort((first, second) => second.count - first.count),
         toolTotalMs,
         ...(running && {
@@ -151,6 +163,7 @@ export const sessionHeaderMerge = (
         turns,
         tokensOut,
         contextLength: live.tokensIn + tokensOut,
+        tokensReported: live.tokensReported || tokensOut > 0,
         tools,
         toolTotalMs:
             live.tools.length > 0

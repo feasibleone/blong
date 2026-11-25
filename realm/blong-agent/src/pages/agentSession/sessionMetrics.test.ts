@@ -101,3 +101,27 @@ t.test('the tools column reads back as a list, JSON text or object', async t => 
     );
     t.same(sessionToolsOf(undefined), [], 'and an absent column is no tools');
 });
+
+t.test('a stream with nothing to count is marked unreported, not zero', async t => {
+    // The first native run's harness sent whole messages and no deltas, so no event carried anything
+    // a token count could come from. A zero there reads as "this run was free", which is a different
+    // fact from "nobody said" (`@@T-820`).
+    const silent = sessionHeaderOf([
+        {seq: 1, kind: 'status', payload: {state: 'running', mode: 'native'}, at: 1_000},
+        {seq: 2, kind: 'tool', payload: {toolName: 'create', toolCallId: 'c1'}, at: 1_010},
+        {seq: 3, kind: 'tool-result', payload: {toolCallId: 'c1', toolName: 'create', durationMs: 77}, at: 1_020},
+    ]);
+    t.equal(silent.tokensOut, 0, 'nothing was estimated');
+    t.equal(silent.tokensReported, false, 'and the header says so rather than claiming zero');
+    t.equal(silent.toolTotalMs, 77, 'while the tool time is the run’s own report');
+
+    const spoken = sessionHeaderOf([
+        {seq: 1, kind: 'message', payload: {text: 'Hello there'}, at: 1_000},
+    ]);
+    t.equal(spoken.tokensReported, true, 'a delta is evidence enough');
+    t.equal(
+        sessionHeaderMerge({messageTokens: 40}, silent).tokensReported,
+        true,
+        'and a folded projection with tokens counts as reported too',
+    );
+});

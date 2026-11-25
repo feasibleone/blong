@@ -89,8 +89,10 @@ export default handler(context => {
                             engineMode: 'step',
                             modelName: 'sim',
                             workerId: 'ui-test',
-                            // The column is not nullable in a table the sync only widens.
-                            workspacePath: '',
+                            // The directory the calls name, so the page shortens their paths to
+                            // the workspace rather than repeating the prefix on every row
+                            // (`@@T-820`).
+                            workspacePath: '/var/lib/blong/workspaces',
                         },
                         $meta,
                     );
@@ -106,57 +108,141 @@ export default handler(context => {
                         ...(payload === undefined ? {} : {payload}),
                         at: at + seq * 100,
                     });
+                    const fileDiff = [
+                        'diff --git a/src/a.ts b/src/a.ts',
+                        'index 0000000..0000000 100644',
+                        '--- a/src/a.ts',
+                        '+++ b/src/a.ts',
+                        '@@ -1,3 +1,3 @@',
+                        ' const sessionId = randomUUID();',
+                        '-await dispatch(events, sessionId);',
+                        '+await agentTelemetryInsert({sessionId, events}, $meta);',
+                        ' return sessionId;',
+                    ].join('\n');
                     const events: IAgentTelemetryEvent[] = [
                         said(0, 'status', {state: 'running'}),
                         said(1, 'reasoning', {text: 'The change touches two files. '}),
                         said(2, 'reasoning', {text: 'Let me check what moved.'}),
                         // A run of three calls, because a run is what a tool card has to summarise:
                         // one call would show a card and prove nothing about grouping (`@@D-1010`).
+                        // The three are the shapes a row has to draw — a shell that took fifteen
+                        // seconds and worked, an edit with a diff, a shell that failed — and the
+                        // payloads are the runtime's own (`@@T-824`, `@@T-827`).
                         said(3, 'tool', {
                             toolName: 'bash',
                             toolCallId: 'call-1',
-                            args: {command: 'git diff --stat'},
+                            arguments: {command: 'git diff --stat', description: 'Show what moved'},
                         }),
                         said(4, 'tool-result', {
                             toolName: 'bash',
                             toolCallId: 'call-1',
-                            durationMs: 420,
-                            result: 'src/a.ts | 12 ++\nsrc/b.ts |  4 +',
+                            // Forty-five seconds: the one duration on the page that the reader is
+                            // meant to notice, and the case the page marks (`@@T-827`).
+                            durationMs: 45_004,
+                            success: true,
+                            shellExecution: {exitCode: 0},
+                            result: {
+                                content:
+                                    'src/a.ts | 12 ++\nsrc/b.ts |  4 +\n<shellId: tour completed with exit code 0>',
+                            },
                         }),
                         said(5, 'tool', {
                             toolName: 'edit',
                             toolCallId: 'call-2',
-                            args: {path: 'src/a.ts', find: 'oldName', replace: 'newName'},
+                            arguments: {
+                                path: '/var/lib/blong/workspaces/src/a.ts',
+                                old_str: 'await dispatch(events, sessionId);',
+                                new_str: 'await agentTelemetryInsert({sessionId, events}, $meta);',
+                            },
                         }),
                         said(6, 'tool-result', {
                             toolName: 'edit',
                             toolCallId: 'call-2',
                             durationMs: 180,
-                            result: 'replaced 3 occurrences',
+                            success: true,
+                            fileEdits: [{path: '/var/lib/blong/workspaces/src/a.ts', kind: 'edit'}],
+                            result: {
+                                content: 'File updated.',
+                                detailedContent: `\n${fileDiff}`,
+                            },
                         }),
                         said(7, 'tool', {
                             toolName: 'bash',
                             toolCallId: 'call-3',
-                            args: {command: 'git diff --check'},
+                            arguments: {command: 'git diff --check', description: 'Check whitespace'},
                         }),
                         said(8, 'tool-result', {
                             toolName: 'bash',
                             toolCallId: 'call-3',
-                            durationMs: 200,
-                            result: '',
+                            durationMs: 420,
+                            success: false,
+                            shellExecution: {exitCode: 1},
+                            result: {content: 'src/a.ts:12: trailing whitespace.'},
+                        }),
+                        // A message ends the run, which is what makes the next call its own card.
+                        said(9, 'message', {text: 'The check found a trailing space.'}),
+                        said(10, 'tool', {
+                            toolName: 'view',
+                            toolCallId: 'call-4',
+                            arguments: {path: '/var/lib/blong/workspaces/src/a.ts'},
+                        }),
+                        said(11, 'tool-result', {
+                            toolName: 'view',
+                            toolCallId: 'call-4',
+                            durationMs: 69,
+                            success: true,
+                            result: {content: 'const sessionId = randomUUID();\nreturn sessionId;\n'},
                         }),
                         // The human-in-the-loop beat: the turn stops and asks, and a second status
-                        // opens the turn that answered. It is what a session that needed a person
-                        // looks like, and what the page draws as a callout rather than a card.
-                        said(9, 'status', {
+                        // opens the turn that answered.
+                        said(12, 'status', {
                             state: 'awaiting',
                             question: 'Shall I apply the change?',
                         }),
-                        said(10, 'status', {state: 'running'}),
+                        said(13, 'status', {state: 'running'}),
+                        // The question as the page draws it: the card carries the choices and the
+                        // answer a person gave (`@@T-824`).
+                        said(14, 'tool', {
+                            toolName: 'askHuman',
+                            toolCallId: 'call-5',
+                            arguments: {
+                                question: 'Shall I fix the trailing space?',
+                                options: ['yes', 'no'],
+                            },
+                        }),
+                        said(15, 'tool-result', {
+                            toolName: 'askHuman',
+                            toolCallId: 'call-5',
+                            durationMs: 60,
+                            success: true,
+                            result: {content: '{"promptId":"p-1","answerText":"yes"}'},
+                        }),
+                        said(16, 'tool', {
+                            toolName: 'create',
+                            toolCallId: 'call-6',
+                            arguments: {
+                                path: '/var/lib/blong/workspaces/src/b.ts',
+                                file_text: 'export const moved = true;\n',
+                            },
+                        }),
+                        said(17, 'tool-result', {
+                            toolName: 'create',
+                            toolCallId: 'call-6',
+                            durationMs: 85,
+                            success: true,
+                            fileEdits: [
+                                {path: '/var/lib/blong/workspaces/src/b.ts', kind: 'create'},
+                            ],
+                            result: {
+                                content: 'Created src/b.ts with 26 characters',
+                                detailedContent:
+                                    '\ndiff --git a/src/b.ts b/src/b.ts\n--- a/dev/null\n+++ b/src/b.ts\n@@ -1,0 +1,1 @@\n+export const moved = true;\n',
+                            },
+                        }),
                         // One event carries the whole answer: consecutive `message` events are deltas
                         // of one message, which is what the page's reducer assumes, so a second one
                         // would be glued to the first with no separator.
-                        said(11, 'message', {text: markdown}),
+                        said(18, 'message', {text: markdown}),
                     ];
 
                     const published = (await agentTelemetryInsert(
