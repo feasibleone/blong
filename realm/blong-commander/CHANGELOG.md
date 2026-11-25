@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.0](https://github.com/feasibleone/blong/compare/blong-commander-v1.8.1...blong-commander-v1.9.0) (2026-11-25)
+
+
+### Features
+
+* agent session UI ([ee74722](https://github.com/feasibleone/blong/commit/ee747220fb431bef36ac091ded8f01d112eb4f34))
+
+
+### Bug Fixes
+
+* commander screenshots ([e9f9ca3](https://github.com/feasibleone/blong/commit/e9f9ca3fd23462a08dc410b13b61952c88e75f9f))
+
 ## [1.8.1](https://github.com/feasibleone/blong/compare/blong-commander-v1.8.0...blong-commander-v1.8.1) (2026-11-23)
 
 

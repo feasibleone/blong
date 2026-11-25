@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.2](https://github.com/feasibleone/blong/compare/blong-lib-v1.10.1...blong-lib-v1.10.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* agent session follow-ups ([869d4c4](https://github.com/feasibleone/blong/commit/869d4c46269dc87d72d2acb0ee521eb043fa517e))
+
 ## [1.10.1](https://github.com/feasibleone/blong/compare/blong-lib-v1.10.0...blong-lib-v1.10.1) (2026-11-22)
 
 

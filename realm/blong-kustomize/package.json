@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-kustomize",
-    "version": "0.12.0",
+    "version": "0.13.0",
     "description": "kustomize realm",
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"
