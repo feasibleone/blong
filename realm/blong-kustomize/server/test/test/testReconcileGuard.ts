@@ -262,10 +262,19 @@ export default handler(({lib: {group}, handler: {kustomizeReconcileRun}}) => ({
                         join(dir, 'system', 'provision', 'rc', 'blong_releaserc'),
                         'utf8',
                     );
+                    // The database is *not* written: a value in this file replaces what the suite
+                    // declared, and a folder named after the suite dialled `shop` as a user that
+                    // may only reach the database its installation granted — five pods looping
+                    // pods and a failed migration in CI (@@F-861).
                     assert.match(
                         rc,
-                        /database: shop/,
-                        'the rc file is written, with what is known',
+                        /#\s+database: shop/,
+                        'the database is offered as a comment, not answered',
+                    );
+                    assert.doesNotMatch(
+                        rc,
+                        /^\s+database:/m,
+                        'so the suite\u2019s own answer survives the merge',
                     );
                     // The value is added to a document that holds comments, so the writer picks its
                     // own quoting; what matters is the parsed value, and that both `--set`s landed.

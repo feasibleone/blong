@@ -386,6 +386,13 @@ an object cannot be created in a namespace that is not there, and because a pass
 has the grant, and a namespace granted once is remembered by its folder rather than by the flag that
 named it (@@T-837).
 
+The rc file answers what the _tenant_ owns — the credentials it dials with — and every line of it is
+a comment until somebody writes one: the file merges over what the suite declared, so a value here
+replaces the suite's answer. `database:` is the case that taught this: a folder that named
+`blong-suite` because the suite is called that dialled a database its user may not reach, and five
+pods sat in `CrashLoopBackOff` around a migration that could not connect. A suite already names its
+database; the tenant supplies the user and the password (`--set srv.db.knex.connection.user=…`).
+
 `provision` seals what is marked. A value followed by `# seal`, or under a name like a password or a
 token, is encrypted with the master key before the folder is applied, and the key itself reaches the
 cluster as a `secretGenerator` — every workload reads it as a required variable, so a tenant that

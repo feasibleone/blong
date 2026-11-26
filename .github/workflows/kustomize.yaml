@@ -441,8 +441,12 @@ jobs:
           wc -l ci-debug/cluster-state.txt
 
       - name: Collect CI failure diagnostics (k8s + MySQL)
+        # The backends answer "did the environment come up"; the two namespaces after the output
+        # directory answer the other half. A pod in CrashLoopBackOff leaves the line that killed it
+        # in its own log — and in the previous container's, after a restart — and none of that
+        # survives the run (@@T-839).
         if: ${{ failure() }}
-        run: bash test/integration/ci-diagnostics.sh
+        run: bash test/integration/ci-diagnostics.sh ci-debug blong-suite blong-services
       - name: Upload CI failure diagnostics
         if: ${{ failure() }}
         uses: actions/upload-artifact@v7

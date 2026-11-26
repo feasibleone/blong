@@ -14,14 +14,14 @@
  *   blong-int-kustomize suite deploy --cluster=dev-cluster --namespace=blong-suite
  *   blong-int-kustomize cycle run --cluster=dev-cluster
  */
-import {isCliEntry, runCli, type CliOptions} from '@feasibleone/blong-gogo/cli.ts';
+import {isCliEntry, runCli, type CliOptions, type CliSuite} from '@feasibleone/blong-gogo/cli.ts';
 
 import cliSuite from '../index.ts';
 import {USAGE, realmCommand} from './blongIntKustomizeCommand.ts';
 
 const cli: CliOptions = {
     // The package's own suite: it loads the `runbook` realm, whose handlers are the commands.
-    suite: cliSuite as unknown as CliOptions['suite'],
+    suite: cliSuite as unknown as CliSuite,
     name: 'blong-int-kustomize',
     usage: USAGE,
     command: realmCommand,

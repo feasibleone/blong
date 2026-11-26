@@ -635,12 +635,15 @@ export const COMMANDS: readonly IHelpCommand[] = [
                 usage:
                     'blong-dev memory add <friction|todo|decision|faq> --title <title> [--area <area>]\n' +
                     '                         [--body <text>|--body-file <file>] [--status <status>]\n' +
-                    '                         [--id <id>] [--plan <file|slug>]',
+                    '                         [--id <id>] [--plan <file|slug> | --no-plan]',
                 description:
                     'Writes one entry with the next id of its file, in the section its status names. ' +
                     'Write the body to a file and use `--body-file` when it carries backticks: bash ' +
-                    'substitutes them inside a double-quoted `--body`. `--plan` lists a decision or ' +
-                    "friction on the plan's decisions-and-frictions section.",
+                    'substitutes them inside a double-quoted `--body`. A decision or a friction has ' +
+                    "to say whether it belongs on a plan: `--plan` lists it on that plan's board, " +
+                    '`--no-plan` records it as not part of one. While a plan is active, saying ' +
+                    'neither is refused — an entry the board never mentions is indistinguishable ' +
+                    'from nothing having happened.',
                 options: [
                     {
                         flag: '--title <title>',
@@ -651,12 +654,30 @@ export const COMMANDS: readonly IHelpCommand[] = [
                         description: 'the package or reserved area, e.g. core/blong-browser',
                     },
                     {
+                        flag: '--body <text>',
+                        description: 'the body, inline (a list is flattened)',
+                    },
+                    {
                         flag: '--body-file <file>',
                         description: 'the body, as prose (a list is flattened)',
                     },
                     {
+                        flag: '--status <status>',
+                        description: 'the section it is written in; the kind\u2019s first status otherwise',
+                    },
+                    {
+                        flag: '--id <id>',
+                        description: 'the id to use, e.g. F-861, instead of the next one',
+                    },
+                    {
                         flag: '--plan <file|slug>',
                         description: 'list it on the plan (decision and friction)',
+                    },
+                    {
+                        flag: '--no-plan',
+                        description:
+                            'record it as not part of a plan — required for a decision or a ' +
+                            'friction while a plan is active',
                     },
                 ],
                 examples: [

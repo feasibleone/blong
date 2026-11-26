@@ -113,6 +113,16 @@ export interface CliOptionsBase {
 }
 
 /**
+ * The suite a CLI loads: the module the `cli` intent is given, normally the
+ * realm's `cli.ts`.
+ *
+ * Exported under its own name because a binary casts onto it, and an index on
+ * the union below is the union of its indexes rather than the type a caller
+ * means (`@@F-862`).
+ */
+export type CliSuite = Parameters<typeof load>[0];
+
+/**
  * What a CLI says about the realm it runs: the module itself, or a way to import
  * it — and the second is not a convenience.
  *
@@ -127,12 +137,12 @@ export type CliOptions = CliOptionsBase &
     (
         | {
               /** The module the `cli` intent loads — normally the realm's `cli.ts`. */
-              suite: Parameters<typeof load>[0];
+              suite: CliSuite;
               resolveSuite?: never;
           }
         | {
               /** The realm, imported when — and only when — a command needs it. */
-              resolveSuite: () => Promise<Parameters<typeof load>[0]>;
+              resolveSuite: () => Promise<CliSuite>;
               suite?: never;
           }
     );

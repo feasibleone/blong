@@ -46,7 +46,7 @@ open (27)
   failed
 - `T-834` · realm/blong-kustomize — Release blong-kustomize so a pass applies the suite's identity
 
-done (24)
+done (25)
 
 - `T-279` · realm/blong-kustomize — The operator reports obsolete objects and never deletes them
 - `T-277` · realm/blong-kustomize — The plan resolves no databases, so the init script creates none
@@ -78,6 +78,8 @@ done (24)
 - `T-837` · realm/blong-kustomize — init grants the tenant namespace only, and a pass reads the
   others too
 - `T-838` · realm/blong-kustomize — A release-notify that patched nothing exits 0
+- `T-839` · realm/blong-kustomize — The failure diagnostics collect the backends, not the workloads
+  that failed
 
 <!-- /memory:index -->
 
@@ -892,6 +894,27 @@ throwing) and set it, the way `reconcile` and `volume-prune` already report thei
 bin/exitCode.ts reads the answer of release-notify, reconcile and volume-prune; release-notify
 against a namespace with no declaration now exits 1 instead of 0, the gitops seam still exits 0, and
 the rules are pinned in testReleaseNotify.ts (@@D-1032).
+
+### T-839 — The failure diagnostics collect the backends, not the workloads that failed
+
+> _2026-11-26 · realm/blong-kustomize · done_
+
+When the Kustomize E2E job failed at "Generate, apply and wait", the uploaded diagnostics held the
+integration namespace's events, the MySQL pod's logs and the cluster's object state, but not the
+logs of the workloads the step was waiting for: the CrashLoopBackOff suite pods and the failed
+migration Job. The reason was there anyway, in cluster-state.txt's "what the Jobs said" section, so
+the artefact was one lucky section away from being useless. ci-diagnostics.sh should collect, for
+the namespaces the step waited on (NAMESPACE and the services namespace), the pod list, the events,
+and `kubectl logs` for every pod that is not Running - including `--previous` for a restarted
+container
+
+- because that is the one thing a reader cannot get from a finished run. Keep the current backend
+  sections; they answer a different question.
+
+ci-diagnostics.sh now takes the namespaces a step waited on (the kustomize job passes blong-suite
+and blong-services) and writes, per namespace, the pods, the events and the logs of every pod that
+is not ready — current and previous container — plus the Jobs and their logs. The backends' sections
+stay; the workflow's own cluster-state step is unchanged.
 
 ## Retired
 

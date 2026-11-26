@@ -62,7 +62,7 @@ open (48)
 - `F-840` · tools/blong-dev — A paraphrase of an answered question was recorded as a second question
 - `F-841` · tools/blong-dev — The unit suite wrote its fixtures into the developer's semantic bank
 
-resolved (15)
+resolved (16)
 
 - `F-080` · tools/blong-dev — `blong-dev` CLI not built
 - `F-090` · tools/blong-dev — `blong-dev` was not built, so `npm run ci-lint` could not find it
@@ -79,6 +79,7 @@ resolved (15)
 - `F-721` · tools/blong-dev — An optional field with two meanings claimed a search that never ran
 - `F-748` · tools/blong-dev — blong-dev ci says no run for the id in the URL
 - `F-826` · tools/blong-dev — plan init published a claimed issue without the claim's labels
+- `F-859` · tools/blong-dev — memory add hides its required --no-plan flag
 
 <!-- /memory:index -->
 
@@ -975,3 +976,24 @@ checks, and that is how the gap survived: the command tests all ran with --no-is
 publishIssue applies claimLabelsChange on create and on update; plan sync repaired #300 to
 plan-claimed + plan-host:ms-02, and plan.test.ts now drives init through a setGhRunner stand-in and
 asserts both labels and the assignee.
+
+### F-859 — memory add hides its required --no-plan flag
+
+> _2026-11-26 · tools/blong-dev · resolved_
+
+Adding a decision through blong-dev memory add kept printing the general usage with no complaint of
+its own, so four attempts went into guessing the offending parameter: the cause was that a decision
+must say whether it belongs to a plan and the flag that says it does not, --no-plan, is missing from
+`memory add --help` while the usage line above it names it. The help is what an agent reads first,
+and a required flag absent from it turns a one-line call into a guessing game; --no-plan belongs in
+the Options list beside --plan. Two things made that worse than the missing line: the options list
+also omitted --body, --status and --id, which the usage line names, so the two halves of the help
+disagreed; and the command does print its own complaint before the usage, above the two or three
+lines a `tail -2` shows, so the search was for a message that had already been written and then
+cropped out of view. Both halves are fixed: every flag the verb accepts is listed, and the flag a
+call must not leave out says so.
+
+The add verb's help lists every flag it accepts (--body, --status, --id, --plan, --no-plan), the
+usage line names --no-plan behind the pipe, and the description says a decision or friction must
+choose one while a plan is active. The body also records that the failure message was printed all
+along and a short tail hid it.
