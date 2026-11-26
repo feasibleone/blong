@@ -13,7 +13,15 @@
  * that created them by hand would have a deployment nothing reconciles @@D-1021.
  */
 import {spawnSync} from 'node:child_process';
-import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {
+    existsSync,
+    mkdirSync,
+    readdirSync,
+    readFileSync,
+    rmSync,
+    statSync,
+    writeFileSync,
+} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
 import {parseDocument} from 'yaml';
 
@@ -21,9 +29,9 @@ import {
     masterKeyFrom,
     masterKeyGenerate,
     openYaml,
+    sealedPaths,
     sealMarked,
     sealYaml,
-    sealedPaths,
     secretRandom,
     secretSeal,
 } from '@feasibleone/blong-lib/secret';
@@ -36,6 +44,7 @@ import {
     OPERATOR_NAMESPACED_RULES,
 } from '../operator.ts';
 import {MASTER_KEY_ENV, MASTER_KEY_SECRET} from '../plan.ts';
+import {DEFAULT_SERVICES_NAMESPACE} from '../services.ts';
 
 /**
  * Where a tenant keeps what it provisions: ignored whole, and written by `init` (@@D-1025).
@@ -279,6 +288,8 @@ export interface IProvisionFlags {
     newKey?: boolean;
     forceRc?: boolean;
     noDeclaration?: boolean;
+    /** The namespaces a pass's services run in, when the folder cannot say — repeatable. */
+    servicesNamespace?: string[];
     operator?: string;
     operatorNamespace?: string;
     dryRun?: boolean;
@@ -323,6 +334,9 @@ export const flagsOf = (argv: Record<string, unknown>): IProvisionFlags => ({
     // `--no-…` is not available: minimist reads it as the negation of `…` (`{declaration: false}`),
     // which is a different flag from the one a caller thinks they wrote.
     ...(argv['without-declaration'] === true ? {noDeclaration: true} : {}),
+    ...(listOf(argv['services-namespace'])
+        ? {servicesNamespace: listOf(argv['services-namespace'])}
+        : {}),
     ...(typeof argv.operator === 'string' ? {operator: argv.operator} : {}),
     ...(typeof argv['operator-namespace'] === 'string'
         ? {operatorNamespace: argv['operator-namespace']}
@@ -391,18 +405,131 @@ export const masterKey = (root: string = process.cwd()): string => {
     }
 };
 
-/** The grants the operator runs under, in this tenant's namespaces: the one part a pass refuses. */
-const grantResources = (namespace: string, suite: string): Record<string, string> => {
+/**
+ * The services namespace a declaration names, when it names one.
+ *
+ * Read back from the declaration rather than asked for, because the declaration is where the
+ * tenant says which services it brings and where they run: a folder made from a suite's example
+ * already carries `services` and `servicesNamespace`, and a caller who brings its own declaration
+ * passes `--services-namespace` (@@T-837). A service a declaration switched *off* still counts:
+ * its workload may be gone, and the objects it left behind are the pass's to find and remove.
+ */
+const declaredServicesNamespace = (text: string): string[] => {
+    const document = parseDocument(text);
+    if (document.errors.length) {
+        throw new Error(`the declaration is not valid YAML: ${document.errors[0].message}`);
+    }
+    // `getIn` rather than `get`: a node's properties are not a plain object's, so `spec.services`
+    // reads as undefined on the map itself and the derivation would silently find nothing.
+    const named = document.getIn(['spec', 'servicesNamespace']);
+    const services = document.getIn(['spec', 'services']) as {items?: unknown[]} | undefined;
+    if (typeof named !== 'string' && (services?.items?.length ?? 0) === 0) return [];
+    return [typeof named === 'string' ? named : DEFAULT_SERVICES_NAMESPACE];
+};
+
+/**
+ * The namespaces a reconcile pass reads, and therefore the ones that need a grant.
+ *
+ * The suite's own is one of them; the rest are the namespace its services run in. A pass discovers
+ * what a suite owns by its labels, so it *reads* the services namespace whether or not the active
+ * profile still generates a workload there. Rights limited to the suite's namespace fail on that
+ * read rather than on an apply, which is how a pass reports five errors and never converges.
+ */
+const grantNamespaces = (
+    folder: string,
+    flags: IProvisionFlags,
+    tenant: string,
+): {namespaces: string[]; extras: string[]} => {
+    const file = join(folder, 'blongdeployment.yaml');
+    const declared = existsSync(file) ? declaredServicesNamespace(readFileSync(file, 'utf8')) : [];
+    // A folder the tenant already has is part of the answer: `--without-declaration` leaves nothing
+    // in the folder to read, and a namespace granted once should not need the flag that named it a
+    // second time. Removing one is deleting its folder, which is an act rather than an omission.
+    const existing = join(folder, 'namespaces');
+    const folders = existsSync(existing)
+        ? readdirSync(existing)
+              .filter(name => statSync(join(existing, name)).isDirectory())
+              .sort()
+        : [];
+    const namespaces = [
+        ...new Set(
+            [tenant, ...folders, ...(flags.servicesNamespace ?? []), ...declared].filter(Boolean),
+        ),
+    ];
+    return {namespaces, extras: namespaces.filter(namespace => namespace !== tenant)};
+};
+
+/**
+ * The Namespace objects the folder creates: the tenant's own, and one per namespace a pass reads.
+ *
+ * A pass never applies a `Namespace` — the install creates them and owns their lifecycle
+ * (`INSTALL_OWNED_KINDS`) — so a services namespace nobody creates is a namespace the operator's
+ * grant cannot land in: a Role for a namespace that is not there is refused by the API server.
+ * These travel as their own files and are applied *ahead of* the kustomization, because the root
+ * `namespace:` field renames every `Namespace` object the composer meets, and an extra one would
+ * collide with the tenant's own (@@F-440).
+ */
+const namespaceResources = (
+    tenant: string,
+    extras: string[],
+    suite: string,
+): Record<string, string> => {
     const labels = [
         `    app.kubernetes.io/managed-by: blong-kustomize`,
         `    app.kubernetes.io/part-of: ${suite}`,
     ];
-    return {
-        'grants/blong-operator-role.yaml': [
-            "# The operator's rights in this tenant. A pass refuses to write the objects it runs under",
-            "# (`isSelfGrant` in the realm's `apply.ts`), so they are the tenant's to apply — and the",
-            "# rules are the operator's own, `OPERATOR_NAMESPACED_RULES`, so the file and the verbs cannot",
-            '# disagree.',
+    const files: Record<string, string> = {
+        'namespace.yaml': [
+            "# The namespace the declaration lives in. A namespace is the tenant's, not the",
+            "# operator's: a reconcile pass is started by a declaration, and a declaration is a",
+            '# namespaced object.',
+            'apiVersion: v1',
+            'kind: Namespace',
+            'metadata:',
+            `  name: ${tenant}`,
+            '  labels:',
+            ...labels,
+            '',
+        ].join('\n'),
+    };
+    for (const namespace of extras) {
+        files[`namespaces/${namespace}/namespace.yaml`] = [
+            '# Where this deployment’s services run. A pass reads it — the objects a service left',
+            '# behind are found by label whether or not the service still runs — so the tenant',
+            '# creates it before granting the operator anything in it.',
+            'apiVersion: v1',
+            'kind: Namespace',
+            'metadata:',
+            `  name: ${namespace}`,
+            '  labels:',
+            ...labels,
+            '',
+        ].join('\n');
+    }
+    return files;
+};
+
+/** The grants the operator runs under, in this tenant's namespaces: the one part a pass refuses. */
+const grantResources = (
+    tenant: string,
+    extras: string[],
+    suite: string,
+): Record<string, string> => {
+    const labels = [
+        `    app.kubernetes.io/managed-by: blong-kustomize`,
+        `    app.kubernetes.io/part-of: ${suite}`,
+    ];
+    const files: Record<string, string> = {};
+    for (const namespace of [tenant, ...extras]) {
+        // The tenant's own pair keeps the plain name — it is the one a reader looks for, and a
+        // suffix would make every folder's first file a special case. The object keeps the
+        // operator's name in every namespace, which is what `isSelfGrant` recognises.
+        const folder = namespace === tenant ? 'grants' : join('namespaces', namespace);
+        files[join(folder, 'blong-operator-role.yaml')] = [
+            "# The operator's rights in this namespace. A pass refuses to write the objects it runs",
+            "# under (`isSelfGrant` in the realm's `apply.ts`), so they are the tenant's to apply — and",
+            "# the rules are the operator's own, `OPERATOR_NAMESPACED_RULES`, so the file and the verbs",
+            '# cannot disagree.',
             'apiVersion: rbac.authorization.k8s.io/v1',
             'kind: Role',
             'metadata:',
@@ -417,8 +544,8 @@ const grantResources = (namespace: string, suite: string): Record<string, string
                 `    verbs: [${rule.verbs.join(', ')}]`,
             ]),
             '',
-        ].join('\n'),
-        'grants/blong-operator-rolebinding.yaml': [
+        ].join('\n');
+        files[join(folder, 'blong-operator-rolebinding.yaml')] = [
             'apiVersion: rbac.authorization.k8s.io/v1',
             'kind: RoleBinding',
             'metadata:',
@@ -435,45 +562,160 @@ const grantResources = (namespace: string, suite: string): Record<string, string
             `    name: ${OPERATOR_NAME}`,
             `    namespace: ${OPERATOR_NAMESPACE}`,
             '',
-        ].join('\n'),
-        // One role for the whole cluster, because its rules are the same for every suite; the binding
-        // is not, because its subject is this suite's identity.
-        'grants/auth-review.yaml': [
-            "# The UI's right to ask the cluster about a caller: a `TokenReview` and a",
-            '# `SubjectAccessReview`, both cluster-scoped. Cluster-scoped, so a pass may not write it.',
-            'apiVersion: rbac.authorization.k8s.io/v1',
-            'kind: ClusterRole',
-            'metadata:',
-            `  name: ${AUTH_REVIEW_ROLE}`,
-            '  labels:',
-            ...labels,
-            'rules:',
-            ...AUTH_REVIEW_RULES.flatMap(rule => [
-                `  - apiGroups: [${rule.apiGroups.map(group => `'${group}'`).join(', ')}]`,
-                `    resources: [${rule.resources.join(', ')}]`,
-                `    verbs: [${rule.verbs.join(', ')}]`,
-            ]),
-            '',
-        ].join('\n'),
-        'grants/auth-review-binding.yaml': [
-            'apiVersion: rbac.authorization.k8s.io/v1',
-            'kind: ClusterRoleBinding',
-            'metadata:',
-            `  name: ${suite === namespace ? namespace : `${namespace}-${suite}`}-${AUTH_REVIEW_ROLE}`,
-            '  labels:',
-            ...labels,
-            'roleRef:',
-            '  apiGroup: rbac.authorization.k8s.io',
-            '  kind: ClusterRole',
-            `  name: ${AUTH_REVIEW_ROLE}`,
-            'subjects:',
-            '  - kind: ServiceAccount',
-            `    name: ${SUITE_SERVICE_ACCOUNT}`,
-            `    namespace: ${namespace}`,
-            '',
-        ].join('\n'),
-    };
+        ].join('\n');
+    }
+    // One role for the whole cluster, because its rules are the same for every suite; the binding
+    // is not, because its subject is this suite's identity.
+    files['grants/auth-review.yaml'] = [
+        "# The UI's right to ask the cluster about a caller: a `TokenReview` and a",
+        '# `SubjectAccessReview`, both cluster-scoped. Cluster-scoped, so a pass may not write it.',
+        'apiVersion: rbac.authorization.k8s.io/v1',
+        'kind: ClusterRole',
+        'metadata:',
+        `  name: ${AUTH_REVIEW_ROLE}`,
+        '  labels:',
+        ...labels,
+        'rules:',
+        ...AUTH_REVIEW_RULES.flatMap(rule => [
+            `  - apiGroups: [${rule.apiGroups.map(group => `'${group}'`).join(', ')}]`,
+            `    resources: [${rule.resources.join(', ')}]`,
+            `    verbs: [${rule.verbs.join(', ')}]`,
+        ]),
+        '',
+    ].join('\n');
+    files['grants/auth-review-binding.yaml'] = [
+        'apiVersion: rbac.authorization.k8s.io/v1',
+        'kind: ClusterRoleBinding',
+        'metadata:',
+        `  name: ${suite === tenant ? tenant : `${tenant}-${suite}`}-${AUTH_REVIEW_ROLE}`,
+        '  labels:',
+        ...labels,
+        'roleRef:',
+        '  apiGroup: rbac.authorization.k8s.io',
+        '  kind: ClusterRole',
+        `  name: ${AUTH_REVIEW_ROLE}`,
+        'subjects:',
+        '  - kind: ServiceAccount',
+        `    name: ${SUITE_SERVICE_ACCOUNT}`,
+        `    namespace: ${tenant}`,
+        '',
+    ].join('\n');
+    return files;
 };
+
+/**
+ * The folder's kustomization, generated: the namespace, the grants in the order a pass needs them,
+ * the tenant's rc Secret and the declaration.
+ *
+ * Rewritten by `provision` as well as written by `init`, because the grants follow what the
+ * declaration names: a tenant that adds a service to its declaration and re-runs `provision` gets
+ * the grant that service's namespace needs, without editing a generated file by hand (@@T-837).
+ *
+ * The extra namespaces are deliberately *not* in `resources`: the `namespace:` field below renames
+ * every `Namespace` object the composer meets, so a second one would be renamed into the first and
+ * the two would collide. `provision` applies `namespaces/` ahead of this folder instead (@@F-440).
+ */
+const kustomizationText = (namespace: string, grants: string[], hasDeclaration: boolean): string =>
+    [
+        '# What a tenant has before its declaration converges, applied together:',
+        '#',
+        '#     kubectl kustomize system/provision | kubectl apply -f -',
+        '#',
+        "# The namespace, the rights the operator runs under here, the tenant's rc Secret and the",
+        '# declaration — in that order, which is the order `kubectl apply` uses. Everything else a',
+        "# deployment needs is the operator's.",
+        '#',
+        '# Generated: `provision` rewrites this file when the grants change, so a tenant edits the rc',
+        '# file rather than this one.',
+        'apiVersion: kustomize.config.k8s.io/v1beta1',
+        'kind: Kustomization',
+        `namespace: ${namespace}`,
+        'resources:',
+        '  - namespace.yaml',
+        ...grants.map(path => `  - ${path}`),
+        ...(hasDeclaration ? ['  - blongdeployment.yaml'] : []),
+        'secretGenerator:',
+        '  - name: blong-releaserc-etc',
+        '    files:',
+        '      - blong_releaserc=rc/blong_releaserc',
+        '    options:',
+        '      # The name is fixed: the workloads read it, and a hash suffix would rename it',
+        '      # under them on every value change.',
+        '      disableNameSuffixHash: true',
+        '  # The key the rc file is sealed with, written by `init` beside it. Listed here rather',
+        '  # than applied by the command, so the folder is the whole of what a tenant provisions —',
+        '  # and `provision` refuses to apply it when the cluster already holds a different key,',
+        '  # because swapping one under a sealed file makes every value unreadable (D-1029).',
+        '  - name: blong-master-key',
+        '    files:',
+        '      - BLONG_MASTER_KEY=.master_key',
+        '    options:',
+        '      disableNameSuffixHash: true',
+        '',
+    ].join('\n');
+
+/**
+ * Bring the folder's grants up to what the declaration names, before it is applied.
+ *
+ * Two things a tenant would otherwise do by hand and forget: add the pair for a namespace a pass
+ * reads, and add the namespace itself — a pass may not write a `Namespace`, so a grant for one
+ * nobody created is refused by the API server. A file this derives and no longer derives is
+ * removed, so the folder stays the whole of what the tenant provisions (@@T-837).
+ */
+const syncGrants = (
+    folder: string,
+    tenant: string,
+    suite: string,
+    flags: IProvisionFlags,
+): void => {
+    const {extras} = grantNamespaces(folder, flags, tenant);
+    const files = {
+        ...namespaceResources(tenant, extras, suite),
+        ...grantResources(tenant, extras, suite),
+    };
+    for (const [path, text] of Object.entries(files)) {
+        const file = join(folder, path);
+        const current = existsSync(file) ? readFileSync(file, 'utf8') : undefined;
+        if (current === text) continue;
+        mkdirSync(dirname(file), {recursive: true});
+        writeFileSync(file, text);
+        say(`  ${current === undefined ? 'wrote' : 'updated'} ${file}`);
+    }
+    // A namespace this tenant stopped naming is a file to remove: the grant for it would otherwise
+    // be re-applied by the next folder run, to a namespace nothing needs.
+    const keep = new Set(Object.keys(files));
+    for (const stale of staleGrantFiles(folder)) {
+        if (keep.has(stale)) continue;
+        rmSync(join(folder, stale));
+        say(`  removed ${join(folder, stale)}`);
+    }
+    const kustomization = join(folder, 'kustomization.yaml');
+    const hasDeclaration =
+        existsSync(join(folder, 'blongdeployment.yaml')) &&
+        existsSync(kustomization) &&
+        /^\s*-\s*blongdeployment\.yaml\s*$/m.test(readFileSync(kustomization, 'utf8'));
+    const text = kustomizationText(
+        tenant,
+        tenantGrants(grantResources(tenant, extras, suite)),
+        hasDeclaration,
+    );
+    if (readFileSync(kustomization, 'utf8') !== text) {
+        writeFileSync(kustomization, text);
+        say(`  updated ${kustomization}`);
+    }
+};
+
+/** The grant files `syncGrants` owns in the tenant's own half — the suffix-free pair, and nothing else. */
+const staleGrantFiles = (folder: string): string[] => {
+    const grants = join(folder, 'grants');
+    return (existsSync(grants) ? readdirSync(grants) : [])
+        .filter(name => /^blong-operator-(role|rolebinding)(-[^.]*)?\.yaml$/.test(name))
+        .map(name => join('grants', name));
+};
+
+/** The files the folder's kustomization lists: the tenant's own half, and nothing an extra carries. */
+const tenantGrants = (grants: Record<string, string>): string[] =>
+    Object.keys(grants).filter(path => path.startsWith('grants/'));
 
 /** The declaration a tenant keeps: the tree's example when there is one, promoted to a draft. */
 const declaration = (
@@ -538,25 +780,10 @@ const init = (context: ISuiteContext, flags: IProvisionFlags): number => {
     say(`  writing to ${root}`);
     const force = flags.force === true;
     write(join(provision, '.gitignore'), ['*', ''].join('\n'), force);
-    write(
-        join(provision, 'namespace.yaml'),
-        [
-            "# The namespace the declaration lives in. A namespace is the tenant's, not the",
-            "# operator's: a reconcile pass is started by a declaration, and a declaration is a",
-            '# namespaced object.',
-            'apiVersion: v1',
-            'kind: Namespace',
-            'metadata:',
-            `  name: ${namespace}`,
-            '  labels:',
-            `    app.kubernetes.io/part-of: ${suite}`,
-            '',
-        ].join('\n'),
-        force,
-    );
-    for (const [path, text] of Object.entries(grantResources(namespace, suite))) {
-        write(join(provision, path), text, force);
-    }
+    // The declaration comes first because it is what the grants are derived from: a tenant that
+    // brings services needs the operator granted in the namespace those run in, and the folder is
+    // the only thing that grants anything (@@T-837).
+    //
     // A tenant whose declaration is produced somewhere else — a pipeline that applies the tree it
     // generated, or a GitOps seam — asks for the folder without one: applying a skeleton beside the
     // real declaration would put two of them in the namespace, and the one that converged first
@@ -568,45 +795,21 @@ const init = (context: ISuiteContext, flags: IProvisionFlags): number => {
             force,
         );
     }
+    const {extras} = grantNamespaces(provision, flags, namespace);
+    for (const [path, text] of Object.entries(namespaceResources(namespace, extras, suite))) {
+        write(join(provision, path), text, force);
+    }
+    const grants = grantResources(namespace, extras, suite);
+    for (const [path, text] of Object.entries(grants)) {
+        write(join(provision, path), text, force);
+    }
     write(
         join(provision, 'kustomization.yaml'),
-        [
-            '# What a tenant has before its declaration converges, applied together:',
-            '#',
-            '#     kubectl kustomize system/provision | kubectl apply -f -',
-            '#',
-            "# The namespace, the rights the operator runs under here, the tenant's rc Secret and the",
-            '# declaration — in that order, which is the order `kubectl apply` uses. Everything else a',
-            "# deployment needs is the operator's.",
-            'apiVersion: kustomize.config.k8s.io/v1beta1',
-            'kind: Kustomization',
-            `namespace: ${namespace}`,
-            'resources:',
-            '  - namespace.yaml',
-            '  - grants/blong-operator-role.yaml',
-            '  - grants/blong-operator-rolebinding.yaml',
-            '  - grants/auth-review.yaml',
-            '  - grants/auth-review-binding.yaml',
-            ...(flags.noDeclaration === true ? [] : ['  - blongdeployment.yaml']),
-            'secretGenerator:',
-            '  - name: blong-releaserc-etc',
-            '    files:',
-            '      - blong_releaserc=rc/blong_releaserc',
-            '    options:',
-            '      # The name is fixed: the workloads read it, and a hash suffix would rename it',
-            '      # under them on every value change.',
-            '      disableNameSuffixHash: true',
-            '  # The key the rc file is sealed with, written by `init` beside it. Listed here rather',
-            '  # than applied by the command, so the folder is the whole of what a tenant provisions —',
-            '  # and `provision` refuses to apply it when the cluster already holds a different key,',
-            '  # because swapping one under a sealed file makes every value unreadable (D-1029).',
-            '  - name: blong-master-key',
-            '    files:',
-            '      - BLONG_MASTER_KEY=.master_key',
-            '    options:',
-            '      disableNameSuffixHash: true',
-            '',
-        ].join('\n'),
+        kustomizationText(
+            namespace,
+            tenantGrants(grants),
+            flags.noDeclaration !== true && existsSync(join(provision, 'blongdeployment.yaml')),
+        ),
         force,
     );
     // The rc file itself, not a sample of it. A value this command cannot know is a *comment*, not an
@@ -662,10 +865,23 @@ const init = (context: ISuiteContext, flags: IProvisionFlags): number => {
     }
     if (!existsSync(keyFile) || flags.newKey === true) {
         mkdirSync(dirname(keyFile), {recursive: true});
+        // The environment's key wins where it is set, and the file is what the folder seals with —
+        // so writing a random one beside an exported one leaves a folder that `provision` refuses
+        // on every run, comparing two keys that were never meant to differ.
+        const fromEnvironment = (() => {
+            try {
+                return masterKeyFrom();
+            } catch {
+                return undefined;
+            }
+        })();
         // No trailing newline: `secretGenerator` copies the file's bytes into the Secret's value, so a
         // newline would be part of the key and every sealed value would fail to decrypt with it.
-        writeFileSync(keyFile, masterKeyGenerate(), {mode: 0o600});
-        say(`  wrote ${keyFile} (0600, ignored with the folder)`);
+        writeFileSync(keyFile, fromEnvironment ?? masterKeyGenerate(), {mode: 0o600});
+        say(
+            `  wrote ${keyFile} (0600, ignored with the folder)` +
+                (fromEnvironment ? ', from BLONG_MASTER_KEY' : ''),
+        );
     } else {
         say(`  ${keyFile} exists; left as it is (--new-key mints another)`);
     }
@@ -756,7 +972,12 @@ const apply = (context: ISuiteContext, flags: IProvisionFlags): number => {
                 'reconcile pass cannot write itself.',
         );
     }
-    say(`provision: ${tenantNamespace(context, flags)}`);
+    const namespace = tenantNamespace(context, flags);
+    say(`provision: ${namespace}`);
+    // The grants follow the declaration, so they are brought up to date before anything is applied:
+    // a tenant that added a service since `init` gets the grant its namespace needs without
+    // re-creating the folder (@@T-837).
+    if (flags.dryRun !== true) syncGrants(folder, namespace, flags.suite ?? context.name, flags);
     // Whether the folder *applies* the declaration, not merely whether the file is there: a tenant
     // whose cluster cannot honour `draft` comments the line out and keeps the file for later.
     const declares =
@@ -772,6 +993,22 @@ const apply = (context: ISuiteContext, flags: IProvisionFlags): number => {
                 '`kubectl apply -f realm/blong-kustomize/system/operator/base/crd/` — and run this ' +
                 'again.',
         );
+    }
+    // The namespaces a pass reads come before the folder, because a namespaced object cannot be
+    // created in a namespace that is not there — and because the folder's root `namespace:` field
+    // would rename a `Namespace` it met, so these cannot travel inside it (@@F-440).
+    const namespaces = join(folder, 'namespaces');
+    for (const name of existsSync(namespaces) ? readdirSync(namespaces).sort() : []) {
+        const at = join(namespaces, name);
+        if (!statSync(at).isDirectory()) continue;
+        // The namespace first and on its own: one `apply -f` of the folder could hand the API
+        // server the Role before the namespace it belongs to.
+        const created = kubectl(['apply', '-f', join(at, 'namespace.yaml')], {
+            dryRun: flags.dryRun === true,
+        });
+        if (created !== 0) return created;
+        const granted = kubectl(['apply', '-f', at], {dryRun: flags.dryRun === true});
+        if (granted !== 0) return granted;
     }
     const code = kustomizeApply(folder, undefined, flags.dryRun === true);
     if (code !== 0) return code;
@@ -848,21 +1085,28 @@ const verify = (context: ISuiteContext, flags: IProvisionFlags): number => {
     const operator = flags.operator ?? 'blong-operator';
     const operatorNamespace = flags.operatorNamespace ?? 'blong-system';
     const namespace = tenantNamespace(context, flags);
+    const folder = context.provision ?? join(context.root, PROVISION_DIR);
+    const {namespaces} = grantNamespaces(folder, flags, namespace);
     kubectl(['-n', namespace, 'get', 'secret', MASTER_KEY_SECRET], {dryRun: flags.dryRun});
     // The check worth having: the operator's own identity asking for the verb its code uses for the
-    // suite's identity. A `no` here is the first pass failing with `Kubernetes Access Forbidden`.
-    kubectl(
-        [
-            'auth',
-            'can-i',
-            `--as=system:serviceaccount:${operatorNamespace}:${operator}`,
-            'create',
-            'serviceaccounts',
-            '-n',
-            namespace,
-        ],
-        {dryRun: flags.dryRun},
-    );
+    // suite's identity. A `no` here is the first pass failing with `Kubernetes Access Forbidden` —
+    // and every namespace the pass reads is asked about, because a grant in one of them says nothing
+    // about the others, and the namespace a service runs in is the one that gets forgotten.
+    for (const granted of namespaces) {
+        say(`  ${operator} in ${granted}:`);
+        kubectl(
+            [
+                'auth',
+                'can-i',
+                `--as=system:serviceaccount:${operatorNamespace}:${operator}`,
+                'create',
+                'serviceaccounts',
+                '-n',
+                granted,
+            ],
+            {dryRun: flags.dryRun},
+        );
+    }
     kubectl(['-n', namespace, 'get', 'blongdeployment'], {dryRun: flags.dryRun});
     return 0;
 };

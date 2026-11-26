@@ -353,6 +353,35 @@ export default handler(({lib: {group}, handler: {kustomizeReconcileRun}}) => ({
                             'utf8',
                         );
                         assert.equal(listed.includes('blongdeployment'), false, 'and none is listed');
+                        // A pass reads more than the namespace the declaration lives in, so the
+                        // folder grants more than one: the namespaces its services run in are named
+                        // here, because a declaration that would say so is the caller's (T-837).
+                        init(
+                            {root: bare, name: 'shop', namespace: 'shop', package: false},
+                            {noDeclaration: true, servicesNamespace: ['shop-services'], force: true},
+                        );
+                        const services = join(bare, 'system', 'provision', 'namespaces', 'shop-services');
+                        assert.equal(
+                            existsSync(join(services, 'namespace.yaml')),
+                            true,
+                            'the namespace a pass reads is created by the tenant',
+                        );
+                        assert.match(
+                            readFileSync(join(services, 'blong-operator-role.yaml'), 'utf8'),
+                            /namespace: shop-services/,
+                            'with the operator granted in it, named for itself',
+                        );
+                        // Outside the kustomization, because its root `namespace:` renames every
+                        // namespaced object it composes into the tenant's own (F-440) — the pair
+                        // would collide with the tenant's.
+                        assert.equal(
+                            readFileSync(
+                                join(bare, 'system', 'provision', 'kustomization.yaml'),
+                                'utf8',
+                            ).includes('shop-services'),
+                            false,
+                            'and none of it is listed by the tenant’s half',
+                        );
                     } finally {
                         rmSync(bare, {recursive: true, force: true});
                     }

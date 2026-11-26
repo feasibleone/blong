@@ -50,10 +50,13 @@ export const COMMANDS: readonly IHelpCommand[] = [
         details:
             'One run writes one folder: the namespace, the declaration as a draft, the RBAC the operator ' +
             'runs under here — which a pass refuses to write — the kustomization that applies them ' +
-            'together, the rc file the tenant edits, and a master key. The key is a random one, written ' +
-            '0600 inside the folder and ignored with it; `BLONG_MASTER_KEY` wins wherever it is set. In a ' +
-            'suite the folder names the package; in an empty folder it names the directory, because a ' +
-            'tenant that installed the CLI with npx has no checkout to sit beside.',
+            'together, the rc file the tenant edits, and a master key. The grants follow the ' +
+            'declaration: a tenant that brings services gets the namespace they run in, and a pair of ' +
+            'grant objects in it, because a pass reads that namespace as well as its own. The key is ' +
+            '`BLONG_MASTER_KEY` when that is exported and a random one otherwise, written 0600 inside ' +
+            'the folder and ignored with it. In a suite the folder names the package; in an empty ' +
+            'folder it names the directory, because a tenant that installed the CLI with npx has no ' +
+            'checkout to sit beside.',
         options: [
             {
                 name: '--suite=NAME',
@@ -65,6 +68,17 @@ export const COMMANDS: readonly IHelpCommand[] = [
                 description: 'Where to write; defaults to the suite, else the folder.',
             },
             {name: '--set=path=value', description: 'Fill a value known already; repeats.'},
+            {
+                name: '--without-declaration',
+                description:
+                    'Write the folder without a declaration, for a caller that applies its own.',
+            },
+            {
+                name: '--services-namespace=NS',
+                description:
+                    'A namespace a pass reads, when there is no declaration to say: the one the ' +
+                    'services run in. Repeatable, and needed once — the folder keeps it.',
+            },
             {
                 name: '--force',
                 description: 'Rewrite the manifests; the rc file and the key are kept.',
@@ -87,7 +101,11 @@ export const COMMANDS: readonly IHelpCommand[] = [
             '`# seal` — or held under a name that is a secret by convention — is replaced with ' +
             '`${decrypt(…)}`, the master key is created in the namespace if it is not there, and the ' +
             'folder is applied: namespace, grants, declaration and rc Secret, in the order the ' +
-            "kustomization lists them. Everything else a deployment needs is the operator's.",
+            "kustomization lists them. Everything else a deployment needs is the operator's. The " +
+            'grants are re-derived from the declaration first, so a tenant that added a service since ' +
+            '`init` gets the grant its namespace needs; the namespaces those grants live in are applied ' +
+            'ahead of the folder, because a namespaced object cannot be created in a namespace that is ' +
+            'not there.',
         verbs: [
             {
                 name: 'seal',
@@ -144,6 +162,12 @@ export const COMMANDS: readonly IHelpCommand[] = [
         options: [
             {name: '--namespace=NS', description: 'The tenant namespace.'},
             {name: '--set=path=value', description: 'Fill a value before sealing; repeats.'},
+            {
+                name: '--services-namespace=NS',
+                description:
+                    'A namespace the services run in, when the folder cannot say. Repeatable; a ' +
+                    'namespace already in `namespaces/` needs no flag.',
+            },
             KUBECTL,
         ],
     },
@@ -213,7 +237,10 @@ export const COMMANDS: readonly IHelpCommand[] = [
         summary: 'Tell a cluster what a release published (patches the declaration)',
         details:
             'The gitops seam is asked first and wins when a target is configured, so a cluster with one ' +
-            'operator is never told twice.',
+            'operator is never told twice. The answer says which seam ran and carries the summary a ' +
+            'workflow or a channel posts; the command exits non-zero when the seam that was asked to ' +
+            'write did not — a patch that failed or an operator pass that failed an object — because ' +
+            'a release that patched nothing must not read as a green step.',
         options: [
             {name: '--suite=NAME', description: 'The suite whose declaration is patched.'},
             {name: '--version=VERSION', description: 'The version the release published.'},
@@ -231,7 +258,10 @@ export const COMMANDS: readonly IHelpCommand[] = [
     {
         name: 'reconcile',
         summary: 'Run one pass of the operator’s loop and report what it found',
-        details: 'Without `--apply` it only reports, and without `--prune` it deletes nothing.',
+        details:
+            'Without `--apply` it only reports, and without `--prune` it deletes nothing. The ' +
+            'command exits non-zero when the pass applied nothing or failed an object: a pass that ' +
+            'reported five errors and converged nothing is not a step that succeeded.',
         options: [
             {name: '--from=registry|cr', description: 'Where the plan comes from.'},
             {name: '--apply', description: 'Write the cluster, not just the report.'},

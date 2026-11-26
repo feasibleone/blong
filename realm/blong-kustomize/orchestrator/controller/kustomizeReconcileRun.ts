@@ -619,6 +619,16 @@ export default handler(({handler}) => {
         skipped?: string[];
         failures?: Array<{key: string; message: string}>;
         reason?: string;
+        /**
+         * The pass stopped because the declaration says so — a draft waiting for its first release.
+         *
+         * A field rather than the sentence in `reason`, because a caller that reports to a machine
+         * needs to tell three states apart that all read `applied: false`: a hold the declaration
+         * asked for, a run that only reported, and a pass that could not do its work (@@T-838).
+         */
+        held?: boolean;
+        /** The pass was asked to report and not to write (`apply` unset). */
+        readOnly?: boolean;
     }> {
         const self = this as unknown as {registry?: IDescribeCapable; config?: IPlanConfig};
         const meta = $meta as IMeta;
@@ -774,6 +784,7 @@ export default handler(({handler}) => {
                 applied: false,
                 origin,
                 suite: {name: suiteName, namespace: suiteNamespace},
+                held: true,
                 reason: hold,
             };
         }
@@ -1199,6 +1210,7 @@ export default handler(({handler}) => {
             obsolete,
             deleted,
             skipped: skipped.map(entry => `${entry.path}: ${entry.reason}`),
+            ...(readOnly ? {readOnly: true} : {}),
             // Whether this pass had to make the keys, so a run that created a suite's first pair
             // says so rather than leaving the reader to diff secrets .
             ...(keys ? {keys} : {}),

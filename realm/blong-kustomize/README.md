@@ -358,7 +358,33 @@ front (the CI runbook does this for the test database's credentials), and `--wit
 leaves the declaration to whoever makes it. Re-running it is safe by construction: `--force`
 rewrites the manifests and keeps the rc file and the key, `--force-rc` replaces the answers too, and
 `--new-key` mints another key — which makes every value sealed with the old one unreadable, so it is
-the one flag to reach for deliberately (@@D-1030).
+the one flag to reach for deliberately (@@D-1030). The key it writes is `BLONG_MASTER_KEY` when that
+is exported and a random one otherwise, because a folder that named a different key from the one the
+shell exports would be refused on every run.
+
+The grant is not one pair, because a pass does not read one namespace: it finds what the suite owns
+by label, so it reads the namespace its services run in whether or not they still do. `init` reads
+that from the declaration it just wrote (`servicesNamespace`, else `blong-services` when any service
+is named), and a caller who brings its own declaration names it with `--services-namespace`.
+
+```text
+system/provision/
+├── namespace.yaml            # the tenant's own
+├── namespaces/<ns>/          # one folder per namespace a pass reads, outside the kustomization
+│   ├── namespace.yaml        #   because its root `namespace:` field renames what it composes
+│   ├── blong-operator-role.yaml
+│   └── blong-operator-rolebinding.yaml
+├── grants/                   # the tenant's own pair, and the UI's cluster-scoped auth-review
+├── blongdeployment.yaml      # the declaration, a draft until a release names an artifact
+└── kustomization.yaml        # the tenant's half: namespace, grants, rc Secret, declaration
+```
+
+`provision` re-derives those grants from the declaration before it applies, and applies each
+`namespaces/<ns>/` folder ahead of the kustomization — the namespace first and on its own, because
+an object cannot be created in a namespace that is not there, and because a pass never creates one
+(`INSTALL_OWNED_KINDS`). So a tenant that adds a service to its declaration re-runs `provision` and
+has the grant, and a namespace granted once is remembered by its folder rather than by the flag that
+named it (@@T-837).
 
 `provision` seals what is marked. A value followed by `# seal`, or under a name like a password or a
 token, is encrypted with the master key before the folder is applied, and the key itself reaches the
@@ -371,27 +397,26 @@ npx @feasibleone/blong-kustomize secret --help   # one command's verbs: key, val
 ```
 
 Two verbs are worth knowing before the first pass. `verify` reads back what a pass will see — the
-operator's own identity asking for the verb its code uses on the suite's identity — so a `no` there
-is the first pass failing with `Kubernetes Access Forbidden` on every kind. `restore` loads a `.sql`
-dump into the tenant's database (`--dump`, `--database`, `--mysql-namespace`), and it refuses a
-database that already holds tables unless `--force`: it is for a cut-over, where the migration adds
-a schema beside the data rather than filling it, and it is the one step nobody gets to do twice.
+operator's own identity asking for the verb its code uses on the suite's identity, in every
+namespace it was granted — so a `no` there is the first pass failing with
+`Kubernetes Access Forbidden` on every kind. `restore` loads a `.sql` dump into the tenant's
+database (`--dump`, `--database`, `--mysql-namespace`), and it refuses a database that already holds
+tables unless `--force`: it is for a cut-over, where the migration adds a schema beside the data
+rather than filling it, and it is the one step nobody gets to do twice.
 
 ## Serving more than one suite
 
 One operator can reconcile several `BlongDeployment`s, and each one needs its tenant's permission
-first: `init` writes the operator's `Role` and `RoleBinding` for the tenant's namespace, together
-with the cluster-scoped `auth-review` pair its UI asks reviews through. A second tenant copies that
-folder's `grants/`, changes the metadata namespace, and names the **installer's** ServiceAccount as
-the subject (`blong-operator` in `blong-system`, never a second copy of it); the `auth-review`
-`ClusterRole` is one object for the whole cluster, so the copy keeps it and writes a binding whose
-name carries the tenant. A deployment that also brings services of its own needs a second pair for
-the namespace they run in, because a `RoleBinding` grants nothing outside its own namespace, and the
-file is the same one with that namespace changed. The `ClusterRole` the install carries already
-lists `blongdeployments` and `blongdeployments/status`, so a tenant adds no cluster-scoped object of
-its own. The rules are one decision with the kinds the realm applies (`OPERATOR_NAMESPACED_RULES` in
-`operator.ts`), and a kind added to one without the other fails at apply time with a 403 rather than
-at review.
+first: `init` writes the operator's `Role` and `RoleBinding` for the tenant's namespace, a pair per
+namespace its services run in, and the cluster-scoped `auth-review` pair its UI asks reviews
+through. A second tenant runs `init` in its own folder and gets the same files for its own
+namespaces, naming the **installer's** ServiceAccount as the subject (`blong-operator` in
+`blong-system`, never a second copy of it); the `auth-review` `ClusterRole` is one object for the
+whole cluster, so a second tenant keeps it and writes a binding whose name carries its own
+namespace. The `ClusterRole` the install carries already lists `blongdeployments` and
+`blongdeployments/status`, so a tenant adds no cluster-scoped object of its own. The rules are one
+decision with the kinds the realm applies (`OPERATOR_NAMESPACED_RULES` in `operator.ts`), and a kind
+added to one without the other fails at apply time with a 403 rather than at review.
 
 ### A declaration that exists before its artifact
 

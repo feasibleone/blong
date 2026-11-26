@@ -122,13 +122,18 @@ jobs:
         # generates one from the plan and applies it, so a skeleton applied here would be a second
         # declaration in the namespace naming an artifact nobody published @@D-1030.
         #
+        # `--services-namespace` because a later phase opts a service in (`SERVICE_ON=mysql`), and a
+        # pass reads the namespace a service runs in as well as the tenant's own: with no grant there
+        # it reports five errors and never converges @@T-837. A folder that carries a declaration
+        # reads that namespace out of the declaration; this one has none to read.
+        #
         # The folder now carries the **master key** as a generator, and every workload reads it as a
         # required variable (`@@D-1023`): without this step the suite's pods would be refused for a
         # missing Secret rather than for anything this job is about.
         run: |
           node realm/blong-kustomize/bin/kustomize.ts init \
             --dir=suite/blong-suite --suite=blong-suite --namespace=blong-suite --force \
-            --without-declaration \
+            --without-declaration --services-namespace=blong-services \
             --set=srv.db.knex.connection.user=blong-test \
             --set=srv.db.knex.connection.password=password
           kubectl kustomize suite/blong-suite/system/provision | kubectl apply -f -

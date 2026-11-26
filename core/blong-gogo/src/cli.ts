@@ -81,9 +81,7 @@ export interface CliLocalCommand {
     method: string;
 }
 
-export interface CliOptions {
-    /** The module the `cli` intent loads — normally the realm's `cli.ts`. */
-    suite: Parameters<typeof load>[0];
+export interface CliOptionsBase {
     /** Suite and registry name; also the prefix of every error message. */
     name: string;
     /** Printed for `--help` and before a usage error. */
@@ -113,6 +111,31 @@ export interface CliOptions {
     /** Appended to the unknown-method error, e.g. where to look next. */
     hint?: string;
 }
+
+/**
+ * What a CLI says about the realm it runs: the module itself, or a way to import
+ * it — and the second is not a convenience.
+ *
+ * A static `import suite from '../index.ts'` loads the realm at process start
+ * even for a `local` verb, and a realm entry imports the framework, whose
+ * package map points at a **built** file by default (`./dist/types.js`). A
+ * checkout that has not been built therefore cannot answer `init`, which is the
+ * state a tenant who installed the CLI with `npx` is in — and answering there is
+ * the whole reason `local` exists (`@@D-1022`).
+ */
+export type CliOptions = CliOptionsBase &
+    (
+        | {
+              /** The module the `cli` intent loads — normally the realm's `cli.ts`. */
+              suite: Parameters<typeof load>[0];
+              resolveSuite?: never;
+          }
+        | {
+              /** The realm, imported when — and only when — a command needs it. */
+              resolveSuite: () => Promise<Parameters<typeof load>[0]>;
+              suite?: never;
+          }
+    );
 
 /** Parse a `process.argv.slice(2)`-style argument list. */
 export function parseArgv(args: string[], stringFlags: string[] = []): ParsedArgs {
@@ -207,7 +230,7 @@ export function isCliEntry(importMetaUrl: string): boolean {
  * `exitCodeFor` rejects.
  */
 export async function runCli(options: CliOptions): Promise<void> {
-    const {suite, name, usage, intents = ['cli']} = options;
+    const {suite, resolveSuite, name, usage, intents = ['cli']} = options;
     const args = parseArgv(process.argv.slice(2), options.stringFlags);
 
     if (wantsHelp(args)) {
@@ -249,7 +272,14 @@ export async function runCli(options: CliOptions): Promise<void> {
         process.stderr.write(chunk)) as typeof process.stdout.write;
 
     try {
-        const registry = await load(suite, name, name, intents);
+        // Last moment before the realm is imported: everything above — help, a usage
+        // error, a `local` verb — answers without it, which is what lets a CLI run
+        // from a folder that has no build.
+        const realm = resolveSuite ? await resolveSuite() : suite;
+        if (!realm) {
+            throw new Error('this CLI declares neither `suite` nor `resolveSuite`');
+        }
+        const registry = await load(realm, name, name, intents);
         try {
             // The load step that records handler folders and files still runs
             // under `cli` (it is what feeds `Registry.describe()`); only the

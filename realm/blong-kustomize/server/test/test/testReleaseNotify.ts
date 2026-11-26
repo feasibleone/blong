@@ -1,4 +1,5 @@
 import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
+import {exitCodeFor} from '../../../bin/exitCode.ts';
 import {realmCommand} from '../../../bin/kustomizeCommand.ts';
 import {
     releaseMarkdown,
@@ -357,6 +358,103 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                 assert.ok(
                     typeof answer.reason === 'string' && answer.reason.length > 0,
                     'and it is answered rather than thrown: a release calls this over an API',
+                );
+                // Which leaves the exit code to say it, because a pipeline reads that and nothing
+                // else: an announcement that patched nothing used to end the step green, so the job
+                // that exists to announce a release learned nothing from it (@@T-838 @@F-851).
+                assert.equal(
+                    exitCodeFor('kustomizeReleaseNotify', answer),
+                    1,
+                    'and the command exits non-zero rather than reporting success',
+                );
+            },
+
+            async function theExitCodeFollowsTheSeamThatWasAskedToAct(assert: IAssert) {
+                // `updated: false` is not one verdict: through the gitops seam the repository owns
+                // the tree, so nothing was meant to be written here and the release did its job —
+                // while the same value from the seam that writes is a failure. So the rule reads
+                // the seam first, and a pass that applied some objects and failed others is a
+                // failure too: a half-applied release announced as applied is the version a reader
+                // would trust (@@T-838).
+                const release = (report: Record<string, unknown>): number | undefined =>
+                    exitCodeFor('kustomizeReleaseNotify', {updated: report.updated, report});
+                assert.equal(
+                    release({seam: 'gitops', updated: false}),
+                    0,
+                    'a pushed tree is the gitops seam succeeding, not a release that did nothing',
+                );
+                assert.equal(
+                    release({seam: 'cr', updated: true}),
+                    0,
+                    'a patched declaration is a release that landed',
+                );
+                assert.equal(
+                    release({seam: 'cr', updated: false, reason: 'not found'}),
+                    1,
+                    'a patch that failed is not',
+                );
+                assert.equal(
+                    release({seam: 'none', updated: false, reason: 'no suite named'}),
+                    1,
+                    'and neither is a seam with nothing to write into',
+                );
+                assert.equal(
+                    release({
+                        seam: 'operator',
+                        updated: true,
+                        pass: {created: 2, failures: [{key: 'blong-system/job', message: 'no'}]},
+                    }),
+                    1,
+                    'an operator pass that failed an object did not finish the release',
+                );
+                // A pass has three ways to write nothing and only one of them is a failure: a
+                // draft holds it, a run without `apply` reports, and a refusal (no adapter, no
+                // declaration) is the answer a pipeline must not call green (@@T-838).
+                assert.equal(
+                    exitCodeFor('kustomizeReconcileRun', {applied: false, held: true}),
+                    0,
+                    'a draft is the declaration asking to wait, not a failed pass',
+                );
+                assert.equal(
+                    exitCodeFor('kustomizeReconcileRun', {applied: false, readOnly: true}),
+                    0,
+                    'and a pass asked to report rather than write did its job',
+                );
+                assert.equal(
+                    exitCodeFor('kustomizeReconcileRun', {
+                        applied: false,
+                        reason: 'the cluster adapter is not loaded',
+                    }),
+                    1,
+                    'while a pass that could not do its work says so',
+                );
+                assert.equal(
+                    exitCodeFor('kustomizeReconcileRun', {
+                        applied: true,
+                        failures: [{key: 'shop/deploy', message: 'no'}],
+                    }),
+                    1,
+                    'a pass that applied some objects and failed others is not finished',
+                );
+                assert.equal(
+                    exitCodeFor('kustomizeReconcileRun', {applied: true}),
+                    0,
+                    'and one that converged does not claim otherwise',
+                );
+                assert.equal(
+                    exitCodeFor('kustomizeVolumePrune', {deleted: false, reason: 'no adapter'}),
+                    1,
+                    'a prune whose adapter was not loaded is not a namespace with nothing to retire',
+                );
+                assert.equal(
+                    exitCodeFor('kustomizeVolumePrune', {deleted: false, prune: [], retain: []}),
+                    0,
+                    'while one that found nothing to delete is a success',
+                );
+                assert.equal(
+                    exitCodeFor('kustomizeSecretsEnsure', {ok: true}),
+                    undefined,
+                    'and a command with no verdict of its own keeps the default',
                 );
             },
         ]),

@@ -46,7 +46,7 @@ open (27)
   failed
 - `T-834` · realm/blong-kustomize — Release blong-kustomize so a pass applies the suite's identity
 
-done (22)
+done (24)
 
 - `T-279` · realm/blong-kustomize — The operator reports obsolete objects and never deletes them
 - `T-277` · realm/blong-kustomize — The plan resolves no databases, so the init script creates none
@@ -75,6 +75,9 @@ done (22)
 - `T-445` · realm/blong-kustomize — Add the token-gated operator release route
 - `T-811` · realm/blong-kustomize — The identity.yaml object needs its fixtures, docs and both
   committed trees regenerated
+- `T-837` · realm/blong-kustomize — init grants the tenant namespace only, and a pass reads the
+  others too
+- `T-838` · realm/blong-kustomize — A release-notify that patched nothing exits 0
 
 <!-- /memory:index -->
 
@@ -856,6 +859,39 @@ identity.checkInternal resolves in the process that verified the token. What was
 the prose: D-529's claim that the install tree grows the file is corrected, and
 docs/blong/docs/patterns/kustomize.md now says which tree gets services/identity.yaml and why the
 other does not.
+
+### T-837 — init grants the tenant namespace only, and a pass reads the others too
+
+> _2026-11-26 · realm/blong-kustomize · done_
+
+The provision folder writes one operator Role and RoleBinding, for the namespace the declaration
+lives in. A reconcile pass reads more than that: it finds what the suite owns by label in the
+backing-services namespace (`blong-services` by default) and in the requested services namespace, so
+rights limited to the tenant namespace fail on the read rather than on the apply — the failure that
+made the pass report five errors and never converge. init cannot compute those namespaces from an
+empty folder, but it does write the declaration it is provisioning, so it reads servicesNamespace
+and the backing services a draft names and emits a pair per namespace; `--services-namespace` names
+them when the declaration is somebody else's. So init derives the namespaces from the declaration it
+wrote, the folder keeps what it was told, provision re-derives and applies each extra namespace's
+folder ahead of the tenant's half, and verify asks in every namespace that was granted. Proven on
+the dev cluster: the operator could create in both the tenant namespace and blong-services, and a
+second provision run was a no-op (@@D-1031).
+
+### T-838 — A release-notify that patched nothing exits 0
+
+> _2026-11-26 · realm/blong-kustomize · done_
+
+Running `blong-kustomize release-notify` against a namespace with no declaration printed
+`error k8s.notFound: Kubernetes Resource Not Found` and exited 0, so a release announcement that
+patched nothing reads as a success to anything watching the exit code — the CI step that announces a
+release included. CliOptions has `exitCodeFor` for exactly this and the realm does not use it: the
+handler's failure comes back as a result rather than as a throw, so the convention has to say what
+counts as a failed announce. Decide the shape (an `error` member on the result, or the handler
+throwing) and set it, the way `reconcile` and `volume-prune` already report their own diagnostics.
+
+bin/exitCode.ts reads the answer of release-notify, reconcile and volume-prune; release-notify
+against a namespace with no declaration now exits 1 instead of 0, the gitops seam still exits 0, and
+the rules are pinned in testReleaseNotify.ts (@@D-1032).
 
 ## Retired
 
