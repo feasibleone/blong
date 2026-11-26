@@ -8,8 +8,9 @@ import {adapter} from '@feasibleone/blong';
  */
 export default adapter(() => ({
     extends: 'adapter.webhook',
+    // Gated to the intent that runs tests, for the reason `slackSim` states (`@@F-854`).
     activation: {
-        default: {
+        integration: {
             listen: true,
             namespace: 'viberSim',
             hook: 'viberSim',

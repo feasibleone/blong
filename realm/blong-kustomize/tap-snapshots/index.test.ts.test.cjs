@@ -458,7 +458,7 @@ Object {
   "namespacesInBase": 0,
   "nodesInBase": 0,
   "nodesInLocal": 2,
-  "patches": 13,
+  "patches": 9,
   "placeholderInBase": true,
   "placeholdersInTemplate": true,
   "realVolumeInPatch": true,
@@ -470,7 +470,7 @@ Object {
   "versionInBase": false,
   "versionInOverlay": true,
   "versionInTransformer": false,
-  "versionsInBase": 16,
+  "versionsInBase": 12,
 }
 `
 
@@ -591,7 +591,7 @@ Object {
 `
 
 exports[`index.test.ts > TAP > kustomize flow (server) > tree generate > objectsAreFingerprinted > generatedFileCount 1`] = `
-24
+20
 `
 
 exports[`index.test.ts > TAP > kustomize flow (server) > tree generate > objectsAreFingerprinted > generatedTree 1`] = `
@@ -786,7 +786,7 @@ Object {
         app.kubernetes.io/name: blong-suite
         app.kubernetes.io/part-of: blong-suite
         app.kubernetes.io/version: 1.0.0
-        blong.feasible.one/spec-hash: e149e12453115ace
+        blong.feasible.one/spec-hash: 7af2046414a25bca
       name: kustomize
       namespace: blong-suite
     spec:
@@ -825,6 +825,11 @@ Object {
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
+                - name: BLONG_MASTER_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      key: BLONG_MASTER_KEY
+                      name: blong-master-key
               image: ghcr.io/feasibleone/blong-gogo:latest
               livenessProbe:
                 tcpSocket:
@@ -930,124 +935,6 @@ Object {
       - blong-suite.yaml
     
   ),
-  "rbac/auth-review-binding.yaml": String(
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: ClusterRoleBinding
-    metadata:
-      labels:
-        app.kubernetes.io/managed-by: blong-kustomize
-        app.kubernetes.io/name: blong-suite
-        app.kubernetes.io/part-of: blong-suite
-        app.kubernetes.io/version: 1.0.0
-        blong.feasible.one/spec-hash: 07abb2e08cee26f1
-      name: blong-suite-auth-review
-    roleRef:
-      apiGroup: rbac.authorization.k8s.io
-      kind: ClusterRole
-      name: auth-review
-    subjects:
-      - kind: ServiceAccount
-        name: blong
-        namespace: blong-suite
-    
-  ),
-  "rbac/auth-review.yaml": String(
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: ClusterRole
-    metadata:
-      labels:
-        app.kubernetes.io/managed-by: blong-kustomize
-        app.kubernetes.io/name: blong-suite
-        app.kubernetes.io/part-of: blong-suite
-        app.kubernetes.io/version: 1.0.0
-        blong.feasible.one/spec-hash: 504dbf06c5055a3a
-      name: auth-review
-    rules:
-      - apiGroups:
-          - authentication.k8s.io
-        resources:
-          - tokenreviews
-        verbs:
-          - create
-      - apiGroups:
-          - authorization.k8s.io
-        resources:
-          - subjectaccessreviews
-        verbs:
-          - create
-    
-  ),
-  "rbac/blong-operator-role.yaml": String(
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: Role
-    metadata:
-      labels:
-        app.kubernetes.io/managed-by: blong-kustomize
-        app.kubernetes.io/name: blong-suite
-        app.kubernetes.io/part-of: blong-suite
-        app.kubernetes.io/version: 1.0.0
-        blong.feasible.one/spec-hash: 382363f64bfa9406
-      name: blong-operator
-      namespace: blong-suite
-    rules:
-      - apiGroups:
-          - ""
-        resources:
-          - services
-          - configmaps
-          - secrets
-          - persistentvolumeclaims
-        verbs: &a1
-          - get
-          - list
-          - watch
-          - create
-          - update
-          - patch
-          - delete
-      - apiGroups:
-          - apps
-        resources:
-          - deployments
-          - daemonsets
-          - statefulsets
-        verbs: *a1
-      - apiGroups:
-          - batch
-        resources:
-          - jobs
-          - cronjobs
-        verbs: *a1
-      - apiGroups:
-          - networking.k8s.io
-        resources:
-          - ingresses
-          - networkpolicies
-        verbs: *a1
-    
-  ),
-  "rbac/blong-operator-rolebinding.yaml": String(
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: RoleBinding
-    metadata:
-      labels:
-        app.kubernetes.io/managed-by: blong-kustomize
-        app.kubernetes.io/name: blong-suite
-        app.kubernetes.io/part-of: blong-suite
-        app.kubernetes.io/version: 1.0.0
-        blong.feasible.one/spec-hash: 6dba5a6ef9a5508a
-      name: blong-operator
-      namespace: blong-suite
-    roleRef:
-      apiGroup: rbac.authorization.k8s.io
-      kind: Role
-      name: blong-operator
-    subjects:
-      - kind: ServiceAccount
-        name: blong-operator
-        namespace: blong-system
-    
-  ),
   "rbac/jobs-role.yaml": String(
     apiVersion: rbac.authorization.k8s.io/v1
     kind: Role
@@ -1114,10 +1001,6 @@ Object {
     apiVersion: kustomize.config.k8s.io/v1beta1
     kind: Kustomization
     resources:
-      - auth-review-binding.yaml
-      - auth-review.yaml
-      - blong-operator-role.yaml
-      - blong-operator-rolebinding.yaml
       - jobs-role.yaml
       - jobs-rolebinding.yaml
       - service-account.yaml
@@ -1293,7 +1176,7 @@ Object {
 
 exports[`index.test.ts > TAP > kustomize flow (server) > tree generate > olderJobAttemptsArePrunedByRetention > obsolescence 1`] = `
 Object {
-  "sweptKinds": 11,
+  "sweptKinds": 14,
   "versionNamedLeftAlone": Array [
     "the-alias",
   ],
@@ -1434,6 +1317,7 @@ Object {
       "env": Array [
         "BLONG_ENV=release",
         "BLONG_NAMESPACE=undefined",
+        "BLONG_MASTER_KEY=undefined",
       ],
       "mounts": Array [
         Object {
@@ -1590,10 +1474,6 @@ Object {
     "kustomization.yaml",
     "namespaces/kustomization.yaml",
     "namespaces/shop-suite.yaml",
-    "rbac/auth-review-binding.yaml",
-    "rbac/auth-review.yaml",
-    "rbac/blong-operator-role.yaml",
-    "rbac/blong-operator-rolebinding.yaml",
     "rbac/jobs-role.yaml",
     "rbac/jobs-rolebinding.yaml",
     "rbac/kustomization.yaml",

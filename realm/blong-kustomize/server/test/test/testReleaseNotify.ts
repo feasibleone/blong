@@ -136,8 +136,12 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                 // cluster .
                 assert.deepEqual(
                     releasePatch({version: '1.13.0'}),
-                    [{op: 'add', path: '/spec/version', value: '1.13.0'}],
-                    'a release that only announces a version patches one member',
+                    [
+                        {op: 'add', path: '/spec/version', value: '1.13.0'},
+                        {op: 'add', path: '/spec/draft', value: false},
+                    ],
+                    'a release that only announces a version patches one member, plus the flag ' +
+                        'that says the declaration is no longer waiting for one',
                 );
                 assert.deepEqual(
                     releasePatch({
@@ -151,6 +155,7 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                             path: '/spec/suiteVolume/artifact',
                             value: {source: 'url', url: 'https://example.test/suite.zip'},
                         },
+                        {op: 'add', path: '/spec/draft', value: false},
                     ],
                     'and the artifact is patched *inside* the volume, never over it',
                 );
@@ -159,7 +164,7 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                         version: '1.13.0',
                         frameworkImage: 'ghcr.io/feasibleone/blong-gogo',
                     }).map(operation => operation.path),
-                    ['/spec/version', '/spec/frameworkImage'],
+                    ['/spec/version', '/spec/frameworkImage', '/spec/draft'],
                     'the image only when the release moved it',
                 );
                 assert.deepEqual(
@@ -181,8 +186,19 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                                 digest: 'a'.repeat(64),
                             },
                         },
+                        {op: 'add', path: '/spec/draft', value: false},
                     ],
                     'the digest travels inside the artifact and the framework version is its own member',
+                );
+                // The same release is what promotes a declaration that was waiting for it: a CR can
+                // exist before its first artifact does, and the flag that held the operator back is
+                // cleared by the call that names the artifact (`@@D-1019`).
+                assert.deepEqual(
+                    releasePatch({version: '1.13.0'}).filter(
+                        operation => operation.path === '/spec/draft',
+                    ),
+                    [{op: 'add', path: '/spec/draft', value: false}],
+                    'every release clears the draft, so a promoted declaration never keeps waiting',
                 );
             },
 
@@ -224,6 +240,41 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                 );
             },
 
+            async function aDeclarationWithNoVolumeIsPromotedInOneOperation(assert: IAssert) {
+                // A release patches `spec.suiteVolume.artifact`, and a JSON-patch `add` needs its
+                // parent: a skeleton declaration — the one `init` writes for a folder with no tree —
+                // has no volume, so the first release would fail on a path rather than on the artifact
+                // it was naming. The patch writes the whole member in that case (D-1028).
+                const without = releasePatch(
+                    {version: '1.0.0', artifactUrl: 'https://example.test/suite.zip'},
+                    {hasSuiteVolume: false},
+                );
+                const volume = without.find(entry => entry.path === '/spec/suiteVolume');
+                assert.ok(volume, 'the volume is written whole');
+                assert.deepEqual(volume?.value, {
+                    artifact: {source: 'url', url: 'https://example.test/suite.zip'},
+                });
+                assert.equal(
+                    without.some(entry => entry.path.startsWith('/spec/suiteVolume/')),
+                    false,
+                    'and the artifact is inside it rather than beside it',
+                );
+                const with_ = releasePatch(
+                    {version: '1.0.0', artifactUrl: 'https://example.test/suite.zip'},
+                    {hasSuiteVolume: true},
+                );
+                assert.ok(
+                    with_.find(entry => entry.path === '/spec/suiteVolume/artifact'),
+                    'a declaration that has a volume keeps it and moves only the artifact',
+                );
+                assert.equal(
+                    releasePatch({version: '1.0.0', artifactUrl: 'https://example.test/x'}).some(
+                        entry => entry.path.includes('suiteVolume'),
+                    ),
+                    true,
+                    'and the nested path is the default: a promoted declaration has a volume',
+                );
+            },
             async function theRealmCliNamesTheTwoDecisions(assert: IAssert) {
                 // The CLI is a naming layer: it exists so a release can be announced, and so the
                 // retention decision has a caller at all. What is worth pinning is the mapping — the
@@ -231,7 +282,12 @@ export default handler(({lib: {group}, handler: {kustomizeReleaseNotify}}) => ({
                 // that arrives empty is not the same as one that was not given, and the handlers
                 // depend on the difference.
                 const args = (positionals: string[], argv: Record<string, unknown> = {}) =>
-                    realmCommand({argv: argv as never, positionals});
+                    // Every verb this group asks about is a handler call; the CLI's local verbs
+                    // (`init`, `provision`, `secret`) name no method and are covered by their own
+                    // group.
+                    realmCommand({argv: argv as never, positionals}) as
+                        | {method: string; params?: Record<string, unknown>}
+                        | undefined;
 
                 const notify = args(['release-notify'], {
                     suite: 'shop',

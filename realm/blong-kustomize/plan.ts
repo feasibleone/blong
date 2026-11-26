@@ -2069,6 +2069,17 @@ const DEFAULT_FRAMEWORK_IMAGE = 'ghcr.io/feasibleone/blong-gogo';
  * process loaded, because those follow from what is actually running. That split is what lets a CR
  * be a declaration a human writes while the tree stays a fact the registry produces.
  */
+/**
+ * The Secret a tenant keeps the master key in, and the variable a process reads it from (@@D-1023).
+ *
+ * The key is what a configuration decrypts its sealed values with, so it belongs in exactly two
+ * places: this Secret, and the environment of a process that loads the configuration. It is never in
+ * an rc file, never in a tree, and never printed — which is what makes an rc file a document a person
+ * or an agent may read.
+ */
+export const MASTER_KEY_SECRET = 'blong-master-key';
+export const MASTER_KEY_ENV = 'BLONG_MASTER_KEY';
+
 export interface IBlongDeploymentSpec {
     version?: string;
     frameworkImage?: string;
@@ -2115,6 +2126,16 @@ export interface IBlongDeploymentSpec {
      * `nodes` as the *resolved* names, and one field cannot be both the source and the answer.
      */
     nodeSource?: INodeSource;
+    /**
+     * Whether this declaration is waiting for its first release.
+     *
+     * A CR has to exist before the release that names its artifact can patch it, and a pass over a
+     * CR whose artifact does not exist yet writes a tree, an Ingress and a fill Job for a suite it
+     * cannot start (`@@D-1019`). `draft: true` is how the declaration says "not yet": the operator
+     * reports that it is waiting and writes nothing, and the first release clears the flag, which
+     * is the same patch that names the artifact.
+     */
+    draft?: boolean;
 }
 
 /**

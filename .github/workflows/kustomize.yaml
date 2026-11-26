@@ -112,29 +112,28 @@ jobs:
         # names no database this run can reach"), which is what this job hit once the run started
         # provisioning its own account instead of assuming a test seed @@D-952 @@F-810.
         #
-        # So this job is the tenant, and it supplies the one thing its deployment needs and does not
-        # name itself: the credentials for the database the suite dials. `host: db` is the
-        # ExternalName the tree writes into the suite's namespace, and the pair below is the user the
-        # integration manifest creates — the same document a tenant would mount to run this suite
-        # against their own MySQL.
+        # So this job is the tenant, and it becomes one the way a tenant does: `init` writes the
+        # folder, `--set` supplies the credentials `test/integration/` makes a user for, and the
+        # folder is never committed — it is derived from a deployment, so a clone would carry a stale
+        # copy of answers it does not hold (`@@D-1025`). What the job proves is the command a tenant
+        # runs, not a file kept beside the suite (@@D-1021).
+        #
+        # `--without-declaration` because this job's declaration is not `init`'s: the runbook below
+        # generates one from the plan and applies it, so a skeleton applied here would be a second
+        # declaration in the namespace naming an artifact nobody published @@D-1030.
+        #
+        # The folder now carries the **master key** as a generator, and every workload reads it as a
+        # required variable (`@@D-1023`): without this step the suite's pods would be refused for a
+        # missing Secret rather than for anything this job is about.
         run: |
-          kubectl create namespace blong-suite --dry-run=client -o yaml | kubectl apply -f -
-          cat > "$RUNNER_TEMP/tenant-rc.yaml" <<'RC'
-          srv:
-            db:
-              knex:
-                connection:
-                  host: db
-                  port: 3306
-                  user: blong-test
-                  password: password
-                  database: blong-integration
-          RC
-          kubectl -n blong-suite create secret generic blong-releaserc-etc \
-            --from-file=blong_releaserc="$RUNNER_TEMP/tenant-rc.yaml" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          kubectl -n blong-suite get secret blong-releaserc-etc -o jsonpath='{.data.blong_releaserc}' \
-            | base64 -d
+          node realm/blong-kustomize/bin/kustomize.ts init \
+            --dir=suite/blong-suite --suite=blong-suite --namespace=blong-suite --force \
+            --without-declaration \
+            --set=srv.db.knex.connection.user=blong-test \
+            --set=srv.db.knex.connection.password=password
+          kubectl kustomize suite/blong-suite/system/provision | kubectl apply -f -
+          kubectl -n blong-suite get secret blong-releaserc-etc -o jsonpath='{.data.blong_releaserc}' | base64 -d
+          kubectl -n blong-suite get secret blong-master-key -o jsonpath='{.metadata.name}{"\n"}'
       - name: Build the suite's browser bundle
         # The suite's `build` script is `vite build`, and a deploy copies each package whole, so the
         # bundle has to exist *before* the deploy or the artifact carries sources and no page — which

@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-sport
     app.kubernetes.io/part-of: blong-sport
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 96570f21f49c390a
+    blong.feasible.one/spec-hash: 618bf2c9df0263e7
   name: blong-sport
 spec:
   replicas: 1
@@ -69,6 +69,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: BLONG_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: BLONG_MASTER_KEY
+                  name: blong-master-key
           image: PLACEHOLDER
           livenessProbe:
             tcpSocket:

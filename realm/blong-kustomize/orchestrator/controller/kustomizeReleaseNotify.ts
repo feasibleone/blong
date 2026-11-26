@@ -36,6 +36,16 @@ export const releasePatch = (
         IReleaseNotify,
         'version' | 'frameworkImage' | 'frameworkVersion' | 'artifactUrl' | 'artifactDigest'
     >,
+    /**
+     * Whether the declaration already holds `spec.suiteVolume`.
+     *
+     * A JSON-patch `add` needs its parent to exist, so `add /spec/suiteVolume/artifact` on a
+     * declaration that has no volume fails on the path rather than on anything the release was
+     * asked to do — a skeleton declaration is exactly that shape. `false` writes the whole member in
+     * one operation instead. `true` by default, because the declaration a release promotes has a
+     * volume: it is a folder that came with a tree.
+     */
+    options: {hasSuiteVolume?: boolean} = {},
 ): Array<{op: string; path: string; value: unknown}> => {
     // A list of operations rather than an object, for the reason `kustomize.status.edit` documents at
     // length: the client sends `application/json-patch+json` for a custom resource, and `add` replaces
@@ -62,16 +72,38 @@ export const releasePatch = (
     if (params.artifactUrl !== undefined) {
         body.push({
             op: 'add',
-            path: '/spec/suiteVolume/artifact',
+            path:
+                options.hasSuiteVolume === false
+                    ? '/spec/suiteVolume'
+                    : '/spec/suiteVolume/artifact',
             // The digest is what names the volume and the attempt; a release that knows it hands it
             // on rather than leaving the operator to fall back to the version (@@D-469).
-            value: {
-                source: 'url',
-                url: params.artifactUrl,
-                ...(params.artifactDigest !== undefined ? {digest: params.artifactDigest} : {}),
-            },
+            value:
+                options.hasSuiteVolume === false
+                    ? {
+                          artifact: {
+                              source: 'url',
+                              url: params.artifactUrl,
+                              ...(params.artifactDigest !== undefined
+                                  ? {digest: params.artifactDigest}
+                                  : {}),
+                          },
+                      }
+                    : {
+                          source: 'url',
+                          url: params.artifactUrl,
+                          ...(params.artifactDigest !== undefined
+                              ? {digest: params.artifactDigest}
+                              : {}),
+                      },
         });
     }
+    // A release is what promotes a declaration: a CR may be a draft waiting for its first artifact,
+    // and this patch is the moment it stops being one — the same call that names the artifact, so a
+    // reader never sees a declaration that has an artifact and still refuses to converge
+    // (`@@D-1019`). Written unconditionally, because `false` is what a CR that never said `draft`
+    // already means, and a member that is absent is one every later pass has to guess about.
+    body.push({op: 'add', path: '/spec/draft', value: false});
     return body;
 };
 
@@ -211,25 +243,30 @@ export default handler(({handler}) => {
     };
 
     /**
-     * The version a declaration held before this release, when the cluster can be asked.
+     * What a declaration held before this release, when the cluster can be asked.
      *
      * Best-effort by design: the report describes what happened, so a read that fails turns a
-     * `from → to` into a plain `to` rather than failing a release that is already being applied.
+     * `from → to` into a plain `to` rather than failing a release that is already being applied. The
+     * volume is part of the answer because the patch has to know whether it can address
+     * `spec.suiteVolume.artifact` or has to write the whole member (@@D-1028).
      */
-    const previousVersion = async (
+    const readDeclaration = async (
         name: string,
         namespace: string,
         $meta: IMeta | undefined,
-    ): Promise<string | undefined> => {
+    ): Promise<{version?: string; hasSuiteVolume?: boolean}> => {
         const find = call<
             (
                 params: object,
                 $meta: IMeta,
             ) => Promise<{
-                items?: Array<{metadata?: {name?: string}; spec?: {version?: string}}>;
+                items?: Array<{
+                    metadata?: {name?: string};
+                    spec?: {version?: string; suiteVolume?: unknown};
+                }>;
             }>
         >('clusterCustomFind');
-        if (!find) return undefined;
+        if (!find) return {};
         try {
             const found = await find(
                 {
@@ -240,9 +277,13 @@ export default handler(({handler}) => {
                 },
                 $meta as IMeta,
             );
-            return found?.items?.find(item => item.metadata?.name === name)?.spec?.version;
+            const spec = found?.items?.find(item => item.metadata?.name === name)?.spec;
+            return {
+                ...(spec?.version ? {version: spec.version} : {}),
+                ...(spec ? {hasSuiteVolume: spec.suiteVolume !== undefined} : {}),
+            };
         } catch {
-            return undefined;
+            return {};
         }
     };
 
@@ -410,10 +451,15 @@ export default handler(({handler}) => {
                 return answer(base('none', false, 'no namespace to write into'));
             }
 
-            const body = releasePatch(params);
             // Read *before* the patch, or the answer would name the version it just wrote as the one
-            // it came from.
-            const before = await previousVersion(params.suite, namespace, $meta);
+            // it came from — and the patch needs the volume's presence, which the same read answers.
+            const current = await readDeclaration(params.suite, namespace, $meta);
+            const body = releasePatch(params, {
+                ...(current.hasSuiteVolume === undefined
+                    ? {}
+                    : {hasSuiteVolume: current.hasSuiteVolume}),
+            });
+            const before = current.version;
             try {
                 await patch(
                     {

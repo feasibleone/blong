@@ -10,6 +10,10 @@ open (1)
 
 - `F-276` · core/blong-lib — A test that set the slow margin alone also got the reporting threshold
 
+resolved (1)
+
+- `F-857` · core/blong-lib — A cipher that answers an empty string for the wrong input
+
 <!-- /memory:index -->
 
 ## Open
@@ -29,3 +33,22 @@ assumed. Lesson: when a unit test sets one of a pair of defaults, it must state 
 later pairing silently re-interprets the test.
 
 ## Resolved
+
+### F-857 — A cipher that answers an empty string for the wrong input
+
+> _2026-11-26 · core/blong-lib · resolved_
+
+Writing the first sealed value cost an afternoon of confused empty strings. `cbc.decrypt` takes a
+hex ciphertext and answers `''` for anything it cannot parse — base64, a misplaced quote, a value
+decrypted twice — so the failure looks like an empty password rather than an error, and the template
+renderer that calls it reports nothing either: `${decrypt('…')}` resolves to `''` and the component
+starts with a blank credential. Two shapes of the same mistake were made here before it was
+understood: a 32-character key, which is the _block_ size and throws `Invalid key length` on the
+first encrypt, and a base64 blob, which silently decrypts to nothing. `secretDecrypt` now refuses a
+value that is not hex, and it refuses a plaintext handed to it a second time — which is how `open`
+returning the plaintext and a caller decrypting it again is caught. The lesson is that a cipher with
+a silent failure mode needs a wrapper that validates its input shape, not a comment saying what the
+shape is.
+
+secretDecrypt refuses non-hex and a double decrypt; the tooling emits hex only and the docs state
+the two shapes

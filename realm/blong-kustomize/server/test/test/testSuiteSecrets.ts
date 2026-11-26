@@ -188,7 +188,9 @@ export default handler(({lib: {group}, handler: {kustomizeSecretsEnsure}}) => ({
                 // browser out, and a rotated blob key would make every stored file unreadable
                 // (`@@D-856`).
                 const gateway = generateGatewayKeys();
-                const older = JSON.stringify({gateway: {sign: gateway.sign, encrypt: gateway.encrypt}});
+                const older = JSON.stringify({
+                    gateway: {sign: gateway.sign, encrypt: gateway.encrypt},
+                });
                 const {config, added} = mergeSuiteSecrets(older, {
                     ...(JSON.parse(
                         suiteSecretsConfig({
@@ -231,7 +233,10 @@ export default handler(({lib: {group}, handler: {kustomizeSecretsEnsure}}) => ({
 
             async function theRealmCliAsksForTheKeys(assert: IAssert) {
                 const args = (positionals: string[], argv: Record<string, unknown> = {}) =>
-                    realmCommand({argv: argv as never, positionals});
+                    // A handler call, not one of the CLI's local verbs: those name no method.
+                    realmCommand({argv: argv as never, positionals}) as
+                        | {method: string; params?: Record<string, unknown>}
+                        | undefined;
 
                 assert.equal(
                     args(['keys-ensure'], {namespace: 'shop'})?.method,

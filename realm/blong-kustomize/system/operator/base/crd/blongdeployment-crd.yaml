@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: blong-operator
     app.kubernetes.io/part-of: blong-operator
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: e3eb66d23b941e54
+    blong.feasible.one/spec-hash: 561706f711fbdd97
   name: blongdeployments.blong.feasible.one
 spec:
   group: blong.feasible.one
@@ -113,6 +113,9 @@ spec:
                     root:
                       type: string
                   type: object
+                draft:
+                  description: Converge nothing until the first release names an artifact (true), or deploy the declared version (false, the default)
+                  type: boolean
                 entry:
                   type: string
                 externalServices:

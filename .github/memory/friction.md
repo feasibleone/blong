@@ -84,7 +84,7 @@ open (70)
 - `F-759` · cross-cutting — An answered prompt is dropped when the asking process was killed
 - `F-782` · cross-cutting — TSServer SIGABRT is heap OOM at the 3072 MB default
 
-resolved (57)
+resolved (58)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -150,6 +150,7 @@ resolved (57)
   away
 - `F-851` · cross-cutting — Three runs reported nothing because npx at the repository root was
   prompting
+- `F-856` · cross-cutting — The reference gate skips backticked citations and untracked files
 
 <!-- /memory:index -->
 
@@ -2165,6 +2166,23 @@ reports the status of `tail`.
 
 The command now runs from tools/blong-dev, where tap is declared: 32/32 assertions pass. The rule it
 cost is the [CRITICAL_COMMANDS] block of .github/copilot-instructions.md (@@D-1018).
+
+### F-856 — The reference gate skips backticked citations and untracked files
+
+> _2026-11-26 · cross-cutting · resolved_
+
+Two of this repository's @@ gates cannot see the citations the code carries, and both hid behind a
+green run. `blong-dev memory refs` skips a token inside backticks by design — an example rather than
+a citation — so every code comment written as ``(`@@D-855`)`` was an illustration the gate never
+read: converting the backticks in five `realm/blong-kustomize` files and the pages beside them
+turned 51 previously invisible citations into 51 checked ones (1336 references resolved before, 1387
+after, and all of them resolve). The scan also reads `git ls-files`, so a citation in a _new_ file
+is invisible until that file is committed, which is exactly when a typo in an id would be noticed
+and the gate stays quiet. The lesson for a writer is to leave a citation bare in prose and a comment
+and to reserve backticks for an example; the lesson for the tooling is that "0 dangling" answers
+only for what it could see, so a run should say how many references it read.
+
+the 51 citations in realm/blong-kustomize are bare now and resolve; the tooling half is T-833
 
 ## Retired
 

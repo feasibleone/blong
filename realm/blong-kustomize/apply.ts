@@ -4,6 +4,7 @@
  */
 import {createHash} from 'node:crypto';
 import type {KustomizeResource, KustomizeTree} from './generator.ts';
+import {OPERATOR_NAME, OPERATOR_NAMESPACE} from './operator.ts';
 
 /** The label carrying a manifest's own fingerprint. */
 export const SPEC_HASH_LABEL = 'blong.feasible.one/spec-hash';
@@ -33,7 +34,7 @@ export const GENERATED_CREDENTIALS_LABEL = 'blong.feasible.one/generated-credent
  * regenerated is a key browsers (and stored blobs) are not holding — so the pass creates it outside
  * the tree. This label says why it may live beside a tree that never names it: its owner is the
  * declaration, it is kept while that exists, and a listing which sees it does not make it obsolete.
- * The name is the suite's rather than one consumer's (`@@D-855`).
+ * The name is the suite's rather than one consumer's @@D-855.
  */
 export const SUITE_SECRETS_LABEL = 'blong.feasible.one/suite-secrets';
 /** The label this object carried before it was generalised: read, so an older Secret still counts. */
@@ -71,6 +72,7 @@ export const RESOURCE_TYPE_BY_KIND: Record<string, string> = {
     PersistentVolumeClaim: 'persistent_volume_claim',
     ConfigMap: 'config_map',
     Secret: 'secret',
+    ServiceAccount: 'service_account',
     Service: 'service',
     Role: 'role',
     ClusterRole: 'cluster_role',
@@ -90,25 +92,52 @@ export const RESOURCE_TYPE_BY_KIND: Record<string, string> = {
  *
  * These are not gaps to fill later: each one is owned by something else, and an
  * operator that applied them would be fighting the install.
+ *
+ * The namespace and the two cluster-scoped RBAC kinds are the whole list now. A pass applies the
+ * suite's own identity — its ServiceAccount, Role and RoleBinding — because its Jobs cannot run
+ * without them, and a tenant that had to apply identity before a declaration it had not written
+ * yet is the ordering a deployment lost @@D-1020. What stays out is what a pass could use to
+ * grow its own rights: a cluster-scoped role is refused by the API
+ * (`clusterroles.rbac.authorization.k8s.io is forbidden` for the ServiceAccount it runs as) and
+ * would reach every namespace at once.
  */
 export const INSTALL_OWNED_KINDS: Record<string, string> = {
     Namespace: 'the install creates the suite namespace and owns its lifecycle',
     CustomResourceDefinition: 'the CRD is installed with the operator, not reconciled by it',
     BlongDeployment: "the custom resource is the operator's input, not its output",
-    ServiceAccount:
-        'the framework k8s adapter names no verb for a ServiceAccount; the install applies it',
-    // The four objects that grant the operator its rights. Reconciling them would let the operator
-    // widen its own Role — and in the cluster it is the one thing it is not allowed to write: a pass
-    // died on `clusterroles.rbac.authorization.k8s.io is forbidden` for the ServiceAccount it runs
-    // as. The install applies them, the same way it applies the CRD and the ServiceAccount they bind.
-    Role: 'the install grants the rights; an operator that could rewrite them could widen them',
-    RoleBinding:
-        'the install grants the rights; an operator that could rewrite them could widen them',
-    ClusterRole:
-        'the install grants the rights; an operator that could rewrite them could widen them',
+    ClusterRole: 'cluster-scoped: the install grants the rights, and a pass may not write one',
     ClusterRoleBinding:
-        'the install grants the rights; an operator that could rewrite them could widen them',
+        'cluster-scoped: the install grants the rights, and a pass may not write one',
 };
+
+/**
+ * The kinds through which a caller grants rights to someone.
+ *
+ * Narrower than `RESOURCE_TYPE_BY_KIND` on purpose: only these can hand the operator powers it did
+ * not have, so only these need the guard below.
+ */
+const IDENTITY_KINDS = new Set(['ServiceAccount', 'Role', 'RoleBinding']);
+
+/**
+ * Whether an object is a grant the operator runs under rather than one it makes.
+ *
+ * The operator writes the suite's ServiceAccount and the role its pods run as; it never writes
+ * anything that names *it* — the Role and RoleBinding that carry `OPERATOR_NAMESPACED_RULES`, or
+ * any identity object in its own namespace. That is what lets it hold the verbs for `roles` and
+ * `rolebindings` without holding the ability to widen them: the one object a pass could grow with
+ * is the one object it refuses @@D-1020.
+ *
+ * The guard is a name and a namespace rather than a rule in RBAC, because Kubernetes cannot express
+ * "every namespace but mine" — and the tree, not the cluster, is where the operator's own grants
+ * are stated.
+ */
+export const isSelfGrant = (object: IClusterObject): boolean =>
+    IDENTITY_KINDS.has(String(object.kind)) &&
+    (object.metadata?.name === OPERATOR_NAME || object.metadata?.namespace === OPERATOR_NAMESPACE);
+
+/** What a pass says about an object it leaves to the install. */
+export const SELF_GRANT_REASON =
+    'the grants the operator runs under: only the install writes them, because a pass that could would widen its own rights';
 
 /**
  * The resource types a pass sweeps for objects its declaration stopped naming.
@@ -119,8 +148,10 @@ export const INSTALL_OWNED_KINDS: Record<string, string> = {
  * orphaned by the pass that was supposed to remove it (found in the dev cluster, @@T-282). So the
  * sweep covers every kind a suite may own, whether or not this tree happens to name one.
  *
- * The install-owned kinds are left out: they are applied by the install, not by a pass, and sweeping
- * them would have the operator delete the Role it runs under.
+ * The install-owned kinds are left out: they are applied by the install, not by a pass. So is every
+ * object `isSelfGrant` names — the operator's own grants wear the suite's labels, so a sweep that
+ * compared them against the tree would find them obsolete and delete the Role the pass is running
+ * under @@D-1020.
  */
 export const sweptResourceTypes = (): string[] =>
     Object.entries(RESOURCE_TYPE_BY_KIND)
@@ -138,11 +169,23 @@ export const isClusterResource = (resource: KustomizeResource): resource is IClu
 /**
  * Dependencies first, so one pass converges: the volume before the pods that mount it,
  * the Services before the Ingress that points at them, and the Ingress last.
+ *
+ * Identity comes before everything: a Job whose pod names a ServiceAccount is refused until that
+ * ServiceAccount exists (`serviceaccount "blong" not found`), and the role the pod runs under is
+ * what it can do once it does. Both were applied by hand before this order existed, and a tenant
+ * that skipped that step got a pass that reported success and pods that never started.
  */
 export const APPLY_ORDER: string[] = [
+    'ServiceAccount',
+    'Role',
+    'RoleBinding',
     'PersistentVolumeClaim',
     'ConfigMap',
     'Secret',
+    // A Service comes before the steps that dial one, not merely before the Ingress that fronts it:
+    // the first migration of a new suite died with `getaddrinfo ENOTFOUND db` while the ExternalName
+    // Service it needed was created in the same second @@T-830.
+    'Service',
     // A Job is a step, not a process: the seed fills the volume and the migration brings the schema
     // up to date, and both have to have happened before anything rolls out and reads them.
     'Job',
@@ -250,6 +293,10 @@ export const collectManifests = (tree: KustomizeTree): ICollected => {
         const owned = INSTALL_OWNED_KINDS[kind];
         if (owned) {
             skipped.push({path, kind, reason: owned});
+            continue;
+        }
+        if (isSelfGrant(resource)) {
+            skipped.push({path, kind, reason: SELF_GRANT_REASON});
             continue;
         }
         const resourceType = RESOURCE_TYPE_BY_KIND[kind];

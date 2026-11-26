@@ -52,8 +52,39 @@ test('a level call is written through lukaot, in the framework order', async t =
     t.end();
 });
 
-test('the $meta envelope becomes the two header fields', async t => {
+test("pino's printf shape is interpolated, not spread into fields", async t => {
+    // `@fastify/bearer-auth` refuses a request with `log.error('unauthorized: %s', reason)`. The
+    // framework's `(message, fields)` translation read the reason as the field bag, so the record
+    // kept a literal `%s` and carried one numbered key per character of the reason — a log line
+    // nobody can act on (`@@F-853`).
     const {writer, records} = collector();
+    const log = new LukaotLog({format: 'json', level: 'error', writer});
+    log.logger('error', {name: 'gateway'}).error?.('unauthorized: %s', 'missing authorization header');
+    const [record] = records();
+    t.equal(fields(record).context, 'gateway', 'the component is still bound');
+    t.equal(
+        record?.msg,
+        'unauthorized: missing authorization header',
+        'the reason is interpolated into the sentence pino would have printed',
+    );
+    const numbered = Object.keys(fields(record)).filter(key => /^\d+$/.test(key));
+    t.same(numbered, [], 'and no character of it became a field');
+    t.end();
+});
+
+test('a message keeps its placeholder when the argument is a field bag', async t => {
+    // The framework's own calls are `(message, fields)`, and a message with a per-cent in it must
+    // not be treated as a format string just because a bag came second.
+    const {writer, records} = collector();
+    const log = new LukaotLog({format: 'json', level: 'info', writer});
+    log.logger('info', {}).info?.({file: 'a.ts'}, 'the file changed 100%');
+    const [record] = records();
+    t.equal(record?.msg, 'the file changed 100%', 'the sentence is the message');
+    t.equal(fields(record).file, 'a.ts', 'and the bag is still the bag');
+    t.end();
+});
+
+test('the $meta envelope becomes the two header fields', async t => {    const {writer, records} = collector();
     const log = new LukaotLog({format: 'json', level: 'info', writer});
     log.logger('info', {}).info?.({$meta: {mtid: 'event', method: 'watch.config.reload'}}, 'm');
     const [record] = records();

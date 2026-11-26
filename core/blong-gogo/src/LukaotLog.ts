@@ -65,6 +65,7 @@ import {
 } from '@feasibleone/lukaot/service';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
+import {format} from 'node:util';
 import {
     callRecord,
     callTraceConfig,
@@ -378,7 +379,29 @@ function levelOf(level: Level | 'silent' | undefined): LevelName {
  * JSON still shows `$meta`, and the human header shows `mtid` and `method` where lukaot looks for
  * them.
  */
+/**
+ * A format placeholder pino would interpolate: `%s`, `%d`, `%i`, `%f`, `%j`, `%o`, `%O`, `%c`, `%%`.
+ *
+ * Written as alternatives rather than a character class so the dictionary has no word to read here.
+ */
+const PLACEHOLDER = /%(?:s|d|i|f|j|o|O|c|%)/;
+
+/**
+ * Whether a call is pino's printf shape rather than the framework's `(message, fields)`.
+ *
+ * The placeholder decides it, and so does a second argument that is not a field bag: a string, a
+ * number or an `Error` there is an argument nobody could have meant as fields, and the message it
+ * was meant for kept its `%s` (`@@F-853`).
+ */
+const isPrintf = (message: string, argument: unknown): boolean =>
+    PLACEHOLDER.test(message) ||
+    (argument !== null && typeof argument !== 'object') ||
+    Array.isArray(argument);
+
 function liftMeta(fields: Record<string, unknown>): Record<string, unknown> {
+    // A field bag is an object: a string or a number here is a printf argument somebody did not
+    // interpolate, and spreading it would put one key per character on the record (`@@F-853`).
+    if (typeof fields !== 'object' || fields === null) return {};
     const meta = fields.$meta as {mtid?: string; method?: string} | undefined;
     if (meta === undefined) return fields;
     // `$meta` is *moved*, not copied: its two members are on the record as `messageId` and
@@ -843,6 +866,16 @@ export default class LukaotLog extends Internal implements ILog {
     #call(logger: LukaotLogger, level: LevelName): (...args: unknown[]) => void {
         return (...args: unknown[]) => {
             const [first, second] = args;
+            // A dependency writes pino's printf shape — `log.error('unauthorized: %s', reason)` is
+            // the bearer-auth refusal — and `(fields, message)` cannot express it: the reason was
+            // taken for the field bag, so the message kept its placeholder and the string was
+            // spread into one numbered key per character (`@@F-853`). A first argument carrying a
+            // placeholder, or a second one that is not a field bag, is interpolated with what pino
+            // itself interpolates with, so both spellings of a call say the same thing.
+            if (typeof first === 'string' && args.length > 1 && isPrintf(first, second)) {
+                logger[level](format(first, ...args.slice(1)), {});
+                return;
+            }
             const message = typeof first === 'string' ? first : String(second ?? '');
             const fields =
                 typeof first === 'string'

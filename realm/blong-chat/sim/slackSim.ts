@@ -10,8 +10,11 @@ import {adapter} from '@feasibleone/blong';
  */
 export default adapter(() => ({
     extends: 'adapter.webhook',
+    // A simulator is a test double, so it loads where tests run and nowhere else: under `default` it
+    // also opened its port in a release process, which the deployment log showed as a started
+    // adapter nobody asked for (`@@F-854`).
     activation: {
-        default: {
+        integration: {
             listen: true,
             namespace: 'slackSim',
             hook: 'slackSim',

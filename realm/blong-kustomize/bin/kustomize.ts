@@ -12,7 +12,7 @@ import {isCliEntry, runCli, type CliOptions} from '@feasibleone/blong-gogo/cli.t
 
 import cliSuite from '../index.ts';
 import {CHILD_ENTRY_ENV} from '../orchestrator/generate/kustomizeSuiteGenerate.ts';
-import {USAGE, realmCommand} from './kustomizeCommand.ts';
+import {helpFor, realmCommand} from './kustomizeCommand.ts';
 
 /**
  * The framework CLI this command is itself built on.
@@ -41,7 +41,12 @@ const cli: CliOptions = {
     // the two handlers call.
     suite: cliSuite as unknown as CliOptions['suite'],
     name: 'blong-kustomize',
-    usage: USAGE,
+    // The fallback for a usage error; every `--help` is answered by the registry, one level at a time.
+    usage: helpFor([]),
+    help: helpFor,
+    // `--set a.b=c` repeats, so minimist has to keep it a string list rather than take the last one:
+    // a tenant that sets a user and a password in one call expects both.
+    stringFlags: ['set'],
     command: realmCommand,
 };
 

@@ -56,8 +56,9 @@ system/kustomize/
 │   │                         #   bundle server's
 │   ├── configmaps/           # the fill script, and the policy the bundle server applies
 │   ├── ingresses/            # one per host: the portals and the contributed webhooks
-│   ├── rbac/                 # the suite's ServiceAccount and least-privilege Role, the UI's
-│   │                         # auth-review pair, and the bindings the operator gets here
+│   ├── rbac/                 # the suite's own identity: its ServiceAccount and the least-privilege
+│   │                         #   Role its pods run under — a pass applies these first. Never the
+│   │                         #   operator's own grants, which no pass may write (@@D-1027)
 │   ├── storage/              # opt-in: the remote manifest for an RWX provider
 │   └── templates/            # one folder per kind the deploy owns by name: the fill Job (script and
 │                             #   all, since it reads its settings from the environment), an attempt,
@@ -71,8 +72,7 @@ system/kustomize/
     ├── kustomization.yaml    # lists `suite`, `backing` and the namespaces — and names none
     ├── suite/                # `namespace: <the CR's>`: the base, the aliases, the generated
     │                         #   credentials copy, and the patches and instances below
-    ├── backing/              # `namespace: <servicesNamespace>`: one folder per service opted in,
-    │                         #   and the rights the operator holds in that namespace
+    ├── backing/              # `namespace: <servicesNamespace>`: one folder per service opted in
     └── namespaces/           # the Namespace objects, each named after what it holds
 ```
 
@@ -91,10 +91,14 @@ namespace of its own, and a flat tree has no parent to give it one (@@F-440).
 
 The operator itself is _not_ in this tree. It is one process for the whole cluster — its Deployment,
 its cluster-scoped rights and the CRD in `system/operator/` beside this realm, generated from
-`operator-entry.ts` and applied once, before any suite. What a suite's tree carries is the bindings
-that operator is granted inside this suite's namespace, and the declaration as an `example/` beside
-the base — a sample a tenant copies and edits, which no kustomization applies, because the suite
-that a namespace runs is that tenant's act (@@D-507).
+`operator-entry.ts` and applied once, before any suite. Neither are the rights it runs under in this
+suite's namespaces: a pass refuses to write the objects that grant it (`isSelfGrant` in `apply.ts`),
+so keeping them beside the ones it must write meant a skip per namespace per pass. They are the
+tenant's, in `system/provision/grants/` — written by `init`, applied by `provision`, and the one
+part of a tenant's folder that the operator's own pass refuses to write (@@D-1027). What a suite's
+tree carries of the declaration is an `example/` beside the base — a sample a tenant copies and
+edits, which no kustomization applies, because the suite that a namespace runs is that tenant's act
+(@@D-507).
 
 The output is deterministic — deep-sorted keys, no line folding, the tree is replaced rather than
 merged — so a regenerated `base/` is byte-identical across runs, which is what makes it reviewable
@@ -333,19 +337,92 @@ per service. The switches are also on the command line, per service:
 --kustomize.deploy.servicesNamespace=shop-services
 ```
 
+## Provisioning a tenant
+
+The tree above is generated, and a tenant does not run the generator: it runs the realm's CLI, from
+a folder that has no checkout because the CLI came from `npx`. Three commands, and the first two are
+editing a file:
+
+```bash
+npx @feasibleone/blong-kustomize init      # write system/provision/ for this folder
+$EDITOR system/provision/rc/blong_releaserc  # answer what the deployment needs
+npx @feasibleone/blong-kustomize provision  # seal, apply the folder, apply the declaration
+```
+
+`init` writes one folder, ignored whole, holding the namespace, `grants/`, the rc file, the master
+key, the declaration as a draft, and a `kustomization.yaml` that lists them — so `provision` is one
+`kubectl kustomize | kubectl apply` of a folder a reader can inspect, and a case where it fails is a
+file to fix rather than a command to re-run blind (@@D-1025 @@D-1027). It detects the suite or realm
+it stands in, and answers a generic folder without one. `--set <path>=<value>` supplies an answer up
+front (the CI runbook does this for the test database's credentials), and `--without-declaration`
+leaves the declaration to whoever makes it. Re-running it is safe by construction: `--force`
+rewrites the manifests and keeps the rc file and the key, `--force-rc` replaces the answers too, and
+`--new-key` mints another key — which makes every value sealed with the old one unreadable, so it is
+the one flag to reach for deliberately (@@D-1030).
+
+`provision` seals what is marked. A value followed by `# seal`, or under a name like a password or a
+token, is encrypted with the master key before the folder is applied, and the key itself reaches the
+cluster as a `secretGenerator` — every workload reads it as a required variable, so a tenant that
+skips this step has pods refused for a missing Secret rather than anything it was trying to deploy.
+
+```bash
+npx @feasibleone/blong-kustomize --help    # the commands
+npx @feasibleone/blong-kustomize secret --help   # one command's verbs: key, value, seal, open, list
+```
+
+Two verbs are worth knowing before the first pass. `verify` reads back what a pass will see — the
+operator's own identity asking for the verb its code uses on the suite's identity — so a `no` there
+is the first pass failing with `Kubernetes Access Forbidden` on every kind. `restore` loads a `.sql`
+dump into the tenant's database (`--dump`, `--database`, `--mysql-namespace`), and it refuses a
+database that already holds tables unless `--force`: it is for a cut-over, where the migration adds
+a schema beside the data rather than filling it, and it is the one step nobody gets to do twice.
+
 ## Serving more than one suite
 
 One operator can reconcile several `BlongDeployment`s, and each one needs its tenant's permission
-first: the generated `Role` and `RoleBinding` cover every namespace a pass touches — the tenant's
-own, each backing service's, and the namespace the deployment asked for — so a second namespace
-copies those objects, changes the metadata namespace, and names the **installer's** ServiceAccount
-as the subject (`<suite>-operator` in the installer's namespace, never a second copy of it). A
-suite's own tree already carries a pair per namespace it generates into, so a tenant adds one only
-for a backing service that lives outside the deployment entirely. The generated `ClusterRole`
-already lists `blongdeployments` and `blongdeployments/status`, so a tenant adds no cluster-scoped
-object of its own. The rules are one decision with the kinds the realm applies
-(`OPERATOR_NAMESPACED_RULES` in `operator.ts`), and a kind added to one without the other fails at
-apply time with a 403 rather than at review.
+first: `init` writes the operator's `Role` and `RoleBinding` for the tenant's namespace, together
+with the cluster-scoped `auth-review` pair its UI asks reviews through. A second tenant copies that
+folder's `grants/`, changes the metadata namespace, and names the **installer's** ServiceAccount as
+the subject (`blong-operator` in `blong-system`, never a second copy of it); the `auth-review`
+`ClusterRole` is one object for the whole cluster, so the copy keeps it and writes a binding whose
+name carries the tenant. A deployment that also brings services of its own needs a second pair for
+the namespace they run in, because a `RoleBinding` grants nothing outside its own namespace, and the
+file is the same one with that namespace changed. The `ClusterRole` the install carries already
+lists `blongdeployments` and `blongdeployments/status`, so a tenant adds no cluster-scoped object of
+its own. The rules are one decision with the kinds the realm applies (`OPERATOR_NAMESPACED_RULES` in
+`operator.ts`), and a kind added to one without the other fails at apply time with a 403 rather than
+at review.
+
+### A declaration that exists before its artifact
+
+A release patches a `BlongDeployment` that is already there — it adds `/spec/version` and the
+artifact inside `/spec/suiteVolume` — so the CR has to be applied before the release that first
+names its artifact. A CR applied that early is one the operator would otherwise converge against an
+artifact that does not exist yet: the first attempt at moving a deployment fetched a release nobody
+had published, answered `404` on every pass, and left a CR in no phase with its log filling with the
+same line.
+
+`spec.draft: true` is the declaration saying so. A pass over a draft plans nothing — no tree, no
+Ingress, no fill Job — and reports `phase: Draft` with the reason, so `kubectl get bdep` answers
+"waiting for the first release" rather than looking like a rollout that stalled:
+
+```yaml
+spec:
+    draft: true
+    entry: /opt/deploy/suite/realm/blong-agent/index.ts
+    # … the hosts, the volume, the services, and the artifact the release will overwrite
+```
+
+The release is what promotes it: the same patch that names the artifact writes `/spec/draft: false`,
+because a CR that carries an artifact and still refuses to converge is a state somebody would have
+to resolve by hand. Every release writes that member, so a CR that never said `draft` records
+`false` rather than leaving the field absent for a later pass to guess about.
+
+It is not a pause. `draft` is about a declaration that has no artifact yet, and a tenant who wants
+to freeze a running deployment is asking for a different field with different semantics — which is
+why a release clears this one rather than respecting it. The CRD ships beside the operator's own
+install tree, so the field is usable from the operator release that carries it: an older CRD refuses
+a CR that sets it as an unknown field.
 
 ## Deploying the operator
 
@@ -407,10 +484,12 @@ to (and from, when the previous value could be read), the artifact and its diges
 moved, and, for the operator, what its pass did. A chat notification reads the same document, so a
 channel and a job page cannot describe one release differently.
 
-What a release can never do is change the objects the install owns — the namespace, the CRD, the
-ServiceAccount and the four RBAC objects. They are skipped by name (see `INSTALL_OWNED_KINDS` in
-`apply.ts`), and a release that changes one of them needs the install tree applied by hand:
-`npm run deploy` (or `kubectl apply -k system/operator/local`) from a checkout of the tag.
+What a release can never do is change the objects that grant the operator its rights. In a tenant
+that is the Role and RoleBinding named after it, and across the cluster the pair no pass may write:
+`apply.ts` skips them by name (`isSelfGrant`) as well as by kind (`INSTALL_OWNED_KINDS`), so a
+release can grant a suite its own identity but can never widen the grant it runs under. A tag that
+changes one of those needs the tree applied by hand: `npm run deploy` (or
+`kubectl apply -k system/operator/local`) from a checkout of the tag.
 
 The steps themselves live in the end-to-end runbook (`test/blong-int-kustomize`, the same code CI
 runs): `deploy.sh` only chooses between them. `machine prepare` with `OPERATOR_ONLY=1` publishes

@@ -24,6 +24,12 @@ in the suite's namespaces. The operator's own install tree carries the CRD, its 
 `BLONG_RELEASE_TOKEN` reference and the ingress. The two are applied from `system/operator/local`
 and the suite's `system/kustomize/local` respectively.
 
+A CR can be applied before the artifact it names exists, which is the order a tenant installing a
+suite for the first time is in: the release patches a `BlongDeployment` that is already there, so
+the CR comes first. `spec.draft: true` tells the operator that — it reports `phase: Draft` and
+converges nothing until the release that names the artifact clears the flag in the same patch. A CR
+applied without it fetches an artifact nobody has published and answers `404` on every pass.
+
 ## `.github/deployments.json`
 
 The deployment map is the only place a suite is named. A key is the alias a human dispatches, and
@@ -180,10 +186,13 @@ instead of patching a `BlongDeployment` — which it does not have — it runs t
 plans that tree, with the release's version and artifact laid over its own configuration. The pass
 applies the fill Jobs for the new artifact identity first and waits for them, then the Deployment
 that runs the operator, so an artifact nothing can fetch leaves the running process where it was.
-The install-owned kinds — the namespace, the CRD, the ServiceAccount and the RBAC objects — are
-skipped by name, so a release can never widen the rights the operator runs under; a tag that changes
-one of them still needs `npm run deploy` from a checkout (or
-`kubectl apply -k system/operator/local`).
+The kinds a pass may not write — the namespace, the CRD, the cluster-scoped RBAC, and anything named
+after the operator itself — are skipped by name, so a release can never widen the rights the
+operator runs under; a tag that changes one of them still needs `npm run deploy` from a checkout (or
+`kubectl apply -k system/operator/local`). Identity _inside a tenant_ is the opposite case and the
+operator's own: a suite's ServiceAccount is what its fill and migration Jobs run as, so a pass
+creates it first — while the Role that grants the operator its rights there is the one object it
+refuses, and the tenant applies that.
 
 The call builds the JSON-RPC body with `jq -n --arg` — never shell interpolation, because the token
 and the URL are data — and posts it to `secrets.DEPLOY_ENDPOINT` with `secrets.DEPLOY_TOKEN`. The

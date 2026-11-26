@@ -493,11 +493,17 @@ The ClusterRole is installed once and lists `blongdeployments`, `blongdeployment
 cluster-scoped reads a pass needs: the node list, because a plan is made per node, and the two
 identity reviews the operator answers for its own UI. A namespace-scoped custom resource is still
 read through the cluster role that covers its group, so a tenant adds no cluster-scoped object of
-its own. None of these objects is reconciled: the four RBAC kinds are install-owned, because a pass
-that could write them could widen its own rights (the cluster refuses it for the ServiceAccount the
-operator runs as). `OPERATOR_NAMESPACED_RULES` in `realm/blong-kustomize/operator.ts` is the same
-list the generated `Role` holds — a kind the realm may apply is a kind the operator may write, and a
-kind added to one without the other fails at apply time with a 403 rather than at review.
+its own. None of these objects is reconciled: the cluster-scoped RBAC kinds and the namespace are
+install-owned. `OPERATOR_NAMESPACED_RULES` in `realm/blong-kustomize/operator.ts` is the same list
+the generated `Role` holds — a kind the realm may apply is a kind the operator may write, and a kind
+added to one without the other fails at apply time with a 403 rather than at review.
+
+Inside a tenant the list includes the suite's _own_ identity: its `ServiceAccount` and the `Role`
+its pods run under, applied before the Jobs that name them. That grant is what lets a pass create
+them, and the one object it may not touch is the `Role` and `RoleBinding` that carry the grant —
+refused by name (`isSelfGrant` in `apply.ts`), because Kubernetes cannot express "every namespace
+but mine" and a pass that rewrote them could widen itself. A tenant applies that pair from the
+suite's `grants/` folder, in the runbook's provisioning step.
 
 ## Reference
 

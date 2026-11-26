@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: blong-agent
     app.kubernetes.io/part-of: blong-agent
     app.kubernetes.io/version: PLACEHOLDER
-    blong.feasible.one/spec-hash: 15be39ce0f6609b9
+    blong.feasible.one/spec-hash: 3787e9a47381b034
   name: blong-agent
 spec:
   replicas: 1
@@ -67,6 +67,11 @@ spec:
                   key: apiKey
                   name: blong-agent-engine
                   optional: true
+            - name: BLONG_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: BLONG_MASTER_KEY
+                  name: blong-master-key
           image: PLACEHOLDER
           livenessProbe:
             tcpSocket:

@@ -378,6 +378,7 @@ words:
   - Proc
   - processinfo
   - progressspinner
+  - provisionable
   - prunable
   - Pterois
   - pullable
@@ -442,6 +443,7 @@ words:
   - serialisers
   - servable
   - serviceaccount
+  - serviceaccounts
   - servicelb
   - sherpaw
   - shutil

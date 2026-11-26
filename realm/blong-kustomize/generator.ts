@@ -35,7 +35,6 @@ import {
     fillModuleVolume,
 } from './artifact.ts';
 import {
-    AUTH_REVIEW_RULES,
     OPERATOR_CLUSTER_RULES,
     OPERATOR_ENV,
     OPERATOR_GROUP,
@@ -67,6 +66,8 @@ import {
     DEFAULT_RESOURCES,
     DEFAULT_RETENTION,
     DEFAULT_SUITE_ENTRY,
+    MASTER_KEY_ENV,
+    MASTER_KEY_SECRET,
     SUITE_MOUNT,
 } from './plan.ts';
 import {DEFAULT_SERVICES_NAMESPACE, type IBackingService} from './services.ts';
@@ -313,7 +314,7 @@ const rcConfigDir = (plan: IDeploymentPlan): string =>
 /**
  * The Secret the suite's secret configuration lives in: a constant, because a namespace holds one suite.
  *
- * Renamed from `gateway-keys`, which named a consumer rather than what the object is (`@@D-855`). The
+ * Renamed from `gateway-keys`, which named a consumer rather than what the object is @@D-855. The
  * older name is still read by the ensure, so a deployment that already has one gains the values it is
  * missing instead of being given a second Secret.
  */
@@ -418,7 +419,7 @@ const suiteVolume = (
  * with it (R5).
  *
  * Which deployments it reaches is theirs to say, so a split hands it to the overlay rather than committing
- * it: the base carries none of these entries and the patch beside the workload restores them (`@@D-873`).
+ * it: the base carries none of these entries and the patch beside the workload restores them @@D-873.
  */
 const credentialsEnvFrom = (plan: IDeploymentPlan): unknown[] =>
     plan.backingServices
@@ -506,6 +507,21 @@ const deploymentResource = (
                                     valueFrom: {fieldRef: {fieldPath: 'metadata.namespace'}},
                                 },
                                 ...(deployment.env ?? []),
+                                // The key a configuration decrypts its sealed values with
+                                // (`@@D-1023`). Mandatory on purpose: without it a sealed value is
+                                // the literal template text, so a process would start with a
+                                // credential that cannot work and say nothing about why. The tenant
+                                // creates it with `blong-kustomize provision tenant`, from the key in
+                                // its own environment.
+                                {
+                                    name: MASTER_KEY_ENV,
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: MASTER_KEY_SECRET,
+                                            key: MASTER_KEY_ENV,
+                                        },
+                                    },
+                                },
                             ],
                             ports: [
                                 {name: 'rpc', containerPort: 8091, protocol: 'TCP'},
@@ -626,10 +642,10 @@ const serviceResource = (plan: IDeploymentPlan, service: IService): Record<strin
             //
             // A port a realm contributes joins them, because an Ingress can only reach a port a Service
             // publishes: a webhook declared `k8sPorts` was opened in the container and had no Service
-            // port behind it (`@@D-680`). Which ports those are is the *plan's* answer and not the
+            // port behind it @@D-680. Which ports those are is the *plan's* answer and not the
             // deployment's: a namespace Service publishes the realm's own, so a monolith's `login`
             // Service does not advertise the chat webhooks and the log receiver that live in the same
-            // pod (`@@F-801`).
+            // pod @@F-801.
             ports: [
                 {name: 'rpc', port: 8091, targetPort: 'rpc', protocol: 'TCP'},
                 {name: 'http', port: 8080, targetPort: 'http', protocol: 'TCP'},
@@ -796,12 +812,12 @@ const portalRequests = (plan: IDeploymentPlan): ISuitePortalMap =>
  * The operator regenerates the tree from the declaration, and a realm's contribution carries only the
  * path and the port: a host the CR cannot state is a webhook that comes back with no host on the next pass,
  * which is what made a suite commit one. Writing them here is what makes the rc file of a local run and
- * a tenant's CR the same declaration (`@@D-800`).
+ * a tenant's CR the same declaration @@D-800.
  */
 const ingressRequests = (plan: IDeploymentPlan): Record<string, object> | undefined => {
     // A `sameOrigin` path is not a request: its host is the portal's, which the CR already names, and
     // writing it here would pin it to the host the install tree happened to see — a tenant that moved
-    // the portal to another host would leave the path behind on the old one (`@@D-870`).
+    // the portal to another host would leave the path behind on the old one @@D-870.
     const named = plan.ingresses.filter(
         ingress => ingress.host !== undefined && !ingress.sameOrigin,
     );
@@ -1119,31 +1135,12 @@ const roleBindingResource = (plan: IDeploymentPlan): Record<string, unknown> => 
 /**
  * The UI's right to ask the cluster a question about a caller: a `TokenReview` and a
  * `SubjectAccessReview`, cluster-scoped (@@D-376).
+ *
+ * Only the name is here. The object is the tenant's, written by `init` into
+ * `system/provision/grants/`, because a pass may not write a cluster-scoped grant — so
+ * building it in this tree would be building the one object every apply skips (@@D-1027).
  */
 export const AUTH_REVIEW_ROLE = 'auth-review';
-const authReviewClusterRoleResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
-    apiVersion: 'rbac.authorization.k8s.io/v1',
-    kind: 'ClusterRole',
-    metadata: {name: AUTH_REVIEW_ROLE, labels: suiteLabels(plan)},
-    // The rules themselves live with the operator's, which needs the same two: the permission is one
-    // fact, and two copies of it is how one of them goes stale (see `AUTH_REVIEW_RULES`).
-    rules: AUTH_REVIEW_RULES,
-});
-
-const authReviewClusterRoleBindingResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
-    apiVersion: 'rbac.authorization.k8s.io/v1',
-    kind: 'ClusterRoleBinding',
-    metadata: {name: `${plan.suite.name}-auth-review`, labels: suiteLabels(plan)},
-    roleRef: {
-        apiGroup: 'rbac.authorization.k8s.io',
-        kind: 'ClusterRole',
-        name: AUTH_REVIEW_ROLE,
-    },
-    // The UI's own identity: the process that serves the portal and asks the reviews.
-    subjects: [
-        {kind: 'ServiceAccount', name: SUITE_SERVICE_ACCOUNT, namespace: plan.suite.namespace},
-    ],
-});
 
 /**
  * The operator's identity and permissions (@@D-373).
@@ -1152,6 +1149,9 @@ const authReviewClusterRoleBindingResource = (plan: IDeploymentPlan): Record<str
  * outside the namespace — ClusterRole and ClusterRoleBinding. The `rbac/` objects above
  * stay read-only and stay the UI's: the read path and the converge path are different
  * trust levels, and only one of them is reachable from a browser.
+ *
+ * What a tenant's namespaces are granted is not here: those are the objects a pass may not
+ * write, so `init` writes them into `system/provision/grants/` (@@D-1027 @@T-837).
  */
 const operatorServiceAccountResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
     apiVersion: 'v1',
@@ -1161,64 +1161,6 @@ const operatorServiceAccountResource = (plan: IDeploymentPlan): Record<string, u
         namespace: OPERATOR_NAMESPACE,
         labels: suiteLabels(plan),
     },
-});
-
-/**
- * The namespaces a reconcile pass touches: the suite's own, and every namespace the suite's
- * workloads are generated into.
- *
- * The tree holds objects in both — a generated workload runs beside its backing service, and a
- * service sits in a namespace of its own by default (`blong-services`) — and a pass discovers what
- * the suite owns by its labels, so it *reads* objects there whether or not the active profile still
- * generates them. Rights limited to the suite's namespace therefore fail on the read rather than on
- * the apply: the pass reported five failures and never converged. The requested namespace joins the
- * list because a profile that leaves a service to an installation of its own still leaves that
- * service's objects behind for the pass to find.
- */
-const tenantNamespaces = (plan: IDeploymentPlan): string[] => [
-    ...new Set([
-        plan.suite.namespace,
-        ...plan.backingServices.map(backingService => backingService.namespace),
-        ...(plan.backingServiceRequest.servicesNamespace
-            ? [plan.backingServiceRequest.servicesNamespace]
-            : []),
-    ]),
-];
-
-/**
- * What the operator may do inside a tenant: the kinds the tree holds, and nothing cluster-scoped.
- *
- * A `Role` rather than a `ClusterRole`, bound in the tenant's own namespaces: the operator applies a
- * suite where that suite was declared, so its rights are per tenant and granted by the tenant's own
- * tree (@@D-396). The pair ships with the suite because the suite is what knows its namespaces.
- */
-const operatorTenantRoleResource = (
-    plan: IDeploymentPlan,
-    namespace: string,
-): Record<string, unknown> => ({
-    apiVersion: 'rbac.authorization.k8s.io/v1',
-    kind: 'Role',
-    metadata: {
-        name: OPERATOR_NAME,
-        namespace,
-        labels: suiteLabels(plan),
-    },
-    rules: OPERATOR_NAMESPACED_RULES,
-});
-
-const operatorTenantRoleBindingResource = (
-    plan: IDeploymentPlan,
-    namespace: string,
-): Record<string, unknown> => ({
-    apiVersion: 'rbac.authorization.k8s.io/v1',
-    kind: 'RoleBinding',
-    metadata: {
-        name: OPERATOR_NAME,
-        namespace,
-        labels: suiteLabels(plan),
-    },
-    roleRef: {apiGroup: 'rbac.authorization.k8s.io', kind: 'Role', name: OPERATOR_NAME},
-    subjects: [{kind: 'ServiceAccount', name: OPERATOR_NAME, namespace: OPERATOR_NAMESPACE}],
 });
 
 /** The operator's own namespace, so an install tree reads as one unit. */
@@ -1864,7 +1806,7 @@ const volumeFillJobs = (tree: KustomizeTree, plan: IDeploymentPlan, namespace: s
     // It is written here rather than by `artifact.ts` so that it carries the labels every other object of
     // a tree carries — a ConfigMap of the module is an object like any other. A *split* then keeps it out
     // of the committed base and writes it into the overlay, because the bytes are the deploying realm's
-    // code rather than the suite's (`@@D-834`).
+    // code rather than the suite's @@D-834.
     tree.set('configmaps/fill-script.yaml', {
         apiVersion: 'v1',
         kind: 'ConfigMap',
@@ -2039,6 +1981,16 @@ const crdResource = (plan: IDeploymentPlan): Record<string, unknown> => ({
                                         default: DEFAULT_PROFILE,
                                     },
                                     entry: {type: 'string'},
+                                    draft: {
+                                        type: 'boolean',
+                                        // Declared with a description because it is a tenant's
+                                        // answer, not a planner setting: `kubectl explain` is where
+                                        // somebody creating a CR before its first release looks.
+                                        description:
+                                            'Converge nothing until the first release names an ' +
+                                            'artifact (true), or deploy the declared version ' +
+                                            '(false, the default)',
+                                    },
                                     intents: {
                                         type: 'array',
                                         items: {type: 'string'},
@@ -2399,7 +2351,7 @@ const blongDeploymentResource = (plan: IDeploymentPlan): Record<string, unknown>
         // server would prune it on the way in.
         portal: portalRequests(plan),
         // The addresses of what the realms contribute, for the same reason: the operator's pass reads
-        // them from here, so a webhook's host survives a reconcile (`@@D-800`). Omitted when nothing
+        // them from here, so a webhook's host survives a reconcile @@D-800. Omitted when nothing
         // named one, because a field the CR omits falls back to the artifact's own config.
         ...(ingressRequests(plan) ? {ingresses: ingressRequests(plan)} : {}),
         // The static half of the same declaration: the policy the bundle's server applies. Written
@@ -2409,7 +2361,7 @@ const blongDeploymentResource = (plan: IDeploymentPlan): Record<string, unknown>
         // The realms a tenant switched on or off, by the request rather than a resolution, like
         // every other field here: which process a realm would have been is a fact the reconciling
         // operator derives from the registry it loads, and a CR that froze it would keep an answer
-        // the artifact no longer has (`@@D-951`).
+        // the artifact no longer has @@D-951.
         ...(plan.realmsRequest ? {realms: plan.realmsRequest} : {}),
         // The same rule for the services a deployment brings with it, and one more reason for it: the
         // operator regenerates the tree from this declaration, so a switch the CR cannot carry is a
@@ -2875,7 +2827,7 @@ export const buildKustomizeTree = (
     // not for the sample, where each contributed path shows a host the tenant fills in. It has to be
     // said here rather than in the writer, because a declaration this pass cannot group is a tree it
     // cannot build at all: a realm whose contributed paths and portal are all hostless plans perfectly
-    // well for a base, and that is the only half CI can regenerate (`@@F-752`).
+    // well for a base, and that is the only half CI can regenerate @@F-752.
     const committedHalf = options.layout === 'base';
     // Two trees, and which one this is decides everything else: a suite's, or the operator's own
     // install (Phase 15 A). They share the finishing step and nothing else.
@@ -2993,7 +2945,7 @@ export const buildKustomizeTree = (
         });
         if (ingress.tls && !tlsByHost.has(ingress.host)) tlsByHost.set(ingress.host, ingress.tls);
         // A contribution's annotations are the host's, so they merge per key like a portal's: one
-        // entry naming the issuer is enough for every path beside it (`@@D-799`).
+        // entry naming the issuer is enough for every path beside it @@D-799.
         if (ingress.annotations) {
             annotationsByHost.set(ingress.host, {
                 ...annotationsByHost.get(ingress.host),
@@ -3012,7 +2964,7 @@ export const buildKustomizeTree = (
         //
         // A `sameOrigin` path is not that: it asked for this host, because the browser will not send
         // the page's cookie to any other, and inheriting the page's authentication is what it wants —
-        // the same person is reading both (`@@D-870`).
+        // the same person is reading both @@D-870.
         const contesting = committedHalf
             ? []
             : plan.ingresses.filter(ingress => ingress.host === entry.host && !ingress.sameOrigin);
@@ -3076,7 +3028,7 @@ export const buildKustomizeTree = (
         // portal's Service reaches one pod and a pod answers only for the realms it carries. A split
         // deployment therefore needs a path per namespace: without them the browser's
         // `POST /rpc/marine/coral/find` reached the portal's process, which has no `marine` route and
-        // answered `Not Found` while the marine pod was up and healthy (`@@D-736`). A namespace no
+        // answered `Not Found` while the marine pod was up and healthy @@D-736. A namespace no
         // Service carries stays on the portal, which is where the companions live. The portal's own
         // namespace is listed too: it routes to the same pod the fallback reaches, and keeping the
         // rule uniform means a CR that moves the portal to another process does not silently drop a
@@ -3099,7 +3051,7 @@ export const buildKustomizeTree = (
         // its own Service, and the browser's `viewer.entry.find` had no path of its own. It fell to
         // the catch-all below, reached the portal's process, and was refused there as an encrypted
         // body a route that does not require auth cannot decode — an MLE error naming neither the
-        // route nor the process that was missing (`@@F-793`). A Service of the plan *is* an address a
+        // route nor the process that was missing @@F-793. A Service of the plan *is* an address a
         // namespace answers, so the rule is the same one the loop above states, applied to the rest.
         //
         // A Service named after a process is routed too, and that is deliberate: the viewer's Service
@@ -3195,30 +3147,19 @@ export const buildKustomizeTree = (
     for (const manifest of plan.manifests) {
         tree.set(manifestPath(manifest), manifest);
     }
+    // The suite's own identity: the ServiceAccount its Jobs run as, and the role that carries the
+    // k8s adapter's verbs. A pass applies these first, because a pod whose ServiceAccount does not
+    // exist is refused before it starts @@D-1020.
     tree.set('rbac/service-account.yaml', serviceAccountResource(plan));
     tree.set('rbac/jobs-role.yaml', roleResource(plan));
     tree.set('rbac/jobs-rolebinding.yaml', roleBindingResource(plan));
-    // The operator's rights *in this suite's namespaces*, granted by the suite's own tree: the
-    // operator is installed once for the cluster, and which suites it may converge is a property of
-    // each tenant rather than of the install (@@D-396). One pair per namespace, named after the
-    // operator so a reader can tell what holds it; the pair beyond the suite's own carries the
-    // namespace in its name, because the file names have to differ.
-    for (const namespace of tenantNamespaces(plan)) {
-        const suffix = namespace === plan.suite.namespace ? '' : `-${namespace}`;
-        tree.set(
-            `rbac/${OPERATOR_NAME}-role${suffix}.yaml`,
-            operatorTenantRoleResource(plan, namespace),
-        );
-        tree.set(
-            `rbac/${OPERATOR_NAME}-rolebinding${suffix}.yaml`,
-            operatorTenantRoleBindingResource(plan, namespace),
-        );
-    }
-    // The UI's right to ask the cluster about a caller (@@D-376). The role is one object for the whole
-    // cluster because its rules are the same for every suite; the binding is not, because its subject
-    // is this suite's identity — which is exactly the rule the naming table states (Phase 15 A2).
-    tree.set('rbac/auth-review.yaml', authReviewClusterRoleResource(plan));
-    tree.set('rbac/auth-review-binding.yaml', authReviewClusterRoleBindingResource(plan));
+    // The operator's rights *in this suite's namespaces* and the UI's right to ask the cluster about
+    // a caller are **not** in the tree. A pass refuses to write the objects it runs under
+    // (`isSelfGrant` in `apply.ts`), so a tree that carried them would only produce a skip message on
+    // every pass; they are the tenant's to apply, `blong-kustomize init` writes them into the
+    // provision folder beside the declaration, and one command applies all of it (@@D-1027). The name
+    // is still the operator's, and the rules are still its own — `provision.ts` builds the pair from
+    // `OPERATOR_NAMESPACED_RULES` here, so the file and the verbs cannot disagree.
     if (plan.suiteVolume.backend === 'shared') {
         tree.set(`volumes/${plan.suite.name}-${volumeIdentity(plan)}.yaml`, pvcResource(plan));
         tree.set(`deployer/seed.yaml`, seedJobResource(plan));
@@ -3334,7 +3275,7 @@ type TreePlacement = 'base' | 'instantiated';
  *
  * The same is true of a webhook's address, which is the field a tenant most needs to learn about: a realm
  * contributes the path and the port, and the host, its certificate and the issuer that signs it are the
- * deployment's (`@@D-800`). The sample therefore carries an entry per contributed ingress with its host
+ * deployment's @@D-800. The sample therefore carries an entry per contributed ingress with its host
  * replaced, so what a tenant has to write is visible rather than implied. Only the host is replaced,
  * because only a host is a name the repository may not hold: an issuer annotation is a cluster's, and
  * showing it is what teaches the shape of the file.
@@ -3343,7 +3284,7 @@ type TreePlacement = 'base' | 'instantiated';
  * the CR omits and the operator reads from the artifact's own config — is added here for the same reason:
  * otherwise the one thing a tenant has to write is the one thing the committed sample does not show. It is
  * added in the shape the declaration uses, so the two read the same. Either way `PLACEHOLDER` is the same
- * token, so the example is identical in a checkout with no rc and on the machine that wrote it (`@@F-752`).
+ * token, so the example is identical in a checkout with no rc and on the machine that wrote it @@F-752.
  */
 const exampleDeclaration = (
     resource: KustomizeResource,
@@ -3394,7 +3335,7 @@ const exampleDeclaration = (
     // The sample is what a tenant copies, so the values a *release* owns are placeholders in it too: the
     // host, because the tenant names it, and the version and the artifact's digest, because the next
     // release moves them — a sample committed with `1.20.1` in it is stale the moment `1.20.2` ships, and
-    // every tenant who copies it deploys the older artifact (`@@D-872`). Stamped after the substitution, so
+    // every tenant who copies it deploys the older artifact @@D-872. Stamped after the substitution, so
     // the file's fingerprint is its own.
     const owned = ownedByDeploy(plan);
     const digest = plan.suiteVolume.artifact?.digest;
@@ -3659,7 +3600,7 @@ const imagesOf = (object: Record<string, unknown>): Array<{name: string; image: 
  * The same object with every container image replaced by the placeholder.
  *
  * The image is a value the *deployment* owns — a release names a tag or a digest, a local run names
- * whatever was imported into the local cluster — so a committed base may not carry it (`@@T-449`).
+ * whatever was imported into the local cluster — so a committed base may not carry it @@T-449.
  * It is replaced rather than dropped: a container without an image is not a workload, and a reader of
  * the base has to see that this is one of the fields the overlay puts back.
  */
@@ -3718,7 +3659,7 @@ const withSuiteVolume = (
  * node's directory or a claim — the image its container runs, and its labels, which carry the suite's
  * version. The base carries none of the three and the overlay replaces all of them, and the two together
  * are the object the tree would have written flat. The image belongs here for the same reason the volume
- * does (`@@T-449`): a release names a tag or a digest, a local run names whatever was imported into the
+ * does @@T-449: a release names a tag or a digest, a local run names whatever was imported into the
  * cluster, and a committed base that carried either would overrule the CR the operator composes it with —
  * the first real release fetched its artifact, ran its migration and reported the new version while its
  * pod kept running the image the base had been generated with. The version is the same argument one level
@@ -3871,7 +3812,7 @@ const instantiate = (
     // The artifact is a deploy's too, and its url names the release: `release-notify` republishes under a
     // new name, and the tag a real artifact lives under carries the version — so a template that kept the
     // url would put the release back into the committed base, which is what a split exists to keep out
-    // (`@@D-872`). The patch below restores the container's environment from the original.
+    // @@D-872. The patch below restores the container's environment from the original.
     const artifacts = [
         plan.suiteVolume.artifact?.url,
         plan.suiteVolume.artifact?.path,
@@ -3920,7 +3861,7 @@ const instantiate = (
             : labels;
     const volume = suiteVolumeOf(object);
     // The image leaves the template for the same reason the identity does: the deploy owns it, and a
-    // template that kept it would overrule the CR (`@@T-449`). The version leaves the labels for the
+    // template that kept it would overrule the CR @@T-449. The version leaves the labels for the
     // same reason (@@D-652), and the patch below puts both back.
     const images = imagesOf(object);
     const blank = blankArtifactEnv(
@@ -3961,7 +3902,7 @@ const instantiate = (
                     ...(node ? {nodeSelector: {'kubernetes.io/hostname': node}} : {}),
                     // The image, in the entry the strategic-merge key matches by name: one entry per
                     // container, carrying the image and — for the fill — the environment a patch that
-                    // named one entry alone would move to the front of the list (`@@T-449`).
+                    // named one entry alone would move to the front of the list @@T-449.
                     ...(images.length
                         ? {
                               containers: images.map(entry =>
@@ -4000,7 +3941,7 @@ const instantiate = (
  * `app.kubernetes.io/instance` on the pod is the instance name, which the placeholder pass turns into
  * `<template>-PLACEHOLDER-<stamp>` — and the stamp is a hash of what the Job runs, `volumeIdentity`
  * included, so a release that changed only the version rewrote this file and the base with it
- * (`@@D-872`). The patch puts the real labels back, so what stays here is a name, and the base's own name
+ * @@D-872. The patch puts the real labels back, so what stays here is a name, and the base's own name
  * is what it should say.
  */
 const withTemplateInstance = (
@@ -4087,11 +4028,6 @@ const serviceScopeOf = (
  * generated beside a shipped base, where the file cannot be — the composition then refused the tree
  * and no pass reported (@@D-664).
  */
-const isServicePlumbing = (path: string, plan: IDeploymentPlan): boolean =>
-    path.startsWith('rbac/') &&
-    tenantNamespaces(plan).some(
-        namespace => namespace !== plan.suite.namespace && path.endsWith(`-${namespace}.yaml`),
-    );
 
 /**
  * Write a base and an overlay from one tree: the split layout.
@@ -4124,7 +4060,7 @@ const namespaceFree = (resource: KustomizeResource): KustomizeResource => {
  * that names it. A split then takes those values out of the base, which is the point of the base, but it
  * kept the fingerprint that mentioned them, so a release that changed only the version rewrote sixteen
  * committed files with one hash each — noise a reviewer reads and a drift check makes compulsory
- * (`@@D-872`). Stamping the object the file actually holds makes the committed base a function of the
+ * @@D-872. Stamping the object the file actually holds makes the committed base a function of the
  * base's own content, and nothing else.
  */
 const baseObject = (resource: KustomizeResource): KustomizeResource =>
@@ -4156,12 +4092,19 @@ const writeSplitTree = (
     const brought: string[] = [];
     /** One folder per backing service the deployment brings, laid out beside the base. */
     const services = new Map<string, Map<string, KustomizeResource>>();
+    /**
+     * The rights the operator holds in a *services* namespace.
+     *
+     * Empty since those left the tree for the tenant's provision folder (@@D-1027). The overlay's
+     * `backing` child still composes it, because a suite that grows an object belonging to a
+     * services namespace rather than its own needs somewhere to put it, and an empty map keeps that
+     * seam visible instead of making the child conditional on a case nobody has hit yet.
+     */
+    const serviceOwn = new Map<string, KustomizeResource>();
     /** The namespaces the tree creates: cluster-scoped, and named after the deployment that owns them. */
     const namespaces = new Map<string, KustomizeResource>();
     /** What the suite's child owns outright: the aliases the CR may point elsewhere (@@D-506). */
     const suiteOwn = new Map<string, KustomizeResource>();
-    /** The rights the operator holds in a service's namespace: the overlay's `services` child. */
-    const serviceOwn = new Map<string, KustomizeResource>();
     /** The declaration, which no kustomization applies: a sample a tenant copies. */
     const examples = new Map<string, KustomizeResource>();
     /** The same declaration as this deployment states it: the host, version and digest it applies. */
@@ -4210,12 +4153,6 @@ const writeSplitTree = (
             folder.set(service.at, namespaceFree(resource));
             continue;
         }
-        // The rights the operator holds in a service's namespace are not a service's own files — two
-        // services may share one namespace — so the overlay's services child writes them once.
-        if (isServicePlumbing(path, plan)) {
-            serviceOwn.set(path, namespaceFree(resource));
-            continue;
-        }
         // An address is what *this* deployment publishes, not a shape the suite has: the host is a DNS
         // record and a certificate somebody owns, named by whoever installs it, so a committed base
         // cannot carry one @@D-645. The overlay's suite child holds the Ingresses, in the namespace
@@ -4225,12 +4162,12 @@ const writeSplitTree = (
             continue;
         }
         // The fill module is the *deploying realm's* code rather than a property of the suite, and the
-        // split says so the way it says it about the image (`@@T-449`): a base is committed and shared
+        // split says so the way it says it about the image @@T-449: a base is committed and shared
         // by every deployment of a suite, so bytes there pin the script at the moment the base was
         // generated — a later release that changes `fill.ts` would leave every tenant's fill Job
         // running the old module while its artifact, image and volume moved on. The overlay is written
         // by whoever deploys, out of the realm it runs, so that half always carries the module the
-        // running process imports (`@@D-834`).
+        // running process imports @@D-834.
         if (path === `configmaps/${FILL_MODULE.name}.yaml`) {
             suiteOwn.set(path, namespaceFree(resource));
             continue;
@@ -4386,9 +4323,10 @@ const writeSplitTree = (
                     : {}),
             },
         ]);
-        // And the services' half: one folder per service this deployment brings, plus the rights the
-        // operator holds in their namespace. A deployment opts a service in by naming it, and the overlay
-        // is where that opt-in is written down — the base beside it says nothing about any service (@@D-504).
+        // And the services' half: one folder per service this deployment brings. A deployment opts a
+        // service in by naming it, and the overlay is where that opt-in is written down — the base
+        // beside it says nothing about any service (@@D-504). The rights the operator holds in their
+        // namespace are the tenant's, in `system/provision/grants/`, and not this tree's (@@D-1027).
         // Named `backing` rather than `services`, because the base itself has a `services/` folder (the
         // suite's own process Services) and a composer reads the two halves by path.
         if (services.size || serviceOwn.size) {

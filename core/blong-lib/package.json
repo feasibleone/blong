@@ -7,6 +7,7 @@
         ".": "./index.ts",
         "./layers": "./layers.ts",
         "./perf": "./perf.ts",
+        "./secret": "./secret.ts",
         "./template": "./template.ts"
     },
     "scripts": {
@@ -19,6 +20,7 @@
         "tinyglobby": "^0.2.16",
         "typebox": "^1.1.5",
         "ulidx": "^2.4.1",
+        "ut-function.cbc": "^1.1.6",
         "ut-function.merge": "^1.5.6",
         "uuid": "^13.0.2",
         "yaml": "^2.8.3"

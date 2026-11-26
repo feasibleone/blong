@@ -51,7 +51,7 @@ a runtime server on another host, with BYOK and no GitHub subscription (`@@D-970
 harness owns the loop and its own file, shell and compaction tools, so this kind is offered only
 `askHuman` and `finish`: the two the realm can bridge back to its own tool boundary. A question
 parks the session exactly as it does for a step engine, and the answer is resumed as the next turn
-of the same runtime session (`@@D-976`).
+of the same runtime session @@D-976.
 
 ```bash
 CI=1 blong ./index.ts integration ollama
@@ -116,8 +116,8 @@ agent:
                 apiKeyEnv: AGENT_ENGINE_API_KEY
                 dshHome: /home/node/.dsh
             # The Copilot harness on a server of our own. One account per runtime, because a session
-            # lives in the runtime that holds it (`@@D-972`), and the workspace is the folder on that
-            # server which the agent clones into (`@@D-978`).
+            # lives in the runtime that holds it @@D-972, and the workspace is the folder on that
+            # server which the agent clones into @@D-978.
             copilot:
                 kind: copilot
                 runtimeUrl: 10.0.1.10:4321
@@ -206,56 +206,64 @@ The realm contributes what it can from its own layer files, so a tree generated 
 - **A question channel.** In the cluster that is `blong-chat` and its `chat.prompt.ask`; a
   deployment that points `questionMethod` at nothing will suspend every question after the timeout.
 
-### Cutting the tenant over from the chat deployment
+### Provisioning a tenant
 
-`blong-chat` has been the deployment that answered Slack, kept the accounts and served the portal.
-This realm takes that place, and the tenant's two addresses do not move with it: the portal stays on
-`chat.feasible.one` and the webhook on `chat-hook.feasible.one`, because a DNS record, a certificate
-and a Slack app's request URL are what the tenant already has. The order matters at exactly one
-point — the data has to be in the new database before the first converge, because the migration Job
-adds a schema beside it rather than filling a workspace and its accounts.
+A deployment is a declaration plus the few things that have to exist before the operator can be
+asked to reconcile one. Everything else is the operator's, from the tree this plan produces: the
+ServiceAccount its Jobs run under, the role that carries the k8s adapter's verbs, the fill and
+migration Jobs, the processes and the Ingresses.
 
-**1. Copy the database, once.** Dump `blong-chat` and restore it under this deployment's name.
-Everything the Slack app needs is in it: the workspace's signing secret, the account rows and the
-channel memory, so nothing has to be set up again.
+Provisioning is three steps, and the first two are `init` and an editor:
 
 ```bash
-kubectl -n blong-integration exec deploy/mysql -- sh -c \
-    'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines --triggers blong-chat' \
-    > chat.sql
-kubectl -n blong-integration exec -i deploy/mysql -- sh -c \
-    'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS blong-agent CHARACTER SET utf8mb4"'
-kubectl -n blong-integration exec -i deploy/mysql -- sh -c \
-    'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" blong-agent' < chat.sql
+blong-kustomize init                      # writes system/provision/: namespace, the draft declaration,
+                                          #   the RBAC a pass may not write, the rc file and a master key
+$EDITOR system/provision/rc/blong_releaserc
+blong-kustomize provision                 # seals what is secret, creates the key's Secret, applies all of it
 ```
 
-The migration Job of the first converge then creates the `agent` tables beside the chat ones: it is
-the `upgrade` intent, and the entry lists every realm that answers a namespace, `agent` first.
+`blong-kustomize provision` with no verb is the whole of a tenant's half: every value marked
+`# seal` — or held under a name that is a secret by convention — is replaced with `${decrypt('…')}`,
+the `blong-master-key` Secret is created from the tenant's key when the namespace has none, and the
+folder is applied in the order its kustomization lists: namespace, grants, declaration, rc Secret.
+The verbs (`seal`, `apply`, `verify`, `restore`) exist for the parts a reader wants on their own.
 
-**2. Give the tenant its file.** `blong-releaserc-etc` in the new namespace, key `blong_releaserc`,
-mounted at `/etc/blong_releaserc`: the database pair (host `db`, the database named above), the
-broker the session page reads (`agent.telemetry.kafka.connection.metadata.broker.list`), the account
-a persona inherits (`agent.agentDispatch.engineAccount`) and that account itself under
-`agent.engine.accounts.<alias>`. The key is an environment variable, not a value:
-`AGENT_ENGINE_API_KEY` comes from the Secret `blong-agent-engine`.
+What the page owes a reader is the _why_ of that shape, because it is the part a command cannot
+state:
 
-**3. Create the deployment with the hosts it already serves.** The sample beside the base
-(`system/kustomize/example/blongdeployment.yaml`) is the shape; the two addresses are copied from
-the chat CR unchanged — `spec.ingresses.chatSlack` and `spec.ingresses.chatViber` on
-`chat-hook.feasible.one` with their paths, Secret `chat-hook-tls` and issuer, and `spec.portal.web`
-on `chat.feasible.one` with Secret `chat-tls`. The suite's own names are the only thing the new CR
-states differently.
+- **The data goes first, and only once.** The first converge is a migration _beside_ the data rather
+  than a fill of it: everything the Slack app needs — the workspace's signing secret, the account
+  rows, the channel memory — is in the database the previous deployment wrote.
+  `provision restore --dump=FILE` is optional for exactly that reason: a green-field deployment has
+  nothing to copy, and a cut-over copies before it declares anything.
+- **The operator cannot grant itself.** Its rights in this namespace are the one object a pass
+  refuses to write, so they are not in the tree: `init` writes them beside the declaration, from the
+  operator's own rules, and `provision` applies them before it applies anything that needs them
+  @@D-1020.
+- **The rc file is the tenant's answer, and its secrets are sealed.** `system/provision/` is
+  generated and not committed — the folder is derived from a deployment, so a clone would carry a
+  stale copy of answers it does not hold — and a value in it is ciphertext once `provision` has run
+  @@D-1023.
+- **The declaration is a draft until a release names an artifact.** `init` writes it with
+  `spec.draft: true`: a CR has to exist before the release that patches it can, and until then the
+  artifact it names is a 404, so the operator reports `phase: Draft`, writes no tree, and claims no
+  host until a release names the artifact and clears the field @@D-1019.
 
-**4. Retire the chat CR in the same pass.** One Ingress per host:
-`kubectl -n blong-chat delete blongdeployment blong-chat`, and the namespace after the new portal
-answers. Nothing is lost with it — the rows are the copy above, and the old namespace held only the
-pods, the old Ingresses and the certificate Secret whose place the new one takes.
+### Cutting over from the chat deployment
 
-**5. Check the two doors the deployment has.** `/health` on the new process, the portal at
-`https://chat.feasible.one`, a message to the Slack app (its request URL does not change), and the
-call a developer's machine makes against `https://chat.feasible.one` — `chat.*` is served by this
-deployment because the chat realm is a child of its entry, which is also why the artifact carries
-it.
+`blong-chat` was the deployment that answered Slack, kept the accounts and served the portal. This
+realm takes that place, and the tenant's two addresses do not move with it: the portal stays on
+`chat.feasible.one` and the webhook on `chat-hook.feasible.one`, because a DNS record, a certificate
+and a Slack app's request URL are what the tenant already has. The CR carries both, copied from the
+chat declaration unchanged; the only values that differ are the suite's own names.
+
+The sequence is `provision all --dump=<previous>.sql` — the copy, then the tenant's resources, then
+the declaration — followed by the release, and one last step the operator cannot take: the old
+declaration is retired once the new portal answers, by deleting it and its Ingresses. One Ingress
+per host, so two declarations serving the same host are two claims on one address, and a pass prunes
+only what its _own_ declaration stopped naming — a deleted declaration is not a pass, which is why
+the Ingresses of the retired one go with it. Its namespace stays: it holds the old pods and the
+certificate Secret whose place the new one takes.
 
 From here the two realms are one deployment rather than two: an agent asks through `chat.prompt.ask`
 and a person answers in Slack, and the dispatch that answers a question is also what a future Slack
@@ -265,9 +273,9 @@ trigger calls to start a task.
 
 A `copilot` account does not run a model in the realm's process: it attaches to a runtime server
 that owns the harness, the tools and the session store, usually on a machine that exists to do the
-work (`@@D-971`). The realm runs in the cluster, the runtime on its own host, and the two differ in
-one respect that matters — the ticket's workspace is **on the runtime host**, not in the realm's pod
-(`@@D-978`).
+work @@D-971. The realm runs in the cluster, the runtime on its own host, and the two differ in one
+respect that matters — the ticket's workspace is **on the runtime host**, not in the realm's pod
+@@D-978.
 
 What the runtime host needs:
 

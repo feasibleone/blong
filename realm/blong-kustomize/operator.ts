@@ -5,8 +5,12 @@
  * deployment UI deliberately does not have. That is two identities rather than one
  * widened one (@@D-373): the `rbac/` objects in `generator.ts` stay read-only and belong to
  * the UI, and the operator gets its own ServiceAccount, its Role and RoleBinding in each namespace
- * it converges, and its ClusterRole and ClusterRoleBinding, from here.
- *
+ * it converges, and its ClusterRole and ClusterRoleBinding, from here. *
+ * A pass writes the *suite's* identity — its ServiceAccount and the role its pods run under —
+ * because those are what its own Jobs and Deployments need, and a tenant that had to apply them
+ * first is a chicken-and-egg the deployment lost: the Jobs were created and their pods refused
+ * with `serviceaccount "blong" not found`. The operator's own grants are the exception the rules
+ * below state, and the reason it may hold these verbs at all @@D-1020. *
  * This module holds the policy only — the permission lists and the names they bind to —
  * because that is the part worth reading on its own. The object shapes are built in
  * `generator.ts`, beside every other manifest.
@@ -56,11 +60,24 @@ const WRITE = ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'];
  * operator can apply is a kind it may write: the two lists are one decision seen from two
  * sides, and a kind added to one without the other fails at apply time with a 403 rather
  * than at review time.
+ *
+ * The two identity rules are the ones a deployment taught: a suite's fill and migration Jobs
+ * were created before the ServiceAccount they run as, and every pod was refused with
+ * `serviceaccount "blong" not found` while the pass reported success. Identity is therefore
+ * the operator's to apply, in the order `apply.ts` states — and only *the suite's* identity:
+ * an object named after the operator, or sitting in the operator's own namespace, is never
+ * applied by a pass, which is what keeps this grant from widening on its own @@D-1020.
  */
 export const OPERATOR_NAMESPACED_RULES: IPolicyRule[] = [
     {
         apiGroups: [''],
-        resources: ['services', 'configmaps', 'secrets', 'persistentvolumeclaims'],
+        resources: [
+            'services',
+            'configmaps',
+            'secrets',
+            'persistentvolumeclaims',
+            'serviceaccounts',
+        ],
         verbs: WRITE,
     },
     {
@@ -74,6 +91,10 @@ export const OPERATOR_NAMESPACED_RULES: IPolicyRule[] = [
         resources: ['ingresses', 'networkpolicies'],
         verbs: WRITE,
     },
+    // The suite's own rights, and never the operator's: `isSelfGrant` refuses an object named
+    // after the operator, so these verbs cannot reach the Role or the RoleBinding that carries
+    // them @@D-1020.
+    {apiGroups: ['rbac.authorization.k8s.io'], resources: ['roles', 'rolebindings'], verbs: WRITE},
 ];
 
 /**
@@ -146,7 +167,7 @@ export const OPERATOR_CLUSTER_RULES: IPolicyRule[] = [
  * ready yet, because a Deployment is available or it is not, and a pass that has to wait for one
  * would be a pass that pretends the cluster is faster than it is.
  */
-export type StatusPhase = 'Pending' | 'Progressing' | 'Ready' | 'Failed';
+export type StatusPhase = 'Pending' | 'Progressing' | 'Ready' | 'Failed' | 'Draft';
 
 /** What a pass leaves behind for a reader of the CR — the counts, and when they were counted. */
 export interface IStatusResult {

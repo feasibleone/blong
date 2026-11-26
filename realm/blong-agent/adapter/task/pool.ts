@@ -87,7 +87,17 @@ const seed = (): ITaskTicket[] => [
     },
 ];
 
-const pool: ITaskTicket[] = seed();
+/**
+ * The pool starts empty, and only a test group fills it.
+ *
+ * The seed above is a fixture — tickets that exercise a claim, a lease, a stale lease and a
+ * workspace that belongs to another host — so a process that has one is a process running the
+ * realm's tests. A deployment used to get them too, and its worker claimed them on its first tick:
+ * the demo account does not exist there, the workspace of `T-1005` is not on the host, and the
+ * refusal took the process down with it (`@@F-853`). `taskPoolReset` is how a test says it wants
+ * them, and every group that needs a ticket calls it first.
+ */
+const pool: ITaskTicket[] = [];
 
 const find = (ticketId: string): ITaskTicket | undefined =>
     pool.find(ticket => ticket.ticketId === ticketId);

@@ -1,37 +1,54 @@
 /**
- * The realm CLI's own vocabulary: its usage text and how a command line names a method, kept out of
- * the entry point so a test can import one without arming the deadlock (@@F-394).
+ * The realm CLI's own vocabulary: how a command line names a command, and what each answers.
+ *
+ * Kept out of the entry point so a test can import one without arming the deadlock (@@F-394).
+ *
+ * Two kinds of verb live here. The **local** ones — `init`, `provision` and `secret` — write files and
+ * shell out to `kubectl`, and must answer in an empty folder because a tenant installed this CLI with
+ * `npx`; they never load the realm (`@@D-1022`). The rest name a handler method and are dispatched
+ * through the live registry, which is what keeps this CLI and the JSON-RPC surface in agreement.
  */
-import type {ParsedArgs} from '@feasibleone/blong-gogo/cli.ts';
+import type {CliLocalCommand, ParsedArgs} from '@feasibleone/blong-gogo/cli.ts';
 
-export const USAGE = `blong-kustomize — the deployment realm's own commands
+import {resolveHelp} from './help.ts';
+import {detectSuite, flagsOf, init, provision, secret} from './provision.ts';
 
-Usage
-  blong-kustomize release-notify --suite=NAME --version=VERSION
-      [--artifact-url=URL] [--artifact-digest=SHA256] [--framework-image=IMAGE]
-      [--framework-version=VERSION] [--namespace=NS]
-      Tell a cluster what a release published: patches the BlongDeployment named
-      after the suite. The gitops seam is asked first and wins when a target is
-      configured, so a cluster with one operator is never told twice.
+/** The text `--help` prints, resolved one level at a time from the registry beside this file. */
+export const helpFor = (positionals: readonly string[]): string => resolveHelp(positionals);
 
-  blong-kustomize volume-prune [--retention=N]
-      Report which retained suite versions are past the retention (default 3).
-      A report, not a deletion: only the operator may delete.
+/** What one command dispatches: the method name and the params it passes through. */
+export interface IRealmCommand {
+    method: string;
+    params?: object;
+}
 
-  blong-kustomize keys-ensure --namespace=NS
-      Create the suite's gateway keys if the cluster has none, and report which
-      happened. A key that exists is left alone: sessions outlive a deployment.
-
-  blong-kustomize reconcile [--from=registry|cr] [--apply] [--prune]
-      [--name=CR] [--namespace=NS] [--cache-dir=PATH]
-      Run one pass of the operator's loop and print what it found: the difference
-      between the tree and the cluster, and every step that failed. Without
-      --apply it only reports, and without --prune it deletes nothing.
-
-Options
-  --output=json   Print the result as JSON (the default when stdout is not a TTY).
-  --help, -h      Show this help and exit.
-`;
+/** The local commands, each answering from the arguments alone. */
+const localCommand = (
+    positionals: readonly string[],
+    argv: Record<string, unknown>,
+): CliLocalCommand | undefined => {
+    const [command, verb] = positionals;
+    const flags = flagsOf(argv);
+    if (command === 'init') {
+        return {method: 'init', local: async () => init(detectSuite(undefined, flags), flags)};
+    }
+    if (command === 'provision') {
+        return {
+            method: `provision ${verb ?? ''}`.trim(),
+            local: async () => provision(verb, detectSuite(undefined, flags), flags),
+        };
+    }
+    if (command === 'secret') {
+        // The key lives beside the folder that holds the rc file, so every verb is told where the
+        // tenant is — the same place `provision` reads it from.
+        const context = detectSuite(undefined, flags);
+        return {
+            method: `secret ${verb ?? ''}`.trim(),
+            local: async () => secret(verb, flags, context.root),
+        };
+    }
+    return undefined;
+};
 
 /** What one command dispatches: the method name and the params it passes through. */
 export interface IRealmCommand {
@@ -51,7 +68,12 @@ const number = (value: unknown): number | undefined => {
  * Name the method a command line asks for, or `undefined` for a line that asks for nothing — which
  * `runCli` answers with the usage text and a non-zero exit, so an unknown command is not a call.
  */
-export const realmCommand = ({positionals, argv}: ParsedArgs): IRealmCommand | undefined => {
+export const realmCommand = ({
+    positionals,
+    argv,
+}: ParsedArgs): IRealmCommand | CliLocalCommand | undefined => {
+    const local = localCommand(positionals, argv);
+    if (local) return local;
     const command = positionals[0];
     if (command === 'release-notify') {
         return {

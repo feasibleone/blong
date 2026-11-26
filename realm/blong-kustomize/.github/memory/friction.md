@@ -103,7 +103,7 @@ open (66)
 - `F-707` · realm/blong-kustomize — Removing spec.services plans the service, it does not disable
 - `F-726` · realm/blong-kustomize — Generating the base deletes the local overlay beside it
 
-resolved (43)
+resolved (45)
 
 - `F-371` · realm/blong-kustomize — The browser login fails while the same handler authenticates the
   token
@@ -161,6 +161,10 @@ resolved (43)
 - `F-801` · realm/blong-kustomize — Every Service of a process published all its ports
 - `F-802` · realm/blong-kustomize — A generated Service nothing dialled: the process address needs
   its condition
+- `F-852` · realm/blong-kustomize — A namespace that has never held a tree needs its RBAC applied by
+  hand, and a failed Job sticks
+- `F-855` · realm/blong-kustomize — A folder rename left a path-prefix routing rule pointing at
+  nothing
 
 <!-- /memory:index -->
 
@@ -1935,6 +1939,50 @@ a port it carries has no Service of its own — a namespace no realm answers (th
 or an ingress naming the process in serviceName. aRealmContributesItsOwnAddress asserts the absence,
 aWebhookIsReachableFromOutside the fallback; blong-sport lost the file, blong-chat kept it, the
 suite tree is unchanged.
+
+### F-852 — A namespace that has never held a tree needs its RBAC applied by hand, and a failed Job sticks
+
+> _2026-11-25 · realm/blong-kustomize · resolved_
+
+The first deployment of a new suite needed two repairs by hand, and neither was in the runbook. The
+first pass answered `Kubernetes Access Forbidden` for every kind in the tenant namespace, because
+the operator deliberately does not apply the tree's `rbac/` objects — it reports them as skipped
+with "the install grants the rights; an operator that could rewrite them could widen them", and the
+ServiceAccount with "the framework k8s adapter names no verb for a ServiceAccount; the install
+applies it". Applying `system/kustomize/base/rbac/` by hand unblocked the listing.
+
+The second: with the roles in place the pass created the fill and migration Jobs in the same pass
+that created the `db` Service, and the migration pod started before DNS answered —
+`getaddrinfo ENOTFOUND db` — and the Job exhausted its backoff while the Service it needed already
+existed. The operator then treated the Failed Job as unchanged, because a Job is compared by name
+and never updated, so the only repair was deleting it and restarting the operator: a pass is
+triggered by a change of `metadata.generation`, and neither deleting a Job nor annotating the CR
+moves it.
+
+Two defects for the operator, then, and one for the runbook. The runbook now says to apply the RBAC
+first; the jobs-versus-services ordering and the sticky Failed Job are what the todo beside this
+entry has to settle. Both are cheap to fix in the pass — apply Services before Jobs, and replace a
+Failed Job of the same name — and both are invisible in a re-converge, which is why they surfaced
+only on a namespace that had never held a tree.
+
+The runbook now says to apply the tree's rbac/ first; the two operator defects are T-830.
+
+### F-855 — A folder rename left a path-prefix routing rule pointing at nothing
+
+> _2026-11-26 · realm/blong-kustomize · resolved_
+
+Moving the operator's grants from `rbac/` to `grants/` broke the tree silently. `isServicePlumbing`
+in `generator.ts` decided which files belong to the overlay by testing `path.startsWith('rbac/')`,
+so a renamed pair stayed in the base, and a split tree then carried two Roles both named
+`blong-operator` with no namespace of their own — the composition refused them with
+`may not add resource with an already registered id` and that suite's tree could not be built at
+all. The prefix was a coupling to a folder name nothing declared: the folder is a reader's
+convenience, and the routing rule is what made it load-bearing. A folder rename has to name every
+special case that reads the folder, and a composed tree (`kubectl kustomize <dir>`) is the check
+that finds the ones it missed — the tests that rendered single files stayed green throughout.
+
+isServicePlumbing reads grants/ now, and the composed tree plus the split-layout tests cover the
+routing
 
 ## Retired
 

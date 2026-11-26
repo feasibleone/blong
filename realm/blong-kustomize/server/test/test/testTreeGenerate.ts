@@ -584,13 +584,13 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         overlay.includes(`namespaces/${mysql.namespace}.yaml`),
                         'and the overlay names it, because the base cannot',
                     );
-                    assert.ok(
-                        written.some(
-                            file =>
-                                file.startsWith('local/') &&
-                                file.includes(`rbac/blong-operator-role-${mysql.namespace}`),
-                        ),
-                        'while the rights the operator needs there are written beside it',
+                    // The rights the operator needs in a services namespace are not the tree's: they
+                    // are the one object a pass may not write, so they belong to the tenant's
+                    // provision folder and `blong-kustomize init` writes them (D-1027).
+                    assert.equal(
+                        written.some(file => file.includes('grants/')),
+                        false,
+                        'and the rights the operator needs there are not in the tree at all',
                     );
                     // What the folder holds is the workload's own, and a namespace is not: it belongs to the
                     // deployment, so the overlay's backing child stamps the one it names (@@D-506).
@@ -894,7 +894,7 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     });
                     assert.ok(
                         !existsSync(
-                            join(dir, 'base', 'rbac', 'blong-operator-role-shop-services.yaml'),
+                            join(dir, 'base', 'grants', 'blong-operator-role-shop-services.yaml'),
                         ),
                         'the base holds no right in the services namespace: that is the overlay’s half',
                     );
@@ -910,16 +910,20 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                         layout: 'local',
                         plan: off,
                     });
-                    assert.ok(
-                        written.includes(
-                            'local/backing/rbac/blong-operator-role-shop-services.yaml',
-                        ),
-                        'the rights in the services namespace are the overlay’s, switch or no switch',
+                    // Nothing of the kind is written, switched on or off: the operator's grants left
+                    // the tree for the provision folder (D-1027).
+                    assert.equal(
+                        written.some(file => file.startsWith('local/backing/grants/')),
+                        false,
+                        'and no grant is written into the overlay either',
                     );
-                    assert.match(
-                        readFileSync(join(dir, 'local', 'backing', 'kustomization.yaml'), 'utf8'),
-                        /^namespace: shop-services$/m,
-                        'and the child names that namespace, because no workload is left to name it',
+                    // A service switched off leaves nothing behind for a pass to take back, so the
+                    // overlay writes no `backing` child at all: the namespace, the credentials copy and
+                    // the grants all went with the switch (D-1027).
+                    assert.equal(
+                        existsSync(join(dir, 'local', 'backing', 'kustomization.yaml')),
+                        false,
+                        'and no child is written for a namespace with nothing in it',
                     );
                     // What a pass applies: the pair, in the namespace whose credentials the switch
                     // leaves for the operator to take back (@@D-509).
@@ -934,13 +938,14 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                                 object.metadata?.namespace ?? '',
                             )}/${String(object.metadata?.name ?? '')}`;
                         });
-                    for (const wanted of [
+                    for (const unwanted of [
                         'Role/shop-services/blong-operator',
                         'RoleBinding/shop-services/blong-operator',
                     ]) {
-                        assert.ok(
-                            applied.includes(wanted),
-                            `a pass applies ${wanted}, rather than leaving it in the base alone`,
+                        assert.equal(
+                            applied.includes(unwanted),
+                            false,
+                            `a pass applies no ${unwanted}: the tenant does (D-1027)`,
                         );
                     }
                 } finally {
@@ -3467,10 +3472,8 @@ export default handler(({lib, handler: {kustomizeTreeGenerate, kustomizePlanFind
                     // The role is looked up rather than named: the file is named after the
                     // suite, and the suite's name is the deployment's business, not this
                     // test's.
-                    const role = files.find(
-                        file => file.startsWith('rbac/') && file.endsWith('-role.yaml'),
-                    );
-                    assert.ok(role, 'the tree carries the read-only role the UI runs under');
+                    const role = files.find(file => file.startsWith('rbac/') && file.endsWith('-role.yaml'));
+                    assert.ok(role, 'the tree carries the role its own pods run under');
                     assert.match(
                         read(role as string),
                         /blong\.feasible\.one\/spec-hash/,

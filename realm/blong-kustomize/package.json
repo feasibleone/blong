@@ -41,6 +41,7 @@
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-lib": "workspace:^1.0.0",
         "@feasibleone/blong-server": "workspace:^1.0.0",
         "tinyglobby": "^0.2.16",
         "typebox": "^1.1.5",

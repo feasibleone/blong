@@ -83,7 +83,7 @@ open (61)
 - `F-835` · core/blong-gogo — A watch's consumer outlives its reader when the reader stops without
   closing the iterator
 
-resolved (63)
+resolved (65)
 
 - `F-094` · core/blong-gogo — Knex `table.list` prefixed table names with the subject twice
 - `F-095` · core/blong-gogo — tap's order-sensitive snapshots broke on an appended `id` field
@@ -163,6 +163,10 @@ resolved (63)
 - `F-824` · core/blong-gogo — A suite that used the runtime passed and then never exited
 - `F-825` · core/blong-gogo — A provider 404 named the model when the base URL was the Anthropic
   wire
+- `F-853` · core/blong-gogo — A printf log call reached the sink as a placeholder and one field per
+  character
+- `F-858` · core/blong-gogo — An entry-point guard that compared names made the CLI exit 0 in
+  silence
 
 <!-- /memory:index -->
 
@@ -2113,3 +2117,43 @@ read a provider error for the route as well as the noun it prints.
 copilotSessionConfig throws on an /anthropic baseUrl without provider anthropic (unit test added),
 the accounts and samples name deepseek-flash, and a run on the local runtime returns ready on both
 wires.
+
+### F-853 — A printf log call reached the sink as a placeholder and one field per character
+
+> _2026-11-25 · core/blong-gogo · resolved_
+
+A deployment in `blong-chat` printed `error unauthorized: %s  0: m 1: i 2: s …` — the message kept
+its placeholder and the reason arrived as one field per character. The fault was in
+`core/blong-gogo/src/LukaotLog.ts`: pino printf calls pass `(message, value)` to a logger, and
+`#call` treated the second argument as a field bag and spread it, so a string reason became the
+fields `0..n`, while the placeholder was never interpolated because the console shape was built
+straight from the message. Every dependency that logs printf-style (`@fastify/bearer-auth` logs
+`('unauthorized: %s', reason)`) was rendered this way, and only a run that hit the branch showed it
+— the unit tests all logged with a bag. The fix in `#call` is a printf branch: when the first
+argument is a string with a placeholder, or the second is not an object, `node:util`'s `format`
+interpolates and the bag is empty; `liftMeta` also refuses a non-object so the spread cannot happen
+again. Two tests in `LukaotLog.test.ts` pin both forms. The lesson is that a log call carries two
+shapes, and the translating logger must decide which one it received before it maps either.
+
+printf calls are interpolated with node:util format and never spread as fields; two tests pin both
+log shapes
+
+### F-858 — An entry-point guard that compared names made the CLI exit 0 in silence
+
+> _2026-11-26 · core/blong-gogo · resolved_
+
+`blong-kustomize --help` printed nothing and `init` wrote nothing, and both exited 0. The guard
+every `bin/*.ts` in the repository opens with — `if (isCliEntry(import.meta.url)) await runCli(...)`
+— compared `import.meta.url` with `pathToFileURL(process.argv[1])`, and a package manager starts a
+bin through a symlink: the pnpm shim execs node with
+`node_modules/@feasibleone/blong-kustomize/bin/kustomize.ts` while the module's own URL is the real
+file that link points at. The two names differed, the guard answered false, the module imported its
+realm, ran no command and exited 0 — silence, with a success code, which is the shape of bug that
+reads as "the tool does nothing" and sends a reader to look at the command. The guard now compares
+real paths (`sameFile`, with `realpathSync` on both sides), and a test in
+`core/blong-gogo/src/cliEntry.test.ts` pins it with a symlink, a same-basename neighbour and a path
+that does not exist. The lesson is that an entry-point guard is the one decision a CLI cannot
+report: every other failure has a message, and this one has an exit code that says everything
+worked.
+
+isCliEntry compares real paths; cliEntry.test.ts holds the symlink case

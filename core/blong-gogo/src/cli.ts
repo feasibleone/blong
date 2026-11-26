@@ -1,5 +1,6 @@
 import minimist from 'minimist';
-import {pathToFileURL} from 'node:url';
+import {realpathSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 
 import load from './loadServer.ts';
 
@@ -61,6 +62,25 @@ export interface CliCommand {
     params?: object;
 }
 
+/**
+ * A verb that answers without the realm.
+ *
+ * Some commands are filesystem and `kubectl` work: scaffolding a tenant's rc
+ * file, applying the two kustomizations it needs, encrypting a value with the
+ * master key. Loading the suite for those would make a CLI that must run from
+ * an empty folder (`npx @feasibleone/blong-kustomize provision`) depend on a
+ * realm registry it never reads — and a `cli` run of a realm that expects a
+ * cluster would fail on a machine that has none. `local` is the escape hatch,
+ * and it resolves through `command` like any other verb so a command line is
+ * still answered in one place (`@@D-1022`).
+ */
+export interface CliLocalCommand {
+    /** Runs in-process; the return value is the exit code (`0` when omitted). */
+    local(args: ParsedArgs): Promise<number | void>;
+    /** The verb's name, for the message a thrown error is prefixed with. */
+    method: string;
+}
+
 export interface CliOptions {
     /** The module the `cli` intent loads — normally the realm's `cli.ts`. */
     suite: Parameters<typeof load>[0];
@@ -76,7 +96,16 @@ export interface CliOptions {
     /** Intents passed to `load`; defaults to `['cli']`. */
     intents?: string[];
     /** Derive the method and its params from the arguments. */
-    command(args: ParsedArgs): CliCommand | undefined;
+    command(args: ParsedArgs): CliCommand | CliLocalCommand | undefined;
+    /**
+     * The text `--help` prints, resolved from the positionals.
+     *
+     * Progressive, the way `blong-dev` is: the command line alone lists the
+     * commands, `blong-kustomize provision --help` describes that command, and
+     * `blong-kustomize provision tenant --help` its verb. `undefined` falls back
+     * to `usage`, so a realm that has nothing more to say needs no registry.
+     */
+    help?(positionals: string[]): string | undefined;
     /** Rendering for `--output=text`; `undefined` falls back to JSON. */
     format?(method: string, result: unknown): string | undefined;
     /** Non-zero exit code for a call that completed (e.g. diagnostics errors). */
@@ -135,12 +164,38 @@ export function resolveMethod(
 }
 
 /**
- * True when this module is the process entry point, so a `bin/*.ts` can be
- * imported by a test without executing the command.
+ * Whether two names refer to one file, resolving the symlinks on the way.
+ *
+ * A file has as many names as there are links to it, and the pair that matters is the one a package
+ * manager creates: a bin shim re-execs node with the path *through* `node_modules/<pkg>`, while the
+ * module's own URL is the real file it links to. Comparing the names unresolved made `isCliEntry`
+ * answer false there — the command loaded, printed nothing and exited 0.
+ */
+export function sameFile(a: string, b: string): boolean {
+    const real = (file: string): string => {
+        try {
+            return realpathSync(file);
+        } catch {
+            // A path that does not exist yet (or a platform that will not resolve it) compares as
+            // itself: the answer is then whatever the plain strings say.
+            return file;
+        }
+    };
+    return real(a) === real(b);
+}
+
+/**
+ * True when this module is the process entry point, so a `bin/*.ts` can be imported by a test without
+ * executing the command.
+ *
+ * The comparison is by real path, not by name: `npm run`, `node_modules/.bin/…` and `npx` all start a
+ * bin through a symlink, and a guard that compared the names answered false there — the CLI imported
+ * its realm, skipped the command and exited 0 in silence, which is the worst way to fail.
  */
 export function isCliEntry(importMetaUrl: string): boolean {
     const entry = process.argv[1];
-    return Boolean(entry) && importMetaUrl === pathToFileURL(entry).href;
+    if (!entry) return false;
+    return sameFile(fileURLToPath(importMetaUrl), entry);
 }
 
 /**
@@ -156,13 +211,28 @@ export async function runCli(options: CliOptions): Promise<void> {
     const args = parseArgv(process.argv.slice(2), options.stringFlags);
 
     if (wantsHelp(args)) {
-        process.stdout.write(usage);
+        // The leading `help` is the positionals' own word, so it is not part of
+        // what names a command: `blong-kustomize help provision` and
+        // `blong-kustomize provision --help` ask the same question.
+        const named = args.positionals[0] === 'help' ? args.positionals.slice(1) : args.positionals;
+        process.stdout.write(options.help?.(named) ?? usage);
         return;
     }
     const command = options.command(args);
     if (!command) {
         process.stderr.write(usage);
         process.exitCode = 1;
+        return;
+    }
+    if ('local' in command) {
+        // No suite, no registry, no listeners: the verb writes files or shells
+        // out, and a load would only add failure modes (@@D-1022).
+        try {
+            process.exitCode = (await command.local(args)) ?? 0;
+        } catch (error) {
+            process.stderr.write(`${name}: ${(error as Error).message}\n`);
+            process.exitCode = 1;
+        }
         return;
     }
 

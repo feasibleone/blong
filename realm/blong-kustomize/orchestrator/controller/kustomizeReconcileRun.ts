@@ -2,14 +2,15 @@ import {handler, type IMeta} from '@feasibleone/blong';
 import type {VocabularyProxy} from '@feasibleone/lukaot';
 import {
     GENERATED_CREDENTIALS_LABEL,
-    SUITE_SECRETS_LABEL,
-    SUITE_SECRETS_LEGACY_LABEL,
     INSTANCE_LABEL,
     PART_OF_LABEL,
     RESOURCE_TYPE_BY_KIND,
+    SUITE_SECRETS_LABEL,
+    SUITE_SECRETS_LEGACY_LABEL,
     applyParams,
     collectManifests,
     diffResources,
+    isSelfGrant,
     resourceKey,
     sweptResourceTypes,
     type IClusterObject,
@@ -33,8 +34,8 @@ import {
     registryView,
     resolveNodes,
 } from '../../plan.ts';
-import {DEFAULT_SERVICES_NAMESPACE} from '../../services.ts';
 import {serialisePass} from '../../queue.ts';
+import {DEFAULT_SERVICES_NAMESPACE} from '../../services.ts';
 
 type ClusterCall = (params: unknown, $meta: IMeta) => Promise<unknown>;
 
@@ -81,56 +82,58 @@ export interface IListingScope {
     cleanupOnly?: boolean;
 }
 
-/** The listings a pass needs, one per resource type _and namespace_ (@@T-282 @@D-464). */export const listingScopes = (    managed: IDesiredResource[],
-    swept: readonly string[],
-    tenantNamespace: string,
-    servicesNamespace?: string,
-    /**
-     * Whether this deployment brings services at all.
-     *
-     * A suite that brings none names nothing in the services namespace and is granted no rights there,
-     * so the sweep below is a question it has no business asking: the API server answers `forbidden`
-     * rather than `not found` for a namespace the caller may not read, and every pass logged one —
-     * twice a reconcile, for a namespace that was not even this deployment's (@@F-619). The
-     * declaration answers the other way round: a service switched *off* names nothing in the tree
-     * either, and the credentials it generated there are exactly what the sweep exists for
-     * (@@D-509).
-     */
-    servicesInUse = true,
-): IListingScope[] => {
-    const scopes = new Map<string, IListingScope>();
-    const scopeOf = (
-        resourceType: string,
-        namespace: string,
-        cleanupOnly = false,
-    ): IListingScope => {
-        // One scope per pair, joined on a NUL: a resource type and a namespace are DNS-ish names, so
-        // neither can contain one, and the pair stays unambiguous without a second map.
-        const key = `${resourceType}\u0000${namespace}`;
-        const scope = scopes.get(key) ?? {resourceType, namespace, desired: [], cleanupOnly};
-        scopes.set(key, scope);
-        return scope;
+/** The listings a pass needs, one per resource type _and namespace_ (@@T-282 @@D-464). */ export const listingScopes =
+    (
+        managed: IDesiredResource[],
+        swept: readonly string[],
+        tenantNamespace: string,
+        servicesNamespace?: string,
+        /**
+         * Whether this deployment brings services at all.
+         *
+         * A suite that brings none names nothing in the services namespace and is granted no rights there,
+         * so the sweep below is a question it has no business asking: the API server answers `forbidden`
+         * rather than `not found` for a namespace the caller may not read, and every pass logged one —
+         * twice a reconcile, for a namespace that was not even this deployment's (@@F-619). The
+         * declaration answers the other way round: a service switched *off* names nothing in the tree
+         * either, and the credentials it generated there are exactly what the sweep exists for
+         * (@@D-509).
+         */
+        servicesInUse = true,
+    ): IListingScope[] => {
+        const scopes = new Map<string, IListingScope>();
+        const scopeOf = (
+            resourceType: string,
+            namespace: string,
+            cleanupOnly = false,
+        ): IListingScope => {
+            // One scope per pair, joined on a NUL: a resource type and a namespace are DNS-ish names, so
+            // neither can contain one, and the pair stays unambiguous without a second map.
+            const key = `${resourceType}\u0000${namespace}`;
+            const scope = scopes.get(key) ?? {resourceType, namespace, desired: [], cleanupOnly};
+            scopes.set(key, scope);
+            return scope;
+        };
+        for (const entry of managed) {
+            const namespace = entry.object.metadata?.namespace ?? tenantNamespace;
+            scopeOf(entry.resourceType, namespace).desired.push(entry);
+        }
+        for (const resourceType of swept) {
+            // One scope per kind is enough for a sweep, and a kind the tree names is already scoped by
+            // the objects that name it.
+            if ([...scopes.values()].some(scope => scope.resourceType === resourceType)) continue;
+            scopeOf(resourceType, tenantNamespace);
+        }
+        // And the credentials a deployment generated in the namespace its services run in. A service the
+        // declaration switched off names nothing there, so no object scopes that namespace and the pass
+        // cannot see what it wrote — which is how a generated Secret outlived the definition it was
+        // derived from. Only the credential kind is listed there, and only a labelled object is removable
+        // once it is seen, so the shared namespace stays its owner's to edit (`prunable`, @@D-461 @@D-509).
+        if (servicesInUse && servicesNamespace && servicesNamespace !== tenantNamespace) {
+            scopeOf(RESOURCE_TYPE_BY_KIND['Secret'] ?? 'secret', servicesNamespace, true);
+        }
+        return [...scopes.values()];
     };
-    for (const entry of managed) {
-        const namespace = entry.object.metadata?.namespace ?? tenantNamespace;
-        scopeOf(entry.resourceType, namespace).desired.push(entry);
-    }
-    for (const resourceType of swept) {
-        // One scope per kind is enough for a sweep, and a kind the tree names is already scoped by
-        // the objects that name it.
-        if ([...scopes.values()].some(scope => scope.resourceType === resourceType)) continue;
-        scopeOf(resourceType, tenantNamespace);
-    }
-    // And the credentials a deployment generated in the namespace its services run in. A service the
-    // declaration switched off names nothing there, so no object scopes that namespace and the pass
-    // cannot see what it wrote — which is how a generated Secret outlived the definition it was
-    // derived from. Only the credential kind is listed there, and only a labelled object is removable
-    // once it is seen, so the shared namespace stays its owner's to edit (`prunable`, @@D-461 @@D-509).
-    if (servicesInUse && servicesNamespace && servicesNamespace !== tenantNamespace) {
-        scopeOf(RESOURCE_TYPE_BY_KIND['Secret'] ?? 'secret', servicesNamespace, true);
-    }
-    return [...scopes.values()];
-};
 
 /**
  * The scopes a pass could not read that leave it failed.
@@ -240,6 +243,16 @@ export const availableReplicas = (
 };
 
 /**
+ * What a declaration that is still a draft is waiting for, or nothing when it may converge.
+ *
+ * Exported because it is a decision rather than a step: a test holds it without a cluster, and the
+ * pass it guards is the one that would otherwise write a suite's objects into a namespace whose
+ * artifact does not exist yet. The wording is the status a reader sees, so it names the release.
+ */
+export const draftHold = (spec: {draft?: boolean} | undefined): string | undefined =>
+    spec?.draft === true ? 'draft: waiting for the first release to name an artifact' : undefined;
+
+/**
  * Which objects a plan no longer mentions a pass may remove — only the suite's own namespace
  * (@@D-461).
  */
@@ -283,9 +296,13 @@ export const prunableByObsolescence = (obsolete: IClusterObject[]): IClusterObje
     obsolete.filter(
         object =>
             !hasRetentionLabel(object) &&
+            // The operator's own grants are never a pass's to remove, whatever the listing found:
+            // they wear the suite's labels, the tree cannot hold them, and deleting one would take
+            // the pass's own rights with it @@D-1020.
+            !isSelfGrant(object) &&
             // The suite's secret configuration is written by a pass rather than by the tree, so a
             // listing that can see it does not make it obsolete: it is held while its declaration
-            // exists and removed with it, which is what its owner reference is for (`@@D-855`). The
+            // exists and removed with it, which is what its owner reference is for @@D-855. The
             // label it carried before the rename counts too, or the first pass after the change would
             // prune the very Secret it is about to fill in.
             object.metadata?.labels?.[SUITE_SECRETS_LABEL] === undefined &&
@@ -619,7 +636,8 @@ export default handler(({handler}) => {
         if (params.release?.version) {
             const {artifactUrl, artifactDigest} = params.release;
             options.suiteVersion = params.release.version;
-            if (params.release.frameworkImage) options.frameworkImage = params.release.frameworkImage;
+            if (params.release.frameworkImage)
+                options.frameworkImage = params.release.frameworkImage;
             if (params.release.frameworkVersion) {
                 options.minFrameworkVersion = params.release.frameworkVersion;
             }
@@ -733,6 +751,32 @@ export default handler(({handler}) => {
         // process applies what the child wrote (@@D-395).
         const suiteName = declaredName ?? options.suiteName;
         const suiteNamespace = options.namespace ?? options.suiteName;
+        // A declaration can exist before the artifact it names does — that is the order a tenant
+        // moves over in, because a release can only patch a CR that is already there @@D-1019.
+        // `draft: true` is how the CR says so: the pass reports that it is waiting and writes
+        // nothing — no tree, no Ingress, no fill Job — so the address it is about to take stays
+        // with the deployment that answers it until the release that publishes the artifact
+        // promotes the declaration.
+        const hold = draftHold(declared);
+        if (hold) {
+            // The status is the report: a reader of `kubectl get bdep` sees `Draft` rather than a
+            // phase that looks like a stalled rollout. Written under the same condition as the
+            // status at the end of a pass, because a read-only pass claims nothing.
+            if (params.apply === true && declaredName) {
+                const edit = call('kustomizeStatusEdit');
+                await edit?.(
+                    {name: declaredName, namespace: suiteNamespace, phase: 'Draft', message: hold},
+                    meta,
+                );
+            }
+            return {
+                reconciled: 0,
+                applied: false,
+                origin,
+                suite: {name: suiteName, namespace: suiteNamespace},
+                reason: hold,
+            };
+        }
         let tree: KustomizeTree;
         if (origin === 'cr' && declared) {
             const generated = (await suiteGenerate(
@@ -846,7 +890,12 @@ export default handler(({handler}) => {
                 resourceType: scope.resourceType,
                 namespace: scope.namespace,
                 desired: scope.desired,
-                live: found?.items ?? [],
+                // The operator's own grants wear the suite's labels and the tree cannot hold them
+                // (`collectManifests` skips them), so a listing is the one place they would look
+                // obsolete and be counted — or, with pruning on, deleted. They are left out before
+                // the diff sees them, which keeps the pass from touching the Role it runs under
+                // @@D-1020.
+                live: (found?.items ?? []).filter(item => !isSelfGrant(item)),
             });
         }
 
@@ -911,9 +960,7 @@ export default handler(({handler}) => {
             // the object it read, so Kubernetes removes the Secret with it, while a registry pass
             // read no declaration and claims no owner.
             const owner =
-                declaredName && declaredUid
-                    ? {name: declaredName, uid: declaredUid}
-                    : undefined;
+                declaredName && declaredUid ? {name: declaredName, uid: declaredUid} : undefined;
             keys = ensure
                 ? await ensure({namespace: suiteNamespace, suite: suiteName, owner}, meta)
                 : undefined;
@@ -941,16 +988,16 @@ export default handler(({handler}) => {
             unchanged += diff.unchanged.length + (diff.update.length - toApply.length);
             obsolete += diff.obsolete.length;
             if (diff.create.length || diff.obsolete.length) {
-                tally.push(
-                    `${group.resourceType} +${diff.create.length}/-${diff.obsolete.length}`,
-                );
+                tally.push(`${group.resourceType} +${diff.create.length}/-${diff.obsolete.length}`);
             }
             // The same count on both sides means the keys never matched, and the pair says which
             // part of the key did it — the kind string, the namespace, or the name the plan
             // derives. Logged only in that state, so a healthy pass stays quiet and a broken one
             // names itself on the first run .
             if (diff.create.length && diff.obsolete.length) {
-                (this as unknown as {signal?: VocabularyProxy}).signal?.kustomizeReconcileKeyMismatch?.({
+                (
+                    this as unknown as {signal?: VocabularyProxy}
+                ).signal?.kustomizeReconcileKeyMismatch?.({
                     resourceType: group.resourceType,
                     wanted: resourceKey(diff.create[0].object),
                     present: resourceKey(diff.obsolete[0]),

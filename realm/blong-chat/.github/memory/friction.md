@@ -21,12 +21,13 @@ open (10)
 - `F-717` · realm/blong-chat — A realm restated the port default, hiding it live
 - `F-760` · realm/blong-chat — A chat question asked without an account can never be answered
 
-resolved (4)
+resolved (5)
 
 - `F-642` · realm/blong-chat — A nested handler's error arrives as a value, not a rejection
 - `F-646` · realm/blong-chat — A platform limit was assumed, not read, and it shaped the default
 - `F-650` · realm/blong-chat — A wrong example looked like a missing protocol feature
 - `F-712` · realm/blong-chat — conversations.create answers fatal_error for a missing channel scope
+- `F-854` · realm/blong-chat — Two test simulators opened their ports in a release process
 
 <!-- /memory:index -->
 
@@ -237,6 +238,24 @@ gap. Add the scope, reinstall the app, and only then trust the call.
 
 The app now carries both scopes; the manifest draft asks for them, so a new app is created with
 them, and README says an installed app must be reinstalled.
+
+### F-854 — Two test simulators opened their ports in a release process
+
+> _2026-11-25 · realm/blong-chat · resolved_
+
+The `blong-agent` deployment logged `chat.slackSim(webhook) event adapter.start` and
+`chat.viberSim(webhook) event adapter.start` in a `release` process — two adapters that exist only
+to stand in for Slack and Viber while tests run, opening ports 18085 and 18086 in a tenant. The
+cause was the activation key in `realm/blong-chat/sim/slackSim.ts` and `viberSim.ts`: both said
+`default`, so every intent loaded them, while `realm/blong-chat/index.ts` listed `slackSim: {}` and
+`viberSim: {}` under `integration` with a comment claiming they were "loaded only where tests run".
+The comment described the intent and the file did the opposite, and nothing failed: a simulator that
+answers on a port is indistinguishable in a log from one that should be there. Both files now say
+`integration`, the key the realm config already used, and the chat suite stays green (111/111). The
+lesson is that an empty `{}` block in a realm's config gates nothing on its own — the adapter file's
+`activation` key is the gate, and the two have to name the same intent.
+
+both simulators are gated by the integration intent, and the chat suite passes
 
 ## Retired
 
