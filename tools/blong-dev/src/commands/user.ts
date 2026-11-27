@@ -816,6 +816,16 @@ export async function user(args: string[]): Promise<void> {
         return;
     }
     const {connection, derived} = readConnection(databaseArgs(parsed));
+    if (derived) {
+        // Said out loud, because the name is a *guess* from the suite and the local account
+        // (`<suite>-<user>`) and it is created if it is not there. A caller that meant another
+        // database — a CI runner targeting a deployment, where the account is `runner` — otherwise
+        // learns it from an access-denied far from the cause (@@F-863).
+        process.stderr.write(
+            `blong-dev user: no --database given, so this run uses the dev database ` +
+                `"${connection.database}" — name one with --database to target another\n`,
+        );
+    }
     try {
         if (derived) await ensureDatabase(connection);
         if (verb === 'add') {

@@ -122,6 +122,12 @@ jobs:
         # generates one from the plan and applies it, so a skeleton applied here would be a second
         # declaration in the namespace naming an artifact nobody published @@D-1030.
         #
+        # `--set ...database` because a tenant names the database it owns. It happens to be the one
+        # the suite declares, and writing it is not an override that changes anything the pods dial
+        # — it is what lets the runbook's login step target that database instead of inventing one
+        # from the suite's name and the runner's account, which is how it asked MySQL for
+        # `blong-suite-runner` (@@F-863).
+        #
         # `--services-namespace` because a later phase opts a service in (`SERVICE_ON=mysql`), and a
         # pass reads the namespace a service runs in as well as the tenant's own: with no grant there
         # it reports five errors and never converges @@T-837. A folder that carries a declaration
@@ -134,6 +140,7 @@ jobs:
           node realm/blong-kustomize/bin/kustomize.ts init \
             --dir=suite/blong-suite --suite=blong-suite --namespace=blong-suite --force \
             --without-declaration --services-namespace=blong-services \
+            --set=srv.db.knex.connection.database=blong-integration \
             --set=srv.db.knex.connection.user=blong-test \
             --set=srv.db.knex.connection.password=password
           kubectl kustomize suite/blong-suite/system/provision | kubectl apply -f -

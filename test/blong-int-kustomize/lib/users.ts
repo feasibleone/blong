@@ -205,8 +205,25 @@ export const provisionUser = async (
                 'Secret), or point the suite at a database the run can dial (F-810)',
         );
     }
+    if (!database.database) {
+        // The login lives in a database, and a connection that names none leaves the choice to
+        // `blong-dev user add` — which derives a *dev* name from the suite and the local account
+        // (`<suite>-<user>`), so a runner created `blong-suite-runner` and was refused. Asking for
+        // the one thing that is missing costs a line; guessing costs the run (@@F-863).
+        options.database = database;
+        return fail(
+            'the deployment names no database: its rc Secret (blong-releaserc-etc) carries a ' +
+                'connection without `database`, so this run cannot tell where the login belongs — ' +
+                'name it in the tenant\'s rc (`srv.db.knex.connection.database`), which is the ' +
+                'tenant\'s answer rather than the suite\'s only when the two differ',
+        );
+    }
     const user = runUserNames();
     io.log(`provisioning ${user.userName} for this run's login check`);
+    // Held before the call, so a failure can still close the forward: a leaked one keeps the process
+    // alive after the command has already reported its verdict, and a CI step then waits for its own
+    // budget instead of failing (@@F-863).
+    options.database = database;
     await io.run('blong-dev', [
         'user',
         'add',
@@ -216,7 +233,6 @@ export const provisionUser = async (
         ...connectionArgs(database),
         '--output=json',
     ]);
-    options.database = database;
     return user;
 };
 

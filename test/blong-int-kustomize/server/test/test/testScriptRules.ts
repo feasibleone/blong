@@ -12,6 +12,7 @@ import {
     upgradeArguments,
     validationRefusal,
 } from '../../../lib/rules.ts';
+import {provisionUser} from '../../../lib/users.ts';
 import {cycleOptions} from '../../../orchestrator/runbook/runbookMachinePrepare.ts';
 
 /**
@@ -226,6 +227,27 @@ export default handler(({lib: {group}}) => ({
                     command?.params,
                     {suiteScenario: 'sport', artifactName: 'sport.zip'},
                     'and both reach the handler as params',
+                );
+            },
+
+            async function aLoginWithNoDatabaseIsRefused(assert: IAssert) {
+                // The login lives in a database, and a connection that names none leaves the
+                // choice to `blong-dev user add`, which derives a *dev* name from the suite and the
+                // local account — in a CI runner, `blong-suite-runner`, which the server refused.
+                // The step asks for the missing answer instead of guessing, and it does that before
+                // it touches the tool, so the refusal costs nothing (F-863).
+                await assert.rejects(
+                    provisionUser({namespace: 'shop', database: {port: 1}}, {
+                        log: () => undefined,
+                        say: () => undefined,
+                        warn: () => undefined,
+                        run: async () => {
+                            throw new Error('the tool was reached before the check');
+                        },
+                        capture: async () => '',
+                    } as never),
+                    /names no database[\s\S]*database/,
+                    'a connection with no database is named, not guessed',
                 );
             },
 

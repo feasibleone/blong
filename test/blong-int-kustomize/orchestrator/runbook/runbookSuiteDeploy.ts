@@ -256,8 +256,14 @@ export const runK3dE2eGenerated = async (options: IRunbookOptions, io: IStepIo):
     // the internet must not carry a test seed, and a run that assumed one could only check the
     // credential tables where somebody had already put a known password (`@@D-952`).
     const own = options.credentials?.user ? undefined : userOptions(options.namespace);
-    const provisioned = own ? await provisionUser(own, io) : undefined;
+    // Provisioning is inside the guard, not before it: it opens a port-forward, and a run whose
+    // login could not be created has to close that forward on its way out. A `kubectl port-forward`
+    // left alive keeps the process alive after the verdict, and the step then waits for the
+    // workflow's own budget rather than failing — the two identical timeouts in the runbook's
+    // history (@@F-863).
+    let provisioned: Awaited<ReturnType<typeof provisionUser>> | undefined;
     try {
+        provisioned = own ? await provisionUser(own, io) : undefined;
         await portalChecks(
             {
                 namespace: options.namespace,
@@ -274,6 +280,7 @@ export const runK3dE2eGenerated = async (options: IRunbookOptions, io: IStepIo):
         );
     } finally {
         if (provisioned && own) await retireUser(provisioned, own, io);
+        else own?.database?.forward?.stop();
     }
 
     io.say('pods on which nodes');

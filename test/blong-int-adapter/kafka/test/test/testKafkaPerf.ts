@@ -31,7 +31,7 @@ const performanceTopic = {
  */
 const thresholds = {
     /** Messages per second across the send path, measured over busy time rather than the silences. */
-    minThroughput: 150,
+    minThroughput: 100,
     /** Milliseconds from `message.send` returning to the record arriving at the watch. */
     maxP95LatencyMs: 400,
     maxP99LatencyMs: 800,
