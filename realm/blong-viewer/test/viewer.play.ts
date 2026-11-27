@@ -79,11 +79,12 @@ test('the page stays subscribed over a stream', async ({portal}) => {
 /**
  * The page draws with the fonts it carries (`@@T-753`).
  *
- * The grid's stylesheet ships the vendor's `@font-face` rules, which point at a CDN; the portal's own
- * stack named `Roboto`, which the portal does not bundle, so naming it made those faces selectable and
- * the browser asked the CDN for six files the deployment's policy refuses. A test rather than a
- * comment because the coupling is invisible: nothing in the page mentions a font, and a stack
- * restored from an older theme brings the requests back with no other change.
+ * The grid's stylesheet ships the vendor's `@font-face` rules, which point at a CDN. Nothing in the
+ * page mentions a font: the requests follow from the faces merely being declared, and a deployment
+ * serving `font-src 'self' data:` refuses them while a page served without that policy never tries
+ * one — which is why the listener below was green while the deployed viewer logged six violations
+ * (`@@D-1033`). So the assertion is on the stylesheet the page carries, and the listener stays as
+ * the deployment-shaped half of the same contract.
  */
 test('the page asks no third party for a font', async ({portal}) => {
     const asked: string[] = [];
@@ -97,4 +98,28 @@ test('the page asks no third party for a font', async ({portal}) => {
     await expect(portal.page.getByRole('grid')).toBeVisible();
     await new Promise(resolve => setTimeout(resolve, 1000));
     expect(asked).toEqual([]);
+
+    // The defect itself, independent of the policy the page happens to be served with: no face rule
+    // anywhere on the page may name a third-party source. A `local()` restatement of the same face
+    // does not excuse it — a repeated `@font-face` is added beside the vendor's, not substituted for
+    // it, so the remote source survives in `document.fonts` (`@@F-864`).
+    const faces = await portal.page.evaluate(() => {
+        const remote: string[] = [];
+        for (const sheet of Array.from(document.styleSheets)) {
+            let rules: CSSRuleList;
+            try {
+                rules = sheet.cssRules;
+            } catch {
+                // A cross-origin sheet cannot be read, and the policy is what governs it.
+                continue;
+            }
+            for (const rule of Array.from(rules)) {
+                if (rule instanceof CSSFontFaceRule && /cdn\.svar\.dev/.test(rule.cssText)) {
+                    remote.push(rule.cssText);
+                }
+            }
+        }
+        return remote;
+    });
+    expect(faces).toEqual([]);
 });

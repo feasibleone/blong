@@ -16,9 +16,12 @@ style.textContent = `
            stylesheet off the network (@@F-805). A blank family is a family nothing declares, so the
            text falls back to the browser's default, which is a serif: the screenshots were
            rendered in Times. What the theme expects is the host's font, and the host of a story is
-           this page, so the stack the portal's own theme declares is named here — the same rule
-           and the same reason as browser.css in blong-browser. */
-        font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+           this page, so the stack the portal's own body declares is named here, Roboto excluded as
+           it is there: the portal names no family it does not bundle, and this page no longer
+           carries the vendor's @font-face for it (@@D-1033). The baselines were regenerated when
+           that face left, because they had been rendered in a third-party font — which is exactly
+           what a deployment serving font-src 'self' never allows. */
+        font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif);
     }
 
     /* Make storybook-root fill the viewport for fullscreen layout */

@@ -8,11 +8,34 @@
  */
 
 import {build} from 'esbuild';
-import {copyFileSync, mkdirSync} from 'node:fs';
+import {copyFileSync, mkdirSync, readFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * The vendor grid's six `cdn.svar.dev` faces, removed from its stylesheet.
+ *
+ * The portal build drops them through `vendorFontFaces` in
+ * `@feasibleone/blong-browser/vite`; this bundle is made with esbuild and carries its own copy of
+ * the same rule. The faces are a third party no deployment with `font-src 'self'` can load, and a
+ * page loads them merely for being declared (`@@D-1033`). Kept in step with
+ * `core/blong-browser/src/vendorFontFaces.ts`.
+ */
+const stripVendorFontFaces = css =>
+    css.replace(/@font-face\s*\{[^}]*\}/gi, face => (face.includes('cdn.svar.dev') ? '' : face));
+
+/** esbuild plugin: hand the vendor's stylesheet back without those rules. */
+const vendorFontFaces = {
+    name: 'blong-strip-vendor-font-faces',
+    setup(build) {
+        build.onLoad({filter: /@svar-ui[\\/]react-grid[\\/].*\.css$/}, args => ({
+            contents: stripVendorFontFaces(readFileSync(args.path, 'utf8')),
+            loader: 'css',
+        }));
+    },
+};
 
 await build({
     entryPoints: [join(__dirname, 'src/client/app.tsx')],
@@ -24,6 +47,7 @@ await build({
     jsx: 'automatic',
     minify: process.argv.includes('--minify'),
     sourcemap: true,
+    plugins: [vendorFontFaces],
     define: {
         'process.env.NODE_ENV': '"production"',
     },

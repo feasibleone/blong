@@ -29,6 +29,7 @@ import {type Plugin, type UserConfig, defineConfig, mergeConfig} from 'vite';
 import {brotliCompressSync} from 'zlib';
 import {packageRootOf, sourceLinkDefine} from './sourceLinkDefine.ts';
 import {sourceMapRegister} from './sourceMapRegister.ts';
+import {vendorFontFaces} from './vendorFontFaces.ts';
 
 const dir = (url: string) => dirname(url.replace(/file:\//g, ''));
 
@@ -121,7 +122,7 @@ export function defineBlongViteConfig({
 }: IBlongViteOptions): ReturnType<typeof defineConfig> {
     const base: UserConfig = {
         base: '/s/',
-        plugins: [react(), dropFixtures(), sourceMapRegister()],
+        plugins: [react(), dropFixtures(), sourceMapRegister(), vendorFontFaces()],
         define: sourceLinkDefine(packageRootOf(importMetaUrl)),
         optimizeDeps: {
             /**

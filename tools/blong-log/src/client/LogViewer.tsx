@@ -23,6 +23,12 @@ import {Grid, Willow, WillowDark} from '@svar-ui/react-grid';
 // to draw the grid's markup with no rules at all — columns collapsed onto each other and every
 // row overlapped the next, which reads as a broken page rather than as a missing stylesheet
 // (`@@F-795`).
+//
+// The full sheet, not `style.css`: the small one carries the grid's rules but only 15 of the 241
+// theme variables, and the theme collapses without them. What is not wanted is its six
+// `@font-face` rules pointing at `cdn.svar.dev`, which the deployment's `font-src 'self' data:`
+// refuses and a `local()` restatement cannot disarm; the bundlers strip those rules instead
+// (`@@D-1033`).
 import '@svar-ui/react-grid/all.css';
 // The font and the icon mapping after it, in that order: PrimeIcons is what draws the glyphs now,
 // and the mapping overrides the vendor's own `.wxi-*` classes (@@F-797).

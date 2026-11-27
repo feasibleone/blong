@@ -92,69 +92,22 @@
 }
 
 /**
- * The UI font follows the page instead of the vendor's two web faces.
+ * The UI font follows the page instead of the vendor's stack.
  *
- * The theme sets `--wx-font-family: Roboto, Arial, …` and declares an `@font-face` for Roboto and
- * Open Sans that points at the same CDN — `src: local(""), url(https://cdn.svar.dev/…)`. A machine
- * without those fonts installed therefore reaches for the network on the first render, which the
- * portal's policy blocks and an offline deployment cannot answer. `inherit` is the whole fix: the
- * grid is a view inside a page, and the page already chose its font. Naming a stack here would
- * still spell `Roboto`, and spelling it is what re-arms the web face.
+ * The theme sets `--wx-font-family: Roboto, Arial, …`, so a page that carries no face for Roboto
+ * still resolves the grid's text through it. `inherit` is the whole fix: the grid is a view inside
+ * a page, and the page already chose its font.
  *
  * The second and third selectors outrank the vendor's single-class rule whatever order the host's
- * bundler gives the two stylesheets. They were added when the *portal's* stack still named Roboto,
- * so the page's own font resolved through the face this file restates below; the portal no longer
- * names a family it does not bundle (`@@T-753`), and the pair stays because a host's stack is a
- * thing this component does not own.
+ * bundler gives the two stylesheets, and the pair stays because a host's stack is a thing this
+ * component does not own.
+ *
+ * The sheet that carries the faces is not imported any more: `LogViewer.tsx` links the vendor's
+ * `style.css`, which declares none, after `all.css` was found to ship six `cdn.svar.dev` faces
+ * that a local restatement could not disarm (`@@D-1033`).
  */
 .wx-theme,
 .wx-theme.wx-willow-theme,
 .wx-theme.wx-willow-dark-theme {
     --wx-font-family: inherit;
-}
-
-/* The vendor's six CDN faces, restated as local lookups: a machine that has the font uses it, and one
- * that does not falls through to the next family in whatever stack asked. A face a stylesheet
- * declares is a face any page on the host can be drawn with — which is what made the portal ask — so
- * the declaration is kept local even though nothing in the portal names these families any more. */
-@font-face {
-    font-family: Roboto;
-    font-style: normal;
-    font-weight: 400;
-    src: local('Roboto');
-}
-
-@font-face {
-    font-family: Roboto;
-    font-style: normal;
-    font-weight: 500;
-    src: local('Roboto Medium'), local('Roboto');
-}
-
-@font-face {
-    font-family: 'Open Sans';
-    font-style: normal;
-    font-weight: 400;
-    src: local('Open Sans');
-}
-
-@font-face {
-    font-family: 'Open Sans';
-    font-style: normal;
-    font-weight: 500;
-    src: local('Open Sans Medium'), local('Open Sans');
-}
-
-@font-face {
-    font-family: 'Open Sans';
-    font-style: normal;
-    font-weight: 600;
-    src: local('Open Sans SemiBold'), local('Open Sans');
-}
-
-@font-face {
-    font-family: 'Open Sans';
-    font-style: normal;
-    font-weight: 700;
-    src: local('Open Sans Bold'), local('Open Sans');
 }

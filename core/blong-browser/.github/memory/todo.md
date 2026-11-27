@@ -38,7 +38,7 @@ open (25)
 - `T-612` · core/blong-browser — The sherpa engine is untested against a real module and model
 - `T-368` · core/blong-browser — TestRun phase 1 leftovers
 
-done (43)
+done (44)
 
 - `T-369` · core/blong-browser — Resolve TestRun source pointers from a real run
 - `T-367` · core/blong-browser — Test UI phases 2-4: runner, host, Playwright
@@ -84,6 +84,7 @@ done (43)
 - `T-673` · core/blong-browser — Group 4 verification
 - `T-670` · core/blong-browser — The `AssetWidget`
 - `T-422` · core/blong-browser — Move untranslated strings onto Text and useTranslate
+- `T-840` · core/blong-browser — The grid's CDN font faces still load on the deployed viewer
 
 <!-- /memory:index -->
 
@@ -1110,3 +1111,44 @@ LanguageSwitcher button labels already went through the Button wrapper. Evidence
 and 702 blong-browser tests pass, the ValidationBG story expects the translated toolbar name, one
 English sport spec (16 tests) and the 46-test Bulgarian spec still match their baselines, and the
 skill plus i18n doc no longer claim the toolbars are untranslated.
+
+### T-840 — The grid's CDN font faces still load on the deployed viewer
+
+> _2026-11-27 · core/blong-browser · done_
+
+The deployment still logs six font-src violations from the log viewer, reported again on 2026-11-27
+against chat.feasible.one. `@@T-753` removed Roboto from the portal's own stack, which was necessary
+but not sufficient: the faces themselves never left the page. Reproduced with the deployed
+`logViewerPage-DpUP8ug6.css` alone, under `font-src 'self' data:` — the browser attempts all six
+cdn.svar.dev files and logs the same twelve messages, with no element on the page naming a family.
+`document.fonts` holds twelve faces there: the six vendor ones and the six `local()` restatements
+from `gridIcons.css`, so a later `@font-face` with the same family and weight is added rather than
+substituted, and a local restatement cannot disarm the vendor face; emitting the local block before
+the vendor one behaves identically.
+
+Nothing requests the faces when the page carries no CSP, which is why the fourth viewer spec in
+`realm/blong-viewer/test/viewer.play.ts` is green: the dev page has no `font-src`, so an unused face
+is never fetched and the assertion is never exercised.
+
+Two ways out. The cheap one is to import `@svar-ui/react-grid/style.css` instead of `all.css`: the
+vendor's `dist/index.css` carries no `@font-face` at all (13 KB, 84 `wx-` classes) while
+`dist-full/index.css` carries the faces and every widget (380 classes). The 296 classes `style.css`
+lacks are the other widgets — calendar, checkbox, radio, slider, tabs, textarea, comments, tasks,
+the colour and time pickers, modal, notice, filter builder and editor, toolbar, menubar, avatar and
+pager; the viewer renders only the grid, filters rows in its own search box rather than through the
+grid's filter row, and does not paginate, so the swap may be enough. Verify with the 27 visual
+baselines and the four viewer specs, and watch the generic state classes `style.css` does not carry
+(`wx-active`, `wx-error`, `wx-focus`, `wx-pager`).
+
+The other is to keep `all.css` and strip its six `@font-face` blocks at build time — a CSS transform
+in `core/blong-browser/src/vite.ts` for the portal and the storybook, and in
+`tools/blong-log/build-client.js` for the standalone page — which preserves every selector.
+Whichever is taken, the guard spec has to become real: serve the test page with the deployment's
+`font-src 'self' data:`, or assert that the built CSS holds no third-party font URL, because the
+current spec passes while the deployed page fails.
+
+Fixed by stripping the vendor's six cdn.svar.dev @font-face rules from every build (framework Vite
+plugin plus the log viewer's esbuild and Storybook configs); style.css was measured and rejected at
+15 of 241 theme variables. The six local() restatements left gridIcons.css, the Storybook stack lost
+Roboto and its 27 baselines were regenerated, and the viewer spec now reads CSSFontFaceRules.
+Reasons in @@D-1033.

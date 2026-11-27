@@ -25,7 +25,7 @@ import * as vscode from 'vscode';
  * page name landed in the anchor group), so the names are the contract.
  */
 export const REFERENCE_RE =
-    /@@(?:(?<id>[FTD]-\d{3})|doc:(?<docTier>[a-z0-9-]+)\/(?<docName>[a-z0-9.-]+)(?:#(?<docAnchor>[a-z0-9-]+))?|skill:(?<skillName>[a-z0-9-]+)(?:#(?<skillAnchor>[a-z0-9-]+))?)/g;
+    /@@(?:(?<id>[FTD]-\d{3,})|doc:(?<docTier>[a-z0-9-]+)\/(?<docName>[a-z0-9.-]+)(?:#(?<docAnchor>[a-z0-9-]+))?|skill:(?<skillName>[a-z0-9-]+)(?:#(?<skillAnchor>[a-z0-9-]+))?)/g;
 
 interface IEntryRecord {
     title: string;

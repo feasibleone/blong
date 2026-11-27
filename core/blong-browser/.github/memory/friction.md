@@ -43,7 +43,7 @@ open (26)
   it
 - `F-754` · core/blong-browser — A cascade declared with a path filtered every option out
 
-resolved (32)
+resolved (33)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -85,6 +85,7 @@ resolved (32)
 - `F-690` · core/blong-browser — menuClick assumed one menubar group per subject
 - `F-694` · core/blong-browser — A menu chain opened without a wait leaves the leaf hidden
 - `F-695` · core/blong-browser — A menu group id comes from the renderer, never from the method
+- `F-864` · core/blong-browser — A repeated font-face is added, not replaced
 
 <!-- /memory:index -->
 
@@ -158,10 +159,10 @@ curling /rpc from the Storybook port and seeing Storybook's own 404 rather than 
 
 Bringing up a backend for the Storybook live modes needed the port to be known to the plugin, and
 the gateway logs it only when it picked a random one, at a level dev suppresses (see the todo in
-core/blong-gogo). The cost was a stalled boot that looked like a hang, a restart
-with --gateway.port=8080 --resolution.portGateway=8080, and polling ss to confirm. The lesson for
-feature work that needs a running server: pass an explicit port, and verify the listener rather than
-the log.
+core/blong-gogo). The cost was a stalled boot that looked like a hang, a restart with
+--gateway.port=8080 --resolution.portGateway=8080, and polling ss to confirm. The lesson for feature
+work that needs a running server: pass an explicit port, and verify the listener rather than the
+log.
 
 ### F-322 — A read-only role renders a blank page without subject.object.schema
 
@@ -802,13 +803,13 @@ closed, and the deck is given height 100%.
 
 > _2026-10-25 · core/blong-browser · resolved_
 
-The portal fixture reaches window.__blongStore to grant permissions, but BlongContext exposes that
+The portal fixture reaches window.\_\_blongStore to grant permissions, but BlongContext exposes that
 global only when config.portal.testHook is set, and no suite in the repository sets it, so the call
 silently does nothing through optional chaining. A fixture that needs to drive the store must
 therefore publish its own hook: the collector global now carries activate(language) for exactly
 this, set by App and independent of testHook.
 
-Resolved by publishing __blongI18n.activate from App.
+Resolved by publishing \_\_blongI18n.activate from App.
 
 ### F-602 — Translating data in the client had to be undone wholesale
 
@@ -966,3 +967,22 @@ stay for the case where the leaf has not rendered yet, behind a wait for any men
 
 Fixed: menuClick reads the group chain from the rendered DOM, waits for the menu to render, and
 keeps the store path only as a fallback.
+
+### F-864 — A repeated font-face is added, not replaced
+
+> _2026-11-27 · core/blong-browser · resolved_
+
+Cost a cycle and a deployed violation. Assuming that a later `@font-face` with the same family,
+style and weight replaces the vendor's rule, the fix to `@@T-753` restated the six cdn.svar.dev
+faces as `local()` lookups at the end of `gridIcons.css` — which cannot disarm them: the browser
+keeps both sets in `document.fonts` (twelve faces) and still attempts the CDN source, in either
+order, so the page kept logging font-src violations. Proving it took a bare page plus the deployed
+stylesheet under `font-src 'self' data:`.
+
+The second half of the lesson is about the guard. A spec that watches requests only sees them when
+the page is served under the deployment's CSP; without it Chromium never loads an unused face, so
+the green spec said nothing about the deployment. Test the artefact the deployment serves, or the
+header it serves it with, not the dev page.
+
+Worked around by stripping the vendor faces at build time and by moving the guard onto the CSS
+object model, which no longer depends on the page being served with a policy; recorded as @@D-1033.
