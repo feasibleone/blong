@@ -1091,27 +1091,39 @@ const verify = (context: ISuiteContext, flags: IProvisionFlags): number => {
     const namespace = tenantNamespace(context, flags);
     const folder = context.provision ?? join(context.root, PROVISION_DIR);
     const {namespaces} = grantNamespaces(folder, flags, namespace);
-    kubectl(['-n', namespace, 'get', 'secret', MASTER_KEY_SECRET], {dryRun: flags.dryRun});
+    const codes: number[] = [];
+    codes.push(
+        kubectl(['-n', namespace, 'get', 'secret', MASTER_KEY_SECRET], {dryRun: flags.dryRun}),
+    );
     // The check worth having: the operator's own identity asking for the verb its code uses for the
     // suite's identity. A `no` here is the first pass failing with `Kubernetes Access Forbidden` —
     // and every namespace the pass reads is asked about, because a grant in one of them says nothing
     // about the others, and the namespace a service runs in is the one that gets forgotten.
+    // A check that cannot fail is a message, not a check: each answer is kept and the command exits
+    // with the first one that is not what a pass needs, so a pipeline can rely on it (@@F-868).
     for (const granted of namespaces) {
         say(`  ${operator} in ${granted}:`);
-        kubectl(
-            [
-                'auth',
-                'can-i',
-                `--as=system:serviceaccount:${operatorNamespace}:${operator}`,
-                'create',
-                'serviceaccounts',
-                '-n',
-                granted,
-            ],
-            {dryRun: flags.dryRun},
+        codes.push(
+            kubectl(
+                [
+                    'auth',
+                    'can-i',
+                    `--as=system:serviceaccount:${operatorNamespace}:${operator}`,
+                    'create',
+                    'serviceaccounts',
+                    '-n',
+                    granted,
+                ],
+                {dryRun: flags.dryRun},
+            ),
         );
     }
-    kubectl(['-n', namespace, 'get', 'blongdeployment'], {dryRun: flags.dryRun});
+    codes.push(kubectl(['-n', namespace, 'get', 'blongdeployment'], {dryRun: flags.dryRun}));
+    const failed = codes.find(code => code !== 0);
+    if (failed !== undefined) {
+        say('  a check above answered no: the operator would be refused on that namespace');
+        return failed || 1;
+    }
     return 0;
 };
 

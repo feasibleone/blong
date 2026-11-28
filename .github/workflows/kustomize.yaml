@@ -136,6 +136,10 @@ jobs:
         # The folder now carries the **master key** as a generator, and every workload reads it as a
         # required variable (`@@D-1023`): without this step the suite's pods would be refused for a
         # missing Secret rather than for anything this job is about.
+        #
+        # `provision apply` rather than `provision`, because the default form seals the rc — and this
+        # job's runbook reads that rc to know where its own login belongs, so a sealed password would
+        # be read back as `${decrypt(…)}` and handed to `blong-dev user add` as the literal text.
         run: |
           node realm/blong-kustomize/bin/kustomize.ts init \
             --dir=suite/blong-suite --suite=blong-suite --namespace=blong-suite --force \
@@ -143,7 +147,13 @@ jobs:
             --set=srv.db.knex.connection.database=blong-integration \
             --set=srv.db.knex.connection.user=blong-test \
             --set=srv.db.knex.connection.password=password
-          kubectl kustomize suite/blong-suite/system/provision | kubectl apply -f -
+          # The command, not the pipe it wraps: the folder holds what a kustomization cannot — the
+          # namespace a pass reads besides its own, and the operator's grant inside it — and only
+          # `provision apply` applies those, namespace first. Piping the kustomization created the
+          # tenant's own pair and nothing for `blong-services`, so the pass that opted a service in
+          # reported five forbidden reads and the CR went Failed while the workload itself ran
+          # (@@F-868).
+          node realm/blong-kustomize/bin/kustomize.ts provision apply --namespace=blong-suite
           kubectl -n blong-suite get secret blong-releaserc-etc -o jsonpath='{.data.blong_releaserc}' | base64 -d
           kubectl -n blong-suite get secret blong-master-key -o jsonpath='{.metadata.name}{"\n"}'
       - name: Build the suite's browser bundle
@@ -239,6 +249,16 @@ jobs:
         # No `CREATE_CLUSTER`: the action above owns the cluster, and a runbook allowed to create one
         # would answer a cluster that failed to come up by building a second beside it (F-446).
         run: node --conditions=development ../../test/blong-int-kustomize/bin/blongIntKustomize.ts suite deploy
+      - name: Assert the operator is granted in every namespace it reads
+        # The check `provision verify` exists for, placed where it can run: the operator's own
+        # identity asking for a verb its code uses, in the tenant's namespace *and* in the one its
+        # services run in. The install tree — and so the CRD the last check reads — is applied by
+        # the step above, which is why this cannot live in the tenant step.
+        #
+        # It runs before anything waits: a grant that is missing is a pass refused on every kind in
+        # that namespace, which reads from outside as a CR stuck at Failed with the workloads
+        # themselves running (@@F-868).
+        run: node realm/blong-kustomize/bin/kustomize.ts provision verify --namespace=blong-suite
       - name: Wait for the operator to report Ready
         # The assertion that makes this job worth its minutes: the operator watches the CR, a pass
         # reconciles the plan, the migration Job runs, and the status carries the result back.
