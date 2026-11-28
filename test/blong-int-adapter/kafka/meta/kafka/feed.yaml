@@ -1,0 +1,20 @@
+topics:
+    # The topic the feed reads: records the test produces, each standing for a call (`@@D-1036`).
+    blong-int-adapter.feed.work:
+        partitions: 1
+    # Where the feed puts a record it could not handle, with the original bytes and the reason.
+    blong-int-adapter.feed.dead:
+        partitions: 1
+    # Where a record that asks for an answer has its answer produced — by the `answers` producer,
+    # which is what its `blong-int-adapter.feed.answers*` pattern selects (`@@D-1035`).
+    blong-int-adapter.feed.answers:
+        partitions: 1
+    # The topic the feed with a concurrency of three reads, so parallelism is observable.
+    blong-int-adapter.feed.parallel:
+        partitions: 1
+    # Two topics one feed reaches through a single pattern, which is what a subscription writes
+    # when it does not know how many topics a realm will declare (`@@D-1035`).
+    blong-int-adapter.feed.glob.one:
+        partitions: 1
+    blong-int-adapter.feed.glob.two:
+        partitions: 1

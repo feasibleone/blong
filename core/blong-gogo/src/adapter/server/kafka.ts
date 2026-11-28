@@ -1,147 +1,76 @@
-import {adapter, type IMeta, type VocabularyProxy} from '@feasibleone/blong/types';
-import Kafka, {type Message} from 'node-rdkafka';
+/**
+ * The Kafka adapter — produce, consume, topics, and the feeds a realm runs in the background.
+ *
+ * The adapter itself is the wiring: one connection, the client maps a topic picks a client from
+ * (`@@D-1035`), the topics realms declare (`@@D-1001`), and the operations `exec` answers. The
+ * mechanics live beside it in `kafka/`: `clients` (the shapes and the waits), `names` (logical and
+ * physical names, `@@D-1003`), `topics` (a topic's shape and settings, `@@D-1034`), `declarations`
+ * (the YAML a realm ships, `@@D-1001`), `produce`/`consume` (one record each way), and `feed`
+ * (a subscription put to work, `@@D-1036`).
+ */
+import {adapter, type IMeta} from '@feasibleone/blong/types';
+import Kafka from 'node-rdkafka';
 import {Duplex} from 'stream';
 
-type KafkaConfig = ConstructorParameters<typeof Kafka.KafkaConsumer>[0];
-type KafkaTopicConfig = ConstructorParameters<typeof Kafka.KafkaConsumer>[1];
-type KafkaProducerConfig = ConstructorParameters<typeof Kafka.Producer>[0];
+import {
+    freshGroup,
+    type IKafkaClients,
+    type IKafkaHeader,
+    type IKafkaProducer,
+    type KafkaConfig,
+    type KafkaProducerConfig,
+    messageOf,
+    nodeRdkafkaClients,
+    whenReady,
+} from '../impl/kafka/clients.ts';
+import {
+    consumerSpecOf,
+    DEFAULT_CONCURRENCY,
+    feedSpecOf,
+    type IClientSummary,
+    type IConsumerSpec,
+    type IFeedSpec,
+    type IProducerSpec,
+    matchSpec,
+    producerSpecOf,
+} from '../impl/kafka/config.ts';
+import {readTopicMessages, startsOf, topicWatch} from '../impl/kafka/consume.ts';
+import {
+    declaredTopicsOf,
+    type IResolvedTopic,
+    type ITopicProvisionContext,
+    provisionOf,
+} from '../impl/kafka/declarations.ts';
+import {type IFeedHandle, openFeed} from '../impl/kafka/feed.ts';
+import {
+    brokerTopicOf,
+    claimTopic,
+    logicalRecordOf,
+    physicalGroupOf,
+    physicalTopicOf,
+    topicNamespace,
+} from '../impl/kafka/names.ts';
+import {messageSend, reportProducerConfig} from '../impl/kafka/produce.ts';
+import {topicConfigOf, topicCreate, topicOffsets} from '../impl/kafka/topics.ts';
 
 type CodecInstance = {
     encode: (...args: unknown[]) => Promise<string | Buffer<ArrayBufferLike>>;
-    decode: (...args: unknown[]) => Promise<object[]>;
-};
-
-/**
- * A consumed record, narrowed to the fields an operator reads.
- *
- * The bytes stay bytes: which codec a topic's payload needs is the caller's business, and the
- * adapter has no opinion about one (`@@T-786`).
- */
-export interface IKafkaRecord {
-    topic: string;
-    partition: number;
-    offset: number;
-    key?: string;
-    value?: string;
-    timestamp?: number;
-}
-
-/*
- * The clients, as this adapter drives them (`@@T-782`).
- *
- * `node-rdkafka` is the only implementation there is in production; these shapes exist so the
- * offset arithmetic, the assign call and the delivery report can be pinned by a unit test with no
- * broker behind it. Each is the subset the adapter calls — nothing is described that the adapter
- * does not use, so a stand-in stays small.
- */
-
-export interface IKafkaConsumer {
-    connect(): unknown;
-    /**
-     * Close the client.
-     *
-     * A callback makes the close asynchronous: `node-rdkafka` without one blocks the calling thread
-     * until the socket is gone, which measured **1500 ms** for a watching consumer and stalled every
-     * send in the same process while it happened (`F-834`). A caller that must wait passes a callback
-     * and awaits it; a caller that only needs the client gone passes a no-op.
-     */
-    disconnect(cb?: (error?: unknown) => void): unknown;
-    isConnected(): boolean;
-    on(event: 'ready', listener: () => void): unknown;
-    on(event: 'data', listener: (message: Message) => void): unknown;
-    on(event: 'event.error', listener: (error: {message?: string}) => void): unknown;
-    setDefaultConsumeTimeout(timeoutMs: number): unknown;
-    consume(
-        count: number,
-        cb: (error: {message?: string} | null, messages: Message[]) => void,
-    ): unknown;
-    /** The background loop: every record arrives as a `data` event once this is called. */
-    consume(): unknown;
-    subscribe(topics: string[]): unknown;
-    /** The partitions to read directly — a watching reader never joins a group (`@@D-989`). */
-    assign(assignments: {topic: string; partition: number; offset: number}[]): unknown;
-    unassign(): unknown;
-    /** What the client owns now — `offset` is absent until a fetch has landed. */
-    assignments(): {topic: string; partition: number; offset?: number}[];
-    getMetadata(
-        options: {timeout?: number; allTopics?: boolean},
-        cb: (
-            error: {message?: string} | null,
-            data?: {topics?: {name: string; partitions?: {id: number}[]}[]},
-        ) => void,
-    ): unknown;
-    queryWatermarkOffsets(
-        topic: string,
-        partition: number,
-        timeout: number,
-        cb: (
-            error: {message?: string} | null,
-            offsets?: {lowOffset: number; highOffset: number},
-        ) => void,
-    ): unknown;
-}
-
-export interface IKafkaProducer {
-    connect(): unknown;
-    disconnect(): unknown;
-    isConnected(): boolean;
-    on(event: 'ready', listener: () => void): unknown;
-    on(event: 'delivery-report', listener: DeliveryListener): unknown;
-    off(event: 'delivery-report', listener: DeliveryListener): unknown;
-    produce(
-        topic: string,
-        partition: number | null,
-        value: Buffer,
-        key?: string | null,
-        timestamp?: number,
-        opaque?: unknown,
-    ): unknown;
-    flush(timeout: number, cb?: (error: {message?: string} | null) => void): unknown;
-    /** How often the client polls for events — no poll, no delivery report. */
-    setPollInterval(intervalMs: number): unknown;
-}
-
-/** Where librdkafka says a produce landed, or what refused it. */
-export interface IDeliveryReport {
-    topic: string;
-    partition: number;
-    offset: number;
-    opaque?: unknown;
-}
-
-type DeliveryListener = (error: {message?: string} | null, report?: IDeliveryReport) => void;
-
-export interface IKafkaAdmin {
-    createTopic(
-        topic: {
-            topic: string;
-            num_partitions: number;
-            replication_factor: number;
-            config?: Record<string, string>;
-        },
-        cb: (error: {message?: string} | null) => void,
-    ): unknown;
-    disconnect(): unknown;
-}
-
-export interface IKafkaClients {
-    consumer(connection: KafkaConfig, topicConfig: KafkaTopicConfig): IKafkaConsumer;
-    producer(connection: KafkaProducerConfig): IKafkaProducer;
-    admin(connection: KafkaConfig): IKafkaAdmin;
-}
-
-/** What `node-rdkafka` answers, which is every deployment except a unit test (`@@T-782`). */
-export const nodeRdkafkaClients: IKafkaClients = {
-    consumer: (connection, topicConfig) => new Kafka.KafkaConsumer(connection, topicConfig),
-    producer: connection => new Kafka.Producer(connection),
-    admin: connection => Kafka.AdminClient.create(connection),
+    /** One answer, or a list of them — the stream type decides which a codec writes. */
+    decode: (...args: unknown[]) => Promise<object | object[]>;
 };
 
 export interface IConfig {
     connection: KafkaConfig;
-    consume: {
-        topics: string[];
-        groupId: string;
+    /**
+     * The topic set a stream instance reads, and the group it reads it under.
+     *
+     * The legacy spelling of one `consumer` spec: an instance that writes `consume` and no
+     * `consumer` map gets a `default` consumer from these two fields, so every realm that predates
+     * the client maps keeps working unchanged (`@@D-1035`).
+     */
+    consume?: {
+        topics?: string[];
+        groupId?: string;
     };
     codec?: {
         new (config: object): CodecInstance;
@@ -150,12 +79,12 @@ export interface IConfig {
      * Operation mode.
      * - `'stream'` (default): a produce/consume message adapter — every triple
      *   is routed through the Kafka stream (the request is encoded and produced
-     *   to `consume.topics`, the response is consumed + decoded). This is the
-     *   original design for message round-trips.
+     *   to the stream's topics, the response is consumed + decoded).
      * - `'admin'`: an introspection adapter — triples are routed to `exec`
      *   (like the API adapters: `super.connect()` → `handle()` → `exec`), so
-     *   `{ns}.topic.*` (metadata, offsets, create, watch) and
-     *   `{ns}.message.send` are reachable. No produce/consume stream.
+     *   `{ns}.topic.*` (metadata, offsets, create, watch), `{ns}.message.send`,
+     *   `{ns}.client.list` and `{ns}.topic.resolve` are reachable. No produce/consume stream,
+     *   though its feeds still run.
      */
     mode?: 'stream' | 'admin';
     /**
@@ -172,12 +101,65 @@ export interface IConfig {
      */
     topicNamespace?: string;
     /**
+     * The tenant this instance publishes under, which prefixes every topic and group it touches
+     * (`@@D-1003`).
+     *
+     * A broker shared by several environments — a developer's cluster, two tenants on one broker —
+     * needs a name per environment, the way the database adapter derives a database name in `dev`.
+     * The base adapter's `dev` block derives this from the user name; every other intent leaves it
+     * unset, so a deployment addresses the names its own broker holds. `physical:<name>` names a
+     * topic on the broker that carries no tenant at all.
+     */
+    tenant?: string;
+    /**
      * Admit a topic that carries no realm namespace.
      *
      * The escape for a broker and a topic that belong to no realm — the integration package's
      * `blong-integration`, the commander's explorer (`@@T-785`).
      */
     allowForeignTopic?: boolean;
+    /**
+     * What the start does with the topics the realms declare, in their `meta/kafka/*.yaml`
+     * (`@@D-1001`).
+     *
+     * Absent, the declarations are read by nothing — which is the shape a planning run wants,
+     * because it has no broker to ask. The realms that own a topic declare it there; this block is
+     * the process's policy for them, and it belongs in the intent blocks that provision (`dev`, and
+     * the `upgrade` Job a deployment runs) rather than in `default`.
+     */
+    topics?: {
+        /** Create a declared topic the broker does not have. Idempotent per declaration. */
+        create?: boolean;
+        /**
+         * Refuse the start when a declaration carrying `required: true` is not observed present
+         * afterwards. An unreachable broker counts as absent, so a provisioning run that could not
+         * reach Kafka fails where an operator can see it rather than at the first produce.
+         * Defaults to `true`.
+         */
+        failOnMissing?: boolean;
+    };
+    /**
+     * The producers this instance may bring up, by alias (`@@D-1035`).
+     *
+     * A logical topic picks one by the `topics` patterns its spec writes, and the spec named
+     * `default` answers for the rest. Absent, the instance has one producer made from `connection`.
+     */
+    producer?: Record<string, IProducerSpec>;
+    /**
+     * The consumers this instance may bring up, by alias (`@@D-1035`).
+     *
+     * The read operations and the stream instance pick one the same way the producers are picked.
+     * Absent, the instance has a `default` consumer made from its legacy `consume` block.
+     */
+    consumer?: Record<string, IConsumerSpec>;
+    /**
+     * The background feeds this instance runs (`@@D-1036`).
+     *
+     * Each is a subscription put to work: one consumer group, one topic set, and the policy for
+     * commits, retries and dead letters. A record is decoded by the instance's codec — which is
+     * what fills `$meta.method` — and dispatched like any other call.
+     */
+    feed?: Record<string, IFeedSpec>;
     /**
      * Where the clients come from (`@@T-782`).
      *
@@ -187,666 +169,94 @@ export interface IConfig {
     clientFactory?: IKafkaClients;
 }
 
-/**
- * Read one topic's messages with a consumer of its own.
- *
- * A fresh consumer group has to *join* before a read can return anything: the broker
- * holds a group's first rebalance for `group.initial.rebalance.delay.ms` (3s by
- * default), and a read issued before the assignment lands comes back empty for a topic
- * that has messages — which is how the commander's `message` level read empty while
- * `topic.list` listed the topic right beside it (D-497). So the assignment is waited
- * for first, exactly as `start()` waits for its own, and the consume timeout is what a
- * *fetch* gets rather than what a join gets.
- *
- * The promise always settles with an array: a rebalance stall, a broker error or the
- * deadline is an empty topic to the caller, never a malformed RPC response ("JSON RPC
- * response without response and error").
- */
-async function readTopicMessages(
-    clients: IKafkaClients,
-    connection: KafkaConfig,
-    topic: string,
-    limit: number,
-    signal?: VocabularyProxy,
-): Promise<Message[]> {
-    const consumer = clients.consumer(
-        {...connection, 'group.id': `blong-commander-${Date.now()}`},
-        {'auto.offset.reset': 'earliest'},
-    );
-    // Long enough for a join on a loaded broker, short enough that an explorer's click
-    // is not left waiting for a topic that has nothing to say.
-    const joinDeadlineMs = 20_000;
-    // What a fetch gets once the group owns its partitions.
-    const consumeTimeoutMs = 5_000;
-    const startedAt = Date.now();
-    try {
-        return await new Promise<Message[]>(resolve => {
-            let settled = false;
-            let poll: ReturnType<typeof setInterval> | null = null;
-            let deadline: ReturnType<typeof setTimeout> | null = null;
-            const finish = (messages: Message[]) => {
-                if (settled) return;
-                settled = true;
-                if (poll) clearInterval(poll);
-                if (deadline) clearTimeout(deadline);
-                resolve(messages);
-            };
-            deadline = setTimeout(() => {
-                signal?.frameworkKafkaTopicTimeout?.({
-                    topic,
-                    elapsedMs: Date.now() - startedAt,
-                });
-                finish([]);
-            }, joinDeadlineMs);
-            consumer.setDefaultConsumeTimeout(consumeTimeoutMs);
-            consumer.on('event.error', error => {
-                signal?.frameworkKafkaTopicFailed?.({topic, error: error?.message});
-                finish([]);
-            });
-            consumer.on('ready', () => {
-                consumer.subscribe([topic]);
-                // The assignment is what the read waits for: until the group has joined,
-                // `consume` reads partitions this consumer does not own yet and returns
-                // an empty batch for a topic that has messages.
-                poll = setInterval(() => {
-                    if (consumer.assignments().length === 0) return;
-                    if (poll) clearInterval(poll);
-                    poll = null;
-                    consumer.consume(limit, (error, messages) => {
-                        if (error) {
-                            signal?.frameworkKafkaTopicFailed?.({topic, error: error.message});
-                            return finish([]);
-                        }
-                        signal?.frameworkKafkaTopicRead?.({
-                            topic,
-                            count: messages?.length ?? 0,
-                            elapsedMs: Date.now() - startedAt,
-                        });
-                        finish(messages ?? []);
-                    });
-                }, 200);
-            });
-            consumer.connect();
-        });
-    } finally {
-        try {
-            consumer.disconnect();
-        } catch {
-            // A consumer that never connected has nothing to leave behind.
-        }
+/** The config `exec` and the helpers read, plus what the loader merged in. */
+type ResolvedConfig = IConfig & {namespace?: string | string[]; id?: string};
+
+/** The specs an instance runs with, validated once at `start()` (`@@D-1035`). */
+interface IClientMaps {
+    producer: Record<string, IProducerSpec>;
+    consumer: Record<string, IConsumerSpec>;
+    feed: Record<string, IFeedSpec>;
+}
+
+/** One spec map, each entry checked with the file-less name a config block has. */
+const checkedMap = <T>(raw: unknown, kind: 'producer' | 'consumer' | 'feed'): Record<string, T> => {
+    if (raw === undefined || raw === null) return {};
+    if (typeof raw !== 'object' || Array.isArray(raw)) {
+        throw new Error(`kafka: "${kind}" is a map keyed by alias`);
     }
-}
+    const parse =
+        kind === 'producer' ? producerSpecOf : kind === 'consumer' ? consumerSpecOf : feedSpecOf;
+    return Object.fromEntries(
+        Object.entries(raw as Record<string, unknown>).map(([alias, spec]) => [
+            alias,
+            parse(spec, `kafka ${kind} "${alias}"`),
+        ]),
+    ) as Record<string, T>;
+};
 
-const messageOf = (error: unknown): string =>
-    error instanceof Error ? error.message : String(error);
-
-const pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
-
-let consumerSeq = 0;
-
-/**
- * A consumer id no other one holds.
- *
- * `node-rdkafka` refuses a consumer config without `group.id` — `connect()` then never answers
- * `ready`, which is a 20-second silence rather than an error. The id is required even for a reader
- * that assigns its partitions and never subscribes: nothing joins a group, so nothing coordinates
- * with it (`@@D-989`).
- */
-const freshGroup = (kind: string): string =>
-    `blong-${kind}-${Date.now().toString(36)}-${++consumerSeq}`;
-
-/**
- * The topic namespace this instance owns (`@@D-990`).
- *
- * Derived from the namespace the adapter is attached as, not from the topic it is handed: a realm
- * that publishes a feed can only reach its own names, and the rule is the same on both sides of a
- * produce/consume pair because both ask this function.
- */
-export function topicNamespace(
-    config: {topicPrefix?: string; topicNamespace?: string; namespace?: string | string[]},
-    namespaceHint: string,
-): string {
-    const declared = config.namespace;
-    const namespace =
-        config.topicNamespace ||
-        (Array.isArray(declared)
-            ? declared[0]
-            : typeof declared === 'string'
-              ? declared
-              : ''
-        )?.split('.')[0] ||
-        namespaceHint;
-    return `${config.topicPrefix ?? 'blong'}.${namespace}.`;
-}
-
-/**
- * The topic a call names, or a refusal that says whose name it was (`@@T-785`).
- *
- * `namespaceHint` is the first segment of the method — `agent` for `agent.topic.watch` — which is
- * what an adapter whose config does not name a namespace is attached as anyway.
- */
-export function claimTopic(
-    config: {
-        topicPrefix?: string;
-        topicNamespace?: string;
-        allowForeignTopic?: boolean;
-        namespace?: string | string[];
-    },
-    namespaceHint: string,
-    topic: unknown,
-): string {
-    const name = typeof topic === 'string' ? topic : '';
-    if (!name) throw new Error('Missing topic param');
-    if (config.allowForeignTopic) return name;
-    const prefix = topicNamespace(config, namespaceHint);
-    if (!name.startsWith(prefix)) {
-        throw new Error(
-            `Kafka topic ${name} is outside the namespace ${prefix}* this adapter owns (set allowForeignTopic to admit it)`,
-        );
-    }
-    return name;
-}
-
-/** Wait for a client's `ready`, which is where `node-rdkafka` says the broker answered. */
-async function whenReady(
-    client: {
-        connect(): unknown;
-        isConnected(): boolean;
-        on(event: 'ready', listener: () => void): unknown;
-    },
-    timeoutMs = 20_000,
-): Promise<void> {
-    if (client.isConnected()) return;
-    await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(
-            () => reject(new Error('Kafka client did not become ready')),
-            timeoutMs,
-        );
-        client.on('ready', () => {
-            clearTimeout(timer);
-            resolve();
-        });
-        client.connect();
-    });
-}
-
-const recordOf = (message: Message): IKafkaRecord => ({
-    topic: message.topic,
-    partition: message.partition,
-    offset: message.offset,
-    key: message.key == null ? undefined : message.key.toString(),
-    value: message.value == null ? undefined : message.value.toString(),
-    timestamp: message.timestamp,
-});
-
-function metadataOf(
-    consumer: IKafkaConsumer,
-    timeoutMs: number,
-): Promise<{topics?: {name: string; partitions?: {id: number}[]}[]}> {
-    return new Promise((resolve, reject) => {
-        consumer.getMetadata({timeout: timeoutMs, allTopics: true}, (error, data) => {
-            if (error) {
-                reject(new Error(error.message ?? 'Kafka metadata unavailable'));
-                return;
-            }
-            resolve(data ?? {});
-        });
-    });
-}
-
-/**
- * A topic's partition ids, oldest first.
- *
- * `attempts` is what a caller that has just created a topic needs: broker metadata trails the
- * create by a moment, and a single look answers "no such topic" for one that is there.
- */
-async function partitionIdsOf(
-    consumer: IKafkaConsumer,
-    topic: string,
-    options: {attempts?: number; waitMs?: number; timeoutMs?: number} = {},
-): Promise<number[]> {
-    const attempts = options.attempts ?? 1;
-    for (let attempt = 1; ; attempt++) {
-        const metadata = await metadataOf(consumer, options.timeoutMs ?? 5_000);
-        const found = metadata.topics?.find(candidate => candidate.name === topic);
-        if (found) {
-            return (found.partitions ?? []).map(part => part.id).sort((a, b) => a - b);
-        }
-        if (attempt >= attempts) throw new Error(`Kafka topic ${topic} is not on this broker`);
-        await pause(options.waitMs ?? 500);
-    }
-}
-
-export interface IKafkaPartitionOffset {
-    partition: number;
-    low: number;
-    high: number;
-}
-
-/**
- * The config a producer that answers with a delivery report is made with.
- *
- * `dr_cb` is what makes librdkafka report at all. `linger.ms` of zero is what makes the report
- * arrive: the default batches for 5 ms, which was 6 of the 6.7 ms a waited send took — a frame a
- * page is waiting for has nothing to gain from that batching, and a batch that wants coalescing
- * asks for it in its own config.
- */
-const reportProducerConfig = (connection: KafkaProducerConfig): KafkaProducerConfig => ({
-    ...connection,
-    dr_cb: true,
-    'linger.ms': 0,
-});
-
-/**
- * `{ns}.topic.offsets` — every partition of a topic beside its watermarks (`@@T-783`).
- *
- * A reader that wants "the last N messages" cannot ask for them: a partition interleaves every
- * session that hashes to it, so the tail is computed per partition, from `high`, and filtered by
- * key afterwards. There is deliberately no mapping from a key to a partition here — the adapter
- * configures no partitioner, so librdkafka's own decides, and the only place that fact is visible
- * is a delivery report (`@@D-996`).
- */
-export async function topicOffsets(
-    clients: IKafkaClients,
-    connection: KafkaConfig,
-    topic: string,
-    options: {timeoutMs?: number; signal?: VocabularyProxy} = {},
-): Promise<{topic: string; partitions: IKafkaPartitionOffset[]}> {
-    const timeoutMs = options.timeoutMs ?? 5_000;
-    const startedAt = Date.now();
-    const consumer = clients.consumer(
-        {...connection, 'group.id': freshGroup('offsets')},
-        {'auto.offset.reset': 'earliest'},
-    );
-    try {
-        await whenReady(consumer);
-        const partitions = await Promise.all(
-            (await partitionIdsOf(consumer, topic, {timeoutMs})).map(
-                partition =>
-                    new Promise<IKafkaPartitionOffset>((resolve, reject) => {
-                        consumer.queryWatermarkOffsets(
-                            topic,
-                            partition,
-                            timeoutMs,
-                            (error, offsets) => {
-                                if (error || !offsets) {
-                                    reject(
-                                        new Error(
-                                            error?.message ??
-                                                `Kafka holds no watermarks for ${topic}[${partition}]`,
-                                        ),
-                                    );
-                                    return;
-                                }
-                                resolve({
-                                    partition,
-                                    low: offsets.lowOffset,
-                                    high: offsets.highOffset,
-                                });
-                            },
-                        );
-                    }),
-            ),
-        );
-        options.signal?.frameworkKafkaTopicRead?.({
-            topic,
-            count: partitions.length,
-            elapsedMs: Date.now() - startedAt,
-        });
-        return {topic, partitions};
-    } catch (error) {
-        options.signal?.frameworkKafkaTopicFailed?.({topic, error: messageOf(error)});
-        throw error;
-    } finally {
-        try {
-            consumer.disconnect();
-        } catch {
-            // A consumer that never connected has nothing to leave behind.
-        }
-    }
-}
-
-export interface ITopicSpec {
-    topic: string;
-    /** The partitions the topic must have. Defaults to one, which is what auto-create gives. */
-    partitions?: number;
-    /** `retention.ms` — how far back a reader may go. */
-    retentionMs?: number;
-    /** `cleanup.policy`; `delete` unless asked otherwise. */
-    cleanupPolicy?: string;
-    replicationFactor?: number;
-}
-
-export interface ITopicShape {
-    topic: string;
-    /** True when this call made the topic; false when it was already there. */
-    created: boolean;
-    /** The partitions the topic has now. */
-    partitions: number;
-    /** False when the topic existed with another shape — a broker cannot be asked to reshape it. */
-    matches: boolean;
-}
-
-const EXISTS = /exist/i;
-
-/**
- * `{ns}.topic.create` — a topic of the shape it is asked for, once (`@@T-784`).
- *
- * Idempotent on purpose: an integration run names the same topic on every start, and the second
- * call must neither create it again nor fail. A topic that is already there with another shape is
- * reported rather than reshaped, because reshaping means deleting what the topic holds — and the
- * caller that wants that can say so by deleting it first, deliberately.
- */
-export async function topicCreate(
-    clients: IKafkaClients,
-    connection: KafkaConfig,
-    spec: ITopicSpec,
-): Promise<ITopicShape> {
-    const asked = spec.partitions ?? 1;
-    const consumer = clients.consumer(
-        {...connection, 'group.id': freshGroup('create')},
-        {'auto.offset.reset': 'earliest'},
-    );
-    try {
-        await whenReady(consumer);
-        // The shape is read before anything is created: the second call of a pair answers from
-        // this and never reaches the broker's admin API.
-        const existing = await partitionIdsOf(consumer, spec.topic, {attempts: 1}).catch(
-            () => null,
-        );
-        if (existing) {
-            return {
-                topic: spec.topic,
-                created: false,
-                partitions: existing.length,
-                matches: existing.length === asked,
-            };
-        }
-        let created = true;
-        const admin = clients.admin(connection);
-        try {
-            await new Promise<void>((resolve, reject) => {
-                admin.createTopic(
-                    {
-                        topic: spec.topic,
-                        num_partitions: asked,
-                        replication_factor: spec.replicationFactor ?? 1,
-                        config: {
-                            ...(spec.retentionMs !== undefined && {
-                                'retention.ms': String(spec.retentionMs),
-                            }),
-                            ...(spec.cleanupPolicy && {'cleanup.policy': spec.cleanupPolicy}),
-                        },
-                    },
-                    error => {
-                        if (error) {
-                            reject(new Error(error.message ?? 'Kafka topic create failed'));
-                            return;
-                        }
-                        resolve();
-                    },
-                );
-            });
-        } catch (error) {
-            // A name taken between the look and the create is the same idempotent second call, and
-            // the shape below is what the answer reports.
-            if (!EXISTS.test(messageOf(error))) throw error;
-            created = false;
-        } finally {
-            try {
-                admin.disconnect();
-            } catch {
-                // Nothing to leave behind.
-            }
-        }
-        // Broker metadata trails the create by a moment: a single look answers "no such topic" for
-        // one that was just made.
-        const partitions = await partitionIdsOf(consumer, spec.topic, {
-            attempts: created ? 20 : 1,
-        });
-        return {
-            topic: spec.topic,
-            created,
-            partitions: partitions.length,
-            matches: created || partitions.length === asked,
-        };
-    } finally {
-        try {
-            consumer.disconnect();
-        } catch {
-            // A consumer that never connected has nothing to leave behind.
-        }
-    }
-}
-
-export interface IWatchStart {
-    partition: number;
-    offset: number;
-}
-
-/** A watch's starts, as a caller writes them: `[{partition, offset}]`, at least one. */
-export function startsOf(value: unknown): IWatchStart[] {
-    if (!Array.isArray(value) || value.length === 0) {
-        throw new Error('Missing starts param: a watch needs a [{partition, offset}] list');
-    }
-    return value.map(entry => {
-        const candidate = entry as {partition?: unknown; offset?: unknown};
-        const partition = Number(candidate?.partition);
-        const offset = Number(candidate?.offset);
-        if (!Number.isInteger(partition) || !Number.isInteger(offset)) {
-            throw new Error(
-                `Invalid watch start ${JSON.stringify(entry)}: partition and offset are integers`,
-            );
-        }
-        return {partition, offset};
-    });
-}
-
-/**
- * `{ns}.topic.watch` — a partition's records from an offset, filtered by key (`@@T-786`).
- *
- * The consumer assigns its partitions and joins no group (`@@D-989`): a group join costs the
- * broker's initial rebalance delay on a click, and a viewer has nothing to commit — it starts from
- * an offset it was given and never owns one.
- *
- * A broker error ends this stream the way a broken socket ends a read. The caller that knows where
- * it got to reopens with its token (`@@T-780`); a watch that went quiet instead would leave a page
- * waiting on a broker that is not answering.
- */
-export async function* topicWatch(
-    clients: IKafkaClients,
-    connection: KafkaConfig,
-    options: {topic: string; starts: IWatchStart[]; key?: string; $meta?: IMeta},
-): AsyncIterable<IKafkaRecord> {
-    const queue: IKafkaRecord[] = [];
-    let wake: (() => void) | null = null;
-    let ended = false;
-    let failure: Error | null = null;
-    const nudge = (): void => {
-        const waiting = wake;
-        wake = null;
-        waiting?.();
-    };
-    /**
-     * Close the consumer, once.
-     *
-     * The close is deferred to the next turn of the loop, and it is the client's own blocking call:
-     * `node-rdkafka` disconnects synchronously, which measured **1500 ms** here, so a reader that
-     * leaves must not have its last frame — or the request that served it — held for that long. The
-     * process is still busy when it runs; it is simply no longer busy *for the reader* (`F-834`).
-     * A pool of assigned consumers is the fix when a viewer's watch becomes per-page rather than
-     * per-session.
-     */
-    let closed = false;
-    const close = (): void => {
-        if (closed) return;
-        closed = true;
-        setImmediate(() => {
-            try {
-                consumer.disconnect(() => undefined);
-            } catch {
-                // A consumer that never connected has nothing to leave behind.
-            }
-        });
-    };
-    const consumer = clients.consumer(
-        {
-            ...connection,
-            // The id the client insists on. It is never used for coordination: this consumer
-            // assigns its partitions and never subscribes, so there is no group to join.
-            'group.id': freshGroup('watch'),
-            'enable.auto.commit': false,
+/** The consumer specs an instance has, the legacy `consume` block standing in for `default`. */
+const consumerMapsOf = (config: ResolvedConfig): Record<string, IConsumerSpec> => {
+    const declared = checkedMap<IConsumerSpec>(config.consumer, 'consumer');
+    if (Object.keys(declared).length) return declared;
+    return {
+        default: {
+            ...(config.consume?.topics?.length && {topics: [...config.consume.topics]}),
+            ...(config.consume?.groupId && {groupId: config.consume.groupId}),
         },
-        {'auto.offset.reset': 'earliest'},
-    );
-    consumer.on('data', message => {
-        if (options.key !== undefined && message.key?.toString() !== options.key) return;
-        queue.push(recordOf(message));
-        nudge();
-    });
-    consumer.on('event.error', error => {
-        failure = new Error(error.message ?? 'Kafka consumer error');
-        ended = true;
-        nudge();
-    });
-    const abort = (): void => {
-        ended = true;
-        // The pump may be parked at a `yield` when this fires: an abort is the reader saying it
-        // stopped reading, so nothing will resume the loop and its `finally` would never close the
-        // consumer. The close is therefore the abort's own work, not the loop's.
-        close();
-        nudge();
     };
-    options.$meta?.abort?.addEventListener('abort', abort, {once: true});
-    try {
-        await whenReady(consumer);
-        // The offsets are absolute and were computed by the caller from the watermarks, so nothing
-        // here resets them: a reader that asked for `high - 500` gets exactly that.
-        consumer.assign(
-            options.starts.map(start => ({
-                topic: options.topic,
-                partition: start.partition,
-                offset: start.offset,
-            })),
-        );
-        // Without this the consumer polls nothing and the assignment delivers no `data` events —
-        // the loop is the difference between an assignment and a read.
-        consumer.consume();
-        while (!ended || queue.length > 0) {
-            const next = queue.shift();
-            if (next) {
-                yield next;
-                continue;
-            }
-            await new Promise<void>(resolve => {
-                wake = resolve;
-            });
-        }
-        if (failure) throw failure;
-    } finally {
-        options.$meta?.abort?.removeEventListener('abort', abort);
-        close();
-    }
-}
+};
 
-export interface IOutboundMessage {
-    topic: string;
-    value: string;
-    key?: string | null;
-    partition?: number;
-}
+/** The producer specs an instance has. A plain instance has exactly one, made from `connection`. */
+const producerMapsOf = (config: ResolvedConfig): Record<string, IProducerSpec> => {
+    const declared = checkedMap<IProducerSpec>(config.producer, 'producer');
+    return Object.keys(declared).length ? declared : {default: {}};
+};
 
-/**
- * `{ns}.message.send` — one message, and where the broker put it (`@@T-787`).
- *
- * `dr_cb` is what makes librdkafka report at all: without it the produce is fire and forget and
- * this promise would never settle. The correlation object is the only thing tying a report to a
- * produce — several may be in flight for one producer, and the broker does not answer in order.
- */
-export async function messageSend(
-    clients: IKafkaClients,
-    connection: KafkaProducerConfig,
-    message: IOutboundMessage,
-    options: {timeoutMs?: number; producer?: IKafkaProducer} = {},
-): Promise<{topic: string; partition: number; offset: number}> {
-    const timeoutMs = options.timeoutMs ?? 10_000;
-    // A producer handed in belongs to the adapter and outlives this call; one made here belongs to
-    // the call and is closed when it has answered.
-    const owned = !options.producer;
-    const producer = options.producer ?? clients.producer(reportProducerConfig(connection));
-    const correlation = {};
-    try {
-        // A producer the adapter already made is connected; asking again would leave a `ready`
-        // listener behind on every send.
-        if (!producer.isConnected()) await whenReady(producer);
-        // A delivery report is an event, and librdkafka only raises events to a client that
-        // polls. The interval is the whole latency of a send that waits for its report: ten
-        // milliseconds measured 87 messages a second, one measures the broker instead. Idle polls
-        // cost nothing, so the timetable is set for the send that waits.
-        producer.setPollInterval(1);
-        const report = new Promise<{partition: number; offset: number}>((resolve, reject) => {
-            const settle = (): void => {
-                clearTimeout(timer);
-                producer.off('delivery-report', onReport);
-            };
-            const timer = setTimeout(() => {
-                settle();
-                reject(
-                    new Error(
-                        `Kafka answered no delivery report for ${message.topic} in ${timeoutMs}ms`,
-                    ),
-                );
-            }, timeoutMs);
-            const onReport: DeliveryListener = (error, delivered) => {
-                // A report that names no partition cannot be matched to a produce; one send per
-                // correlation is in flight here, so such a report belongs to the awaited message.
-                if (delivered && delivered.opaque !== correlation) return;
-                settle();
-                if (error) {
-                    reject(new Error(error.message ?? 'Kafka delivery failed'));
-                    return;
-                }
-                if (!delivered) {
-                    reject(new Error(`Kafka reported no partition for ${message.topic}`));
-                    return;
-                }
-                resolve({partition: delivered.partition, offset: delivered.offset});
-            };
-            producer.on('delivery-report', onReport);
-        });
-        // A produce that throws must not leave the report's rejection unobserved: the promise is
-        // settled either way, and the caller is told by the throw.
-        void report.catch(() => undefined);
-        producer.produce(
-            message.topic,
-            message.partition ?? null,
-            Buffer.from(message.value),
-            message.key ?? null,
-            undefined,
-            correlation,
+/** The consumer a stream instance reads through: the `default` one, or the only one. */
+const streamConsumerOf = (consumers: Record<string, IConsumerSpec>): IConsumerSpec => {
+    const named = consumers.default ?? Object.values(consumers)[0];
+    if (!named || Object.keys(consumers).length > 1) {
+        throw new Error(
+            'A kafka stream instance reads through one consumer spec named "default" (or the only one declared)',
         );
-        const landed = await report;
-        return {topic: message.topic, ...landed};
-    } finally {
-        if (owned) {
-            try {
-                producer.flush(5_000);
-            } catch {
-                // The report has already answered the call; a busy queue changes nothing.
-            }
-            try {
-                producer.disconnect();
-            } catch {
-                // A producer that never connected has nothing to leave behind.
-            }
-        }
     }
-}
+    return named;
+};
+
+/** The spec a topic picks, without throwing when nothing claims it (`@@D-1035`). */
+const matchOrUndefined = <T extends {topics?: string[]}>(
+    map: Record<string, T>,
+    topic: string,
+    kind: 'producer' | 'consumer' | 'feed',
+): {alias: string; spec: T} | undefined => {
+    try {
+        return matchSpec(map, topic, kind, {single: false});
+    } catch {
+        return undefined;
+    }
+};
+
+/** The headers a caller may write on `message.send`. */
+const headersOf = (value: unknown): IKafkaHeader[] | undefined => {
+    if (value === undefined || value === null) return undefined;
+    if (!Array.isArray(value)) {
+        throw new Error('Missing headers param: a list of {name, value} headers');
+    }
+    return value.map((entry, position) => {
+        const header = (entry ?? {}) as {name?: unknown; value?: unknown};
+        if (typeof header.name !== 'string' || !header.name) {
+            throw new Error(`Invalid header ${position + 1}: it has no "name"`);
+        }
+        return {name: header.name, value: Buffer.from(String(header.value ?? ''))};
+    });
+};
+
+export * from '../impl/kafka/index.ts';
 
 export default adapter<IConfig>(() => {
     let stream: Duplex | null = null;
     let codec: CodecInstance | null = null;
-    let reportProducer: IKafkaProducer | null = null;
     let producerStream: ReturnType<typeof Kafka.Producer.createWriteStream> | null = null;
     let consumerStream:
         | (ReturnType<typeof Kafka.KafkaConsumer.createReadStream> & {
@@ -865,6 +275,88 @@ export default adapter<IConfig>(() => {
           })
         | null = null;
 
+    /** The producers made so far, by alias — one client per spec, kept until `stop()` (`@@D-1035`). */
+    const producers = new Map<string, IKafkaProducer>();
+    /** The feeds this instance is running (`@@D-1036`). */
+    const feeds: IFeedHandle[] = [];
+    let maps: IClientMaps = {producer: {default: {}}, consumer: {}, feed: {}};
+
+    const clientsOf = (config: ResolvedConfig): IKafkaClients =>
+        config.clientFactory ?? nodeRdkafkaClients;
+
+    /**
+     * The producer a logical topic is written with (`@@D-1035`).
+     *
+     * Made on first use and kept until `stop()`, because a producer is a connection to the broker
+     * and a telemetry batch must not pay for one per message. `eager` opens it during `start()`
+     * instead, so a deployment whose writes matter fails its migration step rather than its first
+     * send.
+     */
+    const producerFor = async (
+        config: ResolvedConfig,
+        logicalTopic: string,
+    ): Promise<{alias: string; spec: IProducerSpec; producer: IKafkaProducer}> => {
+        const {alias, spec} = matchSpec(maps.producer, logicalTopic, 'producer');
+        const existing = producers.get(alias);
+        if (existing) return {alias, spec, producer: existing};
+        const connection = {...config.connection, ...spec.config} as KafkaProducerConfig;
+        const producer = clientsOf(config).producer(reportProducerConfig(connection));
+        await whenReady(producer);
+        producers.set(alias, producer);
+        return {alias, spec, producer};
+    };
+
+    /**
+     * Produce one record on the broker, naming the topic logically (`@@D-1003`).
+     *
+     * The writer of every answer, dead letter and explicit send: the producer map decides which
+     * client carries the topic, and the tenant mapping decides what the broker is told.
+     */
+    const produceTo = async (
+        config: ResolvedConfig,
+        logicalTopic: string,
+        message: {value: string; key?: string | null; partition?: number; headers?: IKafkaHeader[]},
+    ): Promise<{topic: string; partition: number; offset: number}> => {
+        const {spec, producer} = await producerFor(config, logicalTopic);
+        const connection = {...config.connection, ...spec.config} as KafkaProducerConfig;
+        const sent = await messageSend(
+            clientsOf(config),
+            connection,
+            {
+                topic: brokerTopicOf(config, logicalTopic),
+                ...message,
+            },
+            {producer},
+        );
+        return {...sent, topic: logicalTopic};
+    };
+
+    /** Every client this instance could bring up, which is what `client.list` answers. */
+    const clientSummaries = (): IClientSummary[] => [
+        ...Object.entries(maps.producer).map(([alias, spec]) => ({
+            kind: 'producer' as const,
+            alias,
+            topics: spec.topics ?? ['*'],
+            ...(spec.eager !== undefined && {eager: spec.eager}),
+            ...(spec.transactionalId && {transactionalId: spec.transactionalId}),
+        })),
+        ...Object.entries(maps.consumer).map(([alias, spec]) => ({
+            kind: 'consumer' as const,
+            alias,
+            topics: spec.topics ?? [],
+            ...(spec.groupId && {groupId: spec.groupId}),
+            ...(spec.assign !== undefined && {assign: spec.assign}),
+        })),
+        ...Object.entries(maps.feed).map(([alias, spec]) => ({
+            kind: 'feed' as const,
+            alias,
+            topics: spec.topics ?? [],
+            ...(spec.groupId && {groupId: spec.groupId}),
+            concurrency: spec.concurrency ?? DEFAULT_CONCURRENCY,
+            ...(spec.deadLetter && {deadLetter: spec.deadLetter}),
+        })),
+    ];
+
     return {
         activation: {
             default: {
@@ -875,36 +367,110 @@ export default adapter<IConfig>(() => {
                     'sasl.mechanism': 'SCRAM-SHA-256',
                 },
             },
+            /**
+             * A development process shares a broker with every other checkout on the machine, so
+             * it publishes under the developer's own name and provisions its topics best-effort: a
+             * laptop with no broker still starts (`@@D-1001` `@@D-1003`). An instance that reads
+             * the broker rather than a realm's feed — an explorer — overrides `tenant` to `''`,
+             * because it names the topics it was shown by `topic.list`.
+             */
+            dev: {tenant: '${user}', topics: {create: true, failOnMissing: false}},
+            /**
+             * A test run provisions what it can and does not die over it: the same best-effort
+             * shape as `dev`, without the tenant — a suite's records are the suite's own, and a
+             * machine with no broker still runs the groups that never touch one (`@@D-1001`).
+             */
+            integration: {topics: {create: true, failOnMissing: false}},
+            /**
+             * The step a deployment runs: the migration Job. A topic it cannot make, or a broker
+             * it cannot reach, fails the Job where an operator reads it — so the refusal stays on
+             * (`@@D-1001`).
+             */
+            upgrade: {topics: {create: true}},
         },
 
         async start() {
             const result = await super.start();
+            const config = this.config as unknown as ResolvedConfig;
+            const isAdmin = config.mode === 'admin';
 
-            const isAdmin = this.config.mode === 'admin';
-            // The codec encodes/decodes the Kafka stream message format. Admin
-            // (introspection) mode routes triples to `exec` (plain object
-            // responses), so the codec must NOT be applied there — a stream
-            // codec would try `msg.value.toString()` on the exec result.
-            if (this.config.codec && !isAdmin) {
-                codec = new this.config.codec({});
-                this.encode = (...params) => codec!.encode(...params);
-                this.decode = (...params) => codec!.decode(...params);
+            // The client maps, checked before anything is opened: a misspelt setting is refused
+            // here, with the alias, rather than silently left at its default by librdkafka
+            // (`@@D-1035`).
+            maps = {
+                producer: producerMapsOf(config),
+                consumer: consumerMapsOf(config),
+                feed: checkedMap<IFeedSpec>(config.feed, 'feed'),
+            };
+            for (const [alias, spec] of Object.entries(maps.producer)) {
+                if (spec.transactionalId) {
+                    // Reserved, not written: a spec that names it must not believe it has
+                    // atomicity it does not have (`@@T-843`).
+                    throw new Error(
+                        `kafka producer "${alias}" sets transactionalId, and transactions are not implemented yet`,
+                    );
+                }
+            }
+            if (Object.keys(maps.feed).length && !config.codec) {
+                throw new Error(
+                    'kafka feeds dispatch their records through the instance codec, so a codec is required',
+                );
+            }
+
+            // The codec encodes/decodes the Kafka stream message format. Admin (introspection)
+            // mode routes triples to `exec`, so the codec is not applied there — a stream codec
+            // would try `msg.value.toString()` on the exec result. An admin instance still keeps
+            // the codec for its feeds, which decode records with it.
+            if (config.codec) {
+                codec = new config.codec({});
+                if (!isAdmin) {
+                    this.encode = (...params) => codec!.encode(...params);
+                    /**
+                     * A stream codec writes one answer for one message, while the port types
+                     * `decode` as a list — a codec that answers many at once fills one. The wrapper
+                     * keeps the codec's own shape, because the frames are what the caller reads,
+                     * and only makes the answer speak the logical topic it was asked about
+                     * (`@@D-1003`).
+                     */
+                    this.decode = (async (...params: unknown[]) => {
+                        const decoded = await codec!.decode(...params);
+                        return Array.isArray(decoded)
+                            ? decoded.map(entry => logicalRecordOf(config, entry))
+                            : logicalRecordOf(config, decoded);
+                    }) as unknown as typeof this.decode;
+                }
             } else {
                 codec = null;
             }
 
-            const groupId = this.config.consume.groupId;
-            const startedAt = Date.now();
-            const consumerConfig = {
-                ...this.config.connection,
-                'group.id': groupId,
-            };
-            this.signal?.frameworkKafkaConsumerCreating?.({
-                groupId,
-                topics: this.config.consume.topics,
-                sessionTimeoutMs: consumerConfig['session.timeout.ms'],
-                broker: consumerConfig['metadata.broker.list'],
-            });
+            // The topics the realms declare (`@@D-1001`), provisioned before anything reads one:
+            // a stream instance subscribes below, and a consumer subscribed to a topic the broker
+            // does not have is never assigned a partition, so provisioning after `ready` would come
+            // too late to be the reason it works.
+            if (config.topics) {
+                const declarations = await declaredTopicsOf({
+                    attach: this.attach ? this.attach.bind(this) : undefined,
+                    platform: this.platform!,
+                });
+                const outcomes = await provisionOf(
+                    config as ITopicProvisionContext['config'],
+                    declarations,
+                    this.signal,
+                );
+                // Resolution is made visible rather than left to inference: every declared topic
+                // says which producer and which consumer carry it (`@@D-1035`).
+                for (const declaration of declarations) {
+                    const outcome = outcomes.find(entry => entry.topic === declaration.topic);
+                    if (!outcome || outcome.skipped) continue;
+                    this.signal?.frameworkKafkaTopicResolved?.({
+                        topic: outcome.topic,
+                        physical: outcome.physical,
+                        producer: matchOrUndefined(maps.producer, outcome.topic, 'producer')?.alias,
+                        consumer: matchOrUndefined(maps.consumer, outcome.topic, 'consumer')?.alias,
+                        feed: matchOrUndefined(maps.feed, outcome.topic, 'feed')?.alias,
+                    });
+                }
+            }
 
             if (isAdmin) {
                 // An admin instance holds no group and no read stream: every operation it answers
@@ -912,108 +478,212 @@ export default adapter<IConfig>(() => {
                 // broker exists — and a process that never reads a topic never joins one
                 // (`@@D-1000`).
                 super.connect();
-                return result;
-            }
-
-            consumerStream = Kafka.KafkaConsumer.createReadStream(
-                consumerConfig,
-                {
-                    'auto.offset.reset': 'earliest',
-                },
-                {topics: this.config.consume.topics},
-            ) as typeof consumerStream;
-
-            // Wait for consumer to connect and receive partition assignments.
-            // node-rdkafka group rebalance can take up to a few seconds after 'ready'.
-            await new Promise<void>((resolve, reject) => {
-                let poll: ReturnType<typeof setInterval> | null = null;
-                let safety: ReturnType<typeof setTimeout> | null = null;
-                const cleanup = () => {
-                    if (poll) clearInterval(poll);
-                    if (safety) clearTimeout(safety);
-                    poll = null;
-                    safety = null;
+            } else {
+                const consumerSpec = streamConsumerOf(maps.consumer);
+                const groupId = physicalGroupOf(
+                    config,
+                    consumerSpec.groupId ?? config.consume?.groupId ?? `blong.stream`,
+                );
+                const startedAt = Date.now();
+                // The topics a stream instance reads are logical names in the config and physical
+                // ones at the broker, like every other name this adapter is handed (`@@D-1003`).
+                const consumeTopics = (consumerSpec.topics ?? []).map(topic =>
+                    brokerTopicOf(config, topic),
+                );
+                const consumerConfig = {
+                    ...config.connection,
+                    ...consumerSpec.config,
+                    'group.id': groupId,
                 };
-                const startPolling = () => {
-                    poll = setInterval(() => {
-                        if (consumerStream!.consumer.assignments().length > 0) {
+                this.signal?.frameworkKafkaConsumerCreating?.({
+                    groupId,
+                    topics: consumeTopics,
+                    sessionTimeoutMs: consumerConfig['session.timeout.ms'],
+                    broker: consumerConfig['metadata.broker.list'],
+                });
+
+                consumerStream = Kafka.KafkaConsumer.createReadStream(
+                    consumerConfig,
+                    {
+                        'auto.offset.reset': 'earliest',
+                    },
+                    {topics: consumeTopics},
+                ) as typeof consumerStream;
+
+                // Wait for consumer to connect and receive partition assignments.
+                // node-rdkafka group rebalance can take up to a few seconds after 'ready'.
+                await new Promise<void>((resolve, reject) => {
+                    let poll: ReturnType<typeof setInterval> | null = null;
+                    let safety: ReturnType<typeof setTimeout> | null = null;
+                    const cleanup = () => {
+                        if (poll) clearInterval(poll);
+                        if (safety) clearTimeout(safety);
+                        poll = null;
+                        safety = null;
+                    };
+                    const startPolling = () => {
+                        poll = setInterval(() => {
+                            if (consumerStream!.consumer.assignments().length > 0) {
+                                cleanup();
+                                this.signal?.frameworkKafkaConsumerAssigned?.({
+                                    groupId,
+                                    elapsedMs: Date.now() - startedAt,
+                                });
+                                resolve();
+                            }
+                        }, 200);
+                        safety = setTimeout(() => {
                             cleanup();
-                            this.signal?.frameworkKafkaConsumerAssigned?.({
+                            this.signal?.frameworkKafkaAssignmentTimedOut?.({
+                                groupId,
+                                elapsedMs: Date.now() - startedAt,
+                                hint: 'stale group members from an earlier abrupt shutdown keep the rebalance waiting up to session.timeout.ms',
+                            });
+                            // Best-effort graceful close BEFORE failing start: a consumer that
+                            // joined the group but never got an assignment would otherwise linger
+                            // as a stale group member (no LeaveGroup), blocking the NEXT rebalance
+                            // for up to session.timeout.ms too. destroy() → close() → disconnect()
+                            // sends LeaveGroup.
+                            try {
+                                consumerStream?.destroy();
+                            } catch {
+                                // ignore — the process is already failing start
+                            }
+                            reject(new Error('Kafka assignment timeout'));
+                        }, 30000);
+                    };
+                    if (consumerStream!.consumer.isConnected()) {
+                        this.signal?.frameworkKafkaConsumerConnected?.({groupId});
+                        startPolling();
+                    } else {
+                        this.signal?.frameworkKafkaConsumerConnecting?.({groupId});
+                        consumerStream!.consumer.once('ready', () => {
+                            this.signal?.frameworkKafkaConsumerReady?.({
                                 groupId,
                                 elapsedMs: Date.now() - startedAt,
                             });
-                            resolve();
-                        }
-                    }, 200);
-                    safety = setTimeout(() => {
-                        cleanup();
-                        this.signal?.frameworkKafkaAssignmentTimedOut?.({
-                            groupId,
-                            elapsedMs: Date.now() - startedAt,
-                            hint: 'stale group members from an earlier abrupt shutdown keep the rebalance waiting up to session.timeout.ms',
+                            startPolling();
                         });
-                        // Best-effort graceful close BEFORE failing start: a
-                        // consumer that joined the group but never got an
-                        // assignment would otherwise linger as a stale group
-                        // member (no LeaveGroup), blocking the NEXT rebalance
-                        // for up to session.timeout.ms too. destroy() →
-                        // close() → disconnect() sends LeaveGroup.
-                        try {
-                            consumerStream?.destroy();
-                        } catch {
-                            // ignore — the process is already failing start
-                        }
-                        reject(new Error('Kafka assignment timeout'));
-                    }, 30000);
-                };
-                if (consumerStream!.consumer.isConnected()) {
-                    this.signal?.frameworkKafkaConsumerConnected?.({groupId});
-                    startPolling();
-                } else {
-                    this.signal?.frameworkKafkaConsumerConnecting?.({groupId});
-                    consumerStream!.consumer.once('ready', () => {
-                        this.signal?.frameworkKafkaConsumerReady?.({
-                            groupId,
-                            elapsedMs: Date.now() - startedAt,
-                        });
-                        startPolling();
-                    });
+                    }
+                });
+
+                {
+                    producerStream = Kafka.Producer.createWriteStream(
+                        {
+                            ...config.connection,
+                        },
+                        {},
+                        {
+                            objectMode: true,
+                        },
+                    );
+
+                    // Build a custom Duplex that writes to the Kafka producer and
+                    // receives messages from the Kafka consumer via 'data' events.
+                    // Duplex.from({readable, writable}) is not used because it does
+                    // not reliably forward object-mode events from the inner readable.
+                    stream = new Duplex({objectMode: true, read() {}});
+                    stream.write = (chunk, ...args) => {
+                        // A codec names the topic it encoded for — the logical name, or the one the
+                        // caller put in the payload — and the producer has to be handed the
+                        // broker's (`@@D-1003`). A chunk that names none is passed on untouched:
+                        // the client's own error for it names the omission better than this would.
+                        const message = (chunk ?? {}) as {topic?: unknown};
+                        const named =
+                            typeof message.topic === 'string' && message.topic
+                                ? {...message, topic: brokerTopicOf(config, message.topic)}
+                                : chunk;
+                        return (producerStream!.write as (...a: unknown[]) => boolean)(
+                            named,
+                            ...args,
+                        );
+                    };
+
+                    consumerStream!.on('data', msg => stream?.push(msg));
+                    consumerStream!.on('end', () => stream?.push(null));
+                    consumerStream!.on('error', err => stream?.destroy(err as Error));
+
+                    super.connect(stream);
                 }
-            });
+            }
 
-            {
-                producerStream = Kafka.Producer.createWriteStream(
-                    {
-                        ...this.config.connection,
-                    },
-                    {},
-                    {
-                        objectMode: true,
-                    },
+            // The producers a spec marked `eager` are opened now, so a deployment that must write
+            // fails its migration step rather than its first message (`@@D-1035`).
+            for (const spec of Object.values(maps.producer)) {
+                if (!spec.eager) continue;
+                const logical = spec.topics?.find(pattern => !/[*?]/.test(pattern));
+                await producerFor(config, logical ?? `${topicNamespace(config, '')}eager`);
+            }
+
+            // The feeds, one loop each (`@@D-1036`). A feed is a subscription rather than a
+            // request/response exchange, so it runs over its own consumer and its own loop, and a
+            // stream instance keeps its matching loop beside them.
+            for (const [alias, spec] of Object.entries(maps.feed)) {
+                if (spec.assign) {
+                    throw new Error(
+                        `kafka feed "${alias}" sets assign, and a feed is a group subscription — use a "consumer" spec for a reader that assigns`,
+                    );
+                }
+                feeds.push(
+                    await openFeed({
+                        alias,
+                        spec,
+                        config,
+                        clients: clientsOf(config),
+                        connection: config.connection,
+                        signal: this.signal,
+                        produce: (topic, message) => produceTo(config, topic, message),
+                        decode: (frame, meta) => codec!.decode(frame, meta),
+                        encode: async (value, meta) => codec!.encode(value, meta),
+                        connect: (feedStream, afterDispatch, decode) =>
+                            this.connect?.(feedStream, undefined, {
+                                outbound: false,
+                                afterDispatch,
+                                decode,
+                            }),
+                    }),
                 );
-
-                // Build a custom Duplex that writes to the Kafka producer and
-                // receives messages from the Kafka consumer via 'data' events.
-                // Duplex.from({readable, writable}) is not used because it does
-                // not reliably forward object-mode events from the inner readable.
-                stream = new Duplex({objectMode: true, read() {}});
-                stream.write = (chunk, ...args) =>
-                    (producerStream!.write as (...a: unknown[]) => boolean)(chunk, ...args);
-
-                consumerStream!.on('data', msg => stream?.push(msg));
-                consumerStream!.on('end', () => stream?.push(null));
-                consumerStream!.on('error', err => stream?.destroy(err as Error));
-
-                super.connect(stream);
             }
 
             return result;
         },
 
         async stop(...params: unknown[]) {
-            const groupId = this.config.consume?.groupId as string | undefined;
+            // The feeds first: each flushes the work it has done before its client goes, so a
+            // graceful stop loses nothing (`@@D-1036`).
+            for (const feed of feeds.splice(0)) {
+                try {
+                    await feed.stop();
+                } catch (error) {
+                    this.signal?.frameworkKafkaFeedCommitFailed?.({
+                        feed: feed.alias,
+                        error: messageOf(error),
+                    });
+                }
+            }
+            // Every producer the instance opened: flushed, then closed. The shared producer this
+            // adapter used to keep was closed without a flush (`@@D-1035`).
+            for (const producer of producers.values()) {
+                try {
+                    producer.flush(5_000);
+                } catch {
+                    // The queue has already been answered; a busy queue changes nothing.
+                }
+                try {
+                    producer.disconnect();
+                } catch {
+                    // A producer that never connected has nothing to leave behind.
+                }
+            }
+            producers.clear();
+
+            // The group the process joined, spelled the way the broker has it (`@@D-1003`).
+            const config = this.config as unknown as ResolvedConfig;
+            const streamGroup = maps.consumer.default ?? Object.values(maps.consumer)[0];
+            const groupId = streamGroup?.groupId ?? config.consume?.groupId;
+            const physicalGroup = groupId ? physicalGroupOf(config, groupId) : undefined;
             const stopStartedAt = Date.now();
-            this.signal?.frameworkKafkaStop?.({groupId});
+            this.signal?.frameworkKafkaStop?.({groupId: physicalGroup});
             const awaitClose = (
                 s: {once(e: 'close', cb: () => void): void} | null,
                 disconnect: () => void,
@@ -1024,7 +694,7 @@ export default adapter<IConfig>(() => {
                     : new Promise<void>(resolve => {
                           const t = setTimeout(() => {
                               this.signal?.frameworkKafkaCloseTimedOut?.({
-                                  groupId,
+                                  groupId: physicalGroup,
                                   waitMs: ms,
                                   elapsedMs: Date.now() - stopStartedAt,
                                   hint: 'consumer/producer did not emit close — the group member was not gracefully removed',
@@ -1034,7 +704,7 @@ export default adapter<IConfig>(() => {
                           s.once('close', () => {
                               clearTimeout(t);
                               this.signal?.frameworkKafkaClosed?.({
-                                  groupId,
+                                  groupId: physicalGroup,
                                   elapsedMs: Date.now() - stopStartedAt,
                               });
                               resolve();
@@ -1045,11 +715,6 @@ export default adapter<IConfig>(() => {
             let result;
             try {
                 stream?.destroy();
-                try {
-                    reportProducer?.disconnect();
-                } catch {
-                    // It was never connected, or has already gone.
-                }
                 // consumerStream.destroy() → close() → consumer.disconnect() → emits 'close'
                 // producerStream.close()   →           producer.disconnect() → emits 'close'
                 // Both must complete so rdkafka uv handles are released and the process exits.
@@ -1062,15 +727,15 @@ export default adapter<IConfig>(() => {
                     ),
                 ]);
                 this.signal?.frameworkKafkaStopComplete?.({
-                    groupId,
+                    groupId: physicalGroup,
                     elapsedMs: Date.now() - stopStartedAt,
                 });
             } finally {
                 stream = null;
                 codec = null;
-                reportProducer = null;
                 consumerStream = null;
                 producerStream = null;
+                maps = {producer: {default: {}}, consumer: {}, feed: {}};
                 result = await super.stop(...params);
             }
             return result;
@@ -1079,15 +744,36 @@ export default adapter<IConfig>(() => {
         async exec(params: Record<string, unknown>, $meta: IMeta): Promise<unknown> {
             const {method} = $meta;
             const [, object, operation] = method!.split('.');
-            const config = this.config as IConfig & {namespace?: string | string[]};
-            const clients = config.clientFactory ?? nodeRdkafkaClients;
+            const config = this.config as unknown as ResolvedConfig;
+            const clients = clientsOf(config);
             const connection = config.connection;
             const namespaceHint = String(method ?? '').split('.')[0];
             /**
-             * The topic this call names, refused unless it carries this instance's namespace
-             * (`@@D-990`). A second realm on the same broker cannot take a name the first holds.
+             * The names this call carries (`@@D-1003`): the logical one a realm declares and the
+             * physical one the broker holds. The guard checks the logical name (`@@D-990`), every
+             * broker call is made with the physical one, and an answer about the topic the caller
+             * asked about names it logically.
              */
-            const ownTopic = (name: unknown): string => claimTopic(config, namespaceHint, name);
+            const namesOf = (name: unknown): IResolvedTopic => {
+                const logical = claimTopic(config, namespaceHint, name);
+                return {logical, physical: physicalTopicOf(config, logical)};
+            };
+            /**
+             * The connection a read of this topic makes its client with (`@@D-1035`).
+             *
+             * A read operation opens a consumer of its own — it joins no group and owns no
+             * offset — but it is still the topic's consumer spec that says how that client is
+             * configured, so one map answers for the stream, the feeds and the explorer alike.
+             */
+            const readConnectionOf = (logical: string): KafkaConfig => {
+                const spec = matchOrUndefined(maps.consumer, logical, 'consumer')?.spec;
+                return {...connection, ...spec?.config} as KafkaConfig;
+            };
+            if (object === 'client' && operation === 'list') {
+                // `{ns}.client.list` — every client the instance could bring up, by alias
+                // (`@@D-1035`). Resolution is visible rather than inferred from a name.
+                return {items: clientSummaries()};
+            }
             if (object === 'topic') {
                 switch (operation) {
                     case 'list': {
@@ -1099,7 +785,21 @@ export default adapter<IConfig>(() => {
                         );
                         try {
                             await whenReady(consumer);
-                            const metadata = await metadataOf(consumer, 5_000);
+                            const metadata = await new Promise<{
+                                topics?: {name: string; partitions?: {id: number}[]}[];
+                            }>((resolve, reject) =>
+                                consumer.getMetadata(
+                                    {timeout: 5_000, allTopics: true},
+                                    (error, data) =>
+                                        error
+                                            ? reject(
+                                                  new Error(
+                                                      error.message ?? 'Kafka metadata unavailable',
+                                                  ),
+                                              )
+                                            : resolve(data ?? {}),
+                                ),
+                            );
                             return {
                                 items: (metadata.topics ?? [])
                                     .filter(t => !t.name.startsWith('__'))
@@ -1116,23 +816,39 @@ export default adapter<IConfig>(() => {
                             }
                         }
                     }
+                    case 'resolve': {
+                        // `{ns}.topic.resolve` — which producer and which consumer carry a topic
+                        // (`@@D-1035`). The same question `start()` answers in its record.
+                        const names = namesOf(params.topic);
+                        return {
+                            topic: names.logical,
+                            physical: names.physical,
+                            producer: matchOrUndefined(maps.producer, names.logical, 'producer')
+                                ?.alias,
+                            consumer: matchOrUndefined(maps.consumer, names.logical, 'consumer')
+                                ?.alias,
+                            feed: matchOrUndefined(maps.feed, names.logical, 'feed')?.alias,
+                        };
+                    }
                     case 'find': {
                         // `{ns}.topic.find` — read a batch of messages from a topic.
                         // A fresh consumer group with `auto.offset.reset: earliest`
                         // reads existing messages from the beginning (exploration);
                         // partitions are surfaced as message metadata, not tree nodes.
-                        const topic = ownTopic(params.topic);
+                        // The records speak the logical name, like every answer; `topic.list` is
+                        // the one operation that reports the broker's own names (`@@D-1003`).
+                        const names = namesOf(params.topic);
                         const limit = (params.limit as number) ?? 50;
                         const messages = await readTopicMessages(
                             clients,
-                            connection,
-                            topic,
+                            readConnectionOf(names.logical),
+                            names.physical,
                             limit,
                             this.signal,
                         );
                         return {
                             items: messages.map(m => ({
-                                topic: m.topic,
+                                topic: names.logical,
                                 partition: m.partition,
                                 offset: m.offset,
                                 key: m.key?.toString(),
@@ -1141,55 +857,70 @@ export default adapter<IConfig>(() => {
                             })),
                         };
                     }
-                    case 'offsets':
+                    case 'offsets': {
                         // `{ns}.topic.offsets` — the partitions and their watermarks, which is
                         // what a caller turns into "start at `high - tail` on every partition".
-                        return topicOffsets(clients, connection, ownTopic(params.topic), {
-                            timeoutMs: params.timeoutMs as number | undefined,
-                            signal: this.signal,
-                        });
-                    case 'create':
+                        const names = namesOf(params.topic);
+                        const answer = await topicOffsets(
+                            clients,
+                            readConnectionOf(names.logical),
+                            names.physical,
+                            {
+                                timeoutMs: params.timeoutMs as number | undefined,
+                                signal: this.signal,
+                            },
+                        );
+                        return {...answer, topic: names.logical};
+                    }
+                    case 'create': {
                         // `{ns}.topic.create` — idempotent, because an integration run names the
-                        // same topic on every start and auto-create gives it one partition.
-                        return topicCreate(clients, connection, {
-                            topic: ownTopic(params.topic),
+                        // same topic on every start and auto-create gives it one partition. The
+                        // config is the broker's own names, checked here rather than discovered as
+                        // a setting the broker quietly ignored (`@@D-1034`).
+                        const names = namesOf(params.topic);
+                        const shape = await topicCreate(clients, connection, {
+                            topic: names.physical,
                             partitions: params.partitions as number | undefined,
-                            retentionMs: params.retentionMs as number | undefined,
-                            cleanupPolicy: params.cleanupPolicy as string | undefined,
                             replicationFactor: params.replicationFactor as number | undefined,
+                            config: topicConfigOf(params.config, String(method)),
                         });
-                    case 'watch':
+                        return {...shape, topic: names.logical};
+                    }
+                    case 'watch': {
                         // `{ns}.topic.watch` — an async iterable, which the gateway streams: the
                         // op is a producer of frames, not an answer (`@@D-949`).
-                        return topicWatch(clients, connection, {
-                            topic: ownTopic(params.topic),
+                        const names = namesOf(params.topic);
+                        const records = topicWatch(clients, readConnectionOf(names.logical), {
+                            topic: names.physical,
                             starts: startsOf(params.starts),
                             key: params.key as string | undefined,
                             $meta,
                         });
+                        return (async function* () {
+                            for await (const record of records) {
+                                yield {...record, topic: names.logical};
+                            }
+                        })();
+                    }
                 }
             }
             if (object === 'message' && operation === 'send') {
                 // `{ns}.message.send` — one message, and the partition and offset it landed at.
                 //
-                // The producer is made once per adapter and kept: a producer is a connection to
-                // the broker, and a telemetry batch is dozens of messages that must not each pay
-                // for one. `stop()` closes it with the streams.
-                reportProducer ||= clients.producer(reportProducerConfig(connection));
-                return messageSend(
-                    clients,
-                    connection,
-                    {
-                        topic: ownTopic(params.topic),
-                        value:
-                            typeof params.value === 'string'
-                                ? params.value
-                                : JSON.stringify(params.value ?? null),
-                        key: params.key as string | null | undefined,
-                        partition: params.partition as number | undefined,
-                    },
-                    {producer: reportProducer, timeoutMs: params.timeoutMs as number | undefined},
-                );
+                // The producer the topic resolves to is made once per alias and kept, because a
+                // producer is a connection and a telemetry batch must not pay for one per message
+                // (`@@D-1035`). `stop()` flushes and closes it with the streams.
+                const names = namesOf(params.topic);
+                const sent = await produceTo(config, names.logical, {
+                    value:
+                        typeof params.value === 'string'
+                            ? params.value
+                            : JSON.stringify(params.value ?? null),
+                    key: params.key as string | null | undefined,
+                    partition: params.partition as number | undefined,
+                    headers: headersOf(params.headers),
+                });
+                return sent;
             }
             throw new Error(`Unknown kafka operation: ${object}.${operation}`);
         },

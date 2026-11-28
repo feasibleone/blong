@@ -1,3 +1,4 @@
+// Coverage matrix: test/blong-int-adapter/README.md#kafka-coverage — keep this file in step.
 import {handler, type IMeta} from '@feasibleone/blong';
 import {perfReport, perfSample, perfStats, perfWrite} from '@feasibleone/blong-lib/perf';
 import type Assert from 'node:assert';
@@ -16,11 +17,13 @@ type WatchRecord = {partition: number; offset: number; key?: string; value?: str
  * messages.
  */
 const performanceTopic = {
-    topic: 'blong.telemetry.perf',
+    topic: 'blong-int-adapter.telemetry.perf',
     partitions: 12,
-    /** Ten minutes, so a second run does not read the first one's history. */
-    retentionMs: 10 * 60 * 1000,
-    cleanupPolicy: 'delete',
+    config: {
+        /** Ten minutes, so a second run does not read the first one's history. */
+        'retention.ms': 10 * 60 * 1000,
+        'cleanup.policy': 'delete',
+    },
 } as const;
 
 /**
@@ -124,8 +127,7 @@ export default handler(
                 {
                     topic: performanceTopic.topic,
                     partitions: performanceTopic.partitions,
-                    retentionMs: performanceTopic.retentionMs,
-                    cleanupPolicy: performanceTopic.cleanupPolicy,
+                    config: performanceTopic.config,
                 },
                 $meta,
             )) as Shape;

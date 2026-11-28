@@ -6,17 +6,17 @@
 
 export const messages = [
     {
-        topic: 'blong-integration',
-        payload: 'blong-integration-round-trip-test',
+        topic: 'blong-int-adapter',
+        payload: 'blong-int-adapter-round-trip-test',
         source: 'blong-kafka-test',
     },
     {
-        topic: 'blong-integration',
+        topic: 'blong-int-adapter',
         payload: 42,
         source: 'blong-kafka-numeric-test',
     },
     {
-        topic: 'blong-integration',
+        topic: 'blong-int-adapter',
         payload: {nested: true, depth: 1},
         source: 'blong-kafka-object-test',
     },

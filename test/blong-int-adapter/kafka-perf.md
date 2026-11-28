@@ -16,7 +16,7 @@ operations a session actually uses, in the two shapes a session produces them.
 |          |                                                                                                                              |
 | -------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Broker   | the dev k3d cluster's Kafka on `localhost:9092` (KRaft), reached from the host                                               |
-| Topic    | `blong.telemetry.perf`, 12 partitions, `retention.ms` 10 minutes, `cleanup.policy=delete`                                    |
+| Topic    | `blong-int-adapter.telemetry.perf`, 12 partitions, `retention.ms` 10 minutes, `cleanup.policy=delete`                        |
 | Message  | ~250–300 bytes of JSON: `{seq, session, kind, text, sentAt}`, keyed `session-<n>`                                            |
 | Producer | `{ns}.message.send`, one awaited delivery report per message, one producer for the run                                       |
 | Consumer | `{ns}.topic.watch` from the watermarks read before the first send, filtered to one key, assigned directly with no group join |

@@ -15,6 +15,29 @@ export default function loop(
     fn: net.Socket | (() => void),
     handlers: Adapter,
     context: IContext | undefined = {requests: new Map(), waiting: new Set(), buffer: undefined},
+    options?: {
+        /**
+         * How an inbound frame becomes a packet, when the caller decodes it itself.
+         *
+         * A feed holds the codec that reads its records, and an `admin` instance cannot carry it
+         * on the port — `decode` there would also read the answers `exec` returns — so the feed
+         * decodes and the loop is handed the packet (`@@D-1036`). Absent, the port's own
+         * `decode`/`unpack` read the frame.
+         */
+        decode?: (frame: unknown, $meta: IMeta) => Promise<unknown>;
+        /**
+         * Called after every inbound packet has been dispatched and answered.
+         *
+         * A port that reads records rather than requests needs the completion of a dispatch, which
+         * the write cannot tell it: a background handler answers nothing, so nothing is written.
+         * The hook is where a feed commits and decides about a failure (`@@D-1036`).
+         */
+        afterDispatch?: (
+            frame: Buffer,
+            packet: unknown[],
+            outcome: unknown[] | undefined,
+        ) => Promise<void> | void;
+    },
 ): unknown {
     const checkDeadlock = deadlockChecker(handlers);
     context.requests ||= new Map();
@@ -60,32 +83,54 @@ export default function loop(
             );
         };
     } else if (fn.readable && fn.writable) {
+        const decodeFrame = async (frame: unknown): Promise<unknown[] | undefined> => {
+            if (!options?.decode)
+                return decodeReceive(handlers, context, frame as Buffer, checkDeadlock);
+            const $meta = metaFromContext(context);
+            const params = await options.decode(frame, $meta);
+            const packet = [params, $meta];
+            checkDeadlock(packet);
+            return receive(handlers, context, packet);
+        };
         const streamData = async (frame: Buffer): Promise<void> => {
             try {
-                let receivedPacket = await decodeReceive(handlers, context, frame, checkDeadlock);
+                let receivedPacket = await decodeFrame(frame);
                 while (receivedPacket) {
                     const dispatchedPacket = await dispatch(handlers, receivedPacket);
-                    if (dispatchedPacket) {
-                        const encodedPacket = await sendEncode(
-                            handlers,
-                            context,
-                            dispatchedPacket as unknown[],
-                            checkDeadlock,
-                        );
-                        if (encodedPacket)
-                            fn.write(
-                                (handlers.pack
-                                    ? (encodedPacket as unknown[])[0]
-                                    : encodedPacket) as Parameters<typeof fn.write>[0],
+                    try {
+                        if (dispatchedPacket) {
+                            const encodedPacket = await sendEncode(
+                                handlers,
+                                context,
+                                dispatchedPacket as unknown[],
+                                checkDeadlock,
                             );
+                            if (encodedPacket)
+                                fn.write(
+                                    (handlers.pack
+                                        ? (encodedPacket as unknown[])[0]
+                                        : encodedPacket) as Parameters<typeof fn.write>[0],
+                                );
+                        }
+                    } finally {
+                        // The completion of a dispatch, which the write cannot stand for: a handler
+                        // that answers nothing writes nothing, and a feed still has to move on.
+                        if (options?.afterDispatch) {
+                            try {
+                                await options.afterDispatch(
+                                    frame,
+                                    receivedPacket,
+                                    dispatchedPacket as unknown[] | undefined,
+                                );
+                            } catch (error) {
+                                handlers.signal?.frameworkLoopAfterDispatchFailed?.({
+                                    error: error instanceof Error ? error.message : String(error),
+                                });
+                            }
+                        }
                     }
                     if (!handlers.imported!.unpack) break;
-                    receivedPacket = await decodeReceive(
-                        handlers,
-                        context,
-                        undefined,
-                        checkDeadlock,
-                    );
+                    receivedPacket = await decodeFrame(undefined);
                 }
             } catch (error) {
                 fn.destroy(error as Error);

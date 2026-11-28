@@ -77,6 +77,8 @@ export default server(blong => ({
                     'test.kafka.messageProduce',
                     'test.kafka.messageRoundtrip',
                     'test.kafka.topicList',
+                    'test.kafka.clients',
+                    'test.kafka.feed',
                     'test.kafka.perf',
                     'test.kafka.perfIsolated',
                 ],

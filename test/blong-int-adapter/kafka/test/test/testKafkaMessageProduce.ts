@@ -1,3 +1,4 @@
+// Coverage matrix: test/blong-int-adapter/README.md#kafka-coverage — keep this file in step.
 import {handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
@@ -6,7 +7,7 @@ export default handler(({lib: {group}, handler: {brokerMessageProduce}}) => ({
         group(name)([
             async function produceMessage(assert: typeof Assert, {$meta}) {
                 const result = await brokerMessageProduce(
-                    {topic: 'blong-integration', message: 'blong-integration-test'},
+                    {topic: 'blong-int-adapter', message: 'blong-int-adapter-test'},
                     $meta,
                 );
                 assert.ok(result, 'Produce should return a result');

@@ -1,3 +1,4 @@
+// Coverage matrix: test/blong-int-adapter/README.md#kafka-coverage — keep this file in step.
 import {handler, type IMeta} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
@@ -24,11 +25,11 @@ export default handler(
                 },
                 async function findMessages(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
                     await brokerMessageProduce(
-                        {topic: 'blong-integration', message: 'commander-list-test-' + Date.now()},
+                        {topic: 'blong-int-adapter', message: 'commander-list-test-' + Date.now()},
                         $meta,
                     );
                     const result = await brokerTopicFind(
-                        {topic: 'blong-integration', limit: 5},
+                        {topic: 'blong-int-adapter', limit: 5},
                         $meta,
                     );
                     const items = (result as {items?: unknown[]}).items ?? [];

@@ -421,10 +421,10 @@ test('kafka-dev — topics and message viewer', async ({portal}) => {
     // row that has children", for the reason the keycloak realm is (D-494@root): the walk
     // accepts the table it has not left yet, and the shot that used to stand here was the
     // topic list. Naming it reaches the level, whose rows come from a read that waits for
-    // its consumer group to join first (D-497@core/blong-gogo) and from a topic the broker
-    // seeds on every start rather than only once (D-498) — either fault alone left the
-    // level empty. The filter the topics shot left up is still in place, so the row that
-    // gets drilled is the seeded one whatever else the broker carries.
+    // its consumer group to join first (D-497@core/blong-gogo) and from a topic this realm
+    // declares and seeds in `meta/kafka/integration.yaml` (@@D-1001) — either fault alone
+    // left the level empty. The filter the topics shot left up is still in place, so the row
+    // that gets drilled is the declared one whatever else the broker carries.
     await openRowByText(portal.page, 'blong-integration');
     await clearFilter(portal.page);
     // A message row is the only proof the level was reached: a topic row carries a name

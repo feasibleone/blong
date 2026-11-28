@@ -45,6 +45,9 @@ export default adapter<{
     };
     codec: typeof KafkaJsonCodec;
     mode?: 'stream' | 'admin';
+    /** The explorer reads the broker's own names, so its `dev` block empties this (`@@D-1003`). */
+    tenant?: string;
+    topics?: {create?: boolean; failOnMissing?: boolean};
 }>(() => ({
     extends: 'adapter.kafka',
     activation: {
@@ -74,6 +77,14 @@ export default adapter<{
             // The explorer reads whatever the broker holds, and those topics belong to no
             // namespace of this realm, so the namespace guard would refuse every one of them.
             allowForeignTopic: true,
+            // The demo topic the explorer opens is declared in `meta/kafka/integration.yaml`
+            // (`@@D-1001`). Best effort: a machine without a broker still runs the realm's other
+            // groups, and the shot that needs Kafka says so on its own.
+            topics: {create: true, failOnMissing: false},
         },
+        // The explorer opens the topic it was shown, so it addresses the broker's own names: in
+        // `dev` the base adapter would otherwise put this developer's tenant in front of one that
+        // already carries somebody's (`@@D-1003`).
+        dev: {tenant: ''},
     },
 }));

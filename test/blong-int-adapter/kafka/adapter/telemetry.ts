@@ -7,7 +7,8 @@ import {adapter} from '@feasibleone/blong';
  * back, which is what a message round-trip is. The offset, create, watch and send-with-report
  * operations are the `admin` half of the same adapter — they run in `exec` and answer values — so
  * they need an instance that is not routing every triple through the stream. One topic namespace
- * (`blong.telemetry.*`) and a producer kept for the whole instance is what a feed needs anyway.
+ * (`blong-int-adapter.telemetry.*`) and a producer kept for the whole instance is what a feed
+ * needs anyway.
  */
 export default adapter<{
     connection: {
@@ -33,11 +34,16 @@ export default adapter<{
             // reads broker metadata through it. The group is its own, so it takes no partition
             // from the round-trip instance's group.
             consume: {
-                topics: ['blong-integration'],
-                groupId: 'blong-telemetry-group',
+                topics: ['blong-int-adapter'],
+                groupId: 'blong-int-adapter.telemetry',
             },
             mode: 'admin',
             namespace: 'telemetry',
+            // Every topic this suite uses starts with `blong-int-adapter`, and the guard is a
+            // prefix of prefix + namespace — so the perf topic it creates
+            // (`blong-int-adapter.telemetry.perf`) is inside the namespace this instance owns,
+            // rather than the coincidence of a name that happens to match (`@@D-990`).
+            topicPrefix: 'blong-int-adapter',
         },
     },
 }));

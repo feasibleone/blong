@@ -1,0 +1,14 @@
+# The topic these adapter tests read and write (`@@D-1001`).
+#
+# It is the integration cluster's, not this realm's — which is the reason `broker` sets
+# `allowForeignTopic` (`@@T-785`). Declaring it here is what makes `node kafka.test.ts` work on a
+# broker whose topics are no longer created by the Deployment: the stream instance provisions it
+# before it subscribes, and a consumer subscribed to a topic the broker does not have is never
+# assigned a partition, which is a `start()` that times out rather than an obvious error.
+#
+# The key is the logical name. In `dev` the base adapter puts the developer's name in front of it
+# (`@@D-1003`), so two checkouts can share one broker without reading each other's messages.
+topics:
+  blong-int-adapter:
+    partitions: 1
+    required: true

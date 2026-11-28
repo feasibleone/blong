@@ -1,0 +1,23 @@
+# The demo feed the explorer reads — the topic and the row it shows.
+#
+# `blong-integration` belongs to the cluster rather than to a realm, which is why this realm's
+# adapter admits foreign topics at all (`@@T-785`). The message is the deterministic row the
+# explorer's Playwright shot expects; it used to be produced by the kafka Deployment's `postStart`
+# hook and by a one-shot Job, two paths that raced on a fresh cluster and could both read "not
+# seeded" and both write (`F-121@test/blong-int-adapter`). It is produced here, by the realm that
+# reads it, and only while the topic holds no row with that value — so a broker that keeps its
+# volume is seeded once and left alone afterwards (`@@D-1001`).
+#
+# The adapter reads the broker's own names (`dev: {tenant: ''}` in `adapter/kafkaDev.ts`): an
+# explorer is shown a topic and then opens it by that name, so it must not put a tenant in front of
+# one that may already carry somebody's (`@@D-1003`). `physical` pins the name this declaration
+# provisions and seeds to the cluster's own, whatever tenant the process runs under — the demo row
+# has to be where the shot opens, not under a developer's prefix.
+topics:
+  blong-integration:
+    physical: blong-integration
+    partitions: 1
+    required: true
+    seed:
+      - key: commander
+        value: '{"kind":"commander","message":"hello from blong-integration"}'

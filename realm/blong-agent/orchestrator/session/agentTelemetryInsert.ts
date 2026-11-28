@@ -3,12 +3,9 @@ import {handler} from '@feasibleone/blong';
 
 // This group's own libraries, next to the handler that uses them: the projection and the ring are
 // how the batch is summarised and where it lands when the deployment has no broker (`@@D-1013`).
-import {
-    agentMetricProject,
-    type IAgentSessionMetric,
-} from './agentMetricProject.ts';
-import {telemetryRingAppend} from './telemetryRing.ts';
 import {agentSettings, type IAgentDispatchPort} from '../settings.ts';
+import {agentMetricProject, type IAgentSessionMetric} from './agentMetricProject.ts';
+import {telemetryRingAppend} from './telemetryRing.ts';
 
 /**
  * `agent.telemetry.insert` — one batch of a session's feed, published and summarised (`T-790`).
@@ -27,47 +24,29 @@ import {agentSettings, type IAgentDispatchPort} from '../settings.ts';
  * replay a topic.
  *
  * This is an orchestrator and not the `db` handler it was first written as: it reads the
- * deployment's choice of sink, creates the topic when it has to, and edits the session row and its
- * metric — four steps whose order is the realm's business. An adapter here would have had to call
- * the `kafka` adapter and the `db` adapter for it, which is the shape the layer rule forbids
- * (`@@D-1013`).
+ * deployment's choice of sink, publishes the batch, and edits the session row and its metric —
+ * steps whose order is the realm's business. An adapter here would have had to call the `kafka`
+ * adapter and the `db` adapter for it, which is the shape the layer rule forbids (`@@D-1013`).
+ *
+ * The topic is not made here. It is declared in `meta/kafka/telemetry.yaml`, and the intent the
+ * process runs decides what happens to the declaration — `dev` and `integration` provision it
+ * best-effort, `upgrade` refuses to continue without it (`@@D-1001`). A create in this handler was
+ * the second door to the same topic, and it is gone on purpose: it repaired a provisioning run that
+ * never happened or never reached the broker, so the batch that should have failed loudly was
+ * published silently and the missing step stayed missing (`@@D-1040`). A broker with no such topic
+ * now answers the send with a timeout, which is reported on the batch as `sourceUnavailable`.
  */
 export default handler(
     ({
         handler: {
-            // The three `agent.*` methods are answered by the `db` adapter and name it; the two
-            // `kafka.*` ones are the adapter's own namespace and need no prefix (`@@D-1013`).
+            // The three `agent.*` methods are answered by the `db` adapter and name it; the
+            // `kafka.*` one is the adapter's own namespace and needs no prefix (`@@D-1013`).
             'db/agentSessionEdit': agentSessionEdit,
             'db/agentSessionMetricEdit': agentSessionMetricEdit,
             'db/agentSessionMetricGet': agentSessionMetricGet,
             kafkaMessageSend,
-            kafkaTopicCreate,
         },
     }) => {
-        /**
-         * The topic, made once per process.
-         *
-         * A broker with auto-create off answers every produce with "Unknown topic" and no delivery
-         * report, which a run pays for by waiting the send's timeout on every batch. Asking for the
-         * shape once is idempotent (`T-784`) and is what a deployment does in `upgrade`; doing it
-         * here makes dev and CI work without a separate provisioning step.
-         */
-        let topicReady: Promise<unknown> | undefined;
-        const ensureTopic = (topic: string, $meta: IMeta): Promise<unknown> =>
-            (topicReady ??= Promise.resolve(
-                kafkaTopicCreate(
-                    {
-                        topic,
-                        partitions: 12,
-                        // A deployment sets its own; a dev cluster should not keep a week of a
-                        // worked-on ticket's deltas forever.
-                        retentionMs: 7 * 24 * 60 * 60 * 1000,
-                        cleanupPolicy: 'delete',
-                    },
-                    $meta,
-                ),
-            ).catch(() => undefined));
-
         return {
             async agentTelemetryInsert(
                 params: IAgentEventBatch,
@@ -83,7 +62,6 @@ export default handler(
                     if (settings.telemetry.source === 'memory') {
                         telemetryRingAppend(params.sessionId, events);
                     } else {
-                        await ensureTopic(settings.telemetry.topic, $meta);
                         const sent = (await kafkaMessageSend(
                             {
                                 topic: settings.telemetry.topic,

@@ -6,7 +6,7 @@ type KafkaMessage = {topic: string; partition: number; value: Buffer};
 class KafkaJsonCodec {
     encode(data: Record<string, unknown>, $meta: Record<string, unknown>) {
         if (!$meta.trace) $meta.trace = randomUUID();
-        const {topic = 'blong-integration', partition = 0, ...rest} = data;
+        const {topic = 'blong-int-adapter', partition = 0, ...rest} = data;
         return {
             topic,
             partition,
@@ -38,6 +38,7 @@ export default adapter<{
         groupId: string;
     };
     codec: typeof KafkaJsonCodec;
+    topics?: {create?: boolean; failOnMissing?: boolean};
 }>(() => ({
     extends: 'adapter.kafka',
     activation: {
@@ -48,14 +49,23 @@ export default adapter<{
                 'security.protocol': 'plaintext',
             },
             consume: {
-                topics: ['blong-integration'],
-                groupId: 'blong-integration-group',
+                topics: ['blong-int-adapter'],
+                groupId: 'blong-int-adapter.stream',
             },
             codec: KafkaJsonCodec,
             namespace: 'broker',
-            // `blong-integration` belongs to the test cluster, not to a realm, so the namespace
+            // `blong-int-adapter` belongs to the test cluster, not to a realm, so the namespace
             // guard would refuse the topic these tests read and write.
             allowForeignTopic: true,
+            // The topic is declared in `meta/kafka/integration.yaml` (`@@D-1001`) and made before
+            // this stream subscribes: a consumer subscribed to an absent topic is never assigned a
+            // partition, which is a 30-second `start()` timeout rather than an error that names
+            // the topic. A run of this realm is a run that wants Kafka, so a missing topic is a
+            // failure.
+            topics: {create: true},
         },
+        // A run of this realm is a run that wants Kafka, so the base adapter's best-effort default
+        // is the wrong shape here: a topic the broker does not have is a failure, not a warning.
+        integration: {topics: {create: true, failOnMissing: true}},
     },
 }));

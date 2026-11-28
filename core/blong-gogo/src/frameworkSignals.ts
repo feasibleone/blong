@@ -351,6 +351,37 @@ const vocabulary = declare({
         frameworkKafkaTopicFailed: {level: 'warn', message: 'kafka topic read failed: {error}'},
         /** A topic read returned. */
         frameworkKafkaTopicRead: {level: 'info', message: 'kafka topic read'},
+        /** A background feed is reading its topics. */
+        frameworkKafkaFeedStarted: {level: 'info', message: 'kafka feed started'},
+        /** A background feed stopped after flushing what it had processed. */
+        frameworkKafkaFeedStopped: {level: 'info', message: 'kafka feed stopped'},
+        /** One record of a feed failed, and its attempt count says whether it will be retried. */
+        frameworkKafkaFeedFailed: {level: 'warn', message: 'kafka feed record failed: {error}'},
+        /** One record of a feed was dead-lettered after its last attempt. */
+        frameworkKafkaFeedDeadLettered: {
+            level: 'warn',
+            message: 'kafka feed dead-lettered a record to {deadLetter}',
+        },
+        /** A feed committed the offsets of what it had processed. */
+        frameworkKafkaFeedCommitted: {level: 'info', message: 'kafka feed committed offsets'},
+        /** A feed could not commit, or could not produce a dead letter. */
+        frameworkKafkaFeedCommitFailed: {
+            level: 'warn',
+            message: 'kafka feed failed to settle a record: {error}',
+        },
+        /** What a loop's caller did after a dispatch threw. */
+        frameworkLoopAfterDispatchFailed: {
+            level: 'warn',
+            message: 'the loop afterDispatch hook failed: {error}',
+        },
+        /** A declared topic is at the shape its realm asked for. */
+        frameworkKafkaTopicProvisioned: {level: 'info', message: 'kafka topic provisioned'},
+        /** A declared topic marked required is absent, and the start may refuse over it. */
+        frameworkKafkaTopicMissing: {level: 'warn', message: 'kafka topic missing: {topic}'},
+        /** A step of a topic's provisioning was left undone, and the reason says which. */
+        frameworkKafkaTopicSkipped: {level: 'info', message: 'kafka topic step skipped: {reason}'},
+        /** A declared topic was empty, so its seed messages were produced. */
+        frameworkKafkaTopicSeeded: {level: 'info', message: 'kafka topic seeded'},
         /** The consumer is being created for this group. */
         frameworkKafkaConsumerCreating: {level: 'info', message: 'kafka consumer creating'},
         /** The consumer was given its partitions. */

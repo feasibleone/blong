@@ -1057,7 +1057,7 @@ export interface IAdapter<T, C> {
     isConnected?: Promise<boolean>;
     event?(name: string, params?: unknown): Promise<object>;
     handle?(...params: unknown[]): Promise<unknown>;
-    connect?(what: unknown, context: unknown): void;
+    connect?(what: unknown, context: unknown, options?: unknown): unknown;
     /**
      * Optional lifecycle hook called when configuration changes.
      * When present, the framework calls this instead of a full stop+start cycle.

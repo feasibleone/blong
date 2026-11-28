@@ -531,11 +531,33 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         }
     }
 
-    connect(what?: net.Socket | (() => void), context?: C): void {
+    connect(
+        what?: net.Socket | (() => void),
+        context?: C,
+        options?: {
+            /**
+             * Whether this loop is the port's outbound transport.
+             *
+             * A port has exactly one of those, and a background feed is not it: the feed reads
+             * records and has no caller to serve, so its loop must be installed beside the port's
+             * rather than replacing it (`@@D-1036`).
+             */
+            outbound?: boolean;
+            decode?: (frame: unknown, $meta: IMeta) => Promise<unknown>;
+            afterDispatch?: (
+                frame: Buffer,
+                packet: unknown[],
+                outcome: unknown[] | undefined,
+            ) => Promise<void> | void;
+        },
+    ): unknown {
         what ??= this.handle.bind(this);
         context ??= this.config.context;
-        this._portLoop = loop(what, this as any, context); // eslint-disable-line @typescript-eslint/no-explicit-any
+        const runner = loop(what, this as any, context, options); // eslint-disable-line @typescript-eslint/no-explicit-any
+        if (options?.outbound === false) return runner;
+        this._portLoop = runner;
         this._resolveConnected?.(true);
+        return runner;
     }
 
     async connected(): Promise<boolean> {

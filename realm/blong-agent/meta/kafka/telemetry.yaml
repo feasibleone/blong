@@ -1,0 +1,22 @@
+# The feed this realm publishes a session's events to — declared where the realm owns it.
+#
+# Twelve partitions and a key that is the session id is what makes a session's events share one
+# partition and keep their order; twelve is also what `agentTelemetryInsert` asked the broker for
+# before this file existed.
+#
+# The retention is a week OR a hundred megabytes per partition, whichever comes first: a dev cluster
+# should not keep a worked-on ticket's deltas longer than the person working on it, and a burst of
+# events must not fill the volume the broker keeps its log on. A tenant that wants more sets it in
+# the declaration of its own tree.
+#
+# `required` is what a provisioning run refuses to continue without: an agent with no telemetry
+# topic loses the only record of what a session did (`@@D-992`). The key is the logical name; a
+# process with a tenant (`dev` derives one from the user name) creates it under `<tenant>.` in front
+# of it, and the realm keeps naming this one (`@@D-1003`).
+topics:
+  blong.agent.telemetry:
+    partitions: 12
+    retention.ms: 604800000
+    retention.bytes: 104857600
+    cleanup.policy: delete
+    required: true

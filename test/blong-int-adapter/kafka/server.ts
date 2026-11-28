@@ -11,6 +11,7 @@ export default realm(blong => ({
         },
         'adapter.kafka': {
             adapter: true,
+            orchestrator: true,
             test: true,
         },
     },

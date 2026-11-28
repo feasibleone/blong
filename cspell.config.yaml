@@ -222,6 +222,7 @@ words:
   - inputnumber
   - inputtext
   - inputtextarea
+  - insync
   - Interscheme
   - introspected
   - introspects

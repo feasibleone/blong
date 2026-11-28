@@ -1,5 +1,8 @@
+// Must come first: tap reads its configuration when it is evaluated, so the budget has to be in the
+// environment before the import below runs (`@@F-851`).
 import load from '@feasibleone/blong-gogo';
 import tap from 'tap';
+import './tapConfig.ts';
 
 import server from './server.ts';
 

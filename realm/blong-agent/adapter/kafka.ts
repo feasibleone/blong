@@ -11,6 +11,12 @@ import {adapter} from '@feasibleone/blong';
  * `topicNamespace: 'agent'` is the whole reason this instance may name `blong.agent.telemetry`: it
  * answers calls as `kafka` — the name its file has, which is what a handler reaches — while its
  * topics carry the realm's namespace, and the guard refuses every other realm's names (`@@D-990`).
+ *
+ * The topic itself is declared beside the realm's other assets, in `meta/kafka/telemetry.yaml`, and
+ * the base adapter decides what a process does with it (`@@D-1001` `@@D-1003`): `dev` publishes
+ * under the developer's own tenant and provisions it best-effort, so a laptop starts with or
+ * without a broker; `upgrade` provisions it for the deployment, where a missing broker or topic
+ * has to be an error. Those blocks are the base adapter's, so nothing here repeats them.
  */
 export default adapter<{
     connection: {
@@ -21,6 +27,8 @@ export default adapter<{
     mode?: 'stream' | 'admin';
     topicPrefix?: string;
     topicNamespace?: string;
+    tenant?: string;
+    topics?: {create?: boolean; failOnMissing?: boolean};
 }>(() => ({
     extends: 'adapter.kafka',
     activation: {
