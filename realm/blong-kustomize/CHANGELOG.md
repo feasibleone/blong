@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.14.0](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.13.0...blong-kustomize-v0.14.0) (2026-11-28)
+
+
+### Features
+
+* improve deployment handling ([cb3aeac](https://github.com/feasibleone/blong/commit/cb3aeacee38b61db9946675ed1646c9bf185a516))
+
+
+### Bug Fixes
+
+* ci failures ([2ccf586](https://github.com/feasibleone/blong/commit/2ccf586419eeca248208abf37071275039e1c65d))
+* ci failures ([0c0e6fc](https://github.com/feasibleone/blong/commit/0c0e6fc74c3b91a4395ca79b3a77582b7cf0d86b))
+* E2E failure in CI ([4c7b5a2](https://github.com/feasibleone/blong/commit/4c7b5a27761acf6aaead7f67b37228da7b35401f))
+* E2E/timeout failures in CI ([2b447bc](https://github.com/feasibleone/blong/commit/2b447bc7b2b76723e2f0e95cfe2bfaf3ce452236))
+
 ## [0.13.0](https://github.com/feasibleone/blong/compare/blong-kustomize-v0.12.0...blong-kustomize-v0.13.0) (2026-11-25)
 
 

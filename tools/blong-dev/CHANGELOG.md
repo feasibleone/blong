@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.24.1](https://github.com/feasibleone/blong/compare/blong-dev-v1.24.0...blong-dev-v1.24.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* ci failures ([bc8d2e9](https://github.com/feasibleone/blong/commit/bc8d2e94da39fc9bca9b323510cf6fd13a3cf29e))
+* ci failures ([2ccf586](https://github.com/feasibleone/blong/commit/2ccf586419eeca248208abf37071275039e1c65d))
+* E2E/timeout failures in CI ([2b447bc](https://github.com/feasibleone/blong/commit/2b447bc7b2b76723e2f0e95cfe2bfaf3ce452236))
+* memory and lukaot reference handling ([b1a2ae3](https://github.com/feasibleone/blong/commit/b1a2ae3801f3437374071f206659d53ebd407cd6))
+
 ## [1.24.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.23.0...blong-dev-v1.24.0) (2026-11-25)
 
 

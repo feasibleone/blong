@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/feasibleone/blong/compare/blong-agent-v0.2.0...blong-agent-v0.3.0) (2026-11-28)
+
+
+### Features
+
+* improve deployment handling ([cb3aeac](https://github.com/feasibleone/blong/commit/cb3aeacee38b61db9946675ed1646c9bf185a516))
+* Kafka adapter provisioning and feed mode ([b64407e](https://github.com/feasibleone/blong/commit/b64407ebb19197cd05efda71b85d2b438d8e8bc2))
+
+
+### Bug Fixes
+
+* E2E/timeout failures in CI ([2b447bc](https://github.com/feasibleone/blong/commit/2b447bc7b2b76723e2f0e95cfe2bfaf3ce452236))
+
 ## [0.2.0](https://github.com/feasibleone/blong/compare/blong-agent-v0.1.0...blong-agent-v0.2.0) (2026-11-25)
 
 
