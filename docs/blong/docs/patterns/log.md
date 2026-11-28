@@ -364,6 +364,11 @@ are worth knowing:
   there too, rather than swallowed: a pass that never runs is indistinguishable from one that found
   nothing to do, and the difference is a cache that grows without bound.
 
+A printed line points into this store with a group of `lukaot://` references — which member is
+printed, what each resolves against and how to follow one is
+[a line's references](./references.md). The editor resolves them on a click; the same entries are a
+`blong-dev log <ulid>` away in a terminal.
+
 ## Implementation
 
 The log viewer lives in `tools/blong-log/`. It exposes a React `LogViewer` component (used in the

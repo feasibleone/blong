@@ -4,8 +4,10 @@
  *
  * Blong's pino-cacache transport stores full log entries on disk (default
  * `~/.blong/log-cache`) so they can be inspected on demand. The VS Code
- * extension reads them when clicking `lukaot://r/<id>` terminal links; this
- * command exposes the same data on the CLI for coding agents and humans.
+ * extension reads them when clicking a `lukaot://` reference in the terminal or
+ * in a file; this command exposes the same data on the CLI for coding agents and
+ * humans, and the reference group a line prints names the arguments it takes
+ * (`docs/blong/docs/patterns/references.md`).
  *
  * Output modes:
  *   - condensed (default): one compact plain-text line per entry — ideal for

@@ -74,8 +74,12 @@ reference: `check --refs` (the pre-commit hook), `refs --dangling` and `audit` a
 as well as the sites that cite them, share one implementation, and exit non-zero. An id two files
 hold fails the same way, because a reference cannot resolve to two entries. Inline code and fenced
 blocks are exempt — `` `@@F-014` `` in a body is the form of a reference, not a citation — which is
-why an example is written in backticks. The fix is to name the entry that now carries the reasoning,
-or to drop the number: the enclosing entry is already the record of the work it describes.
+why an example is written in backticks. That exemption is **markdown's**: in a TypeScript comment a
+backtick is ordinary punctuation, so the token is a citation there and is checked (and linked by the
+editor) like any other. A comment block that has to show the syntax writes `memory-refs: example` in
+it, which exempts that block. The fix for a dangling reference is to name the entry that now carries
+the reasoning, or to drop the number: the enclosing entry is already the record of the work it
+describes.
 
 ## Reading them
 

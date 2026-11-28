@@ -24,8 +24,10 @@ extending** them; for using them to monitor applications, see the **blong-log** 
 - `core/blong-gogo/src/pino-cacache.ts` — pino transport that persists full entries on disk
   (cacache) for on-demand inspection.
 - `tools/blong-dev/src/commands/log.ts` — the `blong-dev log` CLI that reads the cacache cache.
-- `ext/rest-fs/src/extension.ts` — VS Code extension that opens a single cached entry when you click
-  a `lukaot://t/<shape>` terminal link.
+- `ext/rest-fs/src/logReferences.ts` — the reference vocabulary a printed line carries, and the
+  store reads behind it: one key lookup for a record, a shape or a payload, and a scan for a trace.
+- `ext/rest-fs/src/extension.ts` — VS Code links for those references (terminal and editor) and for
+  the `@@` memory tokens, over the same store and the same memory index.
 
 ## Data flow
 
@@ -74,7 +76,9 @@ tools/blong-dev/src/
   index.ts             ← programmatic exports
 
 ext/rest-fs/src/
-  extension.ts         ← terminal link provider for lukaot://r|t/<id> + cacache lookup
+  extension.ts         ← terminal + editor links for lukaot:// and @@ references
+  logReferences.ts     ← the five reference members, the store reads, the trace listing
+  memoryReferences.ts  ← @@ hover, document link and definition, from `memory export --json`
 ```
 
 ## Three invariants of the on-disk cache
@@ -176,6 +180,29 @@ an export in `tools/blong-dev/src/index.ts`.
   `tools/blong-dev/src/commands/` following the tap pattern used across the monorepo if the command
   grows.
 
+## The reference group on a line
+
+A rendered record ends with `[<member> <member> …]`, and the five members are the whole vocabulary a
+reader — human or agent — gets after the emitting process is gone:
+
+| Segment           | Kind     | Resolves against                                 |
+| ----------------- | -------- | ------------------------------------------------ |
+| `lukaot://t/<id>` | template | one key lookup: the newest record of that shape  |
+| `lukaot://r/<id>` | record   | one key lookup: the record kept under its own id |
+| `lukaot://x/<id>` | trace    | a scan of the store — no key carries a trace     |
+| `lukaot://p/<id>` | payload  | one key lookup, in the payload half of the store |
+| `p=<id>`          | parent   | a record lookup that commonly misses, by design  |
+
+The segments are declared once in `core/lukaot/src/refs.ts`; the editor's table lives in
+`ext/rest-fs/src/logReferences.ts` and the CLI reads the ids as arguments, so a new member is added
+in the first and followed in the other two. What each member is for during an investigation, and why
+`record` and `payload` are conditional, is
+[a line's references](../../../docs/blong/docs/patterns/references.md) — link that page rather than
+restating it.
+
+**Adding a member** means three things at once: the segment in `refs.ts`, the kind in the editor's
+`KIND_BY_SEGMENT`, and a sentence in the page above. Nothing else reads the spelling.
+
 ## LogViewer UI and Storybook
 
 The React client lives in `tools/blong-log/src/client/`. Development uses Storybook with 10 stories
@@ -198,8 +225,8 @@ storybook tests reach the aggregate report, the metrics and the failures bundle 
 own instead of living only in `.ci-report/storybook.log`. Passing `--status` is what keeps a leg
 that dies before the runner writes anything from being reported green (@@F-539). That is the shape
 the tap leg already has — a structured report plus a compact view in the log and the full stream
-kept for the artifact upload — plus the log itself, which is printed instead of the summary when
-the runner fails.
+kept for the artifact upload — plus the log itself, which is printed instead of the summary when the
+runner fails.
 
 PNG baselines live in `src/client/__image_snapshots__/`; sample data in
 `src/client/__fixtures__/data.ts`; story definitions in `src/client/LogViewer.stories.tsx`; config

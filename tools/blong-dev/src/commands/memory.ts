@@ -2757,6 +2757,7 @@ function memoryIdTrouble(
         // Inline code and fenced blocks are not citations: a body that shows `@@F-014` as an
         // example, or quotes a config block, is illustrating the form rather than pointing at an
         // entry. The source scanner skips them for the same reason, and a body is prose too.
+        // memory-refs: example — the token above is the form, not a citation.
         let fenced = false;
         doc.lines.forEach((line, index) => {
             const trimmed = line.trim();

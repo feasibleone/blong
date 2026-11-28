@@ -62,7 +62,9 @@ is greppable as text (`grep -rF '@@T-'`). In a markdown file — a doc page, a s
 a page or a skill is named with a **normal relative link** instead; only a file with no link syntax
 uses the `@@doc:`/`@@skill:` spelling. A reference that no longer resolves fails
 `blong-dev memory refs --dangling`: an unknown id or a missing section is an error, a retired id is
-a warning that names its successor, and a syntax _example_ inside backticks or a fence is ignored.
+a warning that names its successor, and a syntax _example_ inside backticks or a fence is ignored —
+in **markdown**, where backticks quote a token; a code comment is checked, and shows the syntax with
+`memory-refs: example` in its block instead.
 
 A closed or pruned id is not forgotten: it is recorded in `## Retired`
 (`- F-101 — superseded by F-090 (2026-08-01)`) and its number is never reused, so a reference that

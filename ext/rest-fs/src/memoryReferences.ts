@@ -1,3 +1,4 @@
+// cspell:ignore FTDQ
 import {execFile} from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -22,10 +23,12 @@ import * as vscode from 'vscode';
  * The token grammar, identical to `blong-dev`'s `REFERENCE` in `memoryTypes.ts`.
  *
  * Named groups are used on purpose: the positional form was mis-counted once (the
- * page name landed in the anchor group), so the names are the contract.
+ * page name landed in the anchor group), so the names are the contract. The id prefix class is
+ * every kind's — friction, todo, decision and faq — because a `@@Q-…` that this pattern does not
+ * see is a token the linter checks and the editor silently refuses to link.
  */
 export const REFERENCE_RE =
-    /@@(?:(?<id>[FTD]-\d{3,})|doc:(?<docTier>[a-z0-9-]+)\/(?<docName>[a-z0-9.-]+)(?:#(?<docAnchor>[a-z0-9-]+))?|skill:(?<skillName>[a-z0-9-]+)(?:#(?<skillAnchor>[a-z0-9-]+))?)/g;
+    /@@(?:(?<id>[FTDQ]-\d{3,})|doc:(?<docTier>[a-z0-9-]+)\/(?<docName>[a-z0-9.-]+)(?:#(?<docAnchor>[a-z0-9-]+))?|skill:(?<skillName>[a-z0-9-]+)(?:#(?<skillAnchor>[a-z0-9-]+))?)/g;
 
 interface IEntryRecord {
     title: string;
@@ -68,10 +71,31 @@ interface IToken {
 
 let cached: {index: IMemoryIndex; root: string} | null | undefined;
 
+/**
+ * Languages whose backticks mean "this is an example".
+ *
+ * Only a markdown document uses a backtick to quote a token rather than to format a word, so only
+ * there does a code span make a reference an illustration. In a TypeScript comment the same
+ * backticks are ordinary prose punctuation, and skipping them used to hide most of the references
+ * in the tree from both this provider and the `refs` linter (@@F-867 @@D-1042).
+ */
+const MARKDOWN_LANGUAGES = new Set(['markdown', 'mdx']);
+
 /** The workspace root the index is relative to. */
 function workspaceRoot(): string | null {
-    const folder = vscode.workspace.workspaceFolders?.[0];
-    return folder ? folder.uri.fsPath : null;
+    const folders = vscode.workspace.workspaceFolders ?? [];
+    // The index is a repository artefact, so the folder that holds the memory tree is the one to
+    // export from — not whichever folder the editor happens to list first in a multi-root workspace.
+    const owner = folders.find(folder =>
+        fs.existsSync(path.join(folder.uri.fsPath, '.github', 'memory')),
+    );
+    if (owner) {
+        return owner.uri.fsPath;
+    }
+    const repository = folders.find(folder =>
+        fs.existsSync(path.join(folder.uri.fsPath, 'rush.json')),
+    );
+    return (repository ?? folders[0])?.uri.fsPath ?? null;
 }
 
 /** Run `blong-dev memory export --json`, resolving to the parsed index or null. */
@@ -133,8 +157,16 @@ export function invalidateMemoryIndex(): void {
 }
 
 /** True when a character offset is inside a backtick span on its line. */
-function insideCodeSpan(line: string, column: number): boolean {
+export function insideCodeSpan(line: string, column: number): boolean {
     return (line.slice(0, column).match(/`/g) ?? []).length % 2 === 1;
+}
+
+/** A line that opens or closes a fenced code block. */
+export const FENCE = /^\s*(?:```|~~~)/;
+
+/** True when a document's language quotes examples in backticks, as markdown does. */
+export function isMarkdown(languageId: string): boolean {
+    return MARKDOWN_LANGUAGES.has(languageId);
 }
 
 /** A file URI positioned at a 1-based line, so `open` lands on the target. */
@@ -208,22 +240,42 @@ function resolveToken(
     };
 }
 
-/** Every reference token in a document, resolved to the document it names. */
+/**
+ * Every reference token in a document, resolved to the document it names.
+ *
+ * Code formatting means "example" in a markdown document only: there a fenced block and an inline
+ * code span quote the syntax, and a token inside one is read as an illustration. Everywhere else a
+ * token is a reference, which is what makes the providers agree with the `refs` linter — it scopes
+ * the same rule to markdown for the same reason (@@D-1042).
+ *
+ * A markdown token in code formatting is not dropped outright: it is kept when it actually
+ * **resolves**, because a doc page that writes a real id in backticks still means that entry, and
+ * only a made-up id or page is an illustration. The linter cannot make that distinction — it would
+ * have to resolve every example — so it skips them all, and this is the one place the editor is
+ * deliberately more generous.
+ */
 function tokensIn(document: vscode.TextDocument, index: IMemoryIndex, root: string): IToken[] {
     const found: IToken[] = [];
+    const markdown = MARKDOWN_LANGUAGES.has(document.languageId);
+    let fenced = false;
     for (let lineNumber = 0; lineNumber < document.lineCount; lineNumber += 1) {
         const line = document.lineAt(lineNumber).text;
+        if (markdown && FENCE.test(line)) {
+            fenced = !fenced;
+            continue;
+        }
         REFERENCE_RE.lastIndex = 0;
         for (const match of line.matchAll(REFERENCE_RE)) {
             const column = match.index ?? 0;
-            if (insideCodeSpan(line, column)) {
-                continue;
-            }
+            const quoted = markdown && (fenced || insideCodeSpan(line, column));
             const groups = match.groups;
             if (!groups) {
                 continue;
             }
             const {location, hover} = resolveToken(groups, index, root);
+            if (quoted && !location) {
+                continue;
+            }
             found.push({
                 range: new vscode.Range(lineNumber, column, lineNumber, column + match[0].length),
                 raw: match[0],
@@ -233,6 +285,73 @@ function tokensIn(document: vscode.TextDocument, index: IMemoryIndex, root: stri
         }
     }
     return found;
+}
+
+/**
+ * A token found in a terminal line, or any other text the editor did not hand over as a document.
+ *
+ * The provider can only report an offset and a length, so the match is the one thing carried out of
+ * it and the resolution happens when the link is followed.
+ */
+export interface IReferenceMatch {
+    startIndex: number;
+    length: number;
+    raw: string;
+}
+
+/** Every `@@` token in one line, in order. */
+export function referenceTokensIn(line: string): IReferenceMatch[] {
+    // A fresh pattern per call: `REFERENCE_RE` is stateful because it is global, and a terminal
+    // provider and a document provider share it on the same tick.
+    const pattern = new RegExp(REFERENCE_RE.source, 'g');
+    return Array.from(line.matchAll(pattern), match => ({
+        startIndex: match.index ?? 0,
+        length: match[0].length,
+        raw: match[0],
+    }));
+}
+
+/**
+ * The id an index line names, when the line is one the memory CLI prints.
+ *
+ * Two shapes carry an id to a terminal reader. `blong-dev memory list` writes
+ * `# T-058 open · cross-cutting — title (path)`, and the generated index writes
+ * `- \`T-716\` · area — title`: markdown's backticked form, not an `@@` token. Neither carries a
+ * `@@`, so a terminal has nothing to click unless the line's own shape is recognised. Both shapes
+ * are narrow — a `#` heading that opens with an id, or a list item whose first cell is a backticked
+ * id — and the link is built as the token the resolver understands.
+ */
+const CLI_LIST_RE = /^#\s+([FTDQ]-\d{3,})\b/;
+const INDEX_LIST_RE = /^\s*-\s+`([FTDQ]-\d{3,})`/;
+
+/** The id an index line names, and where it starts, or `undefined` when the line is not one. */
+export function indexLineId(line: string): {id: string; start: number} | undefined {
+    const match = CLI_LIST_RE.exec(line) ?? INDEX_LIST_RE.exec(line);
+    const id = match?.[1];
+    if (!id) {
+        return undefined;
+    }
+    return {id, start: line.indexOf(id)};
+}
+
+/**
+ * The document one `@@` token names, or `undefined` when the index is unavailable or the token does
+ * not resolve.
+ *
+ * This is the terminal's side of the same resolver the hover uses, so a token clicked in a terminal
+ * and the same token hovered in a file land on the same line.
+ */
+export async function locateReference(raw: string): Promise<vscode.Location | undefined> {
+    const loaded = await getIndex();
+    if (!loaded) {
+        return undefined;
+    }
+    const pattern = new RegExp(REFERENCE_RE.source, 'g');
+    const match = pattern.exec(raw);
+    if (!match?.groups) {
+        return undefined;
+    }
+    return resolveToken(match.groups, loaded.index, loaded.root).location;
 }
 
 /** Register the providers that make `@@` tokens navigable. */

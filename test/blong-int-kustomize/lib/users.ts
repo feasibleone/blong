@@ -177,7 +177,7 @@ const connectionArgs = (database: IDeploymentDatabase): string[] => [
  *
  * A failure here is the run's failure rather than a skipped check: a run that cannot prove the login
  * never says whether a released process reached its credential tables, and a silently skipped check
- * is the green run that hid a broken release (`@@T-266`). Each message names what is missing,
+ * is the green run that hid a broken release (`@@D-952`). Each message names what is missing,
  * because every cause of it is a step the caller can take.
  */
 export const provisionUser = async (

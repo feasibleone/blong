@@ -97,6 +97,28 @@ t.test('parseReferences treats code formatting as examples', t => {
     t.end();
 });
 
+t.test('a code file is scanned through its backticks', t => {
+    // A backtick in a TypeScript comment is punctuation around a citation, not markdown quoting an
+    // example — so the same rule that marks a doc example skips nothing in code (@@D-1042).
+    const lines = ['// the retry is counted (`@@F-014`).'];
+    t.equal(parseReferences(lines).length, 0, 'markdown: the span is an example');
+    t.equal(parseReferences(lines, {codeSpans: false}).length, 1, 'code: it is a reference');
+    t.end();
+});
+
+t.test('a block can say its tokens are an example', t => {
+    const lines = [
+        '// a reference is `@@F-014` or `@@doc:patterns/memory` — an illustration:',
+        '// memory-refs: example',
+        '',
+        '// this one is a citation (`@@F-014`).',
+    ];
+    const tokens = parseReferences(lines, {codeSpans: false});
+    t.equal(tokens.length, 1, 'only the block without the marker counts');
+    t.equal(tokens[0]?.line, 4, 'and it is the citation below the illustration');
+    t.end();
+});
+
 t.test('an entry resolves, and a collision is ambiguous', t => {
     const repo = tempRepo();
     try {

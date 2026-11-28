@@ -1,8 +1,26 @@
-import * as cacache from 'cacache';
-import * as os from 'node:os';
-import * as path from 'node:path';
 import * as vscode from 'vscode';
-import {registerMemoryReferences} from './memoryReferences';
+import {
+    cachePathOf,
+    entryText,
+    invalidateStoreScan,
+    KIND_BY_SEGMENT,
+    LOG_REFERENCE_RE,
+    missingEntry,
+    PARENT_REFERENCE_RE,
+    readEntry,
+    referenceUri,
+    scanStore,
+    traceListing,
+} from './logReferences';
+import {
+    FENCE,
+    indexLineId,
+    insideCodeSpan,
+    isMarkdown,
+    locateReference,
+    referenceTokensIn,
+    registerMemoryReferences,
+} from './memoryReferences';
 import {RestFileSystemProvider} from './restFileSystemProvider';
 import {RestShellTaskProvider} from './restShellTaskProvider';
 
@@ -14,21 +32,89 @@ type RestFsWorkspaceConfig = Record<
     }
 >;
 
-/** A terminal link that carries the ULID of the associated log entry. */
-interface BlongLogTerminalLink extends vscode.TerminalLink {
-    logId: string;
-    data: string;
+/**
+ * A terminal link, carrying either a log reference or a memory token.
+ *
+ * A terminal line prints both kinds of thing — a `lukaot` reference group after a record, and a
+ * `@@` token in anything the dev CLI echoes back — and neither is a URL the terminal resolves on
+ * its own, so the provider reports each one with the text to resolve rather than a position only.
+ */
+interface IReferenceTerminalLink extends vscode.TerminalLink {
+    /** The `lukaot://` reference to open, when the link names a log entry, trace or payload. */
+    reference?: string;
+    /** The `@@` token to resolve, when the link names a memory entry, a doc page or a skill. */
+    memory?: string;
+}
+
+/** Every link a terminal line carries, in the order they appear. */
+function terminalLinks(line: string): IReferenceTerminalLink[] {
+    const links: IReferenceTerminalLink[] = [];
+    const references = new RegExp(LOG_REFERENCE_RE.source, 'g');
+    for (const match of line.matchAll(references)) {
+        const kind = KIND_BY_SEGMENT[match[1] ?? ''];
+        links.push({
+            startIndex: match.index ?? 0,
+            length: match[0].length,
+            tooltip: `Open this ${kind ?? 'log'} reference`,
+            reference: match[0],
+        });
+    }
+    const parents = new RegExp(PARENT_REFERENCE_RE.source, 'g');
+    for (const match of line.matchAll(parents)) {
+        links.push({
+            startIndex: match.index ?? 0,
+            length: match[0].length,
+            tooltip: 'Open the record that caused this one',
+            reference: referenceUri('record', match[1] ?? ''),
+        });
+    }
+    for (const token of referenceTokensIn(line)) {
+        links.push({
+            startIndex: token.startIndex,
+            length: token.length,
+            tooltip: 'Open the memory entry, page or skill this names',
+            memory: token.raw,
+        });
+    }
+    const indexId = indexLineId(line);
+    if (indexId) {
+        links.push({
+            startIndex: indexId.start,
+            length: indexId.id.length,
+            tooltip: 'Open this memory entry',
+            memory: `@@${indexId.id}`,
+        });
+    }
+    return links.sort((left, right) => left.startIndex - right.startIndex);
 }
 
 /**
- * Regex matching the id embedded in a log link: `lukaot://r/<id>`, `lukaot://t/<id>`.
+ * Show one resolved reference.
  *
- * Both kinds resolve the same way — a cache lookup by key — because both are keys in
- * the same store: `r` is a record kept under its own id, and `t` is a shape, which is
- * the entry a reader resolves far more often (the store keeps one per shape, and the
- * line carries the shape reference on every record).
+ * The URI is resolved by the `lukaot` content provider, so this opens it the same way whether the
+ * click came from a terminal link or from a reference quoted in a file.
  */
-const LOG_LINK_REGEX = /(?:lukaot):\/\/(?:r|record|t|template|p|payload)\/([0-9A-Za-z_-]+)/;
+async function openReference(reference: string): Promise<void> {
+    try {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(reference));
+        await vscode.window.showTextDocument(document, {preview: true});
+    } catch (error) {
+        vscode.window.showWarningMessage(`Could not open ${reference}: ${error}`);
+    }
+}
+
+/** Show the document a memory token names, at the entry's own line. */
+async function openMemoryToken(raw: string): Promise<void> {
+    const location = await locateReference(raw);
+    if (!location) {
+        vscode.window.showWarningMessage(
+            `${raw} does not resolve — run \`blong-dev memory refs --dangling\``,
+        );
+        return;
+    }
+    const document = await vscode.workspace.openTextDocument(location.uri);
+    await vscode.window.showTextDocument(document, {selection: location.range, preview: true});
+}
 
 /**
  * This method is called when your extension is activated
@@ -199,60 +285,135 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(shellTaskProviderRegistration);
 
-    class LogContentProvider implements vscode.TextDocumentContentProvider {
-        async provideTextDocumentContent(
-            uri: vscode.Uri,
-            token: vscode.CancellationToken,
-        ): Promise<string | undefined> {
+    /**
+     * The `lukaot` scheme: one reference resolved against the local record store.
+     *
+     * `record` and `template` are one key lookup each; `payload` is the other half of the same
+     * store; `trace` is the one member that no key carries, so it is answered by scanning what is
+     * retained and said to be a listing rather than a replay (@@D-1041). A miss returns a document
+     * that says so and names the command that looks again — never an error dialog, because a
+     * reference that has aged out of a bounded store is a normal answer.
+     */
+    class ReferenceContentProvider implements vscode.TextDocumentContentProvider {
+        async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
             const cfg = vscode.workspace.getConfiguration('restfs');
-            const cachePathRaw: string = cfg.get('blongLogCachePath', '~/.blong/log-cache');
-            const cachePath = cachePathRaw.startsWith('~')
-                ? path.join(os.homedir(), cachePathRaw.slice(1))
-                : cachePathRaw;
-
-            let content: string;
+            const cachePath = cachePathOf(cfg.get<string>('blongLogCachePath'));
+            const kind = KIND_BY_SEGMENT[uri.authority];
+            let id: string;
             try {
-                const result = await cacache.get(cachePath, uri.path.substring(1)); // skip the /
-                const entry = JSON.parse(result.data.toString()) as unknown;
-                return JSON.stringify(entry, null, 2);
-            } catch (err) {
-                vscode.window.showErrorMessage(`Failed to read log entry ${uri.path}: ${err}`);
-                return;
+                id = decodeURIComponent(uri.path.replace(/^\//, ''));
+            } catch {
+                id = uri.path.replace(/^\//, '');
             }
+            if (!kind) {
+                return [
+                    `lukaot://${uri.authority}/${id} — unknown reference kind`,
+                    '',
+                    'A reference is `lukaot://<r|t|x|p>/<id>`: a record, a shape, a trace or a',
+                    'payload. The vocabulary is declared once, in `core/lukaot/src/refs.ts`.',
+                ].join('\n');
+            }
+            if (kind === 'trace') {
+                try {
+                    return traceListing(id, await scanStore(cachePath), cachePath);
+                } catch (error) {
+                    return `The store at ${cachePath} could not be read: ${error}`;
+                }
+            }
+            const entry = await readEntry(cachePath, id);
+            return entry ? entryText(kind, entry) : missingEntry(kind, id, cachePath);
         }
     }
-    const logContentProvider = vscode.workspace.registerTextDocumentContentProvider(
+    const referenceContentProvider = vscode.workspace.registerTextDocumentContentProvider(
         'lukaot',
-        new LogContentProvider(),
+        new ReferenceContentProvider(),
     );
-    context.subscriptions.push(logContentProvider);
+    context.subscriptions.push(referenceContentProvider);
 
-    // Register terminal link provider for lukaot://r/<id> and lukaot://t/<id> links
-    const logLinkProvider = vscode.window.registerTerminalLinkProvider({
-        provideTerminalLinks(terminalContext: vscode.TerminalLinkContext): BlongLogTerminalLink[] {
-            const match = LOG_LINK_REGEX.exec(terminalContext.line);
-            if (!match) {
-                return [];
-            }
-            return [
-                {
-                    startIndex: match.index,
-                    length: match[0].length,
-                    tooltip: 'Open log entry details',
-                    logId: match[1],
-                    data: match[0],
-                },
-            ];
+    // A `lukaot` document has no extension to derive a language from, so it is given one here: the
+    // record and payload bodies are JSON, and a trace listing is prose the reader scans by column.
+    const referenceLanguage = vscode.workspace.onDidOpenTextDocument(async document => {
+        if (document.uri.scheme !== 'lukaot') {
+            return;
+        }
+        const language = KIND_BY_SEGMENT[document.uri.authority] === 'trace' ? 'plaintext' : 'json';
+        await vscode.languages.setTextDocumentLanguage(document, language);
+    });
+    context.subscriptions.push(referenceLanguage);
+
+    // A scan is remembered for a minute; a store moved by configuration starts over immediately.
+    const storeChanges = vscode.workspace.onDidChangeConfiguration(event => {
+        if (event.affectsConfiguration('restfs.blongLogCachePath')) {
+            invalidateStoreScan();
+        }
+    });
+    context.subscriptions.push(storeChanges);
+
+    // In the editor the same references are quoted in prose — a note, a doc page, a test fixture —
+    // so a link is offered wherever one appears, not only where the terminal prints one. A markdown
+    // page quotes a reference to show its form as often as it cites one, so there the same
+    // code-formatting exemption the `@@` provider applies is applied here too.
+    const referenceLinks = vscode.languages.registerDocumentLinkProvider(
+        {scheme: '*'},
+        {
+            provideDocumentLinks(document: vscode.TextDocument): vscode.DocumentLink[] {
+                const links: vscode.DocumentLink[] = [];
+                const references = new RegExp(LOG_REFERENCE_RE.source, 'g');
+                const markdown = isMarkdown(document.languageId);
+                let fenced = false;
+                for (let lineNumber = 0; lineNumber < document.lineCount; lineNumber += 1) {
+                    const line = document.lineAt(lineNumber).text;
+                    if (markdown && FENCE.test(line)) {
+                        fenced = !fenced;
+                        continue;
+                    }
+                    if (markdown && fenced) {
+                        continue;
+                    }
+                    for (const match of line.matchAll(references)) {
+                        const start = match.index ?? 0;
+                        if (markdown && insideCodeSpan(line, start)) {
+                            continue;
+                        }
+                        links.push(
+                            new vscode.DocumentLink(
+                                new vscode.Range(
+                                    lineNumber,
+                                    start,
+                                    lineNumber,
+                                    start + match[0].length,
+                                ),
+                                vscode.Uri.parse(match[0]),
+                            ),
+                        );
+                    }
+                }
+                return links;
+            },
+        },
+    );
+    context.subscriptions.push(referenceLinks);
+
+    // Terminal links cover the reference group a line ends with and the `@@` tokens the dev CLI
+    // echoes, because a terminal does not resolve either of them on its own.
+    const referenceLinkProvider = vscode.window.registerTerminalLinkProvider({
+        provideTerminalLinks(
+            terminalContext: vscode.TerminalLinkContext,
+        ): IReferenceTerminalLink[] {
+            return terminalLinks(terminalContext.line);
         },
 
-        async handleTerminalLink(link: BlongLogTerminalLink): Promise<void> {
-            const doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(link.data));
-            await vscode.languages.setTextDocumentLanguage(doc, 'json');
-            await vscode.window.showTextDocument(doc);
+        async handleTerminalLink(link: IReferenceTerminalLink): Promise<void> {
+            if (link.reference) {
+                await openReference(link.reference);
+                return;
+            }
+            if (link.memory) {
+                await openMemoryToken(link.memory);
+            }
         },
     });
-
-    context.subscriptions.push(logLinkProvider);
+    context.subscriptions.push(referenceLinkProvider);
 
     // Memory cross-references: hover a `@@` token to see the entry it names, click to
     // open it, F12 to jump to the entry's line. Reads a derived index; never writes.

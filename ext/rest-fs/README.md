@@ -58,6 +58,33 @@ You can also manually open files using URIs like:
 - `restfs://example/path/to/file.txt`
 - `restfs://example/folder/`
 
+## Following log and memory references
+
+The extension is also what makes the references a Blong process prints navigable, in the terminal
+and in the editor:
+
+- **`lukaot://r|t|p/<id>`** — a record, a shape or a payload, read out of the same `cacache` store
+  the `pino-cacache` transport writes (`restfs.blongLogCachePath`, default `~/.blong/log-cache`).
+  One key lookup each, so a click is instant.
+- **`lukaot://x/<trace>`** — every record the store still holds under that trace. No key carries a
+  trace, so this one scans the store and opens a listing that says it is a listing rather than a
+  replay: the store keeps one entry per shape, and the service holds the lineage retention drops.
+- **`p=<id>`** — the record that caused this one. Linked, and commonly answered with "not retained",
+  because an ordinary record is represented by its shape rather than kept under its own id.
+- **`@@F-014`, `@@doc:patterns/memory`, `@@skill:blong-realm#layers`** — a memory entry, a docs page
+  or a skill section, resolved from `blong-dev memory export --json` and opened at the entry's own
+  line. Hovering one in a file shows its title and a short excerpt; Ctrl+click and F12 open it.
+
+In a markdown file a token in backticks or a fence is an _example_ of the syntax — it is linked only
+when it actually resolves, so a doc that quotes a real id still gets a link and a placeholder does
+not. In a code comment there is no such rule: the token is a reference and is linked, and the `@@`
+reference is never written inside backticks there, because that hid the great majority of the tree's
+references from both the editor and the `refs` linter. A code block that has to show the syntax says
+`memory-refs: example` in its comment instead.
+
+Which member of a reference group appears, and how to walk one during an investigation, is
+[a line's references](../../docs/blong/docs/patterns/references.md).
+
 ## REST API Endpoints
 
 Your REST API backend should implement the following endpoints:

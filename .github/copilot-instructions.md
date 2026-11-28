@@ -195,7 +195,10 @@ The details live in a memory entry or documentation, and the comment points at i
 - Never restate an entry's body in code. If a comment needs a paragraph, the paragraph belongs in
   the entry (`blong-dev memory edit <id> --body-file <file>`) and the comment keeps the title.
 - **Write an example in backticks.** The scan skips inline code and fenced blocks, so a token inside
-  a sample is read as an illustration and not as a citation — what a how-to wants.
+  a sample is read as an illustration and not as a citation — what a how-to wants. That rule is
+  **markdown's**: in a code comment a backtick is ordinary punctuation, so a token there is a
+  citation and is checked (and linked by the editor) like any other. To show the syntax in code,
+  write `memory-refs: example` in the comment block, which exempts the block (`@@D-1042`).
 - **A file may opt out**: a line matching `memory-refs: ignore` within its first eight lines leaves
   its references unchecked — for a fixture that carries a deliberately broken example.
 - **A citation belongs in prose or a comment, never in a string literal.** Inside a message it is

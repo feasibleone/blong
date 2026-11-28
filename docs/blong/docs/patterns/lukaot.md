@@ -358,9 +358,13 @@ the declared name, and the values the call supplied sit beside it:
     "msg": "rate declined: 1.2 above 1.15",
     "params": {"rate": 1.2, "rateLimit": 1.15},
     "flow": {"id": "01J8Z…", "kind": "transfer.single", "step": "quote", "leg": "quote.fx"},
-    "refs": {"record": "lukaot://r/01J8Z9K2M9…", "template": "lukaot://t/…"}
+    "refs": {"record": "01J8Z9K2M9…", "template": "9f2c4a1b8e07", "trace": "01J8Z…"}
 }
 ```
+
+The ids in `refs` are **bare**: the `lukaot://` URI is what the _rendered line_ builds from them, so
+JSON carries the id and the human line carries the link. A reference in a note, a bug report or a
+test fixture is always the URI form.
 
 On stdout the same record is one line — level, service, message, then the identity and the values —
 and a folded or failure line carries the `lukaot://` references a reader follows afterwards:
@@ -369,6 +373,10 @@ and a folded or failure line carries the `lukaot://` references a reader follows
 blong-dev log 01J8Z9K2M9…            # one entry in full
 blong-dev log --level warn --name fxp  # recent warnings from a run that has finished
 ```
+
+Which member of that group is printed, what each one resolves against and how to follow one is
+[a line's references](./references.md) — the page to open when a line turns out to be the one worth
+digging into.
 
 The service (when one is configured) keeps a **ledger per identifier** — count, first and last seen,
 the level it was written at — plus exemplars, the causal index, the flow ledger and search. There is

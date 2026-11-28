@@ -202,6 +202,8 @@ export const ID_REFERENCE = new RegExp(String.raw`\b[${ID_PREFIXES}]-\d{3,}\b`, 
  * an agent skill and section. One grammar for all three corpora, so one resolver, one linter and
  * one editor provider cover them.
  *
+ * memory-refs: example — every token above is the grammar, not a citation.
+ *
  * The token is deliberately plain: `@@` cannot appear in TypeScript, YAML, shell or markdown
  * syntax, so it needs no escaping and is greppable as text (`grep -rF '@@T-'`). The scope qualifier
  * (`@@F-014@root`) is not part of a reference — that form is the CLI's own addressing; an id that

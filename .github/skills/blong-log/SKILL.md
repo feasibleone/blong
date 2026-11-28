@@ -191,16 +191,26 @@ arriving is a dependency's — which is how `@fastify/bearer-auth`'s refusal was
 
 Beyond the live log server, Blong's `pino-cacache` transport stores every log entry **on disk**
 (default `~/.blong/log-cache`) with full detail, so they can be inspected later in greater detail
-even after the process has exited. The VS Code extension reads this cache when you click a
-`lukaot://t/<shape>` (or `lukaot://r/<id>`) link in the terminal. Coding agents can read it directly
-with the `blong-dev log` CLI:
+even after the process has exited. Coding agents can read it directly with the `blong-dev log` CLI:
 
 ```bash
 blong-dev log                                # recent entries, condensed one-liners
 blong-dev log --level error --name gateway   # filter by level and service
 blong-dev log <ulid>                         # one entry, in full (JSON)
+blong-dev log --trace-id <id>                # every retained record of one request
 blong-dev log --help                         # every filter and output mode
 ```
+
+A line printed by a lukaot process ends with a group of `lukaot://` references, and for an agent
+that group is the **entry point to progressive discovery**: `lukaot://t/<shape>` is the newest
+occurrence of the line's shape, `lukaot://r/<ulid>` the occurrence itself (present on failures and
+on records that withheld a value), `lukaot://x/<id>` the whole request, `p=<ulid>` the record that
+caused it and `lukaot://p/<ulid>` a value too large to inline. Each one is the argument to a command
+here: the record and payload ids go to `blong-dev log <ulid>`, and the trace id to
+`--trace-id`. Which member is printed, what it resolves against and how to walk one is
+[a line's references](../../../docs/blong/docs/patterns/references.md) — read that page before
+guessing at a group you have not seen before. In the editor the same tokens are clickable: the
+`rest-fs` extension resolves them from the same store.
 
 Output is `condensed` one-line text by default (never colorized, safe to grep), `pretty` for a human
 and `json` for a script; a single ULID prints as JSON. Filters combine (`--level`, `--name`,

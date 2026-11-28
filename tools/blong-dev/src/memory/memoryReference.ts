@@ -10,6 +10,9 @@
  * with a normal relative link instead of the token — the editor already follows it,
  * and the anchor is checked the same way.
  *
+ * memory-refs: example — the tokens above name a made-up anchor, so the paragraph shows the
+ * grammar rather than citing anything.
+ *
  * Everything here is derived: the markdown is the source of truth and the catalogue
  * is rebuilt from it on each run, so an edit is picked up with no invalidation.
  */
@@ -228,24 +231,66 @@ function backticksBefore(line: string, column: number): number {
 }
 
 /**
+ * A line that says the tokens around it are an illustration.
+ *
+ * The backtick convention is markdown's, so a code file needs a marker of its own to show the
+ * syntax without being checked for it. It is written in a comment, and it exempts the **block** it
+ * sits in — the contiguous lines around it, which is one comment or one paragraph — because a
+ * paragraph explaining the token writes it more than once (@@D-1042).
+ */
+const EXAMPLE_MARKER = /memory-refs:\s*example/;
+
+/**
+ * The lines a marker exempts: every line of each block, where a block is a run of non-blank lines.
+ */
+function exampleBlocks(lines: readonly string[]): boolean[] {
+    const exempt = lines.map(() => false);
+    let start = 0;
+    const close = (end: number): void => {
+        if (lines.slice(start, end).some(line => EXAMPLE_MARKER.test(line))) {
+            for (let index = start; index < end; index += 1) exempt[index] = true;
+        }
+    };
+    lines.forEach((line, index) => {
+        if (line.trim() === '') {
+            close(index);
+            start = index + 1;
+        }
+    });
+    close(lines.length);
+    return exempt;
+}
+
+/**
  * Every reference token in a document.
  *
  * A token that sits inside code formatting — a fenced block, or an inline code span
- * (`@@F-014`) — is an example of the syntax, not a reference, so it is skipped.
- * This is what lets the docs, the skills and the plans *explain* the token without
- * tripping the linter that checks its uses.
+ * (`@@F-014`) — is an example of the syntax, not a reference, so it is skipped. This is what lets
+ * the docs and the skills *explain* the token without tripping the linter that checks its uses.
+ *
+ * That is a **markdown** rule, and `codeSpans` scopes it there: a backtick in a TypeScript comment
+ * is ordinary punctuation around a citation, not the quote of an example, so a file that is not
+ * markdown is scanned with `codeSpans: false`. A block carrying `memory-refs: example` is skipped in
+ * every file, which is how a code comment shows the syntax without being checked for it
+ * (@@D-1042).
  */
-export function parseReferences(lines: readonly string[]): IReferenceToken[] {
+export function parseReferences(
+    lines: readonly string[],
+    options: {codeSpans?: boolean} = {},
+): IReferenceToken[] {
+    const codeSpans = options.codeSpans ?? true;
+    const exempt = exampleBlocks(lines);
     const found: IReferenceToken[] = [];
     let inFence = false;
     lines.forEach((line, index) => {
+        if (exempt[index]) return;
         if (/^\s*(?:```|~~~)/.test(line)) {
             inFence = !inFence;
             return;
         }
-        if (inFence) return;
+        if (codeSpans && inFence) return;
         for (const token of parseLineReferences(line, index + 1)) {
-            if (backticksBefore(line, token.column) % 2 === 1) continue;
+            if (codeSpans && backticksBefore(line, token.column) % 2 === 1) continue;
             found.push(token);
         }
     });
@@ -543,7 +588,10 @@ export function scanSites(
         // A file may opt out — a fixture that carries a deliberately broken example.
         if (scanned.lines.slice(0, 8).some(line => /memory-refs:\s*ignore/.test(line))) continue;
         const records = evidenceRecordLines(scanned.lines);
-        for (const token of parseReferences(scanned.lines)) {
+        // Markdown quotes an example in backticks; a code file does not, so the rule is scoped to
+        // the format it belongs to rather than to every file the scan reads (@@D-1042).
+        const codeSpans = scanned.file.endsWith('.md');
+        for (const token of parseReferences(scanned.lines, {codeSpans})) {
             references.push({
                 file: scanned.file,
                 line: token.line,

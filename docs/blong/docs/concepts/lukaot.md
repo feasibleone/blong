@@ -31,5 +31,6 @@ configuration without touching the code; and a name exists before any run, so co
 diagrams work on names rather than on text.
 
 - How to declare and use it: [pattern guide](../patterns/lukaot.md)
+- What the references on a printed line resolve to: [a line's references](../patterns/references.md)
 - Two flows drawn from a real run: [flow walkthrough](../patterns/lukaot-flows.md)
 - Why it is shaped this way, and what it replaced: [rationale](../rationale/lukaot.md)

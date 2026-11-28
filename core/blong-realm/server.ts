@@ -19,7 +19,7 @@ export default realm(() => ({
         default: {
             blong: {},
             // The semantic-log realm is an aid rather than a workload: it is not a process of its
-            // own and is not carried by every process (`@@D-433`). `blong` is its name in the
+            // own and is not carried by every process (`@@D-437`). `blong` is its name in the
             // registry.
             //
             // `attached` is the third way and the one this realm takes: it rides in the process that
