@@ -82,6 +82,77 @@ export const kindOfResource = (resourceType: string): string =>
         .join('');
 
 /**
+ * The canonical spelling of a resource type: the words of the kind, with separators.
+ *
+ * A caller may send the singular or the plural and either separator; the canonical form is what
+ * `kindOfResource` turns into the client's own spelling (`persistent_volume_claim` →
+ * `PersistentVolumeClaim`). A compound kind missing from this table is not a lookup that fails — it
+ * is a *wrong method name*: `service_account` stayed `serviceaccount`, became
+ * `listNamespacedServiceaccount`, and the client answered that it has no such method, which is how
+ * the operator's first attempt to apply a suite's identity failed (@@F-866).
+ */
+export const RESOURCE_TYPE_NAMES: Record<string, string> = {
+    pod: 'pod',
+    pods: 'pod',
+    service: 'service',
+    services: 'service',
+    configmap: 'config_map',
+    configmaps: 'config_map',
+    serviceaccount: 'service_account',
+    serviceaccounts: 'service_account',
+    secret: 'secret',
+    secrets: 'secret',
+    namespace: 'namespace',
+    namespaces: 'namespace',
+    node: 'node',
+    nodes: 'node',
+    persistentvolume: 'persistent_volume',
+    persistentvolumes: 'persistent_volume',
+    persistentvolumeclaim: 'persistent_volume_claim',
+    persistentvolumeclaims: 'persistent_volume_claim',
+    deployment: 'deployment',
+    deployments: 'deployment',
+    replicaset: 'replica_set',
+    replicasets: 'replica_set',
+    daemonset: 'daemon_set',
+    daemonsets: 'daemon_set',
+    statefulset: 'stateful_set',
+    statefulsets: 'stateful_set',
+    job: 'job',
+    jobs: 'job',
+    cronjob: 'cron_job',
+    cronjobs: 'cron_job',
+    ingress: 'ingress',
+    ingresses: 'ingress',
+    networkpolicy: 'network_policy',
+    networkpolicies: 'network_policy',
+    role: 'role',
+    roles: 'role',
+    rolebinding: 'role_binding',
+    rolebindings: 'role_binding',
+    clusterrole: 'cluster_role',
+    clusterroles: 'cluster_role',
+    clusterrolebinding: 'cluster_role_binding',
+    clusterrolebindings: 'cluster_role_binding',
+    tokenreview: 'token_review',
+    tokenreviews: 'token_review',
+    subjectaccessreview: 'subject_access_review',
+    subjectaccessreviews: 'subject_access_review',
+    selfsubjectaccessreview: 'self_subject_access_review',
+    selfsubjectaccessreviews: 'self_subject_access_review',
+};
+
+/**
+ * The canonical resource type a caller's spelling names, or its glued self when nothing matches.
+ *
+ * Exported with the table so a test can hold the invariant the failure above broke: every canonical
+ * spelling in the table must resolve to itself.
+ */
+export const canonicalResourceType = (resource: string): string =>
+    RESOURCE_TYPE_NAMES[gluedType(resource)] ?? gluedType(resource);
+
+
+/**
  * The group and version a resource type is read through.
  *
  * Mirrors the switch that picks the client (`getApiForResource`) on purpose: that switch chooses an
@@ -449,66 +520,7 @@ export default adapter<IConfig>(({utError}) => {
                         return this.config.context.coreV1Api!;
                 }
             };
-            /**
-             * The canonical spelling of a resource type: the words of the kind, with separators.
-             *
-             * A caller may send the singular or the plural and either separator; the canonical form is
-             * what the tables above are keyed by and what `kindOfResource` turns into the client's own
-             * spelling (`persistent_volume_claim` → `PersistentVolumeClaim`).
-             */
-            const RESOURCE_NAME: Record<string, string> = {
-                pod: 'pod',
-                pods: 'pod',
-                service: 'service',
-                services: 'service',
-                configmap: 'config_map',
-                configmaps: 'config_map',
-                secret: 'secret',
-                secrets: 'secret',
-                namespace: 'namespace',
-                namespaces: 'namespace',
-                node: 'node',
-                nodes: 'node',
-                persistentvolume: 'persistent_volume',
-                persistentvolumes: 'persistent_volume',
-                persistentvolumeclaim: 'persistent_volume_claim',
-                persistentvolumeclaims: 'persistent_volume_claim',
-                deployment: 'deployment',
-                deployments: 'deployment',
-                replicaset: 'replica_set',
-                replicasets: 'replica_set',
-                daemonset: 'daemon_set',
-                daemonsets: 'daemon_set',
-                statefulset: 'stateful_set',
-                statefulsets: 'stateful_set',
-                job: 'job',
-                jobs: 'job',
-                cronjob: 'cron_job',
-                cronjobs: 'cron_job',
-                ingress: 'ingress',
-                ingresses: 'ingress',
-                networkpolicy: 'network_policy',
-                networkpolicies: 'network_policy',
-                role: 'role',
-                roles: 'role',
-                rolebinding: 'role_binding',
-                rolebindings: 'role_binding',
-                clusterrole: 'cluster_role',
-                clusterroles: 'cluster_role',
-                clusterrolebinding: 'cluster_role_binding',
-                clusterrolebindings: 'cluster_role_binding',
-                tokenreview: 'token_review',
-                tokenreviews: 'token_review',
-                subjectaccessreview: 'subject_access_review',
-                subjectaccessreviews: 'subject_access_review',
-                selfsubjectaccessreview: 'self_subject_access_review',
-                selfsubjectaccessreviews: 'self_subject_access_review',
-            };
-
-            const getResourceType = (resource: string): string =>
-                RESOURCE_NAME[gluedType(resource)] ?? gluedType(resource);
-
-            const resourceType = getResourceType(_resourceType);
+            const resourceType = canonicalResourceType(_resourceType);
 
             // Check if this is a custom resource request (resourceType will be 'custom')
             const isCustomResource = resourceType === 'custom' && !Array.isArray(params);
