@@ -99,6 +99,7 @@ slow and flaky just to prove it twice.
 | Produce routing: a real produce through the chosen producer | —                                                                                 | `answerIsProduced` — the answer reaches the answers topic    |
 | Subscription glob expanded at start                         | —                                                                                 | `globIsExpanded` — one feed, `blong-int-adapter.feed.glob.*` |
 | Client settings checked per kind                            | `a client setting outside its kind table is refused before it reaches librdkafka` | the config of every feed above                               |
+| A watch's consumer closed when its owner stops              | `a watch is closed by the owner that registered it, not only by its reader`       | — (a feed’s answer is written once; nothing watches)         |
 
 Every topic this suite uses starts with `blong-int-adapter`, and the declarations live in
 `kafka/meta/kafka/` — `integration.yaml` for the round-trip topic and `feed.yaml` for the feed

@@ -277,8 +277,58 @@ export default adapter<IConfig>(() => {
 
     /** The producers made so far, by alias — one client per spec, kept until `stop()` (`@@D-1035`). */
     const producers = new Map<string, IKafkaProducer>();
+    /**
+     * The producers being opened, by alias.
+     *
+     * Two sends of one alias that start together must share one client: each would otherwise find
+     * the map empty, connect its own, and the one that stored last would overwrite the other — a
+     * connection in nobody's map, which no `stop()` closes and whose poll keeps the process alive
+     * (`F-866`). A telemetry batch firing several sends at once is exactly that case.
+     */
+    const opening = new Map<string, Promise<IKafkaProducer>>();
+    /**
+     * Set by `stop()`, cleared by `start()`.
+     *
+     * A producer opened after the stop began is not kept: its send closes it, because no later
+     * `stop()` will. The alternative is what cost the CI run — a client that outlives the platform
+     * that made it and holds the process open for the whole tap budget (`F-866`).
+     */
+    let stopping = false;
+    /**
+     * The producers already closed, so no path closes one twice.
+     *
+     * `disconnect()` is a blocking native call, and a second one on a client that is already
+     * tearing down blocks the main thread until the process is killed — the reader cannot see it,
+     * because nothing is left in the loop to report (`F-866`). `stop()` and a send that outlived it
+     * both reach the same client, so the close has to be the client's own state, not each caller's
+     * belief.
+     */
+    const closed = new WeakSet<IKafkaProducer>();
+    const closeProducer = (producer: IKafkaProducer): void => {
+        if (closed.has(producer)) return;
+        closed.add(producer);
+        try {
+            producer.flush(5_000);
+        } catch {
+            // The queue has been answered; a busy queue changes nothing.
+        }
+        try {
+            producer.disconnect();
+        } catch {
+            // A producer that never connected has nothing to leave behind.
+        }
+    };
     /** The feeds this instance is running (`@@D-1036`). */
     const feeds: IFeedHandle[] = [];
+    /**
+     * How to close every watch this instance opened (`@@D-949`).
+     *
+     * A watch consumer belongs to the call that asked for it, and a reader that stops without an
+     * abort leaves it closed by nobody: its pump is parked at an `await` nothing will resume, so the
+     * `finally` that would close it never runs, and the client outlives the platform that started
+     * it — a process that finishes its work and never exits (`@@F-870` `@@D-1043`).
+     */
+    const watches = new Set<() => void>();
     let maps: IClientMaps = {producer: {default: {}}, consumer: {}, feed: {}};
 
     const clientsOf = (config: ResolvedConfig): IKafkaClients =>
@@ -295,15 +345,36 @@ export default adapter<IConfig>(() => {
     const producerFor = async (
         config: ResolvedConfig,
         logicalTopic: string,
-    ): Promise<{alias: string; spec: IProducerSpec; producer: IKafkaProducer}> => {
+    ): Promise<{alias: string; spec: IProducerSpec; producer: IKafkaProducer; kept: boolean}> => {
         const {alias, spec} = matchSpec(maps.producer, logicalTopic, 'producer');
-        const existing = producers.get(alias);
-        if (existing) return {alias, spec, producer: existing};
+        const made = producers.get(alias);
+        if (made) return {alias, spec, producer: made, kept: true};
+        // One client per alias, however many sends ask for it at once.
+        const awaited = opening.get(alias);
+        if (awaited) {
+            const producer = await awaited;
+            return {alias, spec, producer, kept: producers.get(alias) === producer};
+        }
         const connection = {...config.connection, ...spec.config} as KafkaProducerConfig;
         const producer = clientsOf(config).producer(reportProducerConfig(connection));
-        await whenReady(producer);
+        const ready = (async (): Promise<IKafkaProducer> => {
+            await whenReady(producer);
+            return producer;
+        })();
+        opening.set(alias, ready);
+        try {
+            await ready;
+        } catch (error) {
+            closeProducer(producer);
+            throw error;
+        } finally {
+            opening.delete(alias);
+        }
+        // The instance is stopping, so this producer has no owner: the send closes it when the
+        // delivery report arrives, rather than leaving a connection no `stop()` will visit.
+        if (stopping) return {alias, spec, producer, kept: false};
         producers.set(alias, producer);
-        return {alias, spec, producer};
+        return {alias, spec, producer, kept: true};
     };
 
     /**
@@ -317,18 +388,24 @@ export default adapter<IConfig>(() => {
         logicalTopic: string,
         message: {value: string; key?: string | null; partition?: number; headers?: IKafkaHeader[]},
     ): Promise<{topic: string; partition: number; offset: number}> => {
-        const {spec, producer} = await producerFor(config, logicalTopic);
+        const {spec, producer, kept} = await producerFor(config, logicalTopic);
         const connection = {...config.connection, ...spec.config} as KafkaProducerConfig;
-        const sent = await messageSend(
-            clientsOf(config),
-            connection,
-            {
-                topic: brokerTopicOf(config, logicalTopic),
-                ...message,
-            },
-            {producer},
-        );
-        return {...sent, topic: logicalTopic};
+        try {
+            const sent = await messageSend(
+                clientsOf(config),
+                connection,
+                {
+                    topic: brokerTopicOf(config, logicalTopic),
+                    ...message,
+                },
+                {producer},
+            );
+            return {...sent, topic: logicalTopic};
+        } finally {
+            // A producer this instance did not keep is this call's to close: its owner stopped, and
+            // nothing later will flush it (`F-866`).
+            if (!kept) closeProducer(producer);
+        }
     };
 
     /** Every client this instance could bring up, which is what `client.list` answers. */
@@ -391,6 +468,8 @@ export default adapter<IConfig>(() => {
 
         async start() {
             const result = await super.start();
+            // A start after a stop keeps its producers again.
+            stopping = false;
             const config = this.config as unknown as ResolvedConfig;
             const isAdmin = config.mode === 'admin';
 
@@ -649,6 +728,13 @@ export default adapter<IConfig>(() => {
         },
 
         async stop(...params: unknown[]) {
+            // Whatever this instance opens from here on is closed by the call that opened it.
+            stopping = true;
+            // The watches before the feeds: a watch is a reader with no caller left to serve, so
+            // nothing is lost by ending it, and its consumer is otherwise the client that keeps the
+            // process alive (`F-866`).
+            for (const close of watches) close();
+            watches.clear();
             // The feeds first: each flushes the work it has done before its client goes, so a
             // graceful stop loses nothing (`@@D-1036`).
             for (const feed of feeds.splice(0)) {
@@ -662,20 +748,15 @@ export default adapter<IConfig>(() => {
                 }
             }
             // Every producer the instance opened: flushed, then closed. The shared producer this
-            // adapter used to keep was closed without a flush (`@@D-1035`).
-            for (const producer of producers.values()) {
-                try {
-                    producer.flush(5_000);
-                } catch {
-                    // The queue has already been answered; a busy queue changes nothing.
-                }
-                try {
-                    producer.disconnect();
-                } catch {
-                    // A producer that never connected has nothing to leave behind.
-                }
+            // adapter used to keep was closed without a flush (`@@D-1035`). The map is re-read
+            // until nothing new appears, because a send in flight during this loop may still be
+            // storing the client it opened (`F-866`).
+            for (;;) {
+                const open = [...producers.values()];
+                producers.clear();
+                if (!open.length) break;
+                for (const producer of open) closeProducer(producer);
             }
-            producers.clear();
 
             // The group the process joined, spelled the way the broker has it (`@@D-1003`).
             const config = this.config as unknown as ResolvedConfig;
@@ -895,6 +976,7 @@ export default adapter<IConfig>(() => {
                             starts: startsOf(params.starts),
                             key: params.key as string | undefined,
                             $meta,
+                            register: close => watches.add(close),
                         });
                         return (async function* () {
                             for await (const record of records) {

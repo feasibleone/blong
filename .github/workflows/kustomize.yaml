@@ -153,7 +153,12 @@ jobs:
           # tenant's own pair and nothing for `blong-services`, so the pass that opted a service in
           # reported five forbidden reads and the CR went Failed while the workload itself ran
           # (@@F-868).
-          node realm/blong-kustomize/bin/kustomize.ts provision apply --namespace=blong-suite
+          #
+          # `--dir` on both calls, because this job stands at the repository root: the first
+          # `package.json` above it is the repository's own, so a `provision` that looked for the
+          # package it stood in reported a folder `init` had written one level down (@@F-869).
+          node realm/blong-kustomize/bin/kustomize.ts provision apply \
+            --dir=suite/blong-suite --namespace=blong-suite
           kubectl -n blong-suite get secret blong-releaserc-etc -o jsonpath='{.data.blong_releaserc}' | base64 -d
           kubectl -n blong-suite get secret blong-master-key -o jsonpath='{.metadata.name}{"\n"}'
       - name: Build the suite's browser bundle
@@ -258,7 +263,9 @@ jobs:
         # It runs before anything waits: a grant that is missing is a pass refused on every kind in
         # that namespace, which reads from outside as a CR stuck at Failed with the workloads
         # themselves running (@@F-868).
-        run: node realm/blong-kustomize/bin/kustomize.ts provision verify --namespace=blong-suite
+        run: >-
+          node realm/blong-kustomize/bin/kustomize.ts provision verify
+          --dir=suite/blong-suite --namespace=blong-suite
       - name: Wait for the operator to report Ready
         # The assertion that makes this job worth its minutes: the operator watches the CR, a pass
         # reconciles the plan, the migration Job runs, and the status carries the result back.

@@ -584,6 +584,38 @@ test('topic.watch assigns, filters by key and stops when the reader leaves', asy
     t.end();
 });
 
+test('a watch is closed by the owner that registered it, not only by its reader', async t => {
+    // The reader of a watch can vanish without an abort — a page closed, a generator dropped — and
+    // its pump is then parked at an `await` nothing resumes, so the `finally` that closes the
+    // consumer never runs. The consumer outlived the platform, and the process could not exit
+    // (`F-870`). The closer registered here is what the adapter keeps until its `stop()`.
+    const consumer = new FakeConsumer({topics: [{name: TOPIC, partitions: [{id: 0}]}]});
+    const closers: (() => void)[] = [];
+    const reading = (async () => {
+        for await (const _record of topicWatch(clientsOf({consumer}), connection, {
+            topic: TOPIC,
+            starts: [{partition: 0, offset: 0}],
+            register: close => closers.push(close),
+        })) {
+            // One record, and then the reader is gone without aborting: nothing pulls again.
+            break;
+        }
+    })();
+    await tick();
+    t.equal(closers.length, 1, 'the watch hands its close to the owner as it starts');
+
+    consumer.deliver({partition: 0, offset: 0, key: 'session-1'});
+    await tick();
+
+    closers[0]();
+    await reading;
+    await tick();
+    t.ok(consumer.disconnected, 'and that close is enough to end the consumer');
+    closers[0]();
+    t.ok(consumer.disconnected, 'closing twice is the same close, not a second one');
+    t.end();
+});
+
 test('the topics a realm declares are read from its YAML', t => {
     const [telemetry] = topicDeclarationsOf(
         {

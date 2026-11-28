@@ -26,6 +26,7 @@ export interface IKafkaConsumer {
     isConnected(): boolean;
     on(event: 'ready', listener: () => void): unknown;
     on(event: 'data', listener: (message: Message) => void): unknown;
+    off(event: 'data', listener: (message: Message) => void): unknown;
     on(event: 'event.error', listener: (error: {message?: string}) => void): unknown;
     setDefaultConsumeTimeout(timeoutMs: number): unknown;
     consume(count: number, cb: (error: {message?: string} | null, messages: Message[]) => unknown): unknown;

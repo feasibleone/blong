@@ -973,7 +973,8 @@ const apply = (context: ISuiteContext, flags: IProvisionFlags): number => {
         throw new Error(
             `no provision folder at ${folder}: \`blong-kustomize init\` writes one — the namespace, ` +
                 'the grants, the declaration and the rc Secret, which are the parts of a deployment a ' +
-                'reconcile pass cannot write itself.',
+                'reconcile pass cannot write itself. Pass `--dir=<the suite>` when this is not the ' +
+                'folder you are standing in.',
         );
     }
     const namespace = tenantNamespace(context, flags);
@@ -1142,33 +1143,39 @@ export const provision = (
     context: ISuiteContext,
     flags: IProvisionFlags,
 ): number => {
+    // `--dir` names the suite, and every verb has to honour it: a caller standing at a repository
+    // root finds *its* package first, so the folder it was pointed at is the only thing that says
+    // where the tenant's manifests are. `init` already resolved it this way; `provision` looked at
+    // the package it stood in and reported a folder that `init` had written somewhere else
+    // (@@F-869).
+    const scope = flags.dir ? detectSuite(resolve(flags.dir), flags) : context;
     switch (verb) {
         case undefined:
         case '':
-            seal(context, flags);
+            seal(scope, flags);
             // Before the apply: the folder writes the key, so a mismatch has to stop it rather than be
             // reported after it has already replaced what the cluster held.
             ensureMasterKey(
-                tenantNamespace(context, flags),
+                tenantNamespace(scope, flags),
                 flags.dryRun === true,
-                context,
+                scope,
                 flags.force === true,
             );
-            return apply(context, flags);
+            return apply(scope, flags);
         case 'seal':
-            return seal(context, flags);
+            return seal(scope, flags);
         case 'apply':
             ensureMasterKey(
-                tenantNamespace(context, flags),
+                tenantNamespace(scope, flags),
                 flags.dryRun === true,
-                context,
+                scope,
                 flags.force === true,
             );
-            return apply(context, flags);
+            return apply(scope, flags);
         case 'restore':
-            return restore(context, flags);
+            return restore(scope, flags);
         case 'verify':
-            return verify(context, flags);
+            return verify(scope, flags);
         default:
             throw new Error(
                 `provision: unknown verb '${verb ?? ''}'. Run \`blong-kustomize provision --help\`.`,

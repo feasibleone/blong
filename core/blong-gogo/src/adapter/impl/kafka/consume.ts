@@ -4,13 +4,7 @@
 import type {IMeta, VocabularyProxy} from '@feasibleone/blong/types';
 import type {Message} from 'node-rdkafka';
 
-import {
-    freshGroup,
-    type IKafkaClients,
-    type KafkaConfig,
-    messageOf,
-    whenReady,
-} from './clients.ts';
+import {freshGroup, type IKafkaClients, type KafkaConfig, messageOf, whenReady} from './clients.ts';
 
 /**
  * A consumed record, narrowed to the fields an operator reads.
@@ -163,7 +157,22 @@ export function startsOf(value: unknown): IWatchStart[] {
 export async function* topicWatch(
     clients: IKafkaClients,
     connection: KafkaConfig,
-    options: {topic: string; starts: IWatchStart[]; key?: string; $meta?: IMeta},
+    options: {
+        topic: string;
+        starts: IWatchStart[];
+        key?: string;
+        $meta?: IMeta;
+        /**
+         * Where the owner of this watch keeps its close, so it can end one the reader abandoned.
+         *
+         * A reader that stops without an abort — a page closed, a generator dropped — leaves the
+         * pump parked at an `await` that nothing resumes, and its `finally` therefore never runs
+         * (`@@F-870`). The consumer would outlive the platform that started it, and a process with a
+         * live client does not exit. The owner closes every watch it opened when it stops
+         * (`@@D-1043`).
+         */
+        register?: (close: () => void) => void;
+    },
 ): AsyncIterable<IKafkaRecord> {
     const queue: IKafkaRecord[] = [];
     let wake: (() => void) | null = null;
@@ -181,6 +190,8 @@ export async function* topicWatch(
      * `node-rdkafka` disconnects synchronously, which measured **1500 ms** here, so a reader that
      * leaves must not have its last frame — or the request that served it — held for that long. The
      * process is still busy when it runs; it is simply no longer busy *for the reader* (`F-834`).
+     * Closing in the reader's own turn is not an option: a disconnect issued while the consumer is
+     * still polling crashes librdkafka outright, which was a crash on every run that tried it.
      * A pool of assigned consumers is the fix when a viewer's watch becomes per-page rather than
      * per-session.
      */
@@ -188,7 +199,22 @@ export async function* topicWatch(
     const close = (): void => {
         if (closed) return;
         closed = true;
+        // Detached at once, so no record is dispatched into a queue nobody will drain while the
+        // close waits its turn.
+        try {
+            consumer.off('data', onData);
+        } catch {
+            // A client already torn down has no listener to remove.
+        }
         setImmediate(() => {
+            try {
+                // The assignment goes first: a consumer that still holds partitions asks the broker
+                // to take them back while it is closing, and that teardown is what was left stalled
+                // (`@@F-870`).
+                consumer.unassign();
+            } catch {
+                // A consumer whose connection is already gone has no assignment to drop.
+            }
             try {
                 consumer.disconnect(() => undefined);
             } catch {
@@ -206,16 +232,17 @@ export async function* topicWatch(
         },
         {'auto.offset.reset': 'earliest'},
     );
-    consumer.on('data', message => {
-        if (options.key !== undefined && message.key?.toString() !== options.key) return;
-        queue.push(recordOf(message));
-        nudge();
-    });
+    consumer.on('data', onData);
     consumer.on('event.error', error => {
         failure = new Error(error.message ?? 'Kafka consumer error');
         ended = true;
         nudge();
     });
+    function onData(message: Message): void {
+        if (options.key !== undefined && message.key?.toString() !== options.key) return;
+        queue.push(recordOf(message));
+        nudge();
+    }
     const abort = (): void => {
         ended = true;
         // The pump may be parked at a `yield` when this fires: an abort is the reader saying it
@@ -225,6 +252,9 @@ export async function* topicWatch(
         nudge();
     };
     options.$meta?.abort?.addEventListener('abort', abort, {once: true});
+    // Known to the owner from the moment it can be closed, which is before the client connects:
+    // a platform that stops during the connect must be able to end this watch.
+    options.register?.(close);
     try {
         await whenReady(consumer);
         // The offsets are absolute and were computed by the caller from the watermarks, so nothing
