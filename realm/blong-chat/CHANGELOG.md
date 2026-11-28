@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/feasibleone/blong/compare/blong-chat-v0.7.0...blong-chat-v0.8.0) (2026-11-28)
+
+
+### Features
+
+* improve deployment handling ([cb3aeac](https://github.com/feasibleone/blong/commit/cb3aeacee38b61db9946675ed1646c9bf185a516))
+
 ## [0.7.0](https://github.com/feasibleone/blong/compare/blong-chat-v0.6.0...blong-chat-v0.7.0) (2026-11-23)
 
 

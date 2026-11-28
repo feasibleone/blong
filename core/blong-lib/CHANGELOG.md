@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/feasibleone/blong/compare/blong-lib-v1.10.2...blong-lib-v1.11.0) (2026-11-28)
+
+
+### Features
+
+* improve deployment handling ([cb3aeac](https://github.com/feasibleone/blong/commit/cb3aeacee38b61db9946675ed1646c9bf185a516))
+
 ## [1.10.2](https://github.com/feasibleone/blong/compare/blong-lib-v1.10.1...blong-lib-v1.10.2) (2026-11-25)
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.39.2](https://github.com/feasibleone/blong/compare/blong-browser-v1.39.1...blong-browser-v1.39.2) (2026-11-28)
+
+
+### Bug Fixes
+
+* avoid vendor CDN ([304a519](https://github.com/feasibleone/blong/commit/304a5195b097ff4e767fc5f9444baeb0adf93ee1))
+* E2E failure in CI ([4c7b5a2](https://github.com/feasibleone/blong/commit/4c7b5a27761acf6aaead7f67b37228da7b35401f))
+
 ## [1.39.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.39.0...blong-browser-v1.39.1) (2026-11-23)
 
 

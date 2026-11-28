@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.51.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.50.0...blong-docs-v1.51.0) (2026-11-28)
+
+
+### Features
+
+* improve deployment handling ([cb3aeac](https://github.com/feasibleone/blong/commit/cb3aeacee38b61db9946675ed1646c9bf185a516))
+* Kafka adapter provisioning and feed mode ([b64407e](https://github.com/feasibleone/blong/commit/b64407ebb19197cd05efda71b85d2b438d8e8bc2))
+
+
+### Bug Fixes
+
+* memory and lukaot reference handling ([b1a2ae3](https://github.com/feasibleone/blong/commit/b1a2ae3801f3437374071f206659d53ebd407cd6))
+
 ## [1.50.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.49.0...blong-docs-v1.50.0) (2026-11-25)
 
 

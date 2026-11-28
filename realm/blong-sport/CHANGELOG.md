@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.14.0...blong-sport-v0.15.0) (2026-11-28)
+
+
+### Features
+
+* improve deployment handling ([cb3aeac](https://github.com/feasibleone/blong/commit/cb3aeacee38b61db9946675ed1646c9bf185a516))
+
 ## [0.14.0](https://github.com/feasibleone/blong/compare/blong-sport-v0.13.2...blong-sport-v0.14.0) (2026-11-23)
 
 

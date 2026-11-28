@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.10.0](https://github.com/feasibleone/blong/compare/blong-commander-v1.9.0...blong-commander-v1.10.0) (2026-11-28)
+
+
+### Features
+
+* Kafka adapter provisioning and feed mode ([b64407e](https://github.com/feasibleone/blong/commit/b64407ebb19197cd05efda71b85d2b438d8e8bc2))
+
+
+### Bug Fixes
+
+* E2E/timeout failures in CI ([2b447bc](https://github.com/feasibleone/blong/commit/2b447bc7b2b76723e2f0e95cfe2bfaf3ce452236))
+
 ## [1.9.0](https://github.com/feasibleone/blong/compare/blong-commander-v1.8.1...blong-commander-v1.9.0) (2026-11-25)
 
 

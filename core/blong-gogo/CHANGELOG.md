@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.58.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.57.0...blong-gogo-v1.58.0) (2026-11-28)
+
+
+### Features
+
+* improve deployment handling ([cb3aeac](https://github.com/feasibleone/blong/commit/cb3aeacee38b61db9946675ed1646c9bf185a516))
+* Kafka adapter provisioning and feed mode ([b64407e](https://github.com/feasibleone/blong/commit/b64407ebb19197cd05efda71b85d2b438d8e8bc2))
+
+
+### Bug Fixes
+
+* ci failures ([2ccf586](https://github.com/feasibleone/blong/commit/2ccf586419eeca248208abf37071275039e1c65d))
+* ci failures ([0c0e6fc](https://github.com/feasibleone/blong/commit/0c0e6fc74c3b91a4395ca79b3a77582b7cf0d86b))
+* E2E failure in CI ([f934544](https://github.com/feasibleone/blong/commit/f934544b58199d7d7c96d983b8c1df14331f7b20))
+* E2E/timeout failures in CI ([2b447bc](https://github.com/feasibleone/blong/commit/2b447bc7b2b76723e2f0e95cfe2bfaf3ce452236))
+
 ## [1.57.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.56.0...blong-gogo-v1.57.0) (2026-11-25)
 
 

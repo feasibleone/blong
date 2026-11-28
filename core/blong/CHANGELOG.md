@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.49.0](https://github.com/feasibleone/blong/compare/blong-v1.48.0...blong-v1.49.0) (2026-11-28)
+
+
+### Features
+
+* Kafka adapter provisioning and feed mode ([b64407e](https://github.com/feasibleone/blong/commit/b64407ebb19197cd05efda71b85d2b438d8e8bc2))
+
 ## [1.48.0](https://github.com/feasibleone/blong/compare/blong-v1.47.0...blong-v1.48.0) (2026-11-25)
 
 

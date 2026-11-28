@@ -4,6 +4,14 @@ All notable changes to the "rest-filesystem" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.9.1](https://github.com/feasibleone/blong/compare/rest-fs-v1.9.0...rest-fs-v1.9.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* avoid vendor CDN ([304a519](https://github.com/feasibleone/blong/commit/304a5195b097ff4e767fc5f9444baeb0adf93ee1))
+* memory and lukaot reference handling ([b1a2ae3](https://github.com/feasibleone/blong/commit/b1a2ae3801f3437374071f206659d53ebd407cd6))
+
 ## [1.9.0](https://github.com/feasibleone/blong/compare/rest-fs-v1.8.0...rest-fs-v1.9.0) (2026-11-20)
 
 

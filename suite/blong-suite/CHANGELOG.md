@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.21.1...blong-suite-v1.22.0) (2026-11-28)
+
+
+### Features
+
+* improve deployment handling ([cb3aeac](https://github.com/feasibleone/blong/commit/cb3aeacee38b61db9946675ed1646c9bf185a516))
+
 ## [1.21.1](https://github.com/feasibleone/blong/compare/blong-suite-v1.21.0...blong-suite-v1.21.1) (2026-11-22)
 
 

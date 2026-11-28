@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.3](https://github.com/feasibleone/blong/compare/blong-log-v1.10.2...blong-log-v1.10.3) (2026-11-28)
+
+
+### Bug Fixes
+
+* avoid vendor CDN ([304a519](https://github.com/feasibleone/blong/commit/304a5195b097ff4e767fc5f9444baeb0adf93ee1))
+
 ## [1.10.2](https://github.com/feasibleone/blong/compare/blong-log-v1.10.1...blong-log-v1.10.2) (2026-11-22)
 
 
